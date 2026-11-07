@@ -16,6 +16,10 @@ const PUBLIC_PATHS = [
   "/api/v1",
   // MCP connector short URL (/mcp/<agent key>). Authenticated by the key, not a session.
   "/mcp",
+  // OAuth 2.1 public endpoints (discovery, dynamic registration, token exchange)
+  "/.well-known",
+  "/oauth/register",
+  "/oauth/token",
 ]
 
 export async function proxy(request: NextRequest) {
