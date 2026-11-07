@@ -51,6 +51,7 @@ services:
       NODE_ENV: production
       # Derived from MESH_DOMAIN so the browser, auth redirects and canvas agree.
       NEXT_PUBLIC_SITE_URL: https://${MESH_DOMAIN}
+      NEXT_PUBLIC_APP_URL: https://${MESH_DOMAIN}
       NEXT_PUBLIC_COLLAB_URL: wss://${MESH_DOMAIN}/collab
       ORCHESTRATOR_URL: http://orchestrator:4000
     read_only: true
