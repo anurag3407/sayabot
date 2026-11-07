@@ -85,7 +85,7 @@ export async function verifyEmailAction(
   if (!/^\d{6}$/.test(token)) return fail("Enter the 6-digit code")
   const supabase = await createSupabaseServerClient()
   let verified = false
-  for (const type of ["signup", "email"] as const) {
+  for (const type of ["signup", "email", "magiclink"] as const) {
     const { error } = await supabase.auth.verifyOtp({ email, token, type })
     if (!error) {
       verified = true
@@ -134,6 +134,38 @@ export async function signInEmailAction(
     return fail("The email or password is incorrect")
   }
   redirect(next)
+}
+
+export async function sendMagicLinkAction(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const email = field(formData, "email").toLowerCase()
+  const next = safeNext(field(formData, "next") || "/")
+  if (!emailSchema.safeParse(email).success) return fail("Enter a valid email address")
+
+  const supabase = await createSupabaseServerClient()
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: {
+      emailRedirectTo: await callbackUrl(next),
+      shouldCreateUser: false,
+    },
+  })
+  if (error) {
+    if (
+      error.message.toLowerCase().includes("signups not allowed") ||
+      error.message.toLowerCase().includes("user not found")
+    ) {
+      return fail("No account found with this email. Create an account first.")
+    }
+    return fail(error.message)
+  }
+  return {
+    ok: true,
+    message: "We sent a 6-digit sign-in code and magic link to your email.",
+    data: { needsVerification: true, email },
+  }
 }
 
 export async function forgotPasswordAction(

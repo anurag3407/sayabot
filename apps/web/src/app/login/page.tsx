@@ -38,7 +38,9 @@ export default async function LoginPage({
               role="alert"
               className="mt-6 max-w-[42ch] border-l-2 border-[var(--color-danger)] pl-3 text-[13px] leading-relaxed text-danger"
             >
-              Sign-in did not complete. The link may have expired. Try again.
+              {params.error === "auth"
+                ? "Sign-in did not complete. The verification link or session may have expired. Try again."
+                : decodeURIComponent(params.error)}
             </p>
           ) : null}
         </div>

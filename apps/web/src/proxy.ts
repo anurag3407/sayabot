@@ -33,7 +33,7 @@ export async function proxy(request: NextRequest) {
     url.searchParams.set("next", pathname)
     return NextResponse.redirect(url)
   }
-  if (user && pathname === "/login") {
+  if (user && (pathname === "/login" || pathname === "/signup")) {
     const url = request.nextUrl.clone()
     url.pathname = "/"
     url.search = ""

@@ -49,6 +49,15 @@ export function CompleteAuth({ next }: { next: string }) {
         return
       }
 
+      const supabase = createSupabaseBrowserClient()
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      if (session) {
+        window.location.replace(next)
+        return
+      }
+
       setError("This sign-in link is missing its token or has already been used.")
     }
 

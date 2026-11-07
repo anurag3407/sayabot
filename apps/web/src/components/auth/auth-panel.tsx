@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useActionState, useEffect, useState } from "react"
 import {
   resendVerificationAction,
+  sendMagicLinkAction,
   signInEmailAction,
   signUpAction,
   verifyEmailAction,
@@ -120,8 +121,9 @@ function SignInForm({
   onVerify: (email: string) => void
   onSwitch: () => void
 }) {
+  const [magicLink, setMagicLink] = useState(false)
   const [state, action, pending] = useActionState<ActionResult | null, FormData>(
-    signInEmailAction,
+    magicLink ? sendMagicLinkAction : signInEmailAction,
     null,
   )
   useEffect(() => {
@@ -142,35 +144,60 @@ function SignInForm({
             placeholder="you@company.com"
           />
         </Field>
-        <div>
-          <Field label="password" htmlFor="signin-password">
-            <Input
-              id="signin-password"
-              name="password"
-              type="password"
-              required
-              autoComplete="current-password"
-              placeholder="Your password"
-            />
-          </Field>
-          <div className="mt-1.5 text-right">
-            <Link
-              href="/forgot-password"
-              className="font-mono text-[11px] text-faint underline underline-offset-2 hover:text-text"
-            >
-              forgot password?
-            </Link>
+        {!magicLink ? (
+          <div>
+            <Field label="password" htmlFor="signin-password">
+              <Input
+                id="signin-password"
+                name="password"
+                type="password"
+                required
+                autoComplete="current-password"
+                placeholder="Your password"
+              />
+            </Field>
+            <div className="mt-1.5 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setMagicLink(true)}
+                className="font-mono text-[11px] text-faint underline underline-offset-2 hover:text-text cursor-pointer"
+              >
+                email me a sign-in code
+              </button>
+              <Link
+                href="/forgot-password"
+                className="font-mono text-[11px] text-faint underline underline-offset-2 hover:text-text"
+              >
+                forgot password?
+              </Link>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="text-right">
+            <button
+              type="button"
+              onClick={() => setMagicLink(false)}
+              className="font-mono text-[11px] text-faint underline underline-offset-2 hover:text-text cursor-pointer"
+            >
+              use password instead
+            </button>
+          </div>
+        )}
         {state && !state.ok ? <InlineAlert tone="danger">{state.error}</InlineAlert> : null}
         <Button type="submit" variant="primary" size="lg" className="w-full" disabled={pending}>
-          {pending ? "Signing in…" : "Sign in"}
+          {pending
+            ? magicLink
+              ? "Sending code…"
+              : "Signing in…"
+            : magicLink
+              ? "Send sign-in code"
+              : "Sign in"}
         </Button>
       </form>
       <OAuthButtons next={next} googleEnabled={googleEnabled} githubEnabled={githubEnabled} />
       <p className="text-center text-[12px] text-muted">
         New to Sayabot?{" "}
-        <button type="button" onClick={onSwitch} className="text-text underline underline-offset-4">
+        <button type="button" onClick={onSwitch} className="text-text underline underline-offset-4 cursor-pointer">
           Create an account
         </button>
       </p>
