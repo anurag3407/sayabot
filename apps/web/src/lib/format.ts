@@ -75,6 +75,8 @@ export const PROVIDER_LABELS: Record<string, string> = {
   google: "Google",
   groq: "Groq",
   cerebras: "Cerebras",
+  openrouter: "OpenRouter",
+  copilot: "GitHub Copilot",
   "openai-compatible": "OpenAI-compatible",
 }
 

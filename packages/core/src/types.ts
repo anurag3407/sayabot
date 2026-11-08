@@ -18,6 +18,16 @@ export const PROVIDERS = [
   "google",
   "groq",
   "cerebras",
+  "openrouter",
+  "copilot",
+  "opencode",
+  "command-code",
+  "deepseek",
+  "minimax",
+  "grok",
+  "kimi",
+  "qwen",
+  "cursor",
   "openai-compatible",
 ] as const
 export type Provider = (typeof PROVIDERS)[number]

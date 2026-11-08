@@ -35,6 +35,70 @@ export function createLanguageModel(config: LanguageModelConfig): LanguageModel 
       return createGroq({ apiKey, ...(baseURL ? { baseURL } : {}) })(model)
     case "cerebras":
       return createCerebras({ apiKey, ...(baseURL ? { baseURL } : {}) })(model)
+    case "openrouter":
+      return createOpenAICompatible({
+        name: "openrouter",
+        baseURL: baseURL || "https://openrouter.ai/api/v1",
+        apiKey,
+        headers: {
+          "HTTP-Referer": "https://saaya.ai",
+          "X-Title": "Saaya Bot",
+        },
+      })(model)
+    case "copilot":
+      return createOpenAICompatible({
+        name: "copilot",
+        baseURL: baseURL || "https://api.githubcopilot.com",
+        apiKey,
+      })(model)
+    case "opencode":
+      return createOpenAICompatible({
+        name: "opencode",
+        baseURL: baseURL || "https://api.opencode.ai/v1",
+        apiKey,
+      })(model)
+    case "command-code":
+      return createOpenAICompatible({
+        name: "command-code",
+        baseURL: baseURL || "https://api.cohere.com/v2",
+        apiKey,
+      })(model)
+    case "deepseek":
+      return createOpenAICompatible({
+        name: "deepseek",
+        baseURL: baseURL || "https://api.deepseek.com/v1",
+        apiKey,
+      })(model)
+    case "minimax":
+      return createOpenAICompatible({
+        name: "minimax",
+        baseURL: baseURL || "https://api.minimaxi.chat/v1",
+        apiKey,
+      })(model)
+    case "grok":
+      return createOpenAICompatible({
+        name: "grok",
+        baseURL: baseURL || "https://api.x.ai/v1",
+        apiKey,
+      })(model)
+    case "kimi":
+      return createOpenAICompatible({
+        name: "kimi",
+        baseURL: baseURL || "https://api.moonshot.cn/v1",
+        apiKey,
+      })(model)
+    case "qwen":
+      return createOpenAICompatible({
+        name: "qwen",
+        baseURL: baseURL || "https://dashscope.aliyuncs.com/compatible-mode/v1",
+        apiKey,
+      })(model)
+    case "cursor":
+      return createOpenAICompatible({
+        name: "cursor",
+        baseURL: baseURL || "https://api.cursor.com/v1",
+        apiKey,
+      })(model)
     case "openai-compatible":
       if (!baseURL) {
         throw new MissingModelConfigError("openai-compatible providers require a base URL")
@@ -130,6 +194,106 @@ const PROVIDER_CAPABILITIES: Record<Provider, ProviderCapabilities> = {
     supportsParallelTools: true,
     supportsComputerUse: false,
     defaultContextWindow: 32_000,
+  },
+  openrouter: {
+    supportsPromptCache: true,
+    supportsServerCompaction: false,
+    supportsContextEditing: false,
+    supportsEffort: true,
+    supportsMidConversationSystem: true,
+    supportsParallelTools: true,
+    supportsComputerUse: false,
+    defaultContextWindow: 128_000,
+  },
+  copilot: {
+    supportsPromptCache: true,
+    supportsServerCompaction: false,
+    supportsContextEditing: false,
+    supportsEffort: true,
+    supportsMidConversationSystem: true,
+    supportsParallelTools: true,
+    supportsComputerUse: false,
+    defaultContextWindow: 128_000,
+  },
+  opencode: {
+    supportsPromptCache: true,
+    supportsServerCompaction: false,
+    supportsContextEditing: true,
+    supportsEffort: true,
+    supportsMidConversationSystem: true,
+    supportsParallelTools: true,
+    supportsComputerUse: true,
+    defaultContextWindow: 200_000,
+  },
+  "command-code": {
+    supportsPromptCache: true,
+    supportsServerCompaction: false,
+    supportsContextEditing: false,
+    supportsEffort: false,
+    supportsMidConversationSystem: true,
+    supportsParallelTools: true,
+    supportsComputerUse: false,
+    defaultContextWindow: 128_000,
+  },
+  deepseek: {
+    supportsPromptCache: true,
+    supportsServerCompaction: false,
+    supportsContextEditing: false,
+    supportsEffort: true,
+    supportsMidConversationSystem: true,
+    supportsParallelTools: true,
+    supportsComputerUse: false,
+    defaultContextWindow: 128_000,
+  },
+  minimax: {
+    supportsPromptCache: false,
+    supportsServerCompaction: false,
+    supportsContextEditing: false,
+    supportsEffort: false,
+    supportsMidConversationSystem: true,
+    supportsParallelTools: true,
+    supportsComputerUse: false,
+    defaultContextWindow: 1_000_000,
+  },
+  grok: {
+    supportsPromptCache: true,
+    supportsServerCompaction: false,
+    supportsContextEditing: false,
+    supportsEffort: true,
+    supportsMidConversationSystem: true,
+    supportsParallelTools: true,
+    supportsComputerUse: false,
+    defaultContextWindow: 131_072,
+  },
+  kimi: {
+    supportsPromptCache: true,
+    supportsServerCompaction: false,
+    supportsContextEditing: false,
+    supportsEffort: true,
+    supportsMidConversationSystem: true,
+    supportsParallelTools: true,
+    supportsComputerUse: false,
+    defaultContextWindow: 128_000,
+  },
+  qwen: {
+    supportsPromptCache: true,
+    supportsServerCompaction: false,
+    supportsContextEditing: false,
+    supportsEffort: true,
+    supportsMidConversationSystem: true,
+    supportsParallelTools: true,
+    supportsComputerUse: false,
+    defaultContextWindow: 128_000,
+  },
+  cursor: {
+    supportsPromptCache: true,
+    supportsServerCompaction: false,
+    supportsContextEditing: true,
+    supportsEffort: true,
+    supportsMidConversationSystem: true,
+    supportsParallelTools: true,
+    supportsComputerUse: true,
+    defaultContextWindow: 200_000,
   },
   "openai-compatible": {
     supportsPromptCache: false,

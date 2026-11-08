@@ -8,6 +8,7 @@ import { Field, HelpText, Input, Select } from "@/components/ui/field"
 import { EmptyState } from "@/components/ui/empty"
 import { Section } from "@/components/settings/section"
 import { DeleteKeyButton, TestKeyButton } from "@/components/settings/key-actions"
+import { AIConnectorsBanner } from "@/components/settings/ai-connectors-section"
 
 export const maxDuration = 60
 
@@ -20,6 +21,7 @@ export default async function KeysPage({ params }: { params: Promise<{ org: stri
 
   return (
     <>
+      <AIConnectorsBanner />
       <Section
         title="Provider keys"
         description="API keys let your agents use an AI model. They are encrypted when saved, and only the last four characters can be seen afterwards."

@@ -15,6 +15,7 @@ import { AvatarStack, PresenceLine } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { CanvasIcon, SlidersIcon } from "@/components/ui/icons"
 import { RoomSkeleton } from "@/components/ui/skeleton"
+import { ModelPickerButton } from "@/components/room/model-picker"
 import { cn, TURN_MODE_SHORT } from "@/lib/format"
 import type { RoomPageData } from "@/lib/types"
 
@@ -207,6 +208,7 @@ export function RoomWorkspace({
         </div>
 
         <div className="flex shrink-0 items-center gap-1.5 md:gap-2">
+          <ModelPickerButton />
           <div className="hidden md:block">
             <EnableAlerts enabled={data.user.notifications !== "off"} />
           </div>

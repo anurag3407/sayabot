@@ -44,6 +44,17 @@ export async function saveProviderKey(
     return fail("Custom OpenAI-compatible providers need a base URL")
   }
   if (baseUrl && !/^https?:\/\//.test(baseUrl)) return fail("Base URL must start with http(s)://")
+  const dbProvider =
+    provider.data === "openrouter" || provider.data === "copilot"
+      ? "openai-compatible"
+      : provider.data
+  const effectiveBaseUrl =
+    baseUrl ||
+    (provider.data === "openrouter"
+      ? "https://openrouter.ai/api/v1"
+      : provider.data === "copilot"
+        ? "https://api.githubcopilot.com"
+        : null)
   const encrypted = encryptSecret(apiKey, getKek())
   const admin = createAdminClient()
   const { data: saved, error } = await admin
@@ -51,8 +62,8 @@ export async function saveProviderKey(
     .insert({
       org_id: check.access.org.id,
       owner_user_id: check.access.user.id,
-      provider: provider.data,
-      base_url: baseUrl,
+      provider: dbProvider,
+      base_url: effectiveBaseUrl,
       label,
       ciphertext: encrypted.ciphertext,
       iv: encrypted.iv,
