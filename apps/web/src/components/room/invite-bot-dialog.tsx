@@ -64,7 +64,7 @@ export function InviteBotDialog({ orgSlug, roomId, roomName }: Props) {
           setOpen(true)
           setResult(null)
         }}
-        className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted transition-colors"
+        className="inline-flex h-11 items-center gap-1.5 rounded-sm px-3 text-[13px] text-muted transition-colors hover:bg-raised hover:text-text md:h-9"
       >
         <span>+ Invite Bot</span>
       </button>

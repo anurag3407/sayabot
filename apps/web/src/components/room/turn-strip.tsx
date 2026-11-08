@@ -49,10 +49,10 @@ export function TurnStrip({
 
   return (
     <div
-      className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-line bg-panel px-4 py-2"
+      className="mx-auto flex w-full max-w-[820px] flex-wrap items-center gap-x-3 gap-y-1 px-5 py-1.5"
       aria-label="Agent activity"
     >
-      <span className="font-mono text-[11px] text-accent">replying</span>
+      <span className="text-[12px] text-accent">Replying</span>
       <span className={cn("text-[12px]", active || streamingRunId ? "text-text" : "text-faint")}>
         {active ? `@${active.handle}` : streamingRunId ? "an agent" : "next agent starting"}
       </span>
@@ -70,7 +70,7 @@ export function TurnStrip({
       ) : null}
       {queue.length ? (
         <>
-          <span className="font-mono text-[11px] text-faint">up next</span>
+          <span className="text-[12px] text-faint">Up next</span>
           <span className="flex flex-wrap gap-1.5">
             {queue.map((agent) => (
               <span key={agent!.id} className="font-mono text-[12px] text-muted">

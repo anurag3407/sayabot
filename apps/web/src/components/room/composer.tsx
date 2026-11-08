@@ -11,9 +11,9 @@ import { humanHandle } from "@/lib/human-handle"
 import { Button } from "@/components/ui/button"
 import { DetailsMenu } from "@/components/ui/details-menu"
 import { Field, Input, Select, Textarea } from "@/components/ui/field"
-import { Kbd } from "@/components/ui/status"
 import { showToast } from "@/components/ui/toast"
-import { SendIcon } from "@/components/ui/icons"
+import { PlusIcon } from "@/components/ui/icons"
+import { ArrowUp } from "lucide-react"
 import { cn } from "@/lib/format"
 import type { MemberView, RoomAgentView } from "@/lib/types"
 
@@ -443,13 +443,13 @@ export function Composer({
 
   const showQuickActions = !threadRootId
   const menuItemClass =
-    "block w-full px-3 py-2.5 text-left text-[13px] text-muted hover:bg-raised hover:text-text md:py-1.5 md:text-[12px]"
+    "block w-full px-3 py-2.5 text-left text-[13px] text-muted hover:bg-raised hover:text-text md:py-1.5"
 
   return (
     <div className={cn("relative", compact ? "px-3 pb-3 pt-2" : "px-3 pb-3 pt-2 md:px-4 md:pb-4")}>
       {mention && options.length ? (
         <div
-          className="absolute bottom-full left-3 z-10 mb-1 max-h-56 w-72 max-w-[calc(100%-1.5rem)] overflow-y-auto rounded-sm border border-line-strong bg-panel py-1 shadow-[0_12px_32px_rgba(0,0,0,0.45)]"
+          className="absolute bottom-full left-3 z-10 mb-1 max-h-56 w-72 max-w-[calc(100%-1.5rem)] overflow-y-auto rounded-xl border border-line-strong bg-panel py-1 shadow-[0_12px_32px_rgba(0,0,0,0.45)]"
           id={listboxId}
           role="listbox"
           aria-label="Mention an agent or a person"
@@ -483,7 +483,31 @@ export function Composer({
         </div>
       ) : null}
 
-      <div className="rounded-md border border-[var(--color-control)] bg-panel focus-within:border-accent">
+      <div className="flex items-end gap-1.5 rounded-[20px] bg-raised p-2 transition-colors focus-within:bg-hover">
+        {showQuickActions ? (
+          <DetailsMenu
+            className="relative shrink-0"
+            summaryLabel="More actions"
+            summaryClassName="grid h-10 w-10 cursor-pointer list-none place-items-center rounded-full text-muted hover:bg-line-strong/60 hover:text-text"
+            summary={<PlusIcon width={18} height={18} />}
+          >
+            <div className="absolute bottom-full left-0 z-10 mb-2 w-52 overflow-hidden rounded-xl border border-line-strong bg-panel py-1 shadow-[0_16px_40px_rgba(0,0,0,0.5)]">
+              <button type="button" className={menuItemClass} onClick={() => setQuickAction("task")}>
+                New task in this room
+              </button>
+              {canAdmin && roomKind !== "dm" ? (
+                <button type="button" className={menuItemClass} onClick={() => setQuickAction("meeting")}>
+                  Start a meeting
+                </button>
+              ) : null}
+              {onShowCanvas ? (
+                <button type="button" className={menuItemClass} onClick={onShowCanvas}>
+                  Open canvas
+                </button>
+              ) : null}
+            </div>
+          </DetailsMenu>
+        ) : null}
         <label htmlFor={`${baseId}-input`} className="sr-only">
           {placeholder}
         </label>
@@ -502,6 +526,7 @@ export function Composer({
           maxLength={100_000}
           spellCheck
           placeholder={placeholder}
+          title="@ to mention, Enter to send, Shift+Enter for a new line"
           onChange={(event) => {
             const next = event.target.value
             updateValue(next)
@@ -513,56 +538,22 @@ export function Composer({
           }
           onKeyDown={onKeyDown}
           onBlur={() => window.setTimeout(() => setMention(null), 120)}
-          className="block max-h-[220px] min-h-10 w-full resize-none bg-transparent px-3 pt-2.5 text-[13px] leading-relaxed text-text outline-none placeholder:text-faint"
+          className="block max-h-[220px] min-h-10 min-w-0 flex-1 resize-none bg-transparent px-2 py-[9px] text-[14px] leading-[22px] text-text outline-none placeholder:text-faint"
         />
-        <div className="flex flex-wrap items-center gap-2 px-2.5 pb-2">
-          {showQuickActions ? (
-            <DetailsMenu
-              className="relative"
-              summaryLabel="More actions"
-              summaryClassName="grid h-10 w-10 cursor-pointer list-none place-items-center rounded-sm border border-line font-mono text-[15px] text-muted hover:border-line-strong hover:text-text md:h-7 md:w-7 md:text-[13px]"
-              summary="+"
-            >
-              <div className="absolute bottom-full left-0 z-10 mb-1 w-52 border border-line-strong bg-panel py-1 shadow-[0_12px_32px_rgba(0,0,0,0.45)]">
-                <button type="button" className={menuItemClass} onClick={() => setQuickAction("task")}>
-                  New task in this room
-                </button>
-                {canAdmin && roomKind !== "dm" ? (
-                  <button
-                    type="button"
-                    className={menuItemClass}
-                    onClick={() => setQuickAction("meeting")}
-                  >
-                    Start a meeting
-                  </button>
-                ) : null}
-                {onShowCanvas ? (
-                  <button type="button" className={menuItemClass} onClick={onShowCanvas}>
-                    Open canvas
-                  </button>
-                ) : null}
-              </div>
-            </DetailsMenu>
-          ) : null}
-          <span className="hidden font-mono text-[11px] text-faint md:inline">
-            <Kbd>@</Kbd> mention · <Kbd>Enter</Kbd> send · <Kbd>Shift</Kbd>+<Kbd>Enter</Kbd> new line
-          </span>
-          <div className="ml-auto flex items-center gap-2">
-            {value.length > 90_000 ? (
-              <span className="font-mono text-[11px] text-warn">{value.length}/100000</span>
-            ) : null}
-            <Button
-              size="sm"
-              variant="primary"
-              data-testid="send-message"
-              onClick={() => void send()}
-              disabled={pending || !value.trim()}
-            >
-              <SendIcon width={14} height={14} />
-              {pending ? "Sending…" : "Send"}
-            </Button>
-          </div>
-        </div>
+        {value.length > 90_000 ? (
+          <span className="self-center font-mono text-[11px] text-warn">{value.length}/100000</span>
+        ) : null}
+        <button
+          type="button"
+          data-testid="send-message"
+          aria-label={pending ? "Sending" : "Send message"}
+          title="Send"
+          onClick={() => void send()}
+          disabled={pending || !value.trim()}
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-text text-void transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:bg-line-strong disabled:text-muted"
+        >
+          <ArrowUp className="h-[18px] w-[18px]" aria-hidden />
+        </button>
       </div>
 
       {error || notice || outboxCount > 0 ? (

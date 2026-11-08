@@ -2,42 +2,39 @@
 @import "streamdown/styles.css";
 
 @theme {
-  --color-void: #070907;
-  --color-ink: #0b0e0c;
-  --color-panel: #101411;
-  --color-raised: #151b17;
-  --color-hover: #1a211c;
-  --color-line: #232b25;
-  --color-line-strong: #354037;
-  --color-control: #65726a;
-  --color-text: #e9e5d8;
-  --color-muted: #9aa39b;
-  --color-faint: #7a857c;
-  --color-accent: #ff7a45;
-  --color-accent-strong: #ff9468;
-  --color-accent-soft: #2a1a12;
-  --color-ok: #8fbf9f;
-  --color-warn: #e2b36b;
-  --color-danger: #e37b74;
+  /* Surfaces, darkest to lightest: page, app surface, cards, hover. */
+  --color-void: #0b0b0c;
+  --color-ink: #141415;
+  --color-panel: #1a1a1c;
+  --color-raised: #232325;
+  --color-hover: #2c2c2f;
+  --color-line: #27272a;
+  --color-line-strong: #3b3b40;
+  --color-control: #6d6d75;
+  --color-text: #f4f3f1;
+  --color-muted: #a9a9b0;
+  --color-faint: #85858d;
+  --color-accent: #ff5d6c;
+  --color-accent-strong: #ff7a86;
+  --color-accent-soft: #2e1619;
+  --color-ok: #7fce95;
+  --color-warn: #e6bc6a;
+  --color-danger: #f0776f;
 
-  /* Agent identity hues. One per agent, used only to say "this is that agent":
-     avatars, turn chips, cursors, card tints. Never for status or CTAs. */
-  --color-ada: #ff7a45;
-  --color-pixel: #b6a4ff;
-  --color-bolt: #f2c65e;
-  --color-sage: #7fd3a8;
-  --color-blush: #ff8fa3;
+  /* Pastels for the mascots and the download cards. Identity only, never status. */
+  --color-m-pink: #ee5fb8;
+  --color-m-yellow: #f2c14e;
+  --color-m-teal: #4fcdb0;
+  --color-m-blue: #5b9df5;
+  --color-m-lilac: #b79cf0;
+  --color-m-coral: #ff7a70;
 
-  /* Paper: the one inverted surface, for editorial breaks on public pages. */
-  --color-cream: #ece6d6;
-  --color-cream-deep: #e1d9c4;
-  --color-cream-ink: #11150f;
   --font-sans: "Geist Variable", "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono: "Geist Mono Variable", "Geist Mono", ui-monospace, SFMono-Regular, "Roboto Mono", Menlo, monospace;
   --font-serif: var(--font-sans);
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
   --radius-xl: 24px;
 }
 
@@ -269,6 +266,18 @@ select {
   max-width: 100%;
   border-radius: var(--radius-md);
   border: 1px solid var(--color-line);
+}
+
+/* Mascots: a slow blink, staggered per instance through --blink-delay. */
+.mascot-eyes {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: mascot-blink 5.6s infinite;
+  animation-delay: var(--blink-delay, 0s);
+}
+@keyframes mascot-blink {
+  0%, 45%, 49%, 100% { transform: scaleY(1); }
+  47% { transform: scaleY(0.08); }
 }
 
 .mono {

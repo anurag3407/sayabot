@@ -106,7 +106,7 @@ export function CanvasPanel({
   }
 
   return (
-    <section className="flex h-full min-h-0 flex-col bg-void" aria-label="Room canvas">
+    <section className="flex h-full min-h-0 flex-col" aria-label="Room canvas">
       <div className="flex flex-wrap items-center gap-2 border-b border-line bg-ink px-3 py-2">
         <span className="font-mono text-[11px] text-faint">canvas</span>
         <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">

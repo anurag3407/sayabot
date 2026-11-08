@@ -11,7 +11,8 @@ import { useRoomRealtime } from "@/components/room/use-room-realtime"
 import { EnableAlerts, RoomActivity } from "@/components/room/room-activity"
 import { RoomMeetingBar } from "@/components/room/room-meeting-bar"
 import { InviteBotDialog } from "@/components/room/invite-bot-dialog"
-import { AvatarStack, PresenceLine } from "@/components/ui/avatar"
+import { PresenceLine } from "@/components/ui/avatar"
+import { Mascot } from "@/components/ui/mascot"
 import { Button } from "@/components/ui/button"
 import { CanvasIcon, SlidersIcon } from "@/components/ui/icons"
 import { RoomSkeleton } from "@/components/ui/skeleton"
@@ -173,32 +174,27 @@ export function RoomWorkspace({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <header className="flex items-center gap-x-4 gap-y-2 border-b border-line bg-ink px-4 py-2 md:flex-wrap md:py-2.5">
+      <header className="flex min-h-14 shrink-0 items-center gap-3 border-b border-line px-4 py-2">
+        {data.room.kind === "dm" && data.roomAgents[0] ? (
+          <Mascot seed={data.roomAgents[0].agent.displayName} className="h-8 w-8" />
+        ) : (
+          <span aria-hidden="true" className="grid h-8 w-8 shrink-0 place-items-center rounded-[10px] bg-raised text-[14px] text-muted">
+            {roomPrefix}
+          </span>
+        )}
         <div className="min-w-0 flex-1">
-          <div className="flex items-baseline gap-x-2 gap-y-0.5 md:flex-wrap">
-            <span aria-hidden="true" className="font-mono text-[12px] text-faint">
-              {roomPrefix}
-            </span>
-            <h1
-              className="truncate text-[15px] font-medium tracking-[-0.01em]"
-              data-testid="room-title"
-            >
-              {data.room.name}
-            </h1>
-            <span className="hidden font-mono text-[11px] text-faint md:inline">
-              {data.room.kind === "dm" ? "direct chat" : data.room.kind} ·{" "}
-              {TURN_MODE_SHORT[data.room.turnMode] ?? data.room.turnMode}
-            </span>
-          </div>
-          <div className="mt-1 hidden items-center gap-2 md:flex">
-            <AvatarStack people={presence} />
-            <PresenceLine people={presence} selfId={data.user.id} />
+          <h1 className="truncate text-[14px] font-medium leading-tight" data-testid="room-title">
+            {data.room.name}
+          </h1>
+          <div className="mt-0.5 hidden items-center gap-1.5 text-[12px] leading-tight text-faint md:flex">
             {realtime.connection === "connected" ? (
-              <span className="inline-flex items-center gap-1 font-mono text-[11px] text-faint">
-                <span aria-hidden="true" className="h-1 w-1 bg-[var(--color-ok)]" />
-                live
-              </span>
+              <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-[var(--color-ok)]" />
             ) : null}
+            <span className="truncate">
+              {data.room.kind === "dm" ? "Direct chat" : TURN_MODE_SHORT[data.room.turnMode] ?? data.room.turnMode}
+            </span>
+            <span aria-hidden="true">·</span>
+            <PresenceLine people={presence} selfId={data.user.id} />
           </div>
           {presence.some((person) => person.typing && person.id !== data.user.id) ? (
             <div className="md:hidden">
@@ -214,13 +210,14 @@ export function RoomWorkspace({
           </div>
           {isDesktop ? (
             <Button
-              size="sm"
-              variant={canvasOpen ? "secondary" : "outline"}
+              size="icon"
+              variant={canvasOpen ? "secondary" : "ghost"}
               aria-pressed={canvasOpen}
+              aria-label="Canvas"
+              title="Canvas"
               onClick={() => toggleCanvas(!canvasOpen)}
             >
-              <CanvasIcon width={13} height={13} />
-              Canvas
+              <CanvasIcon width={16} height={16} />
             </Button>
           ) : null}
           {data.canAdmin ? (
@@ -234,10 +231,10 @@ export function RoomWorkspace({
             <Link
               href={`/${data.org.slug}/r/${data.room.id}/settings`}
               aria-label="Room settings"
-              className="inline-flex h-10 items-center gap-1.5 rounded-sm border border-line px-2.5 font-mono text-[12px] text-muted hover:border-line-strong hover:text-text md:h-8"
+              title="Room settings"
+              className="grid h-11 w-11 place-items-center rounded-sm text-muted hover:bg-raised hover:text-text md:h-9 md:w-9"
             >
-              <SlidersIcon width={13} height={13} />
-              <span className="hidden md:inline">Settings</span>
+              <SlidersIcon width={16} height={16} />
             </Link>
           ) : null}
           <div className="flex items-center gap-1 md:hidden" role="group" aria-label="Room view">
@@ -295,7 +292,7 @@ export function RoomWorkspace({
           </Panel>
           {canvasOpen ? (
             <>
-              <Separator className="w-1 bg-line transition-colors hover:bg-line-strong focus-visible:bg-accent" />
+              <Separator className="w-px bg-line transition-colors hover:bg-line-strong focus-visible:bg-accent" />
               <Panel
                 id="room-canvas"
                 defaultSize="43%"

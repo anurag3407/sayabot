@@ -12,14 +12,4 @@ describe("web proxy public-path contract", () => {
     expect(src).toContain("api/health")
     expect(src).toContain("/login") // unauthenticated workspace visits redirect with next=
   })
-
-  it("landing asset catalogue is consistent (agents.ts)", async () => {
-    const { AGENTS, AGENT_BY_ID } = await import("../../src/components/landing/agents")
-    expect(AGENTS.map((a) => a.id)).toEqual(["ada", "pixel", "bolt", "sage"])
-    expect(Object.keys(AGENT_BY_ID).sort()).toEqual(["ada", "bolt", "pixel", "sage"])
-    for (const a of AGENTS) {
-      expect(a.handle).toBe("@" + a.id)
-      expect(a.traits.length).toBeGreaterThan(0)
-    }
-  })
 })

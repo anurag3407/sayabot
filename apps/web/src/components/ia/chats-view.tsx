@@ -1,28 +1,13 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useMemo, useRef, useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
-import { setChatPreferenceAction } from "@/lib/actions/room-state"
-import { EmptyState, InlineAlert } from "@/components/ui/empty"
-import { showToast } from "@/components/ui/toast"
-import { cn } from "@/lib/format"
+import { ChatList, type BotLink } from "@/components/workspace/chat-list"
+import { Mascot } from "@/components/ui/mascot"
 import type { BotChatView, ChatListItem } from "@/lib/types"
-
-type Filter = "all" | "unread" | "mentions" | "bots" | "archived"
-
-const FILTERS: { key: Filter; label: string }[] = [
-  { key: "all", label: "All" },
-  { key: "unread", label: "Unread" },
-  { key: "mentions", label: "Mentions" },
-  { key: "bots", label: "Agents" },
-  { key: "archived", label: "Archived" },
-]
 
 function relativeTime(iso: string | null): string {
   if (!iso) return ""
-  const then = new Date(iso).getTime()
-  const diff = Date.now() - then
+  const diff = Date.now() - new Date(iso).getTime()
   if (diff < 60_000) return "now"
   if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m`
   if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h`
@@ -30,466 +15,101 @@ function relativeTime(iso: string | null): string {
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" })
 }
 
-function ChatListRow({
-  item,
-  orgSlug,
-  onAction,
-  pending,
-}: {
-  item: ChatListItem
-  orgSlug: string
-  onAction: (
-    action: "pin" | "unpin" | "mute" | "unmute" | "archive" | "unarchive" | "mark_unread",
-    duration?: "8h" | "1w" | "always",
-  ) => void
-  pending: boolean
-}) {
-  const [menuOpen, setMenuOpen] = useState(false)
-  const muted = item.mutedUntil ? new Date(item.mutedUntil).getTime() > Date.now() : false
-  const unread = item.unreadCount > 0
-  const menuButton = useRef<HTMLButtonElement>(null)
-  useEffect(() => {
-    if (!menuOpen) return
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return
-      setMenuOpen(false)
-      menuButton.current?.focus()
-    }
-    document.addEventListener("keydown", onKeyDown)
-    return () => document.removeEventListener("keydown", onKeyDown)
-  }, [menuOpen])
-  const mark = item.isBotDm ? "@" : item.kind === "public" ? "#" : "·"
-
+function Handoffs({ orgSlug, handoffs }: { orgSlug: string; handoffs: BotChatView[] }) {
+  if (handoffs.length === 0) return null
   return (
-    <li className="relative border-b border-line last:border-b-0">
-      <div className="group flex items-start gap-3 py-3 pr-2 transition-colors hover:bg-raised/50">
-        <Link
-          href={`/${orgSlug}/r/${item.id}`}
-          className="flex min-w-0 flex-1 items-start gap-3 pl-1"
-        >
-          <span
-            className={cn(
-              "mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full border font-mono text-[12px]",
-              item.isBotDm
-                ? "border-[color-mix(in_srgb,var(--color-accent)_35%,transparent)] bg-accent-soft text-accent"
-                : "border-line-strong bg-panel text-muted",
-            )}
-            aria-hidden="true"
-          >
-            {mark}
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="flex items-baseline gap-2">
-              <span
-                className={cn(
-                  "truncate text-[13px]",
-                  unread ? "font-medium text-text" : "text-text/90",
-                )}
-              >
-                {item.name}
-              </span>
-              {item.pinned ? <span className="font-mono text-[11px] text-accent">pinned</span> : null}
-              <span className="ml-auto shrink-0 font-mono text-[11px] text-faint">
-                {relativeTime(item.lastAt)}
-              </span>
-            </span>
-            <span className="mt-0.5 flex items-baseline gap-2">
-              <span className={cn("truncate text-[12px]", unread ? "text-muted" : "text-faint")}>
-                {item.lastSender ? `${item.lastSender}: ` : ""}
-                {item.lastMessage ?? (item.isBotDm ? "Direct chat with an agent" : "No messages yet")}
-              </span>
-              {item.mentionCount > 0 ? (
-                <span className="ml-auto shrink-0 grid h-4 min-w-4 place-items-center rounded-full bg-accent px-1 font-mono text-[11px] font-medium text-void">
-                  {item.mentionCount}
+    <section className="mt-12 w-full max-w-xl text-left" aria-labelledby="handoffs-heading">
+      <h2 id="handoffs-heading" className="px-1 text-[13px] text-faint">
+        Agents talking to each other
+      </h2>
+      <ul className="mt-2 space-y-1">
+        {handoffs.map((handoff) => (
+          <li key={handoff.roomId} className="rounded-xl bg-panel">
+            <details>
+              <summary className="flex cursor-pointer list-none items-baseline gap-2 px-4 py-3">
+                <span className="truncate text-[14px]">{handoff.roomName}</span>
+                <span className="ml-auto shrink-0 text-[12px] text-faint">
+                  {handoff.messages.length} · {relativeTime(handoff.lastAt)}
                 </span>
-              ) : unread ? (
-                <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
-              ) : null}
-            </span>
-            <span className="mt-1 flex items-center gap-2 font-mono text-[11px] text-faint">
-              <span>{item.isBotDm ? "agent chat" : item.kind === "dm" ? "direct chat" : item.kind}</span>
-              {item.agentNames.length && !item.isBotDm ? (
-                <span>· {item.agentNames.slice(0, 3).join(", ")}</span>
-              ) : null}
-              {muted ? <span>· muted</span> : null}
-              {item.mentionCount > 0 ? <span className="text-accent">· mentioned you</span> : null}
-            </span>
-          </span>
-        </Link>
-        <div className="relative shrink-0 pt-1">
-          <button
-            ref={menuButton}
-            type="button"
-            onClick={() => setMenuOpen((open) => !open)}
-            aria-expanded={menuOpen}
-            aria-label={`Options for ${item.name}`}
-            className="grid h-10 w-10 place-items-center rounded-sm font-mono text-[12px] text-faint hover:bg-raised hover:text-text md:h-6 md:w-6"
-          >
-            ···
-          </button>
-          {menuOpen ? (
-            <>
-              <button
-                type="button"
-                className="fixed inset-0 z-10 cursor-default"
-                aria-label="Close menu"
-                onClick={() => setMenuOpen(false)}
-              />
-              <div className="absolute right-0 top-11 z-20 w-44 md:top-7 border border-line bg-panel py-1 text-[12px] shadow-[0_12px_30px_rgba(0,0,0,0.35)]">
-                <button
-                  type="button"
-                  disabled={pending}
-                  onClick={() => {
-                    onAction(item.pinned ? "unpin" : "pin")
-                    setMenuOpen(false)
-                  }}
-                  className="block w-full px-3 py-2.5 text-left text-muted hover:bg-raised hover:text-text disabled:opacity-50 md:py-1.5"
-                >
-                  {item.pinned ? "Unpin chat" : "Pin chat"}
-                </button>
-                <button
-                  type="button"
-                  disabled={pending}
-                  onClick={() => {
-                    onAction("mark_unread")
-                    setMenuOpen(false)
-                  }}
-                  className="block w-full px-3 py-2.5 text-left text-muted hover:bg-raised hover:text-text disabled:opacity-50 md:py-1.5"
-                >
-                  Mark unread
-                </button>
-                {muted ? (
-                  <button
-                    type="button"
-                    disabled={pending}
-                    onClick={() => {
-                      onAction("unmute")
-                      setMenuOpen(false)
-                    }}
-                    className="block w-full px-3 py-2.5 text-left text-muted hover:bg-raised hover:text-text disabled:opacity-50 md:py-1.5"
-                  >
-                    Unmute
-                  </button>
-                ) : (
-                  <>
-                    <p className="px-3 pb-0.5 pt-1.5 font-mono text-[11px] text-faint">mute for</p>
-                    {(["8h", "1w", "always"] as const).map((duration) => (
-                      <button
-                        key={duration}
-                        type="button"
-                        disabled={pending}
-                        onClick={() => {
-                          onAction("mute", duration)
-                          setMenuOpen(false)
-                        }}
-                        className="block w-full px-3 py-2.5 text-left text-muted hover:bg-raised hover:text-text disabled:opacity-50 md:py-1.5"
-                      >
-                        {duration === "8h" ? "8 hours" : duration === "1w" ? "1 week" : "Until I unmute"}
-                      </button>
-                    ))}
-                  </>
-                )}
-                <div className="my-1 h-px bg-line" />
-                <button
-                  type="button"
-                  disabled={pending}
-                  onClick={() => {
-                    onAction(item.archived ? "unarchive" : "archive")
-                    setMenuOpen(false)
-                  }}
-                  className="block w-full px-3 py-2.5 text-left text-muted hover:bg-raised hover:text-text disabled:opacity-50 md:py-1.5"
-                >
-                  {item.archived ? "Unarchive" : "Archive chat"}
-                </button>
+              </summary>
+              <div className="space-y-3 border-t border-line px-4 py-3">
+                {handoff.messages.slice(-6).map((message) => (
+                  <div key={message.id} className="text-[13px] leading-relaxed">
+                    <p className="text-[12px] text-faint">
+                      <span className="text-text">@{message.senderHandle}</span>
+                      {" → "}
+                      {message.mentions.map((mention) => `@${mention}`).join(", ")}
+                    </p>
+                    <p className="mt-0.5 line-clamp-4 text-muted">{message.content}</p>
+                  </div>
+                ))}
+                <Link href={`/${orgSlug}/r/${handoff.roomId}`} className="inline-block text-[13px] text-accent">
+                  Open room
+                </Link>
               </div>
-            </>
-          ) : null}
-        </div>
-      </div>
-    </li>
-  )
-}
-
-function HandoffRail({ orgSlug, handoffs }: { orgSlug: string; handoffs: BotChatView[] }) {
-  return (
-    <aside className="border-t border-line pt-6 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0">
-      <div className="flex items-baseline justify-between">
-        <h2 className="text-[13px] font-medium">Agent handoffs</h2>
-        <span className="font-mono text-[11px] text-faint">read-only</span>
-      </div>
-      <p className="mt-2 max-w-[36ch] text-[12px] leading-relaxed text-muted">
-        When one agent mentions another in a room, the exchange shows up here. Agents cannot start
-        chats on their own.
-      </p>
-      {handoffs.length === 0 ? (
-        <p className="mt-5 border-l-2 border-line-strong pl-3 font-mono text-[12px] leading-relaxed text-faint">
-          No handoffs between agents recently.
-        </p>
-      ) : (
-        <ul className="mt-4 space-y-3">
-          {handoffs.map((handoff) => (
-            <li key={handoff.roomId} className="border border-line bg-panel">
-              <details>
-                <summary className="flex cursor-pointer list-none items-baseline gap-2 px-3 py-2 hover:bg-raised">
-                  <span className="truncate text-[12px] text-text">{handoff.roomName}</span>
-                  <span className="ml-auto shrink-0 font-mono text-[11px] text-faint">
-                    {handoff.messages.length} · {relativeTime(handoff.lastAt)}
-                  </span>
-                </summary>
-                <div className="space-y-2 border-t border-line px-3 py-2.5">
-                  {handoff.messages.slice(-6).map((message) => (
-                    <div key={message.id} className="text-[12px] leading-relaxed">
-                      <p className="font-mono text-[11px] text-accent">
-                        @{message.senderHandle}
-                        <span className="text-faint">
-                          {" → "}
-                          {message.mentions.map((mention) => `@${mention}`).join(", ")}
-                        </span>
-                      </p>
-                      <p className="mt-0.5 line-clamp-4 text-muted">{message.content}</p>
-                    </div>
-                  ))}
-                  <p className="pt-1 font-mono text-[11px] text-faint">
-                    read-only transcript · open the room to reply
-                  </p>
-                  <Link
-                    href={`/${orgSlug}/r/${handoff.roomId}`}
-                    className="inline-block font-mono text-[11px] text-accent underline underline-offset-4"
-                  >
-                    open room
-                  </Link>
-                </div>
-              </details>
-            </li>
-          ))}
-        </ul>
-      )}
-    </aside>
+            </details>
+          </li>
+        ))}
+      </ul>
+    </section>
   )
 }
 
 export function ChatsView({
   orgSlug,
   items,
+  bots,
   handoffs,
   inboxCount,
 }: {
   orgSlug: string
   items: ChatListItem[]
+  bots: BotLink[]
   handoffs: BotChatView[]
   inboxCount: number
 }) {
-  const router = useRouter()
-  const [filter, setFilter] = useState<Filter>("all")
-  const [query, setQuery] = useState("")
-  const [error, setError] = useState<string | null>(null)
-  const [pending, startTransition] = useTransition()
-  const searchInput = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "/" || event.metaKey || event.ctrlKey || event.altKey) return
-      const target = event.target as HTMLElement | null
-      if (target?.closest("input, textarea, select, [contenteditable='true']")) return
-      event.preventDefault()
-      searchInput.current?.focus()
-    }
-    window.addEventListener("keydown", onKeyDown)
-    return () => window.removeEventListener("keydown", onKeyDown)
-  }, [])
-
-  const counts = {
-    all: items.filter((item) => !item.archived).length,
-    unread: items.filter((item) => !item.archived && item.unreadCount > 0).length,
-    mentions: items.filter((item) => !item.archived && item.mentionCount > 0).length,
-    bots: items.filter((item) => !item.archived && item.isBotDm).length,
-    archived: items.filter((item) => item.archived).length,
-  }
-
-  const filtered = useMemo(() => {
-    const needle = query.trim().toLowerCase()
-    return items.filter((item) => {
-      if (filter === "archived" ? !item.archived : item.archived) return false
-      if (filter === "unread" && item.unreadCount === 0) return false
-      if (filter === "mentions" && item.mentionCount === 0) return false
-      if (filter === "bots" && !item.isBotDm) return false
-      if (!needle) return true
-      return (
-        item.name.toLowerCase().includes(needle) ||
-        (item.lastMessage ?? "").toLowerCase().includes(needle) ||
-        item.agentNames.some((name) => name.toLowerCase().includes(needle))
-      )
-    })
-  }, [items, filter, query])
-
-  const pinned = filtered.filter((item) => item.pinned)
-  const rest = filtered.filter((item) => !item.pinned)
-
-  function act(
-    roomId: string,
-    action: "pin" | "unpin" | "mute" | "unmute" | "archive" | "unarchive" | "mark_unread",
-    duration?: "8h" | "1w" | "always",
-  ) {
-    setError(null)
-    startTransition(async () => {
-      const result = await setChatPreferenceAction({ orgSlug, roomId, action, duration })
-      if (!result.ok) {
-        setError(result.error ?? "Could not update the chat")
-        return
-      }
-      router.refresh()
-      if (action === "archive") {
-        showToast({
-          message: "Chat archived",
-          action: { label: "Undo", onClick: () => act(roomId, "unarchive") },
-        })
-      }
-    })
-  }
-
+  const faces = [...bots.map((bot) => bot.displayName), "Pip", "Moss", "Juno"].slice(0, 3)
   return (
-    <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-5xl px-5 py-8 sm:px-8">
-        <header className="flex flex-wrap items-end justify-between gap-4 border-b border-line pb-5">
-          <div>
-            <p className="font-mono text-[12px] text-faint">workspace</p>
-            <h1 className="mt-1 text-2xl font-medium tracking-[-0.02em]">Chats</h1>
-            <p className="mt-1.5 font-mono text-[12px] text-muted">
-              {counts.all} active {counts.all === 1 ? "chat" : "chats"} · {counts.unread} unread ·{" "}
-              {inboxCount} waiting in Inbox
-            </p>
+    <div className="h-full">
+      <div className="h-full md:hidden">
+        <ChatList orgSlug={orgSlug} items={items} bots={bots} />
+      </div>
+      <div className="hidden h-full overflow-y-auto md:block">
+        <div className="mx-auto flex min-h-full max-w-2xl flex-col items-center justify-center px-8 py-12 text-center">
+          <div className="flex items-end gap-1" aria-hidden>
+            {faces.map((name) => (
+              <Mascot key={name} seed={name} blink className="h-16 w-16" />
+            ))}
           </div>
-          <div className="flex items-center gap-2">
-            <Link
-              href={`/${orgSlug}/inbox`}
-              className="inline-flex h-8 items-center rounded-sm border border-line px-2.5 font-mono text-[12px] text-muted hover:border-line-strong hover:text-text"
-            >
-              Inbox{inboxCount ? ` · ${inboxCount}` : ""}
-            </Link>
+          <h1 className="mt-6 text-[22px] font-medium tracking-[-0.02em]">Pick up where you left off</h1>
+          <p className="mt-2 max-w-sm text-[14px] leading-relaxed text-muted">
+            {inboxCount > 0
+              ? `${inboxCount} ${inboxCount === 1 ? "item needs" : "items need"} your decision. Choose a chat to keep going.`
+              : "Choose a chat on the left, or start something new."}
+          </p>
+          <div className="mt-6 flex flex-wrap justify-center gap-2">
             <Link
               href={`/${orgSlug}/chats/new`}
-              className="inline-flex h-8 items-center gap-1.5 rounded-sm bg-accent px-3 font-mono text-[12px] font-medium text-void hover:bg-[var(--color-accent-strong)]"
+              className="inline-flex h-9 items-center rounded-xl bg-accent px-4 text-[13px] font-medium text-void hover:bg-[var(--color-accent-strong)]"
             >
-              + New chat
+              New chat
+            </Link>
+            {inboxCount > 0 ? (
+              <Link
+                href={`/${orgSlug}/inbox`}
+                className="inline-flex h-9 items-center rounded-xl bg-raised px-4 text-[13px] text-text hover:bg-hover"
+              >
+                Open Inbox
+              </Link>
+            ) : null}
+            <Link
+              href={`/${orgSlug}/settings/bots`}
+              className="inline-flex h-9 items-center rounded-xl bg-raised px-4 text-[13px] text-text hover:bg-hover"
+            >
+              Connect an agent over MCP
             </Link>
           </div>
-        </header>
-
-        <div className="mt-6 grid gap-10 lg:grid-cols-[1fr_320px]">
-          <section aria-labelledby="chat-list-heading">
-            <h2 id="chat-list-heading" className="sr-only">
-              Chat list
-            </h2>
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="flex flex-wrap gap-1" role="group" aria-label="Filter chats">
-                {FILTERS.map((option) => (
-                  <button
-                    key={option.key}
-                    type="button"
-                    onClick={() => setFilter(option.key)}
-                    aria-pressed={filter === option.key}
-                    className={cn(
-                      "inline-flex h-7 items-center gap-1.5 rounded-sm px-2.5 font-mono text-[11px] transition-colors",
-                      filter === option.key
-                        ? "bg-raised text-text"
-                        : "text-muted hover:bg-raised/60 hover:text-text",
-                    )}
-                  >
-                    {option.label}
-                    {counts[option.key] > 0 ? (
-                      <span className="text-faint">{counts[option.key]}</span>
-                    ) : null}
-                  </button>
-                ))}
-              </div>
-              <label className="ml-auto flex h-8 min-w-[11rem] items-center gap-2 rounded-sm border border-line bg-panel px-2.5 focus-within:border-accent">
-                <span className="sr-only">Filter chats by name (press / to focus)</span>
-                <span aria-hidden="true" className="font-mono text-[12px] text-faint">
-                  /
-                </span>
-                <input
-                  ref={searchInput}
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Filter chats"
-                  className="w-full bg-transparent text-[12px] text-text outline-none placeholder:text-faint"
-                />
-              </label>
-            </div>
-
-            {error ? (
-              <div className="mt-4">
-                <InlineAlert tone="danger">{error}</InlineAlert>
-              </div>
-            ) : null}
-
-            {filtered.length === 0 ? (
-              <div className="mt-8">
-                <EmptyState
-                  title={query ? "No chats match that" : "Nothing here yet"}
-                  body={
-                    query
-                      ? "Try a room or agent name. To look inside messages, use Search."
-                      : filter === "all"
-                        ? "If you were just invited, an admin may not have added you to a room yet. You can also start your own room, or open a direct chat with an agent."
-                        : "Nothing in this view right now."
-                  }
-                  action={
-                    query ? (
-                      <Link
-                        href={`/${orgSlug}/search?q=${encodeURIComponent(query)}`}
-                        className="font-mono text-[12px] text-accent underline underline-offset-4"
-                      >
-                        search messages for “{query}”
-                      </Link>
-                    ) : (
-                      <Link
-                        href={`/${orgSlug}/chats/new`}
-                        className="font-mono text-[12px] text-accent underline underline-offset-4"
-                      >
-                        new chat
-                      </Link>
-                    )
-                  }
-                />
-              </div>
-            ) : (
-              <div className="mt-4">
-                {pinned.length ? (
-                  <div className="mb-6">
-                    <p className="mb-1 font-mono text-[11px] text-faint">pinned</p>
-                    <ul className="border-t border-line">
-                      {pinned.map((item) => (
-                        <ChatListRow
-                          key={item.id}
-                          item={item}
-                          orgSlug={orgSlug}
-                          pending={pending}
-                          onAction={(action, duration) => act(item.id, action, duration)}
-                        />
-                      ))}
-                    </ul>
-                  </div>
-                ) : null}
-                <div>
-                  {pinned.length ? <p className="mb-1 font-mono text-[11px] text-faint">all chats</p> : null}
-                  <ul className="border-t border-line">
-                    {rest.map((item) => (
-                      <ChatListRow
-                        key={item.id}
-                        item={item}
-                        orgSlug={orgSlug}
-                        pending={pending}
-                        onAction={(action, duration) => act(item.id, action, duration)}
-                      />
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            )}
-          </section>
-
-          <HandoffRail orgSlug={orgSlug} handoffs={handoffs} />
+          <Handoffs orgSlug={orgSlug} handoffs={handoffs} />
         </div>
       </div>
     </div>

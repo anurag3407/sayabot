@@ -20,6 +20,8 @@ export function MessageItem({
   inThread = false,
   avatarUrl = null,
   showRetry = false,
+  selfId = null,
+  continued = false,
 }: {
   message: MessageView
   toolCalls: ToolCallView[]
@@ -30,25 +32,28 @@ export function MessageItem({
   inThread?: boolean
   avatarUrl?: string | null
   showRetry?: boolean
+  selfId?: string | null
+  /** Same sender as the message above, so the name and face are not repeated. */
+  continued?: boolean
 }) {
   if (message.senderType === "system") {
     return (
       <div
         className={cn(
-          "border-y border-line bg-panel px-4 py-3",
-          message.status === "halted" && "border-l-2 border-l-[var(--color-accent)]",
+          "mx-4 my-2 rounded-xl bg-panel px-4 py-3",
+          message.status === "halted" && "bg-accent-soft",
         )}
         role="status"
         data-testid="system-message"
         data-status={message.status}
       >
         <div className="flex flex-wrap items-baseline gap-2">
-          <span className="font-mono text-[11px] text-accent">sayabot</span>
+          <span className="text-[12px] text-muted">Sayabot</span>
           <span className="font-mono text-[11px] text-faint" title={fullTime(message.createdAt)}>
             {clockTime(message.createdAt)}
           </span>
           {message.status === "halted" ? (
-            <span className="font-mono text-[11px] text-accent">halted</span>
+            <span className="text-[12px] text-accent">Halted</span>
           ) : null}
         </div>
         <div className="mt-1 text-[13px] leading-relaxed text-muted">
@@ -90,10 +95,15 @@ export function MessageItem({
   )
   const streaming = message.status === "streaming"
 
+  const mine = !isAgent && selfId !== null && message.senderId === selfId
+  const quietTime = "font-mono text-[11px] text-faint md:opacity-0 md:transition-opacity md:group-hover:opacity-100"
+
   return (
     <article
       className={cn(
-        "group relative grid grid-cols-[28px_minmax(0,1fr)] gap-3 px-4 py-3 transition-colors hover:bg-raised/40",
+        "group relative grid gap-3 px-4",
+        continued ? "pt-1" : "pt-4",
+        mine ? "grid-cols-[minmax(0,1fr)]" : "grid-cols-[32px_minmax(0,1fr)]",
         inThread && "px-3",
       )}
       aria-label={`${message.senderName} ${isAgent ? "agent" : "human"} message`}
@@ -102,67 +112,62 @@ export function MessageItem({
       data-sender-handle={message.senderHandle ?? message.senderName}
       data-status={message.status}
     >
-      <div className="pt-0.5">
-        <Avatar
-          name={message.senderName}
-          kind={message.senderType}
-          size="sm"
-          src={avatarUrl}
-          className="mt-0.5"
-        />
-      </div>
-      <div className="min-w-0">
-        <header className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-          <span className="text-[13px] font-medium text-text">{message.senderName}</span>
-          {isAgent && message.senderHandle ? (
-            <span className="font-mono text-[11px] text-muted">@{message.senderHandle}</span>
-          ) : null}
+      {mine ? null : (
+        <div>
+          {continued ? null : (
+            <Avatar name={message.senderName} kind={message.senderType} size="md" src={avatarUrl} className="h-8 w-8" />
+          )}
+        </div>
+      )}
+      <div className={cn("min-w-0", mine && "flex flex-col items-end")}>
+        <header
+          className={cn(
+            "flex flex-wrap items-baseline gap-x-2 gap-y-1",
+            mine && "w-full justify-end",
+            continued && "md:absolute md:right-4 md:top-0 md:z-[1]",
+          )}
+        >
+          {mine || continued ? null : <span className="text-[13px] font-medium text-text">{message.senderName}</span>}
           {typeof message.metadata.dmToHandle === "string" ? (
             <span
-              className="font-mono text-[11px] text-accent"
+              className="text-[12px] text-accent"
               title="A bot-to-bot direct message. Everyone in the room can read it."
             >
-              → @{message.metadata.dmToHandle} · bot DM
+              to @{message.metadata.dmToHandle}
             </span>
           ) : null}
-          {inThread ? (
-            <span className="font-mono text-[11px] text-faint">thread reply</span>
-          ) : null}
-          <time
-            dateTime={message.createdAt}
-            title={fullTime(message.createdAt)}
-            className="font-mono text-[11px] text-faint"
-          >
+          {inThread ? <span className="text-[12px] text-faint">in thread</span> : null}
+          <time dateTime={message.createdAt} title={fullTime(message.createdAt)} className={quietTime}>
             {clockTime(message.createdAt)}
           </time>
           {streaming ? (
-            <span className="font-mono text-[11px] text-accent">live</span>
+            <span className="text-[12px] text-accent">Live</span>
           ) : message.status === "halted" ? (
-            <span className="font-mono text-[11px] text-warn">stopped</span>
+            <span className="text-[12px] text-warn">Stopped</span>
           ) : message.status === "error" ? (
-            <span className="font-mono text-[11px] text-danger">error</span>
+            <span className="text-[12px] text-danger">Error</span>
           ) : null}
-          <span className="ml-auto flex items-center gap-3 opacity-100 transition-opacity md:opacity-0 md:focus-within:opacity-100 md:group-hover:opacity-100">
+          <span className={cn("flex items-center gap-3 transition-opacity md:opacity-0 md:focus-within:opacity-100 md:group-hover:opacity-100", !mine && "ml-auto")}>
             <CopyButton text={message.content} />
             {!inThread && onOpenThread ? (
               <button
                 type="button"
                 onClick={() => onOpenThread(message)}
-                className="inline-flex min-h-8 items-center gap-1 font-mono text-[11px] text-faint hover:text-text"
+                className="inline-flex min-h-8 items-center gap-1 text-[12px] text-faint hover:text-text md:min-h-5"
               >
-                <ReplyIcon width={12} height={12} /> reply
+                <ReplyIcon width={12} height={12} /> Reply
               </button>
             ) : null}
           </span>
         </header>
 
         {message.content ? (
-          <div className="mt-1.5">
+          <div className={cn(isAgent ? "mt-0.5" : "mt-1 inline-block max-w-full rounded-[18px] bg-raised px-4 py-2.5", !isAgent && mine && "ml-auto")}>
             <Markdown content={message.content} streaming={streaming} />
             {streaming ? <span className="streaming-caret" aria-hidden="true" /> : null}
           </div>
         ) : streaming ? (
-          <p className="mt-1.5 font-mono text-[12px] text-faint">thinking…</p>
+          <p className="mt-0.5 text-[14px] text-faint">Thinking…</p>
         ) : null}
 
         {message.metadata.vote ? <VoteTally vote={message.metadata.vote as VoteMeta} /> : null}
@@ -207,7 +212,7 @@ export function MessageItem({
           <button
             type="button"
             onClick={() => onOpenThread(message)}
-            className="mt-2 inline-flex items-center gap-1.5 rounded-sm border border-line px-2 py-1 font-mono text-[11px] text-muted hover:border-line-strong hover:text-text"
+            className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-panel px-2.5 py-1 text-[12px] text-muted hover:text-text"
           >
             <ReplyIcon width={12} height={12} />
             {threadReplyCount} {threadReplyCount === 1 ? "reply" : "replies"}
@@ -235,7 +240,7 @@ function VoteTally({ vote }: { vote: VoteMeta }) {
   }))
   const max = Math.max(0, ...counts.map((c) => c.voters.length))
   return (
-    <div className="mt-2 space-y-1.5 border border-line bg-panel p-3" aria-label="Vote results">
+    <div className="mt-2 space-y-1.5 rounded-xl bg-panel p-3" aria-label="Vote results">
       <p className="font-mono text-[11px] text-faint">
         {total} {total === 1 ? "vote" : "votes"}
       </p>

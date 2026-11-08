@@ -139,6 +139,7 @@ export function ThreadSheet({
               orgSlug={orgSlug}
               canAdmin={canAdmin}
               inThread
+              selfId={selfId}
               avatarUrl={message.senderId ? memberAvatars[message.senderId] : null}
             />
           ))}

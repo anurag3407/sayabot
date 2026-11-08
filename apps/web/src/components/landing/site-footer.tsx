@@ -1,28 +1,33 @@
 import Link from "next/link"
 import { SayabotMark } from "./sayabot-mark"
+import { GITHUB_URL, SPONSOR_URL } from "./content"
 
 const COLUMNS = [
   {
     title: "Product",
     links: [
-      { href: "/#crew", label: "The crew" },
+      { href: "/#features", label: "Features" },
+      { href: "/#mcp", label: "Connect an agent" },
       { href: "/#how", label: "How it works" },
-      { href: "/#platform", label: "Platform" },
-      { href: "/#security", label: "Security" },
+      { href: "/#compare", label: "Compare" },
+      { href: "/#pricing", label: "Pricing" },
+      { href: "/#download", label: "Download" },
     ],
   },
   {
-    title: "Resources",
+    title: "Project",
     links: [
+      { href: GITHUB_URL, label: "GitHub" },
+      { href: SPONSOR_URL, label: "Sponsor" },
       { href: "/help", label: "Docs & help" },
       { href: "/security", label: "Security model" },
-      { href: "/signup", label: "Create a workspace" },
-      { href: "/login", label: "Sign in" },
     ],
   },
   {
-    title: "Legal",
+    title: "Account",
     links: [
+      { href: "/signup", label: "Create a workspace" },
+      { href: "/login", label: "Sign in" },
       { href: "/terms", label: "Terms" },
       { href: "/privacy", label: "Privacy" },
     ],
@@ -40,8 +45,7 @@ export function SiteFooterLinks() {
             <span className="text-[17px] font-semibold tracking-[-0.03em]">sayabot</span>
           </Link>
           <p className="text-[14px] leading-relaxed text-muted">
-            Shared rooms where people and AI agents take turns, edit one canvas and ask before
-            they act.
+            One room for your people and every agent you use. Connect any of them over MCP.
           </p>
         </div>
         {COLUMNS.map((col) => (
@@ -50,7 +54,7 @@ export function SiteFooterLinks() {
             <ul className="mt-5 space-y-3">
               {col.links.map((link) => (
                 <li key={link.href}>
-                  <a href={link.href} className="l-navlink text-[14px]">
+                  <a href={link.href} className="l-navlink">
                     {link.label}
                   </a>
                 </li>
@@ -60,13 +64,8 @@ export function SiteFooterLinks() {
         ))}
       </div>
       <div className="flex flex-wrap items-center justify-between gap-4 py-10 font-mono text-[12px] text-faint">
-        <span>© {new Date().getFullYear()} Sayabot. Self-hostable.</span>
-        <span className="flex items-center gap-2">
-          {(["ada", "pixel", "bolt", "sage"] as const).map((id) => (
-            <span key={id} className="l-dot" style={{ ["--agent" as string]: `var(--color-${id})` }} />
-          ))}
-          <span className="ml-1">four agents, zero crosstalk</span>
-        </span>
+        <span>© {new Date().getFullYear()} Sayabot</span>
+        <span>any agent, zero crosstalk</span>
       </div>
     </div>
   )

@@ -1,0 +1,17 @@
+/** Every outbound link on the public site. Change a destination here, once. */
+export const GITHUB_URL = "https://github.com/anurag3407/Mesh"
+export const SPONSOR_URL = "https://github.com/sponsors/anurag3407"
+export const DOWNLOADS = {
+  mac: `${GITHUB_URL}/releases/latest`,
+  android: `${GITHUB_URL}/releases/latest`,
+}
+
+/** The agents used in the public demos. Each name also seeds its mascot. */
+export const DEMO_AGENTS = {
+  claude: { name: "Claude Code", handle: "claude-code" },
+  codex: { name: "Codex", handle: "codex" },
+  hermes: { name: "Hermes", handle: "hermes" },
+  cursor: { name: "Cursor", handle: "cursor" },
+} as const
+
+export type DemoAgent = keyof typeof DEMO_AGENTS

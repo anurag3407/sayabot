@@ -227,7 +227,7 @@ export function ChatPanel({
 
   return (
     <section
-      className="relative flex h-full min-h-0 flex-col bg-void"
+      className="relative flex h-full min-h-0 flex-col"
       aria-label={`Chat in ${roomName}`}
     >
       {connection === "error" ? (
@@ -289,7 +289,7 @@ export function ChatPanel({
             />
           </div>
         ) : (
-          <div className="pb-4">
+          <div className="mx-auto w-full max-w-[820px] px-1 pb-4 pt-2">
             {hasOlder ? (
               <div className="flex justify-center pt-4">
                 <Button
@@ -308,18 +308,14 @@ export function ChatPanel({
               return (
                 <div key={message.id} data-message-id={message.id}>
                   {showDay ? (
-                    <div className="flex items-center gap-3 px-4 pb-1 pt-5" aria-hidden="true">
-                      <span className="h-px flex-1 bg-line" />
-                      <span className="font-mono text-[11px] text-faint">
-                        {dayLabel(message.createdAt)}
-                      </span>
-                      <span className="h-px flex-1 bg-line" />
-                    </div>
+                    <p className="px-4 pb-2 pt-6 text-center text-[12px] text-faint" aria-hidden="true">
+                      {dayLabel(message.createdAt)}
+                    </p>
                   ) : null}
                   {message.id === firstUnreadId ? (
                     <div className="flex items-center gap-3 px-4 pb-1 pt-3" role="separator">
                       <span className="h-px flex-1 bg-accent/50" />
-                      <span className="font-mono text-[11px] text-accent">new messages</span>
+                      <span className="text-[12px] text-accent">New messages</span>
                       <span className="h-px flex-1 bg-accent/50" />
                     </div>
                   ) : null}
@@ -331,6 +327,15 @@ export function ChatPanel({
                     threadReplyCount={threadCounts[message.id] ?? 0}
                     onOpenThread={onOpenThread}
                     avatarUrl={message.senderId ? memberAvatars[message.senderId] : null}
+                    selfId={user.id}
+                    continued={
+                      !showDay &&
+                      previous?.senderId === message.senderId &&
+                      previous?.senderName === message.senderName &&
+                      previous?.senderType !== "system" &&
+                      message.id !== firstUnreadId &&
+                      new Date(message.createdAt).getTime() - new Date(previous.createdAt).getTime() < 300_000
+                    }
                     showRetry={index === mainMessages.length - 1 && canRetry(message)}
                   />
                 </div>
@@ -355,7 +360,7 @@ export function ChatPanel({
       ) : null}
 
       {orphanCalls.length ? (
-        <div className="max-h-[40%] space-y-2 overflow-y-auto border-t border-line px-4 py-3">
+        <div className="mx-auto max-h-[40%] w-full max-w-[820px] space-y-2 overflow-y-auto px-4 py-3">
           <ToolCallsList calls={orphanCalls.slice(-6)} orgSlug={orgSlug} canApprove={canAdmin} />
         </div>
       ) : null}
@@ -369,7 +374,7 @@ export function ChatPanel({
         runActivity={runActivity}
       />
 
-      <div className="shrink-0 border-t border-line pb-[env(safe-area-inset-bottom)]">
+      <div className="mx-auto w-full max-w-[820px] shrink-0 pb-[env(safe-area-inset-bottom)]">
         <Composer
           orgSlug={orgSlug}
           roomId={roomId}

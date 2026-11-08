@@ -1,5 +1,6 @@
 import type { ReactNode } from "react"
 import { cn, initials } from "@/lib/format"
+import { Mascot } from "@/components/ui/mascot"
 
 export function Avatar({
   name,
@@ -31,18 +32,7 @@ export function Avatar({
     )
   }
   if (kind === "agent") {
-    return (
-      <span
-        aria-hidden="true"
-        className={cn(
-          "grid shrink-0 place-items-center rounded-sm border border-[color-mix(in_srgb,var(--color-accent)_35%,transparent)] bg-accent-soft font-mono text-accent",
-          dimension,
-          className,
-        )}
-      >
-        @
-      </span>
-    )
+    return <Mascot seed={name} className={cn("shrink-0", dimension, className)} />
   }
   return (
     <span
