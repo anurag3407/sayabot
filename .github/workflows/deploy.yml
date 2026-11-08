@@ -15,16 +15,42 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Trigger Build & Rollout on Lightsail VPS
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.LIGHTSAIL_HOST }}
-          username: ${{ secrets.LIGHTSAIL_USER }}
-          key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
-          port: ${{ secrets.LIGHTSAIL_PORT }}
-          timeout: 900s
-          command_timeout: 900s
-          script_stop: true
-          script: |
+        env:
+          SSH_HOST: ${{ secrets.LIGHTSAIL_HOST }}
+          SSH_USER: ${{ secrets.LIGHTSAIL_USER }}
+          SSH_KEY: ${{ secrets.LIGHTSAIL_SSH_KEY }}
+          SSH_PORT: ${{ secrets.LIGHTSAIL_PORT }}
+        run: |
+          set -e
+          if [ -z "$SSH_HOST" ] || [ -z "$SSH_USER" ] || [ -z "$SSH_KEY" ]; then
+            echo "ERROR: Required SSH secrets (LIGHTSAIL_HOST, LIGHTSAIL_USER, LIGHTSAIL_SSH_KEY) are missing!" >&2
+            exit 1
+          fi
+
+          PORT="${SSH_PORT:-22}"
+          [ -z "$PORT" ] && PORT=22
+
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          # Cleanly write deploy private key and clean up on exit
+          printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          trap 'rm -f ~/.ssh/deploy_key' EXIT
+
+          echo "==> Gathering host keys for $SSH_HOST:$PORT..."
+          ssh-keyscan -p "$PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+          chmod 600 ~/.ssh/known_hosts 2>/dev/null || true
+
+          echo "==> Connecting via native OpenSSH to $SSH_USER@$SSH_HOST..."
+          ssh -i ~/.ssh/deploy_key \
+              -p "$PORT" \
+              -o StrictHostKeyChecking=accept-new \
+              -o ConnectTimeout=30 \
+              -o ServerAliveInterval=15 \
+              -o ServerAliveCountMax=60 \
+              -o BatchMode=yes \
+              "$SSH_USER@$SSH_HOST" 'bash -se' << 'EOF'
             set -e
             echo "==> Starting deploy on Lightsail VPS ($(uname -n))..."
             
@@ -46,3 +72,5 @@ jobs:
             
             echo "==> Running VPS build, migrations & health rollout..."
             ./deploy/deploy.sh
+          EOF
+          echo "==> Deployment completed successfully!"
