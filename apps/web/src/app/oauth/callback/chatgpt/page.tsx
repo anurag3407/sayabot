@@ -1,10 +1,10 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { CheckCircle2, Loader2, XCircle } from "lucide-react"
 
-export default function ChatGptCallbackPage() {
+function ChatGptCallbackContent() {
   const searchParams = useSearchParams()
   const code = searchParams.get("code")
   const errorParam = searchParams.get("error")
@@ -91,19 +91,33 @@ export default function ChatGptCallbackPage() {
         )}
 
         {status === "error" && (
-          <div className="flex flex-col items-center gap-3 py-6">
-            <XCircle className="h-12 w-12 text-[#e37b74]" />
-            <h2 className="text-lg font-medium text-[#e37b74]">Authorization Failed</h2>
-            <p className="text-sm text-[#9aa39b]">{errorMessage}</p>
-            <button
-              onClick={() => window.close()}
-              className="mt-4 rounded-lg bg-[#232b25] px-4 py-2 text-xs font-medium text-[#e9e5d8] hover:bg-[#354037]"
-            >
-              Close Window
-            </button>
-          </div>
-        )}
+            <div className="flex flex-col items-center gap-3 py-6">
+              <XCircle className="h-12 w-12 text-[#e37b74]" />
+              <h2 className="text-lg font-medium text-[#e37b74]">Authorization Failed</h2>
+              <p className="text-sm text-[#9aa39b]">{errorMessage}</p>
+              <button
+                onClick={() => window.close()}
+                className="mt-4 rounded-lg bg-[#232b25] px-4 py-2 text-xs font-medium text-[#e9e5d8] hover:bg-[#354037]"
+              >
+                Close Window
+              </button>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    )
+}
+
+export default function ChatGptCallbackPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-[#070907] p-4 text-[#e9e5d8]">
+          <Loader2 className="h-10 w-10 animate-spin text-[#ff7a45]" />
+        </div>
+      }
+    >
+      <ChatGptCallbackContent />
+    </Suspense>
   )
 }

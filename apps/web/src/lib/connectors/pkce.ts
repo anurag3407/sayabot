@@ -16,28 +16,15 @@ function toBase64Url(bytes: Uint8Array): string {
 
 export function generateCodeVerifier(length = 64): string {
   const bytes = new Uint8Array(length)
-  if (typeof window !== "undefined" && window.crypto) {
-    window.crypto.getRandomValues(bytes)
-  } else {
-    // Node.js environment
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const nodeCrypto = require("node:crypto")
-    nodeCrypto.randomFillSync(bytes)
-  }
+  const cryptoObj = typeof window !== "undefined" && window.crypto ? window.crypto : globalThis.crypto
+  cryptoObj.getRandomValues(bytes)
   return toBase64Url(bytes).slice(0, length)
 }
 
 export async function generateCodeChallenge(verifier: string): Promise<string> {
   const encoder = new TextEncoder()
   const data = encoder.encode(verifier)
-  if (typeof window !== "undefined" && window.crypto && window.crypto.subtle) {
-    const hash = await window.crypto.subtle.digest("SHA-256", data)
-    return toBase64Url(new Uint8Array(hash))
-  } else {
-    // Node.js
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const nodeCrypto = require("node:crypto")
-    const hash = nodeCrypto.createHash("sha256").update(verifier).digest()
-    return toBase64Url(new Uint8Array(hash))
-  }
+  const cryptoObj = typeof window !== "undefined" && window.crypto ? window.crypto : globalThis.crypto
+  const hash = await cryptoObj.subtle.digest("SHA-256", data)
+  return toBase64Url(new Uint8Array(hash))
 }
