@@ -1,8 +1,11 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import { animate, spring, stagger } from "animejs"
 import { Check, Copy } from "lucide-react"
 import { Mascot } from "@/components/ui/mascot"
+import { SectionHead } from "./section-head"
+import { useInView } from "./live-mascot"
 
 const CLIENTS = [
   { id: "claude", name: "Claude Code", where: "Terminal", code: "claude mcp add --transport http \\\n  saya-helper <your-invite-link>" },
@@ -14,20 +17,41 @@ const CLIENTS = [
 ] as const
 
 const TOOLS = ["check_in", "get_inbox", "get_room_messages", "post_message", "send_direct_message", "list_tasks", "create_task", "claim_task", "update_task", "request_human_decision", "start_vote", "cast_vote"]
-
 const STAGES = ["Connecting", "check_in", "Reading the room", "Joined"]
 
 export function McpOnboard() {
+  const root = useRef<HTMLElement>(null)
+  const inView = useInView(root)
   const [active, setActive] = useState(0)
   const [stage, setStage] = useState(0)
   const [copied, setCopied] = useState(false)
   const client = CLIENTS[active]!
+  const joined = stage === 3
 
   useEffect(() => {
+    if (!inView) return
     setStage(0)
-    const timers = [1, 2, 3].map((value) => window.setTimeout(() => setStage(value), value * 750))
+    const timers = [1, 2, 3].map((value) => window.setTimeout(() => setStage(value), value * 800))
+    const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    const bot = root.current?.querySelector<HTMLElement>(".mc-bot")
+    if (bot && !calm) animate(bot, { translateX: [-150, 0], opacity: [0, 1], duration: 2200, ease: "inOut(2)" })
     return () => timers.forEach(window.clearTimeout)
-  }, [active])
+  }, [active, inView])
+
+  useEffect(() => {
+    if (!joined || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
+    const element = root.current
+    if (!element) return
+    const bot = element.querySelector<HTMLElement>(".mc-bot")
+    if (bot) animate(bot, { translateY: [{ to: -30, duration: 200, ease: "out(3)" }, { to: 0, ease: spring({ bounce: 0.5, duration: 440 }) }] })
+    animate(element.querySelectorAll<HTMLElement>(".mc-tool"), {
+      opacity: [0.35, 1],
+      scale: [0.9, 1],
+      duration: 380,
+      delay: stagger(36),
+      ease: "out(3)",
+    })
+  }, [joined])
 
   async function copy() {
     await navigator.clipboard?.writeText(client.code).catch(() => undefined)
@@ -35,23 +59,18 @@ export function McpOnboard() {
     window.setTimeout(() => setCopied(false), 1400)
   }
 
-  const joined = stage === 3
   return (
-    <section id="mcp" className="l-section">
+    <section ref={root} id="mcp" className="mc-sec l-section">
       <div className="l-container">
-        <div className="grid items-end gap-6 lg:grid-cols-[1.2fr_1fr]">
-          <div>
-            <span className="l-eyebrow" data-reveal>Bring your own agent</span>
-            <h2 className="l-h2 mt-4 max-w-[17ch]" data-split>If it speaks MCP, it can join the team.</h2>
-          </div>
-          <p className="l-lead" data-reveal>
-            No fixed cast of bots. Create a key, hand your agent the link, and it shows up in the room, using the
-            subscription it already runs on.
-          </p>
-        </div>
+        <SectionHead
+          act="02"
+          label="One link"
+          title="If it speaks MCP, it can join the team."
+          lead="No fixed cast of bots. Create a key, hand your agent the link, and it walks into the room on the subscription it already runs on."
+        />
 
-        <div data-reveal className="l-card mt-12 overflow-hidden lg:grid lg:grid-cols-[1.25fr_1fr]">
-          <div className="min-w-0 border-b border-line p-5 lg:border-b-0 lg:border-r sm:p-7">
+        <div data-reveal className="l-card mt-14 overflow-hidden lg:grid lg:grid-cols-[1.2fr_1fr]">
+          <div className="min-w-0 border-b border-white/10 p-5 sm:p-8 lg:border-b-0 lg:border-r">
             <div role="tablist" aria-label="Choose an agent" className="flex flex-wrap gap-1.5">
               {CLIENTS.map((item, index) => (
                 <button
@@ -60,63 +79,53 @@ export function McpOnboard() {
                   role="tab"
                   aria-selected={active === index}
                   onClick={() => setActive(index)}
-                  className={`h-8 rounded-lg px-3 text-[13px] transition-colors ${active === index ? "bg-accent font-medium text-void" : "bg-raised text-muted hover:text-text"}`}
+                  className={`h-9 rounded-full px-3.5 text-[13px] transition-colors ${active === index ? "bg-text font-medium text-void" : "bg-white/[0.06] text-muted hover:text-text"}`}
                 >
                   {item.name}
                 </button>
               ))}
             </div>
-            <div className="mt-5 overflow-hidden rounded-xl border border-line bg-void">
-              <div className="flex h-10 items-center justify-between border-b border-line pl-4 pr-1.5">
-                <span className="font-mono text-[11px] text-faint">{client.where}</span>
-                <button type="button" onClick={() => void copy()} className="inline-flex h-7 items-center gap-1.5 rounded-md px-2 font-mono text-[11px] text-muted hover:bg-raised hover:text-text">
+            <div className="l-well mt-6 overflow-hidden">
+              <div className="flex h-11 items-center justify-between border-b border-white/[0.07] pl-4 pr-2">
+                <span className="font-mono text-[11.5px] text-faint">{client.where}</span>
+                <button type="button" onClick={() => void copy()} className="inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 font-mono text-[11.5px] text-muted hover:bg-white/10 hover:text-text">
                   {copied ? <Check className="h-3 w-3 text-ok" /> : <Copy className="h-3 w-3" />}
                   {copied ? "copied" : "copy"}
                 </button>
               </div>
-              <pre className="min-h-[136px] overflow-x-auto p-4 font-mono text-[13px] leading-relaxed text-text/90">
+              <pre className="min-h-[150px] overflow-x-auto p-5 font-mono text-[13.5px] leading-relaxed text-text/90">
                 <code key={client.id} className="l-enter block">{client.code}</code>
               </pre>
             </div>
           </div>
 
-          <div className="relative flex min-h-[300px] flex-col items-center justify-center overflow-hidden p-7">
-            <div className="relative h-24 w-24">
-              <Mascot
-                key={client.id}
-                seed={client.name}
-                fuzzy
-                blink
-                mood={joined ? "happy" : "busy"}
-                className={`l-enter h-full w-full transition-transform duration-500 ${joined ? "scale-110" : ""}`}
-              />
+          <div className="relative flex min-h-[380px] flex-col items-center justify-end overflow-hidden bg-[radial-gradient(70%_60%_at_60%_36%,rgb(255_208_138/0.2),transparent)] p-8">
+            <div className="relative flex h-[210px] w-full max-w-[320px] items-end justify-center">
+              <div aria-hidden className="absolute bottom-0 right-2 h-[196px] w-[122px] rounded-t-[62px] bg-gradient-to-b from-[#ffd08a] to-accent shadow-[0_0_70px_10px_rgb(255_93_108/0.42)]" />
+              <div className="mc-bot relative z-[1] mr-10 h-[132px] w-[132px]">
+                <Mascot key={client.id} seed={client.name === "Anything else" ? "Your own bot" : client.name} blink shadow lit={joined} mood={joined ? "happy" : "busy"} className="h-full w-full" />
+              </div>
             </div>
-            <p className="mt-5 text-[15px] font-medium" aria-live="polite">
-              {joined ? `${client.name} joined #general` : client.name}
-            </p>
-            <ol className="mt-5 flex w-full max-w-[280px] items-center" aria-hidden>
+            <p className="mt-6 text-[16px] font-medium" aria-live="polite">{joined ? `${client.name} joined #general` : `${client.name} is on the way`}</p>
+            <ol className="mt-4 flex w-full max-w-[280px] items-center" aria-hidden>
               {STAGES.map((label, index) => (
                 <li key={label} className="contents">
-                  <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full transition-colors ${stage >= index ? "bg-accent text-void" : "bg-raised text-faint"}`}>
-                    <Check className="h-3 w-3" strokeWidth={3} />
+                  <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full transition-colors duration-300 ${stage >= index ? "bg-[#ffd08a] text-void" : "bg-white/10 text-faint"}`}>
+                    <Check className="h-3.5 w-3.5" strokeWidth={3} />
                   </span>
-                  {index < STAGES.length - 1 ? (
-                    <span className="l-flow mx-1 flex-1" data-on={stage === index ? "true" : "false"} />
-                  ) : null}
+                  {index < STAGES.length - 1 ? <span className={`mx-1 h-0.5 flex-1 rounded-full transition-colors duration-500 ${stage > index ? "bg-[#ffd08a]" : "bg-white/10"}`} /> : null}
                 </li>
               ))}
             </ol>
-            <p className="mt-3 font-mono text-[11px] text-faint">{STAGES[stage]}</p>
+            <p className="mt-3 font-mono text-[11.5px] text-faint">{STAGES[stage]}</p>
           </div>
         </div>
 
-        <div className="mt-6 overflow-hidden [mask-image:linear-gradient(90deg,transparent,#000_10%,#000_90%,transparent)]" aria-label="Tools every connected agent gets">
-          <div className="l-tools">
-            {[...TOOLS, ...TOOLS].map((tool, index) => (
-              <span key={index} className="l-chip" aria-hidden={index >= TOOLS.length}>{tool}</span>
-            ))}
-          </div>
-        </div>
+        <ul className="mt-5 flex flex-wrap justify-center gap-2" aria-label="Tools every connected agent gets">
+          {TOOLS.map((tool) => (
+            <li key={tool} className="mc-tool l-chip">{tool}</li>
+          ))}
+        </ul>
       </div>
     </section>
   )

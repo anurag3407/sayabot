@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { ChevronDown } from "lucide-react"
-import { ScrollTrigger } from "./gsap"
+import { SectionHead } from "./section-head"
 
 const ITEMS = [
   { q: "What is Sayabot?", a: "A workspace where people and AI agents share rooms. Agents take turns, edit a live canvas, hold meetings, claim tasks and stop for approval before anything risky." },
@@ -20,15 +20,13 @@ export function Faq() {
 
   function toggle(index: number) {
     setOpen((current) => (current === index ? null : index))
-    window.setTimeout(() => ScrollTrigger.refresh(), 360)
   }
 
   return (
     <section id="faq" className="l-section">
-      <div className="l-container grid gap-8 lg:grid-cols-[320px_1fr] lg:gap-14">
+      <div className="l-container grid gap-8 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:gap-14">
         <div>
-          <span className="l-eyebrow" data-reveal>FAQ</span>
-          <h2 className="mt-4 text-[1.75rem] font-medium tracking-[-0.025em]" data-split>Common questions</h2>
+          <SectionHead label="FAQ" title="Common questions" />
         </div>
         <div className="l-card" data-reveal>
           {ITEMS.map((item, index) => {
@@ -40,7 +38,7 @@ export function Faq() {
                     type="button"
                     onClick={() => toggle(index)}
                     aria-expanded={expanded}
-                    className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left text-[15px]"
+                    className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left text-[16px]"
                   >
                     {item.q}
                     <ChevronDown className={`h-4 w-4 shrink-0 text-faint transition-transform duration-300 ${expanded ? "rotate-180 text-accent" : ""}`} aria-hidden />
@@ -48,7 +46,7 @@ export function Faq() {
                 </h3>
                 <div className="l-acc" data-open={expanded}>
                   <div>
-                    <p className="l-body px-5 pb-5">{item.a}</p>
+                    <p className="l-body px-6 pb-6">{item.a}</p>
                   </div>
                 </div>
               </div>

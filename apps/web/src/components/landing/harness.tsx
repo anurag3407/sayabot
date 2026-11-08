@@ -1,9 +1,10 @@
 "use client"
 
-import { Fragment, useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import { animate, scrambleText, stagger } from "animejs"
 import { Mascot } from "@/components/ui/mascot"
-import { DEMO_AGENTS } from "./content"
 import { useInView } from "./live-mascot"
+import { SectionHead } from "./section-head"
 
 const STEPS = [
   {
@@ -38,98 +39,84 @@ const STEPS = [
   },
 ]
 
+const gateX = (index: number) => 10 + index * 20
+
 export function Harness() {
   const root = useRef<HTMLElement>(null)
+  const rider = useRef<HTMLDivElement>(null)
+  const trace = useRef<HTMLDivElement>(null)
   const inView = useInView(root)
   const [active, setActive] = useState(0)
   const [auto, setAuto] = useState(true)
 
   useEffect(() => {
     if (!inView || !auto) return
-    const timer = window.setTimeout(() => setActive((value) => (value + 1) % STEPS.length), 4200)
+    const timer = window.setTimeout(() => setActive((value) => (value + 1) % STEPS.length), 3800)
     return () => window.clearTimeout(timer)
   }, [inView, auto, active])
+
+  useEffect(() => {
+    const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    if (rider.current) {
+      animate(rider.current, { left: `${gateX(active)}%`, duration: calm ? 0 : 800, ease: "inOut(3)" })
+    }
+    if (calm || !trace.current) return
+    const lines = trace.current.querySelectorAll<HTMLElement>("[data-line]")
+    animate(lines, { opacity: [0, 1], duration: 260, delay: stagger(130), ease: "linear" })
+    lines.forEach((line, index) => {
+      animate(line, {
+        innerHTML: scrambleText({ text: line.dataset.line, chars: "blocks", cursor: true, duration: 620, delay: index * 130 }),
+      })
+    })
+  }, [active])
+
+  function pick(index: number) {
+    setActive(index)
+    setAuto(false)
+  }
 
   const step = STEPS[active]!
   return (
     <section ref={root} id="harness" className="l-section">
       <div className="l-container">
-        <span className="l-eyebrow" data-reveal>The harness</span>
-        <h2 className="l-h2 mt-4 max-w-[20ch]" data-split>Agents are unpredictable. The harness isn't.</h2>
-        <p className="l-lead mt-5 max-w-[58ch]" data-reveal>
-          Whatever model is behind an agent, every action passes through the same rails. That's what makes it safe to
-          leave several of them alone together.
-        </p>
+        <SectionHead
+          act="06"
+          label="The harness"
+          title="Agents are unpredictable. The harness isn't."
+          lead="Whatever model is behind an agent, every action passes through the same five gates. That's what makes it safe to leave several of them alone together."
+        />
 
-        <div data-reveal className="l-card mt-12 overflow-hidden lg:grid lg:grid-cols-[1.25fr_1fr]">
-          <div className="min-w-0 border-b border-line p-5 sm:p-8 lg:border-b-0 lg:border-r">
-            <div className="flex items-center">
-              <div className="flex shrink-0 flex-col gap-1">
-                {[DEMO_AGENTS.claude.name, DEMO_AGENTS.codex.name, DEMO_AGENTS.hermes.name].map((name) => (
-                  <Mascot key={name} seed={name} mood={active === 1 ? "sleep" : "idle"} className="h-9 w-9" />
-                ))}
-              </div>
-              <span className="l-flow mx-1.5 w-3 shrink sm:w-6" data-on="true" />
+        <div data-reveal className="l-card mt-14 overflow-hidden p-5 sm:p-8">
+          <div className="relative h-[150px] sm:h-[220px]" style={{ perspective: "900px" }}>
+            <div aria-hidden className="absolute inset-x-0 bottom-[14px] h-2 rounded-full bg-gradient-to-r from-white/5 via-[#ffd08a]/60 to-white/5" />
+            <div className="absolute inset-x-0 bottom-[18px] top-0 grid grid-cols-5 gap-2 sm:gap-5">
               {STEPS.map((item, index) => (
-                <Fragment key={item.tag}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActive(index)
-                      setAuto(false)
-                    }}
-                    aria-pressed={active === index}
-                    aria-label={item.title}
-                    className={`grid h-9 min-w-0 flex-1 place-items-center rounded-lg border font-mono text-[9px] tracking-[0.04em] transition-colors sm:text-[10px] ${
-                      active === index ? "border-accent bg-accent-soft text-accent" : "border-line-strong text-faint hover:text-text"
-                    }`}
-                  >
-                    <span className="truncate px-0.5">{item.tag}</span>
-                  </button>
-                  {index < STEPS.length - 1 ? <span className="l-flow mx-0.5 w-1.5 shrink-0 sm:w-3" data-on={active === index ? "true" : "false"} /> : null}
-                </Fragment>
+                <button key={item.tag} type="button" aria-pressed={active === index} aria-label={item.title} onClick={() => pick(index)} className="hn-gate pt-3 font-mono text-[10px] tracking-[0.06em] sm:pt-5 sm:text-[13px]">
+                  {item.tag}
+                </button>
               ))}
             </div>
-
-            <div className="mt-7 rounded-xl border border-line bg-void p-4 font-mono text-[12px] leading-[2] sm:text-[13px]">
-              <p className="text-faint">harness · room/launch-week</p>
-              <div key={active}>
-                {step.trace.map((line, index) => (
-                  <p key={line} className="l-enter whitespace-pre-wrap" style={{ animationDelay: `${index * 0.14}s` }}>
-                    <span className="text-accent">› </span>
-                    {line}
-                  </p>
-                ))}
-              </div>
+            <div ref={rider} className="absolute bottom-[18px] z-[2] w-[46px] -translate-x-1/2 sm:w-[76px]" style={{ left: "10%" }} aria-hidden>
+              <Mascot seed="Saya" lit blink shadow className="block w-full" />
             </div>
           </div>
 
-          <ol>
-            {STEPS.map((item, index) => {
-              const open = active === index
-              return (
-                <li key={item.tag} className="border-b border-line last:border-b-0">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActive(index)
-                      setAuto(false)
-                    }}
-                    aria-expanded={open}
-                    className="flex w-full items-baseline gap-3 px-5 py-3.5 text-left"
-                  >
-                    <span className={`font-mono text-[11px] ${open ? "text-accent" : "text-faint"}`}>0{index + 1}</span>
-                    <span className={`text-[14px] ${open ? "text-text" : "text-muted"}`}>{item.title}</span>
-                  </button>
-                  <div className="l-acc" data-open={open}>
-                    <div>
-                      <p className="l-body px-5 pb-4 pl-[46px]">{item.body}</p>
-                    </div>
-                  </div>
-                </li>
-              )
-            })}
-          </ol>
+          <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_1.15fr] lg:gap-10">
+            <div key={active} className="l-enter">
+              <p className="font-mono text-[12px] text-accent">0{active + 1} / 05</p>
+              <h3 className="mt-2 text-[clamp(1.5rem,2.6vw,2.25rem)] font-medium leading-tight tracking-[-0.025em]">{step.title}</h3>
+              <p className="l-body mt-3 max-w-[46ch] !text-[15.5px]">{step.body}</p>
+            </div>
+            <div ref={trace} className="l-well p-5 font-mono text-[12.5px] leading-[2] sm:text-[13.5px]">
+              <p className="text-faint">harness · room/launch-week</p>
+              {step.trace.map((line) => (
+                <p key={`${active}-${line}`} className="whitespace-pre-wrap">
+                  <span className="text-[#ffd08a]">› </span>
+                  <span data-line={line} className="whitespace-pre-wrap">{line}</span>
+                </p>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </section>

@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react"
 import { Check, Cpu, ListChecks, MessageCircle, Power, ShieldCheck, type LucideIcon } from "lucide-react"
 import { Mascot } from "@/components/ui/mascot"
 import { DEMO_AGENTS } from "./content"
+import { SectionHead } from "./section-head"
 
 const { claude, codex, hermes } = DEMO_AGENTS
 
@@ -38,7 +39,7 @@ function Screen({ tab }: { tab: Tab }) {
         <p className="text-[15px] font-medium">Needs you</p>
         <div className="rounded-xl bg-raised p-3">
           <div className="flex items-center gap-2">
-            <Mascot seed={hermes.name} className="h-7 w-7" />
+            <Mascot seed={hermes.name} lit mood="alert" className="h-7 w-7" />
             <span className="text-[12px] text-muted">{hermes.name} wants to run</span>
           </div>
           <p className="mt-2 font-mono text-[11px]">deploy.sh --env production</p>
@@ -51,6 +52,10 @@ function Screen({ tab }: { tab: Tab }) {
             </div>
           )}
         </div>
+        <p className="pt-2 text-[12px] text-faint">Earlier today</p>
+        <Row seed={claude.name} title="Run pnpm build" sub="Approved 09:12" end={<Check className="h-3.5 w-3.5 text-ok" />} />
+        <Row seed={codex.name} title="Delete old-build/" sub="Rejected 11:40" end={<span className="text-[11px] text-faint">No</span>} />
+        <Row seed="Saya" title="Standup summary" sub="Posted to launch-week" />
       </div>
     )
   }
@@ -99,8 +104,7 @@ export function AndroidControl() {
     <section id="android" className="l-section">
       <div className="l-container grid items-center gap-14 lg:grid-cols-[1fr_auto] lg:gap-24">
         <div>
-          <span className="l-eyebrow" data-reveal>Android</span>
-          <h2 className="l-h2 mt-4 max-w-[17ch]" data-split>Run the whole team from your pocket.</h2>
+          <SectionHead act="10" label="Android" title="Run the whole team from your pocket." />
           <div className="mt-9 border-t border-line" role="tablist" aria-label="What you can do on Android">
             {TABS.map((item) => {
               const active = tab === item.id
@@ -129,8 +133,8 @@ export function AndroidControl() {
           </div>
         </div>
 
-        <div className="mx-auto" data-parallax="-46">
-          <div className="relative h-[560px] w-[276px] rounded-[42px] border border-line-strong bg-[#050506] p-2.5 shadow-[0_50px_110px_-40px_rgb(255_93_108/0.4)]">
+        <div className="mx-auto" data-parallax="-46" data-tilt>
+          <div className="relative h-[560px] w-[276px] rounded-[42px] border border-white/15 bg-gradient-to-b from-[#2a282f] to-[#0a0a0c] p-2.5 shadow-[inset_0_1px_0_rgb(255_255_255/0.2),0_60px_120px_-30px_rgb(255_93_108/0.55)]">
             <div className="flex h-full flex-col overflow-hidden rounded-[33px] bg-ink">
               <div className="relative flex h-9 shrink-0 items-center justify-between px-6 font-mono text-[10px] text-muted">
                 <span>9:41</span>

@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
 import { ArrowRight, X } from "lucide-react"
 import { Mascot } from "@/components/ui/mascot"
+import { SectionHead } from "./section-head"
 
 const RIVALS = [
   { name: "ChatGPT", mark: "C", art: "#3f79e0,#7ddcae,#16202f", when: "you want one general assistant for your own questions.", connects: true },
@@ -35,7 +36,7 @@ function Duo({ mark }: { mark: string }) {
   return (
     <span className="relative z-[1] flex items-center">
       <span className="grid h-12 w-12 place-items-center rounded-full bg-void">
-        <Mascot seed="Sayabot" shape="squircle" color="var(--color-accent)" className="h-8 w-8" />
+        <Mascot seed="Saya" lit className="h-9 w-9" />
       </span>
       <span className="-ml-2.5 grid h-12 w-12 place-items-center rounded-full bg-void text-[18px] font-medium text-text">{mark}</span>
     </span>
@@ -53,12 +54,8 @@ export function Compare() {
   return (
     <section id="compare" className="l-section">
       <div className="l-container">
-        <span className="l-eyebrow" data-reveal>Compare</span>
-        <h2 className="l-h2 mt-4" data-split>Compare Sayabot</h2>
-        <p className="l-lead mt-4 max-w-[56ch]" data-reveal>
-          Most AI tools give you one very capable assistant. Sayabot is the place where a group of them works together.
-        </p>
-        <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <SectionHead act="12" label="Compare" title="Most AI tools are one assistant." lead="Sayabot is the place where a group of them works together. Pick one to see when it's the better choice." />
+        <div className="mt-14 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {RIVALS.map((item) => (
             <button
               key={item.name}

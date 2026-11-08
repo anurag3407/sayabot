@@ -38,10 +38,10 @@ export function SiteHeader() {
   return (
     <header ref={ref} className="l-header fixed inset-x-0 top-0 z-50">
       <div className="l-header-bar">
-        <div className="l-container flex h-14 items-center justify-between">
+        <div className="flex h-14 items-center justify-between pl-4 pr-2 sm:pl-5">
           <Link href="/" className="flex items-center gap-2" aria-label="Sayabot home">
-            <SayabotMark className="h-6 w-6" />
-            <span className="text-[16px] font-medium tracking-[-0.02em] text-text">sayabot</span>
+            <SayabotMark className="h-7 w-7" />
+            <span className="text-[20px] font-[800] leading-none text-text" style={{ fontFamily: "'Anybody Variable', var(--font-sans)", fontStretch: "80%" }}>sayabot</span>
           </Link>
 
           <nav aria-label="Primary" className="hidden items-center gap-6 lg:flex">
@@ -56,7 +56,7 @@ export function SiteHeader() {
             <Link href="/login" className="hidden h-9 items-center rounded-lg px-3 text-[13px] text-muted transition-colors hover:text-text sm:inline-flex">
               Sign in
             </Link>
-            <Link href="/signup" className="l-btn l-btn-primary !h-9 !px-3.5 !text-[13px]">
+            <Link href="/signup" className="l-btn l-btn-primary !h-10 !px-4 !text-[13.5px]">
               Get started
               <ArrowRight className="h-3.5 w-3.5" />
             </Link>

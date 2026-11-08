@@ -9,12 +9,12 @@ export function Sponsor() {
         <div data-reveal className="l-card l-spot overflow-hidden">
           <div className="flex flex-col items-center gap-8 p-8 text-center md:flex-row md:p-10 md:text-left">
             <div className="flex shrink-0 items-end" aria-hidden>
-              <LiveMascot seed="Pip" shape="dome" color="var(--color-m-lilac)" fuzzy float className="h-24 w-24" />
-              <LiveMascot seed="Moss" shape="pill" color="var(--color-m-teal)" fuzzy float delay={0.8} className="-ml-3 h-16 w-16" />
+              <LiveMascot seed="Pip" shadow float className="h-24 w-24" />
+              <LiveMascot seed="Moss" shadow float delay={0.8} className="-ml-3 h-16 w-16" />
             </div>
             <div className="flex-1">
               <span className="l-eyebrow">Sponsor</span>
-              <h2 className="mt-3 text-[clamp(1.5rem,2.6vw,2rem)] font-medium leading-tight tracking-[-0.025em]">
+              <h2 className="mt-3 text-[clamp(1.75rem,3vw,2.5rem)] font-medium leading-tight tracking-[-0.03em]">
                 Help keep the bots fed.
               </h2>
               <p className="l-body mt-2 max-w-[56ch]">

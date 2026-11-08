@@ -1,25 +1,29 @@
 import type { Metadata } from "next"
 import { redirect } from "next/navigation"
+import "@fontsource-variable/anybody/wdth.css"
 import "@/components/landing/landing.css"
 import { getCurrentUser, listUserOrgs } from "@/lib/auth"
 import { SmoothScroll } from "@/components/landing/smooth-scroll"
 import { LandingMotion } from "@/components/landing/landing-motion"
 import { SiteHeader } from "@/components/landing/site-header"
+import { StorySpine } from "@/components/landing/story-spine"
 import { Hero } from "@/components/landing/hero"
-import { WorkspacePreview } from "@/components/landing/workspace-preview"
-import { FeatureGrid } from "@/components/landing/feature-grid"
+import { ChapterChaos } from "@/components/landing/chapter-chaos"
 import { McpOnboard } from "@/components/landing/mcp-onboard"
-import { HowItWorks } from "@/components/landing/how-it-works"
-import { MeetingRoom } from "@/components/landing/meeting-room"
+import { WorkspacePreview } from "@/components/landing/workspace-preview"
+import { ChapterTurns } from "@/components/landing/chapter-turns"
+import { ChapterApprove } from "@/components/landing/chapter-approve"
 import { Harness } from "@/components/landing/harness"
+import { ChapterDay } from "@/components/landing/chapter-day"
+import { FeatureGrid } from "@/components/landing/feature-grid"
 import { Computers } from "@/components/landing/computers"
 import { AndroidControl } from "@/components/landing/android-control"
+import { Crew } from "@/components/landing/crew"
+import { Compare } from "@/components/landing/compare"
 import { Pricing } from "@/components/landing/pricing"
 import { Sponsor } from "@/components/landing/sponsor"
-import { Testimonials } from "@/components/landing/testimonials"
-import { Faq } from "@/components/landing/faq"
-import { Compare } from "@/components/landing/compare"
 import { Downloads } from "@/components/landing/downloads"
+import { Faq } from "@/components/landing/faq"
 import { FinalCta } from "@/components/landing/final-cta"
 import { LandingFooter } from "@/components/landing/landing-footer"
 
@@ -41,36 +45,26 @@ export default async function HomePage() {
     <SmoothScroll>
       <div className="l-page text-text">
         <div className="l-progress" aria-hidden />
-        <div className="l-gutters" aria-hidden />
         <SiteHeader />
+        <StorySpine />
         <main id="main-content">
           <Hero />
-          <WorkspacePreview />
-          <div className="l-rule" />
-          <FeatureGrid />
-          <div className="l-rule" />
+          <ChapterChaos />
           <McpOnboard />
-          <div className="l-rule" />
-          <HowItWorks />
-          <div className="l-rule" />
-          <MeetingRoom />
-          <div className="l-rule" />
+          <WorkspacePreview />
+          <ChapterTurns />
+          <ChapterApprove />
           <Harness />
-          <div className="l-rule" />
+          <ChapterDay />
+          <FeatureGrid />
           <Computers />
-          <div className="l-rule" />
           <AndroidControl />
-          <div className="l-rule" />
+          <Crew />
+          <Compare />
           <Pricing />
           <Sponsor />
-          <Testimonials />
-          <div className="l-rule" />
-          <Faq />
-          <div className="l-rule" />
-          <Compare />
-          <div className="l-rule" />
           <Downloads />
-          <div className="l-rule" />
+          <Faq />
           <FinalCta />
         </main>
         <LandingFooter />

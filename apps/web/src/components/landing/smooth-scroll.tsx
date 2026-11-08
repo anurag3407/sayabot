@@ -2,20 +2,13 @@
 
 import Lenis from "lenis"
 import { useEffect, type ReactNode } from "react"
-import { gsap, ScrollTrigger } from "./gsap"
 
-/**
- * Lenis inertia scrolling, driven by the GSAP ticker so ScrollTrigger pins
- * and scrubs stay frame-perfect. Skipped entirely for reduced motion.
- */
+/** Lenis inertia scrolling. Skipped entirely for reduced motion. */
 export function SmoothScroll({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
 
-    const lenis = new Lenis({
-      lerp: 0.11,
-      allowNestedScroll: true,
-    })
+    const lenis = new Lenis({ lerp: 0.11, allowNestedScroll: true, autoRaf: true })
 
     // Same-page hash links glide instead of jumping.
     const onClick = (event: MouseEvent) => {
@@ -31,18 +24,9 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
       history.replaceState(null, "", url.hash)
     }
     document.addEventListener("click", onClick)
-    lenis.on("scroll", ScrollTrigger.update)
-    const tick = (time: number) => lenis.raf(time * 1000)
-    gsap.ticker.add(tick)
-    gsap.ticker.lagSmoothing(0)
-
-    // Fonts change line lengths, which moves every trigger.
-    document.fonts?.ready.then(() => ScrollTrigger.refresh())
 
     return () => {
       document.removeEventListener("click", onClick)
-      gsap.ticker.remove(tick)
-      gsap.ticker.lagSmoothing(500, 33)
       lenis.destroy()
     }
   }, [])

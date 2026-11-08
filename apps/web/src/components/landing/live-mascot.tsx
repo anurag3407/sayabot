@@ -45,6 +45,7 @@ function useLookAt(ref: RefObject<SVGSVGElement | null>) {
 /** A mascot whose eyes follow the pointer. Tap or hover makes it smile. */
 export function LiveMascot({
   float = false,
+  lit,
   delay = 0,
   className = "",
   style,
@@ -61,7 +62,7 @@ export function LiveMascot({
       onPointerEnter={() => setHover(true)}
       onPointerLeave={() => setHover(false)}
     >
-      <Mascot svgRef={ref} blink mood={hover ? "happy" : mood} className="block h-full w-full" {...props} />
+      <Mascot svgRef={ref} blink lit={lit} mood={hover ? "happy" : mood} className="block h-full w-full" {...props} />
     </span>
   )
 }

@@ -1,12 +1,13 @@
 import type { ComponentType } from "react"
 import { ArrowDownToLine } from "lucide-react"
 import { Mascot } from "@/components/ui/mascot"
+import { SectionHead } from "./section-head"
 import { AndroidIcon, AppleIcon, LinuxIcon, WindowsIcon } from "./brand-icons"
 import { DOWNLOADS } from "./content"
 
 const READY = [
-  { name: "macOS", meta: "Apple silicon · macOS 13+", href: DOWNLOADS.mac, cta: "Download for Mac", icon: AppleIcon, bg: "#cdaeee", seed: "Mac buddy", shape: "dome" as const, color: "var(--color-m-pink)" },
-  { name: "Android", meta: "Connects to your workspace", href: DOWNLOADS.android, cta: "Download for Android", icon: AndroidIcon, bg: "#e7a184", seed: "Android buddy", shape: "pentagon" as const, color: "var(--color-m-yellow)" },
+  { name: "macOS", meta: "Apple silicon · macOS 13+", href: DOWNLOADS.mac, cta: "Download for Mac", icon: AppleIcon, bg: "linear-gradient(165deg,#ecdfff,#c6a3ee)", seed: "Pip" },
+  { name: "Android", meta: "Connects to your workspace", href: DOWNLOADS.android, cta: "Download for Android", icon: AndroidIcon, bg: "linear-gradient(165deg,#ffe1cf,#ef9f7f)", seed: "Juno" },
 ]
 
 const SOON: { name: string; icon: ComponentType<{ className?: string }> }[] = [
@@ -19,10 +20,7 @@ export function Downloads() {
   return (
     <section id="download" className="l-section">
       <div className="l-container">
-        <div className="text-center">
-          <span className="l-eyebrow" data-reveal>Download</span>
-          <h2 className="l-h2 mx-auto mt-4" data-split>Take your team with you.</h2>
-        </div>
+        <SectionHead center label="Download" title="Take your team with you." />
 
         <div className="mt-20 grid gap-16 sm:grid-cols-2 sm:gap-4">
           {READY.map((item) => (
@@ -34,13 +32,11 @@ export function Downloads() {
               data-reveal
               className="group relative block"
             >
-              <span data-tilt className="relative block rounded-[22px] p-7 text-[#15121a] sm:p-8" style={{ background: item.bg }}>
+              <span data-tilt className="relative block rounded-[26px] p-7 text-[#15121a] shadow-[inset_0_1px_0_rgb(255_255_255/0.5),0_40px_70px_-34px_rgb(0_0_0/0.95)] sm:p-9" style={{ background: item.bg }}>
                 <Mascot
                   seed={item.seed}
-                  shape={item.shape}
-                  color={item.color}
-                  fuzzy
                   blink
+                  shadow
                   className="absolute -top-12 right-8 h-24 w-24 transition-transform duration-500 ease-out group-hover:-translate-y-3 group-hover:rotate-6"
                 />
                 <item.icon className="h-11 w-11" />
@@ -48,7 +44,7 @@ export function Downloads() {
                   {item.name}
                 </span>
                 <span className="mt-2.5 block text-[14px] opacity-70">{item.meta}</span>
-                <span className="mt-6 inline-flex h-11 items-center gap-2 rounded-[10px] bg-[#15121a] px-4 text-[14px] font-medium text-white">
+                <span className="mt-6 inline-flex h-11 items-center gap-2 rounded-full bg-[#15121a] px-4 text-[14px] font-medium text-white">
                   <ArrowDownToLine className="h-4 w-4 transition-transform group-hover:translate-y-0.5" />
                   {item.cta}
                 </span>

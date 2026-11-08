@@ -6,7 +6,9 @@ import { Mascot } from "@/components/ui/mascot"
 import { SayabotMark } from "./sayabot-mark"
 import { DEMO_AGENTS, type DemoAgent } from "./content"
 import { LiveMascot, useInView } from "./live-mascot"
-import { gsap, MOTION, useGSAP } from "./gsap"
+import { animate, onScroll, spring, stagger } from "animejs"
+import { useAnime } from "./motion"
+import { SectionHead } from "./section-head"
 
 type Who = DemoAgent | "you"
 type Step =
@@ -169,48 +171,38 @@ export function WorkspacePreview() {
   const nextIsAgent = !finished && !waiting && current.steps[shown.length]?.kind === "msg" ? current.steps[shown.length] : null
   const working = last.who === "you" ? null : last.who
 
-  useGSAP(
-    () => {
-      const mm = gsap.matchMedia()
-      mm.add(MOTION, () => {
-        gsap.fromTo(
-          ".pv-window",
-          { rotateX: 16, scale: 0.92, y: 40, transformPerspective: 1400, transformOrigin: "50% 0%" },
-          {
-            rotateX: 0,
-            scale: 1,
-            y: 0,
-            ease: "none",
-            scrollTrigger: { trigger: ".pv-window", start: "top 96%", end: "top 26%", scrub: 0.5 },
-          },
-        )
-        gsap.from(".pv-buddy", {
-          yPercent: 90,
-          stagger: 0.08,
-          duration: 0.9,
-          ease: "back.out(1.7)",
-          delay: 0.6,
-        })
-      })
-    },
-    { scope: root },
-  )
+  useAnime(root, ({ all }) => {
+    animate(all(".pv-window"), {
+      rotateX: [20, 0],
+      scale: [0.9, 1],
+      translateY: [50, 0],
+      ease: "linear",
+      autoplay: onScroll({ target: all(".pv-window")[0]!, enter: "bottom top+=4%", leave: "center center", sync: true }),
+    })
+    animate(all(".pv-buddy"), {
+      translateY: ["95%", "12%"],
+      duration: 800,
+      delay: stagger(80),
+      ease: spring({ bounce: 0.4, duration: 620 }),
+      autoplay: onScroll({ target: all(".pv-buddies")[0]!, enter: "bottom top" }),
+    })
+  })
 
   const rail = [MessageCircle, Inbox, Bot, Search]
   return (
-    <section ref={root} aria-label="Animated preview of the Sayabot workspace" className="relative pb-20 pt-12 sm:pt-16">
-      <div className="l-container">
-        <div className="relative mx-auto flex h-14 max-w-[560px] items-end justify-center gap-5 overflow-hidden sm:h-[72px] sm:gap-8" aria-hidden>
+    <section ref={root} aria-label="Animated preview of the Sayabot workspace" id="room" className="l-section !pt-8">
+      <div className="l-container" style={{ perspective: "1600px" }}>
+        <SectionHead center act="03" label="The room" title="Your team and theirs, in one thread." className="mb-12" />
+        <div className="pv-buddies relative mx-auto flex h-14 max-w-[560px] items-end justify-center gap-5 overflow-hidden sm:h-[72px] sm:gap-8" aria-hidden>
           {FACES.map((who, index) => (
             <span key={who} className="pv-buddy block h-16 w-16 translate-y-3 sm:h-[84px] sm:w-[84px]">
-              <LiveMascot seed={nameOf(who)} fuzzy float delay={index * 0.6} className="h-full w-full" />
+              <LiveMascot seed={nameOf(who)} delay={index * 0.6} className="h-full w-full" />
             </span>
           ))}
         </div>
 
-        <div className="pv-window l-frame">
-          <i /><i /><i /><i />
-          <div className="overflow-hidden rounded-[14px] border border-line-strong bg-void shadow-[0_40px_120px_-40px_rgb(255_93_108/0.35)]">
+        <div className="pv-window origin-top" data-tilt-off>
+          <div className="overflow-hidden rounded-[22px] border border-white/10 bg-void shadow-[inset_0_1px_0_rgb(255_255_255/0.08),0_50px_130px_-40px_rgb(255_93_108/0.5)]">
             <div className="flex h-10 items-center gap-2 border-b border-line px-4">
               <span className="h-2.5 w-2.5 rounded-full bg-[#ff5f57]" />
               <span className="h-2.5 w-2.5 rounded-full bg-[#febc2e]" />
