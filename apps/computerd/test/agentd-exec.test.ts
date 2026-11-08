@@ -7,16 +7,24 @@ import { startAgentd } from "../agentd/agentd"
 
 let dir: string
 let sock: string
-let server: Server
+let server: Server | undefined
+// Unix sockets under $TMPDIR are EPERM in sandboxed shells (macOS sandbox).
+// Detect that once and skip cleanly; the same exec paths are covered
+// socket-free in tests/unit/agentd-exec.test.ts.
+let socketSupported = false
 
 beforeAll(async () => {
   dir = realpathSync(mkdtempSync("/tmp/agentd-exec-"))
   sock = join(dir, "agentd.sock")
   server = startAgentd(sock)
-  await new Promise((r) => setTimeout(r, 50))
+  const ok = await Promise.race([
+    new Promise<boolean>((resolve) => server!.once("listening", () => resolve(true))),
+    new Promise<boolean>((resolve) => server!.once("error", () => resolve(false))),
+  ])
+  socketSupported = ok
 })
 afterAll(() => {
-  server.close()
+  server?.close()
   rmSync(dir, { recursive: true, force: true })
 })
 
@@ -45,7 +53,8 @@ function rpc(req: Record<string, unknown>): Promise<any[]> {
 }
 
 describe("agentd exec", () => {
-  it("reports timeouts and kills the whole process group", async () => {
+  it("reports timeouts and kills the whole process group", async (ctx) => {
+    if (!socketSupported) return ctx.skip()
     const marker = join(dir, "survived")
     const frames = await rpc({
       op: "exec",
@@ -60,14 +69,16 @@ describe("agentd exec", () => {
     expect(existsSync(marker)).toBe(false)
   })
 
-  it("keeps multibyte output intact and returns the real exit code", async () => {
+  it("keeps multibyte output intact and returns the real exit code", async (ctx) => {
+    if (!socketSupported) return ctx.skip()
     const frames = await rpc({ op: "exec", cwd: dir, cmd: `printf '世界%.0s' $(seq 1 20000); exit 3` })
     const out = frames.filter((f) => f.t === "out").map((f) => f.d).join("")
     expect(out).toBe("世界".repeat(20000))
     expect(frames.at(-1)).toMatchObject({ t: "exit", code: 3 })
   })
 
-  it("rejects background requests explicitly", async () => {
+  it("rejects background requests explicitly", async (ctx) => {
+    if (!socketSupported) return ctx.skip()
     const frames = await rpc({ op: "exec", cwd: dir, cmd: "true", background: true })
     expect(frames[0].error).toContain("Background")
   })

@@ -15,7 +15,12 @@
     "mobile:dev": "turbo run dev --filter=@sayabot/mobile",
     "mobile:typecheck": "turbo run typecheck --filter=@sayabot/mobile",
     "e2e": "playwright test",
-    "typecheck:e2e": "tsc -p tsconfig.e2e.json"
+    "typecheck:e2e": "tsc -p tsconfig.e2e.json",
+    "test:unit": "turbo run test --filter=@sayabot/core --filter=@sayabot/llm --filter=@sayabot/orchestrator --filter=@sayabot/web --filter=@sayabot/egress --filter=@sayabot/computerd --filter=@sayabot/mobile",
+    "test:integration": "node tests/integration/run.mjs",
+    "test:e2e:api": "E2E_SMOKE=1 playwright test api navigation.spec.ts api-guard.spec.ts",
+    "test:e2e": "playwright test",
+    "test:coverage": "turbo run test:coverage"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",

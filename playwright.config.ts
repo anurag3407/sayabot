@@ -2,6 +2,10 @@ import "dotenv/config"
 import { defineConfig, devices } from "@playwright/test"
 
 const baseURL = process.env.E2E_BASE_URL ?? "http://localhost:3000"
+const orchURL = process.env.ORCHESTRATOR_URL ?? "http://localhost:4000"
+// The seeded browser specs (chat/approval/turns) need E2E_USER_* + Supabase;
+// the smoke lane (api/, navigation, api-guard) only needs running servers.
+const smokeOnly = process.env.E2E_SMOKE === "1"
 
 export default defineConfig({
   testDir: "./e2e",
@@ -9,7 +13,7 @@ export default defineConfig({
   workers: 1,
   timeout: 180_000,
   expect: { timeout: 20_000 },
-  globalSetup: "./e2e/global-setup.ts",
+  globalSetup: smokeOnly ? undefined : "./e2e/global-setup.ts",
   reporter: [["list"]],
   use: {
     baseURL,
@@ -26,7 +30,7 @@ export default defineConfig({
     },
     {
       command: "pnpm --filter @sayabot/orchestrator dev",
-      url: `${process.env.ORCHESTRATOR_URL ?? "http://localhost:4000"}/health`,
+      url: `${orchURL}/health`,
       reuseExistingServer: true,
       timeout: 180_000,
     },
