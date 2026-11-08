@@ -44,12 +44,21 @@ jobs:
           DATABASE_URL: postgres://u:p@localhost:5432/db
           MESH_KEK: ci-test-kek
           SUPABASE_URL: https://ci.supabase.co
+          NEXT_PUBLIC_SUPABASE_URL: https://ci.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-test-anon-key
           SUPABASE_SERVICE_ROLE_KEY: ci-test-service-role
           ORCHESTRATOR_INTERNAL_SECRET: ci-test-internal-secret-0123456789
         run: |
-          pnpm --filter @sayabot/web build > /tmp/web-build.log 2>&1 &
+          pnpm --filter @sayabot/web build
           pnpm --filter @sayabot/web start > /tmp/web.log 2>&1 &
-          sleep 5
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:3000/api/health >/dev/null 2>&1; then
+              echo "Web service is healthy!"
+              break
+            fi
+            echo "Waiting for web service to be healthy... ($i/30)"
+            sleep 2
+          done
           curl -fsS http://localhost:3000/api/health || (cat /tmp/web.log; exit 1)
       - run: pnpm test:e2e:api
         continue-on-error: true
