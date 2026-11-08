@@ -53,14 +53,20 @@ export function devModelConfigured(): boolean {
   return Boolean(process.env.DEV_OPENAI_COMPAT_BASE_URL && process.env.DEV_OPENAI_COMPAT_MODEL)
 }
 
+function envBool(name: string): boolean {
+  const env = process.env
+  const value = env[name]
+  return value === "true" || value === "1"
+}
+
 export function ssoEnabled(): boolean {
-  return process.env.NEXT_PUBLIC_SSO_ENABLED === "true"
+  return process.env.SSO_ENABLED === "true" || envBool("SSO_ENABLED") || envBool("NEXT_PUBLIC_SSO_ENABLED")
 }
 
 export function githubAuthEnabled(): boolean {
-  return process.env.NEXT_PUBLIC_GITHUB_AUTH_ENABLED === "true"
+  return process.env.GITHUB_AUTH_ENABLED === "true" || envBool("GITHUB_AUTH_ENABLED") || envBool("NEXT_PUBLIC_GITHUB_AUTH_ENABLED")
 }
 
 export function googleAuthEnabled(): boolean {
-  return process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === "true"
+  return process.env.GOOGLE_AUTH_ENABLED === "true" || envBool("GOOGLE_AUTH_ENABLED") || envBool("NEXT_PUBLIC_GOOGLE_AUTH_ENABLED")
 }

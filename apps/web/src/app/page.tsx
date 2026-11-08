@@ -20,6 +20,7 @@ export const metadata: Metadata = {
   description:
     "Human teams and AI agents share rooms, take turns, edit one live canvas and stop for human approval before anything risky runs.",
 }
+export const dynamic = "force-dynamic"
 
 export default async function HomePage() {
   const user = await getCurrentUser()

@@ -7,6 +7,7 @@ import { AuthPanel } from "@/components/auth/auth-panel"
 import { safeNextPath } from "@/lib/safe-next"
 
 export const metadata: Metadata = { title: "Sign in · Sayabot" }
+export const dynamic = "force-dynamic"
 
 export default async function LoginPage({
   searchParams,

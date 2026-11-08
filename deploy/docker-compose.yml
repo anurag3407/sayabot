@@ -54,6 +54,9 @@ services:
       NEXT_PUBLIC_APP_URL: https://${MESH_DOMAIN}
       NEXT_PUBLIC_COLLAB_URL: wss://${MESH_DOMAIN}/collab
       ORCHESTRATOR_URL: http://orchestrator:4000
+      GOOGLE_AUTH_ENABLED: ${NEXT_PUBLIC_GOOGLE_AUTH_ENABLED:-false}
+      GITHUB_AUTH_ENABLED: ${NEXT_PUBLIC_GITHUB_AUTH_ENABLED:-false}
+      SSO_ENABLED: ${NEXT_PUBLIC_SSO_ENABLED:-false}
     read_only: true
     tmpfs:
       - /tmp

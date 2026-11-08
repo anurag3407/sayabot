@@ -6,6 +6,7 @@ import { PublicShell } from "@/components/public/public-shell"
 import { AuthPanel } from "@/components/auth/auth-panel"
 
 export const metadata: Metadata = { title: "Create an account · Sayabot" }
+export const dynamic = "force-dynamic"
 
 export default async function SignUpPage() {
   const user = await getCurrentUser()
