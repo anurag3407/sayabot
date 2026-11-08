@@ -235,7 +235,12 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
         .limit(1)
 
       cost = computeCostUsd(
-        { inputTokens: usageTotals.inputTokens, outputTokens: usageTotals.outputTokens },
+        {
+          inputTokens: usageTotals.inputTokens,
+          outputTokens: usageTotals.outputTokens,
+          cachedInputTokens: usageTotals.cacheReadTokens,
+          cacheCreationTokens: usageTotals.cacheWriteTokens,
+        },
         price,
       )
 

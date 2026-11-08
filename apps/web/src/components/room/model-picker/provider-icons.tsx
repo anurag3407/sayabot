@@ -99,6 +99,14 @@ export function DeepSeekMark({ size = 16, className = "" }: { size?: number; cla
   )
 }
 
+export function AntigravityMark({ size = 16, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+      <path d="M12.037 1C5.17 1 6.342 15.74.815 21.1c-2.01 2.009.167 2.511 1.507 1.506 5.192-3.517 4.857-9.714 9.715-9.714 4.857 0 4.522 6.197 9.714 9.715 1.34 1.005 3.35.335 1.508-1.508C17.73 15.74 18.904 1 12.037 1z" />
+    </svg>
+  )
+}
+
 export function CommandCodeMark({ size = 16, className = "" }: { size?: number; className?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
@@ -147,6 +155,8 @@ export function ProviderIcon({
       return <QwenMark size={size} className={className} />
     case "cursor":
       return <CursorMark size={size} className={className} />
+    case "antigravity":
+      return <AntigravityMark size={size} className={className} />
     default:
       return <OpenAIMark size={size} className={className} />
   }

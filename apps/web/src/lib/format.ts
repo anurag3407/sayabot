@@ -42,7 +42,7 @@ export function fullTime(iso: string): string {
 }
 
 export function formatUsd(value: number): string {
-  if (value === 0) return "$0"
+  if (value === 0) return "$0.00"
   if (value < 0.01) return `$${value.toFixed(6)}`
   return `$${value.toFixed(2)}`
 }
@@ -50,6 +50,30 @@ export function formatUsd(value: number): string {
 export function formatNumber(value: number): string {
   return new Intl.NumberFormat().format(value)
 }
+
+/** Formats token counts cleanly with K, M, B, T suffixes (e.g. 417M, 14.9M, 781K). */
+export function formatTokens(value: number): string {
+  const abs = Math.abs(value)
+  if (abs >= 1e12) return `${trimDigits(value / 1e12)}T`
+  if (abs >= 1e9) return `${trimDigits(value / 1e9)}B`
+  if (abs >= 1e6) return `${trimDigits(value / 1e6)}M`
+  if (abs >= 1e3) return `${trimDigits(value / 1e3)}K`
+  return new Intl.NumberFormat().format(Math.round(value))
+}
+
+function trimDigits(value: number): string {
+  const abs = Math.abs(value)
+  const digits = abs >= 100 ? 0 : abs >= 10 ? 1 : 2
+  return value.toFixed(digits).replace(/\.0+$/, "")
+}
+
+export function formatPercent(share: number, digits = 1): string {
+  const percent = share * 100
+  const smallest = 10 ** -digits
+  if (percent > 0 && percent < smallest) return `<${smallest.toFixed(digits)}%`
+  return `${percent.toFixed(digits)}%`
+}
+
 
 export function formatMs(value: number | null | undefined): string {
   if (value === null || value === undefined) return "-"

@@ -282,8 +282,9 @@ export async function runLlmTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
           ),
         )
         .limit(1)
+      const cachedInputTokens = (usage as any)?.inputTokenDetails?.cacheReadTokens ?? 0
       cost = computeCostUsd(
-        { inputTokens: usage.inputTokens, outputTokens: usage.outputTokens },
+        { inputTokens: usage.inputTokens, outputTokens: usage.outputTokens, cachedInputTokens },
         price,
       )
       await db.insert(usageEvents).values({
@@ -294,6 +295,7 @@ export async function runLlmTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
         model: resolved.modelName,
         inputTokens: usage.inputTokens ?? 0,
         outputTokens: usage.outputTokens ?? 0,
+        cachedInputTokens,
         costUsd: cost,
         ttftMs,
         latencyMs,
