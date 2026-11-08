@@ -32,20 +32,19 @@ jobs:
 
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
+          touch ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
 
           # Cleanly write deploy private key and clean up on exit
           printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           trap 'rm -f ~/.ssh/deploy_key' EXIT
 
-          echo "==> Gathering host keys for $SSH_HOST:$PORT..."
-          ssh-keyscan -p "$PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
-          chmod 600 ~/.ssh/known_hosts 2>/dev/null || true
-
-          echo "==> Connecting via native OpenSSH to $SSH_USER@$SSH_HOST..."
+          echo "==> Connecting via native OpenSSH to $SSH_USER@$SSH_HOST:$PORT..."
           ssh -i ~/.ssh/deploy_key \
               -p "$PORT" \
               -o StrictHostKeyChecking=accept-new \
+              -o UserKnownHostsFile=~/.ssh/known_hosts \
               -o ConnectTimeout=30 \
               -o ServerAliveInterval=15 \
               -o ServerAliveCountMax=60 \
