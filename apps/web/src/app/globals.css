@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "streamdown/styles.css";
+@import "katex/dist/katex.min.css";
 
 @theme {
   /* Surfaces, darkest to lightest: page, app surface, cards, hover. */
@@ -20,6 +21,17 @@
   --color-ok: #7fce95;
   --color-warn: #e6bc6a;
   --color-danger: #f0776f;
+
+  /* Compatibility tokens for streamdown, shadcn, and components */
+  --color-background: #141415;
+  --color-foreground: #f4f3f1;
+  --color-sidebar: #1a1a1c;
+  --color-sidebar-foreground: #f4f3f1;
+  --color-border: #27272a;
+  --color-muted-bg: #232325;
+  --color-muted-foreground: #a9a9b0;
+  --color-primary: #ff5d6c;
+  --color-primary-foreground: #0b0b0c;
 
   /* Pastels for the mascots and the download cards. Identity only, never status. */
   --color-m-pink: #ee5fb8;
@@ -155,6 +167,10 @@ select {
   font-size: 0.9375rem;
   line-height: 1.65;
   color: var(--color-text);
+  max-width: 100%;
+}
+
+.streamdown > p {
   max-width: 72ch;
 }
 
@@ -266,6 +282,103 @@ select {
   max-width: 100%;
   border-radius: var(--radius-md);
   border: 1px solid var(--color-line);
+}
+
+/* Streamdown Mermaid Block Styling */
+[data-streamdown="mermaid-block"] {
+  position: relative;
+  border: 1px solid var(--color-line);
+  background: var(--color-panel);
+  border-radius: var(--radius-md);
+  margin-block: 1rem;
+  padding: 0.5rem;
+  overflow: hidden;
+}
+
+[data-streamdown="mermaid-block-actions"],
+[data-streamdown="code-block-actions"] {
+  background: var(--color-raised) !important;
+  border: 1px solid var(--color-line-strong) !important;
+  backdrop-filter: blur(8px);
+  border-radius: var(--radius-sm);
+}
+
+[data-streamdown="mermaid-block-actions"] button,
+[data-streamdown="code-block-actions"] button {
+  color: var(--color-muted) !important;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+[data-streamdown="mermaid-block-actions"] button:hover,
+[data-streamdown="code-block-actions"] button:hover {
+  color: var(--color-text) !important;
+  background-color: var(--color-hover) !important;
+}
+
+[data-streamdown="mermaid"] {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  min-height: 180px;
+}
+
+[data-streamdown="mermaid"] svg {
+  max-width: 100%;
+  height: auto;
+  font-family: var(--font-mono), monospace !important;
+}
+
+[data-streamdown="mermaid"] button {
+  color: var(--color-muted) !important;
+}
+
+[data-streamdown="mermaid"] button:hover {
+  color: var(--color-text) !important;
+  background-color: var(--color-hover) !important;
+}
+
+/* KaTeX Mathematics Styling */
+.katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-block: 0.5em;
+  margin-block: 0.75em !important;
+}
+.katex {
+  font-size: 1.05em;
+  color: var(--color-text);
+}
+
+/* Checkbox Task Lists */
+.streamdown input[type="checkbox"] {
+  appearance: none;
+  width: 1rem;
+  height: 1rem;
+  border: 1px solid var(--color-line-strong);
+  border-radius: 4px;
+  background-color: var(--color-raised);
+  margin-right: 0.45rem;
+  vertical-align: -0.15rem;
+  position: relative;
+  cursor: pointer;
+}
+
+.streamdown input[type="checkbox"]:checked {
+  background-color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.streamdown input[type="checkbox"]:checked::after {
+  content: "";
+  position: absolute;
+  left: 4.5px;
+  top: 1.5px;
+  width: 4px;
+  height: 8px;
+  border: solid var(--color-void);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
 }
 
 /* Mascots: a slow blink, staggered per instance through --blink-delay. */

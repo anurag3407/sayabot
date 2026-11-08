@@ -13,7 +13,7 @@ import { DetailsMenu } from "@/components/ui/details-menu"
 import { Field, Input, Select, Textarea } from "@/components/ui/field"
 import { showToast } from "@/components/ui/toast"
 import { PlusIcon } from "@/components/ui/icons"
-import { ArrowUp } from "lucide-react"
+import { ArrowUp, Paperclip } from "lucide-react"
 import { cn } from "@/lib/format"
 import type { MemberView, RoomAgentView } from "@/lib/types"
 
@@ -224,9 +224,38 @@ export function Composer({
   const [mention, setMention] = useState<MentionState | null>(null)
   const [outboxCount, setOutboxCount] = useState(0)
   const [quickAction, setQuickAction] = useState<QuickAction | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const baseId = useId()
   const listboxId = `${baseId}-mentions`
+
+  function handleFileSelect(file: File) {
+    if (!file.name.toLowerCase().endsWith(".pdf") && file.type !== "application/pdf") {
+      setError("Please select a PDF file.")
+      return
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setError("PDF exceeds 8MB limit for chat attachment.")
+      return
+    }
+    setError(null)
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string
+      if (dataUrl) {
+        const cleanName = file.name.replace(/[\[\]]/g, "")
+        const snippet = `[${cleanName}](${dataUrl})\n`
+        updateValue(value ? `${value}\n\n${snippet}` : snippet)
+        showToast({ message: `Attached ${cleanName}`, tone: "success" })
+        textareaRef.current?.focus()
+      }
+    }
+    reader.onerror = () => {
+      setError("Failed to read the selected file.")
+    }
+    reader.readAsDataURL(file)
+  }
 
   useEffect(() => {
     setValue(readDraft(storageKey))
@@ -483,7 +512,47 @@ export function Composer({
         </div>
       ) : null}
 
-      <div className="flex items-end gap-1.5 rounded-[20px] bg-raised p-2 transition-colors focus-within:bg-hover">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".pdf,application/pdf"
+        className="hidden"
+        aria-hidden="true"
+        onChange={(e) => {
+          const file = e.target.files?.[0]
+          if (file) {
+            handleFileSelect(file)
+            e.target.value = ""
+          }
+        }}
+      />
+
+      <div
+        className={cn(
+          "relative flex items-end gap-1.5 rounded-[20px] bg-raised p-2 transition-colors focus-within:bg-hover",
+          isDragging && "ring-2 ring-accent bg-accent-soft/30",
+        )}
+        onDragOver={(e) => {
+          e.preventDefault()
+          setIsDragging(true)
+        }}
+        onDragLeave={(e) => {
+          e.preventDefault()
+          setIsDragging(false)
+        }}
+        onDrop={(e) => {
+          e.preventDefault()
+          setIsDragging(false)
+          const file = e.dataTransfer.files?.[0]
+          if (file) handleFileSelect(file)
+        }}
+      >
+        {isDragging ? (
+          <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-[20px] bg-panel/90 backdrop-blur-xs font-mono text-[13px] text-accent">
+            Drop PDF to attach to message
+          </div>
+        ) : null}
+
         {showQuickActions ? (
           <DetailsMenu
             className="relative shrink-0"
@@ -492,6 +561,13 @@ export function Composer({
             summary={<PlusIcon width={18} height={18} />}
           >
             <div className="absolute bottom-full left-0 z-10 mb-2 w-52 overflow-hidden rounded-xl border border-line-strong bg-panel py-1 shadow-[0_16px_40px_rgba(0,0,0,0.5)]">
+              <button
+                type="button"
+                className={menuItemClass}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                Attach PDF
+              </button>
               <button type="button" className={menuItemClass} onClick={() => setQuickAction("task")}>
                 New task in this room
               </button>
@@ -508,6 +584,16 @@ export function Composer({
             </div>
           </DetailsMenu>
         ) : null}
+
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-muted hover:bg-line-strong/60 hover:text-text"
+          title="Attach PDF"
+          aria-label="Attach PDF"
+        >
+          <Paperclip className="h-[18px] w-[18px]" aria-hidden="true" />
+        </button>
         <label htmlFor={`${baseId}-input`} className="sr-only">
           {placeholder}
         </label>
