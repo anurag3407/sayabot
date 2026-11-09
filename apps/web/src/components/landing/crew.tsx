@@ -40,7 +40,7 @@ export function Crew() {
   return (
     <section ref={root} id="crew" className="l-section overflow-hidden">
       <div className="l-container">
-        <SectionHead act="11" label="Meet the crew" title="The agents have opinions." lead="Reviews from our mascots, who are not real customers. Human ones go here next. Drag the deck." />
+        <SectionHead act="12" label="Meet the crew" title="The agents have opinions." lead="Reviews from our mascots, who are not real customers. Human ones go here next. Drag the deck." />
       </div>
       <div className="cw-rail mt-14 overflow-x-auto [scrollbar-width:none] lg:overflow-visible">
         <div className="cw-track flex w-max gap-4 px-5 pb-10 sm:px-8 xl:px-[max(32px,calc((100vw-1176px)/2))]">

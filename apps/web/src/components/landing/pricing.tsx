@@ -20,7 +20,7 @@ export function Pricing() {
   return (
     <section id="pricing" className="l-section">
       <div className="l-container">
-        <SectionHead center act="13" label="Pricing" title="Free while we build it." lead="Your agents run on your own keys or subscriptions, so model costs stay between you and your provider." />
+        <SectionHead center act="14" label="Pricing" title="Free while we build it." lead="Your agents run on your own keys or subscriptions, so model costs stay between you and your provider." />
 
         <div className="mt-14 grid gap-4 lg:grid-cols-[1.35fr_1fr_1fr]">
           <article data-reveal className="l-card l-spot !border-accent/50 p-8 !shadow-[inset_0_1px_0_rgb(255_255_255/0.12),0_40px_100px_-40px_rgb(255_93_108/0.85)]">

@@ -40,6 +40,7 @@ export function CanvasPanel({
   canvases,
   orgSlug,
   roomId,
+  userId,
   userName,
   initialCanvasId = null,
   canAdmin = false,
@@ -47,6 +48,7 @@ export function CanvasPanel({
   canvases: CanvasView[]
   orgSlug: string
   roomId: string
+  userId: string
   userName: string
   initialCanvasId?: string | null
   canAdmin?: boolean
@@ -196,6 +198,7 @@ export function CanvasPanel({
             <CanvasEditor
               key={selected.id}
               canvas={selected}
+              userId={userId}
               userName={userName}
               onText={onText}
               onConnection={onConnection}
@@ -210,6 +213,7 @@ export function CanvasPanel({
                 <CanvasEditor
                   key={selected.id}
                   canvas={selected}
+                  userId={userId}
                   userName={userName}
                   onText={onText}
                   onConnection={onConnection}

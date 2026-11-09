@@ -104,7 +104,7 @@ export function AndroidControl() {
     <section id="android" className="l-section">
       <div className="l-container grid items-center gap-14 lg:grid-cols-[1fr_auto] lg:gap-24">
         <div>
-          <SectionHead act="10" label="Android" title="Run the whole team from your pocket." />
+          <SectionHead act="11" label="Android" title="Run the whole team from your pocket." />
           <div className="mt-9 border-t border-line" role="tablist" aria-label="What you can do on Android">
             {TABS.map((item) => {
               const active = tab === item.id

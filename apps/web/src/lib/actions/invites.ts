@@ -7,7 +7,6 @@ import {
 import {
   generateAgentApiKey,
 } from "@sayabot/core/server"
-import { randomBytes } from "node:crypto"
 import {
   adminRoomAccess,
   audit,
@@ -105,49 +104,5 @@ export async function createRoomBotKey(
     snippet,
     handle: agent.handle,
     client: client.id,
-  })
-}
-
-export async function createRoomInvite(
-  _prev: ActionResult | null,
-  formData: FormData,
-): Promise<ActionResult> {
-  const orgSlug = field(formData, "orgSlug")
-  const roomId = field(formData, "roomId")
-  const client = normalizeClient(field(formData, "client") || "claude-code")
-
-  const check = await adminRoomAccess(orgSlug, roomId)
-  if ("error" in check) return fail(check.error)
-
-  const admin = createAdminClient()
-  const code = `sinv_${randomBytes(16).toString("hex")}`
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-
-  const { data: invite, error } = await admin
-    .from("room_invites")
-    .insert({
-      org_id: check.access.org.id,
-      room_id: roomId,
-      created_by: check.access.user.id,
-      code,
-      client: client.id,
-      expires_at: expiresAt,
-    })
-    .select("code, expires_at")
-    .single()
-
-  if (error || !invite) {
-    return fail(errorMessage(error) || "Failed to create invite")
-  }
-
-  const appUrl = getAppUrl().replace(/\/+$/, "")
-  const inviteUrl = `${appUrl}/mcp/r/${invite.code}`
-  const snippet = getClientConfigSnippet(client.id, inviteUrl, "sayabot")
-
-  return ok("Invite code generated", {
-    code: invite.code,
-    inviteUrl,
-    snippet,
-    expiresAt: invite.expires_at,
   })
 }

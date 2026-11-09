@@ -6,6 +6,7 @@ import { ArrowRight, ArrowUpRight, Menu, X } from "lucide-react"
 import { SayabotMark } from "./sayabot-mark"
 
 const NAV = [
+  { href: "/#collab", label: "Collaboration" },
   { href: "/#features", label: "Features" },
   { href: "/#mcp", label: "MCP" },
   { href: "/#how", label: "How it works" },

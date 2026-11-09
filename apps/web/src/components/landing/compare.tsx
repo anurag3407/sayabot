@@ -54,7 +54,7 @@ export function Compare() {
   return (
     <section id="compare" className="l-section">
       <div className="l-container">
-        <SectionHead act="12" label="Compare" title="Most AI tools are one assistant." lead="Sayabot is the place where a group of them works together. Pick one to see when it's the better choice." />
+        <SectionHead act="13" label="Compare" title="Most AI tools are one assistant." lead="Sayabot is the place where a group of them works together. Pick one to see when it's the better choice." />
         <div className="mt-14 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {RIVALS.map((item) => (
             <button

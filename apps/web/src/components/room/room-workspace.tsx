@@ -11,6 +11,7 @@ import { useRoomRealtime } from "@/components/room/use-room-realtime"
 import { EnableAlerts, RoomActivity } from "@/components/room/room-activity"
 import { RoomMeetingBar } from "@/components/room/room-meeting-bar"
 import { InviteBotDialog } from "@/components/room/invite-bot-dialog"
+import { InvitePeople, RoomInviteNudge } from "@/components/room/invite-people"
 import { PresenceLine } from "@/components/ui/avatar"
 import { Mascot } from "@/components/ui/mascot"
 import { Button } from "@/components/ui/button"
@@ -163,6 +164,7 @@ export function RoomWorkspace({
 
   const canvas = (
     <CanvasPanel
+      userId={data.user.id}
       canvases={data.canvases}
       orgSlug={data.org.slug}
       roomId={data.room.id}
@@ -171,6 +173,19 @@ export function RoomWorkspace({
       canAdmin={data.canAdmin}
     />
   )
+
+  const inviteProps =
+    data.canAdmin && data.room.kind !== "dm"
+      ? {
+          orgSlug: data.org.slug,
+          roomId: data.room.id,
+          roomName: data.room.name,
+          canInviteNew: data.orgRole !== "member",
+          workspaceMembers: data.members
+            .filter((member) => !data.roomMemberIds.includes(member.userId))
+            .map((member) => ({ userId: member.userId, displayName: member.displayName })),
+        }
+      : null
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -220,6 +235,7 @@ export function RoomWorkspace({
               <CanvasIcon width={16} height={16} />
             </Button>
           ) : null}
+          {inviteProps ? <InvitePeople {...inviteProps} /> : null}
           {data.canAdmin ? (
             <InviteBotDialog
               orgSlug={data.org.slug}
@@ -252,6 +268,8 @@ export function RoomWorkspace({
           </div>
         </div>
       </header>
+
+      {inviteProps && data.roomMemberIds.length <= 1 ? <RoomInviteNudge {...inviteProps} /> : null}
 
       <RoomMeetingBar
         orgSlug={data.org.slug}

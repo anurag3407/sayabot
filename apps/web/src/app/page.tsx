@@ -11,6 +11,7 @@ import { Hero } from "@/components/landing/hero"
 import { ChapterChaos } from "@/components/landing/chapter-chaos"
 import { McpOnboard } from "@/components/landing/mcp-onboard"
 import { WorkspacePreview } from "@/components/landing/workspace-preview"
+import { ChapterCollab } from "@/components/landing/chapter-collab"
 import { ChapterTurns } from "@/components/landing/chapter-turns"
 import { ChapterApprove } from "@/components/landing/chapter-approve"
 import { Harness } from "@/components/landing/harness"
@@ -52,6 +53,7 @@ export default async function HomePage() {
           <ChapterChaos />
           <McpOnboard />
           <WorkspacePreview />
+          <ChapterCollab />
           <ChapterTurns />
           <ChapterApprove />
           <Harness />

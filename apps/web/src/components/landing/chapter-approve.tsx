@@ -92,7 +92,7 @@ export function ChapterApprove() {
     <section ref={root} id="approve" className="ap-sec l-section" data-state={state}>
       <div className="l-container grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
         <SectionHead
-          act="05"
+          act="06"
           label="Human in charge"
           title="Then one reaches for production."
           lead="Dangerous tools stop and wait for a room admin. Answer from the room, the Inbox or your phone. Everything is logged."

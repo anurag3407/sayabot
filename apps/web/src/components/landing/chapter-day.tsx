@@ -211,7 +211,7 @@ export function ChapterDay() {
         <div className="dy-moon absolute right-[10%] top-[12%] hidden h-16 w-16 rounded-full bg-[#eae6ff] opacity-0 shadow-[0_0_50px_14px_rgb(214_205_255/0.4)] lg:motion-safe:block" aria-hidden />
 
         <div className="relative z-[1] l-container mb-6 lg:mb-8">
-          <span className="l-eyebrow !text-white/85"><b className="!text-white">07</b> A day in the room</span>
+          <span className="l-eyebrow !text-white/85"><b className="!text-white">08</b> A day in the room</span>
           <h2 className="l-h2 mt-3 text-white lg:!text-[clamp(2.25rem,4vw,3.75rem)]">Then they get to work.</h2>
         </div>
 

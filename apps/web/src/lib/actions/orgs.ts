@@ -7,6 +7,7 @@ import { requireUser } from "@/lib/auth"
 import { createAdminClient } from "@/lib/supabase/admin"
 import {
   adminOrgAccess,
+  adminRoomAccess,
   audit,
   errorMessage,
   fail,
@@ -153,6 +154,91 @@ export async function inviteMember(
   })
   revalidateOrg(orgSlug)
   return ok(existing ? "Member added" : "Invitation sent")
+}
+
+/**
+ * Adds someone to a room from inside it. Room admins can pull in existing workspace
+ * members; bringing in someone new also needs workspace admin rights, because that
+ * grants access to the whole workspace.
+ */
+export async function inviteToRoom(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const orgSlug = field(formData, "orgSlug")
+  const roomId = field(formData, "roomId")
+  const check = await adminRoomAccess(orgSlug, roomId)
+  if ("error" in check) return fail(check.error)
+  if (check.access.room.kind === "dm") return fail("Direct chats can't have more people")
+
+  const email = field(formData, "email").toLowerCase()
+  if (!z.string().email().safeParse(email).success) return fail("Enter a valid email")
+
+  const admin = createAdminClient()
+  const orgId = check.access.org.id
+  const existing = await findUserByEmail(email)
+  let userId = existing?.id ?? null
+  let inOrg = false
+  if (userId) {
+    const { data } = await admin
+      .from("org_members")
+      .select("user_id")
+      .eq("org_id", orgId)
+      .eq("user_id", userId)
+      .maybeSingle()
+    inOrg = Boolean(data)
+  }
+
+  if (!inOrg && check.access.orgRole === "member") {
+    return fail("That person isn't in this workspace yet. Ask a workspace admin to invite them.")
+  }
+
+  if (!userId) {
+    const headerList = await headers()
+    const origin = (
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      headerList.get("origin") ||
+      `http://${headerList.get("host") ?? "localhost:3000"}`
+    ).replace(/\/+$/, "")
+    const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
+      redirectTo: `${origin}/auth/complete?next=/${orgSlug}/r/${roomId}`,
+    })
+    if (error || !data.user) return fail(error?.message ?? "Could not invite that address")
+    userId = data.user.id
+  }
+
+  if (!inOrg) {
+    const { error } = await admin
+      .from("org_members")
+      .insert({ org_id: orgId, user_id: userId, role: "member" })
+    if (error) return fail(errorMessage(error))
+  }
+
+  const { data: seat } = await admin
+    .from("room_members")
+    .select("user_id")
+    .eq("room_id", roomId)
+    .eq("user_id", userId)
+    .maybeSingle()
+  if (seat) return fail("That person is already in the room")
+
+  const { error } = await admin
+    .from("room_members")
+    .insert({ room_id: roomId, user_id: userId, role: "member" })
+  if (error) return fail(errorMessage(error))
+  await admin.from("room_reads").upsert(
+    { user_id: userId, room_id: roomId, last_read_at: new Date().toISOString() },
+    { onConflict: "user_id,room_id" },
+  )
+  await audit({
+    orgId,
+    actorId: check.access.user.id,
+    action: "room.member_invited",
+    target: roomId,
+    metadata: { email, newAccount: !existing, newToWorkspace: !inOrg },
+  })
+  revalidateOrg(orgSlug)
+  return ok(existing ? "Added to the room" : "Invitation sent")
 }
 
 export async function renameWorkspaceAction(

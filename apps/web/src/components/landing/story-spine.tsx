@@ -5,6 +5,7 @@ import { useEffect, useState } from "react"
 const CHAPTERS = [
   { id: "mcp", label: "One link" },
   { id: "room", label: "The room" },
+  { id: "collab", label: "Together" },
   { id: "how", label: "Turns" },
   { id: "approve", label: "Approval" },
   { id: "harness", label: "Harness" },

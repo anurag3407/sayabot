@@ -4,6 +4,7 @@ import {
   agentRuns,
   agents,
   messages,
+  orgMembers,
   profiles,
   roomAgents,
   rooms,
@@ -14,6 +15,7 @@ import {
   type UnblockNeeds,
 } from "@sayabot/db"
 import { and, asc, desc, eq, gt, gte, inArray, isNull, ne, or, sql } from "drizzle-orm"
+import { canUserReadRoom, isAgentInRoom } from "../authz"
 import { notifyBotReply } from "../bot-reply"
 import { getDb } from "../db"
 import { notifyHumansNeeded } from "../push"
@@ -606,13 +608,22 @@ export async function assignTask(
 
   if (cleanAssignee.startsWith("human:")) {
     const humanName = cleanAssignee.slice(6).trim()
-    const [user] = await getDb()
+    // Display names are not unique, so only people who can read this room are candidates.
+    const namesakes = await getDb()
       .select({ id: profiles.id })
       .from(profiles)
-      .where(eq(profiles.displayName, humanName))
-      .limit(1)
-    if (!user) throw new CollabError(`human user "${humanName}" not found`)
-    assigneeUserId = user.id
+      .innerJoin(orgMembers, eq(orgMembers.userId, profiles.id))
+      .where(and(eq(orgMembers.orgId, agent.orgId), eq(profiles.displayName, humanName)))
+      .limit(10)
+    const eligible: string[] = []
+    for (const person of namesakes) {
+      if (await canUserReadRoom(person.id, task.roomId)) eligible.push(person.id)
+    }
+    if (eligible.length === 0) throw new CollabError(`human user "${humanName}" is not in this room`)
+    if (eligible.length > 1) {
+      throw new CollabError(`more than one person in this room is named "${humanName}"; ask the room owner who should take it`)
+    }
+    assigneeUserId = eligible[0]!
   } else {
     const handle = cleanAssignee.replace(/^@/, "").trim()
     const [targetAgent] = await getDb()
@@ -621,6 +632,9 @@ export async function assignTask(
       .where(and(eq(agents.orgId, agent.orgId), eq(agents.handle, handle)))
       .limit(1)
     if (!targetAgent) throw new CollabError(`agent "@${handle}" not found`)
+    if (!(await isAgentInRoom(targetAgent.id, task.roomId))) {
+      throw new CollabError(`agent "@${handle}" is not in this room`)
+    }
     assigneeAgentId = targetAgent.id
   }
 
@@ -749,10 +763,11 @@ export async function requestHumanDecision(
     const [targetTask] = await getDb()
       .select({ id: tasks.id, status: tasks.status, number: tasks.number })
       .from(tasks)
-      .where(eq(tasks.id, args.taskId))
+      .where(and(eq(tasks.id, args.taskId), eq(tasks.roomId, roomId)))
       .limit(1)
 
-    if (targetTask && targetTask.status === "done") {
+    if (!targetTask) throw new CollabError("task not found in this room")
+    if (targetTask.status === "done") {
       throw new CollabError(
         `cannot request decision on MESH-${targetTask.number}: task is already done; this ask is moot`,
       )

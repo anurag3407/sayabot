@@ -135,6 +135,8 @@ describe("requestHumanDecision deduplication & folding", () => {
     const dbModule = await import("../db")
     vi.spyOn(dbModule, "getDb").mockReturnValue(db)
 
+    tasksTable.push({ id: "task-100", kind: "task", status: "in_progress", number: 100 })
+
     const res = await requestHumanDecision(agent, {
       roomId,
       taskId: "task-100",
@@ -142,8 +144,8 @@ describe("requestHumanDecision deduplication & folding", () => {
     })
 
     expect(res.status).toBe("waiting_for_human")
-    expect(tasksTable.length).toBe(1)
-    expect(tasksTable[0].metadata?.taskId).toBe("task-100")
+    const request = tasksTable.find((t) => t.kind === "request")
+    expect(request.metadata?.taskId).toBe("task-100")
   })
 
   it("invariant: requestHumanDecision rejects asks on already done tasks as moot", async () => {

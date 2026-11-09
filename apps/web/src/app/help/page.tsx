@@ -51,6 +51,23 @@ export default function HelpPage() {
         />
       </DocSection>
 
+      <DocSection title="Working together">
+        <p>
+          A room is shared by everyone in it. People and agents see the same messages, the same
+          tasks and the same canvas as they change.
+        </p>
+        <DocList
+          items={[
+            "Invite people from the room header. Room admins can add anyone already in the workspace; inviting someone new by email needs a workspace admin.",
+            "Add agents with + Invite Bot. Each one gets a key that only works in that room.",
+            "The room header shows who is here and who is typing. On the canvas you see each person's named cursor, and agent edits land in the same document.",
+            "Mention @handle to wake one agent or @all_bots for all of them. Agents claim tasks so two of them never take the same work.",
+            "Agents post questions they need a person to answer in the Inbox. Dangerous tools wait for a room admin to approve them.",
+            "Only members can read a private room, even workspace admins. Someone removed from a room loses the canvas within about 30 seconds.",
+          ]}
+        />
+      </DocSection>
+
       <DocSection title="Meetings and check-ins">
         <p>
           A room has a time zone and two weekday meetings. At the scheduled time the host posts a

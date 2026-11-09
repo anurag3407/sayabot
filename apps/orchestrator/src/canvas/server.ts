@@ -16,7 +16,40 @@ export interface CollabContext {
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
+/** How long someone removed from a room can stay on its canvas, at most. */
+const ACCESS_SWEEP_MS = 30_000
+
 let instance: Hocuspocus<CollabContext> | null = null
+let accessSweep: ReturnType<typeof setInterval> | null = null
+
+/**
+ * Access is only checked when a socket authenticates, so closes connections whose
+ * user has since lost the room. A failed lookup keeps the connection: a database
+ * blip must not throw everyone off the canvas.
+ */
+export async function revokeStaleCanvasConnections(
+  server: Pick<Hocuspocus<CollabContext>, "documents">,
+  canRead: (userId: string, roomId: string) => Promise<boolean> = canUserReadRoom,
+): Promise<number> {
+  const decisions = new Map<string, Promise<boolean>>()
+  let revoked = 0
+  for (const document of [...server.documents.values()]) {
+    for (const connection of document.getConnections()) {
+      const { userId, roomId } = connection.context as CollabContext
+      if (!userId || !roomId) continue
+      const key = `${userId}:${roomId}`
+      let decision = decisions.get(key)
+      if (!decision) {
+        decision = canRead(userId, roomId).catch(() => true)
+        decisions.set(key, decision)
+      }
+      if (await decision) continue
+      connection.close({ code: 4403, reason: "Forbidden" })
+      revoked += 1
+    }
+  }
+  return revoked
+}
 
 export async function loadCanvas(canvasId: string) {
   if (!UUID_RE.test(canvasId)) return null
@@ -63,6 +96,13 @@ export function createHocuspocus(): Hocuspocus<CollabContext> {
       await persistCanvasState(documentName, document)
     },
   })
+  const server = instance
+  accessSweep = setInterval(() => {
+    void revokeStaleCanvasConnections(server).catch((error) =>
+      console.error("[collab] access sweep failed", error),
+    )
+  }, ACCESS_SWEEP_MS)
+  accessSweep.unref()
   return instance
 }
 
@@ -86,6 +126,8 @@ export async function persistCanvasState(canvasId: string, document: Y.Doc, text
 
 export async function destroyHocuspocus(): Promise<void> {
   if (!instance) return
+  if (accessSweep) clearInterval(accessSweep)
+  accessSweep = null
   await instance.flushPendingStores()
   instance.closeConnections()
   instance = null

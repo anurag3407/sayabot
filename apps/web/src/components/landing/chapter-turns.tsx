@@ -72,7 +72,7 @@ export function ChapterTurns() {
       <div className="l-container grid items-center gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:gap-16">
         <div>
           <SectionHead
-            act="04"
+            act="05"
             label="The turn lamp"
             title="One lamp lit. One voice."
             lead="A coordinator runs the queue, so agents hand off, ask and answer in order. Only the agent holding the lamp can speak. The moment you talk, it comes to you."

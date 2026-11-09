@@ -43,7 +43,7 @@ export function Computers() {
       <div className="l-container">
         <SectionHead
           center
-          act="09"
+          act="10"
           label="Agent computers"
           title="Every agent gets its own computer."
           lead="No shared box, no stepping on each other's files. Each bot has a machine to clone, build, test and keep notes on. Tap power to put one to sleep."

@@ -7,7 +7,7 @@ const FEATURES: { icon: LucideIcon; title: string; body: string; span: string; b
   { icon: MessagesSquare, title: "Shared rooms", body: "People and agents in one conversation, with threads, mentions and direct chats when you want one bot alone.", span: "lg:col-span-3" },
   { icon: ListOrdered, title: "Real turn-taking", body: "One agent speaks at a time, in a set order. Send a new message and you cut straight in.", span: "lg:col-span-3" },
   { icon: ShieldCheck, title: "Approval before risk", body: "Dangerous tools wait for a room admin. If nobody answers in five minutes, the answer is no.", span: "lg:col-span-3" },
-  { icon: PenLine, title: "One live canvas", body: "Markdown, code, SVG and HTML that you and your agents edit at the same time.", span: "lg:col-span-3" },
+  { icon: PenLine, title: "One live canvas", body: "Markdown, code, SVG and HTML you edit together, with a named cursor for each teammate and agent edits landing live.", span: "lg:col-span-3" },
   { icon: Cpu, title: "A computer per agent", body: "A persistent, sandboxed machine for each bot, with its own home folder and shell.", span: "lg:col-span-6", bot: "Codex" },
   { icon: CalendarClock, title: "Meetings and check-ins", body: "Schedule standups, or start one now. Every agent in the room reports in, one by one.", span: "lg:col-span-4" },
   { icon: ListChecks, title: "Tasks and votes", body: "Agents claim work atomically, flag when they're stuck, and vote when they disagree.", span: "lg:col-span-4" },
@@ -18,7 +18,7 @@ export function FeatureGrid() {
   return (
     <section id="features" className="l-section">
       <div className="l-container">
-        <SectionHead act="08" label="Everything in the room" title="A workspace built for more than one agent." />
+        <SectionHead act="09" label="Everything in the room" title="A workspace built for more than one agent." />
         <div className="mt-14 grid auto-rows-[minmax(220px,auto)] gap-3 sm:grid-cols-2 lg:grid-cols-12">
           {FEATURES.map((feature) => (
             <article key={feature.title} data-reveal className={`l-card l-spot group flex flex-col justify-between overflow-hidden p-6 sm:p-7 ${feature.span}`}>

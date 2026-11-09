@@ -6,7 +6,9 @@ import { useEffect, useRef, useState } from "react"
 import * as Y from "yjs"
 import { MonacoBinding } from "y-monaco"
 import { createSupabaseBrowserClient } from "@/lib/supabase/client"
+import { AvatarStack } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+import { colorForUser, peersFromAwareness, remoteCursorCss, type CanvasPeer } from "@/lib/canvas-presence"
 import type { CanvasView } from "@/lib/types"
 
 const MonacoEditor = dynamic(() => import("@monaco-editor/react").then((mod) => mod.Editor), {
@@ -25,17 +27,20 @@ function languageFor(canvas: CanvasView): string {
 
 export function CanvasEditor({
   canvas,
+  userId,
   userName,
   onText,
   onConnection,
 }: {
   canvas: CanvasView
+  userId: string
   userName: string
   onText: (text: string) => void
   onConnection: (status: CanvasConnection) => void
 }) {
   const [session, setSession] = useState<{ doc: Y.Doc; provider: HocuspocusProvider } | null>(null)
   const [connection, setConnection] = useState<CanvasConnection>("connecting")
+  const [peers, setPeers] = useState<CanvasPeer[]>([])
   const bindingRef = useRef<MonacoBinding | null>(null)
 
   useEffect(() => {
@@ -68,7 +73,7 @@ export function CanvasEditor({
         if (!disposed) setConnection("disconnected")
       },
     })
-    provider.setAwarenessField("user", { name: userName, color: "#ff7a45" })
+    provider.setAwarenessField("user", { id: userId, name: userName, color: colorForUser(userId) })
     setSession({ doc, provider })
     return () => {
       disposed = true
@@ -77,7 +82,30 @@ export function CanvasEditor({
       provider.destroy()
       doc.destroy()
     }
-  }, [canvas.id, userName])
+  }, [canvas.id, userId, userName])
+
+  useEffect(() => {
+    const awareness = session?.provider.awareness
+    if (!awareness) return
+    const style = document.createElement("style")
+    document.head.append(style)
+    const update = () => {
+      const next = peersFromAwareness(awareness.getStates(), awareness.clientID)
+      style.textContent = remoteCursorCss(next)
+      setPeers(next)
+    }
+    update()
+    awareness.on("change", update)
+    return () => {
+      awareness.off("change", update)
+      style.remove()
+    }
+  }, [session])
+
+  const peerPeople = [...new Map(peers.map((peer) => [peer.userId, peer])).values()].map((peer) => ({
+    id: peer.userId,
+    name: peer.name,
+  }))
 
   useEffect(() => {
     if (!session) return
@@ -168,6 +196,13 @@ export function CanvasEditor({
           opening canvas…
         </div>
       )}
+
+      {peerPeople.length > 0 ? (
+        <div className="pointer-events-none absolute right-4 top-2 z-10 flex items-center gap-2 rounded-full border border-line bg-panel py-0.5 pl-2.5 pr-1">
+          <span className="font-mono text-[11px] text-faint">also editing</span>
+          <AvatarStack people={peerPeople} max={4} />
+        </div>
+      ) : null}
 
       {connection === "denied" ? (
         <div className="absolute inset-0 grid place-items-center bg-void/90 p-6">

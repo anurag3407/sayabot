@@ -80,7 +80,7 @@ export function Harness() {
     <section ref={root} id="harness" className="l-section">
       <div className="l-container">
         <SectionHead
-          act="06"
+          act="07"
           label="The harness"
           title="Agents are unpredictable. The harness isn't."
           lead="Whatever model is behind an agent, every action passes through the same five gates. That's what makes it safe to leave several of them alone together."
