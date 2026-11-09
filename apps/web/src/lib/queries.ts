@@ -15,6 +15,8 @@ import type {
   McpServerView,
   ProviderKeyView,
   VectorProviderView,
+  WorkspaceConnectorView,
+  AgentConnectorGrantView,
   RoomAgentView,
   RoomPageData,
   RoomRole,
@@ -735,5 +737,122 @@ export async function listMemberViews(orgId: string): Promise<MemberView[]> {  c
     displayName: row.profiles.display_name,
     avatarUrl: row.profiles.avatar_url,
     role: row.role,
+  }))
+}
+
+export async function listWorkspaceConnectors(orgId: string): Promise<WorkspaceConnectorView[]> {
+  const supabase = await createSupabaseServerClient()
+  const { data } = await supabase
+    .from("workspace_connectors_public")
+    .select("id, org_id, source, name, status, auth_type, last4, config, last_synced_at, error_message, created_at, updated_at")
+    .eq("org_id", orgId)
+    .order("created_at", { ascending: true })
+
+  return ((data ?? []) as {
+    id: string
+    org_id: string
+    source: string
+    name: string
+    status: string
+    auth_type: string
+    last4: string
+    config: Record<string, unknown> | null
+    last_synced_at: string | null
+    error_message: string | null
+    created_at: string
+    updated_at: string
+  }[]).map((r) => ({
+    id: r.id,
+    orgId: r.org_id,
+    source: r.source,
+    name: r.name,
+    status: r.status,
+    authType: r.auth_type,
+    last4: r.last4,
+    config: r.config ?? {},
+    lastSyncedAt: r.last_synced_at,
+    errorMessage: r.error_message,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  }))
+}
+
+export async function listAgentConnectorGrants(
+  orgId: string,
+  agentId: string,
+): Promise<AgentConnectorGrantView[]> {
+  const supabase = await createSupabaseServerClient()
+  const { data } = await supabase
+    .from("agent_connector_grants")
+    .select(`
+      id,
+      org_id,
+      agent_id,
+      connector_id,
+      scope_config,
+      created_at,
+      connector:workspace_connectors_public(
+        id,
+        org_id,
+        source,
+        name,
+        status,
+        auth_type,
+        last4,
+        config,
+        last_synced_at,
+        error_message,
+        created_at,
+        updated_at
+      )
+    `)
+    .eq("org_id", orgId)
+    .eq("agent_id", agentId)
+    .order("created_at", { ascending: true })
+
+  return ((data ?? []) as unknown as {
+    id: string
+    org_id: string
+    agent_id: string
+    connector_id: string
+    scope_config: Record<string, unknown> | null
+    created_at: string
+    connector: {
+      id: string
+      org_id: string
+      source: string
+      name: string
+      status: string
+      auth_type: string
+      last4: string
+      config: Record<string, unknown> | null
+      last_synced_at: string | null
+      error_message: string | null
+      created_at: string
+      updated_at: string
+    } | null
+  }[]).map((r) => ({
+    id: r.id,
+    orgId: r.org_id,
+    agentId: r.agent_id,
+    connectorId: r.connector_id,
+    scopeConfig: r.scope_config ?? {},
+    createdAt: r.created_at,
+    connector: r.connector
+      ? {
+          id: r.connector.id,
+          orgId: r.connector.org_id,
+          source: r.connector.source,
+          name: r.connector.name,
+          status: r.connector.status,
+          authType: r.connector.auth_type,
+          last4: r.connector.last4,
+          config: r.connector.config ?? {},
+          lastSyncedAt: r.connector.last_synced_at,
+          errorMessage: r.connector.error_message,
+          createdAt: r.connector.created_at,
+          updatedAt: r.connector.updated_at,
+        }
+      : undefined,
   }))
 }

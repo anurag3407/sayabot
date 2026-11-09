@@ -1,10 +1,11 @@
 import { parseCapabilities } from "@sayabot/core"
-import { agents, mcpServers } from "@sayabot/db"
+import { agentConnectorGrants, agents, mcpServers, workspaceConnectors } from "@sayabot/db"
 import { connectMcpServers, openSecret } from "@sayabot/llm"
 import type { ToolSet } from "ai"
 import { and, eq, isNull, or } from "drizzle-orm"
 import { z } from "zod"
 import { canvasPatchTool, canvasReadTool, canvasWriteTool } from "../canvas/tools"
+import type { ConnectorSource } from "../connectors/types"
 import { getDb } from "../db"
 import { getEnv } from "../env"
 import { RunEvidence, type VerificationEvidence } from "../engine/evidence"
@@ -15,6 +16,7 @@ import { partitionToolsForSearch } from "../engine/tool-search"
 import { memoryTools } from "../memory/tools"
 import { toAuditedTools, type ToolRuntime, type ToolSpec } from "./audited"
 import { computerTools } from "./builtins/computer"
+import { connectorTools } from "./builtins/connectors"
 import { cronjobTool } from "./builtins/cronjob"
 import { githubTool } from "./builtins/github"
 import { postgresInspectorTool } from "./builtins/postgres"
@@ -94,7 +96,39 @@ export async function buildTools(args: BuildToolsArgs): Promise<BuiltTools> {
   // Filled in once every spec is known; subagents read it at call time.
   let allSpecs: ToolSpec[] = []
 
+  let connectorSpecs: ToolSpec[] = []
+  if (caps.connectors) {
+    try {
+      const grants = await getDb()
+        .select({
+          source: workspaceConnectors.source,
+        })
+        .from(agentConnectorGrants)
+        .innerJoin(workspaceConnectors, eq(agentConnectorGrants.connectorId, workspaceConnectors.id))
+        .where(
+          and(
+            eq(agentConnectorGrants.orgId, args.orgId),
+            eq(agentConnectorGrants.agentId, args.agent.id),
+            eq(workspaceConnectors.status, "active"),
+          ),
+        )
+
+      const sources = [...new Set(grants.map((g) => g.source as ConnectorSource))]
+      if (sources.length > 0) {
+        connectorSpecs = connectorTools({
+          orgId: args.orgId,
+          agentId: args.agent.id,
+          roomId: args.roomId,
+          sources,
+        })
+      }
+    } catch {
+      // Connectors table or db read fallback
+    }
+  }
+
   const specs: ToolSpec[] = [
+    ...connectorSpecs,
     ...(caps.canvas
       ? [
           canvasReadTool({ roomId: args.roomId, agentId: args.agent.id }),

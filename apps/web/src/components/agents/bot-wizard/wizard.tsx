@@ -66,6 +66,7 @@ const CAPABILITY_DESCRIPTIONS: Record<keyof AgentCapabilities, { label: string; 
   memory: { label: "Durable Memory", desc: "Store and recall facts, preferences, and decisions across turns" },
   subagents: { label: "Spawn Subagents", desc: "Spawn parallel child subagents for focused reading and research tasks" },
   cron: { label: "Cron & Automations", desc: "Autonomous self-scheduling, recurring tasks, and routine management" },
+  connectors: { label: "Workspace Connectors", desc: "Access Google Drive, Slack, and GitHub with granular scoping" },
 }
 
 export function BotWizard({ orgSlug, templates, providerKeys, rooms, vaultSecrets }: Props) {
