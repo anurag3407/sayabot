@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
-import { requireOrgAccess } from "@/lib/auth"
+import { requireOrgAdmin } from "@/lib/auth"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { deleteVaultSecret, grantSecret, revokeGrant, saveVaultSecret } from "@/lib/actions/vault"
 import { ActionForm } from "@/components/ui/action-form"
@@ -17,7 +17,7 @@ export default async function VaultSettingsPage({
   params: Promise<{ org: string }>
 }) {
   const { org: orgSlug } = await params
-  const access = await requireOrgAccess(orgSlug)
+  const access = await requireOrgAdmin(orgSlug)
   if (!access) notFound()
 
   const admin = createAdminClient()

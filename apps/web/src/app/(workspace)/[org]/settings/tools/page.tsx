@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { requireOrgAccess } from "@/lib/auth"
+import { requireOrgAdmin } from "@/lib/auth"
 import { listMcpServers, listOrgToolConfigs, listRooms } from "@/lib/queries"
 import { addMcpServer, saveOrgToolConfig, updateMcpServer } from "@/lib/actions/mcp"
 import { ActionForm } from "@/components/ui/action-form"
@@ -15,7 +15,7 @@ export const metadata: Metadata = { title: "Tools & MCP" }
 
 export default async function ToolsPage({ params }: { params: Promise<{ org: string }> }) {
   const { org: orgSlug } = await params
-  const access = await requireOrgAccess(orgSlug)
+  const access = await requireOrgAdmin(orgSlug)
   const [servers, configs, rooms] = await Promise.all([
     listMcpServers(access.org.id),
     listOrgToolConfigs(access.org.id),

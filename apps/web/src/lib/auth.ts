@@ -111,6 +111,16 @@ export function isOrgAdmin(role: OrgRole): boolean {
   return role === "owner" || role === "admin"
 }
 
+/**
+ * Gate for admin-only settings pages. Each page calls this itself: a layout check alone is
+ * not enough, because layouts are not guaranteed to re-run for every page request.
+ */
+export async function requireOrgAdmin(slug: string): Promise<OrgAccess> {
+  const access = await requireOrgAccess(slug)
+  if (!isOrgAdmin(access.role)) redirect(`/${slug}/settings`)
+  return access
+}
+
 export async function getRoomAccess(
   slug: string,
   roomId: string,

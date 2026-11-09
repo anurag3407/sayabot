@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { requireOrgAccess } from "@/lib/auth"
+import { requireOrgAdmin } from "@/lib/auth"
 import { listPricing } from "@/lib/queries"
 import { upsertModelPricing } from "@/lib/actions/pricing"
 import { ActionForm } from "@/components/ui/action-form"
@@ -13,7 +13,7 @@ export const metadata: Metadata = { title: "Pricing" }
 
 export default async function PricingPage({ params }: { params: Promise<{ org: string }> }) {
   const { org: orgSlug } = await params
-  await requireOrgAccess(orgSlug)
+  await requireOrgAdmin(orgSlug)
   const pricing = await listPricing()
 
   return (

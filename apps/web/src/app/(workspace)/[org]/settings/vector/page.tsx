@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
-import { requireOrgAccess } from "@/lib/auth"
+import { requireOrgAdmin } from "@/lib/auth"
 import { listVectorProviders } from "@/lib/queries"
 import { Section } from "@/components/settings/section"
 import { EmptyState } from "@/components/ui/empty"
@@ -39,7 +39,7 @@ export default async function VectorSettingsPage({
   params: Promise<{ org: string }>
 }) {
   const { org: orgSlug } = await params
-  const access = await requireOrgAccess(orgSlug)
+  const access = await requireOrgAdmin(orgSlug)
   if (!access) notFound()
 
   const allProviders = await listVectorProviders(access.org.id)

@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname } from "next/navigation"
 import { useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from "react"
 import { Bot, CircleHelp, Clock, Inbox, MessageCircle, Search, Settings2 } from "lucide-react"
 import { signOutAction } from "@/lib/actions/auth"
@@ -11,7 +11,9 @@ import { Button } from "@/components/ui/button"
 import { DetailsMenu } from "@/components/ui/details-menu"
 import { SayabotMark } from "@/components/landing/sayabot-mark"
 import { ChatList, type BotLink } from "@/components/workspace/chat-list"
+import { CommandPalette } from "@/components/command-palette"
 import { useWorkspaceActivity } from "@/components/use-workspace-activity"
+import { visibleSettingsGroups } from "@/lib/settings-nav"
 import {
   AnalyticsIcon,
   CanvasIcon,
@@ -36,14 +38,15 @@ const PRIMARY_NAV: { key: string; href: string; label: string; icon: NavIcon }[]
   { key: "search", href: "/search", label: "Search", icon: Search },
 ]
 
-const SETTINGS_LINKS = [
-  { href: "/cron", label: "Cron & Automations" },
-  { href: "/settings/keys", label: "Provider keys" },
-  { href: "/settings/tools", label: "Tools & MCP" },
-  { href: "/settings/bots", label: "External agents" },
-  { href: "/settings/pricing", label: "Pricing" },
-  { href: "/admin", label: "Workspace & members" },
-]
+/** Settings entries this role may open, flattened from the one shared settings config. */
+function settingsLinks(role: OrgRole): { href: string; label: string }[] {
+  return [
+    { href: "/settings", label: "Overview" },
+    ...visibleSettingsGroups(role === "owner" || role === "admin").flatMap((group) =>
+      group.links.map((link) => ({ href: `/settings/${link.segment}`, label: link.label })),
+    ),
+  ]
+}
 
 function isMuted(item: ChatListItem): boolean {
   return Boolean(item.mutedUntil && new Date(item.mutedUntil).getTime() > Date.now())
@@ -58,7 +61,9 @@ function attentionUnread(chats: ChatListItem[]): number {
 }
 
 function isChatRoute(pathname: string, base: string): boolean {
-  return pathname === base || pathname.startsWith(`${base}/r/`) || pathname.startsWith(`${base}/chats`)
+  return (
+    pathname === base || pathname.startsWith(`${base}/r/`) || pathname.startsWith(`${base}/chats`)
+  )
 }
 
 function navActive(key: string, href: string, pathname: string, base: string): boolean {
@@ -71,7 +76,8 @@ const railButton =
 const popover =
   "absolute bottom-0 left-full z-50 ml-2 w-60 overflow-hidden rounded-xl border border-line-strong bg-panel py-1 shadow-[0_16px_40px_rgba(0,0,0,0.5)]"
 
-const popoverItem = "block truncate px-3 py-1.5 text-[13px] text-muted hover:bg-raised hover:text-text"
+const popoverItem =
+  "block truncate px-3 py-1.5 text-[13px] text-muted hover:bg-raised hover:text-text"
 
 function Tip({ children }: { children: ReactNode }) {
   return (
@@ -102,11 +108,14 @@ function Rail({
   inboxCount: number
 }) {
   const base = `/${org.slug}`
-  const settingsActive = pathname.startsWith(`${base}/settings`) || pathname.startsWith(`${base}/admin`)
+  const settingsActive = pathname.startsWith(`${base}/settings`)
   const usageActive = pathname.startsWith(`${base}/analytics`)
 
   return (
-    <nav aria-label="Workspace" className="hidden w-[60px] shrink-0 flex-col items-center gap-1 py-1 md:flex">
+    <nav
+      aria-label="Workspace"
+      className="hidden w-[60px] shrink-0 flex-col items-center gap-1 py-1 md:flex"
+    >
       <DetailsMenu
         className="relative mb-2"
         summaryLabel={`${org.name}: switch workspace`}
@@ -153,7 +162,10 @@ function Rail({
                   {count > 99 ? "99+" : count}
                 </span>
               ) : item.key === "chats" && unread ? (
-                <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-accent" aria-label="Unread chats" />
+                <span
+                  className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-accent"
+                  aria-label="Unread chats"
+                />
               ) : null}
             </Link>
             <Tip>{item.label}</Tip>
@@ -179,30 +191,33 @@ function Rail({
           </Link>
           <Tip>Help</Tip>
         </div>
-        {role === "owner" || role === "admin" ? (
-          <DetailsMenu
-            className="relative"
-            summaryLabel="Settings"
-            summaryClassName={cn(
-              "grid h-10 w-10 cursor-pointer list-none place-items-center rounded-xl text-muted transition-colors hover:bg-panel hover:text-text",
-              settingsActive && "bg-raised text-text",
-            )}
-            summary={<Settings2 className="h-[19px] w-[19px]" />}
-          >
-            <div className={popover}>
-              <p className="px-3 pb-1 pt-1.5 text-[12px] text-faint">Settings</p>
-              {SETTINGS_LINKS.map((link) => (
+        <DetailsMenu
+          className="relative"
+          summaryLabel="Settings"
+          summaryClassName={cn(
+            "grid h-10 w-10 cursor-pointer list-none place-items-center rounded-xl text-muted transition-colors hover:bg-panel hover:text-text",
+            settingsActive && "bg-raised text-text",
+          )}
+          summary={<Settings2 className="h-[19px] w-[19px]" />}
+        >
+          <div className={popover}>
+            <p className="px-3 pb-1 pt-1.5 text-[12px] text-faint">Settings</p>
+            {settingsLinks(role).map((link) => {
+              const href = `${base}${link.href}`
+              const active =
+                link.href === "/settings" ? pathname === href : pathname.startsWith(href)
+              return (
                 <Link
                   key={link.href}
-                  href={`${base}${link.href}`}
-                  className={cn(popoverItem, pathname.startsWith(`${base}${link.href}`) && "text-text")}
+                  href={href}
+                  className={cn(popoverItem, active && "text-text")}
                 >
                   {link.label}
                 </Link>
-              ))}
-            </div>
-          </DetailsMenu>
-        ) : null}
+              )
+            })}
+          </div>
+        </DetailsMenu>
         <DetailsMenu
           className="relative mt-1"
           summaryLabel="Your account"
@@ -214,7 +229,7 @@ function Rail({
               <p className="truncate text-[13px] text-text">{user.displayName}</p>
               <p className="truncate text-[12px] text-faint">{user.email ?? role}</p>
             </div>
-            <Link href={`${base}/account`} className={cn(popoverItem, "mt-1")}>
+            <Link href={`${base}/settings/profile`} className={cn(popoverItem, "mt-1")}>
               Your profile
             </Link>
             <form action={signOutAction}>
@@ -236,7 +251,6 @@ function MobileDrawer({
   chats,
   bots,
   user,
-  role,
   pathname,
   inboxCount,
   onNavigate,
@@ -246,7 +260,6 @@ function MobileDrawer({
   chats: ChatListItem[]
   bots: BotLink[]
   user: { displayName: string; avatarUrl: string | null; email: string | null }
-  role: OrgRole
   pathname: string
   inboxCount: number
   onNavigate: () => void
@@ -262,7 +275,10 @@ function MobileDrawer({
             href={`${base}${item.href}`}
             onClick={onNavigate}
             aria-current={navActive(item.key, item.href, pathname, base) ? "page" : undefined}
-            className={cn(tile, navActive(item.key, item.href, pathname, base) && "bg-raised text-text")}
+            className={cn(
+              tile,
+              navActive(item.key, item.href, pathname, base) && "bg-raised text-text",
+            )}
           >
             <item.icon width={19} height={19} className="h-[19px] w-[19px]" />
             {item.key === "inbox" && inboxCount > 0 ? `Inbox ${inboxCount}` : item.label}
@@ -286,21 +302,30 @@ function MobileDrawer({
           {orgs
             .filter((item) => item.slug !== org.slug)
             .map((item) => (
-              <Link key={item.id} href={`/${item.slug}`} onClick={onNavigate} className="block px-4 py-2.5 text-muted">
+              <Link
+                key={item.id}
+                href={`/${item.slug}`}
+                onClick={onNavigate}
+                className="block px-4 py-2.5 text-muted"
+              >
                 Switch to {item.name}
               </Link>
             ))}
           <Link href="/new-workspace" onClick={onNavigate} className="block px-4 py-2.5 text-muted">
             New workspace
           </Link>
-          {role === "owner" || role === "admin"
-            ? SETTINGS_LINKS.map((link) => (
-                <Link key={link.href} href={`${base}${link.href}`} onClick={onNavigate} className="block px-4 py-2.5 text-muted">
-                  {link.label}
-                </Link>
-              ))
-            : null}
-          <Link href={`${base}/account`} onClick={onNavigate} className="block px-4 py-2.5 text-muted">
+          <Link
+            href={`${base}/settings`}
+            onClick={onNavigate}
+            className="block px-4 py-2.5 text-muted"
+          >
+            Settings
+          </Link>
+          <Link
+            href={`${base}/settings/profile`}
+            onClick={onNavigate}
+            className="block px-4 py-2.5 text-muted"
+          >
             Your profile
           </Link>
           <Link href="/help" onClick={onNavigate} className="block px-4 py-2.5 text-muted">
@@ -344,9 +369,9 @@ export function WorkspaceShell({
   children: React.ReactNode
 }) {
   const pathname = usePathname()
-  const router = useRouter()
   const dialogRef = useRef<HTMLDialogElement>(null)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [paletteOpen, setPaletteOpen] = useState(false)
 
   useEffect(() => {
     setMobileOpen(false)
@@ -389,12 +414,12 @@ export function WorkspaceShell({
     const onKeyDown = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault()
-        router.push(`/${org.slug}/search`)
+        setPaletteOpen((open) => !open)
       }
     }
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
-  }, [org.slug, router])
+  }, [])
 
   const showList = isChatRoute(pathname, `/${org.slug}`)
 
@@ -411,7 +436,12 @@ export function WorkspaceShell({
       />
 
       <div className="flex shrink-0 items-center gap-2 bg-ink px-2 pb-1 pt-[max(0.25rem,env(safe-area-inset-top))] md:hidden">
-        <Button variant="ghost" size="icon" onClick={() => setMobileOpen(true)} aria-label="Open workspace menu">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setMobileOpen(true)}
+          aria-label="Open workspace menu"
+        >
           <MenuIcon />
         </Button>
         <SayabotMark className="h-6 w-6" />
@@ -425,9 +455,22 @@ export function WorkspaceShell({
 
       <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden bg-ink md:rounded-[18px] md:border md:border-line">
         {showList ? (
-          <aside className="hidden w-[320px] shrink-0 flex-col border-r border-line md:flex" aria-label="Chats">
+          <aside
+            className="hidden w-[320px] shrink-0 flex-col border-r border-line md:flex"
+            aria-label="Chats"
+          >
             <div className="flex h-12 shrink-0 items-center justify-between pl-5 pr-3">
               <span className="truncate text-[14px] font-medium">{org.name}</span>
+              <button
+                type="button"
+                onClick={() => setPaletteOpen(true)}
+                aria-label="Open command menu"
+                title="Jump to… (⌘K)"
+                className="ml-auto mr-1 hidden h-8 items-center gap-2 rounded-lg border border-line px-2.5 text-[12px] text-faint hover:border-line-strong hover:text-text lg:flex"
+              >
+                Jump to…
+                <kbd className="font-mono text-[10px]">⌘K</kbd>
+              </button>
               <Link
                 href={`/${org.slug}/chats/new`}
                 aria-label="New chat"
@@ -448,6 +491,16 @@ export function WorkspaceShell({
         </main>
       </div>
 
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        orgSlug={org.slug}
+        role={role}
+        chats={chats}
+        bots={bots}
+        pages={PRIMARY_NAV}
+      />
+
       <dialog
         ref={dialogRef}
         className="m-0 h-dvh max-h-none w-[88vw] max-w-[360px] bg-ink p-0 pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)] text-text backdrop:bg-void/70"
@@ -459,7 +512,12 @@ export function WorkspaceShell({
         <div className="flex h-full flex-col">
           <div className="flex shrink-0 items-center justify-between px-3 py-2">
             <span className="text-[14px] font-medium">{org.name}</span>
-            <Button variant="ghost" size="icon-sm" onClick={() => setMobileOpen(false)} aria-label="Close workspace menu">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => setMobileOpen(false)}
+              aria-label="Close workspace menu"
+            >
               <CloseIcon width={15} height={15} />
             </Button>
           </div>
@@ -470,7 +528,6 @@ export function WorkspaceShell({
               chats={chats}
               bots={bots}
               user={user}
-              role={role}
               pathname={pathname}
               inboxCount={inboxCount}
               onNavigate={() => setMobileOpen(false)}

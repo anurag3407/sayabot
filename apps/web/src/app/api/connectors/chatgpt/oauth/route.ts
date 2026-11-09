@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server"
-import {
-  buildChatGptPlanAuthUrl,
-  exchangeChatGptPlanCode,
-} from "@/lib/connectors/chatgpt-plan"
+import { requireRouteUser } from "@/lib/route-auth"
+import { buildChatGptPlanAuthUrl, exchangeChatGptPlanCode } from "@/lib/connectors/chatgpt-plan"
 
 export async function GET(request: Request) {
+  const auth = await requireRouteUser()
+  if ("response" in auth) return auth.response
   try {
     const { origin } = new URL(request.url)
     const callbackUrl = `${origin}/oauth/callback/chatgpt`
@@ -21,13 +21,17 @@ export async function GET(request: Request) {
     return response
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to generate ChatGPT plan auth URL" },
+      {
+        error: error instanceof Error ? error.message : "Failed to generate ChatGPT plan auth URL",
+      },
       { status: 500 },
     )
   }
 }
 
 export async function POST(request: Request) {
+  const auth = await requireRouteUser()
+  if ("response" in auth) return auth.response
   try {
     const body = (await request.json()) as { code?: string; codeVerifier?: string }
     const { code } = body
@@ -53,7 +57,10 @@ export async function POST(request: Request) {
     })
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to exchange ChatGPT authorization code" },
+      {
+        error:
+          error instanceof Error ? error.message : "Failed to exchange ChatGPT authorization code",
+      },
       { status: 500 },
     )
   }

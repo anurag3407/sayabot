@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import Link from "next/link"
-import { requireOrgAccess } from "@/lib/auth"
+import { requireOrgAdmin } from "@/lib/auth"
 import { listOrgAgents, listAgentApiKeys, listWebhookDeliveries, listRooms } from "@/lib/queries"
 import { EmptyState } from "@/components/ui/empty"
 import { Section } from "@/components/settings/section"
@@ -22,7 +22,7 @@ export const metadata: Metadata = { title: "Bots" }
 
 export default async function BotsPage({ params }: { params: Promise<{ org: string }> }) {
   const { org: orgSlug } = await params
-  const access = await requireOrgAccess(orgSlug)
+  const access = await requireOrgAdmin(orgSlug)
   const endpoint = await mcpEndpoint()
   const [agents, keys, deliveries, orgRooms] = await Promise.all([
     listOrgAgents(access.org.id),

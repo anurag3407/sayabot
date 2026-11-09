@@ -51,9 +51,9 @@ export function ModelPickerDropdown({
       try {
         const savedKey =
           typeof window !== "undefined" ? window.localStorage.getItem("saaya:openrouter-key") : null
-        const res = await fetch(
-          `/api/connectors/models${savedKey ? `?openRouterKey=${encodeURIComponent(savedKey)}` : ""}`,
-        )
+        const res = await fetch("/api/connectors/models", {
+          headers: savedKey ? { "x-openrouter-key": savedKey } : undefined,
+        })
         if (!res.ok) throw new Error("Failed to fetch")
         const data = (await res.json()) as { groups: ProviderGroupData[] }
         if (!cancelled && Array.isArray(data.groups)) {

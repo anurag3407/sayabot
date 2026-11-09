@@ -1,20 +1,16 @@
 import { createAdminClient } from "@/lib/supabase/admin"
 import { hashAgentApiKey } from "@sayabot/core/server"
-import { createHash, randomBytes } from "node:crypto"
+import { createHash, randomBytes, timingSafeEqual } from "node:crypto"
 import { type NextRequest, NextResponse } from "next/server"
 
 function base64Url(buffer: Buffer): string {
-  return buffer
-    .toString("base64")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "")
+  return buffer.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "")
 }
 
 function verifyPkce(verifier: string, challenge: string): boolean {
-  const hash = createHash("sha256").update(verifier).digest()
-  const computed = base64Url(hash)
-  return computed === challenge
+  const computed = Buffer.from(base64Url(createHash("sha256").update(verifier).digest()))
+  const expected = Buffer.from(challenge)
+  return computed.length === expected.length && timingSafeEqual(computed, expected)
 }
 
 export async function POST(req: NextRequest) {
@@ -32,14 +28,17 @@ export async function POST(req: NextRequest) {
     body = (await req.json().catch(() => ({}))) as Record<string, string>
   }
 
-  const { grant_type, code, redirect_uri: _redirect_uri, client_id, code_verifier, refresh_token } = body
+  const { grant_type, code, redirect_uri, client_id, code_verifier, refresh_token } = body
   const admin = createAdminClient()
   const now = new Date()
 
   if (grant_type === "authorization_code") {
     if (!code || !code_verifier || !client_id) {
       return NextResponse.json(
-        { error: "invalid_request", error_description: "Missing code, code_verifier, or client_id" },
+        {
+          error: "invalid_request",
+          error_description: "Missing code, code_verifier, or client_id",
+        },
         { status: 400 },
       )
     }
@@ -57,7 +56,21 @@ export async function POST(req: NextRequest) {
 
     if (error || !codeRow) {
       return NextResponse.json(
-        { error: "invalid_grant", error_description: "Authorization code invalid, expired, or already used" },
+        {
+          error: "invalid_grant",
+          error_description: "Authorization code invalid, expired, or already used",
+        },
+        { status: 400 },
+      )
+    }
+
+    // RFC 6749 4.1.3: the redirect_uri must match the one the code was issued for.
+    if (!redirect_uri || redirect_uri !== codeRow.redirect_uri) {
+      return NextResponse.json(
+        {
+          error: "invalid_grant",
+          error_description: "redirect_uri does not match the authorization request",
+        },
         { status: 400 },
       )
     }
@@ -70,11 +83,19 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Mark code as used
-    await admin
+    // Claim the code atomically so two concurrent requests cannot both redeem it.
+    const { data: claimed } = await admin
       .from("oauth_codes")
       .update({ used_at: now.toISOString() })
       .eq("id", codeRow.id)
+      .is("used_at", null)
+      .select("id")
+    if (!claimed || claimed.length === 0) {
+      return NextResponse.json(
+        { error: "invalid_grant", error_description: "Authorization code already used" },
+        { status: 400 },
+      )
+    }
 
     // Issue tokens
     const accessToken = `mesh_at_${randomBytes(24).toString("hex")}`
@@ -152,11 +173,26 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Revoke old refresh token
-    await admin
+    if (new Date(tokenRow.expires_at) <= now) {
+      return NextResponse.json(
+        { error: "invalid_grant", error_description: "Refresh token expired" },
+        { status: 400 },
+      )
+    }
+
+    // Revoke the old refresh token; losing this race means another request already rotated it.
+    const { data: rotated } = await admin
       .from("oauth_tokens")
       .update({ revoked_at: now.toISOString() })
       .eq("id", tokenRow.id)
+      .is("revoked_at", null)
+      .select("id")
+    if (!rotated || rotated.length === 0) {
+      return NextResponse.json(
+        { error: "invalid_grant", error_description: "Refresh token was already used" },
+        { status: 400 },
+      )
+    }
 
     // Issue new pair
     const newAccessToken = `mesh_at_${randomBytes(24).toString("hex")}`
@@ -196,7 +232,10 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json(
-    { error: "unsupported_grant_type", error_description: `Grant type '${grant_type}' not supported` },
+    {
+      error: "unsupported_grant_type",
+      error_description: `Grant type '${grant_type}' not supported`,
+    },
     { status: 400 },
   )
 }

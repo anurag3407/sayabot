@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { requireRouteUser } from "@/lib/route-auth"
 import {
   getCopilotInternalToken,
   pollCopilotDeviceCode,
@@ -6,6 +7,8 @@ import {
 } from "@/lib/connectors/copilot"
 
 export async function GET() {
+  const auth = await requireRouteUser()
+  if ("response" in auth) return auth.response
   try {
     const flow = await startCopilotDeviceFlow()
     return NextResponse.json(flow)
@@ -18,6 +21,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireRouteUser()
+  if ("response" in auth) return auth.response
   try {
     const body = (await request.json()) as { deviceCode?: string }
     if (!body.deviceCode) {

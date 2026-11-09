@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { requireOrgAccess } from "@/lib/auth"
+import { requireOrgAdmin } from "@/lib/auth"
 import { listProviderKeys } from "@/lib/queries"
 import { saveProviderKey } from "@/lib/actions/keys"
 import { PROVIDER_LABELS } from "@/lib/format"
@@ -16,7 +16,7 @@ export const metadata: Metadata = { title: "Provider keys" }
 
 export default async function KeysPage({ params }: { params: Promise<{ org: string }> }) {
   const { org: orgSlug } = await params
-  const access = await requireOrgAccess(orgSlug)
+  const access = await requireOrgAdmin(orgSlug)
   const keys = await listProviderKeys(access.org.id)
 
   return (

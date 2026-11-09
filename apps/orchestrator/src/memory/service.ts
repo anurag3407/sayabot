@@ -1,9 +1,8 @@
-import { and, desc, eq, inArray, lt, or, sql } from "drizzle-orm"
+import { and, desc, eq, inArray, sql } from "drizzle-orm"
 import { redactSecrets } from "@sayabot/core"
 import {
   memories,
   vectorProviders,
-  type MemoryLinkRow,
   type MemoryRow,
   type OpenLoopRow,
   type VectorProviderRow,
@@ -17,16 +16,11 @@ import { OpenLoopsManager } from "./modules/open-loops"
 import { calculateRetention, compositeMemoryScore } from "./modules/salience"
 import { buildScopeConditions } from "./modules/sources"
 import type {
-  CognitiveRecallInput,
   CognitiveWriteInput,
   EpistemicStatus,
-  MemoryKind,
-  MemoryLinkInput,
   MemoryLinkView,
   MemoryScope,
-  MemorySource,
   OpenLoopStatus,
-  ScoredMemoryItem,
 } from "./types"
 
 export type WriteMemoryInput = CognitiveWriteInput

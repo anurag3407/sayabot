@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { requireRouteUser } from "@/lib/route-auth"
 import {
   buildOpenRouterOAuthUrl,
   exchangeOpenRouterCode,
@@ -6,6 +7,8 @@ import {
 } from "@/lib/connectors/openrouter"
 
 export async function GET(request: Request) {
+  const auth = await requireRouteUser()
+  if ("response" in auth) return auth.response
   try {
     const { origin } = new URL(request.url)
     const callbackUrl = `${origin}/oauth/callback/openrouter`
@@ -30,6 +33,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireRouteUser()
+  if ("response" in auth) return auth.response
   try {
     const body = (await request.json()) as { code?: string; codeVerifier?: string }
     const { code } = body
@@ -43,7 +48,10 @@ export async function POST(request: Request) {
     }
 
     if (!code || !codeVerifier) {
-      return NextResponse.json({ error: "Missing authorization code or code verifier" }, { status: 400 })
+      return NextResponse.json(
+        { error: "Missing authorization code or code verifier" },
+        { status: 400 },
+      )
     }
 
     const { apiKey } = await exchangeOpenRouterCode(code, codeVerifier)
