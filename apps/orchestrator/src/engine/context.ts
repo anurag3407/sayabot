@@ -162,6 +162,15 @@ export function buildEngineContext(args: BuildEngineContextArgs): EngineContextR
     )
   }
 
+  if (agentCaps.cron) {
+    system1Parts.push(
+      "Scheduled Routines & Automations (Hermes-compatible):\n" +
+        "- You can schedule, list, pause, resume, or trigger autonomous routines and cron jobs using the cronjob tool.\n" +
+        "- When a user asks to run tasks periodically (e.g. 'daily at 9am', 'every 2 hours', '0 9 * * 1-5'), invoke cronjob({ action: 'create', ... }).\n" +
+        "- Routines execute automatically at their scheduled interval and post directly to the designated room.",
+    )
+  }
+
   const system1Message: SystemModelMessage = {
     role: "system",
     content: system1Parts.join("\n\n"),

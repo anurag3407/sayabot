@@ -346,6 +346,15 @@ export function buildSystemPrompt(args: {
     )
   }
 
+  if (caps.cron) {
+    parts.push(
+      `Scheduled Routines & Automations (Hermes-compatible):\n` +
+        `- You can create, list, pause, resume, or trigger autonomous routines and cron jobs using the cronjob tool.\n` +
+        `- When a human asks to run something periodically (e.g. "every day at 9am", "every 2 hours", "weekly on Mondays"), schedule it using cronjob(action="create", ...).\n` +
+        `- Routines execute automatically at their scheduled interval and post directly to the designated room.`,
+    )
+  }
+
   if (args.room.systemDirective?.trim()) {
     parts.push(`Room directive from the humans:\n${args.room.systemDirective.trim()}`)
   }

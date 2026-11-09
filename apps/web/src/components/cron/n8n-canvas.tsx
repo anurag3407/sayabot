@@ -461,11 +461,14 @@ export function N8nCanvas({
             {/* Routine Selector Bar when multiple routines exist */}
             {routines.length > 1 ? (
               <div className="no-pan absolute left-4 top-4 z-10 flex max-w-[calc(100%-100px)] gap-1.5 overflow-x-auto rounded-xl border border-line bg-panel/90 p-1.5 backdrop-blur-md shadow-lg">
-                {routines.map((routine) => (
+                {routines.map((routine, idx) => (
                   <button
                     key={routine.id}
                     type="button"
-                    onClick={() => setActiveRoutineId(routine.id)}
+                    onClick={() => {
+                      setActiveRoutineId(routine.id)
+                      setPan({ x: 40, y: -(idx * 260) + 60 })
+                    }}
                     className={cn(
                       "flex items-center gap-2 rounded-lg px-3 py-1.5 text-[12px] font-medium transition-all whitespace-nowrap",
                       routine.id === activeRoutineId
@@ -492,12 +495,16 @@ export function N8nCanvas({
                 transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
               }}
             >
-              {activeRoutine ? (
-                <div className="relative pt-12 pb-20 pl-8">
-                  {/* SVG Bezier Connection Edges */}
+              {filteredRoutines.length > 0 ? (
+                <div className="relative pt-12 pb-24 pl-8">
+                  {/* SVG Bezier Connection Edges for all routines */}
                   <svg
-                    className="pointer-events-none absolute left-0 top-0 h-[600px] w-[1200px] overflow-visible"
-                    style={{ zIndex: 1 }}
+                    className="pointer-events-none absolute left-0 top-0 overflow-visible"
+                    style={{
+                      width: "1200px",
+                      height: `${Math.max(600, filteredRoutines.length * 260 + 100)}px`,
+                      zIndex: 1,
+                    }}
                   >
                     <defs>
                       <linearGradient id="edge-gradient-1" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -508,242 +515,322 @@ export function N8nCanvas({
                         <stop offset="0%" stopColor="#6366f1" />
                         <stop offset="100%" stopColor="#10b981" />
                       </linearGradient>
+                      <style>{`
+                        @keyframes n8nFlow {
+                          from { stroke-dashoffset: 24; }
+                          to { stroke-dashoffset: 0; }
+                        }
+                        .n8n-flow-active {
+                          animation: n8nFlow 1.2s linear infinite;
+                        }
+                      `}</style>
                     </defs>
 
-                    {/* Edge 1: Schedule Trigger -> AI Agent Node */}
-                    <path
-                      d="M 288 175 C 340 175, 340 175, 392 175"
-                      fill="none"
-                      stroke="url(#edge-gradient-1)"
-                      strokeWidth="2.5"
-                      strokeDasharray={activeRoutine.enabled ? "6 6" : undefined}
-                      className={activeRoutine.enabled ? "animate-[dash_1s_linear_infinite]" : "opacity-40"}
-                    />
+                    {filteredRoutines.map((routine, idx) => {
+                      const y = idx * 260 + 71 + 48
+                      return (
+                        <g
+                          key={routine.id}
+                          className={routine.enabled ? "opacity-100" : "opacity-35"}
+                        >
+                          {/* Edge 1: Schedule Trigger -> AI Agent Node */}
+                          <path
+                            d={`M 288 ${y} C 336 ${y}, 344 ${y}, 392 ${y}`}
+                            fill="none"
+                            stroke="url(#edge-gradient-1)"
+                            strokeWidth="2.5"
+                            strokeDasharray={routine.enabled ? "6 6" : undefined}
+                            className={routine.enabled ? "n8n-flow-active" : undefined}
+                          />
 
-                    {/* Edge 2: AI Agent Node -> Room Delivery Node */}
-                    <path
-                      d="M 680 175 C 730 175, 730 175, 782 175"
-                      fill="none"
-                      stroke="url(#edge-gradient-2)"
-                      strokeWidth="2.5"
-                      strokeDasharray={activeRoutine.enabled ? "6 6" : undefined}
-                      className={activeRoutine.enabled ? "animate-[dash_1s_linear_infinite]" : "opacity-40"}
-                    />
+                          {/* Edge 2: AI Agent Node -> Room Delivery Node */}
+                          <path
+                            d={`M 680 ${y} C 728 ${y}, 736 ${y}, 784 ${y}`}
+                            fill="none"
+                            stroke="url(#edge-gradient-2)"
+                            strokeWidth="2.5"
+                            strokeDasharray={routine.enabled ? "6 6" : undefined}
+                            className={routine.enabled ? "n8n-flow-active" : undefined}
+                          />
+                        </g>
+                      )
+                    })}
                   </svg>
 
-                  {/* Node Workflow Chain */}
-                  <div className="flex items-start gap-24">
-                    {/* 1. Trigger Node (Schedule / Cron) */}
-                    <div
-                      onClick={() => {
-                        setIsInspectorOpen(true)
-                        setInspectorTab("params")
-                      }}
-                      className={cn(
-                        "no-pan relative w-72 rounded-2xl border bg-panel p-4 shadow-xl transition-all hover:scale-[1.02] cursor-pointer group",
-                        activeRoutine.enabled
-                          ? "border-amber-500/40 hover:border-amber-500 shadow-amber-500/5"
-                          : "border-line opacity-75",
-                      )}
-                      style={{ zIndex: 2 }}
-                    >
-                      {/* Output Port Pin (Right) */}
-                      <div className="absolute -right-3 top-[71px] h-6 w-6 rounded-full border-2 border-amber-500 bg-void flex items-center justify-center shadow-md">
-                        <span className="h-2 w-2 rounded-full bg-amber-500" />
-                      </div>
-
-                      {/* Header */}
-                      <div className="flex items-center justify-between border-b border-line/60 pb-3">
-                        <div className="flex items-center gap-2">
-                          <div className="grid h-7 w-7 place-items-center rounded-lg bg-amber-500/15 text-amber-500">
-                            <Clock className="h-4 w-4" />
-                          </div>
-                          <div>
-                            <span className="text-[10px] font-mono uppercase tracking-wider text-amber-500 font-semibold">
-                              Trigger Node
+                  {/* Node Workflow Chains Stack */}
+                  <div className="space-y-12">
+                    {filteredRoutines.map((routine) => {
+                      const isSelected = routine.id === (activeRoutine?.id ?? activeRoutineId)
+                      return (
+                        <div key={routine.id} className="relative">
+                          {/* Workflow Header Label */}
+                          <div className="mb-2 flex items-center gap-2">
+                            <span className="font-mono text-[11px] font-semibold text-muted uppercase tracking-wider">
+                              Workflow:
                             </span>
-                            <h3 className="text-[13px] font-semibold text-text">Schedule Trigger</h3>
-                          </div>
-                        </div>
-                        <span
-                          className={cn(
-                            "rounded-full px-2 py-0.5 text-[10px] font-medium",
-                            activeRoutine.enabled
-                              ? "bg-emerald-500/15 text-emerald-400"
-                              : "bg-line text-muted",
-                          )}
-                        >
-                          {activeRoutine.enabled ? "Active" : "Paused"}
-                        </span>
-                      </div>
-
-                      {/* Node Body */}
-                      <div className="mt-3 space-y-2">
-                        <div className="rounded-lg bg-subtle p-2.5">
-                          <div className="flex items-center justify-between">
-                            <span className="font-mono text-[12px] font-bold text-amber-400">
-                              {activeRoutine.schedule_expr}
+                            <span className="text-[13px] font-bold text-text">
+                              {routine.name}
                             </span>
-                            <span className="text-[10px] font-mono text-muted">
-                              {activeRoutine.timezone}
+                            <span
+                              className={cn(
+                                "rounded-full px-2 py-0.2 text-[10px] font-medium",
+                                routine.enabled
+                                  ? "bg-emerald-500/15 text-emerald-400"
+                                  : "bg-line text-muted",
+                              )}
+                            >
+                              {routine.enabled ? "Active" : "Paused"}
                             </span>
                           </div>
-                          <p className="mt-1 text-[11px] text-text font-medium">
-                            {activeRoutine.human_schedule}
-                          </p>
-                        </div>
 
-                        <div className="flex items-center justify-between text-[11px] text-muted pt-1">
-                          <span>Next Execution:</span>
-                          <span className="font-mono text-text text-[11px]">
-                            {activeRoutine.next_run_at
-                              ? new Date(activeRoutine.next_run_at).toLocaleTimeString([], {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })
-                              : "N/A"}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
+                          <div className="flex items-start gap-24">
+                            {/* 1. Trigger Node (Schedule / Cron) */}
+                            <div
+                              onClick={() => {
+                                setActiveRoutineId(routine.id)
+                                setIsInspectorOpen(true)
+                                setInspectorTab("params")
+                              }}
+                              className={cn(
+                                "no-pan relative w-72 rounded-2xl border bg-panel p-4 shadow-xl transition-all hover:scale-[1.02] cursor-pointer group",
+                                isSelected
+                                  ? "ring-2 ring-accent border-accent"
+                                  : routine.enabled
+                                    ? "border-amber-500/40 hover:border-amber-500 shadow-amber-500/5"
+                                    : "border-line opacity-75",
+                              )}
+                              style={{ zIndex: 2 }}
+                            >
+                              {/* Output Port Pin (Right) */}
+                              <div className="absolute -right-3 top-[71px] h-6 w-6 rounded-full border-2 border-amber-500 bg-void flex items-center justify-center shadow-md">
+                                <span className="h-2 w-2 rounded-full bg-amber-500" />
+                              </div>
 
-                    {/* 2. AI Agent Execution Node */}
-                    <div
-                      onClick={() => {
-                        setIsInspectorOpen(true)
-                        setInspectorTab("params")
-                      }}
-                      className={cn(
-                        "no-pan relative w-72 rounded-2xl border bg-panel p-4 shadow-xl transition-all hover:scale-[1.02] cursor-pointer group",
-                        activeRoutine.enabled
-                          ? "border-indigo-500/40 hover:border-indigo-500 shadow-indigo-500/5"
-                          : "border-line opacity-75",
-                      )}
-                      style={{ zIndex: 2 }}
-                    >
-                      {/* Input Port Pin (Left) */}
-                      <div className="absolute -left-3 top-[71px] h-6 w-6 rounded-full border-2 border-indigo-500 bg-void flex items-center justify-center shadow-md">
-                        <span className="h-2 w-2 rounded-full bg-indigo-500" />
-                      </div>
+                              {/* Header */}
+                              <div className="flex items-center justify-between border-b border-line/60 pb-3">
+                                <div className="flex items-center gap-2">
+                                  <div className="grid h-7 w-7 place-items-center rounded-lg bg-amber-500/15 text-amber-500">
+                                    <Clock className="h-4 w-4" />
+                                  </div>
+                                  <div>
+                                    <span className="text-[10px] font-mono uppercase tracking-wider text-amber-500 font-semibold">
+                                      Trigger Node
+                                    </span>
+                                    <h3 className="text-[13px] font-semibold text-text">
+                                      Schedule Trigger
+                                    </h3>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    type="button"
+                                    title="Execute now"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      void handleExecuteNow(routine.id)
+                                    }}
+                                    className="p-1 text-muted hover:text-accent rounded hover:bg-subtle"
+                                  >
+                                    <Play className="h-3.5 w-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    title={routine.enabled ? "Pause" : "Resume"}
+                                    onClick={(e) => void handleToggleRoutine(routine, e)}
+                                    className="p-1 text-muted hover:text-text rounded hover:bg-subtle"
+                                  >
+                                    {routine.enabled ? (
+                                      <Pause className="h-3.5 w-3.5" />
+                                    ) : (
+                                      <Play className="h-3.5 w-3.5" />
+                                    )}
+                                  </button>
+                                </div>
+                              </div>
 
-                      {/* Output Port Pin (Right) */}
-                      <div className="absolute -right-3 top-[71px] h-6 w-6 rounded-full border-2 border-indigo-500 bg-void flex items-center justify-center shadow-md">
-                        <span className="h-2 w-2 rounded-full bg-indigo-500" />
-                      </div>
+                              {/* Node Body */}
+                              <div className="mt-3 space-y-2">
+                                <div className="rounded-lg bg-subtle p-2.5">
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-mono text-[12px] font-bold text-amber-400">
+                                      {routine.schedule_expr}
+                                    </span>
+                                    <span className="text-[10px] font-mono text-muted">
+                                      {routine.timezone}
+                                    </span>
+                                  </div>
+                                  <p className="mt-1 text-[11px] text-text font-medium">
+                                    {routine.human_schedule}
+                                  </p>
+                                </div>
 
-                      {/* Header */}
-                      <div className="flex items-center justify-between border-b border-line/60 pb-3">
-                        <div className="flex items-center gap-2">
-                          <div className="grid h-7 w-7 place-items-center rounded-lg bg-indigo-500/15 text-indigo-400">
-                            <Bot className="h-4 w-4" />
-                          </div>
-                          <div>
-                            <span className="text-[10px] font-mono uppercase tracking-wider text-indigo-400 font-semibold">
-                              Agent Node
-                            </span>
-                            <h3 className="text-[13px] font-semibold text-text">Autonomous Brain</h3>
-                          </div>
-                        </div>
-                        <span className="rounded bg-indigo-500/15 px-1.5 py-0.5 font-mono text-[10px] text-indigo-400">
-                          {activeRoutine.agents?.model || "model"}
-                        </span>
-                      </div>
-
-                      {/* Node Body */}
-                      <div className="mt-3 space-y-2">
-                        <div className="flex items-center gap-2 rounded-lg bg-subtle p-2">
-                          <Avatar
-                            name={activeRoutine.agents?.display_name || "Bot"}
-                            kind="agent"
-                            src={activeRoutine.agents?.avatar_url || undefined}
-                            size="sm"
-                          />
-                          <div className="min-w-0 flex-1">
-                            <div className="truncate text-[12px] font-medium text-text">
-                              {activeRoutine.agents?.display_name || "Assigned Agent"}
+                                <div className="flex items-center justify-between text-[11px] text-muted pt-1">
+                                  <span>Next Execution:</span>
+                                  <span className="font-mono text-text text-[11px]">
+                                    {routine.next_run_at
+                                      ? new Date(routine.next_run_at).toLocaleTimeString([], {
+                                          hour: "2-digit",
+                                          minute: "2-digit",
+                                        })
+                                      : "Paused"}
+                                  </span>
+                                </div>
+                              </div>
                             </div>
-                            <div className="font-mono text-[10px] text-muted">
-                              @{activeRoutine.agents?.handle || "bot"}
+
+                            {/* 2. AI Agent Execution Node */}
+                            <div
+                              onClick={() => {
+                                setActiveRoutineId(routine.id)
+                                setIsInspectorOpen(true)
+                                setInspectorTab("params")
+                              }}
+                              className={cn(
+                                "no-pan relative w-72 rounded-2xl border bg-panel p-4 shadow-xl transition-all hover:scale-[1.02] cursor-pointer group",
+                                isSelected
+                                  ? "ring-2 ring-accent border-accent"
+                                  : routine.enabled
+                                    ? "border-indigo-500/40 hover:border-indigo-500 shadow-indigo-500/5"
+                                    : "border-line opacity-75",
+                              )}
+                              style={{ zIndex: 2 }}
+                            >
+                              {/* Input Port Pin (Left) */}
+                              <div className="absolute -left-3 top-[71px] h-6 w-6 rounded-full border-2 border-indigo-500 bg-void flex items-center justify-center shadow-md">
+                                <span className="h-2 w-2 rounded-full bg-indigo-500" />
+                              </div>
+
+                              {/* Output Port Pin (Right) */}
+                              <div className="absolute -right-3 top-[71px] h-6 w-6 rounded-full border-2 border-indigo-500 bg-void flex items-center justify-center shadow-md">
+                                <span className="h-2 w-2 rounded-full bg-indigo-500" />
+                              </div>
+
+                              {/* Header */}
+                              <div className="flex items-center justify-between border-b border-line/60 pb-3">
+                                <div className="flex items-center gap-2">
+                                  <div className="grid h-7 w-7 place-items-center rounded-lg bg-indigo-500/15 text-indigo-400">
+                                    <Bot className="h-4 w-4" />
+                                  </div>
+                                  <div>
+                                    <span className="text-[10px] font-mono uppercase tracking-wider text-indigo-400 font-semibold">
+                                      Agent Node
+                                    </span>
+                                    <h3 className="text-[13px] font-semibold text-text">
+                                      Autonomous Brain
+                                    </h3>
+                                  </div>
+                                </div>
+                                <span className="rounded bg-indigo-500/15 px-1.5 py-0.5 font-mono text-[10px] text-indigo-400">
+                                  {routine.agents?.model || "model"}
+                                </span>
+                              </div>
+
+                              {/* Node Body */}
+                              <div className="mt-3 space-y-2">
+                                <div className="flex items-center gap-2 rounded-lg bg-subtle p-2">
+                                  <Avatar
+                                    name={routine.agents?.display_name || "Bot"}
+                                    kind="agent"
+                                    src={routine.agents?.avatar_url || undefined}
+                                    size="sm"
+                                  />
+                                  <div className="min-w-0 flex-1">
+                                    <div className="truncate text-[12px] font-medium text-text">
+                                      {routine.agents?.display_name || "Assigned Agent"}
+                                    </div>
+                                    <div className="font-mono text-[10px] text-muted">
+                                      @{routine.agents?.handle || "bot"}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="rounded-lg bg-subtle/60 p-2 text-[11px] text-muted line-clamp-3 font-mono">
+                                  {routine.prompt}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* 3. Output Delivery Node */}
+                            <div
+                              onClick={() => {
+                                setActiveRoutineId(routine.id)
+                                setIsInspectorOpen(true)
+                                setInspectorTab("params")
+                              }}
+                              className={cn(
+                                "no-pan relative w-72 rounded-2xl border bg-panel p-4 shadow-xl transition-all hover:scale-[1.02] cursor-pointer group",
+                                isSelected
+                                  ? "ring-2 ring-accent border-accent"
+                                  : routine.enabled
+                                    ? "border-emerald-500/40 hover:border-emerald-500 shadow-emerald-500/5"
+                                    : "border-line opacity-75",
+                              )}
+                              style={{ zIndex: 2 }}
+                            >
+                              {/* Input Port Pin (Left) */}
+                              <div className="absolute -left-3 top-[71px] h-6 w-6 rounded-full border-2 border-emerald-500 bg-void flex items-center justify-center shadow-md">
+                                <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                              </div>
+
+                              {/* Header */}
+                              <div className="flex items-center justify-between border-b border-line/60 pb-3">
+                                <div className="flex items-center gap-2">
+                                  <div className="grid h-7 w-7 place-items-center rounded-lg bg-emerald-500/15 text-emerald-400">
+                                    <Send className="h-4 w-4" />
+                                  </div>
+                                  <div>
+                                    <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 font-semibold">
+                                      Action Node
+                                    </span>
+                                    <h3 className="text-[13px] font-semibold text-text">
+                                      Room Delivery
+                                    </h3>
+                                  </div>
+                                </div>
+                                <span className="font-mono text-[11px] text-muted">
+                                  {routine.run_count} runs
+                                </span>
+                              </div>
+
+                              {/* Node Body */}
+                              <div className="mt-3 space-y-2">
+                                <div className="rounded-lg bg-subtle p-2.5">
+                                  <span className="text-[10px] text-muted uppercase tracking-wider font-semibold">
+                                    Target Channel
+                                  </span>
+                                  <div className="mt-0.5 text-[13px] font-semibold text-emerald-400">
+                                    #{routine.rooms?.name || "default-room"}
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center justify-between text-[11px] text-muted pt-1">
+                                  <span>Last Status:</span>
+                                  <span
+                                    className={cn(
+                                      "font-medium capitalize",
+                                      routine.last_status === "success"
+                                        ? "text-emerald-400"
+                                        : routine.last_status === "failed"
+                                          ? "text-red-400"
+                                          : "text-muted",
+                                    )}
+                                  >
+                                    {routine.last_status}
+                                  </span>
+                                </div>
+                              </div>
                             </div>
                           </div>
                         </div>
-
-                        <div className="rounded-lg bg-subtle/60 p-2 text-[11px] text-muted line-clamp-3 font-mono">
-                          {activeRoutine.prompt}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 3. Output Delivery Node */}
-                    <div
-                      onClick={() => {
-                        setIsInspectorOpen(true)
-                        setInspectorTab("params")
-                      }}
-                      className={cn(
-                        "no-pan relative w-72 rounded-2xl border bg-panel p-4 shadow-xl transition-all hover:scale-[1.02] cursor-pointer group",
-                        activeRoutine.enabled
-                          ? "border-emerald-500/40 hover:border-emerald-500 shadow-emerald-500/5"
-                          : "border-line opacity-75",
-                      )}
-                      style={{ zIndex: 2 }}
-                    >
-                      {/* Input Port Pin (Left) */}
-                      <div className="absolute -left-3 top-[71px] h-6 w-6 rounded-full border-2 border-emerald-500 bg-void flex items-center justify-center shadow-md">
-                        <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                      </div>
-
-                      {/* Header */}
-                      <div className="flex items-center justify-between border-b border-line/60 pb-3">
-                        <div className="flex items-center gap-2">
-                          <div className="grid h-7 w-7 place-items-center rounded-lg bg-emerald-500/15 text-emerald-400">
-                            <Send className="h-4 w-4" />
-                          </div>
-                          <div>
-                            <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 font-semibold">
-                              Action Node
-                            </span>
-                            <h3 className="text-[13px] font-semibold text-text">Room Delivery</h3>
-                          </div>
-                        </div>
-                        <span className="font-mono text-[11px] text-muted">
-                          {activeRoutine.run_count} runs
-                        </span>
-                      </div>
-
-                      {/* Node Body */}
-                      <div className="mt-3 space-y-2">
-                        <div className="rounded-lg bg-subtle p-2.5">
-                          <span className="text-[10px] text-muted uppercase tracking-wider font-semibold">
-                            Target Channel
-                          </span>
-                          <div className="mt-0.5 text-[13px] font-semibold text-emerald-400">
-                            #{activeRoutine.rooms?.name || "default-room"}
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between text-[11px] text-muted pt-1">
-                          <span>Last Status:</span>
-                          <span
-                            className={cn(
-                              "font-medium capitalize",
-                              activeRoutine.last_status === "success"
-                                ? "text-emerald-400"
-                                : activeRoutine.last_status === "failed"
-                                  ? "text-red-400"
-                                  : "text-muted",
-                            )}
-                          >
-                            {activeRoutine.last_status}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
+                      )
+                    })}
                   </div>
                 </div>
               ) : (
                 <div className="p-12 text-center text-muted">
-                  <p>No routine selected. Click &quot;New Routine&quot; to build an automation workflow.</p>
+                  <p>
+                    No routines found. Click &quot;New Routine&quot; to build an automation workflow.
+                  </p>
                 </div>
               )}
             </div>
