@@ -8,6 +8,8 @@ export interface OrgToolConfig {
   token?: string
   connectionString?: string
   apiKey?: string
+  provider?: string
+  baseUrl?: string
 }
 
 export async function loadOrgToolConfig<T extends OrgToolConfig>(

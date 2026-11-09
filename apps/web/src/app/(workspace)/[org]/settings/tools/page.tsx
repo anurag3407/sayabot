@@ -7,6 +7,7 @@ import { Field, HelpText, Input, Select, Textarea } from "@/components/ui/field"
 import { EmptyState } from "@/components/ui/empty"
 import { Section } from "@/components/settings/section"
 import { McpInspector } from "@/components/settings/mcp-inspector"
+import { WebSearchConfig } from "@/components/settings/web-search-config"
 
 export const maxDuration = 60
 
@@ -23,6 +24,7 @@ export default async function ToolsPage({ params }: { params: Promise<{ org: str
   const roomsById = new Map(rooms.map((room) => [room.id, room]))
   const github = configs.find((config) => config.tool === "github_bridge")
   const postgres = configs.find((config) => config.tool === "postgres_inspector")
+  const webSearch = configs.find((config) => config.tool === "web_search")
 
   return (
     <>
@@ -182,18 +184,30 @@ export default async function ToolsPage({ params }: { params: Promise<{ org: str
         description="These come built in. The database inspector only runs a single read-only SELECT in a 10 second transaction. The GitHub bridge asks for approval before committing."
       >
         <div className="space-y-5">
-          <div className="border-y border-line py-3">
+          <div className="border-y border-line py-5">
+            <div className="mb-4">
+              <p className="text-[13px] font-medium text-text">web_search</p>
+              <p className="mt-0.5 font-mono text-[11px] text-faint">
+                Multi-provider web search engine (DuckDuckGo, Tavily, Brave, SearXNG, Serper, Exa, TinyFish, Firecrawl, Perplexity, Bing)
+              </p>
+            </div>
+            <WebSearchConfig orgSlug={orgSlug} savedConfig={webSearch} />
+          </div>
+
+          <div className="border-b border-line pb-5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <p className="text-[13px] text-text">web_search</p>
+                <p className="text-[13px] text-text">web_fetch</p>
                 <p className="mt-0.5 font-mono text-[11px] text-faint">
-                  Brave Search · available when your server administrator has set it up
+                  Autonomous Web Page Extractor · HTML to Markdown · Free & Keyless
                 </p>
               </div>
+              <span className="rounded-sm bg-ok/10 px-1.5 py-0.5 font-mono text-[10px] text-ok border border-ok/30">
+                built-in
+              </span>
             </div>
-            <p className="mt-2 text-[12px] leading-relaxed text-faint">
-              Without the key, the tool reports a configuration error to the agent instead of
-              searching. Its key is set on the server, not on this page.
+            <p className="mt-2 text-[12px] leading-relaxed text-muted">
+              Agents use this tool to scrape and read full documentation, articles, and APIs into clean Markdown. It automatically handles entity decoding, link preservation, and boilerplate stripping with zero external credentials needed.
             </p>
           </div>
 

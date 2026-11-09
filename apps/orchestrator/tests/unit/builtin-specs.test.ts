@@ -11,6 +11,7 @@ import { githubTool } from "../../src/tools/builtins/github"
 import { postgresInspectorTool } from "../../src/tools/builtins/postgres"
 import { sandboxTool } from "../../src/tools/builtins/sandbox"
 import { webSearchTool } from "../../src/tools/builtins/web-search"
+import { webFetchTool } from "../../src/tools/builtins/web-fetch"
 import { computerTools } from "../../src/tools/builtins/computer"
 
 describe("builtin tool specs (no network, schema + danger surface)", () => {
@@ -48,6 +49,14 @@ describe("builtin tool specs (no network, schema + danger surface)", () => {
     expect(t.schema.safeParse({ query: "" }).success).toBe(false)
     expect(t.schema.safeParse({ query: "q", count: 11 }).success).toBe(false)
     expect(t.schema.safeParse({ query: "q", count: 10 }).success).toBe(true)
+  })
+
+  it("web_fetch: url and maxChars bounds", () => {
+    const t = webFetchTool()
+    expect(t.schema.safeParse({ url: "https://example.com" }).success).toBe(true)
+    expect(t.schema.safeParse({ url: "not-a-url" }).success).toBe(false)
+    expect(t.schema.safeParse({ url: "https://example.com", maxChars: 50_000 }).success).toBe(true)
+    expect(t.schema.safeParse({ url: "https://example.com", maxChars: 100_001 }).success).toBe(false)
   })
 
   it("computerTools: standard profile has no browser tools, browser profile does", () => {

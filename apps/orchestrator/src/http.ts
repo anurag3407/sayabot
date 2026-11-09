@@ -20,6 +20,8 @@ import { enqueueRoomMessage } from "./jobs"
 import { loadMessage } from "./runner/context"
 import { resolveAgentModel } from "./runner/llm"
 import { applyTaskMutation } from "./collab/tasks-service"
+import { executeWebSearch } from "./tools/builtins/web-search"
+import { resolveToolCredential } from "./tools/secrets"
 
 const roomMessageSchema = z.object({
   roomId: z.string().uuid(),
@@ -77,6 +79,14 @@ const restoreSchema = z.object({
 
 const agentTestSchema = z.object({
   orgId: z.string().uuid(),
+})
+
+const testWebSearchSchema = z.object({
+  orgId: z.string().uuid().optional(),
+  provider: z.string().optional(),
+  apiKey: z.string().optional(),
+  baseUrl: z.string().optional(),
+  query: z.string().default("test query"),
 })
 
 export function createApp() {
@@ -165,6 +175,43 @@ export function createApp() {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       return c.json({ error: redactSecrets(message).text.slice(0, 500) }, 502)
+    }
+  })
+
+  app.post("/internal/tools/test-web-search", async (c) => {
+    const body = await c.req.json().catch(() => null)
+    const parsed = testWebSearchSchema.safeParse(body)
+    if (!parsed.success) return c.json({ error: "invalid body", details: parsed.error.issues }, 400)
+    const started = Date.now()
+    try {
+      let { provider, apiKey, baseUrl } = parsed.data
+      if (parsed.data.orgId && (!provider || (!apiKey && provider !== "duckduckgo" && provider !== "searxng"))) {
+        const stored = await resolveToolCredential({ orgId: parsed.data.orgId, tool: "web_search" })
+        if (stored) {
+          provider = provider || stored.provider
+          apiKey = apiKey || stored.apiKey
+          baseUrl = baseUrl || stored.baseUrl
+        }
+      }
+      const out = await executeWebSearch({
+        query: parsed.data.query,
+        count: 3,
+        provider,
+        apiKey,
+        baseUrl,
+      })
+      return c.json({
+        ok: true,
+        provider: out.provider,
+        query: out.query,
+        count: out.results.length,
+        results: out.results,
+        answer: out.answer,
+        latencyMs: Date.now() - started,
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      return c.json({ ok: false, error: redactSecrets(message).text.slice(0, 500) }, 400)
     }
   })
 

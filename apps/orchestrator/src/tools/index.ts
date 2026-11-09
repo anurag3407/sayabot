@@ -21,6 +21,7 @@ import { sandboxTool } from "./builtins/sandbox"
 import { taskTools } from "./builtins/tasks"
 import { useSecretTool } from "./builtins/use-secret"
 import { webSearchTool } from "./builtins/web-search"
+import { webFetchTool } from "./builtins/web-fetch"
 import { verificationTools } from "./builtins/verification"
 import { workspaceTools } from "./builtins/workspace"
 
@@ -101,7 +102,12 @@ export async function buildTools(args: BuildToolsArgs): Promise<BuiltTools> {
         ]
       : []),
     ...(caps.sandbox && !caps.computer ? [sandboxTool()] : []),
-    ...(caps.webSearch ? [webSearchTool()] : []),
+    ...(caps.webSearch
+      ? [
+          webSearchTool({ orgId: args.orgId, agentId: args.agent.id }),
+          webFetchTool({ orgId: args.orgId, agentId: args.agent.id }),
+        ]
+      : []),
     ...(caps.github ? [githubTool(args.orgId, args.agent.id)] : []),
     ...(caps.postgres ? [postgresInspectorTool(args.orgId, args.agent.id)] : []),
     ...(caps.tasks

@@ -39,6 +39,34 @@ export function stopRunInOrchestrator(runId: string) {
   return callOrchestrator(`/internal/runs/${encodeURIComponent(runId)}/stop`, {})
 }
 
+export async function testWebSearchInOrchestrator(payload: {
+  orgId?: string
+  provider?: string
+  apiKey?: string
+  baseUrl?: string
+  query?: string
+}): Promise<{ ok: true; provider: string; count: number; results: any[]; answer?: string; latencyMs: number } | { ok: false; error: string }> {
+  try {
+    const response = await fetch(`${getOrchestratorUrl()}/internal/tools/test-web-search`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-internal-secret": getInternalSecret(),
+      },
+      body: JSON.stringify(payload),
+      cache: "no-store",
+      signal: AbortSignal.timeout(20_000),
+    })
+    const data = await response.json().catch(() => null)
+    if (!response.ok || !data?.ok) {
+      return { ok: false, error: data?.error || `Search failed with status ${response.status}` }
+    }
+    return data
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) }
+  }
+}
+
 export async function testAgentInOrchestrator(
   agentId: string,
   orgId: string,

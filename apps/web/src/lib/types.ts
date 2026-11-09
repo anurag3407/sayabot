@@ -172,6 +172,9 @@ export interface OrgToolConfigView {
   orgId: string
   tool: string
   enabled: boolean
+  provider?: string
+  last4?: string
+  baseUrl?: string
   updatedAt: string
 }
 

@@ -1,6 +1,8 @@
 import "server-only"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { openSecret } from "@sayabot/llm"
+import { getKek } from "@/lib/env"
 import type {
   AgentApiKeyView,
   AgentView,
@@ -524,24 +526,40 @@ export async function listMcpServers(orgId: string): Promise<McpServerView[]> {
 }
 
 export async function listOrgToolConfigs(orgId: string): Promise<OrgToolConfigView[]> {
-  const supabase = await createSupabaseServerClient()
-  const { data } = await supabase
-    .from("org_tool_configs_public")
-    .select("id, org_id, tool, enabled, updated_at")
+  const admin = createAdminClient()
+  const { data } = await admin
+    .from("org_tool_configs")
+    .select("id, org_id, tool, config_enc, enabled, updated_at")
     .eq("org_id", orgId)
-  return ((data ?? []) as {
-    id: string
-    org_id: string
-    tool: string
-    enabled: boolean
-    updated_at: string
-  }[]).map((row) => ({
-    id: row.id,
-    orgId: row.org_id,
-    tool: row.tool,
-    enabled: row.enabled,
-    updatedAt: row.updated_at,
-  }))
+  if (!data) return []
+  let kek = ""
+  try {
+    kek = getKek()
+  } catch {}
+  return data.map((row) => {
+    let provider: string | undefined
+    let last4: string | undefined
+    let baseUrl: string | undefined
+    if (kek && row.config_enc) {
+      try {
+        const parsed = JSON.parse(openSecret(row.config_enc, kek))
+        provider = parsed.provider
+        baseUrl = parsed.baseUrl
+        if (parsed.apiKey) last4 = parsed.apiKey.slice(-4)
+        else if (parsed.token) last4 = parsed.token.slice(-4)
+      } catch {}
+    }
+    return {
+      id: row.id,
+      orgId: row.org_id,
+      tool: row.tool,
+      enabled: row.enabled,
+      provider,
+      last4,
+      baseUrl,
+      updatedAt: row.updated_at,
+    }
+  })
 }
 
 export async function listAgentApiKeys(orgId: string): Promise<AgentApiKeyView[]> {

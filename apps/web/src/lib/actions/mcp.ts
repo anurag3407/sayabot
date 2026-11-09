@@ -18,8 +18,10 @@ import {
 } from "@/lib/actions/shared"
 import type { ActionResult } from "@/lib/types"
 
+import { testWebSearchInOrchestrator } from "@/lib/orchestrator"
+
 const transportSchema = z.enum(["http", "sse"])
-const builtinToolSchema = z.enum(["github_bridge", "postgres_inspector"])
+const builtinToolSchema = z.enum(["github_bridge", "postgres_inspector", "web_search"])
 
 function parseHeaders(text: string): { ok: true; value: Record<string, string> } | { ok: false; error: string } {
   if (!text.trim()) return { ok: true, value: {} }
@@ -237,6 +239,34 @@ export async function saveOrgToolConfig(
     const token = field(formData, "githubToken")
     if (!token) return fail("Paste a GitHub token")
     config.token = token
+  } else if (tool === "web_search") {
+    const provider = field(formData, "provider") || "duckduckgo"
+    config.provider = provider
+    const apiKey = field(formData, "apiKey")
+    const baseUrl = field(formData, "baseUrl")
+    if (baseUrl) config.baseUrl = baseUrl
+
+    if (apiKey) {
+      config.apiKey = apiKey
+    } else if (provider !== "duckduckgo" && provider !== "searxng") {
+      // Check existing config to allow keeping previous key
+      const admin = createAdminClient()
+      const { data: existing } = await admin
+        .from("org_tool_configs")
+        .select("config_enc")
+        .eq("org_id", check.access.org.id)
+        .eq("tool", "web_search")
+        .maybeSingle()
+      if (existing?.config_enc) {
+        try {
+          const old = JSON.parse(openSecret(existing.config_enc, getKek()))
+          if (old.apiKey) config.apiKey = old.apiKey
+        } catch {}
+      }
+      if (!config.apiKey && provider !== "duckduckgo" && provider !== "searxng") {
+        return fail(`Please enter an API key for ${provider}`)
+      }
+    }
   } else {
     const connectionString = field(formData, "connectionString")
     if (!/^postgres(ql)?:\/\//.test(connectionString)) {
@@ -266,4 +296,55 @@ export async function saveOrgToolConfig(
   })
   revalidateOrg(orgSlug)
   return ok(`${tool} saved`)
+}
+
+export async function testWebSearchAction(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const orgSlug = field(formData, "orgSlug")
+  const check = await adminOrgAccess(orgSlug)
+  if ("error" in check) return fail(check.error)
+
+  const provider = field(formData, "provider") || "duckduckgo"
+  let apiKey = field(formData, "apiKey")
+  const baseUrl = field(formData, "baseUrl")
+  const query = field(formData, "query") || "latest artificial intelligence news"
+
+  // If apiKey is not provided in form and provider requires key, try reading saved apiKey
+  if (!apiKey && provider !== "duckduckgo" && provider !== "searxng") {
+    const admin = createAdminClient()
+    const { data: existing } = await admin
+      .from("org_tool_configs")
+      .select("config_enc")
+      .eq("org_id", check.access.org.id)
+      .eq("tool", "web_search")
+      .maybeSingle()
+    if (existing?.config_enc) {
+      try {
+        const old = JSON.parse(openSecret(existing.config_enc, getKek()))
+        if (old.apiKey) apiKey = old.apiKey
+      } catch {}
+    }
+  }
+
+  const result = await testWebSearchInOrchestrator({
+    orgId: check.access.org.id,
+    provider,
+    apiKey: apiKey || undefined,
+    baseUrl: baseUrl || undefined,
+    query,
+  })
+
+  if (!result.ok) {
+    return fail(result.error)
+  }
+
+  return ok(`Search succeeded (${result.count} results in ${result.latencyMs}ms)`, {
+    provider: result.provider,
+    count: result.count,
+    latencyMs: result.latencyMs,
+    answer: result.answer,
+    results: result.results,
+  })
 }
