@@ -13,6 +13,12 @@ export const MODEL_SUGGESTIONS: Record<string, string[]> = {
     "anthropic/claude-3.7-sonnet",
   ],
   copilot: ["auto", "claude-3.5-sonnet", "gpt-4o", "o1-preview"],
+  cloudflare: [
+    "@cf/meta/llama-3.3-70b-instruct",
+    "@cf/deepseek-ai/deepseek-r1-distill-qwen-32b",
+    "@cf/mistral/mistral-7b-instruct-v0.2",
+    "@cf/qwen/qwen2.5-72b-instruct",
+  ],
   "openai-compatible": [],
 }
 

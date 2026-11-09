@@ -34,6 +34,15 @@ describe("createLanguageModel", () => {
     })
     expect(modelIdOf(model)).toBe("llama3.1")
   })
+
+  it("creates a cloudflare workers-ai model", () => {
+    const model = createLanguageModel({
+      provider: "cloudflare",
+      apiKey: "test-cf-token",
+      model: "@cf/meta/llama-3.3-70b-instruct",
+    })
+    expect(modelIdOf(model)).toBe("@cf/meta/llama-3.3-70b-instruct")
+  })
 })
 
 describe("devModelConfig", () => {

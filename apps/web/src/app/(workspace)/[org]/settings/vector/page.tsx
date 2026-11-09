@@ -26,6 +26,7 @@ const PROVIDER_NAMES: Record<string, string> = {
   pglite: "Local Embedded PGLite",
   custom_postgres: "PostgreSQL (pgvector)",
   google_gemini: "Google Gemini text-embedding-004",
+  cloudflare_workers_ai: "Cloudflare Workers AI Embeddings",
   voyage: "Voyage AI (voyage-3)",
   openai: "OpenAI text-embedding-3",
   cohere: "Cohere Embed",
