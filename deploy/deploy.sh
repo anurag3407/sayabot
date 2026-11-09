@@ -21,7 +21,8 @@ ENV_FILE="$DEPLOY_DIR/.env.production"
 COMPOSE_FILE="$DEPLOY_DIR/docker-compose.yml"
 RELEASES_FILE="$DEPLOY_DIR/.releases"
 LOCK_FILE="$DEPLOY_DIR/.deploy.lock"
-APP_SERVICES=(orchestrator web)
+SERVICES_CONFIG="$(env_value MESH_APP_SERVICES)"
+APP_SERVICES=(${SERVICES_CONFIG:-orchestrator web})
 EDGE_SERVICES=(nginx certbot)
 HEALTH_TIMEOUT="${MESH_HEALTH_TIMEOUT:-180}"
 
@@ -93,7 +94,9 @@ record_release() {
 images_exist() {
   local prefix tag="$1"
   prefix="$(env_value MESH_IMAGE_PREFIX)"; prefix="${prefix:-mesh}"
-  docker image inspect "$prefix/web:$tag" "$prefix/orchestrator:$tag" >/dev/null 2>&1
+  for svc in "${APP_SERVICES[@]}"; do
+    docker image inspect "$prefix/$svc:$tag" >/dev/null 2>&1 || return 1
+  done
 }
 
 prune_old_images() {
@@ -102,7 +105,7 @@ prune_old_images() {
   prefix="$(env_value MESH_IMAGE_PREFIX)"; prefix="${prefix:-mesh}"
   [[ -f "$RELEASES_FILE" ]] || return 0
   mapfile -t keep_tags < <(awk '{print $1}' "$RELEASES_FILE" | tail -n "$keep")
-  for image in web orchestrator; do
+  for image in "${APP_SERVICES[@]}"; do
     docker image ls "$prefix/$image" --format '{{.Tag}}' | while read -r tag; do
       [[ "$tag" == "latest" || " ${keep_tags[*]} " == *" $tag "* ]] && continue
       docker image rm "$prefix/$image:$tag" >/dev/null 2>&1 || true
@@ -164,16 +167,17 @@ checkout() {
 
 build_images() {
   log "Building images for $MESH_TAG (first build takes several minutes)"
-  DOCKER_BUILDKIT=1 compose build --pull orchestrator web
+  DOCKER_BUILDKIT=1 compose build --pull "${APP_SERVICES[@]}"
   # Keep a moving `latest` so manual `docker compose` commands use the newest release.
   local prefix; prefix="$(env_value MESH_IMAGE_PREFIX)"; prefix="${prefix:-mesh}"
-  docker tag "$prefix/web:$MESH_TAG" "$prefix/web:latest"
-  docker tag "$prefix/orchestrator:$MESH_TAG" "$prefix/orchestrator:latest"
+  for svc in "${APP_SERVICES[@]}"; do
+    docker tag "$prefix/$svc:$MESH_TAG" "$prefix/$svc:latest"
+  done
 }
 
 pull_images() {
   log "Pulling images for $MESH_TAG"
-  compose pull orchestrator web
+  compose pull "${APP_SERVICES[@]}"
 }
 
 run_migrations() {

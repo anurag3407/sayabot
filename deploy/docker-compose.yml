@@ -54,6 +54,7 @@ services:
       NEXT_PUBLIC_APP_URL: https://${MESH_DOMAIN}
       NEXT_PUBLIC_COLLAB_URL: wss://${MESH_DOMAIN}/collab
       ORCHESTRATOR_URL: http://orchestrator:4000
+      COMPUTERD_URL: http://computerd:4100
       GOOGLE_AUTH_ENABLED: ${NEXT_PUBLIC_GOOGLE_AUTH_ENABLED:-false}
       GITHUB_AUTH_ENABLED: ${NEXT_PUBLIC_GITHUB_AUTH_ENABLED:-false}
       SSO_ENABLED: ${NEXT_PUBLIC_SSO_ENABLED:-false}
@@ -82,6 +83,9 @@ services:
       NODE_ENV: production
       PORT: "4000"
       SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+      COMPUTERD_URL: http://computerd:4100
+      EGRESS_URL: http://egress:8081
+      EGRESS_PROXY_URL: http://egress:8080
       # Webhooks to private networks are a dev-only escape hatch.
       MESH_ALLOW_PRIVATE_WEBHOOKS: "false"
     read_only: true
@@ -150,6 +154,7 @@ services:
 
   computerd:
     <<: *hardening
+    user: "0:0"
     image: ${MESH_IMAGE_PREFIX:-mesh}/computerd:${MESH_TAG:-latest}
     build:
       context: ..
@@ -158,6 +163,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: "4100"
+      DOCKER_HOST: "unix:///var/run/docker.sock"
       ORCHESTRATOR_URL: http://orchestrator:4000
     read_only: true
     tmpfs:
@@ -191,5 +197,6 @@ networks:
   mesh:
     driver: bridge
   botnet:
+    name: botnet
     driver: bridge
     internal: true

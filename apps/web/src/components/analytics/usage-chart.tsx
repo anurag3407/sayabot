@@ -1,8 +1,7 @@
 "use client"
 
-import React, { useId, useMemo, useRef, useState } from "react"
-import { formatNumber, formatTokens, formatUsd } from "@/lib/format"
-import { ProviderIcon } from "@/components/room/model-picker/provider-icons"
+import React, { useCallback, useId, useMemo, useRef, useState } from "react"
+import { formatTokens, formatUsd } from "@/lib/format"
 
 export interface ChartSeries {
   id: string
@@ -151,11 +150,11 @@ export function UsageChart({
 
   const scale = useMemo(() => niceScale(peak, TICK_COUNT), [peak])
 
-  const valueToY = (value: number) => {
+  const valueToY = useCallback((value: number) => {
     if (scale.max <= 0) return PLOT_BOTTOM
     const clamped = Math.max(0, Math.min(value, scale.max))
     return PLOT_BOTTOM - (clamped / scale.max) * (PLOT_BOTTOM - PLOT_TOP)
-  }
+  }, [scale.max])
 
   const stepX = points.length < 2 ? 0 : VIEW_WIDTH / (points.length - 1)
 
@@ -179,7 +178,7 @@ export function UsageChart({
         total: totalSeriesVal,
       }
     }).sort((a, b) => b.total - a.total)
-  }, [points, series, stepX, scale.max])
+  }, [points, series, stepX, valueToY])
 
   const formatValue = (val: number) => {
     if (metric === "cost") return formatUsd(val)
@@ -203,7 +202,7 @@ export function UsageChart({
 
   // Label ticks on X axis (first, middle, last)
   const xTicks = useMemo(() => {
-    if (points.length <= 1) return points.map((p, i) => ({ label: p.periodLabel, x: 0 }))
+    if (points.length <= 1) return points.map((p) => ({ label: p.periodLabel, x: 0 }))
     if (points.length <= 4) {
       return points.map((p, i) => ({ label: p.periodLabel, x: i * stepX }))
     }

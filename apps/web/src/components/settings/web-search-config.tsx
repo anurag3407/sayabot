@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react"
 import { saveOrgToolConfig, testWebSearchAction } from "@/lib/actions/mcp"
 import { ActionForm } from "@/components/ui/action-form"
-import { Field, HelpText, Input, Select } from "@/components/ui/field"
+import { Field, Input, Select } from "@/components/ui/field"
 import { Button } from "@/components/ui/button"
 import { InlineAlert } from "@/components/ui/empty"
 import type { OrgToolConfigView } from "@/lib/types"

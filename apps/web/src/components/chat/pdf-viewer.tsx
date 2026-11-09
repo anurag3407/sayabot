@@ -8,8 +8,6 @@ import {
   ExternalLink,
   FileText,
   Maximize2,
-  Minimize2,
-  RotateCcw,
   X,
   ZoomIn,
   ZoomOut,

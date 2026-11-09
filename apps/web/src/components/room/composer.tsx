@@ -336,7 +336,7 @@ export function Composer({
     reader.onload = (e) => {
       const dataUrl = e.target?.result as string
       if (dataUrl) {
-        const cleanName = file.name.replace(/[\[\]]/g, "")
+        const cleanName = file.name.replace(/[[\]]/g, "")
         const snippet = `[${cleanName}](${dataUrl})\n`
         updateValue(value ? `${value}\n\n${snippet}` : snippet)
         showToast({ message: `Attached ${cleanName}`, tone: "success" })

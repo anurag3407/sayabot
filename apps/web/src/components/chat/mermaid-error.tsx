@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import { AlertTriangle, ChevronDown, ChevronRight, Copy, Check, RotateCcw } from "lucide-react"
-import { cn } from "@/lib/format"
 
 export interface MermaidErrorProps {
   chart: string

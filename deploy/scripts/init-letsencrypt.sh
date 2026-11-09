@@ -13,10 +13,12 @@ COMPOSE=(docker compose --env-file "$ENV_FILE" -f "$DEPLOY_DIR/docker-compose.ym
 
 STAGING=0
 FORCE=0
+SKIP_DNS_CHECK=0
 for arg in "$@"; do
   case "$arg" in
     --staging) STAGING=1 ;;
     --force) FORCE=1 ;;
+    --skip-dns-check) SKIP_DNS_CHECK=1 ;;
     *) echo "Unknown option: $arg" >&2; exit 1 ;;
   esac
 done
@@ -44,7 +46,11 @@ fi
 PUBLIC_IP="$(curl -fsS4 --max-time 5 https://api.ipify.org || true)"
 DNS_IPS="$(getent ahostsv4 "$DOMAIN" | awk '{print $1}' | sort -u | tr '\n' ' ' || true)"
 if [[ -n "$PUBLIC_IP" && -n "$DNS_IPS" && " $DNS_IPS " != *" $PUBLIC_IP "* ]]; then
-  die "$DOMAIN resolves to [$DNS_IPS] but this server is $PUBLIC_IP. Fix the DNS A record first."
+  if [[ $SKIP_DNS_CHECK -eq 1 ]]; then
+    log "$DOMAIN resolves to [$DNS_IPS] while server is $PUBLIC_IP (Cloudflare proxy or CDN detected). Continuing with --skip-dns-check..."
+  else
+    die "$DOMAIN resolves to [$DNS_IPS] but this server is $PUBLIC_IP. Fix the DNS A record, set Cloudflare to DNS-only during certificate issuance, or pass --skip-dns-check."
+  fi
 fi
 [[ -n "$DNS_IPS" ]] || die "$DOMAIN does not resolve yet. Create the DNS A record first."
 

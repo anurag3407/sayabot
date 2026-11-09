@@ -44,7 +44,7 @@ create table if not exists public.agent_templates (
 );
 
 create unique index if not exists agent_templates_org_slug_idx
-  on public.agent_templates (coalesce(org_id, '00000000-0000-0000-0000-000000000000'::uuid), slug);
+  on public.agent_templates (org_id, slug) nulls not distinct;
 create index if not exists agent_templates_org_idx on public.agent_templates (org_id);
 
 alter table public.agent_templates enable row level security;

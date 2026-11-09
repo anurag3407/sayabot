@@ -40,11 +40,9 @@ export function UsageShareBar({
         aria-label={`${label}: ${visible.map((s) => `${s.label} ${format(s.value)}`).join(", ")}`}
         className="relative flex h-2.5 w-full gap-0.5 overflow-hidden rounded-full bg-line"
       >
-        {visible.map((segment) => {
-          const pct = segment.value / total
-          return (
-            <div
-              key={segment.label}
+        {visible.map((segment) => (
+          <div
+            key={segment.label}
               onMouseEnter={() => setHoveredSegment(segment)}
               onMouseLeave={() => setHoveredSegment(null)}
               className="relative h-full cursor-pointer transition-all hover:brightness-110"
@@ -54,8 +52,7 @@ export function UsageShareBar({
                 minWidth: "4px",
               }}
             />
-          )
-        })}
+        ))}
       </div>
 
       {/* Hover Info or Default Legend */}

@@ -3,13 +3,13 @@
 
 upstream mesh_web {
     zone mesh_web 64k;
-    server web:3000 resolve;
+    server web:3000;
     keepalive 32;
 }
 
 upstream mesh_orchestrator {
     zone mesh_orchestrator 64k;
-    server orchestrator:4000 resolve;
+    server orchestrator:4000;
     keepalive 8;
 }
 

@@ -1,14 +1,11 @@
 "use client"
 
-import { useEffect, useId, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import {
   AlertCircle,
   Bot,
-  Calendar,
   CheckCircle2,
-  ChevronRight,
   Clock,
-  History,
   LayoutGrid,
   List,
   Loader2,
@@ -16,9 +13,7 @@ import {
   Pause,
   Play,
   Plus,
-  RefreshCw,
   Send,
-  Settings,
   Sparkles,
   Trash2,
   X,

@@ -2,7 +2,7 @@ import type { ComponentType } from "react"
 import { ArrowDownToLine } from "lucide-react"
 import { Mascot } from "@/components/ui/mascot"
 import { SectionHead } from "./section-head"
-import { AndroidIcon, AppleIcon, LinuxIcon, WindowsIcon } from "./brand-icons"
+import { AndroidIcon, AppleIcon, WindowsIcon } from "./brand-icons"
 import { DOWNLOADS } from "./content"
 
 const READY = [

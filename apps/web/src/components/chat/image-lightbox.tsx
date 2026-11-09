@@ -40,7 +40,6 @@ export function ImageWithLightbox({ src, alt, className, ...props }: ImageProps)
   return (
     <>
       <span className="group relative my-3 inline-block cursor-zoom-in overflow-hidden rounded-xl border border-line bg-panel transition-all hover:border-line-strong">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={src}
           alt={alt || "Image preview"}
@@ -133,7 +132,6 @@ export function ImageWithLightbox({ src, alt, className, ...props }: ImageProps)
 
           {/* Image Centered View */}
           <div className="flex flex-1 items-center justify-center overflow-auto p-4">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={src}
               alt={alt || "Enlarged preview"}
