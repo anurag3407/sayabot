@@ -38,7 +38,7 @@ vi.mock("../tools", () => ({ buildTools: async () => ({
 }) }))
 vi.mock("./skills", () => ({ getAvailableSkills: async () => [] }))
 vi.mock("../memory/service", () => ({ getMemoryService: () => ({
-  getPinnedDigest: async () => [], recall: async () => [], extractMemoriesFromTranscript: async () => {},
+  getPinnedDigest: async () => [], recall: async () => [], extractMemoriesFromTranscript: async () => {}, getActiveLoops: async () => [],
 }) }))
 vi.mock("../realtime", () => ({ broadcast: async (_room: string, event: unknown) => { state.events.push(event) } }))
 

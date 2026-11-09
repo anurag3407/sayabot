@@ -1,35 +1,44 @@
-import { generateText } from "ai"
 import { and, desc, eq, inArray, lt, or, sql } from "drizzle-orm"
 import { redactSecrets } from "@sayabot/core"
-import { memories } from "@sayabot/db"
+import {
+  memories,
+  type MemoryLinkRow,
+  type MemoryRow,
+  type OpenLoopRow,
+} from "@sayabot/db"
 import { getDb } from "../db"
 import type { AgentRow } from "../runner/context"
-import { resolveAgentCheapModel } from "../runner/llm"
+import { BeliefEngine } from "./modules/beliefs"
+import { DreamEngine } from "./modules/dream"
+import { MemoryGraphEngine } from "./modules/graph"
+import { OpenLoopsManager } from "./modules/open-loops"
+import { calculateRetention, compositeMemoryScore } from "./modules/salience"
+import { buildScopeConditions } from "./modules/sources"
+import type {
+  CognitiveRecallInput,
+  CognitiveWriteInput,
+  EpistemicStatus,
+  MemoryKind,
+  MemoryLinkInput,
+  MemoryLinkView,
+  MemoryScope,
+  MemorySource,
+  OpenLoopStatus,
+  ScoredMemoryItem,
+} from "./types"
 
-export interface WriteMemoryInput {
-  orgId: string
-  scope: "agent" | "room" | "org"
-  agentId?: string | null
-  roomId?: string | null
-  kind: "fact" | "preference" | "decision" | "procedure" | "episode"
-  title: string
-  body: string
-  tags?: string[]
-  source?: "agent" | "human" | "compaction" | "consolidation" | "import"
-  sourceRef?: string | null
-  confidence?: number
-  pinned?: boolean
-  createdByUserId?: string | null
-  createdByAgentId?: string | null
-}
+export type WriteMemoryInput = CognitiveWriteInput
 
 export interface HybridRecallInput {
   orgId: string
   query: string
-  scope?: "agent" | "room" | "org"
+  scope?: MemoryScope
   agentId?: string | null
   roomId?: string | null
   limit?: number
+  epistemicFilter?: EpistemicStatus[]
+  minSalience?: number
+  includeLinks?: boolean
 }
 
 export interface RecalledMemoryItem {
@@ -41,24 +50,53 @@ export interface RecalledMemoryItem {
   pinned: boolean
   confidence: number
   score: number
+  retention?: number
+  emotionalSalience?: number
+  epistemicStatus?: EpistemicStatus
+  perspective?: string
+  links?: MemoryLinkView[]
 }
 
 /**
- * Memory Service:
- * - Redacted write with deduplication by title/scope
- * - Hybrid FTS search with recency & pinned ranking boost
- * - Pinned memories digest for System 2 cached prefix
+ * Cognitive Memory Service
+ * Provides human-like memory capabilities for autonomous agents:
+ * - Scoped multi-source isolation (agent private, room shared, org global)
+ * - Epistemic belief tracking (verified, belief, hypothesis, superseded, withdrawn)
+ * - Open loops engine (commitments, promises, tasks, follow-ups)
+ * - Relational knowledge graph & concept wikilinks [[slug]]
+ * - Spaced retention decay (Ebbinghaus curve) with emotional salience
+ * - Autonomous dream consolidation cycle
  */
 export class MemoryService {
+  private getDb() {
+    return getDb()
+  }
+
+  get beliefs(): BeliefEngine {
+    return new BeliefEngine(this.getDb())
+  }
+
+  get openLoops(): OpenLoopsManager {
+    return new OpenLoopsManager(this.getDb())
+  }
+
+  get graph(): MemoryGraphEngine {
+    return new MemoryGraphEngine(this.getDb())
+  }
+
+  get dream(): DreamEngine {
+    return new DreamEngine(this.getDb())
+  }
+
   /**
-   * Writes a memory item. Passes text through secret redaction and prevents duplicate records.
+   * Writes or updates a memory item with cognitive metadata and concept wikilink graph indexing.
    */
-  async write(input: WriteMemoryInput) {
-    const db = getDb()
+  async write(input: CognitiveWriteInput): Promise<MemoryRow> {
+    const db = this.getDb()
 
     // Pass through secret scrubber/redaction
     const redactedTitle = redactSecrets(input.title.slice(0, 200)).text
-    const redactedBody = redactSecrets(input.body.slice(0, 2048)).text
+    const redactedBody = redactSecrets(input.body.slice(0, 4096)).text
 
     // Check for existing memory with matching scope and title to deduplicate
     const scopeConditions = [
@@ -76,67 +114,93 @@ export class MemoryService {
       .where(and(...scopeConditions))
       .limit(1)
 
-    if (existing) {
-      const [updated] = await db
-        .update(memories)
-        .set({
-          body: redactedBody,
-          tags: input.tags ?? [],
-          source: input.source ?? "agent",
-          confidence: input.confidence ?? 1.0,
-          pinned: input.pinned ?? false,
-          updatedAt: new Date(),
-        })
-        .where(eq(memories.id, existing.id))
-        .returning()
-      return updated
-    }
+    let savedRow: MemoryRow
 
-    const [inserted] = await db
-      .insert(memories)
-      .values({
-        orgId: input.orgId,
-        scope: input.scope,
-        agentId: input.agentId ?? null,
-        roomId: input.roomId ?? null,
-        kind: input.kind,
-        title: redactedTitle,
+    if (existing) {
+      const updateData: Record<string, unknown> = {
         body: redactedBody,
         tags: input.tags ?? [],
         source: input.source ?? "agent",
-        sourceRef: input.sourceRef ?? null,
         confidence: input.confidence ?? 1.0,
         pinned: input.pinned ?? false,
-        createdByUserId: input.createdByUserId ?? null,
-        createdByAgentId: input.createdByAgentId ?? null,
-      })
-      .returning()
+        updatedAt: new Date(),
+      }
 
-    return inserted
+      if (input.emotionalSalience !== undefined) updateData.emotionalSalience = input.emotionalSalience
+      if (input.epistemicStatus !== undefined) updateData.epistemicStatus = input.epistemicStatus
+      if (input.perspective !== undefined) updateData.perspective = input.perspective
+      if (input.evidenceRefs !== undefined) updateData.evidenceRefs = input.evidenceRefs
+      if (input.decayHalfLifeDays !== undefined) updateData.decayHalfLifeDays = input.decayHalfLifeDays
+
+      const [updated] = await db
+        .update(memories)
+        .set(updateData)
+        .where(eq(memories.id, existing.id))
+        .returning()
+      if (!updated) {
+        throw new Error("Failed to update existing memory")
+      }
+      savedRow = updated
+    } else {
+      const [inserted] = await db
+        .insert(memories)
+        .values({
+          orgId: input.orgId,
+          scope: input.scope,
+          agentId: input.agentId ?? null,
+          roomId: input.roomId ?? null,
+          kind: input.kind,
+          title: redactedTitle,
+          body: redactedBody,
+          tags: input.tags ?? [],
+          source: input.source ?? "agent",
+          sourceRef: input.sourceRef ?? null,
+          confidence: input.confidence ?? 1.0,
+          pinned: input.pinned ?? false,
+          perspective: input.perspective ?? "first_person",
+          emotionalSalience: input.emotionalSalience ?? 0.5,
+          epistemicStatus: input.epistemicStatus ?? "belief",
+          evidenceRefs: input.evidenceRefs ?? [],
+          targetAgentId: input.targetAgentId ?? null,
+          decayHalfLifeDays: input.decayHalfLifeDays ?? 30,
+          createdByUserId: input.createdByUserId ?? null,
+          createdByAgentId: input.createdByAgentId ?? null,
+        })
+        .returning()
+      if (!inserted) {
+        throw new Error("Failed to insert memory")
+      }
+      savedRow = inserted
+    }
+
+    // Index explicit links and [[slug]] wikilinks into memory_links
+    try {
+      await this.graph.syncLinks({
+        orgId: input.orgId,
+        sourceMemoryId: savedRow.id,
+        bodyText: savedRow.body,
+        explicitLinks: input.links,
+      })
+    } catch {}
+
+    return savedRow
   }
 
   /**
-   * Hybrid recall across allowed memory scopes (agent, room, org).
-   * Ranks by text relevance with boosts for pinned items and recent usage.
+   * Cognitive hybrid recall across scopes, ranked by text relevance, retention decay,
+   * emotional salience, confidence, and epistemic status.
    */
   async recall(input: HybridRecallInput): Promise<RecalledMemoryItem[]> {
-    const db = getDb()
+    const db = this.getDb()
     const limit = input.limit ?? 8
 
-    const scopeFilters = [eq(memories.scope, "org")]
-    if (input.roomId) {
-      scopeFilters.push(and(eq(memories.scope, "room"), eq(memories.roomId, input.roomId))!)
-    }
-    if (input.agentId) {
-      scopeFilters.push(and(eq(memories.scope, "agent"), eq(memories.agentId, input.agentId))!)
-    }
+    const whereCond = buildScopeConditions({
+      orgId: input.orgId,
+      scope: input.scope,
+      agentId: input.agentId,
+      roomId: input.roomId,
+    })
 
-    const baseWhere = and(
-      eq(memories.orgId, input.orgId),
-      input.scope ? eq(memories.scope, input.scope) : or(...scopeFilters),
-    )
-
-    // Execute query with ranking
     const rows = await db
       .select({
         id: memories.id,
@@ -146,30 +210,71 @@ export class MemoryService {
         body: memories.body,
         pinned: memories.pinned,
         confidence: memories.confidence,
+        emotionalSalience: memories.emotionalSalience,
+        epistemicStatus: memories.epistemicStatus,
+        perspective: memories.perspective,
+        decayHalfLifeDays: memories.decayHalfLifeDays,
         lastUsedAt: memories.lastUsedAt,
+        createdAt: memories.createdAt,
+        useCount: memories.useCount,
       })
       .from(memories)
-      .where(baseWhere)
+      .where(whereCond)
       .orderBy(desc(memories.pinned), desc(memories.lastUsedAt), desc(memories.createdAt))
-      .limit(limit * 2)
+      .limit(limit * 3)
 
     if (rows.length === 0) return []
 
-    // Score based on keyword overlap, pinned flag, and confidence
     const queryTerms = input.query.toLowerCase().split(/\s+/).filter(Boolean)
+    const now = new Date()
 
-    const scored = rows.map((r) => {
+    const scoredItems: RecalledMemoryItem[] = []
+
+    for (const r of rows) {
+      // Filter out withdrawn memories unless explicitly specified
+      if (
+        r.epistemicStatus === "withdrawn" &&
+        (!input.epistemicFilter || !input.epistemicFilter.includes("withdrawn"))
+      ) {
+        continue
+      }
+
+      // Filter by epistemic statuses if filter provided
+      if (input.epistemicFilter && !input.epistemicFilter.includes(r.epistemicStatus as EpistemicStatus)) {
+        continue
+      }
+
+      // Calculate Ebbinghaus retention
+      const retention = calculateRetention({
+        createdAt: r.createdAt,
+        lastUsedAt: r.lastUsedAt,
+        useCount: r.useCount,
+        decayHalfLifeDays: r.decayHalfLifeDays,
+        now,
+      })
+
+      // Calculate keyword overlap
       const text = `${r.title} ${r.body}`.toLowerCase()
       let matches = 0
       for (const term of queryTerms) {
         if (text.includes(term)) matches++
       }
-
       const matchRatio = queryTerms.length > 0 ? matches / queryTerms.length : 0.5
-      const pinnedBoost = r.pinned ? 0.3 : 0.0
-      const score = matchRatio * 0.7 + pinnedBoost + (r.confidence * 0.1)
 
-      return {
+      const score = compositeMemoryScore({
+        keywordMatchRatio: matchRatio,
+        pinned: r.pinned,
+        confidence: r.confidence,
+        emotionalSalience: r.emotionalSalience,
+        retention,
+        epistemicStatus: r.epistemicStatus as EpistemicStatus,
+      })
+
+      if (input.minSalience && r.emotionalSalience < input.minSalience) {
+        continue
+      }
+
+      scoredItems.push({
         id: r.id,
         scope: r.scope,
         kind: r.kind,
@@ -177,21 +282,38 @@ export class MemoryService {
         body: r.body,
         pinned: r.pinned,
         confidence: r.confidence,
+        emotionalSalience: r.emotionalSalience,
+        epistemicStatus: r.epistemicStatus as EpistemicStatus,
+        perspective: r.perspective,
+        retention,
         score,
-      }
-    })
+      })
+    }
 
-    scored.sort((a, b) => b.score - a.score)
-    const top = scored.slice(0, limit)
+    scoredItems.sort((a, b) => b.score - a.score)
+    const top = scoredItems.slice(0, limit)
 
-    // Update last_used_at and use_count for recalled items
+    // Optionally attach relational graph links
+    if (input.includeLinks && top.length > 0) {
+      try {
+        const linkMap = await this.graph.getLinksForMemories(
+          input.orgId,
+          top.map((t) => t.id),
+        )
+        for (const item of top) {
+          item.links = linkMap[item.id] ?? []
+        }
+      } catch {}
+    }
+
+    // Asynchronously update last_used_at and use_count for recalled items
     if (top.length > 0) {
       const ids = top.map((t) => t.id)
       try {
         await db
           .update(memories)
           .set({
-            lastUsedAt: new Date(),
+            lastUsedAt: now,
             useCount: sql`use_count + 1`,
           })
           .where(inArray(memories.id, ids))
@@ -209,15 +331,12 @@ export class MemoryService {
     agentId?: string | null
     roomId?: string | null
   }): Promise<Array<{ id: string; title: string; body: string }>> {
-    const db = getDb()
-
-    const scopeFilters = [eq(memories.scope, "org")]
-    if (args.roomId) {
-      scopeFilters.push(and(eq(memories.scope, "room"), eq(memories.roomId, args.roomId))!)
-    }
-    if (args.agentId) {
-      scopeFilters.push(and(eq(memories.scope, "agent"), eq(memories.agentId, args.agentId))!)
-    }
+    const db = this.getDb()
+    const scopeCond = buildScopeConditions({
+      orgId: args.orgId,
+      agentId: args.agentId,
+      roomId: args.roomId,
+    })
 
     const rows = await db
       .select({
@@ -226,16 +345,108 @@ export class MemoryService {
         body: memories.body,
       })
       .from(memories)
-      .where(and(eq(memories.orgId, args.orgId), eq(memories.pinned, true), or(...scopeFilters)))
+      .where(and(scopeCond, eq(memories.pinned, true)))
       .orderBy(memories.id)
       .limit(20)
 
     return rows
   }
 
+  // ── Open Loops Methods ───────────────────────────────────────────────────
+
+  async createOpenLoop(input: {
+    orgId: string
+    agentId: string
+    roomId?: string | null
+    description: string
+    dueAt?: Date | null
+    sourceRef?: string | null
+  }): Promise<OpenLoopRow> {
+    return this.openLoops.createOpenLoop(input)
+  }
+
+  async updateOpenLoop(input: {
+    id: string
+    orgId: string
+    status?: OpenLoopStatus
+    blockerReason?: string | null
+    resolution?: string | null
+    dueAt?: Date | null
+  }): Promise<OpenLoopRow | null> {
+    return this.openLoops.updateOpenLoop(input)
+  }
+
+  async resolveOpenLoop(id: string, orgId: string, resolution: string): Promise<OpenLoopRow | null> {
+    return this.openLoops.resolveOpenLoop(id, orgId, resolution)
+  }
+
+  async getActiveLoops(args: {
+    orgId: string
+    agentId: string
+    roomId?: string | null
+    limit?: number
+  }): Promise<OpenLoopRow[]> {
+    return this.openLoops.getActiveLoops(args)
+  }
+
+  // ── Belief Engine Methods ─────────────────────────────────────────────────
+
+  async assertBelief(args: {
+    orgId: string
+    scope: MemoryScope
+    agentId?: string | null
+    roomId?: string | null
+    title: string
+    body: string
+    tags?: string[]
+    epistemicStatus?: EpistemicStatus
+    confidence?: number
+    emotionalSalience?: number
+    perspective?: string
+    evidenceRefs?: string[]
+    supersedesMemoryId?: string | null
+    createdByAgentId?: string | null
+  }): Promise<MemoryRow> {
+    return this.beliefs.assertBelief(args)
+  }
+
+  async withdrawBelief(memoryId: string, orgId: string, reason: string): Promise<MemoryRow | null> {
+    return this.beliefs.withdrawBelief({ memoryId, orgId, reason })
+  }
+
+  async supersedeBelief(oldMemoryId: string, newMemoryId: string, orgId: string): Promise<boolean> {
+    return this.beliefs.supersedeBelief({ oldMemoryId, newMemoryId, orgId })
+  }
+
+  async detectContradictions(args: {
+    orgId: string
+    title: string
+    tags?: string[]
+    agentId?: string | null
+    roomId?: string | null
+  }) {
+    return this.beliefs.detectContradictions(args)
+  }
+
+  async getBeliefLineage(memoryId: string, orgId: string): Promise<MemoryRow[]> {
+    return this.beliefs.getBeliefLineage(memoryId, orgId)
+  }
+
+  // ── Knowledge Graph Methods ───────────────────────────────────────────────
+
+  async graphWalk(args: {
+    orgId: string
+    startMemoryId: string
+    maxDepth?: number
+    limit?: number
+  }) {
+    return this.graph.graphWalk(args)
+  }
+
+  // ── Dream & Consolidation Methods ────────────────────────────────────────
+
   /**
-   * Automatically extracts up to 3 durable facts or decisions from a completed run transcript
-   * using a cheap model pass (WS2 M5).
+   * Automatically extracts durable beliefs and open commitments from a completed run transcript.
    */
   async extractMemoriesFromTranscript(args: {
     orgId: string
@@ -246,43 +457,32 @@ export class MemoryService {
   }): Promise<number> {
     if (!args.transcriptText || args.transcriptText.length < 50) return 0
     try {
-      const resolved = await resolveAgentCheapModel(args.agent)
-      const result = await generateText({
-        model: resolved.model,
-        system:
-          "You are an automated memory extractor for an AI team. Given an agent turn transcript, extract up to 3 durable, high-value facts, user preferences, or team decisions that should be remembered in future turns. Ignore ephemeral status chatter. Format as JSON array: [ { \"title\": string, \"body\": string, \"kind\": \"fact\"|\"preference\"|\"decision\", \"confidence\": number, \"tags\": string[] } ]. Return ONLY valid JSON.",
-        prompt: `Transcript:\n${args.transcriptText.slice(0, 3000)}\n\nExtract durable facts:`,
+      const insights = await this.dream.extractCognitiveInsights({
+        orgId: args.orgId,
+        transcriptText: args.transcriptText,
+        agent: args.agent,
+        roomId: args.roomId,
       })
 
-      const cleaned = result.text.trim().replace(/^```json\s*/, "").replace(/\s*```$/, "")
-      const parsed = JSON.parse(cleaned)
-      if (!Array.isArray(parsed)) return 0
-
-      let saved = 0
-      for (const item of parsed.slice(0, 3)) {
-        if (!item.title || !item.body) continue
-        await this.write({
-          orgId: args.orgId,
-          scope: args.roomId ? "room" : "agent",
-          agentId: args.agentId,
-          roomId: args.roomId,
-          kind: item.kind === "preference" || item.kind === "decision" ? item.kind : "fact",
-          title: item.title,
-          body: item.body,
-          tags: Array.isArray(item.tags) ? item.tags : [],
-          source: "agent",
-          confidence: typeof item.confidence === "number" ? item.confidence : 0.8,
-        })
-        saved++
+      if (insights.beliefs.length === 0 && insights.openLoops.length === 0) {
+        return 0
       }
-      return saved
+
+      const result = await this.dream.applyInsights({
+        orgId: args.orgId,
+        agentId: args.agentId ?? args.agent.id,
+        roomId: args.roomId,
+        insights,
+      })
+
+      return result.beliefsSaved + result.loopsSaved
     } catch {
       return 0
     }
   }
 
   /**
-   * Writes a daily episode memory for an agent in a room ("what I did today") (WS2 M6).
+   * Writes a daily episode memory for an agent in a room ("what I did today").
    */
   async writeDailyEpisode(args: {
     orgId: string
@@ -302,66 +502,62 @@ export class MemoryService {
       tags: ["episode", today!],
       source: "consolidation",
       pinned: false,
+      decayHalfLifeDays: 14,
     })
   }
 
   /**
-   * Consolidates memories by removing expired episode logs older than 30 days (WS2 M6).
+   * Runs the autonomous dream consolidation cycle across decaying episodes,
+   * overdue open loops, and expired withdrawn records.
    */
-  async consolidate(orgId: string): Promise<{ expiredEpisodes: number }> {
-    const db = getDb()
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-
-    const deleted = await db
-      .delete(memories)
-      .where(
-        and(
-          eq(memories.orgId, orgId),
-          eq(memories.kind, "episode"),
-          lt(memories.createdAt, thirtyDaysAgo),
-        ),
-      )
-      .returning({ id: memories.id })
-
-    return { expiredEpisodes: deleted.length }
+  async consolidate(orgId: string): Promise<{ expiredEpisodes: number; loopsUpdated?: number }> {
+    const result = await this.dream.dreamConsolidate(orgId)
+    return {
+      expiredEpisodes: result.prunedEpisodes,
+      loopsUpdated: result.staleLoopsFlagged,
+    }
   }
 
   /**
-   * Generates markdown files for mirroring into /home/bot/.saaya/memory/MEMORY.md (WS2 M8).
+   * Generates markdown files for mirroring into /home/bot/.saaya/memory/ (MEMORY.md, OPEN_LOOPS.md, topics).
    */
   async generateMemoryMirror(args: {
     orgId: string
     agentId?: string | null
     roomId?: string | null
-  }): Promise<{ memoryMd: string; topics: Record<string, string> }> {
-    const db = getDb()
-    const scopeFilters = [eq(memories.scope, "org")]
-    if (args.roomId) {
-      scopeFilters.push(and(eq(memories.scope, "room"), eq(memories.roomId, args.roomId))!)
-    }
-    if (args.agentId) {
-      scopeFilters.push(and(eq(memories.scope, "agent"), eq(memories.agentId, args.agentId))!)
-    }
+  }): Promise<{ memoryMd: string; openLoopsMd: string; topics: Record<string, string> }> {
+    const db = this.getDb()
+    const scopeCond = buildScopeConditions({
+      orgId: args.orgId,
+      agentId: args.agentId,
+      roomId: args.roomId,
+    })
 
     const rows = await db
       .select()
       .from(memories)
-      .where(and(eq(memories.orgId, args.orgId), or(...scopeFilters)))
+      .where(scopeCond)
       .orderBy(desc(memories.pinned), desc(memories.lastUsedAt))
 
     const pinned = rows.filter((r) => r.pinned)
     const memoryMdLines = [
       "# Team & Agent Memory",
       "",
-      "This file is automatically generated by Sayabot Memory Service. It reflects durable workspace facts and preferences.",
+      "This file is automatically generated by Sayabot Cognitive Memory Layer. It reflects verified beliefs, active mental models, and workspace decisions.",
       "",
-      "## Pinned Memories",
+      "## Pinned Core Knowledge",
       "",
-      ...pinned.map((m) => `- **${m.title}**: ${m.body}`),
+      ...pinned.map((m) => `- **${m.title}** [${m.epistemicStatus}]: ${m.body}`),
       "",
-      "## Recent Decisions & Facts",
+      "## Working Beliefs & Decisions",
       "",
-      ...rows.filter((r) => !r.pinned).slice(0, 30).map((m) => `- **${m.title}** (${m.kind}): ${m.body}`),
+      ...rows
+        .filter((r) => !r.pinned && r.epistemicStatus !== "withdrawn")
+        .slice(0, 30)
+        .map(
+          (m) =>
+            `- **${m.title}** (${m.kind}, status: ${m.epistemicStatus}): ${m.body}`,
+        ),
     ]
 
     const topics: Record<string, string> = {}
@@ -374,8 +570,21 @@ export class MemoryService {
       }
     }
 
+    let openLoopsMd = "# Active Open Loops\n\nNo pending commitments."
+    if (args.agentId) {
+      try {
+        const activeLoops = await this.getActiveLoops({
+          orgId: args.orgId,
+          agentId: args.agentId,
+          roomId: args.roomId,
+        })
+        openLoopsMd = this.openLoops.formatOpenLoopsMarkdown(activeLoops)
+      } catch {}
+    }
+
     return {
       memoryMd: memoryMdLines.join("\n"),
+      openLoopsMd,
       topics,
     }
   }
@@ -384,7 +593,7 @@ export class MemoryService {
    * Deletes a memory item.
    */
   async forget(id: string, orgId: string): Promise<boolean> {
-    const db = getDb()
+    const db = this.getDb()
     const result = await db
       .delete(memories)
       .where(and(eq(memories.id, id), eq(memories.orgId, orgId)))

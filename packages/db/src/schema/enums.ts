@@ -118,6 +118,31 @@ export const memorySourceEnum = pgEnum("memory_source", [
   "import",
 ])
 
+export const epistemicStatusEnum = pgEnum("epistemic_status", [
+  "hypothesis",
+  "belief",
+  "verified",
+  "withdrawn",
+  "superseded",
+])
+
+export const openLoopStatusEnum = pgEnum("open_loop_status", [
+  "open",
+  "in_progress",
+  "blocked",
+  "resolved",
+  "dropped",
+])
+
+export const memoryLinkTypeEnum = pgEnum("memory_link_type", [
+  "relates_to",
+  "depends_on",
+  "caused_by",
+  "contradicts",
+  "supersedes",
+  "supports",
+])
+
 export const routineStatusEnum = pgEnum("routine_status", [
   "idle",
   "running",

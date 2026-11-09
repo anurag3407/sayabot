@@ -336,6 +336,7 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
     // Pre-turn memory recall & pinned digest (WS2 M4)
     let pinnedMemories: Array<{ id: string; title: string; body: string }> = []
     let recalledMemories: Array<{ id: string; title: string; body: string; scope?: string }> = []
+    let activeOpenLoopsSummary = ""
     try {
       const memoryService = getMemoryService()
       pinnedMemories = await memoryService.getPinnedDigest({
@@ -359,11 +360,25 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
         scope: m.scope,
       }))
 
+      try {
+        const activeLoops = await memoryService.getActiveLoops({
+          orgId: room.orgId,
+          agentId: agent.id,
+          roomId: room.id,
+          limit: 5,
+        })
+        if (activeLoops.length > 0) {
+          activeOpenLoopsSummary =
+            "Active Commitments & Open Loops:\n" +
+            activeLoops.map((l) => `- [${l.status.toUpperCase()}] ${l.description}`).join("\n")
+        }
+      } catch {}
+
       // WS2 M8: Mirror durable memory into /home/bot/.saaya/memory/ for bots with computers
       const agentCaps = parseCapabilities(agent.capabilities)
       if (agentCaps.computer) {
         try {
-          const { memoryMd, topics } = await memoryService.generateMemoryMirror({
+          const { memoryMd, openLoopsMd, topics } = await memoryService.generateMemoryMirror({
             orgId: room.orgId,
             agentId: agent.id,
             roomId: room.id,
@@ -373,6 +388,12 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
             path: "/home/bot/.saaya/memory/MEMORY.md",
             content: memoryMd,
           })
+          if (openLoopsMd) {
+            await compClient.writeFile(agent.id, {
+              path: "/home/bot/.saaya/memory/OPEN_LOOPS.md",
+              content: openLoopsMd,
+            })
+          }
           for (const [tag, topicContent] of Object.entries(topics)) {
             const safeTag = tag.replace(/[^a-zA-Z0-9_-]/g, "_")
             await compClient.writeFile(agent.id, {
@@ -410,6 +431,7 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
         contextBlocks: [
           canvasContext ? `Room Canvases:\n${canvasContext}` : "",
           !taskBrief && taskContext ? `Open Tasks in Room:\n${taskContext}` : "",
+          activeOpenLoopsSummary,
         ],
         currentTrigger: args.trigger.content,
         // Only where there is something to verify: a task, or a workspace with checks.

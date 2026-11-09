@@ -3,7 +3,30 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const write = vi.fn(async (input: any) => ({ id: "mem-1", title: input.title, scope: input.scope }))
 const recall = vi.fn(async () => [{ id: "m1", scope: "agent", title: "T", body: "B", kind: "fact" }])
 const forget = vi.fn(async () => true)
-vi.mock("../../src/memory/service", () => ({ getMemoryService: () => ({ write, recall, forget }) }))
+const withdrawBelief = vi.fn(async () => ({ id: "mem-1", epistemicStatus: "withdrawn" }))
+const createOpenLoop = vi.fn(async () => ({ id: "l1", status: "open" }))
+const updateOpenLoop = vi.fn(async () => ({ id: "l1", status: "resolved" }))
+const resolveOpenLoop = vi.fn(async () => ({ id: "l1", status: "resolved" }))
+const getActiveLoops = vi.fn(async () => [])
+const detectContradictions = vi.fn(async () => [])
+const getBeliefLineage = vi.fn(async () => [])
+const graphWalk = vi.fn(async () => ({ rootMemoryId: "m1", nodes: [], edges: [] }))
+
+vi.mock("../../src/memory/service", () => ({
+  getMemoryService: () => ({
+    write,
+    recall,
+    forget,
+    withdrawBelief,
+    createOpenLoop,
+    updateOpenLoop,
+    resolveOpenLoop,
+    getActiveLoops,
+    detectContradictions,
+    getBeliefLineage,
+    graphWalk,
+  }),
+}))
 
 import { memoryTools } from "../../src/memory/tools"
 
@@ -12,13 +35,20 @@ const tools = () => memoryTools({ orgId: "o1", agentId: "a1", roomId: "r1" })
 describe("memoryTools (service stubbed)", () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it("exposes remember/recall/forget with unique names", () => {
-    expect(tools().map((t) => t.name)).toEqual(["remember", "recall", "forget"])
+  it("exposes all cognitive tools with unique names", () => {
+    expect(tools().map((t) => t.name)).toEqual([
+      "remember",
+      "recall",
+      "open_loop",
+      "reflect",
+      "graph_walk",
+      "forget",
+    ])
   })
 
   it("remember forces agentId/roomId from scope", async () => {
     const remember = tools().find((t) => t.name === "remember")!
-    const out = (await remember.execute({ title: "T", body: "B", scope: "room", kind: "fact" })) as any
+    const out = (await remember.execute({ title: "T", body: "B", scope: "room", kind: "fact", epistemic_status: "belief" })) as any
     expect(out).toMatchObject({ ok: true, id: "mem-1" })
     expect(write).toHaveBeenCalledWith(expect.objectContaining({ orgId: "o1", roomId: "r1", agentId: null, createdByAgentId: "a1" }))
   })
@@ -35,7 +65,7 @@ describe("memoryTools (service stubbed)", () => {
     const recallTool = tools().find((t) => t.name === "recall")!
     const out = (await recallTool.execute({ query: "deploy", limit: 3 })) as any
     expect(out).toMatchObject({ query: "deploy", count: 1 })
-    expect(out.memories[0]).toEqual({ id: "m1", scope: "agent", title: "T", body: "B", kind: "fact" })
+    expect(out.memories[0]).toMatchObject({ id: "m1", scope: "agent", title: "T", body: "B", kind: "fact" })
     expect(recallTool.schema.safeParse({ query: "q", limit: 21 }).success).toBe(false)
   })
 
