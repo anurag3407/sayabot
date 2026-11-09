@@ -1,0 +1,57 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "sayabot-edge",
+  "main": "../../apps/orchestrator/src/http.ts",
+  "compatibility_date": "2025-04-01",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "vars": {
+    "NODE_ENV": "production",
+    "SAYABOT_EDGE_ENABLED": "true"
+  },
+  /**
+   * Cloudflare Workers AI Binding
+   * Direct inference on Meta Llama 3.3, DeepSeek R1, and embedding models at the edge.
+   */
+  "ai": {
+    "binding": "AI"
+  },
+  /**
+   * Cloudflare Browser Rendering Binding
+   * Headless Chromium DevTools Protocol (CDP) execution without local Docker overhead.
+   */
+  "browser": {
+    "binding": "MYBROWSER"
+  },
+  /**
+   * Cloudflare R2 Object Storage
+   * Zero-egress artifact, screenshot, and live canvas document storage.
+   */
+  "r2_buckets": [
+    {
+      "binding": "ARTIFACTS_BUCKET",
+      "bucket_name": "sayabot-artifacts"
+    }
+  ],
+  /**
+   * Cloudflare Vectorize
+   * Edge vector index for agent room memory and fast semantic recall.
+   */
+  "vectorize": [
+    {
+      "binding": "VECTORIZE_INDEX",
+      "index_name": "sayabot-memory"
+    }
+  ],
+  /**
+   * Cloudflare KV
+   * Ephemeral session caching and distributed rate-limiting.
+   */
+  "kv_namespaces": [
+    {
+      "binding": "ROOM_CACHE",
+      "id": "sayabot_room_cache"
+    }
+  ]
+}

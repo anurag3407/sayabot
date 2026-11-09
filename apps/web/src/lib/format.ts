@@ -101,6 +101,7 @@ export const PROVIDER_LABELS: Record<string, string> = {
   cerebras: "Cerebras",
   openrouter: "OpenRouter",
   copilot: "GitHub Copilot",
+  cloudflare: "Cloudflare (Workers AI / AI Gateway)",
   "openai-compatible": "OpenAI-compatible",
 }
 

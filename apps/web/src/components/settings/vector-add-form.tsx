@@ -17,6 +17,7 @@ const VECTOR_DB_PROVIDERS = [
 
 const EMBEDDING_PROVIDERS = [
   { value: "google_gemini", label: "Google Gemini text-embedding-004 (Free 1500 RPM)" },
+  { value: "cloudflare_workers_ai", label: "Cloudflare Workers AI (@cf/baai/bge-large-en-v1.5)" },
   { value: "voyage", label: "Voyage AI voyage-3 (Free 200M Tokens)" },
   { value: "openai", label: "OpenAI text-embedding-3-small" },
   { value: "cohere", label: "Cohere embed-english-v3.0 (Free Trial)" },

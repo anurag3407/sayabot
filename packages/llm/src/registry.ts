@@ -99,6 +99,20 @@ export function createLanguageModel(config: LanguageModelConfig): LanguageModel 
         baseURL: baseURL || "https://api.cursor.com/v1",
         apiKey,
       })(model)
+    case "cloudflare": {
+      const accountId = process.env.CLOUDFLARE_ACCOUNT_ID
+      const gatewayId = process.env.CLOUDFLARE_AI_GATEWAY_ID
+      const defaultBaseUrl = accountId && gatewayId
+        ? `https://gateway.ai.cloudflare.com/v1/${accountId}/${gatewayId}/workers-ai`
+        : accountId
+          ? `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/v1`
+          : "https://api.cloudflare.com/client/v4/ai/v1"
+      return createOpenAICompatible({
+        name: "cloudflare",
+        baseURL: baseURL || defaultBaseUrl,
+        apiKey,
+      })(model)
+    }
     case "openai-compatible":
       if (!baseURL) {
         throw new MissingModelConfigError("openai-compatible providers require a base URL")
@@ -294,6 +308,16 @@ const PROVIDER_CAPABILITIES: Record<Provider, ProviderCapabilities> = {
     supportsParallelTools: true,
     supportsComputerUse: true,
     defaultContextWindow: 200_000,
+  },
+  cloudflare: {
+    supportsPromptCache: false,
+    supportsServerCompaction: false,
+    supportsContextEditing: false,
+    supportsEffort: false,
+    supportsMidConversationSystem: true,
+    supportsParallelTools: true,
+    supportsComputerUse: false,
+    defaultContextWindow: 128_000,
   },
   "openai-compatible": {
     supportsPromptCache: false,

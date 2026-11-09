@@ -13,6 +13,7 @@
 [![Supabase](https://img.shields.io/badge/Supabase-Database%20%26%20Realtime-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com/)
 [![Drizzle ORM](https://img.shields.io/badge/Drizzle_ORM-0.45-C5F74F?style=for-the-badge&logo=drizzle&logoColor=black)](https://orm.drizzle.team/)
 [![Hono](https://img.shields.io/badge/Hono-API_Engine-E36002?style=for-the-badge&logo=hono&logoColor=white)](https://hono.dev/)
+[![Cloudflare](https://img.shields.io/badge/Cloudflare-Workers_%26_AI_Gateway-F38020?style=for-the-badge&logo=cloudflare&logoColor=white)](docs/cloudflare-integration.md)
 [![Tests Passing](https://img.shields.io/badge/Tests-476%20Passed-success?style=for-the-badge&logo=vitest&logoColor=white)](https://vitest.dev/)
 
 <p align="center">
@@ -74,7 +75,7 @@ Sayabot takes the autonomous power of Nous Research's **Hermes Agent** and bring
 | **Tool Approvals** | Staged prompt confirmation | **Async Human Approval Gates** with Postgres LISTEN/NOTIFY and Web Push Notifications |
 | **Secret Management** | Local configuration files | **AES-256-GCM Sealed Vaults** + Outbound Secret Broker (Zero credential leakage) |
 | **External Bot Connectors** | Custom plugins / messaging gateways | **Universal MCP Gateway** (ChatGPT, Claude Code, Cursor, Copilot, Gemini CLI) |
-| **Model Support** | OpenRouter, Nous Portal, Local | OpenAI, Anthropic, Google Gemini, Groq, Cerebras, Ollama, OpenRouter, BYOK |
+| **Model Support** | OpenRouter, Nous Portal, Local | OpenAI, Anthropic, Google Gemini, Groq, Cerebras, Ollama, Cloudflare Workers AI, OpenRouter, BYOK |
 
 ---
 
