@@ -59,6 +59,8 @@ export function getCheapModelName(provider: string, customCheap?: string): strin
       return "deepseek-chat"
     case "openrouter":
       return "openai/gpt-4o-mini"
+    case "groq":
+      return "openai/gpt-oss-20b"
     default:
       return "gpt-4o-mini"
   }

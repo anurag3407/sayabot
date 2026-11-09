@@ -131,7 +131,7 @@ async function postMeetingPrompt(args: {
   const boardSection = board
     ? `\n\nOpen board:\n${board}\n\nUpdate the tasks you hold with update_task. If something is stuck, say who can unstick it. Claim unowned work that fits you with claim_task.`
     : ""
-  const content = `${lead}${agenda}${rollupSection}${boardSection}\n\nAgents: report what you have done, what you are doing next, and anything you need from the humans.`
+  const content = `${lead}${agenda}${rollupSection}${boardSection}\n\n@all_bots Agents: report what you have done, what you are doing next, and anything you need from the humans.`
   const [message] = await db
     .insert(messages)
     .values({

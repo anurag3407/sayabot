@@ -154,7 +154,7 @@ export function createApp() {
         model: resolved.model,
         system: agent.systemPrompt || undefined,
         prompt: "Reply with the single word: ok",
-        maxOutputTokens: 12,
+        maxOutputTokens: 200,
         abortSignal: AbortSignal.timeout(25_000),
       })
       return c.json({

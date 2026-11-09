@@ -8,6 +8,7 @@ describe("getCheapModelName", () => {
     expect(getCheapModelName("google")).toBe("gemini-2.0-flash")
     expect(getCheapModelName("deepseek")).toBe("deepseek-chat")
     expect(getCheapModelName("openrouter")).toBe("openai/gpt-4o-mini")
+    expect(getCheapModelName("groq")).toBe("openai/gpt-oss-20b")
   })
 
   it("falls back to gpt-4o-mini for unknown providers and honours an explicit override", () => {
