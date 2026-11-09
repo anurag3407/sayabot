@@ -4,7 +4,7 @@ import {
   isValidCron,
   normalizeCronExpression,
 } from "@sayabot/core"
-import { agents, routines } from "@sayabot/db"
+import { routines } from "@sayabot/db"
 import { and, desc, eq } from "drizzle-orm"
 import { z } from "zod"
 import { getDb } from "../../db"

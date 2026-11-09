@@ -2,10 +2,11 @@ import { createServer, request as httpRequest, type IncomingMessage, type Server
 import { request as httpsRequest } from "node:https"
 import { connect, type Socket } from "node:net"
 import { URL } from "node:url"
+import { timingSafeEqual } from "node:crypto"
 import { Hono } from "hono"
 import { serve } from "@hono/node-server"
 import { assertSafeEgressHost } from "./ssrf"
-import { flushGrantCache, isHostAllowed, reportViolation, requestApproval, resolvePlaceholder } from "./swapper"
+import { flushGrantCache, isHostAllowed, reportViolation, requestApproval, resolveAgentIdentity, resolvePlaceholder } from "./swapper"
 import { scrubResponseText } from "./scrub"
 
 const PROXY_PORT = Number(process.env.PROXY_PORT || 8080)
@@ -18,6 +19,18 @@ const PLACEHOLDER_RE = /saaya_ph_[A-Za-z0-9_-]{32,}/g
 // ── Admin Server (:8081) ────────────────────────────────────────────────────
 
 const adminApp = new Hono()
+
+adminApp.use("*", async (c, next) => {
+  if (c.req.path === "/health") return next()
+  const secretHeader = c.req.header("x-internal-secret")
+  const authHeader = c.req.header("authorization")
+  const provided = secretHeader ?? (authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : undefined)
+  if (!INTERNAL_SECRET || !provided) return c.json({ error: "unauthorized" }, 401)
+  const a = Buffer.from(provided)
+  const b = Buffer.from(INTERNAL_SECRET)
+  if (a.length !== b.length || !timingSafeEqual(a, b)) return c.json({ error: "unauthorized" }, 401)
+  await next()
+})
 
 adminApp.get("/health", (c) => {
   return c.json({ ok: true, service: "egress", proxyPort: PROXY_PORT })
@@ -88,17 +101,36 @@ const proxyServer = createServer(async (req: IncomingMessage, res: ServerRespons
     }
 
     const host = parsedUrl.hostname
-    const agentId = (req.headers["x-saaya-agent-id"] as string) || "anonymous"
 
-    // 1. SSRF Check
+    // Authenticate connecting container by network IP rather than client header
+    const remoteIp = req.socket.remoteAddress?.replace(/^::ffff:/, "") || ""
+    let agentId = "anonymous"
+    if (remoteIp) {
+      const resolved = await resolveAgentIdentity(remoteIp)
+      if (resolved?.agentId) {
+        agentId = resolved.agentId
+      }
+    }
+    // Reject attempts to spoof x-saaya-agent-id if it contradicts resolved container IP
+    const headerAgentId = req.headers["x-saaya-agent-id"] as string | undefined
+    if (headerAgentId && agentId !== "anonymous" && headerAgentId !== agentId) {
+      res.writeHead(403, { "content-type": "text/plain" })
+      res.end("saaya: agent identity mismatch")
+      return
+    }
+
+    // 1. SSRF Check & IP Pinning to prevent TOCTOU DNS Rebinding
+    let safeIps: string[]
     try {
-      await assertSafeEgressHost(host)
+      safeIps = await assertSafeEgressHost(host)
     } catch (e: any) {
       console.warn(`[egress] SSRF blocked: ${e.message}`)
       res.writeHead(403, { "content-type": "text/plain" })
       res.end(`saaya: forbidden host (${e.message})`)
       return
     }
+    const pinnedIp = safeIps[0]!
+    const isIpv6 = pinnedIp.includes(":")
 
     // 2. Read request body
     const bodyChunks: Buffer[] = []
@@ -184,6 +216,11 @@ const proxyServer = createServer(async (req: IncomingMessage, res: ServerRespons
         path: parsedUrl.pathname + parsedUrl.search,
         method: req.method,
         headers,
+        lookup: (_hostname, opts, cb) => {
+          const callback = typeof opts === "function" ? opts : cb
+          callback(null, pinnedIp, isIpv6 ? 6 : 4)
+        },
+        servername: host,
       },
       (upstreamRes) => {
         // Collect and scrub response
@@ -238,9 +275,13 @@ proxyServer.on("connect", async (req: IncomingMessage, clientSocket: Socket, hea
 
   try {
     if (!host) throw new Error("Missing host in CONNECT request")
-    await assertSafeEgressHost(host)
+    if (port !== 443) {
+      throw new Error(`CONNECT tunnel restricted to port 443 (requested: ${port})`)
+    }
+    const safeIps = await assertSafeEgressHost(host)
+    const pinnedIp = safeIps[0]!
 
-    const targetSocket = connect(port, host, () => {
+    const targetSocket = connect({ host: pinnedIp, port }, () => {
       clientSocket.write("HTTP/1.1 200 Connection Established\r\n\r\n")
       if (head.length > 0) targetSocket.write(head)
       targetSocket.pipe(clientSocket)

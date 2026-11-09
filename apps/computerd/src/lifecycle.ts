@@ -115,7 +115,7 @@ export class ComputerLifecycle {
           ReadonlyRootfs: true,
           Tmpfs: {
             "/tmp": "size=512m,mode=1777",
-            "/run": "size=16m",
+            "/run": "size=16m,mode=1777",
           },
           Binds: [
             `saaya-bot-${agentId}:/home/bot:rw`,
@@ -125,6 +125,7 @@ export class ComputerLifecycle {
           Memory: 1024 * 1024 * 1024,
           MemorySwap: 1024 * 1024 * 1024,
           PidsLimit: 512,
+          CapDrop: ["ALL"],
           SecurityOpt: ["no-new-privileges:true"],
           RestartPolicy: { Name: "no" },
         },

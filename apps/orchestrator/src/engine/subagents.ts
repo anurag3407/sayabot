@@ -1,3 +1,4 @@
+import { resolve } from "node:path"
 import { createRunScrubber } from "@sayabot/core"
 import { generateText, stepCountIs, type ModelMessage, type ToolSet } from "ai"
 import { and, eq, sql } from "drizzle-orm"
@@ -190,6 +191,28 @@ export function spawnSubagentTool(args: SpawnSubagentToolArgs): ToolSpec {
               (inspection as Record<string, unknown>).worktree !== input.workspace.worktree ||
               (inspection as Record<string, unknown>).baseSha !== input.workspace.baseSha) {
             throw new Error("Worktree scope could not be verified")
+          }
+          // Confine subagent tool executions strictly to the assigned worktree
+          const worktreeRoot = resolve(input.workspace.worktree)
+          for (let i = 0; i < allowedSpecs.length; i++) {
+            const orig = allowedSpecs[i]!
+            if (["fs_read", "fs_write", "fs_edit", "computer_read_file", "computer_write_file"].includes(orig.name)) {
+              allowedSpecs[i] = {
+                ...orig,
+                execute: async (toolArgs: any, sig?: AbortSignal, ctx?: any) => {
+                  const rawPath = typeof toolArgs?.path === "string" ? toolArgs.path : ""
+                  if (rawPath) {
+                    const resolvedTarget = rawPath.startsWith("/") ? resolve(rawPath) : resolve(worktreeRoot, rawPath)
+                    const isUnderWorktree = resolvedTarget === worktreeRoot || resolvedTarget.startsWith(worktreeRoot + "/")
+                    const isUnderTmp = resolvedTarget === "/tmp" || resolvedTarget.startsWith("/tmp/")
+                    if (!isUnderWorktree && !isUnderTmp) {
+                      throw new Error(`Access denied: Subagent is confined to workspace worktree ${worktreeRoot}`)
+                    }
+                  }
+                  return orig.execute(toolArgs, sig, ctx)
+                },
+              }
+            }
           }
         }
         const childTools: ToolSet = toAuditedTools(allowedSpecs, {

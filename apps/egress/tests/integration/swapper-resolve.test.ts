@@ -17,6 +17,13 @@ beforeAll(() => {
     if (String(url).endsWith("/internal/egress/resolve") && headers.get("x-internal-secret") === "s3cret") {
       return Response.json({ grantId: "g1", secretPlaintext: "shh", hostAllowlist: ["api.github.com"], inject: { mode: "header" } })
     }
+    if (String(url).endsWith("/internal/egress/identity") && headers.get("x-internal-secret") === "s3cret") {
+      const parsed = JSON.parse(String(init?.body ?? "{}"))
+      if (parsed.containerIp === "10.0.0.5") {
+        return Response.json({ agentId: "agent-123", orgId: "org-1" })
+      }
+      return new Response("not found", { status: 404 })
+    }
     return new Response("nope", { status: 401 })
   }) as typeof fetch
 })
@@ -25,10 +32,11 @@ afterAll(() => { globalThis.fetch = realFetch })
 
 let flushGrantCache: () => void
 let resolvePlaceholder: (a: string, ph: string) => Promise<{ grantId: string }>
+let resolveAgentIdentity: (ip: string) => Promise<{ agentId: string; orgId: string } | null>
 
 describe("resolvePlaceholder (orchestrator stubbed)", () => {
   beforeAll(async () => {
-    ;({ flushGrantCache, resolvePlaceholder } = await import("../../src/swapper"))
+    ;({ flushGrantCache, resolvePlaceholder, resolveAgentIdentity } = await import("../../src/swapper"))
   })
   it("fetches the grant and caches it for the same agent+placeholder", async () => {
     flushGrantCache()
@@ -52,5 +60,23 @@ describe("resolvePlaceholder (orchestrator stubbed)", () => {
     const before = calls
     await resolvePlaceholder("agent-1", "saaya_ph_abc")
     expect(calls).toBe(before + 1)
+  })
+
+  it("resolveAgentIdentity queries orchestrator and caches result", async () => {
+    flushGrantCache()
+    const before = calls
+    const res = await resolveAgentIdentity("10.0.0.5")
+    expect(res).toEqual({ agentId: "agent-123", orgId: "org-1" })
+    expect(calls).toBe(before + 1)
+
+    // Cache hit
+    const resCached = await resolveAgentIdentity("10.0.0.5")
+    expect(resCached).toEqual(res)
+    expect(calls).toBe(before + 1)
+
+    // Flush cache
+    flushGrantCache()
+    await resolveAgentIdentity("10.0.0.5")
+    expect(calls).toBe(before + 2)
   })
 })

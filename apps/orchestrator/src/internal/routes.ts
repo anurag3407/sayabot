@@ -23,30 +23,42 @@ export const internalRoutes = new Hono()
 
 // ── Secret Broker: Identity resolution ──────────────────────────────────────
 
-const identitySchema = z.object({
-  proxySecret: z.string().min(1),
-  containerIp: z.string().optional(),
-})
+const identitySchema = z
+  .object({
+    proxySecret: z.string().min(1).optional(),
+    containerIp: z.string().optional(),
+  })
+  .refine((data) => data.proxySecret || data.containerIp, {
+    message: "Either proxySecret or containerIp must be provided",
+  })
 
 internalRoutes.post("/internal/egress/identity", async (c) => {
   const body = await c.req.json().catch(() => null)
   const parsed = identitySchema.safeParse(body)
   if (!parsed.success) return c.json({ error: "invalid body" }, 400)
 
-  const hash = hashAgentApiKey(parsed.data.proxySecret)
   const db = getDb()
+  let computer = null
 
-  const [computer] = await db
-    .select({
-      agentId: agentComputers.agentId,
-      orgId: agentComputers.orgId,
-    })
-    .from(agentComputers)
-    .where(eq(agentComputers.proxySecretHash, hash))
-    .limit(1)
+  if (parsed.data.proxySecret) {
+    const hash = hashAgentApiKey(parsed.data.proxySecret)
+    const [row] = await db
+      .select({ agentId: agentComputers.agentId, orgId: agentComputers.orgId })
+      .from(agentComputers)
+      .where(eq(agentComputers.proxySecretHash, hash))
+      .limit(1)
+    computer = row
+  } else if (parsed.data.containerIp) {
+    const [row] = await db
+      .select({ agentId: agentComputers.agentId, orgId: agentComputers.orgId })
+      .from(agentComputers)
+      .where(and(eq(agentComputers.containerIp, parsed.data.containerIp), eq(agentComputers.status, "running")))
+      .limit(1)
+    computer = row
+  }
 
   if (!computer) {
-    return c.json({ error: "invalid proxy secret" }, 401)
+    return c.json({ error: "invalid computer identity" }, 401)
   }
 
   return c.json({

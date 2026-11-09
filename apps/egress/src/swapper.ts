@@ -17,9 +17,36 @@ export interface ResolvedGrant {
 }
 
 const grantCache = new Map<string, { grant: ResolvedGrant; expiresAt: number }>()
+const identityCache = new Map<string, { identity: { agentId: string; orgId: string }; expiresAt: number }>()
 
 export function flushGrantCache() {
   grantCache.clear()
+  identityCache.clear()
+}
+
+export async function resolveAgentIdentity(containerIp: string): Promise<{ agentId: string; orgId: string } | null> {
+  const cached = identityCache.get(containerIp)
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.identity
+  }
+  try {
+    const res = await fetch(`${ORCHESTRATOR_URL}/internal/egress/identity`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-internal-secret": INTERNAL_SECRET,
+      },
+      body: JSON.stringify({ containerIp }),
+    })
+    if (res.ok) {
+      const data = (await res.json()) as { agentId: string; orgId: string }
+      identityCache.set(containerIp, { identity: data, expiresAt: Date.now() + 30_000 })
+      return data
+    }
+  } catch (e) {
+    console.warn("[egress] failed to resolve agent identity from IP", e)
+  }
+  return null
 }
 
 export async function resolvePlaceholder(agentId: string, placeholder: string): Promise<ResolvedGrant> {

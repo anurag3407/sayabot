@@ -30,7 +30,9 @@ RUN groupadd -g 10001 bot \
 
 # Create agentd directory and run dir
 RUN mkdir -p /opt/agentd /run /home/bot/.saaya \
-  && chown -R bot:bot /home/bot
+  && chown -R bot:bot /home/bot \
+  && chown -R bot:bot /run \
+  && chmod 1777 /run
 
 # Bundle agentd and entrypoint
 COPY apps/computerd/agentd/ /opt/agentd/

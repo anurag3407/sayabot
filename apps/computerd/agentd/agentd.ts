@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process"
 import { createServer, type Socket } from "node:net"
-import { existsSync, mkdirSync, readdirSync, statSync, unlinkSync, writeFileSync } from "node:fs"
+import { chmodSync, existsSync, mkdirSync, readdirSync, statSync, unlinkSync, writeFileSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import { constants as osConstants } from "node:os"
 import { StringDecoder } from "node:string_decoder"
@@ -14,6 +14,17 @@ const MAX_OUTPUT_BYTES = 1024 * 1024 // 1 MB cap
 
 function signalNumber(signal: NodeJS.Signals): number | undefined {
   return (osConstants.signals as Record<string, number>)[signal]
+}
+
+// Drop privileges immediately if started as root
+if (typeof process.getuid === "function" && process.getuid() === 0) {
+  try {
+    if (typeof process.setgid === "function") process.setgid(10001)
+    if (typeof process.setuid === "function") process.setuid(10001)
+  } catch (err) {
+    console.error("[agentd] Failed to drop root privileges to uid 10001:", err)
+    process.exit(1)
+  }
 }
 
 export function startAgentd(socketPath = SOCKET_PATH) {
@@ -43,6 +54,7 @@ export function startAgentd(socketPath = SOCKET_PATH) {
   })
 
   server.listen(socketPath, () => {
+    try { chmodSync(socketPath, 0o600) } catch {}
     console.log(`[agentd] listening on ${socketPath}`)
   })
 

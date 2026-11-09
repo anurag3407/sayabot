@@ -86,6 +86,14 @@ export function isPrivateIp(rawIp: string): boolean {
     if (a === 100 && b !== undefined && b >= 64 && b <= 127) return true
     // 0.0.0.0/8
     if (a === 0) return true
+    // RFC 2544: 198.18.0.0/15 benchmarking
+    if (a === 198 && (b === 18 || b === 19)) return true
+    // TEST-NET: 192.0.2.0/24, 198.51.100.0/24, 203.0.113.0/24
+    if (a === 192 && b === 0) return true
+    if (a === 198 && b === 51) return true
+    if (a === 203 && b === 0) return true
+    // Multicast & Reserved (224.0.0.0/4 and 240.0.0.0/4)
+    if (a >= 224) return true
     // Broadcast: 255.255.255.255
     if (ip === "255.255.255.255") return true
     return false
@@ -97,6 +105,9 @@ export function isPrivateIp(rawIp: string): boolean {
     if (!words) return true // Unparseable IPv6 treated as unsafe
 
     const [w0, w1, w2, w3, w4, w5, w6, w7] = words
+
+    // Multicast: ff00::/8
+    if ((w0 & 0xff00) === 0xff00) return true
 
     // Unspecified :: or Loopback ::1
     if (words.every((w, idx) => (idx === 7 ? w === 0 || w === 1 : w === 0))) return true

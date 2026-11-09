@@ -195,6 +195,28 @@ describe("subagent lifecycle", () => {
     expect(mocks.generate.mock.calls.at(-1)![0].system).toContain("not a sandbox boundary")
   })
 
+  it("confines worker filesystem tool paths to assigned worktree", async () => {
+    const workspace = { repo: "/repo", worktree: "/home/bot/.saaya/worktrees/00000000-0000-4000-8000-000000000000", baseSha: "a".repeat(40) }
+    const inspect = spec("workspace_inspect")
+    inspect.execute = vi.fn(async () => workspace)
+    const fsRead = spec("fs_read")
+    fsRead.execute = vi.fn(async (args: any) => ({ content: `read ${args.path}` }))
+
+    await execute({ role: "worker", workspace }, [inspect, fsRead])
+    const auditedSpecs = mocks.audit.mock.calls.at(-1)![0] as ToolSpec[]
+    const wrappedFsRead = auditedSpecs.find(s => s.name === "fs_read")!
+    expect(wrappedFsRead).toBeDefined()
+
+    // Outside worktree
+    await expect(wrappedFsRead.execute({ path: "/home/bot/secret.txt" })).rejects.toThrow(/Access denied: Subagent is confined to workspace worktree/)
+    await expect(wrappedFsRead.execute({ path: "/repo/file.txt" })).rejects.toThrow(/Access denied: Subagent is confined to workspace worktree/)
+
+    // Inside worktree
+    await expect(wrappedFsRead.execute({ path: `${workspace.worktree}/file.txt` })).resolves.toEqual({ content: `read ${workspace.worktree}/file.txt` })
+    // In /tmp
+    await expect(wrappedFsRead.execute({ path: "/tmp/scratch.txt" })).resolves.toEqual({ content: "read /tmp/scratch.txt" })
+  })
+
   it("prevents concurrent fanout oversubscription and releases reservations on termination", async () => {
     const controller = new AbortController()
     mocks.generate.mockImplementation(({ abortSignal }) => new Promise((_, reject) => {

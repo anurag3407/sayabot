@@ -1,4 +1,7 @@
 import { z } from "zod"
+import { request as httpRequest } from "node:http"
+import { request as httpsRequest } from "node:https"
+import { assertSafeEgressHost } from "@sayabot/core/server"
 import { assertSafeWebhookUrl } from "../../ssrf"
 import type { ToolSpec } from "../audited"
 import { resolveToolCredential, type OrgToolConfig } from "../secrets"
@@ -17,21 +20,87 @@ export async function fetchSafeWebPage(
     // 1. SSRF check on every hop before making request
     await assertSafeWebhookUrl(currentUrl, false)
 
-    const response = await fetch(currentUrl, {
-      method: "GET",
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,text/plain,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
-      },
-      redirect: "manual",
-      signal: signal ?? AbortSignal.timeout(15_000),
+    // 2. DNS resolution and IP pinning to prevent TOCTOU DNS rebinding
+    const parsed = new URL(currentUrl)
+    const safeIps = await assertSafeEgressHost(parsed.hostname)
+    const pinnedIp = safeIps[0]!
+    const isHttps = parsed.protocol === "https:"
+    const isIpv6 = pinnedIp.includes(":")
+    const requester = isHttps ? httpsRequest : httpRequest
+    const port = parsed.port ? Number(parsed.port) : (isHttps ? 443 : 80)
+
+    const response: {
+      status: number
+      statusText: string
+      headers: Record<string, string>
+      body: Buffer
+    } = await new Promise((resolve, reject) => {
+      const activeSignal = signal ?? AbortSignal.timeout(15_000)
+      if (activeSignal.aborted) {
+        return reject(new Error("The operation was aborted"))
+      }
+
+      const req = requester(
+        {
+          protocol: parsed.protocol,
+          hostname: parsed.hostname,
+          port,
+          path: parsed.pathname + parsed.search,
+          method: "GET",
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,text/plain,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
+          },
+          lookup: (_hostname, opts, cb) => {
+            const callback = typeof opts === "function" ? opts : cb
+            callback(null, pinnedIp, isIpv6 ? 6 : 4)
+          },
+          servername: parsed.hostname,
+        },
+        (upstream) => {
+          const chunks: Buffer[] = []
+          let bytes = 0
+          upstream.on("data", (c) => {
+            bytes += c.length
+            if (bytes <= MAX_FETCH_BYTES) {
+              chunks.push(Buffer.from(c))
+            } else {
+              upstream.destroy()
+            }
+          })
+          upstream.on("end", () => {
+            const headers: Record<string, string> = {}
+            for (const [k, v] of Object.entries(upstream.headers)) {
+              if (typeof v === "string") headers[k] = v
+            }
+            resolve({
+              status: upstream.statusCode || 200,
+              statusText: upstream.statusMessage || "",
+              headers,
+              body: Buffer.concat(chunks),
+            })
+          })
+          upstream.on("error", reject)
+        },
+      )
+
+      const onAbort = () => {
+        req.destroy()
+        reject(new Error("The operation was aborted"))
+      }
+      activeSignal.addEventListener("abort", onAbort, { once: true })
+      req.on("error", (err) => {
+        activeSignal.removeEventListener("abort", onAbort)
+        reject(err)
+      })
+      req.end()
     })
 
     // Handle redirects manually to inspect and enforce SSRF rules on target URL
     if ([301, 302, 303, 307, 308].includes(response.status)) {
-      const location = response.headers.get("location")
+      const location = response.headers["location"]
       if (!location) {
         throw new Error(`Redirect response (${response.status}) missing Location header`)
       }
@@ -40,36 +109,12 @@ export async function fetchSafeWebPage(
       continue
     }
 
-    if (!response.ok) {
+    if (response.status < 200 || response.status >= 400) {
       throw new Error(`Failed to fetch web page (${response.status} ${response.statusText}): ${currentUrl}`)
     }
 
-    const contentType = response.headers.get("content-type") || ""
-
-    if (!response.body) {
-      return { text: "", finalUrl: currentUrl, contentType }
-    }
-
-    const reader = response.body.getReader()
-    const chunks: Uint8Array[] = []
-    let totalBytes = 0
-
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-      if (value) {
-        totalBytes += value.byteLength
-        if (totalBytes > MAX_FETCH_BYTES) {
-          await reader.cancel("Response exceeded size limit of 5MB")
-          break
-        }
-        chunks.push(value)
-      }
-    }
-
-    const text = new TextDecoder("utf-8").decode(
-      Buffer.concat(chunks.map((c) => Buffer.from(c.buffer, c.byteOffset, c.byteLength))),
-    )
+    const contentType = response.headers["content-type"] || ""
+    const text = response.body.toString("utf-8")
 
     return { text, finalUrl: currentUrl, contentType }
   }

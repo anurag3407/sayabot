@@ -26,7 +26,7 @@ export function useSecretTool(args: { agentId: string; orgId: string }): ToolSpe
     description:
       "Execute an authenticated HTTPS request using an approved Secret Broker grant. The real credential is injected safely on your behalf and never visible to the model.",
     schema: useSecretSchema,
-    dangerous: false,
+    dangerous: true,
     execute: async (input: UseSecretInput, signal?: AbortSignal) => {
       const db = getDb()
       const now = new Date()

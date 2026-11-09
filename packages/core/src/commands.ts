@@ -47,5 +47,25 @@ export function isDestructiveCommand(cmd: string): boolean {
     return true
   }
 
+  // 7. Reverse shells and arbitrary network sockets
+  if (
+    /\b(nc|ncat|netcat)\b.*(-e|--exec|\/bin\/(ba)?sh)/i.test(trimmed) ||
+    /\/dev\/(tcp|udp)\/[0-9a-z_.-]+\/[0-9]+/i.test(trimmed) ||
+    /\bmkfifo\b.*\|.*(\/bin\/sh|bash|nc)/i.test(trimmed)
+  ) {
+    return true
+  }
+
+  // 8. Privilege escalation and container manipulation
+  if (
+    /\b(sudo|pkexec|setfacl)\b/i.test(trimmed) ||
+    /\bchmod\s+[ug]\+s/i.test(trimmed) ||
+    /\bsu(\s+-|\s+[a-z0-9_]+)/i.test(trimmed) ||
+    /\b(mount|umount|chroot)\b/i.test(trimmed) ||
+    /\/var\/run\/docker\.sock/i.test(trimmed)
+  ) {
+    return true
+  }
+
   return false
 }

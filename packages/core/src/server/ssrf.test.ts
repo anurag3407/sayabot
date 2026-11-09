@@ -12,6 +12,16 @@ describe("SSRF Protection Core", () => {
     expect(isPrivateIp("100.64.0.1")).toBe(true)
     expect(isPrivateIp("0.0.0.0")).toBe(true)
     expect(isPrivateIp("255.255.255.255")).toBe(true)
+    // RFC 2544 benchmarking
+    expect(isPrivateIp("198.18.0.1")).toBe(true)
+    expect(isPrivateIp("198.19.255.254")).toBe(true)
+    // TEST-NET
+    expect(isPrivateIp("192.0.2.1")).toBe(true)
+    expect(isPrivateIp("198.51.100.1")).toBe(true)
+    expect(isPrivateIp("203.0.113.1")).toBe(true)
+    // Multicast & Reserved
+    expect(isPrivateIp("224.0.0.1")).toBe(true)
+    expect(isPrivateIp("240.0.0.1")).toBe(true)
   })
 
   it("correctly identifies private IPv6 and IPv4-mapped IPv6 addresses", () => {
@@ -21,6 +31,7 @@ describe("SSRF Protection Core", () => {
     expect(isPrivateIp("feb0::1")).toBe(true)
     expect(isPrivateIp("fc00::1")).toBe(true)
     expect(isPrivateIp("fd00::1")).toBe(true)
+    expect(isPrivateIp("ff02::1")).toBe(true)
     expect(isPrivateIp("100::1")).toBe(true)
     expect(isPrivateIp("2001:db8::1")).toBe(true)
 
