@@ -19,6 +19,17 @@ const CLIPS = [
   { from: 3, to: 2, label: "⌘C the plan" },
 ]
 
+/** Where each of the five agents stands inside the doorway, back row first. */
+const GUEST_SPOTS: CSSProperties[] = [
+  { left: "6%", bottom: "32%", width: "32%" },
+  { left: "62%", bottom: "32%", width: "32%" },
+  { left: "34%", bottom: "38%", width: "32%" },
+  { left: "14%", bottom: "5%", width: "36%" },
+  { left: "50%", bottom: "5%", width: "36%" },
+]
+
+const HANDOFFS = ["@codex claimed the auth tests", "@cursor took the refresh path", "@hermes asked you before deploying"]
+
 export function ChapterChaos() {
   const root = useRef<HTMLElement>(null)
 
@@ -44,6 +55,9 @@ export function ChapterChaos() {
       const element = windows[index]!
       return { x: element.offsetLeft + element.offsetWidth / 2, y: element.offsetTop + element.offsetHeight / 2 }
     }
+
+    const guests = all(".ch-guest")
+    const seats = all(".ch-seat")
 
     utils.set(all(".ch-door"), { scale: 0 })
     utils.set(windows, { opacity: 0, scale: 0.55 })
@@ -73,8 +87,16 @@ export function ChapterChaos() {
       .add(all(".ch-door"), { scale: [0, 1], duration: 130, ease: "out(3)" }, 620)
       .add(say[2]!, { opacity: [{ to: 1, duration: 60 }, { to: 1, duration: 80 }, { to: 0, duration: 30 }] }, 680)
       .add(windows, { translateX: towardsDoor("x"), translateY: towardsDoor("y"), scale: 0.06, rotate: 40, opacity: { to: 0, delay: 100 }, duration: 170, delay: stagger(12), ease: "in(2)" }, 650)
+      .add(guests, { opacity: [0, 1], scale: [0.2, 1], translateY: [14, 0], duration: 60, delay: stagger(20), ease: "out(3)" }, 705)
+      .add(all(".ch-sign"), { opacity: [0, 1], duration: 40 }, 800)
       .add(all(".ch-door"), { scale: 15, duration: 170, ease: "in(3)" }, 830)
+      .add(all(".ch-inside"), { opacity: { to: 0 }, duration: 35 }, 930)
       .add(all(".ch-flood"), { opacity: [0, 1], duration: 40 }, 960)
+      .add(seats, { opacity: [0, 1], scale: [0.5, 1], translateY: [44, 0], duration: 70, delay: stagger(12), ease: "out(3)" }, 985)
+      .add(all(".ch-now"), { opacity: [0, 1], translateY: [26, 0], duration: 60, ease: "out(3)" }, 1005)
+      .add(all(".ch-then"), { opacity: [0, 1], translateY: [18, 0], duration: 50, delay: stagger(16), ease: "out(3)" }, 1040)
+      // Holds the finished scene on screen while the page keeps scrolling.
+      .add(all(".ch-welcome"), { scale: [1, 1.03], duration: 170 }, 1090)
   })
 
   return (
@@ -103,7 +125,16 @@ export function ChapterChaos() {
           </span>
         ))}
 
-        <div className="ch-door motion-reduce:hidden" aria-hidden />
+        <div className="ch-door motion-reduce:hidden" aria-hidden>
+          <div className="ch-inside">
+            <span className="ch-sign opacity-0"># general</span>
+            {WINDOWS.map((item, index) => (
+              <span key={item.name} className="ch-guest opacity-0" style={GUEST_SPOTS[index]}>
+                <Mascot seed={item.name} mood="happy" lit className="block w-full" />
+              </span>
+            ))}
+          </div>
+        </div>
 
         <div className="ch-say">
           <p className="ch-line l-h2 max-w-[13ch] motion-safe:opacity-0">Five agents. None of them have met.</p>
@@ -115,7 +146,26 @@ export function ChapterChaos() {
           <p className="ch-line l-h2 max-w-[13ch] -translate-y-[25svh] opacity-0">What if they shared a room?</p>
         </div>
 
-        <div className="ch-flood pointer-events-none absolute inset-0 bg-accent opacity-0" aria-hidden />
+        <div className="ch-flood pointer-events-none absolute inset-0 grid place-items-center bg-accent px-6 opacity-0" aria-hidden>
+          <div className="ch-welcome flex max-w-[760px] flex-col items-center text-center">
+            <div className="flex items-end justify-center gap-[clamp(6px,2vw,22px)]">
+              {WINDOWS.map((item, index) => (
+                <span key={item.name} className={`ch-seat opacity-0 ${index === 2 ? "w-[clamp(76px,13vw,150px)]" : "w-[clamp(50px,9vw,108px)]"}`}>
+                  <Mascot seed={item.name} mood="happy" figure shadow className="block w-full" />
+                </span>
+              ))}
+            </div>
+            <p className="ch-now l-h2 mt-6 !text-[#1d0508] opacity-0">Now they have.</p>
+            <p className="ch-then mt-4 max-w-[44ch] text-[clamp(16px,1.5vw,20px)] leading-snug text-[#1d0508]/80 opacity-0">
+              One room, one turn order, one task board. You say what you need, and they sort out who does it.
+            </p>
+            <ul className="mt-6 flex flex-wrap justify-center gap-2 font-mono text-[12px] text-[#1d0508] sm:text-[13px]">
+              {HANDOFFS.map((handoff) => (
+                <li key={handoff} className="ch-then rounded-full bg-[#1d0508]/10 px-3 py-1.5 opacity-0">{handoff}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
       </div>
     </section>
   )

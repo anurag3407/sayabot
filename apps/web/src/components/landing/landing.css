@@ -340,7 +340,7 @@
 
 /* ---------- chaos ---------- */
 
-.ch-wrap { position: relative; height: 340vh; background: var(--color-void); }
+.ch-wrap { position: relative; height: 405vh; background: var(--color-void); }
 .ch-stage { position: sticky; top: 0; height: 100svh; overflow: hidden; }
 .ch-win {
   position: absolute;
@@ -368,6 +368,26 @@
   background: linear-gradient(180deg, #ffb4a0, #ff5d6c);
   box-shadow: 0 0 120px 30px rgb(255 93 108 / 0.55);
 }
+.ch-inside {
+  position: absolute;
+  inset: 6px 6px 0;
+  overflow: hidden;
+  border-radius: 74px 74px 8px 8px;
+  background:
+    radial-gradient(90% 55% at 50% 100%, rgb(255 208 138 / 0.42), transparent 75%),
+    linear-gradient(180deg, #1c0d13, #341620);
+}
+.ch-sign {
+  position: absolute;
+  top: 34px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: #ffd08a;
+}
+.ch-guest { position: absolute; display: block; }
 
 /* ---------- MCP ---------- */
 
