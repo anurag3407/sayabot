@@ -1,0 +1,157 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 420" width="1200" height="420" fill="none">
+  <defs>
+    <!-- Background Gradients -->
+    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#080a09" />
+      <stop offset="50%" stopColor="#0d110f" />
+      <stop offset="100%" stopColor="#050706" />
+    </linearGradient>
+
+    <!-- Accent Glows -->
+    <radialGradient id="glow-orange" cx="20%" cy="30%" r="50%">
+      <stop offset="0%" stopColor="#ff7a45" stopOpacity="0.22" />
+      <stop offset="100%" stopColor="#ff7a45" stopOpacity="0" />
+    </radialGradient>
+    <radialGradient id="glow-purple" cx="80%" cy="40%" r="55%">
+      <stop offset="0%" stopColor="#6366f1" stopOpacity="0.18" />
+      <stop offset="100%" stopColor="#6366f1" stopOpacity="0" />
+    </radialGradient>
+    <radialGradient id="glow-emerald" cx="50%" cy="90%" r="50%">
+      <stop offset="0%" stopColor="#10b981" stopOpacity="0.12" />
+      <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+    </radialGradient>
+
+    <!-- Dotted Grid Pattern -->
+    <pattern id="dot-grid" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1.2" fill="#ffffff" fill-opacity="0.08" />
+    </pattern>
+
+    <!-- Card Gradient -->
+    <linearGradient id="card-border" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#ff7a45" stopOpacity="0.6" />
+      <stop offset="50%" stopColor="#6366f1" stopOpacity="0.4" />
+      <stop offset="100%" stopColor="#10b981" stopOpacity="0.2" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background Layer -->
+  <rect width="1200" height="420" fill="url(#bg-grad)" rx="16" />
+  <rect width="1200" height="420" fill="url(#glow-orange)" />
+  <rect width="1200" height="420" fill="url(#glow-purple)" />
+  <rect width="1200" height="420" fill="url(#glow-emerald)" />
+  <rect width="1200" height="420" fill="url(#dot-grid)" rx="16" />
+
+  <!-- Outer Border -->
+  <rect x="1" y="1" width="1198" height="418" rx="15" stroke="#ffffff" stroke-opacity="0.1" stroke-width="1.5" />
+
+  <!-- LEFT: Mascot Card Hero -->
+  <g transform="translate(68, 55)">
+    <!-- Mascot Ambient Card -->
+    <rect x="0" y="0" width="290" height="310" rx="24" fill="#121714" fill-opacity="0.85" stroke="url(#card-border)" stroke-width="1.8" />
+    
+    <!-- Mascot Vector (Scale 1.05) -->
+    <g transform="translate(17, 24)">
+      <!-- Antenna -->
+      <circle cx="128" cy="26" r="14" fill="#ff7a45" />
+      <circle cx="125" cy="22" r="4.5" fill="#ffa885" />
+      <rect x="124" y="36" width="8" height="22" rx="4" fill="#ff7a45" />
+      <!-- Left/Right Ears -->
+      <rect x="22" y="98" width="22" height="48" rx="11" fill="#ff7a45" />
+      <rect x="212" y="98" width="22" height="48" rx="11" fill="#ff7a45" />
+      <!-- Head Chassis -->
+      <rect x="36" y="54" width="184" height="152" rx="60" fill="#ff7a45" />
+      <!-- Visor Faceplate -->
+      <rect x="52" y="70" width="152" height="120" rx="44" fill="#0b0e0c" />
+      <!-- Cheeks -->
+      <ellipse cx="74" cy="142" rx="8" ry="4" fill="#ff7a45" opacity="0.55" />
+      <ellipse cx="182" cy="142" rx="8" ry="4" fill="#ff7a45" opacity="0.55" />
+      <!-- Expressive Eyes & Smile -->
+      <ellipse cx="94" cy="122" rx="16" ry="22" fill="#ffffff" />
+      <ellipse cx="162" cy="122" rx="16" ry="22" fill="#ffffff" />
+      <path d="M 118 144 Q 128 156 138 144" fill="none" stroke="#ffffff" stroke-width="5.5" stroke-linecap="round" />
+      <!-- Eye Highlights -->
+      <circle cx="99" cy="115" r="6.5" fill="#ffffff" />
+      <circle cx="90" cy="129" r="3.2" fill="#ffffff" />
+      <circle cx="167" cy="115" r="6.5" fill="#ffffff" />
+      <circle cx="158" cy="129" r="3.2" fill="#ffffff" />
+    </g>
+
+    <!-- Bot Name Badge -->
+    <rect x="55" y="248" width="180" height="34" rx="17" fill="#1b231f" stroke="#ff7a45" stroke-opacity="0.4" />
+    <text x="145" y="270" fill="#ffa885" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle" letter-spacing="1">THE POCKET SAYA</text>
+  </g>
+
+  <!-- RIGHT: Typography & Feature Highlights -->
+  <g transform="translate(415, 60)">
+    <!-- Top Pill Badge -->
+    <g>
+      <rect x="0" y="0" width="415" height="28" rx="14" fill="#ff7a45" fill-opacity="0.12" stroke="#ff7a45" stroke-opacity="0.4" stroke-width="1.2" />
+      <circle cx="14" cy="14" r="4" fill="#ff7a45" />
+      <text x="26" y="18" fill="#ffa885" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11" font-weight="700" letter-spacing="1.5">HERMES-CLASS REMOTE AGENTS &amp; MULTIPLAYER ROOMS</text>
+    </g>
+
+    <!-- Main Title -->
+    <text x="0" y="92" fill="#ffffff" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'SF Pro Display', Helvetica, Arial, sans-serif" font-size="54" font-weight="850" letter-spacing="-1.5">
+      SAYABOT
+    </text>
+
+    <!-- Subtitle -->
+    <text x="2" y="126" fill="#c3cacc" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="19" font-weight="450">
+      The Autonomous Remote Agent Workspace with n8n Visual Canvas
+    </text>
+
+    <!-- Brief Description -->
+    <text x="2" y="156" fill="#889290" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="14" font-weight="400">
+      Humans and autonomous AI agents collaborate in real-time rooms. Schedule recurring cron
+    </text>
+    <text x="2" y="176" fill="#889290" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="14" font-weight="400">
+      routines in chat, edit workflows visually, execute tasks in sandboxes, and inspect with Yjs CRDTs.
+    </text>
+
+    <!-- Feature Chips (Row 1) -->
+    <g transform="translate(0, 206)">
+      <!-- Chip 1: Cron Engine -->
+      <g>
+        <rect x="0" y="0" width="175" height="36" rx="10" fill="#1b1d16" stroke="#f59e0b" stroke-opacity="0.4" stroke-width="1.2" />
+        <text x="14" y="22" fill="#fbbf24" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="600">⏱ Hermes Cron Engine</text>
+      </g>
+      <!-- Chip 2: n8n Visual Canvas -->
+      <g transform="translate(187, 0)">
+        <rect x="0" y="0" width="170" height="36" rx="10" fill="#181726" stroke="#818cf8" stroke-opacity="0.4" stroke-width="1.2" />
+        <text x="14" y="22" fill="#a5b4fc" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="600">🎨 n8n Visual Canvas</text>
+      </g>
+      <!-- Chip 3: Linux Sandboxes -->
+      <g transform="translate(369, 0)">
+        <rect x="0" y="0" width="195" height="36" rx="10" fill="#131e1a" stroke="#10b981" stroke-opacity="0.4" stroke-width="1.2" />
+        <text x="14" y="22" fill="#6ee7b7" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="600">💻 Linux Computer Sandboxes</text>
+      </g>
+    </g>
+
+    <!-- Feature Chips (Row 2) -->
+    <g transform="translate(0, 252)">
+      <!-- Chip 4: Durable Memory -->
+      <g>
+        <rect x="0" y="0" width="180" height="36" rx="10" fill="#1d1722" stroke="#c084fc" stroke-opacity="0.4" stroke-width="1.2" />
+        <text x="14" y="22" fill="#e9d5ff" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="600">🧠 Multi-Tier Team Memory</text>
+      </g>
+      <!-- Chip 5: Universal MCP Gateway -->
+      <g transform="translate(192, 0)">
+        <rect x="0" y="0" width="190" height="36" rx="10" fill="#1b1c20" stroke="#38bdf8" stroke-opacity="0.4" stroke-width="1.2" />
+        <text x="14" y="22" fill="#7dd3fc" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="600">🔌 Universal MCP Gateway</text>
+      </g>
+      <!-- Chip 6: Tool Approvals -->
+      <g transform="translate(394, 0)">
+        <rect x="0" y="0" width="170" height="36" rx="10" fill="#1e1814" stroke="#fb923c" stroke-opacity="0.4" stroke-width="1.2" />
+        <text x="14" y="22" fill="#fdba74" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="600">🛡 Human Tool Approvals</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- BOTTOM BAR: Stats & Capabilities -->
+  <g transform="translate(68, 375)">
+    <line x1="0" y1="0" x2="1064" y2="0" stroke="#ffffff" stroke-opacity="0.08" stroke-width="1" />
+    <text x="0" y="22" fill="#586361" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="11" font-weight="500">
+      OPEN SOURCE • MIT LICENSE • NODE 24 • PNPM MONOREPO • DRIZZLE ORM • SUPABASE REALTIME • HONO • NEXT.JS 16
+    </text>
+  </g>
+</svg>
