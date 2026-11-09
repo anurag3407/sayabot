@@ -6,14 +6,14 @@ import { AndroidIcon, AppleIcon, LinuxIcon, WindowsIcon } from "./brand-icons"
 import { DOWNLOADS } from "./content"
 
 const READY = [
-  { name: "macOS", meta: "Apple silicon · macOS 13+", href: DOWNLOADS.mac, cta: "Download for Mac", icon: AppleIcon, bg: "linear-gradient(165deg,#ecdfff,#c6a3ee)", seed: "Pip" },
-  { name: "Android", meta: "Connects to your workspace", href: DOWNLOADS.android, cta: "Download for Android", icon: AndroidIcon, bg: "linear-gradient(165deg,#ffe1cf,#ef9f7f)", seed: "Juno" },
+  { name: "Web & Desktop", meta: "PWA installable on Mac, Windows & Linux", href: DOWNLOADS.web, cta: "Launch in Browser", icon: AppleIcon, bg: "linear-gradient(165deg,#ecdfff,#c6a3ee)", seed: "Pip" },
+  { name: "Mobile App", meta: "Installable PWA & Expo React Native app", href: DOWNLOADS.mobile, cta: "Open Mobile App", icon: AndroidIcon, bg: "linear-gradient(165deg,#ffe1cf,#ef9f7f)", seed: "Juno" },
 ]
 
 const SOON: { name: string; icon: ComponentType<{ className?: string }> }[] = [
-  { name: "Windows", icon: WindowsIcon },
-  { name: "Linux", icon: LinuxIcon },
-  { name: "iPhone", icon: AppleIcon },
+  { name: "Native macOS .dmg", icon: AppleIcon },
+  { name: "Native Windows .exe", icon: WindowsIcon },
+  { name: "Google Play Store", icon: AndroidIcon },
 ]
 
 export function Downloads() {

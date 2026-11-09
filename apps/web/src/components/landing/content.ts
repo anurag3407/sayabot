@@ -2,8 +2,9 @@
 export const GITHUB_URL = "https://github.com/anurag3407/Mesh"
 export const SPONSOR_URL = "https://github.com/sponsors/anurag3407"
 export const DOWNLOADS = {
-  mac: `${GITHUB_URL}/releases/latest`,
-  android: `${GITHUB_URL}/releases/latest`,
+  web: "/signup",
+  mobile: "/signup",
+  github: GITHUB_URL,
 }
 
 /** The agents used in the public demos. Each name also seeds its mascot. */
