@@ -13,7 +13,7 @@ import {
   tasks,
   usageEvents,
 } from "@sayabot/db"
-import { buildProviderOptions } from "@sayabot/llm"
+import { buildProviderOptions, flushLangfuse, recordStepToLangfuse } from "@sayabot/llm"
 import { stepCountIs, streamText, type LanguageModelUsage, type ModelMessage, type SystemModelMessage, type ToolSet } from "ai"
 import { and, eq, sql } from "drizzle-orm"
 import { consumeRunInterrupts, registerRun, unregisterRun } from "../active-runs"
@@ -303,6 +303,8 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
         })
       } catch {}
     }
+
+    await flushLangfuse().catch(() => {})
 
     return redacted
   }
@@ -603,15 +605,20 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
           stepsCompleted += 1
           recordUsage(step.usage)
           const stepIdx = stepsCompleted
-          const isToolStep = step.toolCalls && step.toolCalls.length > 0
-          const kind = isToolStep ? "tool" : "model"
+          const isToolStep = Boolean(step.toolCalls && step.toolCalls.length > 0)
+          const hasPlan = step.toolCalls?.some((tc: { toolName: string }) => tc.toolName === "update_plan")
+          const hasSubagent = step.toolCalls?.some((tc: { toolName: string }) => tc.toolName === "spawn_subagent")
+          const hasRecall = step.toolCalls?.some((tc: { toolName: string }) => tc.toolName === "recall" || tc.toolName === "memory")
+          const kind = hasSubagent ? "subagent" : hasPlan ? "plan" : hasRecall ? "recall" : isToolStep ? "tool" : "model"
+          const primaryTool = isToolStep ? step.toolCalls[0] : null
+          const inputRef = primaryTool?.toolName ?? null
 
           try {
             await db.insert(runSteps).values({
               runId: run.id,
               idx: stepIdx,
               kind,
-              inputRef: null,
+              inputRef,
               output: redactValue(
                 {
                   text: step.text,
@@ -622,6 +629,24 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
                 runScrubber,
               ) as Record<string, unknown>,
               usage: step.usage,
+              startedAt: new Date(stepStartTime),
+              finishedAt: new Date(),
+            })
+
+            void recordStepToLangfuse({
+              traceId: run.id,
+              stepIdx,
+              kind,
+              name: primaryTool?.toolName ?? (kind === "model" ? resolved.modelName : kind),
+              input: primaryTool && "args" in primaryTool ? (primaryTool as { args: unknown }).args : undefined,
+              output: step.text || (isToolStep ? step.toolResults : undefined),
+              usage: step.usage
+                ? {
+                    inputTokens: step.usage.inputTokens,
+                    outputTokens: step.usage.outputTokens,
+                    totalTokens: (step.usage.inputTokens ?? 0) + (step.usage.outputTokens ?? 0),
+                  }
+                : undefined,
               startedAt: new Date(stepStartTime),
               finishedAt: new Date(),
             })
@@ -642,7 +667,7 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
             type: "run.step",
             runId: run.id,
             step: stepIdx,
-            kind,
+            kind: isToolStep ? "tool" : "model",
             label: isToolStep
               ? `Running ${step.toolCalls.map((t) => t.toolName).join(", ")}`
               : "Generating response",
@@ -755,6 +780,38 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
           availableToolSpecs: toolSpecs,
           cycle: criticCycle++,
         })
+
+        try {
+          stepsCompleted += 1
+          await db.insert(runSteps).values({
+            runId: run.id,
+            idx: stepsCompleted,
+            kind: "verify",
+            inputRef: "critic_verification",
+            output: redactValue(
+              {
+                pass: review.pass,
+                feedback: review.feedback,
+                reasons: review.reasons,
+                cycle: criticCycle - 1,
+              },
+              runScrubber,
+            ) as Record<string, unknown>,
+            usage: null,
+            startedAt: new Date(),
+            finishedAt: new Date(),
+          })
+
+          void recordStepToLangfuse({
+            traceId: run.id,
+            stepIdx: stepsCompleted,
+            kind: "verify",
+            name: "critic_verification",
+            output: { pass: review.pass, feedback: review.feedback, reasons: review.reasons },
+            startedAt: new Date(),
+            finishedAt: new Date(),
+          })
+        } catch {}
         if (!review.pass) {
           const findings = review.feedback || review.reasons.map((r) => `- ${r}`).join("\n") || "The critic did not verify the work."
           if (pass + 1 >= MAX_PASSES || stepsCompleted >= maxSteps || criticCycle >= 2) {

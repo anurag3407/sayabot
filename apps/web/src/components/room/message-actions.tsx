@@ -5,12 +5,14 @@ import { useState, useTransition } from "react"
 import { retryMessageAction, sendMessage } from "@/lib/actions/messages"
 import { Button } from "@/components/ui/button"
 import { recoveryHint } from "@/lib/recovery-hint"
+import { InspectTraceButton } from "@/components/trace/inspect-trace-button"
 
 /** The way forward from a failed agent turn: send it again, or go to where it can be fixed. */
 export function FailureActions({
   orgSlug,
   roomId,
   messageId,
+  runId,
   text,
   reason,
   canAdmin,
@@ -19,6 +21,7 @@ export function FailureActions({
   orgSlug: string
   roomId: string
   messageId: string
+  runId?: string | null
   text: string
   reason: string | null
   canAdmin: boolean
@@ -31,6 +34,14 @@ export function FailureActions({
 
   return (
     <div className="mt-2 flex flex-wrap items-center gap-2">
+      <InspectTraceButton
+        orgSlug={orgSlug}
+        runId={runId}
+        messageId={messageId}
+        label="Inspect Failure"
+        variant="danger"
+        size="xs"
+      />
       {showRetry ? (
         <Button
           size="sm"

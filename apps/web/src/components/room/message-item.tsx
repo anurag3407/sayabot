@@ -7,6 +7,7 @@ import { InlineAlert } from "@/components/ui/empty"
 import { ReplyIcon } from "@/components/ui/icons"
 import { FailureActions, PokeBotButton } from "@/components/room/message-actions"
 import { ToolCallsList } from "@/components/room/tool-call-card"
+import { InspectTraceButton } from "@/components/trace/inspect-trace-button"
 import { clockTime, cn, fullTime } from "@/lib/format"
 import type { MessageView, ToolCallView } from "@/lib/types"
 
@@ -73,6 +74,7 @@ export function MessageItem({
             orgSlug={orgSlug}
             roomId={message.roomId}
             messageId={message.id}
+            runId={message.runId}
             text={message.content}
             reason={typeof message.metadata.reason === "string" ? message.metadata.reason : null}
             canAdmin={canAdmin}
@@ -148,6 +150,14 @@ export function MessageItem({
             <span className="text-[12px] text-danger">Error</span>
           ) : null}
           <span className={cn("flex items-center gap-3 transition-opacity md:opacity-0 md:focus-within:opacity-100 md:group-hover:opacity-100", !mine && "ml-auto")}>
+            {isAgent ? (
+              <InspectTraceButton
+                orgSlug={orgSlug}
+                runId={message.runId}
+                messageId={message.id}
+                agentName={message.senderName}
+              />
+            ) : null}
             <CopyButton text={message.content} />
             {!inThread && onOpenThread ? (
               <button
@@ -179,6 +189,7 @@ export function MessageItem({
               orgSlug={orgSlug}
               roomId={message.roomId}
               messageId={message.id}
+              runId={message.runId}
               text={error}
               reason={null}
               canAdmin={canAdmin}

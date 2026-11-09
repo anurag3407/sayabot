@@ -203,3 +203,25 @@ export function LogoutIcon(props: IconProps) {
     </svg>
   )
 }
+
+export function SearchIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <circle cx="9" cy="9" r="6" />
+      <path d="M13.5 13.5L17 17" />
+    </svg>
+  )
+}
+
+export function TraceIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M4 14l4-4 3 3 5-6" />
+      <circle cx="4" cy="14" r="1.5" />
+      <circle cx="8" cy="10" r="1.5" />
+      <circle cx="11" cy="13" r="1.5" />
+      <circle cx="16" cy="7" r="1.5" />
+    </svg>
+  )
+}
+
