@@ -10,7 +10,7 @@ import { getEnv } from "../env"
 import { RunEvidence, type VerificationEvidence } from "../engine/evidence"
 import { updatePlanTool } from "../engine/plan-tool"
 import { skillTools } from "../engine/skills"
-import { spawnSubagentTool } from "../engine/subagents"
+import { spawnSubagentTool, subagentStatusTool } from "../engine/subagents"
 import { partitionToolsForSearch } from "../engine/tool-search"
 import { memoryTools } from "../memory/tools"
 import { toAuditedTools, type ToolRuntime, type ToolSpec } from "./audited"
@@ -168,6 +168,7 @@ export async function buildTools(args: BuildToolsArgs): Promise<BuiltTools> {
             getAvailableToolSpecs: () => allSpecs,
             scrub: args.runtime.scrub,
           }),
+          subagentStatusTool(),
         ]
       : []),
   ]

@@ -10,7 +10,28 @@ const summarySchema = z.object({
   openQuestions: z.array(z.string().max(500)).max(12),
   planStatus: z.string().max(1000),
   factsLearned: z.array(z.string().max(500)).max(20),
+  activeMode: z.string().max(100).optional(),
+  pendingVerifications: z.array(z.string().max(500)).max(10).optional(),
 })
+
+export function sanitizeHistoryForSummarizer(messages: ModelMessage[]): unknown[] {
+  return messages.map((msg) => {
+    if (typeof msg.content === "string") return msg
+    if (Array.isArray(msg.content)) {
+      const sanitizedContent = msg.content.map((part) => {
+        if (part && typeof part === "object") {
+          const p = part as Record<string, unknown>
+          if (p.type === "image" || (p as any).type === "document" || (typeof p.data === "string" && p.data.length > 1000)) {
+            return { type: "text", text: "[Binary/Media content omitted from summarization]" }
+          }
+        }
+        return part
+      })
+      return { ...msg, content: sanitizedContent }
+    }
+    return msg
+  })
+}
 
 export async function summarizeForBudget(args: {
   messages: ModelMessage[]
@@ -26,7 +47,7 @@ export async function summarizeForBudget(args: {
   const boundary = compactionBoundary(args.messages, args.protectedPrefixCount, 8)
   if (boundary <= args.protectedPrefixCount) return { messages: args.messages, compacted: 0 }
   const history = args.messages.slice(args.protectedPrefixCount, boundary)
-  const prompt = JSON.stringify(history)
+  const prompt = JSON.stringify(sanitizeHistoryForSummarizer(history))
   if (estimateMessageTokens([{ role: "user", content: prompt }]) > args.summarizerInputBudget - 1024) {
     throw new Error("Run history is too large to summarize safely within this model's context window. Narrow the task or use a larger configured context window.")
   }

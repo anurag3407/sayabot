@@ -7,6 +7,8 @@ export interface CompactedSummary {
   openQuestions: string[]
   planStatus: string
   factsLearned: string[]
+  activeMode?: string
+  pendingVerifications?: string[]
 }
 
 export interface CompactTranscriptArgs {
@@ -133,6 +135,10 @@ export function formatCompactedSummary(summary: CompactedSummary): string {
     `Goal: ${summary.goal}`,
   ]
 
+  if (summary.activeMode) {
+    parts.push(`Active Mode: ${summary.activeMode}`)
+  }
+
   if (summary.decisions.length > 0) {
     parts.push(`Decisions:\n${summary.decisions.map((d) => `- ${d}`).join("\n")}`)
   }
@@ -147,6 +153,10 @@ export function formatCompactedSummary(summary: CompactedSummary): string {
 
   if (summary.openQuestions.length > 0) {
     parts.push(`Open Questions:\n${summary.openQuestions.map((q) => `- ${q}`).join("\n")}`)
+  }
+
+  if (summary.pendingVerifications && summary.pendingVerifications.length > 0) {
+    parts.push(`Pending Verifications:\n${summary.pendingVerifications.map((v) => `- ${v}`).join("\n")}`)
   }
 
   if (summary.planStatus) {

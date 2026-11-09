@@ -388,11 +388,13 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
           await compClient.writeFile(agent.id, {
             path: "/home/bot/.saaya/memory/MEMORY.md",
             content: memoryMd,
+            allowOverwriteLarge: true,
           })
           if (openLoopsMd) {
             await compClient.writeFile(agent.id, {
               path: "/home/bot/.saaya/memory/OPEN_LOOPS.md",
               content: openLoopsMd,
+              allowOverwriteLarge: true,
             })
           }
           for (const [tag, topicContent] of Object.entries(topics)) {
@@ -400,6 +402,7 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
             await compClient.writeFile(agent.id, {
               path: `/home/bot/.saaya/memory/topics/${safeTag}.md`,
               content: topicContent,
+              allowOverwriteLarge: true,
             })
           }
         } catch {}

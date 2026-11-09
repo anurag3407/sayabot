@@ -219,7 +219,7 @@ export class ComputerClient {
 
   async writeFile(
     agentId: string,
-    args: { path: string; content: string; encoding?: "utf8" | "base64"; mode?: number },
+    args: { path: string; content: string; encoding?: "utf8" | "base64"; mode?: number; allowOverwriteLarge?: boolean },
   ): Promise<{ bytes: number }> {
     return this.request(`/v1/computers/${agentId}/files/write`, {
       method: "POST",

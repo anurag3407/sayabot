@@ -34,6 +34,8 @@ export const ALWAYS_CORE_TOOLS = new Set([
   "workspace_fork",
   "workspace_inspect",
   "verify_workspace",
+  "subagent_status",
+  "report_findings",
 ])
 
 export interface IndexedToolDoc {

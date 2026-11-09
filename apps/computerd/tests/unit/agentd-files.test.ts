@@ -46,6 +46,26 @@ describe("readFilePage / write / edit round-trip", () => {
     expect(res.hash).toBe(hashBytes(new TextEncoder().encode("data")))
   })
 
+  it("writeFileAtomic refuses to overwrite large existing file without allowOverwriteLarge", () => {
+    const path = join(home, "large.txt")
+    writeFileSync(path, "x".repeat(3000))
+    expect(() => writeFileAtomic({ path, content: "short" })).toThrow(/Refusing to overwrite existing file/)
+    expect(readFilePage({ path }).size).toBe(3000)
+
+    // Allowed when allowOverwriteLarge is true
+    const res = writeFileAtomic({ path, content: "short", allowOverwriteLarge: true })
+    expect(res.bytes).toBe(5)
+    expect(readFilePage({ path }).content).toBe("short")
+  })
+
+  it("writeFileAtomic preserves CRLF line endings on existing CRLF files", () => {
+    const path = join(home, "crlf.txt")
+    writeFileSync(path, "line1\r\nline2\r\n")
+    writeFileAtomic({ path, content: "lineA\nlineB\n" })
+    const content = readFilePage({ path }).content
+    expect(content).toBe("lineA\r\nlineB\r\n")
+  })
+
   it("editFileAtomic rejects a stale hash without writing", () => {
     const path = join(home, "c.txt")
     writeFileSync(path, "original")

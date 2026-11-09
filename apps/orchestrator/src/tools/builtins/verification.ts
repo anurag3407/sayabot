@@ -10,11 +10,45 @@ const checkSchema = z.object({
   command: z.string().min(1).max(4000),
 })
 
+const findingItemSchema = z.object({
+  file: z.string().min(1).describe("Repository-relative or absolute path of the file"),
+  line: z.number().int().positive().optional().describe("1-indexed line number the finding anchors to"),
+  summary: z.string().min(1).max(500).describe("One-sentence statement of the defect or finding"),
+  shortSummary: z.string().max(80).optional().describe("Compressed label for compact view (≤80 chars)"),
+  failureScenario: z.string().min(1).max(2000).describe("Concrete state/inputs that produce the defect or crash"),
+  category: z.enum(["correctness", "security", "performance", "test_coverage", "simplification"]).default("correctness"),
+  verdict: z.enum(["CONFIRMED", "PLAUSIBLE"]).default("CONFIRMED"),
+  outcome: z.enum(["fixed", "skipped", "no_change_needed"]).optional(),
+})
+
+export const reportFindingsSchema = z.object({
+  level: z.enum(["low", "medium", "high", "max"]).default("medium"),
+  findings: z.array(findingItemSchema).max(50).describe("Verified findings, most severe first"),
+})
+
 export const verifyWorkspaceSchema = z.object({
   cwd: z.string().min(1).max(2000),
   checks: z.array(checkSchema).min(1).max(6),
   timeoutSeconds: z.number().int().min(1).max(300).default(120),
 })
+
+export function reportFindingsTool(): ToolSpec {
+  return {
+    name: "report_findings",
+    description: "Report structured, verified findings anchored to files and lines with failure scenarios. Use to document defects, code review issues, or audit results with machine-checkable contracts rather than vague prose.",
+    schema: reportFindingsSchema,
+    dangerous: false,
+    execute: async (input: z.infer<typeof reportFindingsSchema>) => {
+      return {
+        ok: true,
+        count: input.findings.length,
+        level: input.level,
+        findings: input.findings,
+        summary: `Recorded ${input.findings.length} findings (${input.findings.filter((f) => f.verdict === "CONFIRMED").length} confirmed).`,
+      }
+    },
+  }
+}
 
 export function verificationTools(args: {
   agentId: string
@@ -74,5 +108,5 @@ export function verificationTools(args: {
       const detectedManager = names.has("pnpm-lock.yaml") ? "pnpm" : names.has("yarn.lock") ? "yarn" : names.has("bun.lock") || names.has("bun.lockb") ? "bun" : names.has("package-lock.json") ? "npm" : undefined
       return { cwd, manifests, packageManager: declaredManager ?? detectedManager, scripts, workspaces, virtualEnvironment: names.has(".venv") ? ".venv" : names.has("venv") ? "venv" : undefined }
     },
-  }]
+  }, reportFindingsTool()]
 }

@@ -90,15 +90,30 @@ async function handleRequest(client: Socket, jsonStr: string) {
       let totalBytes = 0
       let truncated = false
 
-      // Merge environment with /home/bot/.saaya/env
+      // CWD self-healing: if cwd does not exist (e.g. removed by prior command), fall back to BOT_HOME or process.cwd()
+      const effectiveCwd = cwd && existsSync(cwd) ? cwd : (existsSync(BOT_HOME) ? BOT_HOME : process.cwd())
+
+      // Headless / non-interactive defaults to prevent pagers (git diff, less) and interactive prompts from hanging
+      const NON_INTERACTIVE_ENV: Record<string, string> = {
+        CI: "true",
+        DEBIAN_FRONTEND: "noninteractive",
+        TERM: "dumb",
+        PAGER: "cat",
+        GIT_PAGER: "cat",
+        GIT_TERMINAL_PROMPT: "0",
+        GIT_OPTIONAL_LOCKS: "0",
+      }
+
+      // Merge environment with non-interactive defaults and /home/bot/.saaya/env
       const finalEnv: Record<string, string> = {
         ...process.env,
+        ...NON_INTERACTIVE_ENV,
         HOME: BOT_HOME,
         ...env,
       }
 
       const child = spawn("bash", ["-c", cmd], {
-        cwd,
+        cwd: effectiveCwd,
         env: finalEnv,
         detached: true,
         uid: process.getuid && process.getuid() === 0 ? 10001 : undefined,

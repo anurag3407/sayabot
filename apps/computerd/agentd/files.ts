@@ -228,10 +228,44 @@ function atomicReplace(path: string, bytes: Buffer, expectedHash?: string, mode 
   }
 }
 
-export function writeFileAtomic(req: { path: string; content: string; encoding?: "utf8" | "base64"; mode?: number }) {
+export function writeFileAtomic(req: {
+  path: string
+  content: string
+  encoding?: "utf8" | "base64"
+  mode?: number
+  allowOverwriteLarge?: boolean
+}) {
   if (typeof req.content !== "string") throw new Error("content must be a string")
   if (req.encoding !== undefined && req.encoding !== "utf8" && req.encoding !== "base64") throw new Error("Invalid encoding")
-  const bytes = Buffer.from(req.content, req.encoding ?? "utf8")
+  assertSafePath(req.path)
+
+  let writeContent = req.content
+  if (existsSync(req.path)) {
+    try {
+      const canonical = realpathSync(req.path)
+      const stat = lstatSync(canonical)
+      if (stat.isFile()) {
+        if (stat.size > 2048 && !req.allowOverwriteLarge) {
+          throw new Error(
+            `Refusing to overwrite existing file (${stat.size} bytes) with fs_write. ` +
+            `To prevent accidental truncation of files you only partially viewed, use fs_edit for targeted changes, ` +
+            `or pass allowOverwriteLarge: true to overwrite deliberately.`
+          )
+        }
+        // If file uses CRLF line endings and incoming content uses LF, preserve CRLF
+        if (req.encoding !== "base64" && !writeContent.includes("\r\n") && writeContent.includes("\n")) {
+          const sample = readCompleteFile(canonical, Math.min(stat.size, 16384))
+          if (sample.includes(Buffer.from("\r\n"))) {
+            writeContent = writeContent.replace(/\r?\n/g, "\r\n")
+          }
+        }
+      }
+    } catch (err: any) {
+      if (err.message?.startsWith("Refusing to overwrite")) throw err
+    }
+  }
+
+  const bytes = Buffer.from(writeContent, req.encoding ?? "utf8")
   if (bytes.length > MAX_EDIT_BYTES) throw new Error("Write exceeds byte limit")
   const mode = integer(req.mode, 0o644, 0, 0o777, "mode")
   return atomicReplace(req.path, bytes, undefined, mode)

@@ -182,11 +182,12 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
     schema: z.object({
       path: z.string().min(1),
       content: z.string().max(2_000_000),
+      allowOverwriteLarge: z.boolean().optional().describe("Set to true if deliberately overwriting an existing file larger than 2KB (prevents accidental truncation)"),
     }),
     dangerous: false,
-    execute: async (input: { path: string; content: string }) => {
+    execute: async (input: { path: string; content: string; allowOverwriteLarge?: boolean }) => {
       await client.ensure(agentId, orgId, profile)
-      const result = await client.writeFile(agentId, { path: input.path, content: input.content })
+      const result = await client.writeFile(agentId, { path: input.path, content: input.content, allowOverwriteLarge: input.allowOverwriteLarge })
       return { ok: true, path: input.path, ...result }
     },
   }
@@ -262,7 +263,7 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
     execute: async (input: { cwd?: string }) => {
       await client.ensure(agentId, orgId, profile)
       const res = await client.exec(agentId, {
-        cmd: "git status -s",
+        cmd: "git --no-optional-locks status -s",
         cwd: input.cwd,
       })
       return { status: res.stdout || "(clean working tree)" }
@@ -281,7 +282,7 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
       await client.ensure(agentId, orgId, profile)
       const flag = input.staged ? "--staged" : ""
       const res = await client.exec(agentId, {
-        cmd: `git diff ${flag}`,
+        cmd: `git --no-optional-locks diff ${flag}`,
         cwd: input.cwd,
       })
       return { diff: res.stdout || "(no changes)" }
@@ -348,11 +349,12 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
     schema: z.object({
       path: z.string().min(1),
       content: z.string().max(1_000_000),
+      allowOverwriteLarge: z.boolean().optional().describe("Set to true if deliberately overwriting an existing file larger than 2KB"),
     }),
     dangerous: false,
-    execute: async (input: { path: string; content: string }) => {
+    execute: async (input: { path: string; content: string; allowOverwriteLarge?: boolean }) => {
       await client.ensure(agentId, orgId, profile)
-      return client.writeFile(agentId, { path: input.path, content: input.content })
+      return client.writeFile(agentId, { path: input.path, content: input.content, allowOverwriteLarge: input.allowOverwriteLarge })
     },
   }
 

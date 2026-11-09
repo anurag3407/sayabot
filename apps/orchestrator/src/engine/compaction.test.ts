@@ -81,6 +81,8 @@ describe("Compaction (E7)", () => {
         openQuestions: [],
         planStatus: "2/3 steps completed",
         factsLearned: ["Staging uses Redis for sessions"],
+        activeMode: "plan",
+        pendingVerifications: ["vitest run auth.test.ts"],
       },
     })
 
@@ -88,6 +90,8 @@ describe("Compaction (E7)", () => {
     expect(result.messages[0]?.role).toBe("user")
     const summaryText = result.messages[0]?.content as string
     expect(summaryText).toContain("Goal: Build auth routes")
+    expect(summaryText).toContain("Active Mode: plan")
+    expect(summaryText).toContain("Pending Verifications:\n- vitest run auth.test.ts")
     expect(summaryText).toContain("Use JWT cookies")
     expect(summaryText).toContain("Staging uses Redis for sessions")
     expect(result.extractedFacts).toEqual(["Staging uses Redis for sessions"])

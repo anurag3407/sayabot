@@ -105,4 +105,22 @@ describe("computerTools fs_patch and fs_edit", () => {
     })
     expect(result).toMatchObject({ ok: true, summary: expect.stringContaining("Applied patch") })
   })
+
+  it("validates fs_write schema with optional allowOverwriteLarge", () => {
+    vi.spyOn(clientModule, "getComputerClient").mockReturnValue(fakeClient as any)
+    const tools = computerTools({
+      agentId: "agent-test",
+      orgId: "org-test",
+      roomId: "room-test",
+      profile: "standard",
+    })
+    const writeTool = tools.find((t) => t.name === "fs_write")
+    expect(writeTool).toBeDefined()
+    const valid = writeTool?.schema.safeParse({
+      path: "/home/bot/app.ts",
+      content: "const a = 1",
+      allowOverwriteLarge: true,
+    })
+    expect(valid?.success).toBe(true)
+  })
 })
