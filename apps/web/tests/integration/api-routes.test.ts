@@ -50,4 +50,31 @@ describe("POST /api/push + /api/messages auth gates", () => {
     const res = await POST(new Request("http://x/api/push", { method: "POST", body: "{}" }))
     expect(res.status).toBe(401)
   })
+
+  it("rejects unauthenticated /api/v1/computers/:agentId/exec with 401", async () => {
+    vi.resetModules()
+    vi.doMock("../../src/lib/supabase/server", () => ({
+      createSupabaseServerClient: async () => ({ auth: { getUser: async () => ({ data: { user: null } }) } }),
+    }))
+    const { POST } = await import("../../src/app/api/v1/[...path]/route")
+    const res = await POST(
+      new Request("http://x/api/v1/computers/agent-1/exec", {
+        method: "POST",
+        body: JSON.stringify({ cmd: "whoami" }),
+      }),
+      { params: Promise.resolve({ path: ["computers", "agent-1", "exec"] }) },
+    )
+    expect(res.status).toBe(401)
+    const data = await res.json()
+    expect(data.error).toBe("unauthorized")
+  })
+
+  it("rejects unauthorized /api/v1/tools/raw endpoints with 403", async () => {
+    const { POST } = await import("../../src/app/api/v1/[...path]/route")
+    const res = await POST(
+      new Request("http://x/api/v1/tools/arbitrary", { method: "POST" }),
+      { params: Promise.resolve({ path: ["tools", "arbitrary"] }) },
+    )
+    expect(res.status).toBe(403)
+  })
 })
