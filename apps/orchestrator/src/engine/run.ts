@@ -38,6 +38,7 @@ import { buildTools } from "../tools"
 import { redactValue, type ToolSpec } from "../tools/audited"
 import { applyRollingCacheBreakpoint, buildEngineContext } from "./context"
 import { CacheMetrics, estimateMessageTokens, estimateToolTokens, resolveContextBudget } from "./budget"
+import { compactionBoundary, elideOldToolResults } from "./compaction"
 import type { VerificationEvidence } from "./evidence"
 import { summarizeForBudget } from "./summarize"
 import {
@@ -567,10 +568,28 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
             compactions++
             send({ type: "run.step", runId: run.id, step: stepsCompleted, kind: "model", label: `Summarized ${compacted.compacted} earlier messages; preserved current task and recent tool pairs` })
           }
-          const estimatedTokens = estimateMessageTokens(compacted.messages)
+          let finalMessages = compacted.messages
+          let estimatedTokens = estimateMessageTokens(finalMessages)
           peakEstimatedInputTokens = Math.max(peakEstimatedInputTokens, estimatedTokens + budget.toolTokens + instructionTokens)
+          if (estimatedTokens > messageBudget) {
+            const aggressive = elideOldToolResults(finalMessages, 2)
+            if (aggressive.elidedCount > 0) {
+              finalMessages = aggressive.messages
+              estimatedTokens = estimateMessageTokens(finalMessages)
+              compactions++
+              send({ type: "run.step", runId: run.id, step: stepsCompleted, kind: "model", label: `Aggressively elided ${aggressive.elidedCount} older tool results to preserve context budget` })
+            }
+          }
+          if (estimatedTokens > messageBudget) {
+            const boundary = compactionBoundary(finalMessages, initialMessages.length, 2)
+            if (boundary > initialMessages.length) {
+              finalMessages = [...finalMessages.slice(0, initialMessages.length), ...finalMessages.slice(boundary)]
+              estimatedTokens = estimateMessageTokens(finalMessages)
+              compactions++
+            }
+          }
           if (estimatedTokens > messageBudget) throw new Error("Context budget exhausted without safely discardable history. Narrow the task or configure this model's contextWindowTokens.")
-          const prepared = applyRollingCacheBreakpoint(compacted.messages, resolved.provider)
+          const prepared = applyRollingCacheBreakpoint(finalMessages, resolved.provider)
           lastPrepared = prepared
           return {
             messages: prepared,

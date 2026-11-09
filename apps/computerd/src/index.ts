@@ -65,7 +65,7 @@ app.post("/v1/computers/:agentId/exec", async (c) => {
   })
 })
 
-for (const [route, op] of [["files/read", "read"], ["files/write", "write"], ["files/edit", "edit"], ["files/list", "list"], ["code", "code"], ["browser", "browser"]] as const) {
+for (const [route, op] of [["files/read", "read"], ["files/write", "write"], ["files/edit", "edit"], ["files/patch", "patch"], ["files/list", "list"], ["code", "code"], ["browser", "browser"]] as const) {
   app.post(`/v1/computers/:agentId/${route}`, async (c) => {
     const body = await c.req.json()
     if (!body || typeof body !== "object" || Array.isArray(body)) return c.json({ error: "Expected an object" }, 400)

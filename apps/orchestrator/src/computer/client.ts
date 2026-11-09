@@ -46,9 +46,28 @@ export interface EditFileArgs {
   path: string
   oldString: string
   newString: string
-  expectedHash: string
+  expectedHash?: string
   replaceAll?: boolean
   whitespace?: boolean
+}
+
+export interface ApplyPatchArgs {
+  patchText: string
+}
+
+export interface PatchFileResult {
+  path: string
+  action: "add" | "delete" | "update" | "move"
+  additions: number
+  deletions: number
+  bytes?: number
+  hash?: string
+}
+
+export interface ApplyPatchResult {
+  ok: boolean
+  summary: string
+  files: PatchFileResult[]
 }
 
 export interface CodeIntelligenceArgs {
@@ -210,6 +229,10 @@ export class ComputerClient {
 
   async editFile(agentId: string, args: EditFileArgs): Promise<{ ok: boolean; path: string; bytes: number; hash: string; previousHash: string; replacements: number; matchMode: string }> {
     return this.request(`/v1/computers/${agentId}/files/edit`, { method: "POST", body: JSON.stringify(args) })
+  }
+
+  async applyPatch(agentId: string, args: ApplyPatchArgs): Promise<ApplyPatchResult> {
+    return this.request(`/v1/computers/${agentId}/files/patch`, { method: "POST", body: JSON.stringify(args) })
   }
 
   async codeIntelligence(agentId: string, args: CodeIntelligenceArgs): Promise<Record<string, unknown>> {

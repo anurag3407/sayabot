@@ -119,12 +119,12 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
 
   const fsEditTool: ToolSpec = {
     name: "fs_edit",
-    description: describeWithDoc("fs_edit", "Atomically edit a complete UTF-8 file up to 5 MiB, guarded by expectedHash from fs_read. Tries exact literal matching first; duplicate matches require replaceAll. whitespace=true permits a fallback only for one unique complete line block, ignoring leading/trailing spaces/tabs and CRLF differences, not internal whitespace. Ambiguous/overlapping matches, stale hashes and oversized files are rejected without writing. Returns matchMode, replacements and new hash."),
+    description: describeWithDoc("fs_edit", "Atomically edit a complete UTF-8 file up to 5 MiB, optionally guarded by expectedHash from fs_read. Tries exact literal matching first; duplicate matches require replaceAll. whitespace=true permits a fallback only for one unique complete line block, ignoring leading/trailing spaces/tabs and CRLF differences, not internal whitespace. Ambiguous/overlapping matches, stale hashes and oversized files are rejected without writing. Returns matchMode, replacements and new hash."),
     schema: z.object({
       path: z.string().min(1),
       oldString: z.string().min(1).max(5_000_000),
       newString: z.string().max(5_000_000),
-      expectedHash: z.string().regex(/^[a-f0-9]{64}$/),
+      expectedHash: z.string().regex(/^[a-f0-9]{64}$/).optional(),
       replaceAll: z.boolean().default(false),
       whitespace: z.boolean().default(false),
     }),
@@ -132,6 +132,22 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
     execute: async (input: EditFileArgs) => {
       await client.ensure(agentId, orgId, profile)
       return client.editFile(agentId, input)
+    },
+  }
+
+  const fsPatchTool: ToolSpec = {
+    name: "fs_patch",
+    description: describeWithDoc(
+      "fs_patch",
+      "Atomically apply a structured patch across one or more files in your container environment. Supported headers: '*** Add File: <path>', '*** Delete File: <path>', '*** Update File: <path>' (optional '*** Move to: <path>'), and '@@' hunks with context lines (' '), deleted lines ('-'), added lines ('+'). All hunks and files are verified in-memory before writing; if any hunk fails, zero files are modified. Enclosed in '*** Begin Patch' and '*** End Patch'.",
+    ),
+    schema: z.object({
+      patchText: z.string().min(1).max(5_000_000),
+    }),
+    dangerous: false,
+    execute: async (input: { patchText: string }) => {
+      await client.ensure(agentId, orgId, profile)
+      return client.applyPatch(agentId, input)
     },
   }
 
@@ -411,6 +427,7 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
     shellTool,
     fsReadTool,
     fsEditTool,
+    fsPatchTool,
     fsWriteTool,
     fsGlobTool,
     fsGrepTool,

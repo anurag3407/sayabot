@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
-import { chmodSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, symlinkSync, truncateSync, writeFileSync } from "node:fs"
+import { chmodSync, existsSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, symlinkSync, truncateSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
-import { editFileAtomic, hashBytes, isSafePath, MAX_EDIT_BYTES, MAX_FILE_BYTES, readFilePage, writeFileAtomic } from "../agentd/files"
+import { applyPatchAtomic, editFileAtomic, hashBytes, isSafePath, MAX_EDIT_BYTES, MAX_FILE_BYTES, readFilePage, writeFileAtomic } from "../agentd/files"
 
 let root: string
 beforeEach(() => { root = realpathSync(mkdtempSync("/tmp/agentd-files-")) })
@@ -160,5 +160,79 @@ describe("safe filesystem operations", () => {
     expect(result.bytes).toBe(6)
     expect(result.hash).toBe(hashBytes(Buffer.from("世界")))
     expect(readFileSync(path, "utf8")).toBe("世界")
+  })
+})
+
+describe("relaxed hash and structured atomic patches", () => {
+  it("allows editFileAtomic without expectedHash when unique and existing", () => {
+    const path = put("const answer = 41;\n")
+    const result = editFileAtomic({
+      path,
+      oldString: "const answer = 41;",
+      newString: "const answer = 42;",
+    })
+    expect(result.ok).toBe(true)
+    expect(readFileSync(path, "utf8")).toBe("const answer = 42;\n")
+    expect(result.previousHash).toBe(hashBytes(Buffer.from("const answer = 41;\n")))
+  })
+
+  it("applies multi-file patches with add, update, move, and delete atomically", () => {
+    const fileA = put("hello world\nline 2\n", "fileA.txt")
+    const fileB = put("to be deleted\n", "fileB.txt")
+    const fileC = join(root, "fileC.txt")
+    const fileMoved = join(root, "fileAMoved.txt")
+
+    const patchText = `*** Begin Patch
+*** Add File: ${fileC}
++const newFile = true;
++export default newFile;
+*** Update File: ${fileA}
+*** Move to: ${fileMoved}
+@@
+ hello world
+-line 2
++line 2 updated
+*** Delete File: ${fileB}
+*** End Patch`
+
+    const res = applyPatchAtomic({ patchText })
+    expect(res.ok).toBe(true)
+    expect(res.files).toHaveLength(3)
+
+    // Check additions
+    expect(existsSync(fileC)).toBe(true)
+    expect(readFileSync(fileC, "utf8")).toBe("const newFile = true;\nexport default newFile;\n")
+
+    // Check update & move
+    expect(existsSync(fileA)).toBe(false)
+    expect(existsSync(fileMoved)).toBe(true)
+    expect(readFileSync(fileMoved, "utf8")).toBe("hello world\nline 2 updated\n")
+
+    // Check delete
+    expect(existsSync(fileB)).toBe(false)
+  })
+
+  it("aborts entire patch and touches zero files if any hunk fails to match", () => {
+    const file1 = put("alpha\nbeta\n", "f1.txt")
+    const file2 = put("gamma\ndelta\n", "f2.txt")
+    const initial1 = readFileSync(file1, "utf8")
+    const initial2 = readFileSync(file2, "utf8")
+
+    const invalidPatch = `*** Begin Patch
+*** Update File: ${file1}
+@@
+-alpha
++alpha modified
+*** Update File: ${file2}
+@@
+-nonexistent line
++delta modified
+*** End Patch`
+
+    expect(() => applyPatchAtomic({ patchText: invalidPatch })).toThrow("Failed to find expected lines")
+
+    // Atomicity check: file1 must NOT have been changed even though its hunk was valid!
+    expect(readFileSync(file1, "utf8")).toBe(initial1)
+    expect(readFileSync(file2, "utf8")).toBe(initial2)
   })
 })

@@ -5,7 +5,7 @@ import { dirname, resolve } from "node:path"
 import { constants as osConstants } from "node:os"
 import { StringDecoder } from "node:string_decoder"
 import { codeIntelligence } from "./code-intelligence"
-import { editFileAtomic, isSafePath, readFilePage, writeFileAtomic } from "./files"
+import { applyPatchAtomic, editFileAtomic, isSafePath, readFilePage, writeFileAtomic } from "./files"
 export { isSafePath } from "./files"
 
 const SOCKET_PATH = process.env.AGENTD_SOCK || "/run/agentd.sock"
@@ -173,6 +173,9 @@ async function handleRequest(client: Socket, jsonStr: string) {
       break
     case "edit":
       client.write(JSON.stringify(editFileAtomic(req)) + "\n")
+      break
+    case "patch":
+      client.write(JSON.stringify(applyPatchAtomic(req)) + "\n")
       break
     case "code":
       client.write(JSON.stringify(codeIntelligence(req)) + "\n")

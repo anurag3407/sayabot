@@ -360,13 +360,14 @@ export async function runLlmTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
     }
 
     const params = agent.params ?? {}
+    const defaultMaxSteps = args.taskId ? 30 : 20
     const result = await streamAgentText({
       model: resolved.model,
       system,
       prompt,
       tools,
       abortSignal: controller.signal,
-      maxSteps: numericParam(params, "maxSteps", 6),
+      maxSteps: numericParam(params, "maxSteps", defaultMaxSteps),
       temperature: numericParam(params, "temperature"),
       topP: numericParam(params, "topP"),
       maxOutputTokens: numericParam(params, "maxOutputTokens"),

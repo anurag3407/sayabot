@@ -241,7 +241,7 @@ export interface EditRequest {
   path: string
   oldString: string
   newString: string
-  expectedHash: string
+  expectedHash?: string
   replaceAll?: boolean
   whitespace?: boolean
   truncated?: boolean
@@ -250,9 +250,12 @@ export interface EditRequest {
 export function editFileAtomic(req: EditRequest) {
   if (req.truncated) throw new Error("Cannot edit truncated input")
   if (typeof req.oldString !== "string" || !req.oldString || typeof req.newString !== "string") throw new Error("oldString must be nonempty and newString must be a string")
-  if (typeof req.expectedHash !== "string" || !/^[a-f0-9]{64}$/.test(req.expectedHash)) throw new Error("expectedHash must be the SHA-256 hash from fs_read")
   const bytes = readCompleteFile(req.path)
-  if (hashBytes(bytes) !== req.expectedHash) throw new Error("Stale hash: file changed; read it again")
+  const previousHash = hashBytes(bytes)
+  if (req.expectedHash !== undefined) {
+    if (typeof req.expectedHash !== "string" || !/^[a-f0-9]{64}$/.test(req.expectedHash)) throw new Error("expectedHash must be the SHA-256 hash from fs_read")
+    if (previousHash !== req.expectedHash) throw new Error("Stale hash: file changed; read it again")
+  }
   const content = text(bytes)
   const exactMatches: Array<{ start: number; end: number }> = []
   let index = content.indexOf(req.oldString)
@@ -331,5 +334,378 @@ export function editFileAtomic(req: EditRequest) {
   const output = Buffer.from(updated)
   if (output.length > MAX_EDIT_BYTES) throw new Error("Edited file exceeds byte limit")
   const result = atomicReplace(req.path, output, req.expectedHash)
-  return { ok: true, path: req.path, ...result, previousHash: req.expectedHash, replacements: matches.length, matchMode }
+  return { ok: true, path: req.path, ...result, previousHash, replacements: matches.length, matchMode }
+}
+
+export interface PatchChunk {
+  oldLines: string[]
+  newLines: string[]
+  changeContext?: string
+  endOfFile?: boolean
+}
+
+export type ParsedPatch =
+  | { type: "add"; path: string; contents: string }
+  | { type: "delete"; path: string }
+  | { type: "update"; path: string; movePath?: string; chunks: PatchChunk[] }
+
+const BEGIN_MARKER = "*** Begin Patch"
+const END_MARKER = "*** End Patch"
+const ADD_HEADER = "*** Add File:"
+const DELETE_HEADER = "*** Delete File:"
+const UPDATE_HEADER = "*** Update File:"
+const MOVE_HEADER = "*** Move to:"
+const END_OF_FILE_MARKER = "*** End of File"
+
+function cleanHeredoc(patchText: string): string {
+  let cleaned = patchText.trim()
+  if (cleaned.startsWith("```")) {
+    cleaned = cleaned.replace(/^```[a-zA-Z0-9_-]*\r?\n/, "")
+    cleaned = cleaned.replace(/\r?\n```$/, "")
+  }
+  return cleaned
+}
+
+export function parseStructuredPatch(patchText: string): ParsedPatch[] {
+  if (typeof patchText !== "string" || !patchText.trim()) {
+    throw new Error("patchText must be a nonempty string")
+  }
+  const normalized = cleanHeredoc(patchText).replace(/\r\n/g, "\n").replace(/\r/g, "\n")
+  const lines = normalized.trim().split("\n")
+  const beginIndex = lines.findIndex((l) => l.trim() === BEGIN_MARKER)
+  const endIndex = lines.findIndex((l) => l.trim() === END_MARKER)
+
+  if (beginIndex === -1 || endIndex === -1 || beginIndex >= endIndex) {
+    throw new Error("Invalid patch format: missing Begin/End markers (*** Begin Patch / *** End Patch)")
+  }
+
+  const sections: ParsedPatch[] = []
+  let index = beginIndex + 1
+
+  const readHeaderPath = (line: string, header: string): string => {
+    const raw = line.slice(header.length).trim()
+    if (!raw) throw new Error(`Missing path in header: ${line}`)
+    return raw
+  }
+
+  const isSectionHeader = (line: string): boolean => {
+    const t = line.trim()
+    return t.startsWith(ADD_HEADER) || t.startsWith(DELETE_HEADER) || t.startsWith(UPDATE_HEADER) || t === END_MARKER
+  }
+
+  while (index < endIndex) {
+    const line = lines[index] ?? ""
+    const trimmed = line.trim()
+    if (!trimmed) {
+      index++
+      continue
+    }
+
+    if (trimmed.startsWith(ADD_HEADER)) {
+      const path = readHeaderPath(trimmed, ADD_HEADER)
+      index++
+      const contents: string[] = []
+      while (index < endIndex && !isSectionHeader(lines[index] ?? "")) {
+        const curLine = lines[index] ?? ""
+        if (curLine.startsWith("+")) {
+          contents.push(curLine.slice(1))
+        } else if (curLine.startsWith("***")) {
+          break
+        } else {
+          contents.push(curLine)
+        }
+        index++
+      }
+      sections.push({ type: "add", path, contents: contents.join("\n") + (contents.length > 0 ? "\n" : "") })
+      continue
+    }
+
+    if (trimmed.startsWith(DELETE_HEADER)) {
+      const path = readHeaderPath(trimmed, DELETE_HEADER)
+      sections.push({ type: "delete", path })
+      index++
+      continue
+    }
+
+    if (trimmed.startsWith(UPDATE_HEADER)) {
+      const path = readHeaderPath(trimmed, UPDATE_HEADER)
+      let movePath: string | undefined
+      index++
+      if (index < endIndex && (lines[index] ?? "").trim().startsWith(MOVE_HEADER)) {
+        movePath = readHeaderPath((lines[index] ?? "").trim(), MOVE_HEADER)
+        index++
+      }
+
+      const chunks: PatchChunk[] = []
+      while (index < endIndex && !isSectionHeader(lines[index] ?? "")) {
+        const hLine = lines[index] ?? ""
+        if (hLine.trim().startsWith("@@")) {
+          const changeContext = hLine.trim().replace(/^@@\s*/, "").replace(/\s*@@$/, "").trim() || undefined
+          index++
+          const oldLines: string[] = []
+          const newLines: string[] = []
+          let endOfFile = false
+
+          while (index < endIndex && !isSectionHeader(lines[index] ?? "") && !(lines[index] ?? "").trim().startsWith("@@")) {
+            const cLine = lines[index] ?? ""
+            if (cLine.trim() === END_OF_FILE_MARKER) {
+              endOfFile = true
+              index++
+              break
+            }
+            if (cLine.startsWith("-")) {
+              oldLines.push(cLine.slice(1))
+            } else if (cLine.startsWith("+")) {
+              newLines.push(cLine.slice(1))
+            } else if (cLine.startsWith(" ")) {
+              oldLines.push(cLine.slice(1))
+              newLines.push(cLine.slice(1))
+            } else if (cLine === "") {
+              oldLines.push("")
+              newLines.push("")
+            } else {
+              oldLines.push(cLine)
+              newLines.push(cLine)
+            }
+            index++
+          }
+          chunks.push({ oldLines, newLines, changeContext, endOfFile })
+        } else {
+          index++
+        }
+      }
+      sections.push({ type: "update", path, movePath, chunks })
+      continue
+    }
+
+    throw new Error(`Invalid patch section header: ${line}`)
+  }
+
+  if (sections.length === 0) {
+    throw new Error("Patch contains no file operations")
+  }
+
+  return sections
+}
+
+function linesMatch(lines: string[], pattern: string[], startIndex: number, mode: "exact" | "trimEnd" | "trim"): boolean {
+  for (let i = 0; i < pattern.length; i++) {
+    const a = lines[startIndex + i] ?? ""
+    const b = pattern[i] ?? ""
+    if (mode === "exact" && a !== b) return false
+    if (mode === "trimEnd" && a.trimEnd() !== b.trimEnd()) return false
+    if (mode === "trim" && a.trim() !== b.trim()) return false
+  }
+  return true
+}
+
+function findSequence(lines: string[], pattern: string[], startIndex: number, eof?: boolean): number {
+  if (pattern.length === 0) return startIndex
+  const modes = ["exact", "trimEnd", "trim"] as const
+
+  for (const mode of modes) {
+    if (eof) {
+      const fromEnd = lines.length - pattern.length
+      if (fromEnd >= startIndex && linesMatch(lines, pattern, fromEnd, mode)) {
+        return fromEnd
+      }
+    }
+    for (let i = startIndex; i <= lines.length - pattern.length; i++) {
+      if (linesMatch(lines, pattern, i, mode)) {
+        return i
+      }
+    }
+  }
+  return -1
+}
+
+export function applyHunksToContent(content: string, chunks: PatchChunk[], filePath: string): string {
+  const isCRLF = content.includes("\r\n") && !content.replace(/\r\n/g, "").includes("\n")
+  const hasTrailingNewline = content.endsWith("\n")
+  const lines = content.replace(/\r\n/g, "\n").split("\n")
+  if (hasTrailingNewline && lines[lines.length - 1] === "") {
+    lines.pop()
+  }
+
+  type Replacement = [startIndex: number, oldLength: number, newLines: string[]]
+  const replacements: Replacement[] = []
+  let lineIndex = 0
+
+  for (const chunk of chunks) {
+    if (chunk.changeContext) {
+      const ctxIdx = lines.findIndex((l, idx) => idx >= lineIndex && (l === chunk.changeContext || l.trim() === chunk.changeContext!.trim()))
+      if (ctxIdx !== -1) {
+        lineIndex = ctxIdx
+      }
+    }
+
+    if (chunk.oldLines.length === 0) {
+      replacements.push([lineIndex, 0, chunk.newLines])
+      continue
+    }
+
+    let found = findSequence(lines, chunk.oldLines, lineIndex, chunk.endOfFile)
+    if (found === -1 && chunk.oldLines[chunk.oldLines.length - 1] === "") {
+      const trimmedOld = chunk.oldLines.slice(0, -1)
+      const trimmedNew = chunk.newLines[chunk.newLines.length - 1] === "" ? chunk.newLines.slice(0, -1) : chunk.newLines
+      found = findSequence(lines, trimmedOld, lineIndex, chunk.endOfFile)
+      if (found !== -1) {
+        replacements.push([found, trimmedOld.length, trimmedNew])
+        lineIndex = found + trimmedOld.length
+        continue
+      }
+    }
+
+    if (found === -1) {
+      throw new Error(`Failed to find expected lines in ${filePath}:\n${chunk.oldLines.join("\n")}`)
+    }
+
+    replacements.push([found, chunk.oldLines.length, chunk.newLines])
+    lineIndex = found + chunk.oldLines.length
+  }
+
+  const result = [...lines]
+  for (const [startIdx, count, newLines] of replacements.sort((a, b) => b[0] - a[0])) {
+    result.splice(startIdx, count, ...newLines)
+  }
+
+  const joined = result.join(isCRLF ? "\r\n" : "\n")
+  return hasTrailingNewline || joined.length > 0 ? (joined.endsWith("\n") ? joined : joined + (isCRLF ? "\r\n" : "\n")) : ""
+}
+
+export interface ApplyPatchRequest {
+  patchText: string
+}
+
+export interface PatchFileResult {
+  path: string
+  action: "add" | "delete" | "update" | "move"
+  additions: number
+  deletions: number
+  bytes?: number
+  hash?: string
+}
+
+export interface ApplyPatchResult {
+  ok: boolean
+  summary: string
+  files: PatchFileResult[]
+}
+
+export function applyPatchAtomic(req: ApplyPatchRequest): ApplyPatchResult {
+  const sections = parseStructuredPatch(req.patchText)
+
+  interface PlannedAction {
+    section: ParsedPatch
+    newContent?: Buffer
+    targetPath: string
+    oldPath?: string
+    additions: number
+    deletions: number
+  }
+
+  const planned: PlannedAction[] = []
+
+  // 1. In-memory validation phase: verify ALL targets before touching disk
+  for (const section of sections) {
+    assertSafePath(section.path)
+    if (section.type === "add") {
+      const targetPath = resolve(section.path)
+      assertSafePath(targetPath)
+      const bytes = Buffer.from(section.contents, "utf8")
+      if (bytes.length > MAX_EDIT_BYTES) throw new Error(`Added file ${section.path} exceeds byte limit`)
+      const addLines = section.contents ? section.contents.split("\n").filter((l) => l.length > 0).length : 0
+      planned.push({
+        section,
+        targetPath,
+        newContent: bytes,
+        additions: addLines,
+        deletions: 0,
+      })
+    } else if (section.type === "delete") {
+      const targetPath = resolve(section.path)
+      assertSafePath(targetPath)
+      if (!existsSync(targetPath)) throw new Error(`Cannot delete nonexistent file: ${section.path}`)
+      const stat = lstatSync(targetPath)
+      if (!stat.isFile()) throw new Error(`Cannot delete non-file: ${section.path}`)
+      const bytes = readCompleteFile(targetPath)
+      const delLines = text(bytes).split("\n").filter((l) => l.length > 0).length
+      planned.push({
+        section,
+        targetPath,
+        additions: 0,
+        deletions: delLines,
+      })
+    } else if (section.type === "update") {
+      const oldPath = resolve(section.path)
+      assertSafePath(oldPath)
+      const targetPath = section.movePath ? resolve(section.movePath) : oldPath
+      assertSafePath(targetPath)
+      if (!existsSync(oldPath)) throw new Error(`Cannot update nonexistent file: ${section.path}`)
+      const bytes = readCompleteFile(oldPath)
+      const originalText = text(bytes)
+      const updatedText = applyHunksToContent(originalText, section.chunks, section.path)
+      const outBytes = Buffer.from(updatedText, "utf8")
+      if (outBytes.length > MAX_EDIT_BYTES) throw new Error(`Patched file ${section.path} exceeds byte limit`)
+
+      let additions = 0
+      let deletions = 0
+      for (const chunk of section.chunks) {
+        additions += chunk.newLines.length
+        deletions += chunk.oldLines.length
+      }
+
+      planned.push({
+        section,
+        targetPath,
+        oldPath: section.movePath ? oldPath : undefined,
+        newContent: outBytes,
+        additions,
+        deletions,
+      })
+    }
+  }
+
+  // 2. Execution phase: all checks passed! Apply changes atomically
+  const files: PatchFileResult[] = []
+
+  for (const action of planned) {
+    if (action.section.type === "add") {
+      const res = atomicReplace(action.targetPath, action.newContent!)
+      files.push({
+        path: action.section.path,
+        action: "add",
+        additions: action.additions,
+        deletions: 0,
+        bytes: res.bytes,
+        hash: res.hash,
+      })
+    } else if (action.section.type === "delete") {
+      unlinkSync(action.targetPath)
+      files.push({
+        path: action.section.path,
+        action: "delete",
+        additions: 0,
+        deletions: action.deletions,
+      })
+    } else if (action.section.type === "update") {
+      const res = atomicReplace(action.targetPath, action.newContent!)
+      if (action.oldPath && action.oldPath !== action.targetPath) {
+        try { unlinkSync(action.oldPath) } catch {}
+      }
+      files.push({
+        path: action.section.movePath ? `${action.section.path} -> ${action.section.movePath}` : action.section.path,
+        action: action.section.movePath ? "move" : "update",
+        additions: action.additions,
+        deletions: action.deletions,
+        bytes: res.bytes,
+        hash: res.hash,
+      })
+    }
+  }
+
+  const summary = `Successfully applied patch to ${files.length} file(s): ` +
+    files.map((f) => `${f.action === "add" ? "A" : f.action === "delete" ? "D" : f.action === "move" ? "R" : "M"} ${f.path} (+${f.additions}/-${f.deletions})`).join(", ")
+
+  return { ok: true, summary, files }
 }

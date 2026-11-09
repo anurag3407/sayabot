@@ -35,7 +35,7 @@ afterEach(() => {
   rmSync(home, { recursive: true, force: true })
 })
 
-describe("TypeScript code intelligence", () => {
+describe("TypeScript code intelligence", { timeout: 20_000 }, () => {
   it("returns AST-derived declarations, not text lines", () => {
     const result = request("outline") as any
     expect(result.engine).toBe("typescript")

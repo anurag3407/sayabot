@@ -39,7 +39,7 @@ export async function streamAgentText(options: StreamAgentOptions): Promise<Stre
       prompt: options.prompt,
       tools: options.tools,
       abortSignal: options.abortSignal,
-      stopWhen: stepCountIs(options.maxSteps ?? 6),
+      stopWhen: stepCountIs(options.maxSteps ?? 20),
       ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
       ...(options.topP !== undefined ? { topP: options.topP } : {}),
       ...(options.maxOutputTokens !== undefined
