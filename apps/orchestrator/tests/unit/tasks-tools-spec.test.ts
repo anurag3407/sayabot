@@ -24,6 +24,9 @@ describe("taskTools spec surface", () => {
     const claim = tools.find((t) => t.name === "claim_task")!
     expect(claim.schema.safeParse({ task_id: "not-a-uuid" }).success).toBe(false)
     expect(claim.schema.safeParse({ task_id: "11111111-1111-4111-8111-111111111111" }).success).toBe(true)
+    const followup = tools.find((t) => t.name === "schedule_followup")!
+    expect(followup.schema.safeParse({ in_minutes: 0, title: "x", note: "y" }).success).toBe(false)
+    expect(followup.schema.safeParse({ in_minutes: 15, title: "Check metrics", note: "Verify error rates" }).success).toBe(true)
   })
 
   it("none of the board tools are marked dangerous (human gate lives elsewhere)", () => {

@@ -86,6 +86,41 @@ export function taskTools(args: {
         ),
     },
     {
+      name: "schedule_followup",
+      description:
+        "Schedule an autonomous follow-up reminder or delayed action for yourself. The orchestrator will post your note into the room and wake you up when the timer expires. Use when waiting on builds, deployments, asynchronous human feedback, or scheduled audits.",
+      schema: z.object({
+        in_minutes: z.number().int().min(1).max(10_080).describe("Delay in minutes (1 min to 7 days)"),
+        title: z.string().min(2).max(120).describe("Short title for the follow-up task"),
+        note: z.string().max(2_000).describe("Detailed reminder or action note for what to check when awakened"),
+      }),
+      dangerous: false,
+      execute: async (input: { in_minutes: number; title: string; note: string }) => {
+        const dueAt = new Date(Date.now() + input.in_minutes * 60_000)
+        return friendly(async () => {
+          const task = await createTask(agent, {
+            roomId: args.roomId,
+            title: `[Follow-up] ${input.title}`,
+            description: input.note,
+            assignToMe: true,
+          })
+          await updateTask(agent, {
+            taskId: task.task.id,
+            unblockNeeds: "time",
+            unblockDetail: `Follow up in ${input.in_minutes} minutes: ${input.note}`,
+            dueAt: dueAt.toISOString(),
+          })
+          return {
+            ok: true,
+            taskId: task.task.id,
+            scheduledFor: dueAt.toISOString(),
+            inMinutes: input.in_minutes,
+            message: `Follow-up scheduled for ${dueAt.toLocaleTimeString()} (${input.in_minutes}m from now).`,
+          }
+        })
+      },
+    },
+    {
       name: "claim_task",
       description:
         "Claim an unassigned task before you start on it. Fails safely, telling you who holds it, if another agent got there first.",

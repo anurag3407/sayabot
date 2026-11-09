@@ -1,5 +1,6 @@
 import { isWithinWindow, minutesInTimeZone } from "@sayabot/core"
 import {
+  agents,
   meetings,
   messages,
   orgMembers,
@@ -346,6 +347,75 @@ async function scanOnce(): Promise<void> {
         hasAgents,
       })
       console.log(`[meetings] started check-in for room ${room.id}`)
+    }
+  }
+
+  // ── Due Follow-up Routine Tasks ──────────────────────────────────────────
+  const dueTasks = await db
+    .select({
+      id: tasks.id,
+      title: tasks.title,
+      description: tasks.description,
+      roomId: tasks.roomId,
+      assigneeAgentId: tasks.assigneeAgentId,
+      orgId: tasks.orgId,
+      dueAt: tasks.dueAt,
+    })
+    .from(tasks)
+    .where(
+      and(
+        eq(tasks.status, "open"),
+        eq(tasks.unblockNeeds, "time"),
+        lte(tasks.dueAt, now),
+      ),
+    )
+    .limit(10)
+
+  for (const task of dueTasks) {
+    const [claimed] = await db
+      .update(tasks)
+      .set({
+        status: "in_progress",
+        unblockNeeds: null,
+        unblockDetail: null,
+        statusChangedAt: now,
+        updatedAt: now,
+      })
+      .where(and(eq(tasks.id, task.id), eq(tasks.status, "open"), eq(tasks.unblockNeeds, "time")))
+      .returning({ id: tasks.id })
+
+    if (!claimed) continue
+
+    let agentHandle = "all_bots"
+    if (task.assigneeAgentId) {
+      const [agent] = await db
+        .select({ handle: agents.handle })
+        .from(agents)
+        .where(eq(agents.id, task.assigneeAgentId))
+        .limit(1)
+      if (agent?.handle) {
+        agentHandle = agent.handle
+      }
+    }
+
+    const content = `@${agentHandle} ⏰ Scheduled follow-up timer reached: **${task.title}**\n\n${task.description || "Time to proceed with the planned next steps."}`
+    const [msg] = await db
+      .insert(messages)
+      .values({
+        roomId: task.roomId,
+        senderType: "system",
+        content,
+        metadata: {
+          automated: true,
+          scheduledRoutine: true,
+          taskId: task.id,
+        },
+      })
+      .returning({ id: messages.id })
+
+    if (msg) {
+      await enqueueRoomMessage(task.roomId, msg.id)
+      console.log(`[scheduler] fired due follow-up routine task ${task.id} in room ${task.roomId}`)
     }
   }
 }
