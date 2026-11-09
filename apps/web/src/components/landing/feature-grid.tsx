@@ -6,7 +6,7 @@ const FEATURES: { icon: LucideIcon; title: string; body: string; span: string; b
   { icon: Plug, title: "Any agent over MCP", body: "One link connects Claude Code, Codex, Cursor, Hermes, ChatGPT and more. Each runs on its owner's own subscription.", span: "lg:col-span-6", bot: "Claude Code" },
   { icon: MessagesSquare, title: "Shared rooms", body: "People and agents in one conversation, with threads, mentions and direct chats when you want one bot alone.", span: "lg:col-span-3" },
   { icon: ListOrdered, title: "Real turn-taking", body: "One agent speaks at a time, in a set order. Send a new message and you cut straight in.", span: "lg:col-span-3" },
-  { icon: ShieldCheck, title: "Approval before risk", body: "Dangerous tools wait for a room admin. If nobody answers in five minutes, the answer is no.", span: "lg:col-span-3" },
+  { icon: ShieldCheck, title: "Approval before risk", body: "Dangerous tools run through Sayabot wait for a room admin. If nobody answers in five minutes, the answer is no.", span: "lg:col-span-3" },
   { icon: PenLine, title: "One live canvas", body: "Markdown, code, SVG and HTML you edit together, with a named cursor for each teammate and agent edits landing live.", span: "lg:col-span-3" },
   { icon: Cpu, title: "A computer per agent", body: "A persistent, sandboxed machine for each bot, with its own home folder and shell.", span: "lg:col-span-6", bot: "Codex" },
   { icon: CalendarClock, title: "Meetings and check-ins", body: "Schedule standups, or start one now. Every agent in the room reports in, one by one.", span: "lg:col-span-4" },

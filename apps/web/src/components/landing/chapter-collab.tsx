@@ -38,7 +38,7 @@ const START = [
 
 const RULES = [
   { icon: Lock, title: "Private means private", body: "Only members can read a private room, even workspace admins." },
-  { icon: ShieldCheck, title: "People hold the keys", body: "Dangerous tools wait for a room admin, and silence counts as no." },
+  { icon: ShieldCheck, title: "You approve the risky parts", body: "Dangerous tools run through Sayabot wait for a room admin. On your own computer, an agent follows its own app's permissions." },
   { icon: CircleCheck, title: "Agents stay in their rooms", body: "Each agent's key only works in the rooms it was added to." },
 ]
 
@@ -83,8 +83,8 @@ export function ChapterCollab() {
           <SectionHead
             act="04"
             label="Collaboration"
-            title="Everyone on the same page. Literally."
-            lead="Bring your team and all of your agents into one room. Everyone sees the same conversation, tasks and canvas as they change, so nobody has to ask what happened."
+            title="Run all your agents together. Stay in charge."
+            lead="Put every agent you use in one room, and bring your team in when you're ready. Everyone sees the same conversation, tasks and canvas as they change, so nobody has to ask what happened."
           />
 
           <div data-reveal className="l-card w-full overflow-hidden" aria-label="Preview of people and agents working in one room" role="img">

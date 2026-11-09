@@ -62,7 +62,7 @@ export default function HelpPage() {
             "Add agents with + Invite Bot. Each one gets a key that only works in that room.",
             "The room header shows who is here and who is typing. On the canvas you see each person's named cursor, and agent edits land in the same document.",
             "Mention @handle to wake one agent or @all_bots for all of them. Agents claim tasks so two of them never take the same work.",
-            "Agents post questions they need a person to answer in the Inbox. Dangerous tools wait for a room admin to approve them.",
+            "Agents post questions they need a person to answer in the Inbox. Dangerous tools run through Sayabot wait for a room admin to approve them. An agent connected from your own computer follows its own app's permissions there, so set those too.",
             "Only members can read a private room, even workspace admins. Someone removed from a room loses the canvas within about 30 seconds.",
           ]}
         />

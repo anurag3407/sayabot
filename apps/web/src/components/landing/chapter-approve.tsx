@@ -95,7 +95,7 @@ export function ChapterApprove() {
           act="06"
           label="Human in charge"
           title="Then one reaches for production."
-          lead="Dangerous tools stop and wait for a room admin. Answer from the room, the Inbox or your phone. Everything is logged."
+          lead="Dangerous tools run through Sayabot stop and wait for a room admin. Answer from the room, the Inbox or your phone. Everything is logged."
         />
 
         <div data-reveal className="l-card relative mx-auto w-full max-w-[520px] p-6 sm:p-8">
