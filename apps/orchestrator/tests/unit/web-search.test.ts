@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { executeWebSearch, SEARCH_PROVIDERS } from "../../src/tools/builtins/web-search"
-import { cleanHtmlToMarkdown } from "../../src/tools/builtins/web-fetch"
+import { cleanHtmlToMarkdown, fetchSafeWebPage, formatUntrustedWebContent } from "../../src/tools/builtins/web-fetch"
 
 describe("Multi-provider web search engine", () => {
   const originalFetch = globalThis.fetch
@@ -170,12 +170,52 @@ describe("Multi-provider web search engine", () => {
     })
 
     expect(res.provider).toContain("fell back to DuckDuckGo")
+    expect(res.fallback).toBe(true)
+    expect(res.warning).toContain("Tavily 429 Rate limit exceeded")
     expect(res.results.length).toBe(1)
     expect(res.results[0].title).toBe("Fallback Success")
   })
+
+  it("blocks SSRF on SearXNG baseUrl when pointing to private addresses", async () => {
+    // When SearXNG points at internal/loopback, it should throw an SSRF error and trigger safe fallback
+    const mockDdHtml = `
+      <div class="result results_links">
+        <a class="result__url" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Ffallback.org">https://fallback.org</a>
+        <h2 class="result__title"><a class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Ffallback.org">Fallback Success</a></h2>
+        <a class="result__snippet">Safe fallback</a>
+      </div>
+    `
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () => mockDdHtml,
+    } as unknown as Response)
+
+    const res = await executeWebSearch({
+      query: "private attack",
+      count: 2,
+      provider: "searxng",
+      baseUrl: "http://169.254.169.254",
+    })
+
+    expect(res.fallback).toBe(true)
+    expect(res.warning).toContain("private address")
+  })
 })
 
-describe("cleanHtmlToMarkdown extraction", () => {
+describe("cleanHtmlToMarkdown extraction and safe fetch", () => {
+  it("formats untrusted web content with explicit security boundaries", () => {
+    const wrapped = formatUntrustedWebContent("https://example.com/page", "Sample", "Some text")
+    expect(wrapped).toContain("<<<EXTERNAL_UNTRUSTED_CONTENT")
+    expect(wrapped).toContain("<<<END_EXTERNAL_UNTRUSTED_CONTENT>>>")
+    expect(wrapped).toContain("Security Notice")
+    expect(wrapped).toContain("Some text")
+  })
+
+  it("blocks SSRF in fetchSafeWebPage for link-local and loopback IPs", async () => {
+    await expect(fetchSafeWebPage("http://127.0.0.1:8080/secret")).rejects.toThrow(/private address|private host/)
+    await expect(fetchSafeWebPage("http://169.254.169.254/latest/meta-data")).rejects.toThrow(/private address|private host/)
+  })
+
   it("converts rich HTML to clean Markdown with entity decoding and link preservation", () => {
     const sampleHtml = `
       <!DOCTYPE html>

@@ -235,6 +235,9 @@ export function createApp() {
   })
 
   app.post("/v1/tools/:toolCallId/approve", async (c) => {
+    if (!isInternalRequest(c.req.header("authorization"), c.req.header("x-internal-secret"))) {
+      return c.json({ error: "unauthorized" }, 401)
+    }
     const toolCallId = c.req.param("toolCallId")
     const body = await c.req.json().catch(() => ({}))
     const approved = Boolean(body.approved)

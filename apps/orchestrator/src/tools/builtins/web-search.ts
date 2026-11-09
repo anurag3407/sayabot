@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { getEnv } from "../../env"
+import { assertSafeWebhookUrl } from "../../ssrf"
 import type { ToolSpec } from "../audited"
 import { resolveToolCredential, type OrgToolConfig } from "../secrets"
 
@@ -14,6 +15,8 @@ export interface WebSearchOutput {
   query: string
   results: SearchResultItem[]
   answer?: string
+  fallback?: boolean
+  warning?: string
 }
 
 export type WebSearchProvider =
@@ -157,6 +160,14 @@ async function searchDuckDuckGo(query: string, count: number, signal?: AbortSign
   })
   if (!response.ok) throw new Error(`DuckDuckGo responded with status ${response.status}`)
   const html = await response.text()
+  if (
+    html.includes("anomaly-modal") ||
+    html.includes("challenge") ||
+    html.includes("captcha") ||
+    html.includes("bots use DuckDuckGo")
+  ) {
+    throw new Error("DuckDuckGo rate-limited or blocked this request")
+  }
   const results: SearchResultItem[] = []
   const blocks = html.split(/<div class="[^"]*result\s+results_links[^"]*"[^>]*>/i).slice(1)
   for (const block of blocks) {
@@ -263,6 +274,8 @@ async function searchSearXNG(
   signal?: AbortSignal,
 ): Promise<SearchResultItem[]> {
   const base = (baseUrl || "https://searx.be").replace(/\/+$/, "")
+  // Validate baseUrl against SSRF to prevent hitting internal hosts or cloud metadata
+  await assertSafeWebhookUrl(base, false)
   const url = `${base}/search?q=${encodeURIComponent(query)}&format=json`
   const headers: Record<string, string> = {
     Accept: "application/json",
@@ -324,7 +337,14 @@ async function searchExa(
       "x-api-key": apiKey,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ query, num_results: count, use_autoprompt: true }),
+    body: JSON.stringify({
+      query,
+      num_results: count,
+      use_autoprompt: true,
+      contents: {
+        text: { max_characters: 1000 },
+      },
+    }),
     signal,
   })
   if (!response.ok) {
@@ -332,12 +352,12 @@ async function searchExa(
     throw new Error(`Exa search failed (${response.status}): ${text.slice(0, 200)}`)
   }
   const data = (await response.json()) as {
-    results?: Array<{ title?: string; url?: string; text?: string }>
+    results?: Array<{ title?: string; url?: string; text?: string; snippet?: string }>
   }
   return (data.results ?? []).slice(0, count).map((r) => ({
     title: r.title ?? "",
     url: r.url ?? "",
-    description: r.text ?? "",
+    description: r.text ?? r.snippet ?? "",
   }))
 }
 
@@ -544,6 +564,8 @@ export async function executeWebSearch(args: {
         results = await searchDuckDuckGo(args.query, count, args.signal)
         return {
           provider: `${provider} (fell back to DuckDuckGo)`,
+          fallback: true,
+          warning: `Configured search provider "${provider}" encountered an error: ${(err as Error).message}. Automatically fell back to DuckDuckGo.`,
           query: args.query,
           results,
         }

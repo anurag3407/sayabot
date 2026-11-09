@@ -90,4 +90,11 @@ describe("orchestrator HTTP app (in-process)", () => {
     expect(res.status).not.toBe(200)
     expect([401, 404, 500]).toContain(res.status)
   })
+
+  it("rejects unauthenticated tool approvals with 401", async () => {
+    const res = await post("/v1/tools/11111111-1111-4111-8111-111111111111/approve", { "content-type": "application/json" }, { approved: true })
+    expect(res.status).toBe(401)
+    const body = await res.json()
+    expect(body).toEqual({ error: "unauthorized" })
+  })
 })
