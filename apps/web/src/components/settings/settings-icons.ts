@@ -2,6 +2,7 @@ import type { ComponentType } from "react"
 import {
   Bot,
   Brain,
+  Cable,
   CircleDollarSign,
   KeyRound,
   LockKeyhole,
@@ -18,6 +19,7 @@ export const SETTINGS_ICONS: Record<SettingsIconKey, ComponentType<{ className?:
   keys: KeyRound,
   pricing: CircleDollarSign,
   tools: Plug,
+  connectors: Cable,
   bots: Bot,
   vault: LockKeyhole,
   vector: Brain,

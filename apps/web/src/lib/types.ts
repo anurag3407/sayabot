@@ -438,3 +438,33 @@ export interface ActionResult {
   warning?: string
   data?: Record<string, unknown>
 }
+
+export interface WorkspaceConnectorView {
+  id: string
+  orgId: string
+  source: string
+  name: string
+  status: string
+  authType: string
+  last4: string
+  config: Record<string, unknown>
+  lastSyncedAt: string | null
+  errorMessage: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface AgentConnectorGrantView {
+  id: string
+  orgId: string
+  agentId: string
+  connectorId: string
+  scopeConfig: {
+    allowedFolders?: string[]
+    allowedChannels?: string[]
+    allowedRepos?: string[]
+    [key: string]: unknown
+  }
+  createdAt: string
+  connector?: WorkspaceConnectorView
+}

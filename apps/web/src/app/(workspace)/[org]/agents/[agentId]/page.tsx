@@ -7,6 +7,8 @@ import { parseCapabilities } from "@sayabot/core"
 import { saveAgentAsTemplate } from "@/lib/actions/templates"
 import { ActionForm } from "@/components/ui/action-form"
 import { ComputerPanel, type ComputerInfo } from "@/components/room/computer-panel"
+import { listAgentConnectorGrants, listWorkspaceConnectors } from "@/lib/queries"
+import { AgentConnectorScopeManager } from "@/components/agents/agent-connector-scope"
 
 export const metadata: Metadata = { title: "Agent Profile" }
 
@@ -45,6 +47,12 @@ export default async function AgentProfilePage({
     .eq("assignee_agent_id", agent.id)
     .order("created_at", { ascending: false })
     .limit(10)
+
+  // 4. Fetch connector grants and workspace connectors
+  const [connectorGrants, availableConnectors] = await Promise.all([
+    listAgentConnectorGrants(access.org.id, agent.id),
+    listWorkspaceConnectors(access.org.id),
+  ])
 
   const capabilities = parseCapabilities(agent.capabilities)
   const computer = agent.agent_computers?.[0]
@@ -187,6 +195,15 @@ export default async function AgentProfilePage({
             </div>
           )}
         </div>
+
+        {/* Workspace Connectors & Scoping */}
+        <AgentConnectorScopeManager
+          orgSlug={orgSlug}
+          agentId={agent.id}
+          grants={connectorGrants}
+          availableConnectors={availableConnectors}
+          canEdit={canEdit}
+        />
 
         {/* Recent Tasks */}
         <div className="rounded-xl border border-border bg-card p-4 space-y-3">

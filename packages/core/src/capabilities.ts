@@ -13,6 +13,7 @@ export interface AgentCapabilities {
   memory: boolean
   subagents: boolean
   cron: boolean
+  connectors: boolean
 }
 
 export const DEFAULT_CAPABILITIES: AgentCapabilities = {
@@ -28,6 +29,7 @@ export const DEFAULT_CAPABILITIES: AgentCapabilities = {
   memory: true,
   subagents: true,
   cron: true,
+  connectors: true,
 }
 
 export const agentCapabilitiesSchema = z.object({
@@ -50,6 +52,7 @@ export const agentCapabilitiesSchema = z.object({
   memory: z.boolean().default(true),
   subagents: z.boolean().default(true),
   cron: z.boolean().default(true),
+  connectors: z.boolean().default(true),
 })
 
 /**
@@ -74,6 +77,7 @@ export function parseCapabilities(input: unknown): AgentCapabilities {
     memory: typeof raw.memory === "boolean" ? raw.memory : DEFAULT_CAPABILITIES.memory,
     subagents: typeof raw.subagents === "boolean" ? raw.subagents : DEFAULT_CAPABILITIES.subagents,
     cron: typeof raw.cron === "boolean" ? raw.cron : DEFAULT_CAPABILITIES.cron,
+    connectors: typeof raw.connectors === "boolean" ? raw.connectors : DEFAULT_CAPABILITIES.connectors,
   }
 
   if (raw.computer && typeof raw.computer === "object") {

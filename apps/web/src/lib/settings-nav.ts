@@ -3,7 +3,15 @@
  * popover and the phone drawer all read from here so they cannot drift apart again.
  */
 export type SettingsIconKey =
-  "profile" | "workspace" | "keys" | "vector" | "vault" | "tools" | "bots" | "pricing"
+  | "profile"
+  | "workspace"
+  | "keys"
+  | "vector"
+  | "vault"
+  | "tools"
+  | "connectors"
+  | "bots"
+  | "pricing"
 
 export interface SettingsLink {
   segment: string
@@ -65,6 +73,13 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
         label: "Tools & MCP",
         description: "Built-in tools, web search and external MCP servers.",
         icon: "tools",
+        adminOnly: true,
+      },
+      {
+        segment: "connectors",
+        label: "Connectors",
+        description: "Google Drive, Slack, and GitHub workspace connectors.",
+        icon: "connectors",
         adminOnly: true,
       },
       {
