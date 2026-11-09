@@ -93,6 +93,7 @@ describe("buildTools capability filtering", () => {
     expect(toolNames).toContain("github_bridge")
     expect(toolNames).toContain("postgres_inspector")
     expect(toolNames).toContain("list_tasks")
+    expect(toolNames).toContain("cronjob")
 
     // Computer tools and use_secret should not be in default capabilities
     expect(toolNames).not.toContain("computer_shell")

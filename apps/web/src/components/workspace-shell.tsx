@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from "react"
-import { Bot, CircleHelp, Inbox, MessageCircle, Search, Settings2 } from "lucide-react"
+import { Bot, CircleHelp, Clock, Inbox, MessageCircle, Search, Settings2 } from "lucide-react"
 import { signOutAction } from "@/lib/actions/auth"
 import { cn } from "@/lib/format"
 import { Avatar } from "@/components/ui/avatar"
@@ -28,6 +28,7 @@ type NavIcon = ComponentType<{ className?: string; width?: number; height?: numb
 const PRIMARY_NAV: { key: string; href: string; label: string; icon: NavIcon }[] = [
   { key: "chats", href: "", label: "Chats", icon: MessageCircle },
   { key: "inbox", href: "/inbox", label: "Inbox", icon: Inbox },
+  { key: "cron", href: "/cron", label: "Automations", icon: Clock },
   { key: "meetings", href: "/meetings", label: "Meetings", icon: HistoryIcon },
   { key: "tasks", href: "/tasks", label: "Tasks", icon: CheckIcon },
   { key: "files", href: "/files", label: "Files", icon: CanvasIcon },
@@ -36,6 +37,7 @@ const PRIMARY_NAV: { key: string; href: string; label: string; icon: NavIcon }[]
 ]
 
 const SETTINGS_LINKS = [
+  { href: "/cron", label: "Cron & Automations" },
   { href: "/settings/keys", label: "Provider keys" },
   { href: "/settings/tools", label: "Tools & MCP" },
   { href: "/settings/bots", label: "External agents" },

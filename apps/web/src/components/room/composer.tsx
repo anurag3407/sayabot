@@ -30,7 +30,7 @@ interface MentionOption {
   group: "agents" | "people"
 }
 
-type QuickAction = "task" | "meeting"
+type QuickAction = "task" | "meeting" | "cron"
 
 function draftKey(roomId: string, threadRootId: string | null): string {
   return `mesh:draft:${roomId}:${threadRootId ?? "main"}`
@@ -82,6 +82,45 @@ function QuickActionDialog({
     setError(null)
     form.set("orgSlug", orgSlug)
     form.set("roomId", roomId)
+
+    if (action === "cron") {
+      const name = form.get("name") as string
+      const schedule_expr = form.get("schedule_expr") as string
+      const agent_id = form.get("agent_id") as string
+      const prompt = form.get("prompt") as string
+
+      startTransition(async () => {
+        try {
+          const res = await fetch(`/api/workspaces/${orgSlug}/routines`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              name,
+              schedule_expr,
+              agent_id,
+              room_id: roomId,
+              prompt,
+            }),
+          })
+          const data = await res.json()
+          if (!res.ok) {
+            setError(data.error || "Failed to create routine")
+            return
+          }
+          showToast({
+            message: `Routine '${name}' scheduled (${data.routine?.human_schedule || schedule_expr})`,
+            tone: "success",
+            action: { label: "View on Canvas", href: `/${orgSlug}/cron` },
+          })
+          ref.current?.close()
+          router.refresh()
+        } catch {
+          setError("Failed to create routine")
+        }
+      })
+      return
+    }
+
     startTransition(async () => {
       const result =
         action === "task"
@@ -110,7 +149,11 @@ function QuickActionDialog({
     >
       <form action={submit} className="space-y-3 p-4">
         <h2 className="text-[15px] font-medium">
-          {action === "task" ? "New task in this room" : "Start a meeting in this room"}
+          {action === "task"
+            ? "New task in this room"
+            : action === "meeting"
+              ? "Start a meeting in this room"
+              : "Schedule a routine (cron) in this room"}
         </h2>
         {action === "task" ? (
           <>
@@ -145,7 +188,7 @@ function QuickActionDialog({
               <Textarea id="quick-task-description" name="description" rows={3} />
             </Field>
           </>
-        ) : (
+        ) : action === "meeting" ? (
           <>
             <Field label="title" htmlFor="quick-meeting-title">
               <Input id="quick-meeting-title" name="title" required maxLength={80} defaultValue="Stand-up" autoFocus />
@@ -165,6 +208,54 @@ function QuickActionDialog({
             <p className="text-[12px] leading-relaxed text-muted">
               Every agent in the room will reply, one at a time. This uses your API credits.
             </p>
+          </>
+        ) : (
+          <>
+            <Field label="Routine Name" htmlFor="quick-cron-name">
+              <Input
+                id="quick-cron-name"
+                name="name"
+                required
+                minLength={2}
+                maxLength={100}
+                defaultValue="Daily Standup"
+                autoFocus
+              />
+            </Field>
+            <Field
+              label="Schedule"
+              htmlFor="quick-cron-schedule"
+              hint="e.g. daily at 9am, every 2h, 0 9 * * 1-5"
+            >
+              <Input
+                id="quick-cron-schedule"
+                name="schedule_expr"
+                required
+                defaultValue="daily at 9am"
+              />
+            </Field>
+            <Field label="Target Agent" htmlFor="quick-cron-agent">
+              <Select
+                id="quick-cron-agent"
+                name="agent_id"
+                defaultValue={agents[0]?.agent.id || ""}
+              >
+                {agents.map(({ agent }) => (
+                  <option key={agent.id} value={agent.id}>
+                    @{agent.handle} ({agent.displayName})
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field label="Task Prompt / Instructions" htmlFor="quick-cron-prompt">
+              <Textarea
+                id="quick-cron-prompt"
+                name="prompt"
+                rows={3}
+                required
+                defaultValue="Summarize uncompleted tasks, report progress, and plan next actions."
+              />
+            </Field>
           </>
         )}
         {error ? (
@@ -216,6 +307,7 @@ export function Composer({
   onSent?: () => void
   onShowCanvas?: () => void
 }) {
+  const router = useRouter()
   const storageKey = draftKey(roomId, threadRootId)
   const [value, setValue] = useState("")
   const [pending, setPending] = useState(false)
@@ -378,6 +470,18 @@ export function Composer({
     if (!content || pending) return
     setError(null)
     setNotice(null)
+
+    if (content.startsWith("/cron")) {
+      const remainder = content.slice("/cron".length).trim()
+      if (!remainder || remainder === "list") {
+        router.push(`/${orgSlug}/cron`)
+        clearIfUnchanged(content)
+        return
+      }
+      setQuickAction("cron")
+      clearIfUnchanged(content)
+      return
+    }
 
     if (content.startsWith("/remember ")) {
       const memoryText = content.slice("/remember ".length).trim()
@@ -570,6 +674,9 @@ export function Composer({
               </button>
               <button type="button" className={menuItemClass} onClick={() => setQuickAction("task")}>
                 New task in this room
+              </button>
+              <button type="button" className={menuItemClass} onClick={() => setQuickAction("cron")}>
+                Schedule routine (cron)
               </button>
               {canAdmin && roomKind !== "dm" ? (
                 <button type="button" className={menuItemClass} onClick={() => setQuickAction("meeting")}>

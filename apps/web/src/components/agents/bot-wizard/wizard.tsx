@@ -65,6 +65,7 @@ const CAPABILITY_DESCRIPTIONS: Record<keyof AgentCapabilities, { label: string; 
   secrets: { label: "Secret Broker", desc: "Safely inject authorized API tokens into outbound HTTPS requests" },
   memory: { label: "Durable Memory", desc: "Store and recall facts, preferences, and decisions across turns" },
   subagents: { label: "Spawn Subagents", desc: "Spawn parallel child subagents for focused reading and research tasks" },
+  cron: { label: "Cron & Automations", desc: "Autonomous self-scheduling, recurring tasks, and routine management" },
 }
 
 export function BotWizard({ orgSlug, templates, providerKeys, rooms, vaultSecrets }: Props) {

@@ -15,6 +15,7 @@ import { partitionToolsForSearch } from "../engine/tool-search"
 import { memoryTools } from "../memory/tools"
 import { toAuditedTools, type ToolRuntime, type ToolSpec } from "./audited"
 import { computerTools } from "./builtins/computer"
+import { cronjobTool } from "./builtins/cronjob"
 import { githubTool } from "./builtins/github"
 import { postgresInspectorTool } from "./builtins/postgres"
 import { sandboxTool } from "./builtins/sandbox"
@@ -139,6 +140,15 @@ export async function buildTools(args: BuildToolsArgs): Promise<BuiltTools> {
           agentId: args.agent.id,
           roomId: args.roomId,
         })
+      : []),
+    ...(caps.cron
+      ? [
+          cronjobTool({
+            orgId: args.orgId,
+            agentId: args.agent.id,
+            roomId: args.roomId,
+          }),
+        ]
       : []),
     ...(isV2 && args.runtime.runId
       ? [

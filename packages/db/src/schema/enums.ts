@@ -118,3 +118,10 @@ export const memorySourceEnum = pgEnum("memory_source", [
   "import",
 ])
 
+export const routineStatusEnum = pgEnum("routine_status", [
+  "idle",
+  "running",
+  "success",
+  "failed",
+])
+

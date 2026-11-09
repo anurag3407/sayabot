@@ -39,6 +39,10 @@ export function stopRunInOrchestrator(runId: string) {
   return callOrchestrator(`/internal/runs/${encodeURIComponent(runId)}/stop`, {})
 }
 
+export function runRoutineInOrchestrator(routineId: string) {
+  return callOrchestrator(`/internal/routines/${encodeURIComponent(routineId)}/run`, {})
+}
+
 export async function testWebSearchInOrchestrator(payload: {
   orgId?: string
   provider?: string

@@ -19,6 +19,7 @@ describe("capabilities", () => {
       secrets: false,
       memory: true,
       subagents: true,
+      cron: true,
     })
   })
 
@@ -49,6 +50,7 @@ describe("capabilities", () => {
       secrets: true,
       memory: true,
       subagents: true,
+      cron: true,
     })
     expect((parsed as unknown as Record<string, unknown>).unknownKey).toBeUndefined()
   })

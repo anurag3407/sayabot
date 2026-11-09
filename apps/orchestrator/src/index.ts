@@ -5,6 +5,7 @@ import { createApp } from "./http"
 import { enqueueRoomMessage, startJobs, stopJobs } from "./jobs"
 import { setCollabEnqueue } from "./collab"
 import { startMeetingScheduler, stopMeetingScheduler } from "./scheduler/meetings"
+import { startRoutineScheduler, stopRoutineScheduler } from "./scheduler/routines"
 import { startApprovalListener } from "./tools/approvals"
 import { startBotReplyListener } from "./bot-reply"
 import { abortRoomRuns, abortRun } from "./active-runs"
@@ -51,6 +52,7 @@ void import("./engine/resume").then(({ recoverStaleRuns }) =>
 )
 setCollabEnqueue(enqueueRoomMessage)
 startMeetingScheduler()
+startRoutineScheduler()
 
 const app = createApp()
 const server = serve(

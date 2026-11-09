@@ -22,6 +22,7 @@ import { resolveAgentModel } from "./runner/llm"
 import { applyTaskMutation } from "./collab/tasks-service"
 import { executeWebSearch } from "./tools/builtins/web-search"
 import { resolveToolCredential } from "./tools/secrets"
+import { runRoutineNow } from "./scheduler/routines"
 
 const roomMessageSchema = z.object({
   roomId: z.string().uuid(),
@@ -128,6 +129,18 @@ export function createApp() {
     const stopped = abortRun(runId)
     await notify("mesh_stop_run", { runId }).catch(() => {})
     return c.json({ stopped, notified: true })
+  })
+
+  app.post("/internal/routines/:id/run", async (c) => {
+    if (!isInternalRequest(c.req.header("authorization"), c.req.header("x-internal-secret"))) {
+      return c.json({ error: "forbidden" }, 403)
+    }
+    const routineId = c.req.param("id")
+    const result = await runRoutineNow(routineId)
+    if (!result.success) {
+      return c.json({ error: result.error }, 400)
+    }
+    return c.json({ ok: true, runId: result.runId })
   })
 
   app.post("/internal/tasks/mutate", async (c) => {

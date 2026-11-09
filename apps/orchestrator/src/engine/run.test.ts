@@ -36,6 +36,7 @@ describe("Engine Dispatcher (E4)", () => {
       secrets: false,
       memory: true,
       subagents: true,
+      cron: true,
     },
     createdAt: new Date(),
     updatedAt: new Date(),

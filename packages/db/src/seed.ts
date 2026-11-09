@@ -246,6 +246,7 @@ export const CURATED_TEMPLATES: CuratedTemplateSeed[] = [
       secrets: false,
       memory: true,
       subagents: true,
+      cron: true,
     },
     secretSlots: [],
     defaultModelHint: "gpt-4o-mini",
