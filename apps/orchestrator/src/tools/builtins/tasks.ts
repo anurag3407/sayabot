@@ -105,14 +105,14 @@ export function taskTools(args: {
             assignToMe: true,
           })
           await updateTask(agent, {
-            taskId: task.task.id,
+            taskId: task.id,
             unblockNeeds: "time",
             unblockDetail: `Follow up in ${input.in_minutes} minutes: ${input.note}`,
             dueAt: dueAt.toISOString(),
           })
           return {
             ok: true,
-            taskId: task.task.id,
+            taskId: task.id,
             scheduledFor: dueAt.toISOString(),
             inMinutes: input.in_minutes,
             message: `Follow-up scheduled for ${dueAt.toLocaleTimeString()} (${input.in_minutes}m from now).`,
