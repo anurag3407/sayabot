@@ -150,3 +150,9 @@ export const routineStatusEnum = pgEnum("routine_status", [
   "failed",
 ])
 
+export const vectorProviderKindEnum = pgEnum("vector_provider_kind", [
+  "vector_db",
+  "embedding",
+])
+
+

@@ -14,6 +14,7 @@ import type {
   PricingView,
   McpServerView,
   ProviderKeyView,
+  VectorProviderView,
   RoomAgentView,
   RoomPageData,
   RoomRole,
@@ -492,6 +493,40 @@ export async function listProviderKeys(orgId: string): Promise<ProviderKeyView[]
     label: row.label,
     last4: row.last4,
     createdAt: row.created_at,
+  }))
+}
+
+export async function listVectorProviders(orgId: string): Promise<VectorProviderView[]> {
+  const supabase = await createSupabaseServerClient()
+  const { data } = await supabase
+    .from("vector_providers_public")
+    .select("id, org_id, kind, provider, label, endpoint_url, last4, config, is_active, created_at, updated_at")
+    .eq("org_id", orgId)
+    .order("created_at")
+  return ((data ?? []) as {
+    id: string
+    org_id: string
+    kind: "vector_db" | "embedding"
+    provider: string
+    label: string
+    endpoint_url: string | null
+    last4: string
+    config: Record<string, unknown> | null
+    is_active: boolean
+    created_at: string
+    updated_at: string
+  }[]).map((row) => ({
+    id: row.id,
+    orgId: row.org_id,
+    kind: row.kind,
+    provider: row.provider,
+    label: row.label,
+    endpointUrl: row.endpoint_url,
+    last4: row.last4,
+    config: (row.config ?? {}) as Record<string, unknown>,
+    isActive: Boolean(row.is_active),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
   }))
 }
 

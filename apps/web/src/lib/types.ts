@@ -155,6 +155,20 @@ export interface ProviderKeyView {
   createdAt: string
 }
 
+export interface VectorProviderView {
+  id: string
+  orgId: string
+  kind: "vector_db" | "embedding"
+  provider: string
+  label: string
+  endpointUrl: string | null
+  last4: string
+  config: Record<string, unknown>
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
 export interface McpServerView {
   id: string
   orgId: string

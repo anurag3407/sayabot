@@ -17,6 +17,7 @@ import {
   memoryScopeEnum,
   memorySourceEnum,
   openLoopStatusEnum,
+  vectorProviderKindEnum,
 } from "./enums"
 import { orgs, profiles } from "./identity"
 import { rooms } from "./rooms"
@@ -152,6 +153,35 @@ export const memoryLinks = pgTable(
   ],
 )
 
+// ── 5. Vector & Embedding Providers Table (UI configurable multi-provider RAG) ──
+
+export const vectorProviders = pgTable(
+  "vector_providers",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => orgs.id, { onDelete: "cascade" }),
+    ownerUserId: uuid("owner_user_id").references(() => profiles.id, { onDelete: "set null" }),
+    kind: vectorProviderKindEnum("kind").notNull().default("vector_db"),
+    provider: text("provider").notNull(),
+    label: text("label").notNull(),
+    endpointUrl: text("endpoint_url"),
+    ciphertext: text("ciphertext").notNull(),
+    iv: text("iv").notNull(),
+    tag: text("tag").notNull(),
+    last4: text("last4").notNull(),
+    config: jsonb("config").notNull().default({}),
+    isActive: boolean("is_active").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("vector_providers_org_idx").on(t.orgId),
+    index("vector_providers_active_idx").on(t.orgId, t.kind, t.isActive),
+  ],
+)
+
 // ── Type definitions ────────────────────────────────────────────────────────
 
 export type MemoryRow = typeof memories.$inferSelect
@@ -159,3 +189,5 @@ export type NewMemoryRow = typeof memories.$inferInsert
 export type MemorySourceRow = typeof memorySources.$inferSelect
 export type OpenLoopRow = typeof openLoops.$inferSelect
 export type MemoryLinkRow = typeof memoryLinks.$inferSelect
+export type VectorProviderRow = typeof vectorProviders.$inferSelect
+export type NewVectorProviderRow = typeof vectorProviders.$inferInsert

@@ -6,6 +6,7 @@ import { cn } from "@/lib/format"
 
 const links = [
   { segment: "keys", label: "Provider keys" },
+  { segment: "vector", label: "Vector & RAG" },
   { segment: "vault", label: "Secret Vault" },
   { segment: "tools", label: "Tools & MCP" },
   { segment: "bots", label: "External agents" },

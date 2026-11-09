@@ -2,9 +2,11 @@ import { and, desc, eq, inArray, lt, or, sql } from "drizzle-orm"
 import { redactSecrets } from "@sayabot/core"
 import {
   memories,
+  vectorProviders,
   type MemoryLinkRow,
   type MemoryRow,
   type OpenLoopRow,
+  type VectorProviderRow,
 } from "@sayabot/db"
 import { getDb } from "../db"
 import type { AgentRow } from "../runner/context"
@@ -350,6 +352,25 @@ export class MemoryService {
       .limit(20)
 
     return rows
+  }
+
+  /**
+   * Retrieves the currently active vector database and embedding model for the organization.
+   */
+  async getActiveVectorConfig(orgId: string): Promise<{
+    vectorDb: VectorProviderRow | null
+    embedding: VectorProviderRow | null
+  }> {
+    const db = this.getDb()
+    const activeProviders = await db
+      .select()
+      .from(vectorProviders)
+      .where(and(eq(vectorProviders.orgId, orgId), eq(vectorProviders.isActive, true)))
+
+    const vectorDb = activeProviders.find((p) => p.kind === "vector_db") ?? null
+    const embedding = activeProviders.find((p) => p.kind === "embedding") ?? null
+
+    return { vectorDb, embedding }
   }
 
   // ── Open Loops Methods ───────────────────────────────────────────────────
