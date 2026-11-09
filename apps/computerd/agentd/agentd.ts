@@ -54,7 +54,11 @@ export function startAgentd(socketPath = SOCKET_PATH) {
   })
 
   server.listen(socketPath, () => {
-    try { chmodSync(socketPath, 0o600) } catch {}
+    try {
+      chmodSync(socketPath, 0o600)
+    } catch (err) {
+      console.warn(`[agentd] Failed to set permissions on ${socketPath}:`, err)
+    }
     console.log(`[agentd] listening on ${socketPath}`)
   })
 

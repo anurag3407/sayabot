@@ -62,15 +62,13 @@ export async function fetchSafeWebPage(
         (upstream) => {
           const chunks: Buffer[] = []
           let bytes = 0
-          upstream.on("data", (c) => {
-            bytes += c.length
-            if (bytes <= MAX_FETCH_BYTES) {
-              chunks.push(Buffer.from(c))
-            } else {
-              upstream.destroy()
-            }
-          })
-          upstream.on("end", () => {
+          let truncated = false
+          let settled = false
+
+          const finish = () => {
+            if (settled) return
+            settled = true
+            cleanup()
             const headers: Record<string, string> = {}
             for (const [k, v] of Object.entries(upstream.headers)) {
               if (typeof v === "string") headers[k] = v
@@ -81,8 +79,32 @@ export async function fetchSafeWebPage(
               headers,
               body: Buffer.concat(chunks),
             })
+          }
+
+          upstream.on("data", (c) => {
+            if (truncated) return
+            bytes += c.length
+            if (bytes <= MAX_FETCH_BYTES) {
+              chunks.push(Buffer.from(c))
+            } else {
+              truncated = true
+              const remaining = MAX_FETCH_BYTES - (bytes - c.length)
+              if (remaining > 0) {
+                chunks.push(Buffer.from(c.subarray(0, remaining)))
+              }
+              upstream.destroy()
+            }
           })
-          upstream.on("error", reject)
+          upstream.on("end", finish)
+          upstream.on("close", () => {
+            if (truncated) finish()
+          })
+          upstream.on("error", (err) => {
+            if (settled) return
+            settled = true
+            cleanup()
+            reject(err)
+          })
         },
       )
 
@@ -90,9 +112,12 @@ export async function fetchSafeWebPage(
         req.destroy()
         reject(new Error("The operation was aborted"))
       }
+      const cleanup = () => {
+        activeSignal.removeEventListener("abort", onAbort)
+      }
       activeSignal.addEventListener("abort", onAbort, { once: true })
       req.on("error", (err) => {
-        activeSignal.removeEventListener("abort", onAbort)
+        cleanup()
         reject(err)
       })
       req.end()

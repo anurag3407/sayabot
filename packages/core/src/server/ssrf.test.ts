@@ -19,6 +19,10 @@ describe("SSRF Protection Core", () => {
     expect(isPrivateIp("192.0.2.1")).toBe(true)
     expect(isPrivateIp("198.51.100.1")).toBe(true)
     expect(isPrivateIp("203.0.113.1")).toBe(true)
+    // Non-reserved public IPs adjacent to TEST-NET should NOT be marked private
+    expect(isPrivateIp("192.0.1.1")).toBe(false)
+    expect(isPrivateIp("198.51.99.1")).toBe(false)
+    expect(isPrivateIp("203.0.114.1")).toBe(false)
     // Multicast & Reserved
     expect(isPrivateIp("224.0.0.1")).toBe(true)
     expect(isPrivateIp("240.0.0.1")).toBe(true)

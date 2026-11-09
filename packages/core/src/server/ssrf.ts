@@ -70,6 +70,7 @@ export function isPrivateIp(rawIp: string): boolean {
     const parts = ip.split(".").map(Number)
     const a = parts[0]
     const b = parts[1]
+    const c = parts[2]
     if (a === undefined) return true
 
     // Loopback 127.0.0.0/8
@@ -88,10 +89,10 @@ export function isPrivateIp(rawIp: string): boolean {
     if (a === 0) return true
     // RFC 2544: 198.18.0.0/15 benchmarking
     if (a === 198 && (b === 18 || b === 19)) return true
-    // TEST-NET: 192.0.2.0/24, 198.51.100.0/24, 203.0.113.0/24
-    if (a === 192 && b === 0) return true
-    if (a === 198 && b === 51) return true
-    if (a === 203 && b === 0) return true
+    // TEST-NET: 192.0.2.0/24 (TEST-NET-1), 198.51.100.0/24 (TEST-NET-2), 203.0.113.0/24 (TEST-NET-3)
+    if (a === 192 && b === 0 && (c === 0 || c === 2)) return true
+    if (a === 198 && b === 51 && c === 100) return true
+    if (a === 203 && b === 0 && c === 113) return true
     // Multicast & Reserved (224.0.0.0/4 and 240.0.0.0/4)
     if (a >= 224) return true
     // Broadcast: 255.255.255.255
