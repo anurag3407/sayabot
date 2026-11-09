@@ -1,5 +1,5 @@
 import { redactSecrets } from "@sayabot/core"
-import { agents, toolCalls } from "@sayabot/db"
+import { agentRuns, agents, runSteps, runTranscripts, toolCalls } from "@sayabot/db"
 import { generateText } from "ai"
 import { and, eq } from "drizzle-orm"
 import { Hono } from "hono"
@@ -276,6 +276,42 @@ export function createApp() {
     resolveApprovalWaiter(toolCallId, status)
 
     return c.json({ ok: true, status })
+  })
+
+  app.get("/internal/runs/:runId/trace", async (c) => {
+    if (!isInternalRequest(c.req.header("authorization"), c.req.header("x-internal-secret"))) {
+      return c.json({ error: "unauthorized" }, 401)
+    }
+    const runId = c.req.param("runId")
+    const db = getDb()
+    const [run] = await db
+      .select()
+      .from(agentRuns)
+      .where(eq(agentRuns.id, runId))
+      .limit(1)
+
+    if (!run) return c.json({ error: "run not found" }, 404)
+
+    const steps = await db
+      .select()
+      .from(runSteps)
+      .where(eq(runSteps.runId, runId))
+      .orderBy(runSteps.idx)
+
+    const [transcript] = await db
+      .select({ plan: runTranscripts.plan })
+      .from(runTranscripts)
+      .where(eq(runTranscripts.runId, runId))
+      .limit(1)
+
+    return c.json({
+      ok: true,
+      trace: {
+        run,
+        steps,
+        plan: transcript?.plan ?? null,
+      },
+    })
   })
 
   app.route("/", botRoutes)

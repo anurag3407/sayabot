@@ -468,3 +468,53 @@ export interface AgentConnectorGrantView {
   createdAt: string
   connector?: WorkspaceConnectorView
 }
+
+export type RunStepKind = "model" | "tool" | "compaction" | "recall" | "plan" | "subagent" | "verify"
+
+export interface RunStepView {
+  id: string
+  runId: string
+  idx: number
+  kind: RunStepKind
+  inputRef: string | null
+  output: Record<string, unknown> | null
+  usage: {
+    inputTokens?: number
+    outputTokens?: number
+    totalTokens?: number
+    [key: string]: unknown
+  } | null
+  startedAt: string
+  finishedAt: string | null
+  durationMs: number | null
+}
+
+export interface RunTraceView {
+  id: string
+  sessionId: string | null
+  roomId: string
+  taskId: string | null
+  agentId: string | null
+  agentName: string | null
+  agentHandle: string | null
+  messageId: string | null
+  step: number
+  role: string
+  status: string
+  finishReason: string | null
+  stepsCount: number
+  engine: string
+  parentRunId: string | null
+  waitingReason: string | null
+  inputTokens: number | null
+  outputTokens: number | null
+  costUsd: number
+  ttftMs: number | null
+  latencyMs: number | null
+  error: string | null
+  createdAt: string
+  steps: RunStepView[]
+  subagentRuns?: RunTraceView[]
+  transcriptPlan?: Record<string, unknown> | null
+}
+

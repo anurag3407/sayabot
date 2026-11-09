@@ -40,6 +40,8 @@ describe("orchestrator HTTP app (in-process)", () => {
     for (const headers of [{} as Record<string, string>, { "x-internal-secret": "wrong" }]) {
       const res = await post("/internal/room-message", headers, {})
       expect(res.status).toBe(401)
+      const traceRes = await app.request("/internal/runs/test-run/trace", { headers })
+      expect(traceRes.status).toBe(401)
     }
   })
 
