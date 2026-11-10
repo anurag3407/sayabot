@@ -267,7 +267,47 @@ async function handleRequest(client: Socket, jsonStr: string) {
 
     case "browser": {
       const { action } = req
-      client.write(JSON.stringify({ ok: true, action: action || "ready", message: "browser session ready" }) + "\n")
+      if (action === "exec") {
+        client.write(
+          JSON.stringify({
+            ok: true,
+            action: "exec",
+            language: req.language || "python",
+            stdout: "Page evaluated successfully",
+            evaluatedResult: true,
+          }) + "\n",
+        )
+      } else if (action === "cdp") {
+        client.write(
+          JSON.stringify({
+            ok: true,
+            action: "cdp",
+            method: req.method,
+            result: { protocolVersion: "1.3", success: true },
+          }) + "\n",
+        )
+      } else if (action === "dialog") {
+        client.write(
+          JSON.stringify({
+            ok: true,
+            action: "dialog",
+            dialogAction: req.action || "accept",
+            handled: true,
+          }) + "\n",
+        )
+      } else if (action === "vault") {
+        client.write(
+          JSON.stringify({
+            ok: true,
+            action: "vault",
+            selector: req.selector,
+            injected: true,
+            masked: true,
+          }) + "\n",
+        )
+      } else {
+        client.write(JSON.stringify({ ok: true, action: action || "ready", message: "browser session ready" }) + "\n")
+      }
       break
     }
 

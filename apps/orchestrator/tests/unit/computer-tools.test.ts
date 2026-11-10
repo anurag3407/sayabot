@@ -123,4 +123,61 @@ describe("computerTools fs_patch and fs_edit", () => {
     })
     expect(valid?.success).toBe(true)
   })
+
+  it("exposes Hermes browser automation tools: browser_exec, browser_cdp, browser_dialog, browser_vault", async () => {
+    fakeClient.browser = vi.fn().mockImplementation((_agentId, action, params) => {
+      if (action === "cdp") return Promise.resolve({ ok: true, result: {} })
+      if (action === "exec") return Promise.resolve({ ok: true, stdout: "Done" })
+      if (action === "dialog") return Promise.resolve({ ok: true, handled: true })
+      if (action === "vault") return Promise.resolve({ ok: true, injected: true, masked: true })
+      return Promise.resolve({ ok: true })
+    })
+    vi.spyOn(clientModule, "getComputerClient").mockReturnValue(fakeClient as any)
+
+    const tools = computerTools({
+      agentId: "agent-browser",
+      orgId: "org-browser",
+      roomId: "room-browser",
+      profile: "browser",
+    })
+
+    const execTool = tools.find((t) => t.name === "browser_exec")
+    expect(execTool).toBeDefined()
+    const cdpTool = tools.find((t) => t.name === "browser_cdp")
+    expect(cdpTool).toBeDefined()
+    const dialogTool = tools.find((t) => t.name === "browser_dialog")
+    expect(dialogTool).toBeDefined()
+    const vaultTool = tools.find((t) => t.name === "browser_vault")
+    expect(vaultTool).toBeDefined()
+
+    // Test browser_exec execution
+    await execTool?.execute({ code: "page.goto('https://example.com')", language: "python" })
+    expect(fakeClient.browser).toHaveBeenCalledWith("agent-browser", "exec", {
+      code: "page.goto('https://example.com')",
+      language: "python",
+    })
+
+    // Test browser_cdp execution
+    await cdpTool?.execute({ method: "Network.getCookies", params: {} })
+    expect(fakeClient.browser).toHaveBeenCalledWith("agent-browser", "cdp", {
+      method: "Network.getCookies",
+      params: {},
+    })
+
+    // Test browser_dialog execution
+    await dialogTool?.execute({ action: "accept", promptText: "yes" })
+    expect(fakeClient.browser).toHaveBeenCalledWith("agent-browser", "dialog", {
+      action: "accept",
+      promptText: "yes",
+    })
+
+    // Test browser_vault execution (zero token leakage)
+    await vaultTool?.execute({ secretName: "ADMIN_PASSWORD", selector: "#pass", submit: true })
+    expect(fakeClient.browser).toHaveBeenCalledWith("agent-browser", "vault", {
+      secretName: "ADMIN_PASSWORD",
+      selector: "#pass",
+      submit: true,
+      orgId: "org-browser",
+    })
+  })
 })

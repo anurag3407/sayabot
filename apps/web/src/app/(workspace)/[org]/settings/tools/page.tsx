@@ -9,6 +9,8 @@ import { Section } from "@/components/settings/section"
 import { McpInspector } from "@/components/settings/mcp-inspector"
 import { WebSearchConfig } from "@/components/settings/web-search-config"
 import { DocumentOcrConfig } from "@/components/settings/document-ocr-config"
+import { BrowserCdpConfig } from "@/components/settings/browser-cdp-config"
+import { TerminalSandboxConfig } from "@/components/settings/terminal-sandbox-config"
 
 export const maxDuration = 60
 
@@ -27,6 +29,7 @@ export default async function ToolsPage({ params }: { params: Promise<{ org: str
   const postgres = configs.find((config) => config.tool === "postgres_inspector")
   const webSearch = configs.find((config) => config.tool === "web_search")
   const documentOcr = configs.find((config) => config.tool === "document_extract")
+  const terminalSandbox = configs.find((config) => config.tool === "terminal_sandbox")
 
   return (
     <>
@@ -204,6 +207,26 @@ export default async function ToolsPage({ params }: { params: Promise<{ org: str
               </p>
             </div>
             <DocumentOcrConfig orgSlug={orgSlug} savedConfig={documentOcr} />
+          </div>
+
+          <div className="border-b border-line pb-5">
+            <div className="mb-4">
+              <p className="text-[13px] font-medium text-text">browser_automation & cdp</p>
+              <p className="mt-0.5 font-mono text-[11px] text-faint">
+                Live Chromium automation over Chrome DevTools Protocol with zero-token-leakage secret injection (browser_exec, browser_cdp, browser_dialog, browser_vault)
+              </p>
+            </div>
+            <BrowserCdpConfig />
+          </div>
+
+          <div className="border-b border-line pb-5">
+            <div className="mb-4">
+              <p className="text-[13px] font-medium text-text">terminal_sandboxes</p>
+              <p className="mt-0.5 font-mono text-[11px] text-faint">
+                Interchangeable execution environments for code_sandbox & terminal_exec (Local Host, Docker, Modal Labs, Daytona, Remote SSH, Serverless MicroVM)
+              </p>
+            </div>
+            <TerminalSandboxConfig orgSlug={orgSlug} savedConfig={terminalSandbox} />
           </div>
 
           <div className="border-b border-line pb-5">

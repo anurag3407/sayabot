@@ -20,7 +20,7 @@ import { connectorTools } from "./builtins/connectors"
 import { cronjobTool } from "./builtins/cronjob"
 import { githubTool } from "./builtins/github"
 import { postgresInspectorTool } from "./builtins/postgres"
-import { sandboxTool } from "./builtins/sandbox"
+import { sandboxTool, terminalExecTool } from "./builtins/sandbox"
 import { taskTools } from "./builtins/tasks"
 import { useSecretTool } from "./builtins/use-secret"
 import { webSearchTool } from "./builtins/web-search"
@@ -137,7 +137,12 @@ export async function buildTools(args: BuildToolsArgs): Promise<BuiltTools> {
           canvasPatchTool({ roomId: args.roomId, agentId: args.agent.id }),
         ]
       : []),
-    ...(caps.sandbox && !caps.computer ? [sandboxTool()] : []),
+    ...(caps.sandbox && !caps.computer
+      ? [
+          sandboxTool({ orgId: args.orgId, agentId: args.agent.id }),
+          terminalExecTool({ orgId: args.orgId, agentId: args.agent.id }),
+        ]
+      : []),
     ...(caps.webSearch
       ? [
           webSearchTool({ orgId: args.orgId, agentId: args.agent.id }),

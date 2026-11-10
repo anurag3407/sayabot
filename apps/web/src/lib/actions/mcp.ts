@@ -21,7 +21,13 @@ import type { ActionResult } from "@/lib/types"
 import { testWebSearchInOrchestrator, testDocumentOcrInOrchestrator } from "@/lib/orchestrator"
 
 const transportSchema = z.enum(["http", "sse"])
-const builtinToolSchema = z.enum(["github_bridge", "postgres_inspector", "web_search", "document_extract"])
+const builtinToolSchema = z.enum([
+  "github_bridge",
+  "postgres_inspector",
+  "web_search",
+  "document_extract",
+  "terminal_sandbox",
+])
 
 function parseHeaders(text: string): { ok: true; value: Record<string, string> } | { ok: false; error: string } {
   if (!text.trim()) return { ok: true, value: {} }
@@ -294,6 +300,29 @@ export async function saveOrgToolConfig(
       }
       if (!config.apiKey && provider !== "docling" && provider !== "marker" && provider !== "tesseract" && provider !== "vision_llm") {
         return fail(`Please enter an API key for ${provider}`)
+      }
+    }
+  } else if (tool === "terminal_sandbox") {
+    const provider = field(formData, "provider") || "local"
+    config.provider = provider
+    const apiKey = field(formData, "apiKey")
+    const baseUrl = field(formData, "baseUrl")
+    if (baseUrl) config.baseUrl = baseUrl
+    if (apiKey) {
+      config.apiKey = apiKey
+    } else if (provider !== "local" && provider !== "docker") {
+      const admin = createAdminClient()
+      const { data: existing } = await admin
+        .from("org_tool_configs")
+        .select("config_enc")
+        .eq("org_id", check.access.org.id)
+        .eq("tool", "terminal_sandbox")
+        .maybeSingle()
+      if (existing?.config_enc) {
+        try {
+          const old = JSON.parse(openSecret(existing.config_enc, getKek()))
+          if (old.apiKey) config.apiKey = old.apiKey
+        } catch {}
       }
     }
   } else {

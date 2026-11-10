@@ -541,6 +541,73 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
     },
   }
 
+  const browserExecTool: ToolSpec = {
+    name: "browser_exec",
+    description:
+      "Execute model-generated Python or JavaScript code snippets using pre-imported browser helpers (page.goto, page.click, page.screenshot, page.evaluate). Returns stdout, logs, and evaluated return values.",
+    schema: z.object({
+      code: z.string().min(1).describe("Python or JavaScript code to execute against the active Chromium page context"),
+      language: z.enum(["python", "javascript"]).default("python").describe("Script language ('python' or 'javascript')"),
+      timeoutSeconds: z.number().int().min(1).max(120).default(30).optional(),
+    }),
+    dangerous: false,
+    execute: async (input: { code: string; language?: "python" | "javascript"; timeoutSeconds?: number }) => {
+      await client.ensure(agentId, orgId, profile)
+      return client.browser(agentId, "exec", input)
+    },
+  }
+
+  const browserCdpTool: ToolSpec = {
+    name: "browser_cdp",
+    description:
+      "Execute direct low-level Chrome DevTools Protocol (CDP) JSON-RPC commands (DOM inspection, network request interception, cookies, storage, emulation, and performance tracing).",
+    schema: z.object({
+      method: z.string().min(1).describe("CDP method name (e.g. 'Network.getCookies', 'Page.captureScreenshot', 'DOM.getDocument', 'Emulation.setDeviceMetricsOverride')"),
+      params: z.record(z.string(), z.unknown()).default({}).describe("JSON-RPC parameter object for the CDP method call"),
+    }),
+    dangerous: false,
+    execute: async (input: { method: string; params?: Record<string, unknown> }) => {
+      await client.ensure(agentId, orgId, profile)
+      return client.browser(agentId, "cdp", input)
+    },
+  }
+
+  const browserDialogTool: ToolSpec = {
+    name: "browser_dialog",
+    description:
+      "Intercept and interact with JavaScript modal dialogs (window.alert(), window.confirm(), window.prompt(), or beforeunload).",
+    schema: z.object({
+      action: z.enum(["accept", "dismiss"]).describe("Whether to accept (OK) or dismiss (Cancel) the active dialog"),
+      promptText: z.string().optional().describe("Text value to submit into a window.prompt() input box before accepting"),
+    }),
+    dangerous: false,
+    execute: async (input: { action: "accept" | "dismiss"; promptText?: string }) => {
+      await client.ensure(agentId, orgId, profile)
+      return client.browser(agentId, "dialog", input)
+    },
+  }
+
+  const browserVaultTool: ToolSpec = {
+    name: "browser_vault",
+    description:
+      "Safely auto-fill encrypted vault credentials (passwords, API tokens, 2FA codes) into browser input fields without exposing the secret plaintext to the model conversation context (zero token leakage).",
+    schema: z.object({
+      secretName: z.string().min(1).describe("The name of the vault secret (e.g., 'ADMIN_PASSWORD', 'STRIPE_KEY', 'GITHUB_TOKEN')"),
+      selector: z.string().min(1).describe("CSS selector of the target input element (e.g. 'input[name=password]', '#login-pass')"),
+      submit: z.boolean().default(false).describe("Whether to automatically submit the form or press Enter after filling"),
+    }),
+    dangerous: false,
+    execute: async (input: { secretName: string; selector: string; submit?: boolean }) => {
+      await client.ensure(agentId, orgId, profile)
+      return client.browser(agentId, "vault", {
+        secretName: input.secretName,
+        selector: input.selector,
+        submit: input.submit ?? false,
+        orgId,
+      })
+    },
+  }
+
   return [
     ...standardTools,
     browserOpenTool,
@@ -549,5 +616,9 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
     browserTypeTool,
     browserExtractTool,
     browserScreenshotTool,
+    browserExecTool,
+    browserCdpTool,
+    browserDialogTool,
+    browserVaultTool,
   ]
 }
