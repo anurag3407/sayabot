@@ -239,6 +239,7 @@ export const CURATED_TEMPLATES: CuratedTemplateSeed[] = [
       tasks: true,
       sandbox: false,
       webSearch: false,
+      document: false,
       github: false,
       postgres: false,
       mcp: false,

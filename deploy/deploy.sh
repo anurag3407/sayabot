@@ -21,6 +21,11 @@ ENV_FILE="$DEPLOY_DIR/.env.production"
 COMPOSE_FILE="$DEPLOY_DIR/docker-compose.yml"
 RELEASES_FILE="$DEPLOY_DIR/.releases"
 LOCK_FILE="$DEPLOY_DIR/.deploy.lock"
+
+env_value() {
+  (grep -E "^$1=" "$ENV_FILE" 2>/dev/null || true) | tail -n1 | cut -d= -f2- | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//"
+}
+
 SERVICES_CONFIG="$(env_value MESH_APP_SERVICES)"
 APP_SERVICES=(${SERVICES_CONFIG:-orchestrator web})
 EDGE_SERVICES=(nginx certbot)
@@ -33,10 +38,6 @@ warn() { printf '%s[deploy]%s %s\n' "$c_yellow" "$c_off" "$*" >&2; }
 die()  { printf '%s[deploy]%s %s\n' "$c_red" "$c_off" "$*" >&2; exit 1; }
 
 compose() { MESH_TAG="${MESH_TAG:-latest}" docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" "$@"; }
-
-env_value() {
-  (grep -E "^$1=" "$ENV_FILE" 2>/dev/null || true) | tail -n1 | cut -d= -f2- | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//"
-}
 
 # ── preflight ────────────────────────────────────────────────────────────
 preflight() {
