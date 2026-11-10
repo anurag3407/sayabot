@@ -1,5 +1,6 @@
 import React from "react"
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native"
+import { colors } from "../../theme"
 
 interface StatusPillProps {
   label: string
@@ -7,7 +8,7 @@ interface StatusPillProps {
   color?: string
 }
 
-export function StatusPill({ label, active = true, color = "#10b981" }: StatusPillProps) {
+export function StatusPill({ label, active = true, color = colors.primaryBright }: StatusPillProps) {
   return (
     <View style={[styles.pill, { borderColor: color }]}>
       {active && <ActivityIndicator size="small" color={color} style={styles.spinner} />}

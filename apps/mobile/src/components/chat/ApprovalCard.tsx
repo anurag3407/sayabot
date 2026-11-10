@@ -1,7 +1,8 @@
 import React from "react"
-import { Platform, StyleSheet, Text, View } from "react-native"
-import { AlertTriangle, Check, X } from "lucide-react-native"
+import { StyleSheet, Text, View } from "react-native"
+import { Check, ShieldAlert, X } from "lucide-react-native"
 import { Button } from "../ui/Button"
+import { colors, fonts } from "../../theme"
 import type { PendingApproval } from "../../types"
 
 interface ApprovalCardProps {
@@ -15,8 +16,13 @@ export function ApprovalCard({ approval, onResolve }: ApprovalCardProps) {
   return (
     <View style={styles.card}>
       <View style={styles.header}>
-        <AlertTriangle size={18} color="#eab308" />
-        <Text style={styles.title}>Tool Approval Requested</Text>
+        <View style={styles.iconBadge}>
+          <ShieldAlert size={18} color={colors.accentWarning} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.title}>Tool Approval Requested</Text>
+          <Text style={styles.subtitle}>Human-in-the-loop safety verification</Text>
+        </View>
       </View>
 
       <Text style={styles.body}>
@@ -30,17 +36,17 @@ export function ApprovalCard({ approval, onResolve }: ApprovalCardProps) {
 
       <View style={styles.actions}>
         <Button
-          title="Approve"
+          title="Approve & Execute"
           variant="primary"
-          icon={<Check size={16} color="#fff" />}
-          style={styles.actionBtn}
+          icon={<Check size={16} color={colors.textInverse} />}
+          style={styles.approveBtn}
           onPress={() => onResolve(true)}
         />
         <Button
           title="Reject"
           variant="danger"
-          icon={<X size={16} color="#fff" />}
-          style={styles.actionBtn}
+          icon={<X size={16} color="#ffffff" />}
+          style={styles.rejectBtn}
           onPress={() => onResolve(false)}
         />
       </View>
@@ -52,51 +58,78 @@ const styles = StyleSheet.create({
   card: {
     margin: 12,
     padding: 14,
-    backgroundColor: "#1c1404",
+    backgroundColor: "rgba(234, 179, 8, 0.08)",
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#854d0e",
+    borderColor: colors.accentWarning,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    marginBottom: 6,
-  },
-  title: {
-    color: "#fef08a",
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  body: {
-    color: "#e2e8f0",
-    fontSize: 13,
+    gap: 10,
     marginBottom: 8,
   },
-  toolName: {
-    color: "#38bdf8",
+  iconBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(234, 179, 8, 0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  title: {
+    color: colors.accentGold,
+    fontSize: 14.5,
     fontWeight: "700",
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+  },
+  subtitle: {
+    color: colors.textSecondary,
+    fontSize: 11.5,
+  },
+  body: {
+    color: colors.textPrimary,
+    fontSize: 13,
+    marginBottom: 8,
+    lineHeight: 18,
+  },
+  toolName: {
+    color: colors.accentCyan,
+    fontWeight: "700",
+    fontFamily: fonts.mono,
   },
   codeBox: {
-    backgroundColor: "#050505",
+    backgroundColor: colors.codeBg,
     padding: 10,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#27272a",
+    borderColor: colors.borderSubtle,
     marginBottom: 12,
   },
   codeText: {
-    color: "#4ade80",
-    fontSize: 11,
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    color: "#5eead4",
+    fontSize: 11.5,
+    fontFamily: fonts.mono,
+    lineHeight: 16,
   },
   actions: {
     flexDirection: "row",
-    gap: 8,
+    gap: 10,
   },
-  actionBtn: {
+  approveBtn: {
+    flex: 2,
+    backgroundColor: colors.primary,
+    paddingVertical: 10,
+  },
+  rejectBtn: {
     flex: 1,
+    backgroundColor: colors.accentDangerBg,
+    borderColor: colors.accentDanger,
+    borderWidth: 1,
     paddingVertical: 10,
   },
 })

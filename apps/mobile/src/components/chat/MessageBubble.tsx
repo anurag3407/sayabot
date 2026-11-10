@@ -1,6 +1,12 @@
-import React from "react"
-import { StyleSheet, Text, View } from "react-native"
-import { CheckCheck } from "lucide-react-native"
+import React, { useState } from "react"
+import {
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native"
+import { Check, CheckCheck, Copy, Terminal } from "lucide-react-native"
+import { colors, fonts } from "../../theme"
 import type { Message } from "../../types"
 
 interface MessageBubbleProps {
@@ -16,9 +22,46 @@ function formatTime(isoString: string): string {
   }
 }
 
+/**
+ * Splits message text into regular prose and fenced markdown code blocks.
+ */
+function parseMessageContent(raw: string) {
+  const parts: Array<{ type: "text" | "code"; content: string; lang?: string }> = []
+  const codeBlockRegex = /```([a-zA-Z0-9_-]*)\n?([\s\S]*?)```/g
+  let lastIndex = 0
+  let match: RegExpExecArray | null
+
+  while ((match = codeBlockRegex.exec(raw)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push({
+        type: "text",
+        content: raw.slice(lastIndex, match.index),
+      })
+    }
+
+    parts.push({
+      type: "code",
+      lang: match[1] || "text",
+      content: (match[2] ?? "").trim(),
+    })
+
+    lastIndex = match.index + match[0].length
+  }
+
+  if (lastIndex < raw.length) {
+    parts.push({
+      type: "text",
+      content: raw.slice(lastIndex),
+    })
+  }
+
+  return parts
+}
+
 export function MessageBubble({ message }: MessageBubbleProps) {
   const isAgent = message.senderType === "agent"
   const isSystem = message.senderType === "system"
+  const [copiedCodeIndex, setCopiedCodeIndex] = useState<number | null>(null)
 
   if (isSystem) {
     return (
@@ -35,26 +78,77 @@ export function MessageBubble({ message }: MessageBubbleProps) {
       : message.senderName || "Agent"
     : null
 
+  const contentBlocks = parseMessageContent(message.content)
+
+  const handleCopyCode = (index: number) => {
+    setCopiedCodeIndex(index)
+    setTimeout(() => setCopiedCodeIndex(null), 2000)
+  }
+
   return (
     <View style={[styles.row, isAgent ? styles.rowAgent : styles.rowHuman]}>
       <View style={[styles.bubble, isAgent ? styles.bubbleAgent : styles.bubbleHuman]}>
-        {/* Agent Name Tag inside bubble (like WhatsApp Group messages) */}
+        {/* Agent Name Tag inside bubble */}
         {isAgent && senderTag && (
-          <Text style={styles.agentSenderTag}>{senderTag}</Text>
+          <View style={styles.agentTagRow}>
+            <Text style={styles.agentSenderTag}>{senderTag}</Text>
+            {message.metadata?.model ? (
+              <View style={styles.modelPill}>
+                <Text style={styles.modelPillText}>
+                  {String(message.metadata.model).split("/").pop()}
+                </Text>
+              </View>
+            ) : null}
+          </View>
         )}
 
-        <Text style={styles.content}>
-          {message.content}
-          {message.status === "streaming" && (
-            <Text style={styles.streamingCursor}> ▋</Text>
-          )}
-        </Text>
+        {/* Content with Code Blocks */}
+        {contentBlocks.map((block, idx) => {
+          if (block.type === "code") {
+            const isCopied = copiedCodeIndex === idx
+            return (
+              <View key={idx} style={styles.codeContainer}>
+                <View style={styles.codeHeader}>
+                  <View style={styles.codeHeaderTitleRow}>
+                    <Terminal size={12} color={colors.primaryBright} />
+                    <Text style={styles.codeLangText}>{block.lang?.toUpperCase() || "CODE"}</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.codeCopyBtn}
+                    onPress={() => handleCopyCode(idx)}
+                  >
+                    {isCopied ? (
+                      <Check size={12} color={colors.primaryBright} />
+                    ) : (
+                      <Copy size={12} color={colors.textSecondary} />
+                    )}
+                    <Text style={[styles.codeCopyText, isCopied && styles.codeCopyTextActive]}>
+                      {isCopied ? "Copied" : "Copy"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+                <Text style={styles.codeBodyText} selectable>
+                  {block.content}
+                </Text>
+              </View>
+            )
+          }
 
-        {/* WhatsApp Bottom Timestamp & Checkmarks */}
+          return (
+            <Text key={idx} style={styles.content}>
+              {block.content}
+              {message.status === "streaming" && (
+                <Text style={styles.streamingCursor}> ▋</Text>
+              )}
+            </Text>
+          )
+        })}
+
+        {/* Bottom Timestamp & Delivery Status */}
         <View style={styles.metaRow}>
           <Text style={styles.timeText}>{timeStr}</Text>
           {!isAgent && (
-            <CheckCheck size={14} color="#53bdeb" style={styles.tickIcon} />
+            <CheckCheck size={14} color={colors.accentCyan} style={styles.tickIcon} />
           )}
         </View>
       </View>
@@ -75,49 +169,126 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   bubble: {
-    maxWidth: "80%",
-    paddingHorizontal: 11,
-    paddingTop: 6,
+    maxWidth: "85%",
+    paddingHorizontal: 12,
+    paddingTop: 8,
     paddingBottom: 6,
-    borderRadius: 10,
-    minWidth: 70,
+    borderRadius: 12,
+    minWidth: 80,
+    elevation: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1,
   },
-  // WhatsApp Incoming Bubble (Dark Gray / Slate)
   bubbleAgent: {
-    backgroundColor: "#202c33",
-    borderTopLeftRadius: 0,
+    backgroundColor: colors.bubbleAgent,
+    borderTopLeftRadius: 2,
+    borderWidth: 1,
+    borderColor: colors.bubbleAgentBorder,
   },
-  // WhatsApp Outgoing Bubble (Dark Emerald Green)
   bubbleHuman: {
-    backgroundColor: "#005c4b",
-    borderTopRightRadius: 0,
+    backgroundColor: colors.bubbleHuman,
+    borderTopRightRadius: 2,
+    borderWidth: 1,
+    borderColor: colors.bubbleHumanBorder,
+  },
+  agentTagRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 4,
+    gap: 8,
   },
   agentSenderTag: {
-    color: "#25d366",
+    color: colors.primaryBright,
     fontSize: 12.5,
     fontWeight: "700",
-    marginBottom: 2,
+  },
+  modelPill: {
+    backgroundColor: "rgba(37, 211, 102, 0.12)",
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 4,
+  },
+  modelPillText: {
+    color: colors.primaryBright,
+    fontSize: 9.5,
+    fontWeight: "600",
   },
   content: {
-    color: "#e9edef",
+    color: colors.textPrimary,
     fontSize: 15,
-    lineHeight: 20,
+    lineHeight: 21,
   },
   streamingCursor: {
-    color: "#25d366",
+    color: colors.primaryBright,
     fontWeight: "900",
+  },
+  codeContainer: {
+    backgroundColor: colors.codeBg,
+    borderRadius: 8,
+    marginVertical: 6,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    overflow: "hidden",
+  },
+  codeHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#111822",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderSubtle,
+  },
+  codeHeaderTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  codeLangText: {
+    color: colors.textSecondary,
+    fontSize: 10.5,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+  },
+  codeCopyBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    backgroundColor: colors.surface,
+  },
+  codeCopyText: {
+    color: colors.textSecondary,
+    fontSize: 10.5,
+    fontWeight: "600",
+  },
+  codeCopyTextActive: {
+    color: colors.primaryBright,
+  },
+  codeBodyText: {
+    color: "#5eead4",
+    fontFamily: fonts.mono,
+    fontSize: 12,
+    lineHeight: 18,
+    padding: 10,
   },
   metaRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "flex-end",
     alignSelf: "flex-end",
-    marginTop: 2,
+    marginTop: 4,
     marginLeft: 12,
     gap: 3,
   },
   timeText: {
-    color: "#8696a0",
+    color: colors.textSecondary,
     fontSize: 10.5,
   },
   tickIcon: {
@@ -125,18 +296,19 @@ const styles = StyleSheet.create({
   },
   systemPill: {
     alignSelf: "center",
-    backgroundColor: "#182229",
-    paddingHorizontal: 12,
-    paddingVertical: 5,
+    backgroundColor: colors.bubbleSystem,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
     borderRadius: 8,
     marginVertical: 8,
     borderWidth: 1,
-    borderColor: "#222d34",
+    borderColor: colors.borderSubtle,
     maxWidth: "85%",
   },
   systemText: {
-    color: "#8696a0",
+    color: colors.textSecondary,
     fontSize: 11.5,
     textAlign: "center",
+    lineHeight: 16,
   },
 })

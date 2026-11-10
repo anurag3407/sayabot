@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   type TouchableOpacityProps,
 } from "react-native"
+import { colors } from "../../theme"
 
 interface ButtonProps extends TouchableOpacityProps {
   title: string
@@ -38,7 +39,7 @@ export function Button({
       {loading ? (
         <ActivityIndicator
           size="small"
-          color={variant === "secondary" ? "#f8fafc" : "#ffffff"}
+          color={variant === "secondary" ? colors.textPrimary : colors.textInverse}
         />
       ) : (
         <>
@@ -61,13 +62,15 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   primary: {
-    backgroundColor: "#10b981",
+    backgroundColor: colors.primary,
   },
   secondary: {
-    backgroundColor: "#1e293b",
+    backgroundColor: colors.surfaceLight,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
   },
   danger: {
-    backgroundColor: "#ef4444",
+    backgroundColor: colors.accentDanger,
   },
   ghost: {
     backgroundColor: "transparent",
@@ -76,19 +79,19 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   text: {
-    fontSize: 15,
+    fontSize: 14.5,
     fontWeight: "700",
   },
   primaryText: {
-    color: "#ffffff",
+    color: colors.textInverse,
   },
   secondaryText: {
-    color: "#f8fafc",
+    color: colors.textPrimary,
   },
   dangerText: {
     color: "#ffffff",
   },
   ghostText: {
-    color: "#94a3b8",
+    color: colors.textSecondary,
   },
 })

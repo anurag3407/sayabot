@@ -1,30 +1,48 @@
-import React from "react"
+import React, { useState } from "react"
+import { ActivityIndicator, View } from "react-native"
 import { NavigationContainer } from "@react-navigation/native"
 import { createNativeStackNavigator } from "@react-navigation/native-stack"
 import { useAuth } from "../hooks/useAuth"
 import { AuthScreen } from "../screens/AuthScreen"
 import { TabNavigator } from "./TabNavigator"
 import { ChatScreen } from "../screens/ChatScreen"
-import { ActivityIndicator, View } from "react-native"
+import { colors } from "../theme"
 
 const Stack = createNativeStackNavigator()
 
 export function RootNavigator() {
   const { session, loading } = useAuth()
+  const [isDemoMode, setIsDemoMode] = useState(false)
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: "#121b22", alignItems: "center", justifyContent: "center" }}>
-        <ActivityIndicator size="large" color="#00a884" />
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: colors.background,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     )
   }
 
+  const isAuthenticated = Boolean(session || isDemoMode)
+
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "#121b22" } }}>
-        {!session ? (
-          <Stack.Screen name="Auth" component={AuthScreenWrapper} />
+      <Stack.Navigator
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: colors.background },
+        }}
+      >
+        {!isAuthenticated ? (
+          <Stack.Screen name="Auth">
+            {() => <AuthScreen onSuccess={() => setIsDemoMode(true)} />}
+          </Stack.Screen>
         ) : (
           <>
             <Stack.Screen name="MainTabs" component={TabNavigator} />
@@ -38,8 +56,4 @@ export function RootNavigator() {
       </Stack.Navigator>
     </NavigationContainer>
   )
-}
-
-function AuthScreenWrapper() {
-  return <AuthScreen onSuccess={() => {}} />
 }

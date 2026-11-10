@@ -1,7 +1,6 @@
-import React from "react"
+import React, { useRef } from "react"
 import {
   Modal,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -9,6 +8,7 @@ import {
   View,
 } from "react-native"
 import { Terminal, Trash2, X } from "lucide-react-native"
+import { colors, fonts } from "../../theme"
 
 interface TerminalDrawerProps {
   visible: boolean
@@ -18,6 +18,8 @@ interface TerminalDrawerProps {
 }
 
 export function TerminalDrawer({ visible, logs, onClose, onClear }: TerminalDrawerProps) {
+  const scrollRef = useRef<ScrollView>(null)
+
   return (
     <Modal visible={visible} animationType="slide" transparent>
       <View style={styles.modalOverlay}>
@@ -25,28 +27,49 @@ export function TerminalDrawer({ visible, logs, onClose, onClear }: TerminalDraw
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.titleRow}>
-              <Terminal size={18} color="#22c55e" />
-              <Text style={styles.title}>Agent Computer Terminal (/home/bot)</Text>
+              <View style={styles.terminalIconBadge}>
+                <Terminal size={14} color={colors.primaryBright} />
+              </View>
+              <View>
+                <Text style={styles.title}>Agent Computer Terminal</Text>
+                <Text style={styles.subtitle}>/home/bot • Persistent Docker Shell</Text>
+              </View>
             </View>
+
             <View style={styles.actions}>
-              <TouchableOpacity style={styles.iconBtn} onPress={onClear}>
-                <Trash2 size={16} color="#94a3b8" />
+              <TouchableOpacity
+                style={styles.iconBtn}
+                onPress={onClear}
+                accessibilityLabel="Clear terminal"
+              >
+                <Trash2 size={16} color={colors.textSecondary} />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.iconBtn} onPress={onClose}>
-                <X size={18} color="#f43f5e" />
+              <TouchableOpacity
+                style={styles.closeBtn}
+                onPress={onClose}
+                accessibilityLabel="Close drawer"
+              >
+                <X size={18} color={colors.textPrimary} />
               </TouchableOpacity>
             </View>
           </View>
 
           {/* Console Output */}
-          <ScrollView style={styles.terminalBody}>
+          <ScrollView
+            ref={scrollRef}
+            style={styles.terminalBody}
+            contentContainerStyle={styles.terminalContent}
+            onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
+          >
             {logs.length === 0 ? (
-              <Text style={styles.emptyText}>
-                $ Waiting for agent computer shell executions...
-              </Text>
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>
+                  $ Waiting for agent computer shell executions...
+                </Text>
+              </View>
             ) : (
               logs.map((chunk, index) => (
-                <Text key={index} style={styles.logText}>
+                <Text key={index} style={styles.logText} selectable>
                   {chunk}
                 </Text>
               ))
@@ -61,59 +84,88 @@ export function TerminalDrawer({ visible, logs, onClose, onClear }: TerminalDraw
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.75)",
+    backgroundColor: colors.overlay,
     justifyContent: "flex-end",
   },
   container: {
-    height: "65%",
-    backgroundColor: "#030712",
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
+    height: "70%",
+    backgroundColor: colors.codeBg,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     borderWidth: 1,
-    borderColor: "#1f2937",
-    padding: 14,
+    borderColor: colors.border,
+    padding: 16,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     borderBottomWidth: 1,
-    borderColor: "#1f2937",
-    paddingBottom: 10,
+    borderColor: colors.borderSubtle,
+    paddingBottom: 12,
   },
   titleRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 10,
+  },
+  terminalIconBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.surfaceLight,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
   },
   title: {
-    color: "#e2e8f0",
-    fontSize: 14,
+    color: colors.textPrimary,
+    fontSize: 15,
     fontWeight: "700",
+  },
+  subtitle: {
+    color: colors.textSecondary,
+    fontSize: 11,
+    marginTop: 1,
   },
   actions: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 10,
   },
   iconBtn: {
-    padding: 4,
+    padding: 6,
+    borderRadius: 6,
+    backgroundColor: colors.surface,
+  },
+  closeBtn: {
+    padding: 6,
+    borderRadius: 6,
+    backgroundColor: colors.surface,
   },
   terminalBody: {
     flex: 1,
     marginTop: 8,
   },
+  terminalContent: {
+    paddingVertical: 8,
+  },
+  emptyContainer: {
+    paddingVertical: 40,
+    alignItems: "center",
+  },
   emptyText: {
-    color: "#475569",
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    color: colors.textMuted,
+    fontFamily: fonts.mono,
     fontSize: 12,
-    marginTop: 20,
     textAlign: "center",
   },
   logText: {
     color: "#4ade80",
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    fontFamily: fonts.mono,
     fontSize: 12,
     lineHeight: 18,
+    marginBottom: 2,
   },
 })

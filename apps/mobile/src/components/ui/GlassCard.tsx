@@ -1,5 +1,6 @@
 import React from "react"
 import { StyleSheet, View, type ViewProps } from "react-native"
+import { colors } from "../../theme"
 
 interface GlassCardProps extends ViewProps {
   children: React.ReactNode
@@ -18,21 +19,21 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 14,
     padding: 14,
-    backgroundColor: "#111814",
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: "#1e2922",
+    borderColor: colors.border,
   },
   default: {},
   active: {
-    borderColor: "#10b981",
-    backgroundColor: "#0d2017",
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryMuted,
   },
   danger: {
-    borderColor: "#ef4444",
-    backgroundColor: "#2b1111",
+    borderColor: colors.accentDanger,
+    backgroundColor: colors.accentDangerBg,
   },
   terminal: {
-    borderColor: "#334155",
-    backgroundColor: "#030712",
+    borderColor: colors.borderSubtle,
+    backgroundColor: colors.codeBg,
   },
 })

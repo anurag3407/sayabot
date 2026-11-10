@@ -1,31 +1,41 @@
 import React from "react"
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs"
 import { MessageSquare, CheckSquare, Cpu, Settings } from "lucide-react-native"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { RoomsScreen } from "../screens/RoomsScreen"
 import { TasksScreen } from "../screens/TasksScreen"
 import { ComputersScreen } from "../screens/ComputersScreen"
 import { SettingsScreen } from "../screens/SettingsScreen"
+import { colors } from "../theme"
 
 const Tab = createBottomTabNavigator()
 
 export function TabNavigator() {
+  const insets = useSafeAreaInsets()
+
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: "#1f2c34",
-          borderTopColor: "#2a3942",
+          backgroundColor: colors.surface,
+          borderTopColor: colors.borderSubtle,
           borderTopWidth: 1,
-          height: 60,
-          paddingBottom: 8,
-          paddingTop: 6,
+          height: 60 + insets.bottom,
+          paddingBottom: Math.max(8, insets.bottom),
+          paddingTop: 8,
+          elevation: 8,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.25,
+          shadowRadius: 3,
         },
-        tabBarActiveTintColor: "#00a884",
-        tabBarInactiveTintColor: "#8696a0",
+        tabBarActiveTintColor: colors.primaryBright,
+        tabBarInactiveTintColor: colors.textSecondary,
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: "600",
+          marginTop: 2,
         },
       }}
     >

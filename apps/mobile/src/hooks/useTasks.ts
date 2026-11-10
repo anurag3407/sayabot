@@ -50,6 +50,67 @@ export function useTasks(roomId?: string) {
     }
   }, [roomId])
 
+  const createTask = useCallback(
+    async (params: {
+      title: string
+      description?: string
+      priority?: "low" | "medium" | "high" | "urgent"
+      budgetTurns?: number
+    }) => {
+      const { data: orgData } = await supabase
+        .from("orgs")
+        .select("id")
+        .limit(1)
+        .maybeSingle()
+
+      const { data: maxTask } = await supabase
+        .from("tasks")
+        .select("number")
+        .order("number", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      const nextNum = (maxTask?.number || 0) + 1
+
+      const { data, error } = await supabase
+        .from("tasks")
+        .insert({
+          org_id: orgData?.id,
+          number: nextNum,
+          title: params.title.trim(),
+          description: params.description?.trim() || null,
+          status: "open",
+          kind: "task",
+          priority: params.priority || "medium",
+          budget_turns: params.budgetTurns || 12,
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      const newTask: TaskItem = {
+        id: data.id,
+        number: data.number,
+        title: data.title,
+        description: data.description,
+        status: data.status,
+        kind: data.kind,
+        priority: data.priority,
+        assigneeAgentId: data.assignee_agent_id,
+        assigneeUserId: data.assignee_user_id,
+        budgetTurns: data.budget_turns ?? 12,
+        turnsUsed: 0,
+        costUsd: 0,
+        unblockNeeds: data.unblock_needs,
+      }
+
+      setTasks((prev) => [newTask, ...prev])
+      return newTask
+    },
+    []
+  )
+
   useEffect(() => {
     fetchTasks()
 
@@ -65,5 +126,5 @@ export function useTasks(roomId?: string) {
     }
   }, [fetchTasks])
 
-  return { tasks, loading, refresh: fetchTasks }
+  return { tasks, loading, refresh: fetchTasks, createTask }
 }
