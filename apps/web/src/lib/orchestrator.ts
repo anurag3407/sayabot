@@ -71,6 +71,44 @@ export async function testWebSearchInOrchestrator(payload: {
   }
 }
 
+export async function testDocumentOcrInOrchestrator(payload: {
+  orgId?: string
+  provider?: string
+  apiKey?: string
+  baseUrl?: string
+  source?: string
+}): Promise<{
+  ok: true
+  provider: string
+  source: string
+  pageCount?: number
+  tablesCount: number
+  markdownPreview: string
+  processingTimeMs: number
+  fallback?: boolean
+  warning?: string
+} | { ok: false; error: string }> {
+  try {
+    const response = await fetch(`${getOrchestratorUrl()}/internal/tools/test-document-ocr`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-internal-secret": getInternalSecret(),
+      },
+      body: JSON.stringify(payload),
+      cache: "no-store",
+      signal: AbortSignal.timeout(25_000),
+    })
+    const data = await response.json().catch(() => null)
+    if (!response.ok || !data?.ok) {
+      return { ok: false, error: data?.error || `Document test failed with status ${response.status}` }
+    }
+    return data
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) }
+  }
+}
+
 export async function testAgentInOrchestrator(
   agentId: string,
   orgId: string,

@@ -19,6 +19,7 @@ const mockAgent: AgentRow = {
     canvas: true,
     sandbox: false,
     webSearch: false,
+    document: true,
     github: false,
     postgres: false,
     mcp: true,

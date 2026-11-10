@@ -29,6 +29,7 @@ describe("Engine Dispatcher (E4)", () => {
       tasks: true,
       sandbox: false,
       webSearch: false,
+      document: true,
       github: false,
       postgres: false,
       mcp: true,

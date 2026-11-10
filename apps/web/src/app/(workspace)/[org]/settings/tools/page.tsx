@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/ui/empty"
 import { Section } from "@/components/settings/section"
 import { McpInspector } from "@/components/settings/mcp-inspector"
 import { WebSearchConfig } from "@/components/settings/web-search-config"
+import { DocumentOcrConfig } from "@/components/settings/document-ocr-config"
 
 export const maxDuration = 60
 
@@ -25,6 +26,7 @@ export default async function ToolsPage({ params }: { params: Promise<{ org: str
   const github = configs.find((config) => config.tool === "github_bridge")
   const postgres = configs.find((config) => config.tool === "postgres_inspector")
   const webSearch = configs.find((config) => config.tool === "web_search")
+  const documentOcr = configs.find((config) => config.tool === "document_extract")
 
   return (
     <>
@@ -192,6 +194,16 @@ export default async function ToolsPage({ params }: { params: Promise<{ org: str
               </p>
             </div>
             <WebSearchConfig orgSlug={orgSlug} savedConfig={webSearch} />
+          </div>
+
+          <div className="border-b border-line pb-5">
+            <div className="mb-4">
+              <p className="text-[13px] font-medium text-text">document_extract</p>
+              <p className="mt-0.5 font-mono text-[11px] text-faint">
+                High-precision Document & Financial OCR Intelligence (IBM Docling, Marker, Tesseract, Multimodal Vision, Mistral OCR, AWS Textract)
+              </p>
+            </div>
+            <DocumentOcrConfig orgSlug={orgSlug} savedConfig={documentOcr} />
           </div>
 
           <div className="border-b border-line pb-5">

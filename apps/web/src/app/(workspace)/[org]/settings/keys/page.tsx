@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import Link from "next/link"
 import { requireOrgAdmin } from "@/lib/auth"
 import { listProviderKeys } from "@/lib/queries"
 import { saveProviderKey } from "@/lib/actions/keys"
@@ -22,6 +23,25 @@ export default async function KeysPage({ params }: { params: Promise<{ org: stri
   return (
     <>
       <AIConnectorsBanner />
+      <div className="mb-6 rounded-xl border border-line bg-raised/30 p-4 text-[12px] flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/10 font-mono text-accent text-sm font-bold">
+            📄
+          </span>
+          <div>
+            <p className="font-semibold text-text">Document & OCR Intelligence (Docling & Vision)</p>
+            <p className="text-muted text-[11px]">
+              Your provider keys automatically power Multimodal Vision extraction. Prefer 100% private, free document extraction with 99% table accuracy?
+            </p>
+          </div>
+        </div>
+        <Link
+          href={`/${orgSlug}/settings/tools`}
+          className="rounded-md border border-line bg-raised px-3 py-1.5 font-mono text-[11px] text-text hover:bg-hover transition-colors"
+        >
+          Configure Docling Engine →
+        </Link>
+      </div>
       <Section
         title="Provider keys"
         description="API keys let your agents use an AI model. They are encrypted when saved, and only the last four characters can be seen afterwards."

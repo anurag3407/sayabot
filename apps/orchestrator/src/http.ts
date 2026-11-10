@@ -21,6 +21,7 @@ import { loadMessage } from "./runner/context"
 import { resolveAgentModel } from "./runner/llm"
 import { applyTaskMutation } from "./collab/tasks-service"
 import { executeWebSearch } from "./tools/builtins/web-search"
+import { executeDocumentExtract, type DocumentOcrProvider } from "./tools/builtins/document"
 import { resolveToolCredential } from "./tools/secrets"
 import { runRoutineNow } from "./scheduler/routines"
 
@@ -88,6 +89,14 @@ const testWebSearchSchema = z.object({
   apiKey: z.string().optional(),
   baseUrl: z.string().optional(),
   query: z.string().default("test query"),
+})
+
+const testDocumentOcrSchema = z.object({
+  orgId: z.string().uuid().optional(),
+  provider: z.string().optional(),
+  apiKey: z.string().optional(),
+  baseUrl: z.string().optional(),
+  source: z.string().default("https://raw.githubusercontent.com/DS4SD/docling/main/tests/data/2206.01062.pdf"),
 })
 
 export function createApp() {
@@ -221,6 +230,45 @@ export function createApp() {
         results: out.results,
         answer: out.answer,
         latencyMs: Date.now() - started,
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      return c.json({ ok: false, error: redactSecrets(message).text.slice(0, 500) }, 400)
+    }
+  })
+
+  app.post("/internal/tools/test-document-ocr", async (c) => {
+    const body = await c.req.json().catch(() => null)
+    const parsed = testDocumentOcrSchema.safeParse(body)
+    if (!parsed.success) return c.json({ error: "invalid body", details: parsed.error.issues }, 400)
+    const started = Date.now()
+    try {
+      let { provider, apiKey, baseUrl } = parsed.data
+      if (parsed.data.orgId && (!provider || (!apiKey && provider !== "docling" && provider !== "marker" && provider !== "tesseract"))) {
+        const stored = await resolveToolCredential({ orgId: parsed.data.orgId, tool: "document_extract" })
+        if (stored) {
+          provider = provider || stored.provider
+          apiKey = apiKey || stored.apiKey
+          baseUrl = baseUrl || stored.baseUrl
+        }
+      }
+      const out = await executeDocumentExtract({
+        source: parsed.data.source,
+        provider: (provider as DocumentOcrProvider) || "docling",
+        apiKey,
+        baseUrl,
+        fallbackToVision: true,
+      })
+      return c.json({
+        ok: true,
+        provider: out.provider,
+        source: out.source,
+        pageCount: out.pageCount,
+        tablesCount: out.tablesCount,
+        markdownPreview: out.markdown.slice(0, 300),
+        processingTimeMs: out.processingTimeMs || (Date.now() - started),
+        fallback: out.fallback,
+        warning: out.warning,
       })
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)

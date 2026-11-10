@@ -10,11 +10,13 @@ export interface OrgToolConfig {
   apiKey?: string
   provider?: string
   baseUrl?: string
+  fallbackToVision?: boolean
+  tableMode?: string
 }
 
 export async function loadOrgToolConfig<T extends OrgToolConfig>(
   orgId: string,
-  tool: "web_search" | "github_bridge" | "postgres_inspector",
+  tool: "web_search" | "github_bridge" | "postgres_inspector" | "document_extract",
 ): Promise<T | null> {
   const [row] = await getDb()
   .select()
@@ -34,7 +36,7 @@ export async function loadOrgToolConfig<T extends OrgToolConfig>(
 export async function resolveToolCredential(args: {
   agentId?: string
   orgId: string
-  tool: "github_bridge" | "postgres_inspector" | "web_search"
+  tool: "github_bridge" | "postgres_inspector" | "web_search" | "document_extract"
 }): Promise<OrgToolConfig | null> {
   const db = getDb()
   const kek = getEnv().MESH_KEK

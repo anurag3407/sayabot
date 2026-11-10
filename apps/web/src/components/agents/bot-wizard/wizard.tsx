@@ -58,6 +58,7 @@ const CAPABILITY_DESCRIPTIONS: Record<keyof AgentCapabilities, { label: string; 
   tasks: { label: "Task Coordination", desc: "Create, assign, unblock, and report on task board items" },
   sandbox: { label: "Code Sandbox", desc: "Run code snippets in a throwaway container" },
   webSearch: { label: "Web Search", desc: "Allow bot to query current web information" },
+  document: { label: "Document & OCR", desc: "Extract tables and text from PDFs, bank statements, and financial documents" },
   github: { label: "GitHub Bridge", desc: "Search repositories, read code, and inspect PRs" },
   postgres: { label: "Postgres Inspector", desc: "Read schemas and execute analytical queries" },
   mcp: { label: "MCP Tools", desc: "Access room-level Model Context Protocol servers" },

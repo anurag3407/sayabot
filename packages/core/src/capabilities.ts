@@ -5,6 +5,7 @@ export interface AgentCapabilities {
   tasks: boolean
   sandbox: boolean
   webSearch: boolean
+  document: boolean
   github: boolean
   postgres: boolean
   mcp: boolean
@@ -21,6 +22,7 @@ export const DEFAULT_CAPABILITIES: AgentCapabilities = {
   tasks: true,
   sandbox: true,
   webSearch: true,
+  document: true,
   github: true,
   postgres: true,
   mcp: true,
@@ -37,6 +39,7 @@ export const agentCapabilitiesSchema = z.object({
   tasks: z.boolean().default(true),
   sandbox: z.boolean().default(true),
   webSearch: z.boolean().default(true),
+  document: z.boolean().default(true),
   github: z.boolean().default(true),
   postgres: z.boolean().default(true),
   mcp: z.boolean().default(true),
@@ -69,6 +72,7 @@ export function parseCapabilities(input: unknown): AgentCapabilities {
     tasks: typeof raw.tasks === "boolean" ? raw.tasks : DEFAULT_CAPABILITIES.tasks,
     sandbox: typeof raw.sandbox === "boolean" ? raw.sandbox : DEFAULT_CAPABILITIES.sandbox,
     webSearch: typeof raw.webSearch === "boolean" ? raw.webSearch : DEFAULT_CAPABILITIES.webSearch,
+    document: typeof raw.document === "boolean" ? raw.document : DEFAULT_CAPABILITIES.document,
     github: typeof raw.github === "boolean" ? raw.github : DEFAULT_CAPABILITIES.github,
     postgres: typeof raw.postgres === "boolean" ? raw.postgres : DEFAULT_CAPABILITIES.postgres,
     mcp: typeof raw.mcp === "boolean" ? raw.mcp : DEFAULT_CAPABILITIES.mcp,

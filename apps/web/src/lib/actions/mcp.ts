@@ -18,10 +18,10 @@ import {
 } from "@/lib/actions/shared"
 import type { ActionResult } from "@/lib/types"
 
-import { testWebSearchInOrchestrator } from "@/lib/orchestrator"
+import { testWebSearchInOrchestrator, testDocumentOcrInOrchestrator } from "@/lib/orchestrator"
 
 const transportSchema = z.enum(["http", "sse"])
-const builtinToolSchema = z.enum(["github_bridge", "postgres_inspector", "web_search"])
+const builtinToolSchema = z.enum(["github_bridge", "postgres_inspector", "web_search", "document_extract"])
 
 function parseHeaders(text: string): { ok: true; value: Record<string, string> } | { ok: false; error: string } {
   if (!text.trim()) return { ok: true, value: {} }
@@ -267,6 +267,35 @@ export async function saveOrgToolConfig(
         return fail(`Please enter an API key for ${provider}`)
       }
     }
+  } else if (tool === "document_extract") {
+    const provider = field(formData, "provider") || "docling"
+    config.provider = provider
+    const apiKey = field(formData, "apiKey")
+    const baseUrl = field(formData, "baseUrl")
+    const fallbackToVision = field(formData, "fallbackToVision") !== "false"
+    config.fallbackToVision = String(fallbackToVision)
+    if (baseUrl) config.baseUrl = baseUrl
+
+    if (apiKey) {
+      config.apiKey = apiKey
+    } else if (provider !== "docling" && provider !== "marker" && provider !== "tesseract") {
+      const admin = createAdminClient()
+      const { data: existing } = await admin
+        .from("org_tool_configs")
+        .select("config_enc")
+        .eq("org_id", check.access.org.id)
+        .eq("tool", "document_extract")
+        .maybeSingle()
+      if (existing?.config_enc) {
+        try {
+          const old = JSON.parse(openSecret(existing.config_enc, getKek()))
+          if (old.apiKey) config.apiKey = old.apiKey
+        } catch {}
+      }
+      if (!config.apiKey && provider !== "docling" && provider !== "marker" && provider !== "tesseract" && provider !== "vision_llm") {
+        return fail(`Please enter an API key for ${provider}`)
+      }
+    }
   } else {
     const connectionString = field(formData, "connectionString")
     if (!/^postgres(ql)?:\/\//.test(connectionString)) {
@@ -347,4 +376,62 @@ export async function testWebSearchAction(
     answer: result.answer,
     results: result.results,
   })
+}
+
+export async function testDocumentOcrAction(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const orgSlug = field(formData, "orgSlug")
+  const check = await adminOrgAccess(orgSlug)
+  if ("error" in check) return fail(check.error)
+
+  const provider = field(formData, "provider") || "docling"
+  let apiKey = field(formData, "apiKey")
+  const baseUrl = field(formData, "baseUrl")
+  const source =
+    field(formData, "source") ||
+    "https://raw.githubusercontent.com/DS4SD/docling/main/tests/data/2206.01062.pdf"
+
+  if (!apiKey && provider !== "docling" && provider !== "marker" && provider !== "tesseract") {
+    const admin = createAdminClient()
+    const { data: existing } = await admin
+      .from("org_tool_configs")
+      .select("config_enc")
+      .eq("org_id", check.access.org.id)
+      .eq("tool", "document_extract")
+      .maybeSingle()
+    if (existing?.config_enc) {
+      try {
+        const old = JSON.parse(openSecret(existing.config_enc, getKek()))
+        if (old.apiKey) apiKey = old.apiKey
+      } catch {}
+    }
+  }
+
+  const result = await testDocumentOcrInOrchestrator({
+    orgId: check.access.org.id,
+    provider,
+    apiKey: apiKey || undefined,
+    baseUrl: baseUrl || undefined,
+    source,
+  })
+
+  if (!result.ok) {
+    return fail(result.error)
+  }
+
+  return ok(
+    `Document test succeeded with ${result.provider} (${result.tablesCount} tables, ${result.processingTimeMs}ms)${result.fallback ? " [Fell back to Vision]" : ""}`,
+    {
+      provider: result.provider,
+      source: result.source,
+      pageCount: result.pageCount,
+      tablesCount: result.tablesCount,
+      markdownPreview: result.markdownPreview,
+      processingTimeMs: result.processingTimeMs,
+      fallback: result.fallback,
+      warning: result.warning,
+    },
+  )
 }
