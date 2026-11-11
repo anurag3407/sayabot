@@ -1,4 +1,4 @@
-import { scanLocalUsage, type LocalProvider } from "@sayabot/core"
+import { scanLocalUsage, type LocalProvider } from "@sayabot/core/scanner"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
