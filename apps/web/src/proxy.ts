@@ -15,6 +15,7 @@ const PUBLIC_PATHS = [
   "/offline",
   "/api/v1",
   "/api/connectors",
+  "/api/mobile",
   // MCP connector short URL (/mcp/<agent key>). Authenticated by the key, not a session.
   "/mcp",
   // OAuth 2.1 public endpoints (discovery, dynamic registration, token exchange, callbacks)

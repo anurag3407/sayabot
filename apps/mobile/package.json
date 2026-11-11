@@ -9,6 +9,8 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
+    "update:ota": "eas update --auto --branch production",
+    "build:apk": "eas build -p android --profile preview",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
     "test": "tsc --noEmit -p tests/unit/tsconfig.json && node --no-warnings --experimental-strip-types tests/unit/env.test.ts && node --no-warnings --experimental-strip-types tests/unit/workspace-draft.test.ts"
@@ -23,6 +25,7 @@
     "expo": "~52.0.0",
     "expo-clipboard": "~7.0.1",
     "expo-status-bar": "~2.0.0",
+    "expo-updates": "^0.27.5",
     "lucide-react-native": "^0.475.0",
     "react": "^19.3.1",
     "react-native": "0.76.6",
@@ -31,7 +34,7 @@
   },
   "devDependencies": {
     "@types/react": "^19.2.0",
-    "typescript": "^5.3.3",
-    "tsx": "^4.23.15"
+    "tsx": "^4.23.15",
+    "typescript": "^5.3.3"
   }
 }

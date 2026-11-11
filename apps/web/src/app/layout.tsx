@@ -3,6 +3,7 @@ import "@fontsource-variable/geist"
 import "@fontsource-variable/geist-mono"
 import "./globals.css"
 import { Toaster } from "@/components/ui/toast"
+import { PwaUpdatePrompt } from "@/components/pwa-update-prompt"
 
 export const metadata: Metadata = {
   title: {
@@ -42,6 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </a>
         {children}
         <Toaster />
+        <PwaUpdatePrompt />
       </body>
     </html>
   )

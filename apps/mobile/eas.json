@@ -1,0 +1,30 @@
+{
+  "cli": {
+    "version": ">= 12.0.0"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "channel": "production"
+    },
+    "production": {
+      "android": {
+        "buildType": "apk"
+      },
+      "channel": "production",
+      "autoIncrement": true
+    }
+  },
+  "update": {
+    "production": {
+      "channel": "production"
+    }
+  }
+}

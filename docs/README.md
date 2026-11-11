@@ -20,6 +20,7 @@ docs/
 ├── mcp-and-connectors.md          # Universal MCP gateway & bring-your-own-bot
 ├── deployment.md                  # Production deployment (VPS, Docker, Supabase)
 ├── cloudflare-integration.md      # Cloudflare platform integration & edge architecture
+├── auto-updates.md                # Multi-platform auto-updates (Web, Mac PWA, Android APK)
 └── testing.md                     # Test suites (unit, integration, e2e Playwright)
 ```
 

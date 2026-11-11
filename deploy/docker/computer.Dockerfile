@@ -39,14 +39,14 @@ COPY apps/computerd/agentd/ /opt/agentd/
 # Keep this compiler version aligned with apps/computerd/package.json.
 RUN npm install --prefix /opt/agentd --no-save --package-lock=false --ignore-scripts --no-audit --no-fund typescript@5.9.3
 
-RUN cat << 'EOF' > /opt/agentd/agentd-cli
+COPY <<'EOF' /opt/agentd/agentd-cli
 #!/bin/bash
 exec tsx /opt/agentd/agentd-cli.ts "$@"
 EOF
 
 RUN chmod +x /opt/agentd/agentd-cli && ln -sf /opt/agentd/agentd-cli /usr/local/bin/agentd-cli
 
-RUN cat << 'EOF' > /opt/agentd/entrypoint.sh
+COPY <<'EOF' /opt/agentd/entrypoint.sh
 #!/bin/bash
 set -e
 

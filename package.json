@@ -14,6 +14,8 @@
     "format": "prettier --write .",
     "mobile:dev": "turbo run dev --filter=@sayabot/mobile",
     "mobile:typecheck": "turbo run typecheck --filter=@sayabot/mobile",
+    "mobile:update": "pnpm --filter @sayabot/mobile update:ota",
+    "mobile:build:apk": "pnpm --filter @sayabot/mobile build:apk",
     "e2e": "playwright test",
     "typecheck:e2e": "tsc -p tsconfig.e2e.json",
     "test:unit": "turbo run test --filter=@sayabot/core --filter=@sayabot/llm --filter=@sayabot/orchestrator --filter=@sayabot/web --filter=@sayabot/egress --filter=@sayabot/computerd --filter=@sayabot/mobile",

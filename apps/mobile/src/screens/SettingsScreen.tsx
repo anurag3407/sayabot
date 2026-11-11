@@ -45,6 +45,7 @@ import {
 import { useAuth } from "../hooks/useAuth"
 import { useSettings } from "../hooks/useSettings"
 import { usePalette } from "../hooks/usePalette"
+import { useAppUpdates } from "../hooks/useAppUpdates"
 import { colors, fonts } from "../theme"
 
 export function SettingsScreen() {
@@ -59,6 +60,15 @@ export function SettingsScreen() {
     databasePing,
     testingConnection,
   } = useSettings()
+
+  const {
+    isChecking,
+    isUpdateAvailable,
+    latestVersion,
+    currentVersion,
+    checkForUpdates,
+    applyUpdate,
+  } = useAppUpdates()
 
   // Modal states
   const [editNameModal, setEditNameModal] = useState(false)
@@ -834,12 +844,52 @@ export function SettingsScreen() {
               <View style={styles.aboutLogo}>
                 <Bot size={22} color={colors.primaryBright} />
               </View>
-              <View>
+              <View style={{ flex: 1 }}>
                 <Text style={styles.aboutTitle}>Sayabot Mobile</Text>
                 <Text style={styles.aboutSubtitle}>
-                  Version 1.0.0 (Build 42) • Turbo-Workspace Monorepo
+                  Version {currentVersion} • Turbo-Workspace Monorepo
                 </Text>
               </View>
+            </View>
+
+            <View style={styles.divider} />
+
+            <View style={styles.updateRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.updateTitle}>
+                  {isUpdateAvailable ? `Update ${latestVersion ?? ""} Ready` : "Auto-Updates Active"}
+                </Text>
+                <Text style={styles.updateSubtitle}>
+                  {isUpdateAvailable
+                    ? "Tap to install the latest build."
+                    : "App checks for OTA updates automatically."}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.updateBtn, isUpdateAvailable && styles.updateBtnHighlight]}
+                onPress={() => (isUpdateAvailable ? void applyUpdate() : void checkForUpdates(true))}
+                disabled={isChecking}
+                activeOpacity={0.8}
+              >
+                {isChecking ? (
+                  <ActivityIndicator size="small" color={colors.primaryBright} />
+                ) : (
+                  <>
+                    <RefreshCw
+                      size={13}
+                      color={isUpdateAvailable ? colors.textInverse : colors.primaryBright}
+                    />
+                    <Text
+                      style={[
+                        styles.updateBtnText,
+                        isUpdateAvailable && styles.updateBtnTextHighlight,
+                      ]}
+                    >
+                      {isUpdateAvailable ? "Update Now" : "Check"}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
             </View>
 
             <View style={styles.divider} />
@@ -1493,6 +1543,45 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: 12,
     marginTop: 2,
+  },
+  updateRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  updateTitle: {
+    color: colors.textPrimary,
+    fontSize: 13.5,
+    fontWeight: "600",
+  },
+  updateSubtitle: {
+    color: colors.textSecondary,
+    fontSize: 11.5,
+    marginTop: 2,
+  },
+  updateBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    backgroundColor: colors.surfaceLight,
+  },
+  updateBtnHighlight: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  updateBtnText: {
+    color: colors.primaryBright,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  updateBtnTextHighlight: {
+    color: colors.textInverse,
   },
   securityNotice: {
     flexDirection: "row",

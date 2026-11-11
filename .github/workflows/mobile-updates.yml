@@ -1,0 +1,104 @@
+name: Mobile Updates & Release
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'apps/mobile/**'
+      - 'packages/**'
+      - '.github/workflows/mobile-updates.yml'
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action to run: "update" (OTA) or "build-apk"'
+        required: true
+        default: 'update'
+        type: choice
+        options:
+          - update
+          - build-apk
+
+concurrency:
+  group: mobile-release
+  cancel-in-progress: false
+
+jobs:
+  ota-update:
+    name: Publish Expo OTA Update
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.action == 'update')
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile=false
+
+      - name: Publish OTA Update to Installed APKs
+        working-directory: apps/mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::warning::EXPO_TOKEN secret is not set. Skipping automated Expo OTA publish."
+            echo "To enable automated Over-The-Air APK updates on push, add EXPO_TOKEN to your GitHub repository secrets."
+            exit 0
+          fi
+          echo "==> Publishing Over-The-Air update to mobile channel: production..."
+          npx --yes eas-cli update --auto --branch production --non-interactive
+          echo "==> OTA update published successfully! Installed APKs will receive updates automatically."
+
+  build-apk:
+    name: Build Standalone APK
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && inputs.action == 'build-apk'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile=false
+
+      - name: Build Android APK via EAS
+        working-directory: apps/mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::error::EXPO_TOKEN secret is required to build APK via EAS Cloud Build!"
+            exit 1
+          fi
+          echo "==> Triggering cloud build for Android APK..."
+          npx --yes eas-cli build -p android --profile preview --non-interactive

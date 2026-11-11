@@ -24,6 +24,14 @@
       },
       "package": "in.sayalabs.sayabot"
     },
+    "updates": {
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "web": {
       "favicon": "./assets/favicon.png"
     }
