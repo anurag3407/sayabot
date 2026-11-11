@@ -11,6 +11,7 @@ const PUBLIC_PATHS = [
   "/privacy",
   "/security",
   "/help",
+  "/download",
   "/auth",
   "/offline",
   "/api/v1",
