@@ -429,6 +429,42 @@ export async function setAgentModelAction(input: {
   if (agent.kind !== "llm") return fail("Invited agents use the model of their own app")
 
   const model = input.model?.trim().slice(0, 200) || null
+  const params = { ...((agent.params as Record<string, unknown>) ?? {}) }
+  if (input.effort !== undefined) {
+    if (input.effort && EFFORTS.has(input.effort)) params.effort = input.effort
+    else delete params.effort
+  }
+
+  // "Run on my computer": the agent answers through an app signed in on the person's own Mac.
+  if (input.providerKeyId?.startsWith("host:")) {
+    const hostId = input.providerKeyId.slice(5)
+    const { data: host } = await admin
+      .from("desktop_hosts")
+      .select("id, user_id, name, revoked_at")
+      .eq("id", hostId)
+      .maybeSingle()
+    if (!host || host.revoked_at || host.user_id !== check.access.user.id) {
+      return fail("You can only pick a computer you set up yourself")
+    }
+    if (!model || !["claude-code", "codex", "gemini", "opencode"].includes(model)) return fail("Pick an app on that computer")
+    params.runner = { hostId: host.id, app: model }
+    const { error } = await admin
+      .from("agents")
+      .update({ provider_key_id: null, model: null, params, owner_user_id: check.access.user.id })
+      .eq("id", agent.id)
+    if (error) return fail(errorMessage(error))
+    await audit({
+      orgId: check.access.org.id,
+      actorId: check.access.user.id,
+      action: "agent.runner_set",
+      target: agent.id,
+      metadata: { hostId: host.id, app: model },
+    })
+    revalidateOrg(input.orgSlug)
+    return ok(`@${agent.handle} now runs on ${host.name}`)
+  }
+  delete params.runner
+
   if (input.providerKeyId) {
     const { data: key } = await admin
       .from("provider_keys")
@@ -437,11 +473,6 @@ export async function setAgentModelAction(input: {
       .maybeSingle()
     if (!key || key.org_id !== check.access.org.id) return fail("That provider account isn't in this workspace")
     if (!model) return fail("Pick a model")
-  }
-  const params = { ...((agent.params as Record<string, unknown>) ?? {}) }
-  if (input.effort !== undefined) {
-    if (input.effort && EFFORTS.has(input.effort)) params.effort = input.effort
-    else delete params.effort
   }
 
   const { error } = await admin

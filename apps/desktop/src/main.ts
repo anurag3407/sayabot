@@ -1,6 +1,9 @@
 import { app, BrowserWindow, ipcMain, Menu, MenuItemConstructorOptions, shell } from "electron"
 import * as path from "node:path"
 import * as fs from "node:fs"
+import { DesktopHost } from "./host"
+import { detectLocalAgents } from "./local-agents"
+import { LocalRunner } from "./runner"
 
 const DEFAULT_SERVER_URL = "https://sayabot.sayalabs.in"
 const CONFIG_FILE = "sayabot-config.json"
@@ -20,8 +23,30 @@ interface DesktopConfig {
 }
 
 let mainWindow: BrowserWindow | null = null
+let host: DesktopHost | null = null
+let runner: LocalRunner | null = null
+
+/** Remote desktop + local runner: this computer as a Sayabot host, once someone is signed in. */
+function startHost(): void {
+  if (!loadSession()) return
+  if (!host) {
+    host = new DesktopHost({
+      getServerUrl: () => loadSession()?.serverUrl ?? loadConfig().serverUrl,
+      getSession: () => loadSession(),
+      detectLocalAgents: async () =>
+        (await detectLocalAgents()).map((a) => ({ id: a.id, name: a.name, status: a.status, version: a.version })),
+      // The local runner picks up work after each heartbeat (one job at a time).
+      onHeartbeat: (reply) => {
+        localRunnerRunning = Boolean(reply.settings.runnerEnabled)
+        void runner?.maybeRun(reply.queuedJobs, Boolean(reply.settings.runnerEnabled))
+      },
+    })
+    runner = new LocalRunner(host)
+  }
+  void host.start()
+}
 let pendingDeepLinkUrl: string | null = null
-let localRunnerRunning = true
+let localRunnerRunning = false
 
 function getUserDataDir(): string {
   return app.getPath("userData")
@@ -106,6 +131,7 @@ function handleDeepLink(urlStr: string): void {
           serverUrl,
         }
         saveSession(session)
+        startHost()
 
         if (mainWindow && !mainWindow.isDestroyed()) {
           mainWindow.webContents.send("auth:session-updated", session)
@@ -294,6 +320,7 @@ ipcMain.handle("auth:start-browser-auth", () => {
 
 ipcMain.handle("auth:sign-out", async () => {
   saveSession(null)
+  host?.forget()
   if (mainWindow && !mainWindow.isDestroyed()) {
     try {
       await mainWindow.webContents.session.clearStorageData()
@@ -333,12 +360,18 @@ ipcMain.handle("workspace:return-to-controller", () => {
 })
 
 ipcMain.handle("runner:get-status", () => {
-  return { running: localRunnerRunning, port: 4100 }
+  return { running: localRunnerRunning, busy: runner?.running ?? false, port: 4100 }
 })
 
+ipcMain.handle("host:get-status", () => ({
+  registered: Boolean(host?.credentials),
+  settings: host?.lastReply?.settings ?? null,
+}))
+
+// The runner is turned on per computer in Sayabot (Settings → Computers), so every device
+// sees the same switch; here we only report what the server says.
 ipcMain.handle("runner:toggle", () => {
-  localRunnerRunning = !localRunnerRunning
-  return { running: localRunnerRunning, port: 4100 }
+  return { running: localRunnerRunning, busy: runner?.running ?? false, port: 4100 }
 })
 
 ipcMain.handle("app:restart", () => {
@@ -353,12 +386,18 @@ ipcMain.handle("app:get-version", () => {
 
 app.whenReady().then(() => {
   createWindow()
+  startHost()
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow()
     }
   })
+})
+
+app.on("before-quit", () => {
+  runner?.stop()
+  host?.stop()
 })
 
 app.on("window-all-closed", () => {

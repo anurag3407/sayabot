@@ -41,7 +41,11 @@
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
       "entitlements": "build/entitlements.mac.plist",
-      "entitlementsInherit": "build/entitlements.mac.plist"
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "extendInfo": {
+        "NSAppleEventsUsageDescription": "Sayabot uses System Events to type for you during a remote desktop session you allowed.",
+        "NSScreenCaptureUsageDescription": "Sayabot shares this screen only during remote desktop sessions you allow."
+      }
     },
     "dmg": {
       "title": "Sayabot macOS Installer",

@@ -1,8 +1,11 @@
 import React from "react"
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs"
-import { MessageSquare, CheckSquare, Cpu, Settings } from "lucide-react-native"
+import { Bell, MessageSquare, CheckSquare, Cpu, Settings } from "lucide-react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { RoomsScreen } from "../screens/RoomsScreen"
+import { InboxScreen } from "../screens/InboxScreen"
+import { useInbox } from "../hooks/useInbox"
+import { useSettings } from "../hooks/useSettings"
 import { TasksScreen } from "../screens/TasksScreen"
 import { ComputersScreen } from "../screens/ComputersScreen"
 import { SettingsScreen } from "../screens/SettingsScreen"
@@ -14,6 +17,8 @@ const Tab = createBottomTabNavigator()
 export function TabNavigator() {
   const insets = useSafeAreaInsets()
   const theme = usePalette()
+  const { settings } = useSettings()
+  const { questions } = useInbox(settings.orgSlug)
 
   return (
     <Tab.Navigator
@@ -47,6 +52,16 @@ export function TabNavigator() {
         options={{
           tabBarLabel: "Chats",
           tabBarIcon: ({ color, size }) => <MessageSquare size={size} color={color} />,
+        }}
+      />
+      <Tab.Screen
+        name="InboxTab"
+        component={InboxScreen}
+        options={{
+          tabBarLabel: "Inbox",
+          tabBarIcon: ({ color, size }) => <Bell size={size} color={color} />,
+          tabBarBadge: questions.length ? questions.length : undefined,
+          tabBarBadgeStyle: { backgroundColor: colors.primaryBright, color: colors.textInverse, fontSize: 11 },
         }}
       />
       <Tab.Screen

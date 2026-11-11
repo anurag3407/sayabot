@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useEffect, useMemo, useRef, useState, useTransition } from "react"
-import { Check, ChevronDown, Plus, Search } from "lucide-react"
+import { Check, ChevronDown, Monitor, Plus, Search } from "lucide-react"
 import { setAgentModelAction } from "@/lib/actions/agents"
 import { ProviderIcon } from "@/components/room/model-picker/provider-icons"
 import { showToast } from "@/components/ui/toast"
@@ -33,6 +33,7 @@ const EFFORTS = [
 
 function RailIcon({ group, size = 18 }: { group: PickerGroup; size?: number }) {
   if (group.keyId === null) return <SayabotMark className="h-[18px] w-[18px]" />
+  if (group.keyId.startsWith("host:")) return <Monitor style={{ width: size, height: size }} />
   return <ProviderIcon provider={group.provider} size={size} />
 }
 
@@ -90,7 +91,14 @@ export function AgentModelPicker({
   const free = visible.filter((m) => m.free)
   const paid = visible.filter((m) => !m.free)
   const currentGroup = groups.find((g) => g.keyId === keyId)
-  const chipLabel = keyId === null ? (currentGroup ? "Sayabot default" : "Choose a model") : (model ?? "Choose a model")
+  const chipLabel =
+    keyId === null
+      ? currentGroup
+        ? "Sayabot default"
+        : "Choose a model"
+      : keyId.startsWith("host:")
+        ? `${currentGroup?.models.find((m) => m.id === model)?.label.split(" ·")[0] ?? model} on ${currentGroup?.label ?? "your computer"}`
+        : (model ?? "Choose a model")
 
   function save(nextKey: string | null, nextModel: string | null, nextEffort = effort) {
     const prev = { keyId, model, effort }
@@ -202,6 +210,11 @@ export function AgentModelPicker({
                         />
                       </div>
                     </div>
+                    {active.keyId?.startsWith("host:") && !active.models.length ? (
+                      <p className="px-4 py-3 text-[13px] text-muted">
+                        No signed-in app found on this computer yet. Open Claude Code or Codex there once and sign in.
+                      </p>
+                    ) : null}
                     <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
                       {[
                         { title: "Free", list: free },
@@ -231,6 +244,7 @@ export function AgentModelPicker({
                         ) : null,
                       )}
                       {!visible.length ? <p className="px-2 py-6 text-center text-[13px] text-faint">No model matches.</p> : null}
+                      {active.keyId?.startsWith("host:") ? null : (
                       <form
                         className="mt-2 flex gap-2 px-2"
                         onSubmit={(event) => {
@@ -249,6 +263,7 @@ export function AgentModelPicker({
                           Use
                         </button>
                       </form>
+                      )}
                     </div>
                   </>
                 )}

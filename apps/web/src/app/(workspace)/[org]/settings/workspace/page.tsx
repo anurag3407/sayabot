@@ -1,7 +1,9 @@
 import type { Metadata } from "next"
 import { requireOrgAdmin } from "@/lib/auth"
 import { listAuditLogs, listMemberViews, listRooms } from "@/lib/queries"
-import { inviteMember, renameWorkspaceAction, updateSso } from "@/lib/actions/orgs"
+import { renameWorkspaceAction, updateSso } from "@/lib/actions/orgs"
+import { InvitePeopleCard } from "@/components/settings/invite-people-card"
+import { loadPendingInvites } from "@/lib/workspace-invites"
 import { ssoEnabled } from "@/lib/env"
 import { ActionForm } from "@/components/ui/action-form"
 import { Field, Input, Select } from "@/components/ui/field"
@@ -16,10 +18,11 @@ export const metadata: Metadata = { title: "General & members" }
 export default async function WorkspaceSettingsPage({ params }: { params: Promise<{ org: string }> }) {
   const { org: orgSlug } = await params
   const access = await requireOrgAdmin(orgSlug)
-  const [members, logs, rooms] = await Promise.all([
+  const [members, logs, rooms, pendingInvites] = await Promise.all([
     listMemberViews(access.org.id),
     listAuditLogs(access.org.id),
     listRooms(access.org.id),
+    loadPendingInvites(access.org.id),
   ])
   const isOwner = access.role === "owner"
   const invitableRooms = rooms.filter((room) => room.kind !== "dm")
@@ -71,56 +74,13 @@ export default async function WorkspaceSettingsPage({ params }: { params: Promis
         ))}
       </ul>
 
-      <div className="mt-5 border-t border-line pt-5">
-        <ActionForm action={inviteMember} submitLabel="Invite" pendingLabel="Inviting…" resetOnSuccess>
-          <input type="hidden" name="orgSlug" value={orgSlug} />
-          <div className="grid gap-3 sm:grid-cols-[1fr_150px]">
-            <Field label="email" htmlFor="invite-email">
-              <Input id="invite-email" name="email" type="email" required placeholder="teammate@company.com" />
-            </Field>
-            <Field label="role" htmlFor="invite-role">
-              <Select id="invite-role" name="role" defaultValue="member">
-                <option value="member">member</option>
-                <option value="admin">admin</option>
-                {isOwner ? <option value="owner">owner</option> : null}
-              </Select>
-            </Field>
-          </div>
-          {invitableRooms.length ? (
-            <fieldset>
-              <legend className="mb-1.5 font-mono text-[12px] text-muted">
-                add to rooms
-              </legend>
-              <div className="max-h-44 space-y-1 overflow-y-auto border border-line bg-panel p-2">
-                {invitableRooms.map((room) => (
-                  <label
-                    key={room.id}
-                    className="flex min-h-9 items-center justify-between gap-2 text-[12px] text-muted md:min-h-0"
-                  >
-                    <span className="truncate">
-                      {room.name}
-                      {room.kind === "public" ? " (anyone in the workspace can read it)" : ""}
-                    </span>
-                    <input
-                      type="checkbox"
-                      name="roomIds"
-                      value={room.id}
-                      defaultChecked={invitableRooms.length === 1}
-                      className="h-3.5 w-3.5 shrink-0 accent-[var(--color-accent)]"
-                    />
-                  </label>
-                ))}
-              </div>
-              <p className="mt-1.5 text-[12px] leading-relaxed text-faint">
-                Pick at least one, or they will join with no private rooms to see.
-              </p>
-            </fieldset>
-          ) : null}
-          <p className="text-[12px] leading-relaxed text-faint">
-            New people get an invitation email. People who already have an account are added
-            right away.
-          </p>
-        </ActionForm>
+      <div className="mt-6 border-t border-line pt-6">
+        <InvitePeopleCard
+          orgSlug={orgSlug}
+          isOwner={isOwner}
+          rooms={invitableRooms.map((r) => ({ id: r.id, name: r.name, kind: r.kind }))}
+          pending={pendingInvites}
+        />
       </div>
     </Section>
 

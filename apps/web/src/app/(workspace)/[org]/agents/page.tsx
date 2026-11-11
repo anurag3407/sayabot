@@ -12,6 +12,7 @@ import { AddAgentChooser } from "@/components/agents/add-agent-chooser"
 import { AgentModelPicker } from "@/components/agents/agent-model-picker"
 import { AgentTestButton } from "@/components/agents/agent-test-button"
 import { Mascot } from "@/components/ui/mascot"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { buildModelCatalog } from "@/lib/model-catalog"
 import { formatTokens, formatUsd, relativeTime } from "@/lib/format"
 import { loadUsageRollup, usageByAgent } from "@/lib/usage"
@@ -40,10 +41,26 @@ export default async function AgentsPage({
   ])
   const addableRooms = rooms.filter((room) => room.kind !== "dm")
   const since = new Date(Date.now() - 30 * 86_400_000).toISOString()
+  const runnerOf = (a: (typeof agents)[number]) => {
+    const r = a.params?.runner as { hostId?: string; app?: string } | undefined
+    return r?.hostId ? { keyId: `host:${r.hostId}`, model: r.app ?? null } : null
+  }
+  const { data: hostRows } = await createAdminClient()
+    .from("desktop_hosts")
+    .select("id, name, settings, local_agents")
+    .eq("user_id", access.user.id)
+    .is("revoked_at", null)
+  const runnerHosts = ((hostRows ?? []) as { id: string; name: string; settings: { runnerEnabled?: boolean } | null; local_agents: Array<{ id: string; status: string }> | null }[]).map(
+    (h) => ({ id: h.id, name: h.name, runnerEnabled: Boolean(h.settings?.runnerEnabled), localAgents: h.local_agents ?? [] }),
+  )
   const [rollup, catalog] = await Promise.all([
     loadUsageRollup(access.org.id, since),
     canEdit
-      ? buildModelCatalog(keys, agents.map((a) => ({ keyId: a.providerKeyId, model: a.model })))
+      ? buildModelCatalog(
+          keys,
+          agents.map((a) => runnerOf(a) ?? { keyId: a.providerKeyId, model: a.model }),
+          runnerHosts,
+        )
       : Promise.resolve([]),
   ])
   const usage = usageByAgent(rollup ?? [])
@@ -130,8 +147,8 @@ export default async function AgentsPage({
                                 orgSlug={orgSlug}
                                 agentId={agent.id}
                                 groups={pickerGroups}
-                                currentKeyId={agent.providerKeyId}
-                                currentModel={agent.model}
+                                currentKeyId={runnerOf(agent)?.keyId ?? agent.providerKeyId}
+                                currentModel={runnerOf(agent)?.model ?? agent.model}
                                 currentEffort={typeof agent.params.effort === "string" ? agent.params.effort : null}
                                 disabled={!canEdit}
                               />
@@ -159,7 +176,9 @@ export default async function AgentsPage({
                               <p className="text-[12px] text-faint">
                                 {agent.kind === "external"
                                   ? "Runs in its own app, so its tokens are billed there, not here."
-                                  : "No usage in the last 30 days."}
+                                  : runnerOf(agent)
+                                    ? "Runs on your computer with your own subscription, so tokens aren't billed here."
+                                    : "No usage in the last 30 days."}
                               </p>
                             )}
                           </div>

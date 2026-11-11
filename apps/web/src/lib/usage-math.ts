@@ -65,3 +65,17 @@ export function usageByAgent(rows: readonly UsageRollupRow[]): Map<string, Agent
   }
   return out
 }
+
+const pad = (n: number) => String(n).padStart(2, "0")
+
+/** Calendar day in the viewer's own time zone ("2026-11-12"), so 1 AM IST isn't counted as yesterday. */
+export function localDayKey(input: string | number | Date): string {
+  const d = new Date(input)
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+/** Local day + hour ("2026-11-12T01"). */
+export function localHourKey(input: string | number | Date): string {
+  const d = new Date(input)
+  return `${localDayKey(d)}T${pad(d.getHours())}`
+}

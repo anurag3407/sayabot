@@ -1,0 +1,73 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'" />
+    <title>Sayabot remote host</title>
+  </head>
+  <body>
+    <script>
+      // Hidden window: captures the screen and streams it to the viewer over WebRTC.
+      // Pointer/keyboard events from the viewer go back to the main process, which checks
+      // the session allows control before anything reaches the input helper.
+      const ICE = [{ urls: "stun:stun.l.google.com:19302" }, { urls: "stun:stun1.l.google.com:19302" }]
+      const sessions = new Map()
+
+      function waitForIce(pc, ms) {
+        if (pc.iceGatheringState === "complete") return Promise.resolve()
+        return new Promise((resolve) => {
+          const done = () => resolve()
+          pc.addEventListener("icegatheringstatechange", () => pc.iceGatheringState === "complete" && done())
+          setTimeout(done, ms)
+        })
+      }
+
+      window.remoteHost.onStart(async ({ sessionId, offer, sourceId }) => {
+        let stream = null
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: {
+              mandatory: {
+                chromeMediaSource: "desktop",
+                chromeMediaSourceId: sourceId,
+                maxWidth: 1920,
+                maxHeight: 1200,
+                maxFrameRate: 30,
+              },
+            },
+          })
+          const pc = new RTCPeerConnection({ iceServers: ICE })
+          sessions.set(sessionId, { pc, stream })
+          stream.getTracks().forEach((track) => pc.addTrack(track, stream))
+          pc.ondatachannel = (event) => {
+            event.channel.onmessage = (msg) => {
+              if (typeof msg.data === "string" && msg.data.length < 2000) window.remoteHost.input(sessionId, msg.data)
+            }
+          }
+          const finish = (reason) => {
+            const s = sessions.get(sessionId)
+            if (!s) return
+            sessions.delete(sessionId)
+            s.stream.getTracks().forEach((t) => t.stop())
+            s.pc.close()
+            window.remoteHost.ended(sessionId, reason)
+          }
+          pc.onconnectionstatechange = () => {
+            if (pc.connectionState === "failed") finish("connection failed")
+            if (pc.connectionState === "disconnected" || pc.connectionState === "closed") finish()
+          }
+          await pc.setRemoteDescription(JSON.parse(offer))
+          await pc.setLocalDescription(await pc.createAnswer())
+          await waitForIce(pc, 3000)
+          window.remoteHost.answer(sessionId, JSON.stringify(pc.localDescription))
+          // A viewer that never connects shouldn't keep the screen captured.
+          setTimeout(() => pc.connectionState !== "connected" && finish("viewer never connected"), 45000)
+        } catch (err) {
+          if (stream) stream.getTracks().forEach((t) => t.stop())
+          window.remoteHost.ended(sessionId, String((err && err.message) || err))
+        }
+      })
+    </script>
+  </body>
+</html>

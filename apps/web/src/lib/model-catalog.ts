@@ -38,9 +38,24 @@ function addModel(list: PickerModel[], seen: Set<string>, model: PickerModel) {
  * The models people can pick per provider account: common picks first, then the live list
  * (OpenRouter) where there is one, plus anything an agent already uses so it always shows.
  */
+const RUNNER_APPS: Record<string, string> = {
+  "claude-code": "Claude Code",
+  codex: "Codex",
+  gemini: "Gemini CLI",
+  opencode: "OpenCode",
+}
+
+export interface RunnerHost {
+  id: string
+  name: string
+  runnerEnabled: boolean
+  localAgents: Array<{ id: string; status: string }>
+}
+
 export async function buildModelCatalog(
   keys: ProviderKeyView[],
   inUse: Array<{ keyId: string | null; model: string | null }>,
+  hosts: RunnerHost[] = [],
 ): Promise<PickerGroup[]> {
   let registry: Awaited<ReturnType<typeof getAllGroupedModels>>["groups"] = []
   try {
@@ -82,6 +97,26 @@ export async function buildModelCatalog(
       provider,
       label: key.label || provider,
       detail: `${provider} · •••• ${key.last4}`,
+      models,
+    })
+  }
+  // "Run on my computer": apps signed in on this person's own Macs, on their own subscription.
+  for (const host of hosts) {
+    const models = host.localAgents
+      .filter((a) => RUNNER_APPS[a.id] && a.status === "ready")
+      .map((a) => ({ id: a.id, label: `${RUNNER_APPS[a.id]} · your subscription` }))
+    for (const use of inUse) {
+      if (use.keyId === `host:${host.id}` && use.model && !models.some((m) => m.id === use.model)) {
+        models.push({ id: use.model, label: `${RUNNER_APPS[use.model] ?? use.model} (not signed in right now)` })
+      }
+    }
+    groups.push({
+      keyId: `host:${host.id}`,
+      provider: "computer",
+      label: host.name,
+      detail: host.runnerEnabled
+        ? "Runs on this computer with the apps signed in there"
+        : "Turn on “Run agents on this computer” in Settings → Computers first",
       models,
     })
   }

@@ -23,6 +23,9 @@ const PUBLIC_PATHS = [
   "/mcp",
   // "Add an agent" links (/bot/<code>): a bot asks to join; a person approves in the Inbox.
   "/bot",
+  // Desktop app (authenticated by its host token) and remote-desktop signaling (session or bearer).
+  "/api/desktop",
+  "/api/remote",
   // OAuth 2.1 public endpoints (discovery, dynamic registration, token exchange, callbacks)
   "/.well-known",
   "/oauth/register",

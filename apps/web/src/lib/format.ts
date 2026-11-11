@@ -154,3 +154,17 @@ export function effectiveProvider(provider: string, baseUrl: string | null | und
   if (/cloudflare\.com/i.test(baseUrl)) return "cloudflare"
   return provider
 }
+
+/** 1536 → "1.5 KB", 1.4e9 → "1.4 GB". */
+export function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0 KB"
+  const units = ["B", "KB", "MB", "GB", "TB"]
+  let i = 0
+  let v = bytes
+  while (v >= 1024 && i < units.length - 1) {
+    v /= 1024
+    i++
+  }
+  if (i === 0) return `${Math.round(v)} B`
+  return `${v >= 100 ? Math.round(v) : v.toFixed(1).replace(/\.0$/, "")} ${units[i]}`
+}

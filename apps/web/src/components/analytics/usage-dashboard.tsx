@@ -1,6 +1,7 @@
 "use client"
 
-import type { UsageRollupRow } from "@/lib/usage-math"
+import { pickModelPrice } from "@sayabot/core"
+import { localDayKey, localHourKey, type UsageRollupRow } from "@/lib/usage-math"
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import {
@@ -29,6 +30,8 @@ export interface UsageEventRow {
   latency_ms: number | null
   created_at: string
   source?: "local" | "sayabot"
+  /** Set on rows built from the database rollup: how many calls this one row stands for. */
+  _requests?: number
 }
 
 export interface AgentInfo {
@@ -294,6 +297,34 @@ export function UsageDashboard({
     })
   }, [sourceEvents, providerFilter, agentFilter])
 
+  // Breakdowns (model/provider/agent/room) use exact database totals when the event sample
+  // is incomplete; response times still come from the sample.
+  const breakdownEvents = useMemo<UsageEventRow[]>(() => {
+    if (!rollup || eventsComplete || sourceMode === "local") return filteredEvents
+    const rows: UsageEventRow[] = rollup
+      .filter(
+        (r) =>
+          (providerFilter === "all" || r.provider.toLowerCase() === providerFilter.toLowerCase()) &&
+          (agentFilter === "all" || r.agent_id === agentFilter),
+      )
+      .map((r) => ({
+        agent_id: r.agent_id,
+        room_id: r.room_id,
+        provider: r.provider,
+        model: r.model,
+        input_tokens: r.input_tokens,
+        output_tokens: r.output_tokens,
+        cached_input_tokens: r.cached_input_tokens,
+        cost_usd: r.cost_usd,
+        ttft_ms: null,
+        latency_ms: null,
+        created_at: r.last_at ?? new Date().toISOString(),
+        source: "sayabot",
+        _requests: r.requests,
+      }))
+    return [...rows, ...filteredEvents.filter((ev) => ev.source === "local")]
+  }, [rollup, eventsComplete, sourceMode, filteredEvents, providerFilter, agentFilter])
+
   // Available providers in dropdown
   const availableProviders = useMemo(() => {
     const set = new Set<string>()
@@ -336,7 +367,7 @@ export function UsageDashboard({
 
       // Calculate cache savings (at least 80-90% discount on cached reads)
       const priceKey = `${ev.provider.toLowerCase()}:${ev.model.toLowerCase()}`
-      const p = pricingByModel.get(priceKey) ?? pricingByModel.get(ev.model.toLowerCase())
+      const p = pickModelPrice(pricing, ev.provider, ev.model) ?? pricingByModel.get(priceKey)
       if (p && cached > 0) {
         const fullRate = p.inputPerMtok
         const readRate = p.cacheReadPerMtok ?? p.inputPerMtok * 0.1
@@ -392,7 +423,7 @@ export function UsageDashboard({
       avgLatency: avgLatency ? Math.round(avgLatency) : null,
       p95Latency: p95Latency ? Math.round(p95Latency) : null,
     }
-  }, [filteredEvents, pricingByModel, rollup, sourceMode, providerFilter, agentFilter])
+  }, [filteredEvents, pricing, pricingByModel, rollup, sourceMode, providerFilter, agentFilter])
 
   // Provider breakdown (Left Hero list)
   const providerBreakdown = useMemo(() => {
@@ -408,7 +439,7 @@ export function UsageDashboard({
       }
     >()
 
-    for (const ev of filteredEvents) {
+    for (const ev of breakdownEvents) {
       const p = ev.provider.toLowerCase()
       const inTok = ev.input_tokens || 0
       const outTok = ev.output_tokens || 0
@@ -426,7 +457,7 @@ export function UsageDashboard({
       }
       entry.tokens += inTok + outTok
       entry.cost += c
-      entry.sessions += 1
+      entry.sessions += ev._requests ?? 1
       entry.cachedTokens += cached
       entry.cacheCreationTokens += creation
       map.set(p, entry)
@@ -446,7 +477,7 @@ export function UsageDashboard({
         }
       })
       .sort((a, b) => (metric === "cost" ? b.cost - a.cost : b.tokens - a.tokens))
-  }, [filteredEvents, totals, metric])
+  }, [breakdownEvents, totals, metric])
 
   // Chart Series & Points
   const { chartSeries, chartPoints } = useMemo(() => {
@@ -481,7 +512,7 @@ export function UsageDashboard({
     if (isHourly) {
       for (let h = 23; h >= 0; h--) {
         const d = new Date(now - h * 3_600_000)
-        const bucketKey = d.toISOString().slice(0, 13)
+        const bucketKey = localHourKey(d)
         const periodLabel = d.toLocaleTimeString([], { hour: "numeric" })
         points.push({
           periodKey: bucketKey,
@@ -494,7 +525,7 @@ export function UsageDashboard({
     } else {
       for (let d = currentDays - 1; d >= 0; d--) {
         const date = new Date(now - d * 86_400_000)
-        const bucketKey = date.toISOString().slice(0, 10)
+        const bucketKey = localDayKey(date)
         const periodLabel = date.toLocaleDateString([], { month: "short", day: "numeric" })
         points.push({
           periodKey: bucketKey,
@@ -507,13 +538,20 @@ export function UsageDashboard({
     }
 
     const pointMap = new Map(points.map((p) => [p.periodKey, p]))
+    // Speed is an average per bucket; tokens and cost add up.
+    const perfCounts = new Map<string, number>()
 
     for (const ev of filteredEvents) {
-      const key = isHourly ? ev.created_at.slice(0, 13) : ev.created_at.slice(0, 10)
+      const key = isHourly ? localHourKey(ev.created_at) : localDayKey(ev.created_at)
       const pt = pointMap.get(key)
       if (!pt) continue
 
       const seriesId = chartView === "provider" ? ev.provider.toLowerCase() : (ev.agent_id ?? "unknown")
+      if (metric === "perf") {
+        if (ev.latency_ms === null || ev.latency_ms === undefined) continue
+        perfCounts.set(`${key}|${seriesId}`, (perfCounts.get(`${key}|${seriesId}`) ?? 0) + 1)
+        perfCounts.set(`${key}|*`, (perfCounts.get(`${key}|*`) ?? 0) + 1)
+      }
       const val =
         metric === "cost"
           ? Number(ev.cost_usd) || 0
@@ -523,6 +561,16 @@ export function UsageDashboard({
 
       pt.values[seriesId] = (pt.values[seriesId] ?? 0) + val
       pt.total += val
+    }
+    if (metric === "perf") {
+      for (const pt of points) {
+        for (const id of Object.keys(pt.values)) {
+          const n = perfCounts.get(`${pt.periodKey}|${id}`) ?? 0
+          pt.values[id] = n ? Math.round((pt.values[id] ?? 0) / n) : 0
+        }
+        const all = perfCounts.get(`${pt.periodKey}|*`) ?? 0
+        pt.total = all ? Math.round(pt.total / all) : 0
+      }
     }
 
     return { chartSeries: seriesList, chartPoints: points }
@@ -573,7 +621,7 @@ export function UsageDashboard({
       }
     >()
 
-    for (const ev of filteredEvents) {
+    for (const ev of breakdownEvents) {
       const m = ev.model
       const entry = map.get(m) ?? {
         model: m,
@@ -586,7 +634,7 @@ export function UsageDashboard({
       }
       entry.tokens += (ev.input_tokens || 0) + (ev.output_tokens || 0)
       entry.cost += Number(ev.cost_usd) || 0
-      entry.runs += 1
+      entry.runs += ev._requests ?? 1
       entry.cachedTokens += ev.cached_input_tokens || 0
       entry.cacheCreationTokens += ev.cache_creation_tokens || 0
       map.set(m, entry)
@@ -618,7 +666,7 @@ export function UsageDashboard({
         }
       })
       .sort((a, b) => (metric === "cost" ? b.cost - a.cost : b.tokens - a.tokens))
-  }, [filteredEvents, totals, metric])
+  }, [breakdownEvents, totals, metric])
 
   // Breakdown by Agent
   const agentBreakdown = useMemo(() => {
@@ -635,7 +683,7 @@ export function UsageDashboard({
       }
     >()
 
-    for (const ev of filteredEvents) {
+    for (const ev of breakdownEvents) {
       const id = ev.agent_id ?? (ev.source === "local" ? "local_developer" : "unassigned")
       const entry = map.get(id) ?? {
         agentId: id,
@@ -648,11 +696,22 @@ export function UsageDashboard({
       }
       entry.tokens += (ev.input_tokens || 0) + (ev.output_tokens || 0)
       entry.cost += Number(ev.cost_usd) || 0
-      entry.runs += 1
+      entry.runs += ev._requests ?? 1
       entry.cachedTokens += ev.cached_input_tokens || 0
       if (ev.ttft_ms) entry.ttfts.push(ev.ttft_ms)
       if (ev.latency_ms) entry.latencies.push(ev.latency_ms)
       map.set(id, entry)
+    }
+
+    // Response times only exist on real events (the sample), even when totals come from the rollup.
+    if (breakdownEvents !== filteredEvents) {
+      for (const ev of filteredEvents) {
+        const id = ev.agent_id ?? (ev.source === "local" ? "local_developer" : "unassigned")
+        const entry = map.get(id)
+        if (!entry || ev.source === "local") continue
+        if (ev.ttft_ms) entry.ttfts.push(ev.ttft_ms)
+        if (ev.latency_ms) entry.latencies.push(ev.latency_ms)
+      }
     }
 
     return Array.from(map.values())
@@ -673,7 +732,7 @@ export function UsageDashboard({
         }
       })
       .sort((a, b) => b.tokens - a.tokens)
-  }, [filteredEvents, agentsById, totals])
+  }, [breakdownEvents, filteredEvents, agentsById, totals])
 
   // Breakdown by Room
   const roomBreakdown = useMemo(() => {
@@ -687,7 +746,7 @@ export function UsageDashboard({
       }
     >()
 
-    for (const ev of filteredEvents) {
+    for (const ev of breakdownEvents) {
       const id = ev.room_id ?? "unknown"
       const entry = map.get(id) ?? {
         roomId: id,
@@ -697,7 +756,7 @@ export function UsageDashboard({
       }
       entry.tokens += (ev.input_tokens || 0) + (ev.output_tokens || 0)
       entry.cost += Number(ev.cost_usd) || 0
-      entry.runs += 1
+      entry.runs += ev._requests ?? 1
       map.set(id, entry)
     }
 
@@ -719,7 +778,7 @@ export function UsageDashboard({
         }
       })
       .sort((a, b) => b.tokens - a.tokens)
-  }, [filteredEvents, roomsById, totals])
+  }, [breakdownEvents, roomsById, totals])
 
   // Default / Computed Provider Limits for the Limits Tab
   const effectiveLimits: ProviderLimitGroup[] = useMemo(() => {

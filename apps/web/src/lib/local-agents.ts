@@ -1,5 +1,6 @@
 import "server-only"
 import { execFile } from "node:child_process"
+import { readdirSync } from "node:fs"
 import { access, constants, readFile, stat } from "node:fs/promises"
 import { homedir } from "node:os"
 import { delimiter, join } from "node:path"
@@ -23,6 +24,17 @@ const COMMON_BIN_DIRS = [
   join(homedir(), ".claude/local"),
 ]
 
+function versionManagerBins(): string[] {
+  const out: string[] = [join(homedir(), ".volta/bin")]
+  try {
+    const base = join(homedir(), ".nvm/versions/node")
+    for (const v of readdirSync(base).sort().reverse()) out.push(join(base, v, "bin"))
+  } catch {
+    // no nvm
+  }
+  return out
+}
+
 async function exists(path: string): Promise<boolean> {
   try {
     await stat(path)
@@ -33,7 +45,7 @@ async function exists(path: string): Promise<boolean> {
 }
 
 async function findBinary(names: readonly string[]): Promise<string | null> {
-  const dirs = [...new Set([...(process.env.PATH ?? "").split(delimiter).filter(Boolean), ...COMMON_BIN_DIRS])]
+  const dirs = [...new Set([...(process.env.PATH ?? "").split(delimiter).filter(Boolean), ...COMMON_BIN_DIRS, ...versionManagerBins()])]
   for (const name of names) {
     for (const dir of dirs) {
       const candidate = join(dir, name)

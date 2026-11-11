@@ -38,3 +38,19 @@ describe("usageByAgent", () => {
     expect(usage.size).toBe(2)
   })
 })
+
+import { localDayKey, localHourKey } from "@/lib/usage-math"
+
+describe("local bucket keys", () => {
+  it("uses the viewer's time zone, not UTC", () => {
+    const d = new Date(2026, 10, 12, 1, 30) // 12 Nov 2026, 01:30 local
+    expect(localDayKey(d)).toBe("2026-11-12")
+    expect(localHourKey(d)).toBe("2026-11-12T01")
+    expect(localDayKey(d.toISOString())).toBe("2026-11-12")
+  })
+  it("accepts Postgres-style offsets", () => {
+    const d = new Date(2026, 10, 12, 23, 5)
+    const pg = d.toISOString().replace("Z", "+00:00")
+    expect(localDayKey(pg)).toBe("2026-11-12")
+  })
+})

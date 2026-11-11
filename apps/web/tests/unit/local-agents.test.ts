@@ -28,3 +28,15 @@ describe("effectiveProvider", () => {
     expect(effectiveProvider("anthropic", null)).toBe("anthropic")
   })
 })
+
+import { formatBytes } from "@/lib/format"
+
+describe("formatBytes", () => {
+  it("scales units", () => {
+    expect(formatBytes(0)).toBe("0 KB")
+    expect(formatBytes(512)).toBe("512 B")
+    expect(formatBytes(1536)).toBe("1.5 KB")
+    expect(formatBytes(1024 * 1024)).toBe("1 MB")
+    expect(formatBytes(1.4 * 1024 ** 3)).toBe("1.4 GB")
+  })
+})

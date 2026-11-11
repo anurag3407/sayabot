@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { UserPlus, X } from "lucide-react"
 import { addRoomMember } from "@/lib/actions/rooms"
 import { inviteToRoom } from "@/lib/actions/orgs"
+import { createInviteLinkAction } from "@/lib/actions/workspace-invites"
 import { ActionForm } from "@/components/ui/action-form"
 import { Button } from "@/components/ui/button"
 import { Field, HelpText, Input, Select } from "@/components/ui/field"
@@ -90,6 +91,9 @@ function InviteDialog({
             </Field>
             <HelpText>New people join your workspace as members, and only get this room.</HelpText>
           </ActionForm>
+        ) : null}
+        {canInviteNew ? (
+          <RoomLinkButton orgSlug={orgSlug} roomId={roomId} />
         ) : workspaceMembers.length === 0 ? (
           <p className="text-[13px] leading-relaxed text-muted">
             Everyone in this workspace is already here. To bring in someone new, ask a workspace admin.
@@ -99,6 +103,41 @@ function InviteDialog({
         )}
       </div>
     </dialog>
+  )
+}
+
+/** A single-use link (24h) that brings one person into the workspace and straight into this room. */
+function RoomLinkButton({ orgSlug, roomId }: { orgSlug: string; roomId: string }) {
+  const [state, setState] = useState<"idle" | "busy" | "copied" | "error">("idle")
+  const [url, setUrl] = useState<string | null>(null)
+  return (
+    <div className="border-t border-line pt-5">
+      <p className="text-[13px] text-text">Or share a link</p>
+      <p className="mt-0.5 text-[12px] text-muted">Works once for one person, for 24 hours. They land in this room.</p>
+      <div className="mt-2 flex items-center gap-2">
+        <Button
+          size="sm"
+          variant="secondary"
+          disabled={state === "busy"}
+          onClick={async () => {
+            setState("busy")
+            const result = await createInviteLinkAction({ orgSlug, kind: "link", role: "member", roomIds: [roomId] })
+            if (!result.ok || !result.data) {
+              setState("error")
+              return
+            }
+            const link = result.data.url as string
+            setUrl(link)
+            await navigator.clipboard.writeText(link).catch(() => {})
+            setState("copied")
+          }}
+        >
+          {state === "busy" ? "Making…" : state === "copied" ? "Copied" : "Copy invite link"}
+        </Button>
+        {state === "error" ? <span className="text-[12px] text-danger">Could not make a link</span> : null}
+      </div>
+      {url ? <p className="mt-2 select-all break-all font-mono text-[11px] text-faint">{url}</p> : null}
+    </div>
   )
 }
 

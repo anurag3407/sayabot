@@ -1,5 +1,6 @@
 import {
   index,
+  integer,
   jsonb,
   pgTable,
   text,
@@ -135,4 +136,34 @@ export const botInvites = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("bot_invites_room_idx").on(t.roomId, t.status), index("bot_invites_org_idx").on(t.orgId, t.status)],
+)
+
+export type WorkspaceInviteKind = "email" | "link" | "permanent"
+
+/**
+ * Ways into a workspace: an email invite (tracked until the person first signs in), a
+ * single-use link that expires after 24 hours, or a permanent link anyone holding it can use.
+ */
+export const workspaceInvites = pgTable(
+  "workspace_invites",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => orgs.id, { onDelete: "cascade" }),
+    kind: text("kind").$type<WorkspaceInviteKind>().notNull(),
+    code: text("code").unique(),
+    email: text("email"),
+    userId: uuid("user_id").references(() => profiles.id, { onDelete: "set null" }),
+    role: text("role").notNull().default("member"),
+    roomIds: uuid("room_ids").array().notNull().default([]),
+    maxUses: integer("max_uses"),
+    useCount: integer("use_count").notNull().default(0),
+    createdBy: uuid("created_by").references(() => profiles.id, { onDelete: "set null" }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("workspace_invites_org_idx").on(t.orgId, t.kind)],
 )

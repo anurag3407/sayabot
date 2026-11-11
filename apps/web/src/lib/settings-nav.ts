@@ -5,6 +5,8 @@
 export type SettingsIconKey =
   | "profile"
   | "phones"
+  | "computers"
+  | "storage"
   | "workspace"
   | "keys"
   | "vector"
@@ -45,6 +47,13 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
         icon: "phones",
         adminOnly: false,
       },
+      {
+        segment: "computers",
+        label: "Computers",
+        description: "Remote desktop into your Mac, and run agents on the apps signed in there.",
+        icon: "computers",
+        adminOnly: false,
+      },
     ],
   },
   {
@@ -63,6 +72,13 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
         description: "Agent apps on this computer, plans you sign in to, and API keys that power your agents.",
         icon: "keys",
         adminOnly: true,
+      },
+      {
+        segment: "storage",
+        label: "Storage",
+        description: "What this workspace stores: chats, files, memory and agent computers.",
+        icon: "storage",
+        adminOnly: false,
       },
       {
         segment: "pricing",

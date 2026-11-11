@@ -55,3 +55,8 @@ export function generateDeviceToken(): { token: string; hash: string } {
   const token = `sd_${randomBytes(32).toString("base64url")}`
   return { token, hash: hashAgentApiKey(token) }
 }
+
+/** Code in a workspace invite link (/join/<code>). Holding it grants membership, so it is long. */
+export function generateJoinCode(): string {
+  return `j_${randomBytes(18).toString("base64url")}`
+}

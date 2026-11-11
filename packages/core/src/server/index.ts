@@ -5,6 +5,7 @@ export {
   generateAgentApiKey,
   generateBotInviteCode,
   generateDeviceToken,
+  generateJoinCode,
   generatePairingCode,
   generatePollToken,
   hashAgentApiKey,

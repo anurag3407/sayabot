@@ -116,6 +116,16 @@ export async function inviteMember(
     .from("org_members")
     .insert({ org_id: check.access.org.id, user_id: userId, role })
   if (error) return fail(errorMessage(error))
+  if (!existing) {
+    await admin.from("workspace_invites").insert({
+      org_id: check.access.org.id,
+      kind: "email",
+      email,
+      user_id: userId,
+      role: role === "admin" ? "admin" : "member",
+      created_by: check.access.user.id,
+    })
+  }
 
   const requestedRooms = formData
     .getAll("roomIds")
@@ -212,6 +222,17 @@ export async function inviteToRoom(
       .from("org_members")
       .insert({ org_id: orgId, user_id: userId, role: "member" })
     if (error) return fail(errorMessage(error))
+    if (!existing) {
+      await admin.from("workspace_invites").insert({
+        org_id: orgId,
+        kind: "email",
+        email,
+        user_id: userId,
+        role: "member",
+        room_ids: [roomId],
+        created_by: check.access.user.id,
+      })
+    }
   }
 
   const { data: seat } = await admin
