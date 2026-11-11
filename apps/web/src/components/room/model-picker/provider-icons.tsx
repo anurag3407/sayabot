@@ -107,6 +107,14 @@ export function AntigravityMark({ size = 16, className = "" }: { size?: number; 
   )
 }
 
+export function PiMark({ size = 16, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+      <path d="M4 6.5C4 5.67 4.67 5 5.5 5H18.5C19.33 5 20 5.67 20 6.5C20 7.33 19.33 8 18.5 8H16V17.5C16 18.33 16.67 19 17.5 19C17.84 19 18.15 18.88 18.39 18.69C18.98 18.21 19.86 18.31 20.33 18.91C20.81 19.5 20.71 20.38 20.11 20.86C19.39 21.43 18.49 21.75 17.5 21.75C15.15 21.75 13.25 19.85 13.25 17.5V8H10.75V17C10.75 19.62 8.62 21.75 6 21.75C5.17 21.75 4.5 21.08 4.5 20.25C4.5 19.42 5.17 18.75 6 18.75C6.97 18.75 7.75 17.97 7.75 17V8H5.5C4.67 8 4 7.33 4 6.5Z" />
+    </svg>
+  )
+}
+
 export function CommandCodeMark({ size = 16, className = "" }: { size?: number; className?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
@@ -124,20 +132,27 @@ export function ProviderIcon({
   size?: number
   className?: string
 }) {
-  switch (provider.toLowerCase()) {
+  const norm = provider.toLowerCase().trim()
+  switch (norm) {
     case "openai":
     case "openai-codex":
+    case "codex":
       return <OpenAIMark size={size} className={className} />
     case "copilot":
     case "github-copilot":
+    case "github copilot":
       return <CopilotMark size={size} className={className} />
     case "openrouter":
       return <OpenRouterMark size={size} className={className} />
     case "anthropic":
     case "anthropic-claude":
+    case "claude":
+    case "claude code":
+    case "claude-code":
       return <AnthropicMark size={size} className={className} />
     case "google":
     case "google-gemini":
+    case "gemini":
       return <GoogleMark size={size} className={className} />
     case "opencode":
       return <OpenCodeMark size={size} className={className} />
@@ -148,6 +163,7 @@ export function ProviderIcon({
     case "minimax":
       return <MiniMaxMark size={size} className={className} />
     case "grok":
+    case "xai":
       return <GrokMark size={size} className={className} />
     case "kimi":
       return <KimiMark size={size} className={className} />
@@ -157,6 +173,11 @@ export function ProviderIcon({
       return <CursorMark size={size} className={className} />
     case "antigravity":
       return <AntigravityMark size={size} className={className} />
+    case "pi":
+    case "inflection":
+      return <PiMark size={size} className={className} />
+    case "groq":
+      return <OpenAIMark size={size} className={className} />
     default:
       return <OpenAIMark size={size} className={className} />
   }

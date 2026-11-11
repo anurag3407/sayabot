@@ -19,6 +19,8 @@ export interface DesktopBridge {
   returnToController: () => Promise<void>
   getLocalRunnerStatus: () => Promise<{ running: boolean; port: number }>
   toggleLocalRunner: () => Promise<{ running: boolean; port: number }>
+  restartApp: () => Promise<void>
+  getVersion: () => Promise<string>
   onSessionUpdate: (callback: (session: AuthSession | null) => void) => () => void
 }
 
@@ -33,6 +35,8 @@ const bridge: DesktopBridge = {
   returnToController: () => ipcRenderer.invoke("workspace:return-to-controller"),
   getLocalRunnerStatus: () => ipcRenderer.invoke("runner:get-status"),
   toggleLocalRunner: () => ipcRenderer.invoke("runner:toggle"),
+  restartApp: () => ipcRenderer.invoke("app:restart"),
+  getVersion: () => ipcRenderer.invoke("app:get-version"),
   onSessionUpdate: (callback) => {
     const listener = (_event: any, session: AuthSession | null) => callback(session)
     ipcRenderer.on("auth:session-updated", listener)

@@ -163,6 +163,14 @@ function buildAppMenu() {
       label: "Sayabot",
       submenu: [
         { label: "About Sayabot", role: "about" },
+        {
+          label: "Restart to Apply Update",
+          accelerator: "CmdOrCtrl+R",
+          click: () => {
+            app.relaunch()
+            app.exit(0)
+          },
+        },
         { type: "separator" },
         {
           label: "Return to Controller",
@@ -323,6 +331,16 @@ ipcMain.handle("runner:get-status", () => {
 ipcMain.handle("runner:toggle", () => {
   localRunnerRunning = !localRunnerRunning
   return { running: localRunnerRunning, port: 4100 }
+})
+
+ipcMain.handle("app:restart", () => {
+  console.log("[Sayabot Desktop] Restarting application upon update request...")
+  app.relaunch()
+  app.exit(0)
+})
+
+ipcMain.handle("app:get-version", () => {
+  return app.getVersion()
 })
 
 app.whenReady().then(() => {

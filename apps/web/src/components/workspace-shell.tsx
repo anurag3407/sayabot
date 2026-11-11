@@ -3,7 +3,8 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from "react"
-import { ArrowDownToLine, Bot, CircleHelp, Clock, Inbox, MessageCircle, Search, Settings2 } from "lucide-react"
+import { ArrowDownToLine, Bot, CircleHelp, Clock, Inbox, MessageCircle, RefreshCw, Search, Settings2 } from "lucide-react"
+import { UpdateProvider, useAppUpdate } from "@/components/update-notification"
 import { signOutAction } from "@/lib/actions/auth"
 import { cn } from "@/lib/format"
 import { Avatar } from "@/components/ui/avatar"
@@ -110,6 +111,7 @@ function Rail({
   const base = `/${org.slug}`
   const settingsActive = pathname.startsWith(`${base}/settings`)
   const usageActive = pathname.startsWith(`${base}/analytics`)
+  const { updateReady, restartToUpdate, checkForUpdates, checking, versionData } = useAppUpdate()
 
   return (
     <nav
@@ -178,16 +180,46 @@ function Rail({
           className="relative"
           summaryLabel="Updates"
           summaryClassName={cn(
-            "grid h-10 w-10 cursor-pointer list-none place-items-center rounded-xl text-muted transition-colors hover:bg-panel hover:text-text",
+            "relative grid h-10 w-10 cursor-pointer list-none place-items-center rounded-xl text-muted transition-colors hover:bg-panel hover:text-text",
             pathname === "/download" && "bg-raised text-text",
           )}
-          summary={<ArrowDownToLine className="h-[18px] w-[18px]" />}
+          summary={
+            <>
+              <ArrowDownToLine className="h-[18px] w-[18px]" />
+              {updateReady && (
+                <span className="absolute right-1 top-1 flex h-2.5 w-2.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                </span>
+              )}
+            </>
+          }
         >
           <div className={popover}>
             <div className="flex items-center justify-between px-3 pb-1.5 pt-1.5 border-b border-line mb-1">
               <p className="text-[12px] font-medium text-text">Sayabot Updates</p>
-              <span className="font-mono text-[10px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">v1.0.1</span>
+              <span className="font-mono text-[10px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                {versionData?.version ? `v${versionData.version}` : "v1.0.1"}
+              </span>
             </div>
+
+            {updateReady && (
+              <div className="mx-2 my-1.5 p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                <div className="flex items-center justify-between text-[11px] font-semibold text-emerald-400 mb-1.5">
+                  <span>⚡ Update Ready</span>
+                  <span className="font-mono text-[9px] bg-emerald-500/20 px-1 rounded">New</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={restartToUpdate}
+                  className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-black font-semibold text-[11px] rounded transition-all cursor-pointer shadow-sm"
+                >
+                  <RefreshCw className="h-3 w-3" />
+                  Restart to update
+                </button>
+              </div>
+            )}
+
             <a
               href="https://github.com/anurag3407/Mesh/releases/latest/download/Sayabot-arm64.dmg"
               className={popoverItem}
@@ -202,10 +234,14 @@ function Rail({
             </a>
             <button
               type="button"
-              onClick={() => window.location.reload()}
-              className={cn(popoverItem, "w-full text-left")}
+              onClick={() => {
+                void checkForUpdates()
+              }}
+              disabled={checking}
+              className={cn(popoverItem, "w-full text-left flex items-center justify-between cursor-pointer")}
             >
-              Check Web Updates (Reload)
+              <span>{checking ? "Checking for updates…" : "Check for updates"}</span>
+              <RefreshCw className={cn("h-3 w-3 text-muted", checking && "animate-spin")} />
             </button>
             <div className="border-t border-line mt-1 pt-1">
               <Link href="/download" className={cn(popoverItem, "text-emerald-400 font-medium")}>
@@ -468,7 +504,8 @@ export function WorkspaceShell({
   const showList = isChatRoute(pathname, `/${org.slug}`)
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-void md:flex-row md:py-2 md:pr-2">
+    <UpdateProvider>
+      <div className="flex h-dvh flex-col overflow-hidden bg-void md:flex-row md:py-2 md:pr-2">
       <Rail
         org={org}
         orgs={orgs}
@@ -580,5 +617,6 @@ export function WorkspaceShell({
         </div>
       </dialog>
     </div>
+    </UpdateProvider>
   )
 }
