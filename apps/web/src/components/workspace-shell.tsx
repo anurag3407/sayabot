@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from "react"
-import { Bot, CircleHelp, Clock, Inbox, MessageCircle, Search, Settings2 } from "lucide-react"
+import { ArrowDownToLine, Bot, CircleHelp, Clock, Inbox, MessageCircle, Search, Settings2 } from "lucide-react"
 import { signOutAction } from "@/lib/actions/auth"
 import { cn } from "@/lib/format"
 import { Avatar } from "@/components/ui/avatar"
@@ -174,6 +174,46 @@ function Rail({
       })}
 
       <div className="mt-auto flex flex-col items-center gap-1">
+        <DetailsMenu
+          className="relative"
+          summaryLabel="Updates"
+          summaryClassName={cn(
+            "grid h-10 w-10 cursor-pointer list-none place-items-center rounded-xl text-muted transition-colors hover:bg-panel hover:text-text",
+            pathname === "/download" && "bg-raised text-text",
+          )}
+          summary={<ArrowDownToLine className="h-[18px] w-[18px]" />}
+        >
+          <div className={popover}>
+            <div className="flex items-center justify-between px-3 pb-1.5 pt-1.5 border-b border-line mb-1">
+              <p className="text-[12px] font-medium text-text">Sayabot Updates</p>
+              <span className="font-mono text-[10px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">v1.0.1</span>
+            </div>
+            <a
+              href="https://github.com/anurag3407/Mesh/releases/latest/download/Sayabot-arm64.dmg"
+              className={popoverItem}
+            >
+              Download macOS (.dmg)
+            </a>
+            <a
+              href="https://github.com/anurag3407/Mesh/releases/latest/download/Sayabot.apk"
+              className={popoverItem}
+            >
+              Download Android (.apk)
+            </a>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className={cn(popoverItem, "w-full text-left")}
+            >
+              Check Web Updates (Reload)
+            </button>
+            <div className="border-t border-line mt-1 pt-1">
+              <Link href="/download" className={cn(popoverItem, "text-emerald-400 font-medium")}>
+                View All Downloads →
+              </Link>
+            </div>
+          </div>
+        </DetailsMenu>
         <div className="relative">
           <Link
             href={`${base}/analytics`}
@@ -284,6 +324,10 @@ function MobileDrawer({
             {item.key === "inbox" && inboxCount > 0 ? `Inbox ${inboxCount}` : item.label}
           </Link>
         ))}
+        <Link href="/download" onClick={onNavigate} className={tile}>
+          <ArrowDownToLine width={19} height={19} className="h-[19px] w-[19px]" />
+          Updates
+        </Link>
         <Link href={`${base}/analytics`} onClick={onNavigate} className={tile}>
           <AnalyticsIcon width={19} height={19} />
           Usage
