@@ -26,6 +26,7 @@
     "expo-clipboard": "~7.0.1",
     "expo-status-bar": "~2.0.0",
     "expo-updates": "^0.27.5",
+    "getenv": "^2.0.0",
     "lucide-react-native": "^0.475.0",
     "react": "^19.3.1",
     "react-native": "0.76.6",

@@ -34,6 +34,12 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "c593211b-5f01-4021-9025-aa03c0a701cc"
+      }
+    },
+    "owner": "anurag3407"
   }
 }
