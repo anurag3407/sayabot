@@ -1,130 +1,133 @@
 import { useCallback, useEffect, useState } from "react"
 import { supabase } from "../core/supabase"
+import { taskInsertRow, taskPriority, type TaskPriority } from "../core/workspace-draft"
 import type { TaskItem } from "../types"
 
-export function useTasks(roomId?: string) {
+function mapTask(row: {
+  id: string
+  number: number
+  title: string
+  description: string | null
+  status: TaskItem["status"]
+  kind: TaskItem["kind"]
+  assignee_agent_id: string | null
+  assignee_user_id: string | null
+  budget_turns: number | null
+  turns_used: number | null
+  cost_usd: number | string | null
+  unblock_needs: string | null
+  metadata: unknown
+}): TaskItem {
+  return {
+    id: row.id,
+    number: row.number,
+    title: row.title,
+    description: row.description,
+    status: row.status,
+    kind: row.kind,
+    priority: taskPriority(row.metadata),
+    assigneeAgentId: row.assignee_agent_id,
+    assigneeUserId: row.assignee_user_id,
+    budgetTurns: row.budget_turns ?? 12,
+    turnsUsed: row.turns_used ?? 0,
+    costUsd: Number(row.cost_usd ?? 0),
+    unblockNeeds: row.unblock_needs,
+  }
+}
+
+export function useTasks() {
   const [tasks, setTasks] = useState<TaskItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const fetchTasks = useCallback(async () => {
     setLoading(true)
+    setError(null)
     try {
-      let query = supabase
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) {
+        setTasks([])
+        setError("Sign in to load your tasks.")
+        return
+      }
+
+      const { data, error: queryError } = await supabase
         .from("tasks")
         .select(
-          "id, number, title, description, status, kind, priority, assignee_agent_id, assignee_user_id, budget_turns, turns_used, cost_usd, unblock_needs"
+          "id, number, title, description, status, kind, assignee_agent_id, assignee_user_id, budget_turns, turns_used, cost_usd, unblock_needs, metadata",
         )
         .order("created_at", { ascending: false })
         .limit(50)
-
-      if (roomId) {
-        query = query.eq("room_id", roomId)
-      }
-
-      const { data, error } = await query
-      if (error) throw error
-
-      if (data) {
-        setTasks(
-          data.map((t: any) => ({
-            id: t.id,
-            number: t.number,
-            title: t.title,
-            description: t.description,
-            status: t.status,
-            kind: t.kind,
-            priority: t.priority,
-            assigneeAgentId: t.assignee_agent_id,
-            assigneeUserId: t.assignee_user_id,
-            budgetTurns: t.budget_turns ?? 12,
-            turnsUsed: t.turns_used ?? 0,
-            costUsd: Number(t.cost_usd ?? 0),
-            unblockNeeds: t.unblock_needs,
-          }))
-        )
-      }
+      if (queryError) throw queryError
+      setTasks((data ?? []).map((row) => mapTask(row)))
     } catch (err) {
       console.error("[useTasks] fetchTasks error:", err)
+      setError(err instanceof Error ? err.message : "Could not load tasks.")
     } finally {
       setLoading(false)
     }
-  }, [roomId])
+  }, [])
 
   const createTask = useCallback(
     async (params: {
+      orgId: string
+      roomId: string
       title: string
       description?: string
-      priority?: "low" | "medium" | "high" | "urgent"
+      priority?: TaskPriority
       budgetTurns?: number
     }) => {
-      const { data: orgData } = await supabase
-        .from("orgs")
-        .select("id")
-        .limit(1)
-        .maybeSingle()
-
-      const { data: maxTask } = await supabase
-        .from("tasks")
-        .select("number")
-        .order("number", { ascending: false })
-        .limit(1)
-        .maybeSingle()
-
-      const nextNum = (maxTask?.number || 0) + 1
-
-      const { data, error } = await supabase
-        .from("tasks")
-        .insert({
-          org_id: orgData?.id,
-          number: nextNum,
-          title: params.title.trim(),
-          description: params.description?.trim() || null,
-          status: "open",
-          kind: "task",
-          priority: params.priority || "medium",
-          budget_turns: params.budgetTurns || 12,
-        })
-        .select()
-        .single()
-
-      if (error) throw error
-
-      const newTask: TaskItem = {
-        id: data.id,
-        number: data.number,
-        title: data.title,
-        description: data.description,
-        status: data.status,
-        kind: data.kind,
-        priority: data.priority,
-        assigneeAgentId: data.assignee_agent_id,
-        assigneeUserId: data.assignee_user_id,
-        budgetTurns: data.budget_turns ?? 12,
-        turnsUsed: 0,
-        costUsd: 0,
-        unblockNeeds: data.unblock_needs,
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) throw new Error("Sign in to create a task.")
+      if (!params.orgId || !params.roomId) {
+        throw new Error("Choose a room. Tasks belong to a room so an agent knows where to work.")
       }
 
+      const { data, error: insertError } = await supabase
+        .from("tasks")
+        .insert(
+          taskInsertRow({
+            orgId: params.orgId,
+            roomId: params.roomId,
+            userId: user.id,
+            title: params.title,
+            description: params.description,
+            priority: params.priority,
+            budgetTurns: params.budgetTurns,
+          }),
+        )
+        .select(
+          "id, number, title, description, status, kind, assignee_agent_id, assignee_user_id, budget_turns, turns_used, cost_usd, unblock_needs, metadata",
+        )
+        .single()
+
+      if (insertError) throw insertError
+
+      const newTask = mapTask(data)
       setTasks((prev) => [newTask, ...prev])
       return newTask
     },
-    []
+    [],
   )
 
   useEffect(() => {
-    fetchTasks()
+    void fetchTasks()
 
     const channel = supabase
       .channel("tasks:live")
       .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, () => {
-        fetchTasks()
+        void fetchTasks()
       })
       .subscribe()
 
     return () => {
-      supabase.removeChannel(channel)
+      void supabase.removeChannel(channel)
     }
   }, [fetchTasks])
 
-  return { tasks, loading, refresh: fetchTasks, createTask }
+  return { tasks, loading, error, refresh: fetchTasks, createTask }
 }

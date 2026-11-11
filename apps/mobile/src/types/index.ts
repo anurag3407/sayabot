@@ -56,7 +56,7 @@ export interface PendingApproval {
 export interface ComputerContainerState {
   agentId: string
   agentHandle: string
-  status: "none" | "starting" | "running" | "stopped" | "error"
+  status: "none" | "starting" | "running" | "stopping" | "stopped" | "error" | "over_quota"
   containerId?: string | null
   ip?: string | null
   profile: "standard" | "browser"

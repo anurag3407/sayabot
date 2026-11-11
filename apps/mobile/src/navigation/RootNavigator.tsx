@@ -1,7 +1,8 @@
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
 import { ActivityIndicator, View } from "react-native"
 import { NavigationContainer } from "@react-navigation/native"
 import { createNativeStackNavigator } from "@react-navigation/native-stack"
+import { isDemoMode, setDemoMode, subscribeDemoMode } from "../core/session-mode"
 import { useAuth } from "../hooks/useAuth"
 import { AuthScreen } from "../screens/AuthScreen"
 import { TabNavigator } from "./TabNavigator"
@@ -12,7 +13,9 @@ const Stack = createNativeStackNavigator()
 
 export function RootNavigator() {
   const { session, loading } = useAuth()
-  const [isDemoMode, setIsDemoMode] = useState(false)
+  const [demoMode, setDemo] = useState(isDemoMode)
+
+  useEffect(() => subscribeDemoMode(setDemo), [])
 
   if (loading) {
     return (
@@ -29,7 +32,7 @@ export function RootNavigator() {
     )
   }
 
-  const isAuthenticated = Boolean(session || isDemoMode)
+  const isAuthenticated = Boolean(session || demoMode)
 
   return (
     <NavigationContainer>
@@ -41,7 +44,7 @@ export function RootNavigator() {
       >
         {!isAuthenticated ? (
           <Stack.Screen name="Auth">
-            {() => <AuthScreen onSuccess={() => setIsDemoMode(true)} />}
+            {() => <AuthScreen onEnterDemo={() => setDemoMode(true)} />}
           </Stack.Screen>
         ) : (
           <>

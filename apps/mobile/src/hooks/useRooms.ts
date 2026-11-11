@@ -1,56 +1,98 @@
-import { useEffect, useState, useCallback } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { supabase } from "../core/supabase"
+import { roomNameSlug } from "../core/workspace-draft"
 import type { Room, RoomKind, TurnMode } from "../types"
 
-export function useRooms() {
+interface OrgChoice {
+  id: string
+  slug: string
+  name: string
+}
+
+export function useRooms(preferredSlug?: string) {
   const [rooms, setRooms] = useState<Room[]>([])
-  const [orgSlug, setOrgSlug] = useState<string>("default")
+  const [orgSlug, setOrgSlug] = useState<string>(preferredSlug || "default")
   const [orgId, setOrgId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
 
   const fetchRooms = useCallback(async () => {
     setLoading(true)
+    setError(null)
+    setNotice(null)
     try {
-      // 1. Fetch current org
-      const { data: orgData } = await supabase
-        .from("orgs")
-        .select("id, slug")
-        .limit(1)
-        .maybeSingle()
-        
-      if (!orgData) return
-      setOrgSlug(orgData.slug)
-      setOrgId(orgData.id)
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) {
+        setRooms([])
+        setOrgId(null)
+        setError("Sign in to load your rooms.")
+        return
+      }
 
-      // 2. Fetch rooms
-      const { data: roomData, error } = await supabase
+      const { data: memberships, error: memberError } = await supabase
+        .from("org_members")
+        .select("org_id")
+        .eq("user_id", user.id)
+      if (memberError) throw memberError
+      const orgIds = (memberships ?? []).map((row) => row.org_id).filter(Boolean)
+      if (orgIds.length === 0) {
+        setRooms([])
+        setOrgId(null)
+        setError("This account is not in a workspace yet.")
+        return
+      }
+
+      const { data: orgRows, error: orgError } = await supabase
+        .from("orgs")
+        .select("id, slug, name")
+        .in("id", orgIds)
+      if (orgError) throw orgError
+      const orgs = (orgRows ?? []) as OrgChoice[]
+      const chosen =
+        (preferredSlug ? orgs.find((org) => org.slug === preferredSlug) : null) ?? orgs[0]
+      if (!chosen) {
+        setRooms([])
+        setOrgId(null)
+        setError("This account is not in a workspace yet.")
+        return
+      }
+      if (preferredSlug && chosen.slug !== preferredSlug && orgs.length > 1) {
+        setNotice(`No workspace named @${preferredSlug}. Showing @${chosen.slug}.`)
+      }
+
+      setOrgSlug(chosen.slug)
+      setOrgId(chosen.id)
+
+      const { data: roomData, error: roomError } = await supabase
         .from("rooms")
         .select("id, org_id, name, kind, turn_mode, system_directive, timezone")
-        .eq("org_id", orgData.id)
+        .eq("org_id", chosen.id)
         .order("kind", { ascending: true })
         .order("name", { ascending: true })
+      if (roomError) throw roomError
 
-      if (error) throw error
-
-      if (roomData) {
-        setRooms(
-          roomData.map((r: any) => ({
-            id: r.id,
-            orgId: r.org_id,
-            name: r.name,
-            kind: r.kind,
-            turnMode: r.turn_mode,
-            systemDirective: r.system_directive,
-            timezone: r.timezone || "UTC",
-          }))
-        )
-      }
+      setRooms(
+        (roomData ?? []).map((room) => ({
+          id: room.id,
+          orgId: room.org_id,
+          name: room.name,
+          kind: room.kind,
+          turnMode: room.turn_mode,
+          systemDirective: room.system_directive,
+          timezone: room.timezone || "UTC",
+        })),
+      )
     } catch (err) {
       console.error("[useRooms] fetch error:", err)
+      setRooms([])
+      setError(err instanceof Error ? err.message : "Could not load rooms.")
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [preferredSlug])
 
   const createRoom = useCallback(
     async (params: {
@@ -59,26 +101,20 @@ export function useRooms() {
       turnMode: TurnMode
       systemDirective?: string
     }): Promise<Room> => {
-      let targetOrgId = orgId
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) throw new Error("Sign in to create a room.")
+
+      const targetOrgId = orgId
       if (!targetOrgId) {
-        const { data: orgData } = await supabase
-          .from("orgs")
-          .select("id")
-          .limit(1)
-          .maybeSingle()
-        if (orgData) targetOrgId = orgData.id
+        throw new Error("No workspace is available for this account.")
       }
 
-      if (!targetOrgId) {
-        throw new Error("No active organization found to create room in.")
-      }
+      const cleanName = roomNameSlug(params.name)
+      if (!cleanName) throw new Error("Use letters or numbers in the room name.")
 
-      const cleanName = params.name
-        .trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9_-]/g, "-")
-
-      const { data, error } = await supabase
+      const { data, error: insertError } = await supabase
         .from("rooms")
         .insert({
           org_id: targetOrgId,
@@ -87,11 +123,22 @@ export function useRooms() {
           turn_mode: params.turnMode,
           system_directive: params.systemDirective?.trim() || null,
           timezone: "UTC",
+          created_by: user.id,
         })
         .select()
         .single()
 
-      if (error) throw error
+      if (insertError) throw insertError
+
+      const { error: memberError } = await supabase.from("room_members").insert({
+        room_id: data.id,
+        user_id: user.id,
+        role: "admin",
+      })
+      if (memberError) {
+        await supabase.from("rooms").delete().eq("id", data.id)
+        throw new Error("The room was created, then removed because you could not be added to it.")
+      }
 
       const newRoom: Room = {
         id: data.id,
@@ -106,24 +153,23 @@ export function useRooms() {
       setRooms((prev) => [newRoom, ...prev])
       return newRoom
     },
-    [orgId]
+    [orgId],
   )
 
   useEffect(() => {
-    fetchRooms()
+    void fetchRooms()
 
-    // Realtime channel to refresh room list on room creations/updates
     const channel = supabase
       .channel("rooms:list")
       .on("postgres_changes", { event: "*", schema: "public", table: "rooms" }, () => {
-        fetchRooms()
+        void fetchRooms()
       })
       .subscribe()
 
     return () => {
-      supabase.removeChannel(channel)
+      void supabase.removeChannel(channel)
     }
   }, [fetchRooms])
 
-  return { rooms, orgSlug, loading, refresh: fetchRooms, createRoom }
+  return { rooms, orgSlug, orgId, loading, error, notice, refresh: fetchRooms, createRoom }
 }

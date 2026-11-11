@@ -2,9 +2,11 @@ import React, { useState } from "react"
 import {
   ActivityIndicator,
   FlatList,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   RefreshControl,
-  SafeAreaView,
+  ScrollView,
   StatusBar,
   StyleSheet,
   Text,
@@ -12,10 +14,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native"
+import { SafeAreaView } from "react-native-safe-area-context"
 import {
   AlertCircle,
   Bot,
-  CheckCheck,
   Hash,
   MessageSquare,
   MoreVertical,
@@ -30,11 +32,18 @@ import {
   Zap,
 } from "lucide-react-native"
 import { useRooms } from "../hooks/useRooms"
+import { useSettings } from "../hooks/useSettings"
+import { useAuth } from "../hooks/useAuth"
+import { usePalette } from "../hooks/usePalette"
+import { roomNameSlug } from "../core/workspace-draft"
 import { colors } from "../theme"
 import type { Room, RoomKind, TurnMode } from "../types"
 
 export function RoomsScreen({ navigation }: any) {
-  const { rooms, orgSlug, loading, refresh, createRoom } = useRooms()
+  const { settings } = useSettings()
+  const { session, signOut } = useAuth()
+  const theme = usePalette()
+  const { rooms, orgSlug, loading, error, notice, refresh, createRoom } = useRooms(settings.orgSlug)
   const [searchOpen, setSearchOpen] = useState(false)
   const [search, setSearch] = useState("")
   const [activeFilter, setActiveFilter] = useState<"all" | "dms" | "rooms" | "debates">("all")
@@ -124,7 +133,6 @@ export function RoomsScreen({ navigation }: any) {
           ]}
         >
           {isDm ? <Bot size={22} color={accentColor} /> : <Hash size={22} color={accentColor} />}
-          <View style={styles.onlineDot} />
         </View>
 
         {/* Center Content */}
@@ -133,12 +141,13 @@ export function RoomsScreen({ navigation }: any) {
             <Text style={styles.contactName} numberOfLines={1}>
               {isDm ? `@${item.name}` : item.name}
             </Text>
-            <Text style={styles.timeText}>Active</Text>
+            <Text style={styles.timeText}>
+              {isDm ? "Direct" : item.kind === "private" ? "Private" : "Room"}
+            </Text>
           </View>
 
           <View style={styles.bottomRow}>
             <View style={styles.snippetRow}>
-              <CheckCheck size={14} color={colors.accentCyan} style={styles.checkIcon} />
               <Text style={styles.snippetText} numberOfLines={1}>
                 {item.systemDirective || "Tap to collaborate with autonomous agents..."}
               </Text>
@@ -163,12 +172,14 @@ export function RoomsScreen({ navigation }: any) {
     )
   }
 
+  const slugPreview = roomNameSlug(newRoomName)
+
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.surface} />
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      <StatusBar barStyle="light-content" backgroundColor={theme.surface} />
 
       {/* WhatsApp Top Header Bar */}
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, { backgroundColor: theme.surface }]}>
         <View style={styles.headerLeft}>
           <Text style={styles.appTitle}>Sayabot</Text>
           <View style={styles.orgSlugPill}>
@@ -240,6 +251,8 @@ export function RoomsScreen({ navigation }: any) {
         ))}
       </View>
 
+      {notice ? <Text style={styles.banner}>{notice}</Text> : null}
+
       {/* Chat Rooms Feed */}
       <FlatList
         data={filtered}
@@ -257,19 +270,21 @@ export function RoomsScreen({ navigation }: any) {
                 <MessageSquare size={36} color={colors.primary} />
               </View>
               <Text style={styles.emptyTitle}>
-                {search ? "No matching chats found" : "No conversation rooms yet"}
+                {error ? "Rooms are unavailable" : search ? "No matching chats found" : "No conversation rooms yet"}
               </Text>
               <Text style={styles.emptyDescription}>
-                {search
-                  ? `No rooms or agents matching "${search}".`
-                  : "Start by creating a collaborative agent room or direct agent chat."}
+                {error
+                  ? error
+                  : search
+                  ? `No rooms matching "${search}".`
+                  : "Create a room for the people and agents who should work together."}
               </Text>
               <TouchableOpacity
                 style={styles.emptyCreateBtn}
-                onPress={() => setNewRoomModal(true)}
+                onPress={() => (session ? setNewRoomModal(true) : void signOut())}
               >
-                <Plus size={16} color={colors.textInverse} />
-                <Text style={styles.emptyCreateBtnText}>Create First Room</Text>
+                {session ? <Plus size={16} color={colors.textInverse} /> : null}
+                <Text style={styles.emptyCreateBtnText}>{session ? "Create a room" : "Sign in"}</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -294,7 +309,11 @@ export function RoomsScreen({ navigation }: any) {
       {/* MODAL: CREATE NEW ROOM / AGENT CHAT                            */}
       {/* ============================================================== */}
       <Modal visible={newRoomModal} animationType="slide" transparent>
-        <View style={styles.modalBackdrop}>
+        <KeyboardAvoidingView
+          style={styles.modalBackdrop}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
+          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.modalScroll}>
           <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
               <View style={styles.modalHeaderTitleRow}>
@@ -324,6 +343,9 @@ export function RoomsScreen({ navigation }: any) {
                 onChangeText={setNewRoomName}
                 autoCapitalize="none"
               />
+              {slugPreview ? (
+                <Text style={styles.slugHint}>Saved as {slugPreview}</Text>
+              ) : null}
             </View>
 
             {/* Room Kind (DM vs Group) */}
@@ -349,20 +371,20 @@ export function RoomsScreen({ navigation }: any) {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[styles.typeBtn, newRoomKind === "dm" && styles.typeBtnActive]}
-                  onPress={() => setNewRoomKind("dm")}
+                  style={[styles.typeBtn, newRoomKind === "private" && styles.typeBtnActive]}
+                  onPress={() => setNewRoomKind("private")}
                 >
                   <Bot
                     size={16}
-                    color={newRoomKind === "dm" ? colors.primaryBright : colors.textSecondary}
+                    color={newRoomKind === "private" ? colors.primaryBright : colors.textSecondary}
                   />
                   <Text
                     style={[
                       styles.typeBtnText,
-                      newRoomKind === "dm" && styles.typeBtnTextActive,
+                      newRoomKind === "private" && styles.typeBtnTextActive,
                     ]}
                   >
-                    Agent DM
+                    Private room
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -440,7 +462,8 @@ export function RoomsScreen({ navigation }: any) {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* ============================================================== */}
@@ -768,6 +791,22 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.overlay,
     justifyContent: "flex-end",
+  },
+  modalScroll: {
+    flexGrow: 1,
+    justifyContent: "flex-end",
+  },
+  slugHint: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    marginTop: 6,
+  },
+  banner: {
+    color: colors.textSecondary,
+    fontSize: 12.5,
+    lineHeight: 18,
+    paddingHorizontal: 16,
+    paddingBottom: 8,
   },
   modalCard: {
     backgroundColor: colors.surface,

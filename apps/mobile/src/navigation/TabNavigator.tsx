@@ -6,19 +6,21 @@ import { RoomsScreen } from "../screens/RoomsScreen"
 import { TasksScreen } from "../screens/TasksScreen"
 import { ComputersScreen } from "../screens/ComputersScreen"
 import { SettingsScreen } from "../screens/SettingsScreen"
+import { usePalette } from "../hooks/usePalette"
 import { colors } from "../theme"
 
 const Tab = createBottomTabNavigator()
 
 export function TabNavigator() {
   const insets = useSafeAreaInsets()
+  const theme = usePalette()
 
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: colors.surface,
+          backgroundColor: theme.surface,
           borderTopColor: colors.borderSubtle,
           borderTopWidth: 1,
           height: 60 + insets.bottom,

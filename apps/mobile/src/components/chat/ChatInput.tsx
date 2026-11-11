@@ -1,24 +1,23 @@
 import React, { useState } from "react"
 import {
-  KeyboardAvoidingView,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
+  Vibration,
   View,
 } from "react-native"
 import {
   Bot,
   CheckSquare,
   HelpCircle,
-  Paperclip,
   Send,
   Sparkles,
   Terminal,
   X,
 } from "lucide-react-native"
+import { useSettings } from "../../hooks/useSettings"
 import { colors } from "../../theme"
 
 interface ChatInputProps {
@@ -35,18 +34,24 @@ const QUICK_ACTIONS = [
 ]
 
 export function ChatInput({ onSend, disabled }: ChatInputProps) {
+  const { settings } = useSettings()
   const [text, setText] = useState("")
   const [sending, setSending] = useState(false)
-  const [showCommands, setShowCommands] = useState(false)
+  const [showCommands, setShowCommands] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const handlePressSend = async () => {
     if (!text.trim() || sending || disabled) return
     const content = text
     setText("")
     setSending(true)
-    setShowCommands(false)
+    setError(null)
+    if (settings.hapticsEnabled) Vibration.vibrate(12)
     try {
       await onSend(content)
+    } catch (err: unknown) {
+      setText((current) => (current.trim() ? current : content))
+      setError(err instanceof Error ? err.message : "The message was not sent.")
     } finally {
       setSending(false)
     }
@@ -54,17 +59,14 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
 
   const handleSelectQuickAction = (prefix: string) => {
     setText((prev) => (prev ? `${prev} ${prefix}` : prefix))
-    setShowCommands(false)
   }
 
   const hasContent = Boolean(text.trim())
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
-    >
-      {/* Quick Action Suggestion Chips Bar */}
+    <View>
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {showCommands ? (
       <View style={styles.quickBarContainer}>
         <ScrollView
           horizontal
@@ -87,6 +89,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
           })}
         </ScrollView>
       </View>
+      ) : null}
 
       {/* Main Input Row */}
       <View style={styles.container}>
@@ -96,11 +99,12 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
             style={styles.iconBtn}
             onPress={() => setShowCommands(!showCommands)}
             activeOpacity={0.7}
+            accessibilityLabel={showCommands ? "Hide quick prompts" : "Show quick prompts"}
           >
             {showCommands ? (
-              <X size={20} color={colors.accentDanger} />
+              <X size={20} color={colors.textSecondary} />
             ) : (
-              <Paperclip size={20} color={colors.textSecondary} />
+              <Sparkles size={20} color={colors.textSecondary} />
             )}
           </TouchableOpacity>
 
@@ -121,16 +125,23 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
           style={[styles.actionCircle, (!hasContent || sending || disabled) && styles.actionCircleDisabled]}
           onPress={hasContent ? handlePressSend : undefined}
           disabled={disabled || sending || !hasContent}
+          accessibilityLabel="Send message"
           activeOpacity={0.8}
         >
           <Send size={18} color={colors.textInverse} style={styles.sendIcon} />
         </TouchableOpacity>
       </View>
-    </KeyboardAvoidingView>
+    </View>
   )
 }
 
 const styles = StyleSheet.create({
+  errorText: {
+    color: colors.accentDanger,
+    fontSize: 12.5,
+    paddingHorizontal: 14,
+    paddingBottom: 4,
+  },
   quickBarContainer: {
     backgroundColor: "transparent",
     paddingBottom: 4,

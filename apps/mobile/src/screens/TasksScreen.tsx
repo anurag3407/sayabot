@@ -1,10 +1,12 @@
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
 import {
   ActivityIndicator,
   FlatList,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   RefreshControl,
-  SafeAreaView,
+  ScrollView,
   StatusBar,
   StyleSheet,
   Text,
@@ -12,6 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native"
+import { SafeAreaView } from "react-native-safe-area-context"
 import {
   AlertCircle,
   CheckSquare,
@@ -23,12 +26,21 @@ import {
   X,
 } from "lucide-react-native"
 import { useTasks } from "../hooks/useTasks"
+import { useRooms } from "../hooks/useRooms"
+import { useSettings } from "../hooks/useSettings"
+import { useAuth } from "../hooks/useAuth"
+import { usePalette } from "../hooks/usePalette"
 import { TaskCard } from "../components/tasks/TaskCard"
 import { colors } from "../theme"
 
 export function TasksScreen() {
-  const { tasks, loading, refresh, createTask } = useTasks()
+  const { settings } = useSettings()
+  const { session, signOut } = useAuth()
+  const theme = usePalette()
+  const { tasks, loading, error, refresh, createTask } = useTasks()
+  const { rooms, orgId } = useRooms(settings.orgSlug)
   const [filter, setFilter] = useState<"all" | "in_progress" | "blocked" | "done">("all")
+  const [roomId, setRoomId] = useState<string | null>(null)
 
   // Create Task Modal
   const [createModal, setCreateModal] = useState(false)
@@ -38,6 +50,11 @@ export function TasksScreen() {
   const [budgetTurns, setBudgetTurns] = useState(12)
   const [creating, setCreating] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (roomId && rooms.some((room) => room.id === roomId)) return
+    setRoomId(rooms[0]?.id ?? null)
+  }, [rooms, roomId])
 
   const filtered = tasks.filter((t) => {
     if (filter === "all") return true
@@ -50,12 +67,18 @@ export function TasksScreen() {
       setErrorMsg("Please enter a task title.")
       return
     }
+    if (!orgId || !roomId) {
+      setErrorMsg("Create a room first. A task has to live in one.")
+      return
+    }
 
     setCreating(true)
     setErrorMsg(null)
 
     try {
       await createTask({
+        orgId,
+        roomId,
         title: title.trim(),
         description: description.trim() || undefined,
         priority,
@@ -67,22 +90,22 @@ export function TasksScreen() {
       setDescription("")
       setPriority("medium")
       setBudgetTurns(12)
-    } catch (err: any) {
-      setErrorMsg(err?.message || "Failed to create task.")
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : "Failed to create task.")
     } finally {
       setCreating(false)
     }
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.surface} />
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      <StatusBar barStyle="light-content" backgroundColor={theme.surface} />
 
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: theme.surface }]}>
         <View>
           <Text style={styles.title}>Autonomous Tasks</Text>
-          <Text style={styles.subtitle}>24/7 Background Agent Work Queue</Text>
+          <Text style={styles.subtitle}>Work you hand to an agent</Text>
         </View>
         <TouchableOpacity style={styles.refreshBtn} onPress={refresh}>
           <RefreshCw size={18} color={colors.textSecondary} />
@@ -119,16 +142,16 @@ export function TasksScreen() {
               <View style={styles.emptyIconBadge}>
                 <CheckSquare size={36} color={colors.primary} />
               </View>
-              <Text style={styles.emptyTitle}>No tasks found in this view</Text>
+              <Text style={styles.emptyTitle}>{error ? "Tasks are unavailable" : "No tasks in this view"}</Text>
               <Text style={styles.emptySubtitle}>
-                Create an autonomous background task and agents will execute it automatically.
+                {error ?? "Create a task in a room. It stays open until someone moves it."}
               </Text>
               <TouchableOpacity
                 style={styles.emptyCreateBtn}
-                onPress={() => setCreateModal(true)}
+                onPress={() => (session ? setCreateModal(true) : void signOut())}
               >
-                <Plus size={16} color={colors.textInverse} />
-                <Text style={styles.emptyCreateBtnText}>Create Autonomous Task</Text>
+                {session ? <Plus size={16} color={colors.textInverse} /> : null}
+                <Text style={styles.emptyCreateBtnText}>{session ? "Create a task" : "Sign in"}</Text>
               </TouchableOpacity>
             </View>
           ) : null
@@ -146,7 +169,11 @@ export function TasksScreen() {
 
       {/* Create Task Modal */}
       <Modal visible={createModal} animationType="slide" transparent>
-        <View style={styles.modalBackdrop}>
+        <KeyboardAvoidingView
+          style={styles.modalBackdrop}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
+          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.modalScroll}>
           <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
               <View style={styles.modalTitleRow}>
@@ -187,6 +214,30 @@ export function TasksScreen() {
                 multiline
                 numberOfLines={3}
               />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Room</Text>
+              {rooms.length === 0 ? (
+                <Text style={styles.roomHint}>Create a room before adding a task.</Text>
+              ) : (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.priorityRow}>
+                  {rooms.map((room) => {
+                    const selected = room.id === roomId
+                    return (
+                      <TouchableOpacity
+                        key={room.id}
+                        style={[styles.priorityBtn, selected && styles.priorityBtnActive]}
+                        onPress={() => setRoomId(room.id)}
+                      >
+                        <Text style={[styles.priorityBtnText, selected && styles.priorityBtnTextActive]}>
+                          {room.name}
+                        </Text>
+                      </TouchableOpacity>
+                    )
+                  })}
+                </ScrollView>
+              )}
             </View>
 
             <View style={styles.inputGroup}>
@@ -255,20 +306,21 @@ export function TasksScreen() {
               <TouchableOpacity
                 style={styles.modalSubmitBtn}
                 onPress={handleCreateTask}
-                disabled={creating}
+                disabled={creating || rooms.length === 0}
               >
                 {creating ? (
                   <ActivityIndicator size="small" color={colors.textInverse} />
                 ) : (
                   <>
                     <Plus size={16} color={colors.textInverse} />
-                    <Text style={styles.modalSubmitText}>Enqueue Task</Text>
+                    <Text style={styles.modalSubmitText}>Create task</Text>
                   </>
                 )}
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   )
@@ -401,6 +453,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.overlay,
     justifyContent: "flex-end",
+  },
+  modalScroll: {
+    flexGrow: 1,
+    justifyContent: "flex-end",
+  },
+  roomHint: {
+    color: colors.textSecondary,
+    fontSize: 12.5,
   },
   modalCard: {
     backgroundColor: colors.surface,

@@ -68,12 +68,29 @@ export const DEFAULT_SETTINGS: AppSettings = {
 
 const SETTINGS_STORAGE_KEY = "@sayabot/settings_v1"
 
+let activeWebApiUrl = DEFAULT_SETTINGS.webApiUrl
+
+function rememberWebApiUrl(settings: AppSettings) {
+  activeWebApiUrl = settings.webApiUrl
+}
+
+/** Gateway the user saved. Read at request time so a settings change applies to the next send. */
+export function currentWebApiUrl(): string {
+  const raw = (activeWebApiUrl || ENV.WEB_API_URL).trim()
+  return raw.replace(/\/+$/, "")
+}
+
 export async function loadSettings(): Promise<AppSettings> {
   try {
     const raw = await AsyncStorage.getItem(SETTINGS_STORAGE_KEY)
-    if (!raw) return { ...DEFAULT_SETTINGS }
+    if (!raw) {
+      rememberWebApiUrl(DEFAULT_SETTINGS)
+      return { ...DEFAULT_SETTINGS }
+    }
     const parsed = JSON.parse(raw)
-    return { ...DEFAULT_SETTINGS, ...parsed }
+    const settings = { ...DEFAULT_SETTINGS, ...parsed }
+    rememberWebApiUrl(settings)
+    return settings
   } catch (e) {
     console.warn("[settings] Failed to load settings from storage, using defaults", e)
     return { ...DEFAULT_SETTINGS }
@@ -85,6 +102,7 @@ export async function saveSettings(updates: Partial<AppSettings>): Promise<AppSe
     const current = await loadSettings()
     const merged = { ...current, ...updates }
     await AsyncStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(merged))
+    rememberWebApiUrl(merged)
     return merged
   } catch (e) {
     console.error("[settings] Failed to save settings", e)
@@ -95,6 +113,7 @@ export async function saveSettings(updates: Partial<AppSettings>): Promise<AppSe
 export async function resetSettings(): Promise<AppSettings> {
   try {
     await AsyncStorage.removeItem(SETTINGS_STORAGE_KEY)
+    rememberWebApiUrl(DEFAULT_SETTINGS)
     return { ...DEFAULT_SETTINGS }
   } catch (e) {
     console.error("[settings] Failed to reset settings", e)

@@ -36,7 +36,6 @@ import {
   Sliders,
   Sparkles,
   Terminal,
-  Trash2,
   Volume2,
   Wifi,
   X,
@@ -44,10 +43,12 @@ import {
 } from "lucide-react-native"
 import { useAuth } from "../hooks/useAuth"
 import { useSettings } from "../hooks/useSettings"
+import { usePalette } from "../hooks/usePalette"
 import { colors, fonts } from "../theme"
 
 export function SettingsScreen() {
   const { user, signOut } = useAuth()
+  const theme = usePalette()
   const {
     settings,
     updateSettings,
@@ -72,8 +73,6 @@ export function SettingsScreen() {
   const [editGatewayModal, setEditGatewayModal] = useState(false)
   const [gatewayInput, setGatewayInput] = useState(settings.webApiUrl)
 
-  const [cacheCleared, setCacheCleared] = useState(false)
-
   useEffect(() => {
     setNameInput(settings.displayName)
     setOrgInput(settings.orgSlug)
@@ -82,15 +81,20 @@ export function SettingsScreen() {
   }, [settings])
 
   const handleSignOut = () => {
+    const preview = !user
     Alert.alert(
-      "Sign Out",
-      "Are you sure you want to disconnect from this Sayabot workspace?",
+      preview ? "Leave preview" : "Sign out",
+      preview
+        ? "Return to the sign-in screen?"
+        : "Sign out of this account on this phone?",
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Sign Out",
+          text: preview ? "Leave" : "Sign out",
           style: "destructive",
-          onPress: () => signOut(),
+          onPress: () => {
+            void signOut()
+          },
         },
       ]
     )
@@ -114,12 +118,6 @@ export function SettingsScreen() {
     )
   }
 
-  const handleClearCache = () => {
-    setCacheCleared(true)
-    setTimeout(() => setCacheCleared(false), 3000)
-    Alert.alert("Cache Cleared", "Local temporary message logs and thumbnails cleared.")
-  }
-
   // Pre-configured AI models per provider
   const MODEL_OPTIONS: Record<string, string[]> = {
     openrouter: [
@@ -140,11 +138,11 @@ export function SettingsScreen() {
     .toUpperCase()
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.surface} />
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      <StatusBar barStyle="light-content" backgroundColor={theme.surface} />
 
       {/* Screen Top Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: theme.surface }]}>
         <View>
           <Text style={styles.title}>Settings</Text>
           <Text style={styles.headerSubtitle}>Workspace, AI Engines & Sandbox Controls</Text>
@@ -192,7 +190,7 @@ export function SettingsScreen() {
                 </View>
 
                 <Text style={styles.userEmail} numberOfLines={1}>
-                  {user?.email || "signed-in-user@sayalabs.in"}
+                  {user?.email || "Not signed in"}
                 </Text>
 
                 <View style={styles.metaBadgeRow}>
@@ -553,16 +551,15 @@ export function SettingsScreen() {
                 <Cpu size={18} color={colors.accentCyan} />
                 <View>
                   <Text style={styles.rowTitle}>Default Container Sandbox Profile</Text>
-                  <Text style={styles.rowSubtitle}>Docker environment spawned for agents</Text>
+                  <Text style={styles.rowSubtitle}>Saved on this phone. Existing computers keep their own profile.</Text>
                 </View>
               </View>
 
               <View style={styles.segmentedRow}>
                 {(
                   [
-                    { id: "standard", label: "Bash + CLI" },
-                    { id: "browser", label: "Chromium" },
-                    { id: "minimal", label: "Alpine" },
+                    { id: "standard", label: "Standard" },
+                    { id: "browser", label: "Browser" },
                   ] as const
                 ).map((p) => (
                   <TouchableOpacity
@@ -622,7 +619,7 @@ export function SettingsScreen() {
                 <Moon size={18} color={colors.accentCyan} />
                 <View>
                   <Text style={styles.rowTitle}>Theme Palette</Text>
-                  <Text style={styles.rowSubtitle}>Dark mode color grading</Text>
+                  <Text style={styles.rowSubtitle}>Changes the background of the app</Text>
                 </View>
               </View>
 
@@ -683,7 +680,7 @@ export function SettingsScreen() {
                         settings.fontSize === s && styles.tempChipTextActive,
                       ]}
                     >
-                      {s.charAt(0).toUpperCase()}
+                      {s === "compact" ? "Small" : s === "large" ? "Large" : "Norm"}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -698,7 +695,7 @@ export function SettingsScreen() {
                 <Zap size={18} color={colors.accentGold} />
                 <View>
                   <Text style={styles.rowTitle}>Haptic Feedback</Text>
-                  <Text style={styles.rowSubtitle}>Vibrate on send, tap & approvals</Text>
+                  <Text style={styles.rowSubtitle}>Vibrate when you send a message or decide a tool request</Text>
                 </View>
               </View>
               <Switch
@@ -719,7 +716,7 @@ export function SettingsScreen() {
                 <Volume2 size={18} color={colors.accentCyan} />
                 <View>
                   <Text style={styles.rowTitle}>Sound Effects</Text>
-                  <Text style={styles.rowSubtitle}>Audio chimes on agent completion</Text>
+                  <Text style={styles.rowSubtitle}>Saved on this phone. This build does not play sounds.</Text>
                 </View>
               </View>
               <Switch
@@ -739,6 +736,9 @@ export function SettingsScreen() {
         {/* ============================================================== */}
         <View style={styles.section}>
           <Text style={styles.sectionHeader}>Notifications & Alerts</Text>
+          <Text style={styles.sectionNote}>
+            These switches are saved on this phone. This build does not deliver push alerts.
+          </Text>
           <View style={styles.card}>
             <View style={styles.rowBetween}>
               <View style={styles.rowLead}>
@@ -806,25 +806,6 @@ export function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionHeader}>Data & Diagnostics</Text>
           <View style={styles.card}>
-            <TouchableOpacity
-              style={styles.rowBetween}
-              onPress={handleClearCache}
-              activeOpacity={0.7}
-            >
-              <View style={styles.rowLead}>
-                <Trash2 size={18} color={colors.accentCyan} />
-                <View>
-                  <Text style={styles.rowTitle}>Clear Message & Image Cache</Text>
-                  <Text style={styles.rowSubtitle}>
-                    {cacheCleared ? "Cleared successfully!" : "Frees memory and stored assets"}
-                  </Text>
-                </View>
-              </View>
-              <ChevronRight size={18} color={colors.textSecondary} />
-            </TouchableOpacity>
-
-            <View style={styles.divider} />
-
             <TouchableOpacity
               style={styles.rowBetween}
               onPress={handleResetDefaults}
@@ -1157,6 +1138,13 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.6,
     paddingLeft: 4,
+  },
+  sectionNote: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    lineHeight: 17,
+    paddingLeft: 4,
+    paddingRight: 8,
   },
   sectionHeaderRow: {
     flexDirection: "row",

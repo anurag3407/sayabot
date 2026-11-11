@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
-import { ENV } from "../config/env"
+import { currentWebApiUrl } from "../core/settings"
 import { supabase } from "../core/supabase"
 import type { Message, PendingApproval } from "../types"
 
@@ -10,10 +10,12 @@ export function useRoomRealtime(roomId: string, orgSlug: string) {
   const [activeAgentId, setActiveAgentId] = useState<string | null>(null)
   const [terminalLogs, setTerminalLogs] = useState<string[]>([])
   const [approval, setApproval] = useState<PendingApproval | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   // 1. Initial Load of Messages History
   const loadHistory = useCallback(async () => {
     setLoading(true)
+    setError(null)
     try {
       const { data, error } = await supabase
         .from("messages")
@@ -45,6 +47,7 @@ export function useRoomRealtime(roomId: string, orgSlug: string) {
       }
     } catch (err) {
       console.error("[useRoomRealtime] loadHistory error:", err)
+      setError(err instanceof Error ? err.message : "Could not load messages.")
     } finally {
       setLoading(false)
     }
@@ -144,9 +147,9 @@ export function useRoomRealtime(roomId: string, orgSlug: string) {
   const sendMessage = async (content: string) => {
     if (!content.trim()) return
     const { data: { session } } = await supabase.auth.getSession()
-    if (!session) throw new Error("Not authenticated")
+    if (!session) throw new Error("Sign in to send a message.")
 
-    const res = await fetch(`${ENV.WEB_API_URL}/api/messages`, {
+    const res = await fetch(`${currentWebApiUrl()}/api/messages`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -171,9 +174,9 @@ export function useRoomRealtime(roomId: string, orgSlug: string) {
   const resolveApproval = async (approved: boolean) => {
     if (!approval) return
     const { data: { session } } = await supabase.auth.getSession()
-    if (!session) throw new Error("Not authenticated")
+    if (!session) throw new Error("Sign in to approve or reject this tool.")
 
-    await fetch(`${ENV.WEB_API_URL}/api/v1/tools/${approval.toolCallId}/approve`, {
+    const res = await fetch(`${currentWebApiUrl()}/api/v1/tools/${approval.toolCallId}/approve`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -181,12 +184,17 @@ export function useRoomRealtime(roomId: string, orgSlug: string) {
       },
       body: JSON.stringify({ approved }),
     })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.error || "That decision was not saved. The tool is still waiting.")
+    }
     setApproval(null)
   }
 
   return {
     messages,
     loading,
+    error,
     agentStatus,
     activeAgentId,
     terminalLogs,

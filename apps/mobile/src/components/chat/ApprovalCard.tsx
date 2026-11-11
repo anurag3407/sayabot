@@ -1,17 +1,35 @@
-import React from "react"
-import { StyleSheet, Text, View } from "react-native"
+import React, { useState } from "react"
+import { StyleSheet, Text, Vibration, View } from "react-native"
 import { Check, ShieldAlert, X } from "lucide-react-native"
+import { useSettings } from "../../hooks/useSettings"
 import { Button } from "../ui/Button"
 import { colors, fonts } from "../../theme"
 import type { PendingApproval } from "../../types"
 
 interface ApprovalCardProps {
   approval: PendingApproval
-  onResolve: (approved: boolean) => void
+  onResolve: (approved: boolean) => Promise<void>
 }
 
 export function ApprovalCard({ approval, onResolve }: ApprovalCardProps) {
+  const { settings } = useSettings()
+  const [error, setError] = useState<string | null>(null)
+  const [pending, setPending] = useState(false)
   const formattedArgs = JSON.stringify(approval.args, null, 2)
+
+  async function decide(approved: boolean) {
+    if (pending) return
+    setPending(true)
+    setError(null)
+    if (settings.hapticsEnabled) Vibration.vibrate(12)
+    try {
+      await onResolve(approved)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "That decision was not saved.")
+    } finally {
+      setPending(false)
+    }
+  }
 
   return (
     <View style={styles.card}>
@@ -40,16 +58,19 @@ export function ApprovalCard({ approval, onResolve }: ApprovalCardProps) {
           variant="primary"
           icon={<Check size={16} color={colors.textInverse} />}
           style={styles.approveBtn}
-          onPress={() => onResolve(true)}
+          onPress={() => void decide(true)}
+          disabled={pending}
         />
         <Button
           title="Reject"
           variant="danger"
           icon={<X size={16} color="#ffffff" />}
           style={styles.rejectBtn}
-          onPress={() => onResolve(false)}
+          onPress={() => void decide(false)}
+          disabled={pending}
         />
       </View>
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
     </View>
   )
 }
@@ -131,5 +152,10 @@ const styles = StyleSheet.create({
     borderColor: colors.accentDanger,
     borderWidth: 1,
     paddingVertical: 10,
+  },
+  errorText: {
+    color: colors.accentDanger,
+    fontSize: 12.5,
+    marginTop: 8,
   },
 })

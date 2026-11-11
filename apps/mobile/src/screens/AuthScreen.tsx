@@ -28,10 +28,10 @@ import { useSettings } from "../hooks/useSettings"
 import { colors } from "../theme"
 
 interface AuthScreenProps {
-  onSuccess: () => void
+  onEnterDemo: () => void
 }
 
-export function AuthScreen({ onSuccess }: AuthScreenProps) {
+export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
   const { settings, updateSettings } = useSettings()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -39,38 +39,46 @@ export function AuthScreen({ onSuccess }: AuthScreenProps) {
   const [isSignUp, setIsSignUp] = useState(false)
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
 
   // Server gateway config modal
   const [serverModal, setServerModal] = useState(false)
   const [serverUrlInput, setServerUrlInput] = useState(settings.webApiUrl)
 
   const handleSubmit = async () => {
-    if (!email.trim() || !password.trim()) {
-      setErrorMsg("Please enter both email and password")
+    if (!email.trim() || !password) {
+      setErrorMsg("Enter both an email and a password.")
+      return
+    }
+    if (isSignUp && password.length < 6) {
+      setErrorMsg("Use at least 6 characters for the password.")
       return
     }
 
     setLoading(true)
     setErrorMsg(null)
+    setNotice(null)
 
     try {
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email: email.trim(),
-          password: password.trim(),
+          password,
         })
         if (error) throw error
-        setErrorMsg("Confirmation link/code sent to your email.")
+        if (!data.session) {
+          setNotice("Check your email to confirm this account, then sign in.")
+          setIsSignUp(false)
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email: email.trim(),
-          password: password.trim(),
+          password,
         })
         if (error) throw error
-        onSuccess()
       }
-    } catch (err: any) {
-      setErrorMsg(err.message || "Authentication failed")
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : "Authentication failed")
     } finally {
       setLoading(false)
     }
@@ -79,13 +87,13 @@ export function AuthScreen({ onSuccess }: AuthScreenProps) {
   const handleDemoSignIn = async () => {
     setLoading(true)
     setErrorMsg(null)
+    setNotice(null)
     try {
-      // Sign in with guest / demo session credentials
       await updateSettings({
-        displayName: "Guest Operator",
-        role: "Sandbox Explorer",
+        displayName: "Guest",
+        role: "Preview",
       })
-      onSuccess()
+      onEnterDemo()
     } finally {
       setLoading(false)
     }
@@ -114,6 +122,11 @@ export function AuthScreen({ onSuccess }: AuthScreenProps) {
               <Text style={styles.errorText}>{errorMsg}</Text>
             </View>
           )}
+          {notice && (
+            <View style={styles.noticeBox}>
+              <Text style={styles.noticeText}>{notice}</Text>
+            </View>
+          )}
 
           {/* Form */}
           <View style={styles.form}>
@@ -125,6 +138,8 @@ export function AuthScreen({ onSuccess }: AuthScreenProps) {
                 placeholderTextColor={colors.textPlaceholder}
                 keyboardType="email-address"
                 autoCapitalize="none"
+                autoComplete="email"
+                textContentType="emailAddress"
                 value={email}
                 onChangeText={setEmail}
               />
@@ -137,12 +152,15 @@ export function AuthScreen({ onSuccess }: AuthScreenProps) {
                 placeholder="Enter password"
                 placeholderTextColor={colors.textPlaceholder}
                 secureTextEntry={!showPassword}
+                autoComplete={isSignUp ? "password-new" : "password"}
+                textContentType={isSignUp ? "newPassword" : "password"}
                 value={password}
                 onChangeText={setPassword}
               />
               <TouchableOpacity
                 onPress={() => setShowPassword(!showPassword)}
                 style={styles.eyeBtn}
+                accessibilityLabel={showPassword ? "Hide password" : "Show password"}
               >
                 {showPassword ? (
                   <EyeOff size={18} color={colors.textSecondary} />
@@ -171,6 +189,7 @@ export function AuthScreen({ onSuccess }: AuthScreenProps) {
               onPress={() => {
                 setIsSignUp(!isSignUp)
                 setErrorMsg(null)
+                setNotice(null)
               }}
               style={styles.toggleBtn}
             >
@@ -188,8 +207,11 @@ export function AuthScreen({ onSuccess }: AuthScreenProps) {
               activeOpacity={0.8}
             >
               <Sparkles size={14} color={colors.primaryBright} />
-              <Text style={styles.demoBtnText}>Explore in Demo Mode</Text>
+              <Text style={styles.demoBtnText}>Look around without an account</Text>
             </TouchableOpacity>
+            <Text style={styles.demoHint}>
+              Preview only. Rooms, tasks, and messages stay unavailable until you sign in.
+            </Text>
           </View>
 
           {/* Server Endpoint Indicator Pill */}
@@ -243,9 +265,13 @@ export function AuthScreen({ onSuccess }: AuthScreenProps) {
               <TouchableOpacity
                 style={styles.modalSaveBtn}
                 onPress={async () => {
-                  if (serverUrlInput.trim()) {
-                    await updateSettings({ webApiUrl: serverUrlInput.trim() })
+                  const next = serverUrlInput.trim().replace(/\/+$/, "")
+                  if (!/^https?:\/\//i.test(next)) {
+                    setErrorMsg("The gateway address needs to start with http:// or https://")
+                    setServerModal(false)
+                    return
                   }
+                  await updateSettings({ webApiUrl: next })
                   setServerModal(false)
                 }}
               >
@@ -315,6 +341,20 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: "center",
   },
+  noticeBox: {
+    backgroundColor: "rgba(83, 189, 235, 0.12)",
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 16,
+    width: "100%",
+    borderWidth: 1,
+    borderColor: "rgba(83, 189, 235, 0.35)",
+  },
+  noticeText: {
+    color: colors.accentCyan,
+    fontSize: 13,
+    textAlign: "center",
+  },
   form: {
     width: "100%",
     gap: 12,
@@ -379,6 +419,12 @@ const styles = StyleSheet.create({
     color: colors.primaryBright,
     fontSize: 13.5,
     fontWeight: "600",
+  },
+  demoHint: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    textAlign: "center",
+    lineHeight: 17,
   },
   serverPill: {
     flexDirection: "row",

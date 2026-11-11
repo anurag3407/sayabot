@@ -3,84 +3,69 @@ import {
   Alert,
   FlatList,
   RefreshControl,
-  SafeAreaView,
   StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native"
+import { SafeAreaView } from "react-native-safe-area-context"
 import {
   Cpu,
   Globe,
-  HardDrive,
   Power,
   RefreshCw,
   Server,
-  Terminal,
-  Zap,
 } from "lucide-react-native"
 import { supabase } from "../core/supabase"
-import { ENV } from "../config/env"
-import { TerminalDrawer } from "../components/chat/TerminalDrawer"
+import { currentWebApiUrl } from "../core/settings"
+import { usePalette } from "../hooks/usePalette"
 import { colors, fonts } from "../theme"
 import type { ComputerContainerState } from "../types"
 
 export function ComputersScreen() {
+  const theme = usePalette()
   const [computers, setComputers] = useState<ComputerContainerState[]>([])
   const [loading, setLoading] = useState(true)
-  const [terminalVisible, setTerminalVisible] = useState(false)
-  const [terminalLogs, setTerminalLogs] = useState<string[]>([
-    "$ initializing linux container runtime...",
-    "$ mount /home/bot persistent volume: ready",
-    "$ environment ready for autonomous bash commands.",
-  ])
+  const [error, setError] = useState<string | null>(null)
 
   const fetchComputers = async () => {
     setLoading(true)
+    setError(null)
     try {
-      const { data: agentRows } = await supabase
-        .from("agents")
-        .select("id, handle, display_name, capabilities")
-        .limit(30)
-
-      if (agentRows && agentRows.length > 0) {
-        const list: ComputerContainerState[] = agentRows
-          .filter((a: any) => a.capabilities?.computer)
-          .map((a: any, idx: number) => ({
-            agentId: a.id,
-            agentHandle: a.handle,
-            status: "running",
-            containerId: `bot-${a.id.slice(0, 8)}`,
-            ip: `172.28.0.${idx + 3}`,
-            profile: a.capabilities?.computer?.profile || "standard",
-          }))
-        setComputers(list)
-      } else {
-        // Fallback default computer environment so user always sees the active runner
-        setComputers([
-          {
-            agentId: "agent-default-1",
-            agentHandle: "sayabot-runner",
-            status: "running",
-            containerId: "bot-c8f941a2",
-            ip: "172.28.0.3",
-            profile: "standard",
-          },
-        ])
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) {
+        setComputers([])
+        setError("Sign in to see agent computers.")
+        return
       }
+
+      const { data, error: queryError } = await supabase
+        .from("agent_computers")
+        .select("agent_id, status, container_id, container_ip, profile, error, agents(handle)")
+        .limit(30)
+      if (queryError) throw queryError
+
+      setComputers(
+        (data ?? []).map((row) => {
+          const agent = Array.isArray(row.agents) ? row.agents[0] : row.agents
+          return {
+            agentId: row.agent_id,
+            agentHandle: agent?.handle || "agent",
+            status: row.status,
+            containerId: row.container_id,
+            ip: row.container_ip,
+            profile: row.profile === "browser" ? "browser" : "standard",
+            error: row.error,
+          }
+        }),
+      )
     } catch (e) {
       console.error("[ComputersScreen] error:", e)
-      setComputers([
-        {
-          agentId: "agent-default-1",
-          agentHandle: "sayabot-runner",
-          status: "running",
-          containerId: "bot-c8f941a2",
-          ip: "172.28.0.3",
-          profile: "standard",
-        },
-      ])
+      setComputers([])
+      setError(e instanceof Error ? e.message : "Could not load computers.")
     } finally {
       setLoading(false)
     }
@@ -91,36 +76,40 @@ export function ComputersScreen() {
   }, [])
 
   const handleTogglePower = (item: ComputerContainerState) => {
-    const isRunning = item.status === "running"
     Alert.alert(
-      isRunning ? "Stop Sandbox" : "Start Sandbox",
-      isRunning
-        ? `Are you sure you want to stop computer sandbox for @${item.agentHandle}? Active bash processes will be terminated.`
-        : `Boot computer sandbox for @${item.agentHandle}?`,
+      "Stop computer",
+      `Stop the computer for @${item.agentHandle}? Commands that are running will be cut off.`,
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: isRunning ? "Stop" : "Start",
-          style: isRunning ? "destructive" : "default",
+          text: "Stop",
+          style: "destructive",
           onPress: async () => {
             try {
               const { data: { session } } = await supabase.auth.getSession()
-              await fetch(`${ENV.WEB_API_URL}/api/v1/computers/${item.agentId}/${isRunning ? "stop" : "start"}`, {
+              if (!session) {
+                Alert.alert("Sign in required", "Sign in before stopping a computer.")
+                return
+              }
+              const res = await fetch(`${currentWebApiUrl()}/api/v1/computers/${item.agentId}/stop`, {
                 method: "POST",
                 headers: {
-                  Authorization: `Bearer ${session?.access_token}`,
+                  Authorization: `Bearer ${session.access_token}`,
                 },
-              }).catch(() => {})
-
+              })
+              if (!res.ok) {
+                const body = (await res.json().catch(() => ({}))) as { error?: string }
+                Alert.alert("Computer still running", body.error || "The stop request did not succeed.")
+                return
+              }
               setComputers((prev) =>
                 prev.map((c) =>
-                  c.agentId === item.agentId
-                    ? { ...c, status: isRunning ? "stopped" : "running" }
-                    : c
+                  c.agentId === item.agentId ? { ...c, status: "stopped" } : c
                 )
               )
             } catch (err) {
               console.error("Power action failed:", err)
+              Alert.alert("Computer still running", "The stop request did not succeed.")
             }
           },
         },
@@ -128,26 +117,15 @@ export function ComputersScreen() {
     )
   }
 
-  const handleOpenTerminal = (item: ComputerContainerState) => {
-    setTerminalLogs([
-      `$ connecting to docker container ${item.containerId} (@${item.agentHandle})...`,
-      `$ bash -l: /home/bot (persistent workdir)`,
-      `$ ip: ${item.ip} (bridge network)`,
-      `$ profile: ${item.profile}`,
-      `$ waiting for next tool call execution...`,
-    ])
-    setTerminalVisible(true)
-  }
-
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.surface} />
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      <StatusBar barStyle="light-content" backgroundColor={theme.surface} />
 
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: theme.surface }]}>
         <View>
           <Text style={styles.title}>Agent Computers</Text>
-          <Text style={styles.subtitle}>Persistent Linux Docker Micro-Environments</Text>
+          <Text style={styles.subtitle}>Linux computers assigned to agents</Text>
         </View>
         <TouchableOpacity style={styles.refreshBtn} onPress={fetchComputers}>
           <RefreshCw size={18} color={colors.textSecondary} />
@@ -173,7 +151,9 @@ export function ComputersScreen() {
                   </View>
                   <View>
                     <Text style={styles.handle}>@{item.agentHandle}</Text>
-                    <Text style={styles.containerName}>ID: {item.containerId}</Text>
+                    <Text style={styles.containerName}>
+                        {item.containerId ? `ID: ${item.containerId}` : "No container yet"}
+                      </Text>
                   </View>
                 </View>
 
@@ -203,32 +183,25 @@ export function ComputersScreen() {
               {/* Sandbox Specs Grid */}
               <View style={styles.detailsGrid}>
                 <View style={styles.detailItem}>
-                  <HardDrive size={13} color={colors.textSecondary} />
-                  <Text style={styles.detailText}>Mount: /home/bot (Persistent Disk)</Text>
-                </View>
-                <View style={styles.detailItem}>
                   <Globe size={13} color={colors.textSecondary} />
-                  <Text style={styles.detailText}>Profile: {item.profile} (Chromium + Bash)</Text>
+                  <Text style={styles.detailText}>
+                    Profile: {item.profile === "browser" ? "Browser" : "Standard"}
+                  </Text>
                 </View>
                 <View style={styles.detailItem}>
-                  <Zap size={13} color={colors.accentGold} />
-                  <Text style={styles.detailText}>IP: {item.ip || "172.28.0.3"}</Text>
+                  <Server size={13} color={colors.textSecondary} />
+                  <Text style={styles.detailText}>{item.ip ? `Address: ${item.ip}` : "No address yet"}</Text>
                 </View>
+                {item.error ? (
+                  <Text style={styles.detailText}>{item.error}</Text>
+                ) : null}
               </View>
 
               {/* Card Footer Actions */}
               <View style={styles.cardFooter}>
+                {isRunning ? (
                 <TouchableOpacity
-                  style={styles.terminalBtn}
-                  onPress={() => handleOpenTerminal(item)}
-                  activeOpacity={0.7}
-                >
-                  <Terminal size={14} color={colors.primaryBright} />
-                  <Text style={styles.terminalBtnText}>Open Shell</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.powerBtn, isRunning ? styles.powerBtnStop : styles.powerBtnStart]}
+                  style={[styles.powerBtn, styles.powerBtnStop]}
                   onPress={() => handleTogglePower(item)}
                   activeOpacity={0.7}
                 >
@@ -239,9 +212,16 @@ export function ComputersScreen() {
                       isRunning ? styles.powerTextStop : styles.powerTextStart,
                     ]}
                   >
-                    {isRunning ? "Stop Sandbox" : "Start Sandbox"}
+                    Stop computer
                   </Text>
                 </TouchableOpacity>
+                ) : (
+                  <Text style={styles.detailText}>
+                    {item.status === "stopped" || item.status === "none"
+                      ? "This computer is not running."
+                      : `Status: ${item.status.replaceAll("_", " ")}`}
+                  </Text>
+                )}
               </View>
             </View>
           )
@@ -250,21 +230,13 @@ export function ComputersScreen() {
           !loading ? (
             <View style={styles.empty}>
               <Server size={36} color={colors.textSecondary} />
-              <Text style={styles.emptyTitle}>No active agent computers deployed</Text>
+              <Text style={styles.emptyTitle}>{error ? "Computers are unavailable" : "No agent computers yet"}</Text>
               <Text style={styles.emptySubtitle}>
-                Agent computers are isolated Linux micro-environments with persistent bash shells.
+                {error ?? "A computer shows up here after an agent is given one."}
               </Text>
             </View>
           ) : null
         }
-      />
-
-      {/* Terminal Drawer for Shell Inspection */}
-      <TerminalDrawer
-        visible={terminalVisible}
-        logs={terminalLogs}
-        onClose={() => setTerminalVisible(false)}
-        onClear={() => setTerminalLogs([])}
       />
     </SafeAreaView>
   )

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import type { Session, User } from "@supabase/supabase-js"
+import { setDemoMode } from "../core/session-mode"
 import { supabase } from "../core/supabase"
 
 export function useAuth() {
@@ -35,6 +36,7 @@ export function useAuth() {
   }
 
   const signOut = async () => {
+    setDemoMode(false)
     const { error } = await supabase.auth.signOut()
     if (error) throw error
   }

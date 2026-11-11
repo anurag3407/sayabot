@@ -11,7 +11,7 @@
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
-    "test": "tsc --noEmit -p tests/unit/tsconfig.json && node --experimental-strip-types tests/unit/env.test.ts"
+    "test": "tsc --noEmit -p tests/unit/tsconfig.json && node --experimental-strip-types tests/unit/env.test.ts && node --experimental-strip-types tests/unit/workspace-draft.test.ts"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "1.23.1",
@@ -21,6 +21,7 @@
     "@sayabot/core": "workspace:*",
     "@supabase/supabase-js": "^2.48.0",
     "expo": "~52.0.0",
+    "expo-clipboard": "~7.0.1",
     "expo-status-bar": "~2.0.0",
     "lucide-react-native": "^0.475.0",
     "react": "^19.3.1",

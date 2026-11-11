@@ -48,6 +48,32 @@ export const colors = {
   codeBg: "#06090e",
 }
 
+export type ThemeMode = "dark" | "oled" | "emerald"
+
+export function paletteFor(mode: ThemeMode) {
+  if (mode === "oled") {
+    return {
+      ...colors,
+      background: "#000000",
+      backgroundSecondary: "#000000",
+      surface: "#050505",
+      surfaceLight: "#121212",
+      border: "#1c1c1c",
+      borderSubtle: "#161616",
+    }
+  }
+  if (mode === "emerald") {
+    return {
+      ...colors,
+      background: "#071410",
+      backgroundSecondary: "#0b1c16",
+      surface: "#10261e",
+      surfaceLight: "#163228",
+    }
+  }
+  return colors
+}
+
 export const fonts = {
   mono: Platform.OS === "ios" ? "Menlo" : "monospace",
 }

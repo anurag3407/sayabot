@@ -1,14 +1,16 @@
-import React, { useRef, useState } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import {
   FlatList,
+  KeyboardAvoidingView,
   Modal,
-  SafeAreaView,
+  Platform,
   StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native"
+import { SafeAreaView } from "react-native-safe-area-context"
 import {
   ArrowDown,
   ArrowLeft,
@@ -24,6 +26,8 @@ import { MessageBubble } from "../components/chat/MessageBubble"
 import { TerminalDrawer } from "../components/chat/TerminalDrawer"
 import { ApprovalCard } from "../components/chat/ApprovalCard"
 import { ChatInput } from "../components/chat/ChatInput"
+import { useSettings } from "../hooks/useSettings"
+import { usePalette } from "../hooks/usePalette"
 import { colors } from "../theme"
 
 export function ChatScreen({ route, navigation }: any) {
@@ -31,6 +35,7 @@ export function ChatScreen({ route, navigation }: any) {
   const {
     messages,
     loading,
+    error,
     agentStatus,
     terminalLogs,
     approval,
@@ -43,8 +48,14 @@ export function ChatScreen({ route, navigation }: any) {
   const [menuVisible, setMenuVisible] = useState(false)
   const [showScrollBottom, setShowScrollBottom] = useState(false)
   const listRef = useRef<FlatList>(null)
+  const { settings } = useSettings()
+  const theme = usePalette()
 
-  const subtitle = agentStatus ? agentStatus.toLowerCase() : "online"
+  useEffect(() => {
+    if (settings.autoOpenTerminal && terminalLogs.length > 0) setTerminalVisible(true)
+  }, [settings.autoOpenTerminal, terminalLogs.length])
+
+  const subtitle = agentStatus ?? "Idle"
 
   const scrollToBottom = () => {
     listRef.current?.scrollToEnd({ animated: true })
@@ -52,11 +63,15 @@ export function ChatScreen({ route, navigation }: any) {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.surface} />
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.surface }]}>
+      <StatusBar barStyle="light-content" backgroundColor={theme.surface} />
+      <KeyboardAvoidingView
+        style={styles.keyboard}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
 
       {/* WhatsApp Chat Room Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: theme.surface }]}>
         <View style={styles.headerLeft}>
           <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
             <ArrowLeft size={22} color={colors.textPrimary} />
@@ -65,7 +80,7 @@ export function ChatScreen({ route, navigation }: any) {
           {/* Contact Avatar */}
           <View style={styles.headerAvatar}>
             <Bot size={20} color={colors.primaryBright} />
-            <View style={styles.avatarOnlineDot} />
+            {agentStatus ? <View style={styles.avatarOnlineDot} /> : null}
           </View>
 
           {/* Contact Name & Subtitle */}
@@ -109,12 +124,7 @@ export function ChatScreen({ route, navigation }: any) {
       </View>
 
       {/* Chat Wallpaper Container */}
-      <View style={styles.wallpaper}>
-        {/* Date Divider */}
-        <View style={styles.datePill}>
-          <Text style={styles.dateText}>TODAY</Text>
-        </View>
-
+      <View style={[styles.wallpaper, { backgroundColor: theme.background }]}>
         {/* Human In The Loop Danger Tool Approval Card */}
         {approval && <ApprovalCard approval={approval} onResolve={resolveApproval} />}
 
@@ -139,8 +149,9 @@ export function ChatScreen({ route, navigation }: any) {
                 <View style={styles.encryptionPill}>
                   <Sparkles size={16} color={colors.accentGold} style={{ marginBottom: 4 }} />
                   <Text style={styles.encryptionText}>
-                    🔒 Messages in this room coordinate autonomous AI agents with persistent Linux
-                    computers. All tool executions and credentials are AES-256-GCM encrypted.
+                    {error
+                      ? error
+                      : "Messages here are shared with the people and agents in this room."}
                   </Text>
                 </View>
               </View>
@@ -207,7 +218,7 @@ export function ChatScreen({ route, navigation }: any) {
               style={styles.menuItem}
               onPress={() => {
                 setMenuVisible(false)
-                navigation.navigate("SettingsTab")
+                navigation.navigate("MainTabs", { screen: "SettingsTab" })
               }}
             >
               <Settings size={16} color={colors.textSecondary} />
@@ -216,6 +227,7 @@ export function ChatScreen({ route, navigation }: any) {
           </View>
         </TouchableOpacity>
       </Modal>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   )
 }
@@ -224,6 +236,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.surface,
+  },
+  keyboard: {
+    flex: 1,
   },
   header: {
     flexDirection: "row",

@@ -5,7 +5,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native"
-import { Check, CheckCheck, Copy, Terminal } from "lucide-react-native"
+import * as Clipboard from "expo-clipboard"
+import { Check, Copy, Terminal } from "lucide-react-native"
+import { useSettings } from "../../hooks/useSettings"
 import { colors, fonts } from "../../theme"
 import type { Message } from "../../types"
 
@@ -61,7 +63,9 @@ function parseMessageContent(raw: string) {
 export function MessageBubble({ message }: MessageBubbleProps) {
   const isAgent = message.senderType === "agent"
   const isSystem = message.senderType === "system"
+  const { settings } = useSettings()
   const [copiedCodeIndex, setCopiedCodeIndex] = useState<number | null>(null)
+  const fontSize = settings.fontSize === "compact" ? 14 : settings.fontSize === "large" ? 18 : 15
 
   if (isSystem) {
     return (
@@ -80,9 +84,14 @@ export function MessageBubble({ message }: MessageBubbleProps) {
 
   const contentBlocks = parseMessageContent(message.content)
 
-  const handleCopyCode = (index: number) => {
-    setCopiedCodeIndex(index)
-    setTimeout(() => setCopiedCodeIndex(null), 2000)
+  const handleCopyCode = async (index: number, content: string) => {
+    try {
+      await Clipboard.setStringAsync(content)
+      setCopiedCodeIndex(index)
+      setTimeout(() => setCopiedCodeIndex(null), 2000)
+    } catch {
+      setCopiedCodeIndex(null)
+    }
   }
 
   return (
@@ -115,7 +124,8 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                   </View>
                   <TouchableOpacity
                     style={styles.codeCopyBtn}
-                    onPress={() => handleCopyCode(idx)}
+                    onPress={() => void handleCopyCode(idx, block.content)}
+                    accessibilityLabel="Copy code"
                   >
                     {isCopied ? (
                       <Check size={12} color={colors.primaryBright} />
@@ -135,7 +145,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           }
 
           return (
-            <Text key={idx} style={styles.content}>
+            <Text key={idx} style={[styles.content, { fontSize, lineHeight: fontSize + 6 }]}>
               {block.content}
               {message.status === "streaming" && (
                 <Text style={styles.streamingCursor}> ▋</Text>
@@ -147,9 +157,9 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         {/* Bottom Timestamp & Delivery Status */}
         <View style={styles.metaRow}>
           <Text style={styles.timeText}>{timeStr}</Text>
-          {!isAgent && (
-            <CheckCheck size={14} color={colors.accentCyan} style={styles.tickIcon} />
-          )}
+          {!isAgent && message.status !== "error" ? (
+            <Check size={14} color={colors.textSecondary} style={styles.tickIcon} />
+          ) : null}
         </View>
       </View>
     </View>
