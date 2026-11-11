@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { updateSession } from "@/lib/supabase/proxy"
+import { safeNextPath } from "@/lib/safe-next"
 
 const PUBLIC_PATHS = [
   "/",
@@ -38,6 +39,12 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url)
   }
   if (user && (pathname === "/login" || pathname === "/signup")) {
+    const rawNext = request.nextUrl.searchParams.get("next")
+    const next = safeNextPath(rawNext, "")
+    if (next && next !== "/" && next !== "/login" && next !== "/signup") {
+      const url = new URL(next, request.url)
+      return NextResponse.redirect(url)
+    }
     const url = request.nextUrl.clone()
     url.pathname = "/"
     url.search = ""

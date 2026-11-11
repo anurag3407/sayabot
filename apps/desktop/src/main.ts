@@ -110,7 +110,9 @@ function handleDeepLink(urlStr: string): void {
         if (mainWindow && !mainWindow.isDestroyed()) {
           mainWindow.webContents.send("auth:session-updated", session)
           if (mainWindow.isMinimized()) mainWindow.restore()
+          mainWindow.show()
           mainWindow.focus()
+          openWorkspaceInWindow()
         }
       }
     }

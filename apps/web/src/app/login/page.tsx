@@ -17,6 +17,10 @@ export default async function LoginPage({
   const params = await searchParams
   const user = await getCurrentUser()
   if (user) {
+    const next = safeNextPath(params.next, "")
+    if (next && next !== "/" && next !== "/login" && next !== "/signup") {
+      redirect(next)
+    }
     const orgs = await listUserOrgs(user.id)
     redirect(orgs.length ? `/${orgs[0]!.slug}` : "/onboarding")
   }

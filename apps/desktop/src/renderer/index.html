@@ -441,6 +441,9 @@
 
     bridge.onSessionUpdate((newSession) => {
       refreshState();
+      if (newSession && newSession.accessToken) {
+        bridge.openWorkspaceInWindow();
+      }
     });
 
     refreshState();
