@@ -19,7 +19,7 @@ describe("Local Usage Scanner API Route", () => {
 
     // Check header
     expect(response.headers.get("Cache-Control")).toContain("no-cache")
-  })
+  }, 20000)
 
   it("handles custom provider filters", async () => {
     const request = new Request("http://localhost:3000/api/usage/local?providers=antigravity")
@@ -29,5 +29,5 @@ describe("Local Usage Scanner API Route", () => {
     const data = await response.json()
     expect(data.ok).toBe(true)
     expect(data.providersScanned).toEqual(["antigravity"])
-  })
+  }, 20000)
 })

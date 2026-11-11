@@ -391,12 +391,11 @@
       const session = await bridge.getSession();
       if (session && session.accessToken) {
         unauthView.classList.add("hidden");
-        authView.classList.remove("hidden");
-        userEmailLabel.textContent = session.email || "Active User";
-      } else {
-        authView.classList.add("hidden");
-        unauthView.classList.remove("hidden");
+        bridge.openWorkspaceInWindow();
+        return;
       }
+      authView.classList.add("hidden");
+      unauthView.classList.remove("hidden");
 
       const status = await bridge.getLocalRunnerStatus();
       localRunnerToggle.checked = status.running;

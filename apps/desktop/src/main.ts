@@ -243,7 +243,6 @@ function createWindow() {
     },
   })
 
-  loadLocalHtml()
   buildAppMenu()
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -254,6 +253,15 @@ function createWindow() {
   mainWindow.on("closed", () => {
     mainWindow = null
   })
+
+  const session = loadSession()
+  if (session && session.accessToken) {
+    console.log("[Sayabot Desktop] Active session found, opening workspace directly...")
+    openWorkspaceInWindow()
+  } else {
+    console.log("[Sayabot Desktop] No session found, loading native login card...")
+    loadLocalHtml()
+  }
 
   if (pendingDeepLinkUrl) {
     setTimeout(() => {
