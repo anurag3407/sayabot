@@ -1,7 +1,26 @@
 import { useEffect, useState } from "react"
+import { Linking } from "react-native"
 import type { Session, User } from "@supabase/supabase-js"
 import { setDemoMode } from "../core/session-mode"
 import { supabase } from "../core/supabase"
+
+function extractTokensFromUrl(url: string): { accessToken: string; refreshToken: string } | null {
+  try {
+    const raw = url.includes("#") ? url.split("#")[1] : url.split("?")[1]
+    if (!raw) return null
+
+    const params = new URLSearchParams(raw)
+    const accessToken = params.get("access_token")
+    const refreshToken = params.get("refresh_token")
+
+    if (accessToken && refreshToken) {
+      return { accessToken, refreshToken }
+    }
+  } catch (err) {
+    console.error("[useAuth] Failed to parse deep-link tokens:", err)
+  }
+  return null
+}
 
 export function useAuth() {
   const [session, setSession] = useState<Session | null>(null)
@@ -21,8 +40,35 @@ export function useAuth() {
       setLoading(false)
     })
 
+    // Handle deep-link auth callback (sayabot://auth/callback)
+    const handleDeepLink = async (event: { url: string }) => {
+      if (!event.url) return
+      const tokens = extractTokensFromUrl(event.url)
+      if (tokens) {
+        setLoading(true)
+        try {
+          await supabase.auth.setSession({
+            access_token: tokens.accessToken,
+            refresh_token: tokens.refreshToken,
+          })
+        } catch (err) {
+          console.error("[useAuth] Failed to restore session from deep link:", err)
+        } finally {
+          setLoading(false)
+        }
+      }
+    }
+
+    // Check cold-start URL
+    Linking.getInitialURL().then((url) => {
+      if (url) handleDeepLink({ url })
+    })
+
+    const linkingSub = Linking.addEventListener("url", handleDeepLink)
+
     return () => {
       authListener.subscription.unsubscribe()
+      linkingSub.remove()
     }
   }, [])
 
@@ -35,11 +81,25 @@ export function useAuth() {
     return data
   }
 
+  const signInWithOAuth = async (provider: "google" | "github") => {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: "sayabot://auth/callback",
+        skipBrowserRedirect: true,
+      },
+    })
+    if (error) throw error
+    if (data?.url) {
+      await Linking.openURL(data.url)
+    }
+  }
+
   const signOut = async () => {
     setDemoMode(false)
     const { error } = await supabase.auth.signOut()
     if (error) throw error
   }
 
-  return { session, user, loading, signIn, signOut }
+  return { session, user, loading, signIn, signInWithOAuth, signOut }
 }

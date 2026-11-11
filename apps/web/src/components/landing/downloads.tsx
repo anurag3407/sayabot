@@ -6,13 +6,13 @@ import { AndroidIcon, AppleIcon, WindowsIcon } from "./brand-icons"
 import { DOWNLOADS } from "./content"
 
 const READY = [
-  { name: "Web & Desktop", meta: "PWA installable on Mac, Windows & Linux", href: DOWNLOADS.web, cta: "Launch in Browser", icon: AppleIcon, bg: "linear-gradient(165deg,#ecdfff,#c6a3ee)", seed: "Pip" },
-  { name: "Mobile App", meta: "Installable PWA & Expo React Native app", href: DOWNLOADS.mobile, cta: "Open Mobile App", icon: AndroidIcon, bg: "linear-gradient(165deg,#ffe1cf,#ef9f7f)", seed: "Juno" },
+  { name: "Sayabot for Mac", meta: "Native macOS .dmg with deep-link OAuth & local computer use", href: "/download", cta: "Download Mac App (.dmg)", icon: AppleIcon, bg: "linear-gradient(165deg,#ecdfff,#c6a3ee)", seed: "Pip" },
+  { name: "Sayabot for Android", meta: "Android APK to control, chat & approve agent tools from phone", href: "/download", cta: "Download Android APK", icon: AndroidIcon, bg: "linear-gradient(165deg,#ffe1cf,#ef9f7f)", seed: "Juno" },
 ]
 
 const SOON: { name: string; icon: ComponentType<{ className?: string }> }[] = [
-  { name: "Native macOS .dmg", icon: AppleIcon },
   { name: "Native Windows .exe", icon: WindowsIcon },
+  { name: "Linux AppImage", icon: WindowsIcon },
   { name: "Google Play Store", icon: AndroidIcon },
 ]
 

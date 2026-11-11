@@ -25,6 +25,7 @@ import {
 } from "lucide-react-native"
 import { setDemoMode } from "../core/session-mode"
 import { supabase } from "../core/supabase"
+import { useAuth } from "../hooks/useAuth"
 import { useSettings } from "../hooks/useSettings"
 import { colors } from "../theme"
 
@@ -34,6 +35,7 @@ interface AuthScreenProps {
 
 export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
   const { settings, updateSettings } = useSettings()
+  const { signInWithOAuth } = useAuth()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
@@ -49,6 +51,19 @@ export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
   useEffect(() => {
     setServerUrlInput(settings.webApiUrl)
   }, [settings.webApiUrl])
+
+  const handleOAuth = async (provider: "google" | "github") => {
+    setLoading(true)
+    setErrorMsg(null)
+    setNotice(null)
+    try {
+      await signInWithOAuth(provider)
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : "OAuth sign-in failed")
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleSubmit = async () => {
     if (!email.trim() || !password) {
@@ -139,6 +154,32 @@ export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
 
           {/* Form */}
           <View style={styles.form}>
+            {/* OAuth Buttons */}
+            <View style={styles.oauthContainer}>
+              <TouchableOpacity
+                style={styles.oauthBtnGoogle}
+                onPress={() => handleOAuth("google")}
+                disabled={loading}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.oauthBtnGoogleText}>Continue with Google</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.oauthBtnGithub}
+                onPress={() => handleOAuth("github")}
+                disabled={loading}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.oauthBtnGithubText}>Continue with GitHub</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.dividerRow}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or continue with email</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
             <View style={styles.inputContainer}>
               <Mail size={18} color={colors.textSecondary} style={styles.inputIcon} />
               <TextInput
@@ -367,6 +408,53 @@ const styles = StyleSheet.create({
   form: {
     width: "100%",
     gap: 12,
+  },
+  oauthContainer: {
+    gap: 10,
+    marginBottom: 6,
+  },
+  oauthBtnGoogle: {
+    backgroundColor: "#ffffff",
+    height: 48,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  oauthBtnGoogleText: {
+    color: "#000000",
+    fontSize: 14.5,
+    fontWeight: "700",
+  },
+  oauthBtnGithub: {
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    height: 48,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  oauthBtnGithubText: {
+    color: colors.textPrimary,
+    fontSize: 14.5,
+    fontWeight: "600",
+  },
+  dividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginVertical: 4,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.borderSubtle,
+  },
+  dividerText: {
+    color: colors.textSecondary,
+    fontSize: 11,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
   inputContainer: {
     flexDirection: "row",

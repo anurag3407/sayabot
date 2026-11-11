@@ -8,6 +8,7 @@ import { SayabotMark } from "./sayabot-mark"
 const NAV = [
   { href: "/#collab", label: "Collaboration" },
   { href: "/#features", label: "Features" },
+  { href: "/download", label: "Download" },
   { href: "/#mcp", label: "MCP" },
   { href: "/#how", label: "How it works" },
   { href: "/#compare", label: "Compare" },

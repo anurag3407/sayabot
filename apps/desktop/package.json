@@ -1,0 +1,65 @@
+{
+  "name": "@sayabot/desktop",
+  "version": "1.0.0",
+  "description": "Sayabot Desktop for macOS - Autonomous Remote Agent Workspace & Computer Controller",
+  "private": true,
+  "main": "dist/main.js",
+  "scripts": {
+    "dev": "tsc && cp -r src/renderer dist/ && electron .",
+    "build": "tsc && cp -r src/renderer dist/",
+    "typecheck": "tsc --noEmit",
+    "package:mac": "pnpm build && electron-builder --mac",
+    "package:dmg": "pnpm build && electron-builder --mac dmg",
+    "package:arm64": "pnpm build && electron-builder --mac --arm64",
+    "package:x64": "pnpm build && electron-builder --mac --x64"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "electron": "^34.2.0",
+    "electron-builder": "^26.18.0",
+    "typescript": "^5.9.0"
+  },
+  "build": {
+    "appId": "in.sayalabs.sayabot.desktop",
+    "productName": "Sayabot",
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "icon": "assets/icon.png",
+      "protocols": [
+        {
+          "name": "Sayabot URL Scheme",
+          "schemes": [
+            "sayabot"
+          ]
+        }
+      ],
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist"
+    },
+    "dmg": {
+      "title": "Sayabot macOS Installer",
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    },
+    "directories": {
+      "output": "dist/installers"
+    }
+  }
+}

@@ -3,7 +3,11 @@ export const GITHUB_URL = "https://github.com/anurag3407/Mesh"
 export const SPONSOR_URL = "https://github.com/sponsors/anurag3407"
 export const DOWNLOADS = {
   web: "/signup",
-  mobile: "/signup",
+  mobile: "/download",
+  macDmg: "/download",
+  macArm64: "https://github.com/anurag3407/Mesh/releases/latest/download/Sayabot-arm64.dmg",
+  macIntel: "https://github.com/anurag3407/Mesh/releases/latest/download/Sayabot-x64.dmg",
+  androidApk: "https://github.com/anurag3407/Mesh/releases/latest/download/Sayabot.apk",
   github: GITHUB_URL,
 }
 

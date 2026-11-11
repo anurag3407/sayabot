@@ -9,7 +9,7 @@ export const ENV = {
     process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsIn...",
 
   // Your VPS domain where Next.js web app is running (for /api/messages & tool approvals)
-  WEB_API_URL: process.env.EXPO_PUBLIC_WEB_API_URL || "https://your-domain.com",
+  WEB_API_URL: process.env.EXPO_PUBLIC_WEB_API_URL || "https://sayabot.sayalabs.in",
 
   // Default app metadata
   APP_NAME: "Sayabot",
