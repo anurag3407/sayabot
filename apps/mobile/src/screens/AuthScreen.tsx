@@ -35,7 +35,25 @@ interface AuthScreenProps {
 
 export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
   const { settings, updateSettings } = useSettings()
-  const { signInWithOAuth } = useAuth()
+  const { signInWithOAuth, signInWithCode, pairError } = useAuth()
+  const [codeModal, setCodeModal] = useState(false)
+  const [codeInput, setCodeInput] = useState("")
+  const [codeBusy, setCodeBusy] = useState(false)
+  const [codeError, setCodeError] = useState<string | null>(null)
+
+  const submitCode = async () => {
+    setCodeBusy(true)
+    setCodeError(null)
+    try {
+      await signInWithCode(codeInput)
+      setCodeModal(false)
+      setCodeInput("")
+    } catch (err: unknown) {
+      setCodeError(err instanceof Error ? err.message : "Could not sign in with that code")
+    } finally {
+      setCodeBusy(false)
+    }
+  }
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
@@ -141,9 +159,9 @@ export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
             Autonomous AI agents collaborating in real-time rooms with persistent Linux sandboxes.
           </Text>
 
-          {errorMsg && (
+          {(errorMsg || pairError) && (
             <View style={styles.errorBox}>
-              <Text style={styles.errorText}>{errorMsg}</Text>
+              <Text style={styles.errorText}>{errorMsg || pairError}</Text>
             </View>
           )}
           {notice && (
@@ -154,6 +172,20 @@ export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
 
           {/* Form */}
           <View style={styles.form}>
+            {/* Fastest path: a one-time code from "Add a phone" on a computer that's signed in. */}
+            <TouchableOpacity
+              style={styles.codeBtn}
+              onPress={() => {
+                setCodeError(null)
+                setCodeModal(true)
+              }}
+              disabled={loading}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.codeBtnText}>Sign in with a code</Text>
+              <Text style={styles.codeBtnHint}>From Settings → Phones on your computer</Text>
+            </TouchableOpacity>
+
             {/* OAuth Buttons */}
             <View style={styles.oauthContainer}>
               <TouchableOpacity
@@ -280,6 +312,51 @@ export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
       </KeyboardAvoidingView>
 
       {/* Server Endpoint Modal */}
+      <Modal visible={codeModal} animationType="slide" transparent onRequestClose={() => setCodeModal(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Sign in with a code</Text>
+              <TouchableOpacity onPress={() => setCodeModal(false)} accessibilityLabel="Close">
+                <X size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.modalDesc}>
+              On your computer, open Sayabot → Settings → Phones → Add phone → Yes, sign in. Type the code it shows.
+            </Text>
+            <TextInput
+              style={[styles.modalInput, styles.codeInput]}
+              value={codeInput}
+              onChangeText={(text) => setCodeInput(text.toUpperCase())}
+              placeholder="ABCD-2345"
+              placeholderTextColor={colors.textPlaceholder}
+              autoCapitalize="characters"
+              autoCorrect={false}
+              autoFocus
+              maxLength={12}
+              returnKeyType="go"
+              onSubmitEditing={submitCode}
+            />
+            {codeError ? <Text style={styles.errorText}>{codeError}</Text> : null}
+            <Text style={styles.codeServer}>Server: {settings.webApiUrl}</Text>
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => {
+                  setCodeModal(false)
+                  setServerModal(true)
+                }}
+              >
+                <Text style={styles.modalCancelText}>Change server</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalSaveBtn} onPress={submitCode} disabled={codeBusy}>
+                {codeBusy ? <ActivityIndicator color={colors.textInverse} /> : <Text style={styles.modalSaveText}>Sign in</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
       <Modal visible={serverModal} animationType="fade" transparent>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
@@ -336,6 +413,36 @@ export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
 }
 
 const styles = StyleSheet.create({
+  codeBtn: {
+    backgroundColor: colors.primary,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    alignItems: "center",
+    marginBottom: 14,
+  },
+  codeBtnText: {
+    color: colors.textInverse,
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  codeBtnHint: {
+    color: colors.textInverse,
+    opacity: 0.75,
+    fontSize: 12,
+    marginTop: 2,
+  },
+  codeInput: {
+    fontSize: 26,
+    letterSpacing: 4,
+    textAlign: "center",
+    fontWeight: "700",
+  },
+  codeServer: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    marginTop: 8,
+  },
   container: {
     flex: 1,
     backgroundColor: colors.background,

@@ -35,3 +35,23 @@ export function generatePollToken(): { token: string; hash: string } {
   const token = `bp_${randomBytes(32).toString("base64url")}`
   return { token, hash: hashAgentApiKey(token) }
 }
+
+/** An 8-character pairing code from PAIRING_ALPHABET, without modulo bias. */
+export function generatePairingCode(alphabet = "23456789ABCDEFGHJKMNPQRSTUVWXYZ", length = 8): string {
+  const limit = 256 - (256 % alphabet.length)
+  let out = ""
+  while (out.length < length) {
+    for (const byte of randomBytes(length * 2)) {
+      if (byte >= limit) continue
+      out += alphabet[byte % alphabet.length]
+      if (out.length === length) break
+    }
+  }
+  return out
+}
+
+/** Long-lived secret a paired phone keeps to check it hasn't been removed. */
+export function generateDeviceToken(): { token: string; hash: string } {
+  const token = `sd_${randomBytes(32).toString("base64url")}`
+  return { token, hash: hashAgentApiKey(token) }
+}

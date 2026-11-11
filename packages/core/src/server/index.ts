@@ -4,6 +4,8 @@ export {
   agentKeyPrefix,
   generateAgentApiKey,
   generateBotInviteCode,
+  generateDeviceToken,
+  generatePairingCode,
   generatePollToken,
   hashAgentApiKey,
 } from "./agent-key"

@@ -15,6 +15,7 @@ export * from "./commands"
 export * from "./clients"
 export * from "./invite"
 export * from "./bot-invite"
+export * from "./pairing"
 export * from "./engine"
 export * from "./cron"
 

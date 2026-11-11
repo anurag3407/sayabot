@@ -1,6 +1,5 @@
 import {
   checkPreTurnBreakers,
-  computeCostUsd,
   detectRepetition,
   extractHandles,
   planBotFollowUps,
@@ -18,7 +17,6 @@ import {
   agentRuns,
   agents,
   messages,
-  modelPricing,
   tasks,
   turnSessions,
   usageEvents,
@@ -26,6 +24,7 @@ import {
 import { generateObject } from "ai"
 import { and, desc, eq, gte, isNull, ne, sql } from "drizzle-orm"
 import { z } from "zod"
+import { recordUsageEvent, tokensFrom } from "../usage"
 import { getDb, withRoomLock } from "../db"
 import type { WebhookJobData } from "../jobs/webhook"
 import { broadcast } from "../realtime"
@@ -298,31 +297,16 @@ async function decideModerator(args: {
   const validated = validateModeratorChoice(result.object.next, agentRefs)
   const chosen = args.roomAgentRows.find(({ agent }) => agent.id === validated.next)?.agent ?? null
 
-  let cost = 0
-  if (result.usage) {
-    const [price] = await getDb()
-      .select()
-      .from(modelPricing)
-      .where(
-        and(eq(modelPricing.provider, resolved.provider), eq(modelPricing.model, resolved.modelName)),
-      )
-      .limit(1)
-    cost = computeCostUsd(
-      { inputTokens: result.usage.inputTokens, outputTokens: result.usage.outputTokens },
-      price,
-    )
-    await getDb().insert(usageEvents).values({
-      orgId: args.room.orgId,
-      roomId: args.room.id,
-      agentId: moderator.id,
-      provider: resolved.provider,
-      model: resolved.modelName,
-      inputTokens: result.usage.inputTokens ?? 0,
-      outputTokens: result.usage.outputTokens ?? 0,
-      costUsd: cost,
-      latencyMs,
-    })
-  }
+  const cost = await recordUsageEvent({
+    orgId: args.room.orgId,
+    roomId: args.room.id,
+    agentId: moderator.id,
+    provider: resolved.provider,
+    model: resolved.modelName,
+    tokens: tokensFrom(result.usage),
+    kind: "moderator",
+    latencyMs,
+  })
   await getDb().insert(agentRuns).values({
     sessionId: args.sessionId,
     roomId: args.room.id,

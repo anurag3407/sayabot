@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest"
 import {
+  baseModelName,
   computeCacheSavingsUsd,
+  pickModelPrice,
   computeCostUsd,
   formatPercent,
   formatTokens,
@@ -73,3 +75,30 @@ describe("formatUsd", () => {
   })
 })
 
+
+describe("pickModelPrice", () => {
+  const rows = [
+    { provider: "anthropic", model: "claude-sonnet-4-5", inputPerMtok: 3, outputPerMtok: 15 },
+    { provider: "openai", model: "gpt-5", inputPerMtok: 1.25, outputPerMtok: 10 },
+    { provider: "openrouter", model: "openai/gpt-5", inputPerMtok: 1.3, outputPerMtok: 10.5 },
+  ]
+
+  it("prefers an exact provider and model", () => {
+    expect(pickModelPrice(rows, "openrouter", "openai/gpt-5")?.inputPerMtok).toBe(1.3)
+  })
+
+  it("matches OpenRouter-style and dated names to the base model", () => {
+    expect(pickModelPrice(rows, "openrouter", "anthropic/claude-sonnet-4-5")?.provider).toBe("anthropic")
+    expect(pickModelPrice(rows, "anthropic", "claude-sonnet-4-5-20250929")?.inputPerMtok).toBe(3)
+    expect(pickModelPrice(rows, "anthropic", "claude-sonnet-4-5:beta")?.inputPerMtok).toBe(3)
+  })
+
+  it("returns null for models nobody priced", () => {
+    expect(pickModelPrice(rows, "groq", "llama-9")).toBeNull()
+  })
+
+  it("strips prefixes and suffixes", () => {
+    expect(baseModelName("Anthropic/Claude-Opus-4-1-20250805")).toBe("claude-opus-4-1")
+    expect(baseModelName("gpt-4o-latest")).toBe("gpt-4o")
+  })
+})

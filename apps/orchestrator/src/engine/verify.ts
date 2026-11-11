@@ -3,6 +3,7 @@ import { z } from "zod"
 import type { AgentRow } from "../runner/context"
 import { resolveAgentCheapModel } from "../runner/llm"
 import { toAuditedTools, type ToolSpec } from "../tools/audited"
+import { recordUsageEvent, tokensFrom } from "../usage"
 import { READ_ONLY_TOOL_NAMES } from "./subagents"
 
 export type VerifyMode = "off" | "self" | "critic"
@@ -96,6 +97,15 @@ export async function runCriticVerification(args: CriticReviewArgs): Promise<Cri
       maxOutputTokens: 2048,
     })
 
+    await recordUsageEvent({
+      orgId: args.orgId,
+      roomId: args.roomId,
+      agentId: args.agent.id,
+      provider: resolved.provider,
+      model: resolved.modelName,
+      tokens: tokensFrom(result.totalUsage),
+      kind: "verify",
+    })
     const cleaned = result.text.trim().replace(/^```json\s*/, "").replace(/\s*```$/, "")
     const parsed = JSON.parse(cleaned)
     const validated = criticResponseSchema.parse(parsed)

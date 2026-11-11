@@ -13,6 +13,7 @@ import {
   AnthropicMark,
   CursorMark,
   GoogleMark,
+  HermesMark,
   OpenAIMark,
 } from "@/components/room/model-picker/provider-icons"
 import { Button } from "@/components/ui/button"
@@ -24,6 +25,13 @@ interface Props {
   orgSlug: string
   roomId: string
   roomName: string
+  /** Controlled mode (the Agents page opens it after a room is chosen). */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  hideTrigger?: boolean
+  /** Prefill from the Providers page ("Claude Code is on this computer → Add to a room"). */
+  initialApp?: string
+  initialName?: string
 }
 
 interface AppChoice {
@@ -33,7 +41,7 @@ interface AppChoice {
 }
 
 const APPS: AppChoice[] = [
-  { id: "hermes", label: "Hermes", icon: <BotIcon width={14} height={14} /> },
+  { id: "hermes", label: "Hermes", icon: <HermesMark size={14} /> },
   { id: "claude-code", label: "Claude Code", icon: <AnthropicMark size={14} /> },
   { id: "codex", label: "Codex", icon: <OpenAIMark size={14} /> },
   { id: "cursor", label: "Cursor", icon: <CursorMark size={14} /> },
@@ -97,11 +105,25 @@ function Step({
   )
 }
 
-export function InviteBotDialog({ orgSlug, roomId, roomName }: Props) {
-  const [open, setOpen] = useState(false)
+export function InviteBotDialog({
+  orgSlug,
+  roomId,
+  roomName,
+  open: openProp,
+  onOpenChange,
+  hideTrigger,
+  initialApp,
+  initialName,
+}: Props) {
+  const [openState, setOpenState] = useState(false)
+  const open = openProp ?? openState
+  const setOpen = (value: boolean) => {
+    setOpenState(value)
+    onOpenChange?.(value)
+  }
   const [view, setView] = useState<View>("form")
-  const [name, setName] = useState("")
-  const [app, setApp] = useState<string | null>(null)
+  const [name, setName] = useState(initialName ?? "")
+  const [app, setApp] = useState<string | null>(initialApp ?? null)
   const [invite, setInvite] = useState<BotInviteView | null>(null)
   const [pasted, setPasted] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -115,8 +137,8 @@ export function InviteBotDialog({ orgSlug, roomId, roomName }: Props) {
 
   function reset() {
     setView("form")
-    setName("")
-    setApp(null)
+    setName(initialName ?? "")
+    setApp(initialApp ?? null)
     setInvite(null)
     setPasted(false)
     setError(null)
@@ -219,14 +241,16 @@ export function InviteBotDialog({ orgSlug, roomId, roomName }: Props) {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="inline-flex h-11 items-center gap-1.5 rounded-sm px-3 text-[13px] text-muted transition-colors hover:bg-raised hover:text-text md:h-9"
-      >
-        <BotIcon width={15} height={15} />
-        <span>Add agent</span>
-      </button>
+      {hideTrigger ? null : (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="inline-flex h-11 items-center gap-1.5 rounded-sm px-3 text-[13px] text-muted transition-colors hover:bg-raised hover:text-text md:h-9"
+        >
+          <BotIcon width={15} height={15} />
+          <span>Add agent</span>
+        </button>
+      )}
 
       {open ? (
         <div
@@ -309,6 +333,17 @@ export function InviteBotDialog({ orgSlug, roomId, roomName }: Props) {
                     {error}
                   </p>
                 ) : null}
+
+                <a
+                  href={`/${orgSlug}/agents/new?room=${encodeURIComponent(roomId)}`}
+                  className="flex items-center justify-between gap-3 rounded-lg border border-line bg-ink px-3 py-2.5 text-[13px] text-muted hover:border-line-strong hover:text-text"
+                >
+                  <span>
+                    <span className="block font-medium text-text">Don&apos;t have one? Create a new agent</span>
+                    Pick a ready-made agent or build your own, powered by your AI account.
+                  </span>
+                  <span aria-hidden>→</span>
+                </a>
 
                 <div className="flex flex-col gap-2 sm:flex-row-reverse sm:items-center">
                   <Button variant="primary" size="lg" disabled={pending} onClick={createLink} className="sm:min-w-44">

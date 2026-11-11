@@ -1,8 +1,9 @@
-import { computeCostUsd, createRunScrubber, redactSecrets, type TurnRole } from "@sayabot/core"
-import { agentRuns, messages, modelPricing, providerKeys, tasks, usageEvents } from "@sayabot/db"
+import { createRunScrubber, redactSecrets, type TurnRole } from "@sayabot/core"
+import { agentRuns, messages, providerKeys, tasks } from "@sayabot/db"
+import { recordUsageEvent, tokensFrom } from "../usage"
 import { createLanguageModel, devModelConfig, providerKeyToApiKey } from "@sayabot/llm"
 import type { LanguageModel, LanguageModelUsage, ToolSet } from "ai"
-import { and, eq, sql } from "drizzle-orm"
+import { eq, sql } from "drizzle-orm"
 import { registerRun, unregisterRun } from "../active-runs"
 import { getDb } from "../db"
 import { getEnv } from "../env"
@@ -272,37 +273,17 @@ export async function runLlmTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
       .set({ content: redacted, status, metadata })
       .where(eq(messages.id, message.id))
 
-    let cost = 0
-    if (usage) {
-      const [price] = await db
-        .select()
-        .from(modelPricing)
-        .where(
-          and(
-            eq(modelPricing.provider, resolved.provider),
-            eq(modelPricing.model, resolved.modelName),
-          ),
-        )
-        .limit(1)
-      const cachedInputTokens = (usage as any)?.inputTokenDetails?.cacheReadTokens ?? 0
-      cost = computeCostUsd(
-        { inputTokens: usage.inputTokens, outputTokens: usage.outputTokens, cachedInputTokens },
-        price,
-      )
-      await db.insert(usageEvents).values({
-        orgId: room.orgId,
-        roomId: room.id,
-        agentId: agent.id,
-        provider: resolved.provider,
-        model: resolved.modelName,
-        inputTokens: usage.inputTokens ?? 0,
-        outputTokens: usage.outputTokens ?? 0,
-        cachedInputTokens,
-        costUsd: cost,
-        ttftMs,
-        latencyMs,
-      })
-    }
+    const cost = await recordUsageEvent({
+      orgId: room.orgId,
+      roomId: room.id,
+      agentId: agent.id,
+      provider: resolved.provider,
+      model: resolved.modelName,
+      tokens: tokensFrom(usage),
+      kind: "llm",
+      ttftMs,
+      latencyMs,
+    })
 
     await db
       .update(agentRuns)

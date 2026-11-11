@@ -130,3 +130,26 @@ test("delegation message mentions the agent once and carries the task", () => {
   assert.equal((msg.match(/@hermes/g) ?? []).length, 1)
   assert.ok(!delegationMessage("hermes", "X").includes("undefined"))
 })
+
+import { cleanPairCode, parsePairLink, supabaseMismatch } from "../../src/core/pair-link.ts"
+
+test("pair links come from the sayabot scheme with a code", () => {
+  assert.deepEqual(parsePairLink("sayabot://pair?code=ABCD2345&server=https%3A%2F%2Fx.test%2F"), {
+    code: "ABCD2345",
+    server: "https://x.test",
+  })
+  assert.deepEqual(parsePairLink("sayabot://pair?code=ABCD2345&server=javascript:alert(1)"), { code: "ABCD2345", server: null })
+  assert.equal(parsePairLink("sayabot://auth/callback?access_token=x"), null)
+  assert.equal(parsePairLink("https://evil.test/pair?code=X"), null)
+  assert.equal(parsePairLink("sayabot://pair?server=https://x.test"), null)
+})
+
+test("pair codes drop separators and spaces", () => {
+  assert.equal(cleanPairCode(" abcd-2345 "), "ABCD2345")
+})
+
+test("supabase mismatch compares hosts only", () => {
+  assert.equal(supabaseMismatch("https://a.supabase.co", "https://a.supabase.co/"), false)
+  assert.equal(supabaseMismatch("https://a.supabase.co", "https://b.supabase.co"), true)
+  assert.equal(supabaseMismatch("https://a.supabase.co", null), false)
+})

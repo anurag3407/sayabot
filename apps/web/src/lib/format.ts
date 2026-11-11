@@ -142,3 +142,15 @@ export function statusTone(status: string): string {
       return "text-muted"
   }
 }
+
+/**
+ * OpenRouter and Copilot keys are stored as "openai-compatible" with their own base URL.
+ * This recovers the provider people chose, for grouping, icons and model lists.
+ */
+export function effectiveProvider(provider: string, baseUrl: string | null | undefined): string {
+  if (provider !== "openai-compatible" || !baseUrl) return provider
+  if (/openrouter\.ai/i.test(baseUrl)) return "openrouter"
+  if (/githubcopilot\.com/i.test(baseUrl)) return "copilot"
+  if (/cloudflare\.com/i.test(baseUrl)) return "cloudflare"
+  return provider
+}

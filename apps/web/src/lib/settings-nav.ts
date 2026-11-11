@@ -4,6 +4,7 @@
  */
 export type SettingsIconKey =
   | "profile"
+  | "phones"
   | "workspace"
   | "keys"
   | "vector"
@@ -37,6 +38,13 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
         icon: "profile",
         adminOnly: false,
       },
+      {
+        segment: "phones",
+        label: "Phones",
+        description: "Sign your phone in with a one-time code, and remove phones you no longer use.",
+        icon: "phones",
+        adminOnly: false,
+      },
     ],
   },
   {
@@ -51,8 +59,8 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
       },
       {
         segment: "keys",
-        label: "Models & keys",
-        description: "Provider API keys and AI accounts that power your agents.",
+        label: "AI providers",
+        description: "Agent apps on this computer, plans you sign in to, and API keys that power your agents.",
         icon: "keys",
         adminOnly: true,
       },

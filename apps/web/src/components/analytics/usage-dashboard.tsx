@@ -1,5 +1,6 @@
 "use client"
 
+import type { UsageRollupRow } from "@/lib/usage-math"
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import {
@@ -141,6 +142,8 @@ function percentile(values: number[], p: number): number | null {
 
 export function UsageDashboard({
   initialEvents,
+  rollup = null,
+  eventsComplete = true,
   agents,
   rooms,
   pricing = [],
@@ -148,6 +151,10 @@ export function UsageDashboard({
   currentDays = 30,
 }: {
   initialEvents: UsageEventRow[]
+  /** Exact per-agent/room/model totals from the database; null if the rollup isn't installed. */
+  rollup?: UsageRollupRow[] | null
+  /** False when charts only see the newest slice of a very busy period. */
+  eventsComplete?: boolean
   agents: AgentInfo[]
   rooms: RoomInfo[]
   pricing?: ModelPricingInfo[]
@@ -335,8 +342,29 @@ export function UsageDashboard({
         const readRate = p.cacheReadPerMtok ?? p.inputPerMtok * 0.1
         const saved = (cached / 1_000_000) * Math.max(0, fullRate - readRate)
         cacheSavingsUsd += saved
-      } else if (cached > 0) {
-        cacheSavingsUsd += (cached / 1_000_000) * 1.35
+      }
+    }
+
+    // Exact Sayabot totals from the database rollup, so a busy month is never undercounted.
+    // Charts and latency still use the event sample; local coding-agent usage is added on top.
+    let sessions = filteredEvents.length
+    if (rollup && sourceMode !== "local") {
+      const keep = (r: UsageRollupRow) =>
+        (providerFilter === "all" || r.provider.toLowerCase() === providerFilter.toLowerCase()) &&
+        (agentFilter === "all" || r.agent_id === agentFilter)
+      const local = filteredEvents.filter((ev) => ev.source === "local")
+      const sum = (rows: { input: number; output: number; cached: number; cost: number }[]) =>
+        rows.reduce((a, b) => ({ input: a.input + b.input, output: a.output + b.output, cached: a.cached + b.cached, cost: a.cost + b.cost }), { input: 0, output: 0, cached: 0, cost: 0 })
+      const exact = sum(rollup.filter(keep).map((r) => ({ input: r.input_tokens, output: r.output_tokens, cached: Math.min(r.input_tokens, r.cached_input_tokens), cost: r.cost_usd })))
+      const localSum = sum(local.map((ev) => ({ input: ev.input_tokens || 0, output: ev.output_tokens || 0, cached: Math.min(ev.input_tokens || 0, ev.cached_input_tokens || 0), cost: Number(ev.cost_usd) || 0 })))
+      input = exact.input + localSum.input
+      output = exact.output + localSum.output
+      cachedInput = exact.cached + localSum.cached
+      cost = exact.cost + localSum.cost
+      sessions = rollup.filter(keep).reduce((n, r) => n + r.requests, 0) + local.length
+      for (const r of rollup.filter(keep)) {
+        if (r.room_id) uniqueRooms.add(r.room_id)
+        if (r.agent_id) uniqueAgents.add(r.agent_id)
       }
     }
 
@@ -357,14 +385,14 @@ export function UsageDashboard({
       cost,
       cacheSavingsUsd: Math.round(cacheSavingsUsd * 100) / 100,
       cacheHitRate,
-      sessions: filteredEvents.length,
+      sessions,
       roomsCount: uniqueRooms.size,
       agentsCount: uniqueAgents.size,
       avgTtft: avgTtft ? Math.round(avgTtft) : null,
       avgLatency: avgLatency ? Math.round(avgLatency) : null,
       p95Latency: p95Latency ? Math.round(p95Latency) : null,
     }
-  }, [filteredEvents, pricingByModel])
+  }, [filteredEvents, pricingByModel, rollup, sourceMode, providerFilter, agentFilter])
 
   // Provider breakdown (Left Hero list)
   const providerBreakdown = useMemo(() => {
@@ -817,6 +845,13 @@ export function UsageDashboard({
 
   return (
     <div className="space-y-8">
+      {!eventsComplete ? (
+        <p className="rounded-lg border border-warn/30 bg-warn/10 px-4 py-2.5 text-[13px] text-muted">
+          {rollup
+            ? "A busy period: totals count every call, while charts and speed use the newest 20,000 calls."
+            : "Charts show the newest 20,000 calls in this period. Run the latest database migration for exact totals."}
+        </p>
+      ) : null}
       {/* Top Header Controls: Environment / Source Selector + Time Window + Metric Toggle */}
       <div className="flex flex-col gap-4 border-b border-line pb-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

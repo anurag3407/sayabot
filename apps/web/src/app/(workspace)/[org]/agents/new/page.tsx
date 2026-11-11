@@ -12,10 +12,10 @@ export default async function NewBotPage({
   searchParams,
 }: {
   params: Promise<{ org: string }>
-  searchParams: Promise<{ template?: string }>
+  searchParams: Promise<{ template?: string; room?: string }>
 }) {
   const { org: orgSlug } = await params
-  const { template: initialTemplateSlug } = await searchParams
+  const { template: initialTemplateSlug, room: initialRoomId } = await searchParams
   const access = await requireOrgAccess(orgSlug)
   if (!access) notFound()
 
@@ -65,6 +65,7 @@ export default async function NewBotPage({
         rooms={rooms.filter((r) => r.kind !== "dm").map((r) => ({ id: r.id, name: r.name }))}
         vaultSecrets={vaultSecrets}
         initialTemplateSlug={initialTemplateSlug}
+        initialRoomId={initialRoomId}
       />
     </div>
   )

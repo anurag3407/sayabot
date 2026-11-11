@@ -1,5 +1,4 @@
 import {
-  computeCostUsd,
   createRunScrubber,
   parseCapabilities,
   redactSecrets,
@@ -7,18 +6,17 @@ import {
 import {
   agentRuns,
   messages,
-  modelPricing,
   runSteps,
   runTranscripts,
   tasks,
-  usageEvents,
 } from "@sayabot/db"
 import { buildProviderOptions, flushLangfuse, recordStepToLangfuse } from "@sayabot/llm"
 import { stepCountIs, streamText, type LanguageModelUsage, type ModelMessage, type SystemModelMessage, type ToolSet } from "ai"
-import { and, eq, sql } from "drizzle-orm"
+import { eq, sql } from "drizzle-orm"
 import { consumeRunInterrupts, registerRun, unregisterRun } from "../active-runs"
 import { ComputerClient } from "../computer/client"
 import { getDb } from "../db"
+import { recordUsageEvent } from "../usage"
 import { getMemoryService } from "../memory/service"
 import { broadcast } from "../realtime"
 import {
@@ -222,43 +220,24 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
       .set({ content: redacted, status, metadata })
       .where(eq(messages.id, message.id))
 
-    let cost = 0
-    if (usageTotals.seen) {
-      const [price] = await db
-        .select()
-        .from(modelPricing)
-        .where(
-          and(
-            eq(modelPricing.provider, resolved.provider),
-            eq(modelPricing.model, resolved.modelName),
-          ),
-        )
-        .limit(1)
-
-      cost = computeCostUsd(
-        {
-          inputTokens: usageTotals.inputTokens,
-          outputTokens: usageTotals.outputTokens,
-          cachedInputTokens: usageTotals.cacheReadTokens,
-          cacheCreationTokens: usageTotals.cacheWriteTokens,
-        },
-        price,
-      )
-
-      await db.insert(usageEvents).values({
-        orgId: room.orgId,
-        roomId: room.id,
-        agentId: agent.id,
-        provider: resolved.provider,
-        model: resolved.modelName,
-        inputTokens: usageTotals.inputTokens,
-        outputTokens: usageTotals.outputTokens,
-        cachedInputTokens: usageTotals.cacheReadTokens,
-        costUsd: cost,
-        ttftMs,
-        latencyMs,
-      })
-    }
+    const cost = usageTotals.seen
+      ? await recordUsageEvent({
+          orgId: room.orgId,
+          roomId: room.id,
+          agentId: agent.id,
+          provider: resolved.provider,
+          model: resolved.modelName,
+          tokens: {
+            inputTokens: usageTotals.inputTokens,
+            outputTokens: usageTotals.outputTokens,
+            cachedInputTokens: usageTotals.cacheReadTokens,
+            cacheWriteTokens: usageTotals.cacheWriteTokens,
+          },
+          kind: "llm",
+          ttftMs,
+          latencyMs,
+        })
+      : 0
 
     await db
       .update(agentRuns)

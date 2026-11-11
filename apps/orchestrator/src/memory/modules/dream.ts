@@ -3,6 +3,7 @@ import { and, eq, inArray, lt } from "drizzle-orm"
 import { memories, openLoops } from "@sayabot/db"
 import type { AgentRow } from "../../runner/context"
 import { resolveAgentCheapModel } from "../../runner/llm"
+import { recordUsageEvent, tokensFrom } from "../../usage"
 import type { EpistemicStatus } from "../types"
 import { BeliefEngine } from "./beliefs"
 import { MemoryGraphEngine } from "./graph"
@@ -84,6 +85,15 @@ export class DreamEngine {
         prompt,
       })
 
+      await recordUsageEvent({
+        orgId: args.orgId,
+        roomId: args.roomId ?? null,
+        agentId: args.agent.id,
+        provider: resolved.provider,
+        model: resolved.modelName,
+        tokens: tokensFrom(result.totalUsage),
+        kind: "memory",
+      })
       const cleaned = result.text.trim().replace(/^```json\s*/, "").replace(/\s*```$/, "")
       const parsed = JSON.parse(cleaned) as DreamInsight
 

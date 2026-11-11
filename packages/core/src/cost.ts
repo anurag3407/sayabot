@@ -79,3 +79,37 @@ export function formatPercent(share: number, digits = 1): string {
   return `${percent.toFixed(digits)}%`
 }
 
+
+export interface PriceRow extends ModelPrice {
+  provider: string
+  model: string
+}
+
+/** "anthropic/claude-sonnet-4-5-20250929:beta" → "claude-sonnet-4-5". */
+export function baseModelName(model: string): string {
+  return model
+    .toLowerCase()
+    .trim()
+    .replace(/^.*\//, "")
+    .replace(/:[a-z0-9._-]+$/, "")
+    .replace(/[-@](20\d{2}-?\d{2}-?\d{2}|\d{8})$/, "")
+    .replace(/-latest$/, "")
+}
+
+/**
+ * Finds the price for a model call. Exact provider+model first; then the same model name
+ * under any provider (OpenRouter "anthropic/claude-x" bills like Anthropic "claude-x");
+ * then the model without its date/version suffix. Unknown models return null (cost 0) rather
+ * than borrowing a guess, so the dashboard can show them as "no price set".
+ */
+export function pickModelPrice(rows: readonly PriceRow[], provider: string, model: string): PriceRow | null {
+  const p = provider.toLowerCase().trim()
+  const m = model.toLowerCase().trim()
+  const exact = rows.find((r) => r.provider.toLowerCase() === p && r.model.toLowerCase() === m)
+  if (exact) return exact
+  const base = baseModelName(m)
+  if (!base) return null
+  const sameProvider = rows.find((r) => r.provider.toLowerCase() === p && baseModelName(r.model) === base)
+  if (sameProvider) return sameProvider
+  return rows.find((r) => baseModelName(r.model) === base) ?? null
+}

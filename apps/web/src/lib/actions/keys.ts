@@ -35,7 +35,9 @@ export async function saveProviderKey(
   if ("error" in check) return fail(check.error)
   const provider = providerSchema.safeParse(field(formData, "provider"))
   const label = field(formData, "label")
-  const apiKey = field(formData, "apiKey")
+  // Local servers (Ollama, LM Studio) take no key; store a placeholder so the row is valid.
+  const rawKey = field(formData, "apiKey")
+  const apiKey = !rawKey && field(formData, "provider") === "openai-compatible" ? "no-key-needed" : rawKey
   const baseUrl = optionalField(formData, "baseUrl")
   if (!provider.success) return fail("Choose a provider")
   if (label.length < 1 || label.length > 60) return fail("Label must be 1 to 60 characters")

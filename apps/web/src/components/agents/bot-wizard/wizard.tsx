@@ -53,6 +53,8 @@ interface Props {
   vaultSecrets: VaultSecretSummary[]
   /** From the Marketplace: preselect this template and skip straight to naming the bot. */
   initialTemplateSlug?: string
+  /** From a room's "Add agent": put the new agent in this room. */
+  initialRoomId?: string
 }
 
 const CAPABILITY_DESCRIPTIONS: Record<keyof AgentCapabilities, { label: string; desc: string }> = {
@@ -72,7 +74,7 @@ const CAPABILITY_DESCRIPTIONS: Record<keyof AgentCapabilities, { label: string; 
   connectors: { label: "Workspace Connectors", desc: "Access Google Drive, Slack, and GitHub with granular scoping" },
 }
 
-export function BotWizard({ orgSlug, templates, providerKeys, rooms, vaultSecrets, initialTemplateSlug }: Props) {
+export function BotWizard({ orgSlug, templates, providerKeys, rooms, vaultSecrets, initialTemplateSlug, initialRoomId }: Props) {
   const router = useRouter()
   const preselected = initialTemplateSlug
     ? templates.find((t) => t.slug === initialTemplateSlug || t.id === initialTemplateSlug) ?? null
@@ -97,7 +99,9 @@ export function BotWizard({ orgSlug, templates, providerKeys, rooms, vaultSecret
   const [secretBindings, setSecretBindings] = useState<Record<string, string>>({})
 
   // Step 4: Rooms & Starter Task
-  const [selectedRoomIds, setSelectedRoomIds] = useState<string[]>(rooms[0] ? [rooms[0].id] : [])
+  const [selectedRoomIds, setSelectedRoomIds] = useState<string[]>(
+    initialRoomId && rooms.some((r) => r.id === initialRoomId) ? [initialRoomId] : rooms[0] ? [rooms[0].id] : [],
+  )
   const [starterTaskTitle, setStarterTaskTitle] = useState("")
   const [starterTaskDescription, setStarterTaskDescription] = useState("")
 

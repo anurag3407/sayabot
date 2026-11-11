@@ -403,3 +403,59 @@ export async function createBotFromTemplate(
   revalidateOrg(orgSlug)
   return ok(`@${agent.handle} created successfully!`, { agent })
 }
+
+const EFFORTS = new Set(["low", "medium", "high", "max"])
+
+/**
+ * The model picker on an agent card: provider account + model + thinking effort, saved
+ * straight to the agent. providerKeyId null means "use the server's default model".
+ */
+export async function setAgentModelAction(input: {
+  orgSlug: string
+  agentId: string
+  providerKeyId: string | null
+  model: string | null
+  effort?: string | null
+}): Promise<ActionResult> {
+  const check = await adminOrgAccess(input.orgSlug)
+  if ("error" in check) return fail(check.error)
+  const admin = createAdminClient()
+  const { data: agent } = await admin
+    .from("agents")
+    .select("id, org_id, kind, handle, params")
+    .eq("id", input.agentId)
+    .maybeSingle()
+  if (!agent || agent.org_id !== check.access.org.id) return fail("Agent not found")
+  if (agent.kind !== "llm") return fail("Invited agents use the model of their own app")
+
+  const model = input.model?.trim().slice(0, 200) || null
+  if (input.providerKeyId) {
+    const { data: key } = await admin
+      .from("provider_keys")
+      .select("id, org_id")
+      .eq("id", input.providerKeyId)
+      .maybeSingle()
+    if (!key || key.org_id !== check.access.org.id) return fail("That provider account isn't in this workspace")
+    if (!model) return fail("Pick a model")
+  }
+  const params = { ...((agent.params as Record<string, unknown>) ?? {}) }
+  if (input.effort !== undefined) {
+    if (input.effort && EFFORTS.has(input.effort)) params.effort = input.effort
+    else delete params.effort
+  }
+
+  const { error } = await admin
+    .from("agents")
+    .update({ provider_key_id: input.providerKeyId, model: input.providerKeyId ? model : null, params })
+    .eq("id", agent.id)
+  if (error) return fail(errorMessage(error))
+  await audit({
+    orgId: check.access.org.id,
+    actorId: check.access.user.id,
+    action: "agent.model_changed",
+    target: agent.id,
+    metadata: { model, providerKeyId: input.providerKeyId, effort: params.effort ?? null },
+  })
+  revalidateOrg(input.orgSlug)
+  return ok(model ? `@${agent.handle} now uses ${model}` : `@${agent.handle} uses the default model`)
+}

@@ -10,6 +10,7 @@ import type { AgentRow } from "../runner/context"
 import { resolveAgentCheapModel, resolveAgentModel } from "../runner/llm"
 import { redactValue, toAuditedTools, type ToolSpec } from "../tools/audited"
 import { workspaceScopeSchema } from "../tools/builtins/workspace"
+import { recordUsageEvent, tokensFrom } from "../usage"
 
 export const MAX_CONCURRENT_SUBAGENTS = 4
 export const MAX_TOTAL_SUBAGENTS = 12
@@ -266,6 +267,15 @@ export function spawnSubagentTool(args: SpawnSubagentToolArgs): ToolSpec {
             },
           })
           controller.signal.throwIfAborted()
+          await recordUsageEvent({
+            orgId: args.orgId,
+            roomId: args.roomId,
+            agentId: args.agent.id,
+            provider: resolved.provider,
+            model: resolved.modelName,
+            tokens: tokensFrom(result.totalUsage),
+            kind: "subagent",
+          })
           summary = safe(result.text) as string
           inputTokens = result.totalUsage?.inputTokens ?? null
           outputTokens = result.totalUsage?.outputTokens ?? null

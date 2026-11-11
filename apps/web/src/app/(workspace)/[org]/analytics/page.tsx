@@ -3,6 +3,7 @@ import { requireOrgAccess } from "@/lib/auth"
 import { listOrgAgents, listRooms, type RoomListItem } from "@/lib/queries"
 import type { AgentView } from "@/lib/types"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
+import { loadRecentUsageEvents, loadUsageRollup } from "@/lib/usage"
 import {
   UsageDashboard,
   type ModelPricingInfo,
@@ -25,16 +26,9 @@ export default async function AnalyticsPage({
   const supabase = await createSupabaseServerClient()
   const since = new Date(Date.now() - days * 86_400_000).toISOString()
 
-  const [eventsResult, agents, rooms, pricingResult] = await Promise.all([
-    supabase
-      .from("usage_events")
-      .select(
-        "agent_id, room_id, provider, model, input_tokens, output_tokens, cached_input_tokens, cost_usd, ttft_ms, latency_ms, created_at",
-      )
-      .eq("org_id", access.org.id)
-      .gte("created_at", since)
-      .order("created_at", { ascending: true })
-      .limit(10_000),
+  const [sample, rollup, agents, rooms, pricingResult] = await Promise.all([
+    loadRecentUsageEvents(access.org.id, since),
+    loadUsageRollup(access.org.id, since),
     listOrgAgents(access.org.id),
     listRooms(access.org.id),
     supabase
@@ -42,7 +36,7 @@ export default async function AnalyticsPage({
       .select("provider, model, input_per_mtok, output_per_mtok"),
   ])
 
-  const events = (eventsResult.data ?? []) as UsageEventRow[]
+  const events = sample.events as UsageEventRow[]
   const pricingData = ((pricingResult as any)?.data ?? []) as Array<{
     provider: string
     model: string
@@ -77,6 +71,8 @@ export default async function AnalyticsPage({
       <div className="mx-auto max-w-6xl px-5 py-8 sm:px-8">
         <UsageDashboard
           initialEvents={events}
+          rollup={rollup}
+          eventsComplete={sample.complete}
           agents={agentInfos}
           rooms={roomInfos}
           pricing={pricing}

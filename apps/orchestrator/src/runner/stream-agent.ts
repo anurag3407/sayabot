@@ -51,8 +51,9 @@ export async function streamAgentText(options: StreamAgentOptions): Promise<Stre
       text += delta
       await options.onDelta(delta)
     }
+    // totalUsage sums every step of the tool loop; usage alone is only the last step.
     const [usage, finishReason, steps] = await Promise.all([
-      result.usage,
+      result.totalUsage,
       result.finishReason,
       Promise.resolve(result.steps)
         .then((s) => (Array.isArray(s) ? s.length : 1))

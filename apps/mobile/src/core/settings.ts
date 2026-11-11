@@ -18,6 +18,9 @@ export interface AppSettings {
   // Gateway & Infrastructure
   webApiUrl: string
   supabaseUrl: string
+  /** Set when this phone was signed in with a code from a computer ("Add a phone"). */
+  deviceId: string
+  deviceToken: string
 
   // Agent Guardrails
   toolApprovalMode: "always_ask" | "read_only_auto" | "full_auto"
@@ -50,6 +53,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
 
   webApiUrl: ENV.WEB_API_URL,
   supabaseUrl: ENV.SUPABASE_URL,
+  deviceId: "",
+  deviceToken: "",
 
   toolApprovalMode: "always_ask",
   defaultComputerProfile: "standard",

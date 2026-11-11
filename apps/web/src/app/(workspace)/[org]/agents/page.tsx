@@ -1,7 +1,6 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { isOrgAdmin, requireOrgAccess } from "@/lib/auth"
-import { devModelConfigured } from "@/lib/env"
 import { listMcpServers, listOrgAgents, listProviderKeys, listRooms } from "@/lib/queries"
 import { addAgentToRoom } from "@/lib/actions/rooms"
 import { updateAgent } from "@/lib/actions/agents"
@@ -9,8 +8,13 @@ import { ActionForm } from "@/components/ui/action-form"
 import { Field, HelpText, Input, Select, Textarea } from "@/components/ui/field"
 import { EmptyState } from "@/components/ui/empty"
 import { Section } from "@/components/settings/section"
-import { AgentCreateForm } from "@/components/agents/agent-create-form"
+import { AddAgentChooser } from "@/components/agents/add-agent-chooser"
+import { AgentModelPicker } from "@/components/agents/agent-model-picker"
 import { AgentTestButton } from "@/components/agents/agent-test-button"
+import { Mascot } from "@/components/ui/mascot"
+import { buildModelCatalog } from "@/lib/model-catalog"
+import { formatTokens, formatUsd, relativeTime } from "@/lib/format"
+import { loadUsageRollup, usageByAgent } from "@/lib/usage"
 import { DeleteAgentButton } from "@/components/agents/delete-agent-button"
 
 export const maxDuration = 60
@@ -25,7 +29,7 @@ export default async function AgentsPage({
   searchParams: Promise<{ room?: string }>
 }) {
   const { org: orgSlug } = await params
-  const { room: requestedRoom } = await searchParams
+  await searchParams
   const access = await requireOrgAccess(orgSlug)
   const canEdit = isOrgAdmin(access.role)
   const [agents, keys, mcpServers, rooms] = await Promise.all([
@@ -34,96 +38,138 @@ export default async function AgentsPage({
     listMcpServers(access.org.id),
     listRooms(access.org.id),
   ])
-  const keysById = new Map(keys.map((key) => [key.id, key]))
-  const hasServerModel = devModelConfigured()
   const addableRooms = rooms.filter((room) => room.kind !== "dm")
+  const since = new Date(Date.now() - 30 * 86_400_000).toISOString()
+  const [rollup, catalog] = await Promise.all([
+    loadUsageRollup(access.org.id, since),
+    canEdit
+      ? buildModelCatalog(keys, agents.map((a) => ({ keyId: a.providerKeyId, model: a.model })))
+      : Promise.resolve([]),
+  ])
+  const usage = usageByAgent(rollup ?? [])
+  const maxTokens = Math.max(1, ...[...usage.values()].map((u) => u.inputTokens + u.outputTokens))
+  const totals = [...usage.values()].reduce(
+    (acc, u) => ({ tokens: acc.tokens + u.inputTokens + u.outputTokens, cost: acc.cost + u.costUsd, requests: acc.requests + u.requests }),
+    { tokens: 0, cost: 0, requests: 0 },
+  )
+  const pickerGroups = catalog.length
+    ? catalog
+    : keys.map((key) => ({ keyId: key.id, provider: key.provider, label: key.label, detail: key.provider, models: [] }))
 
   return (
     <div className="h-full overflow-y-auto">
       <div className="mx-auto max-w-4xl px-5 py-8 sm:px-8">
-        <p className="font-mono text-[12px] text-faint">
-          <Link href={`/${orgSlug}`} className="hover:text-text">
-            workspace
-          </Link>{" "}
-          / agents
-        </p>
-        <div className="mt-1 flex flex-wrap items-baseline justify-between gap-2">
-          <h1 className="text-2xl font-medium tracking-[-0.02em]">Agents</h1>
-          <div className="flex items-center gap-3">
-            {canEdit ? (
-              <Link
-                href={`/${orgSlug}/agents/new`}
-                className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90"
-              >
-                + New Bot
-              </Link>
-            ) : null}
-            {canEdit ? (
-              <Link
-                href={`/${orgSlug}/settings/keys`}
-                className="font-mono text-[12px] text-muted underline underline-offset-4 hover:text-text"
-              >
-                provider keys
-              </Link>
-            ) : null}
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-[-0.02em] text-text">Agents</h1>
+            <p className="mt-1 max-w-2xl text-[14px] text-muted">
+              Your AI teammates. Pick each one&apos;s model, see what it uses, and add new ones.
+            </p>
           </div>
+          {canEdit ? <AddAgentChooser orgSlug={orgSlug} rooms={addableRooms.map((r) => ({ id: r.id, name: r.name }))} /> : null}
         </div>
-        <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-muted">
-          An agent is a teammate powered by an AI model, or by your own server. People and other
-          agents mention it by its @handle.
-        </p>
+
+        <div className="mt-5 grid grid-cols-3 gap-2 rounded-xl border border-line bg-panel p-4">
+          <div>
+            <p className="text-[12px] text-faint">Tokens · 30 days</p>
+            <p className="mt-0.5 text-[18px] font-semibold text-text">{formatTokens(totals.tokens)}</p>
+          </div>
+          <div>
+            <p className="text-[12px] text-faint">Replies & runs</p>
+            <p className="mt-0.5 text-[18px] font-semibold text-text">{totals.requests.toLocaleString()}</p>
+          </div>
+          <div>
+            <p className="text-[12px] text-faint">Spend</p>
+            <p className="mt-0.5 text-[18px] font-semibold text-text">{formatUsd(totals.cost)}</p>
+          </div>
+          <Link href={`/${orgSlug}/analytics`} className="col-span-3 mt-1 text-[12px] text-muted hover:text-text">
+            Full usage breakdown →
+          </Link>
+        </div>
 
         {!canEdit ? (
-          <p className="mt-4 border-l-2 border-line-strong pl-3 font-mono text-[12px] text-muted">
-            only workspace admins can change agents
-          </p>
+          <p className="mt-4 text-[13px] text-muted">Only workspace admins can change agents.</p>
         ) : null}
 
         <div className="mt-6 space-y-8">
           <Section
-            title="Agent roster"
+            title="Your agents"
             description={`${agents.length} ${agents.length === 1 ? "agent" : "agents"} in this workspace.`}
           >
             {agents.length === 0 ? (
               <EmptyState
                 title="No agents yet"
-                body={canEdit ? "Create your first agent below, then add it to a room." : "Ask a workspace admin to create one."}
+                body={canEdit ? "Press Add agent to create one or invite one you already use." : "Ask a workspace admin to add one."}
               />
             ) : (
               <ul className="divide-y divide-line border-y border-line">
                 {agents.map((agent) => {
-                  const key = agent.providerKeyId ? keysById.get(agent.providerKeyId) : undefined
+                  const u = usage.get(agent.id)
+                  const tokens = u ? u.inputTokens + u.outputTokens : 0
+                  const activeRecently = u?.lastAt ? Date.now() - new Date(u.lastAt).getTime() < 86_400_000 : false
                   return (
                     <li key={agent.id} className="py-4">
-                      <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
-                        <div className="min-w-0 flex-1">
-                          <p className="flex flex-wrap items-baseline gap-2">
-                            <span className="text-[14px] text-text">{agent.displayName}</span>
-                            <span className="font-mono text-[12px] text-muted">@{agent.handle}</span>
-                            <span className="font-mono text-[11px] text-faint">{agent.kind === "external" ? "external" : "AI model"}</span>
-                          </p>
-                          <p className="mt-0.5 font-mono text-[11px] text-faint">
-                            {agent.kind === "external"
-                              ? agent.webhookUrl ?? "no webhook url"
-                              : `${key ? `${key.label} · ${key.provider}` : "server default"} · ${
-                                  agent.model ?? "default model"
-                                }`}
-                          </p>
-                          {agent.systemPrompt ? (
-                            <p className="mt-1 max-w-2xl truncate text-[12px] text-muted">
-                              {agent.systemPrompt}
-                            </p>
+                      <div className="flex items-start gap-3">
+                        <div className="relative">
+                          <Mascot seed={agent.handle} className="h-11 w-11" />
+                          {activeRecently ? (
+                            <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-void bg-ok" title="Active today" />
                           ) : null}
                         </div>
-                        {canEdit && agent.kind === "llm" ? (
-                          <AgentTestButton orgSlug={orgSlug} agentId={agent.id} />
-                        ) : null}
+                        <div className="min-w-0 flex-1">
+                          <p className="flex flex-wrap items-baseline gap-2">
+                            <span className="text-[15px] font-medium text-text">{agent.displayName}</span>
+                            <span className="text-[12px] text-muted">@{agent.handle}</span>
+                            <span className="rounded-full bg-raised px-2 py-0.5 text-[11px] text-muted">
+                              {agent.kind === "external" ? "Invited" : "Created here"}
+                            </span>
+                          </p>
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            {agent.kind === "llm" ? (
+                              <AgentModelPicker
+                                orgSlug={orgSlug}
+                                agentId={agent.id}
+                                groups={pickerGroups}
+                                currentKeyId={agent.providerKeyId}
+                                currentModel={agent.model}
+                                currentEffort={typeof agent.params.effort === "string" ? agent.params.effort : null}
+                                disabled={!canEdit}
+                              />
+                            ) : (
+                              <span className="inline-flex h-8 items-center rounded-full border border-line px-2.5 text-[12px] text-muted">
+                                Uses its own app&apos;s model
+                              </span>
+                            )}
+                            {canEdit && agent.kind === "llm" ? <AgentTestButton orgSlug={orgSlug} agentId={agent.id} /> : null}
+                          </div>
+                          <div className="mt-3">
+                            {u ? (
+                              <>
+                                <div className="h-1.5 w-full max-w-md overflow-hidden rounded-full bg-raised" aria-hidden>
+                                  <div className="h-full rounded-full bg-accent" style={{ width: `${Math.max(2, (tokens / maxTokens) * 100)}%` }} />
+                                </div>
+                                <p className="mt-1.5 text-[12px] text-muted">
+                                  {formatTokens(tokens)} tokens · {u.requests.toLocaleString()} {u.requests === 1 ? "run" : "runs"} ·{" "}
+                                  {formatUsd(u.costUsd)}
+                                  {u.topModel ? <span className="text-faint"> · mostly {u.topModel}</span> : null}
+                                  {u.lastAt ? <span className="text-faint"> · last active {relativeTime(u.lastAt)}</span> : null}
+                                </p>
+                              </>
+                            ) : (
+                              <p className="text-[12px] text-faint">
+                                {agent.kind === "external"
+                                  ? "Runs in its own app, so its tokens are billed there, not here."
+                                  : "No usage in the last 30 days."}
+                              </p>
+                            )}
+                          </div>
+                        </div>
                       </div>
 
                       {canEdit ? (
                         <details className="mt-2">
                           <summary className="cursor-pointer py-2 font-mono text-[12px] text-muted hover:text-text md:py-0">
-                            Edit agent
+                            More settings
                           </summary>
                           <div className="mt-3 border-l border-line pl-3">
                             <ActionForm action={updateAgent} submitLabel="Save agent">
@@ -149,31 +195,10 @@ export default async function AgentsPage({
                               </div>
 
                               {agent.kind === "llm" ? (
-                                <div className="grid gap-3 sm:grid-cols-2">
-                                  <Field label="API key" htmlFor={`key-${agent.id}`}>
-                                    <Select
-                                      id={`key-${agent.id}`}
-                                      name="providerKeyId"
-                                      defaultValue={agent.providerKeyId ?? ""}
-                                    >
-                                      {hasServerModel || !agent.providerKeyId ? (
-                                        <option value="">Server default model</option>
-                                      ) : null}
-                                      {keys.map((option) => (
-                                        <option key={option.id} value={option.id}>
-                                          {option.label} · {option.provider} · •••• {option.last4}
-                                        </option>
-                                      ))}
-                                    </Select>
-                                  </Field>
-                                  <Field label="model" htmlFor={`model-${agent.id}`}>
-                                    <Input
-                                      id={`model-${agent.id}`}
-                                      name="model"
-                                      defaultValue={agent.model ?? ""}
-                                    />
-                                  </Field>
-                                </div>
+                                <>
+                                  <input type="hidden" name="providerKeyId" value={agent.providerKeyId ?? ""} />
+                                  <input type="hidden" name="model" value={agent.model ?? ""} />
+                                </>
                               ) : (
                                 <Field label="webhook url" htmlFor={`webhook-${agent.id}`}>
                                   <Input
@@ -256,22 +281,6 @@ export default async function AgentsPage({
 
           {canEdit ? (
             <>
-              <div id="create-agent" className="scroll-mt-6">
-                <Section
-                  title="Create an agent"
-                  description="It gets tested as soon as it is created, so you find out right away if something is wrong."
-                >
-                  <AgentCreateForm
-                    orgSlug={orgSlug}
-                    keys={keys}
-                    mcpServers={mcpServers}
-                    rooms={addableRooms}
-                    initialRoomId={requestedRoom ?? ""}
-                    hasServerModel={hasServerModel}
-                  />
-                </Section>
-              </div>
-
               <Section
                 title="Add an agent to a room"
                 description="Agents can only reply in rooms they belong to. They reply in the order they were added."

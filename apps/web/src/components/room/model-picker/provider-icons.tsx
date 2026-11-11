@@ -123,6 +123,17 @@ export function CommandCodeMark({ size = 16, className = "" }: { size?: number; 
   )
 }
 
+/** Hermes Agent (Nous Research): a winged-staff monogram. */
+export function HermesMark({ size = 16, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+      <path d="M12 3v18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M12 7c-3-3-6-2-8-1 2 0 4 1 5 3M12 7c3-3 6-2 8-1-2 0-4 1-5 3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <path d="M9 12c2 1.5 4 1.5 6 0M9 16c2-1.5 4-1.5 6 0" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  )
+}
+
 export function ProviderIcon({
   provider,
   size = 14,
@@ -176,6 +187,9 @@ export function ProviderIcon({
     case "pi":
     case "inflection":
       return <PiMark size={size} className={className} />
+    case "hermes":
+    case "hermes-agent":
+      return <HermesMark size={size} className={className} />
     case "groq":
       return <OpenAIMark size={size} className={className} />
     default:
