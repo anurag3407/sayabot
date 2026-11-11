@@ -12,12 +12,14 @@ Whether you are setting up Sayabot for the first time, designing custom autonomo
 docs/
 ├── README.md                      # This documentation hub
 ├── getting-started.md             # Complete step-by-step setup from scratch
+├── self-hosting.md                # Complete self-hosting manual (VPS, Cloudflare, Tailscale, Homelab)
 ├── architecture.md                # Monorepo anatomy, turn coordinator & data flow
 ├── cron-and-automations.md        # Hermes cron engine & n8n-style visual canvas
 ├── rooms-and-collaboration.md     # Multiplayer rooms, live canvas, memory & tasks
 ├── tools-and-sandboxes.md         # 40+ built-in tools, Linux sandboxes & browser CDP
 ├── mcp-and-connectors.md          # Universal MCP gateway & bring-your-own-bot
 ├── deployment.md                  # Production deployment (VPS, Docker, Supabase)
+├── cloudflare-integration.md      # Cloudflare platform integration & edge architecture
 └── testing.md                     # Test suites (unit, integration, e2e Playwright)
 ```
 
@@ -33,6 +35,16 @@ Start here if you want to run Sayabot on your local machine. Covers:
 - Applying database migrations (`0001` through `0014_routines.sql`).
 - First sign-in and workspace onboarding wizard.
 - Troubleshooting common setup pitfalls.
+
+### 🌐 [Self-Hosting Guide (Definitive Production Manual)](self-hosting.md)
+The comprehensive operational guide for hosting Sayabot on your own infrastructure:
+- **Ingress pathways**: Automated Single VPS (`deploy/`), Cloudflare Zero Trust Tunnels, Tailscale Private Mesh, Split Cloud (Vercel + Fly.io), and Local Homelab.
+- **Database configuration**: Supabase Session Pooler (port 5432) vs Transaction Pooler (6543), migrations, and RLS.
+- **Secrets & encryption**: `MESH_KEK` (AES-256-GCM), `ORCHESTRATOR_INTERNAL_SECRET`, and full environment variable dictionary.
+- **Networking & WebSockets**: Nginx/Caddy proxy tuning, Hocuspocus WSS (`/collab`), and unbuffered SSE/NDJSON streaming.
+- **Sandboxes & execution**: `computerd` persistent Docker containers, headless Chromium CDP, and egress SSRF firewall.
+- **Universal MCP Gateway**: Client connection guides for Claude Desktop, Claude Code, Cursor, Windsurf, and ChatGPT.
+- **Operations & reliability**: Nightly `pg_dump` backups, zero-downtime rolling updates (`deploy.sh`), rollback mechanics, and troubleshooting matrix.
 
 ### 🏛 [Architecture & Monorepo Deep Dive](architecture.md)
 Understand how Sayabot works under the hood:

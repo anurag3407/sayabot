@@ -17,6 +17,7 @@
 
 <p align="center">
   <a href="#-quick-start"><b>Quick Start</b></a> •
+  <a href="docs/self-hosting.md"><b>Self-Hosting Guide</b></a> •
   <a href="#-sayabot-vs-hermes-agent"><b>Sayabot vs. Hermes</b></a> •
   <a href="#-n8n-styled-visual-automation-canvas"><b>Visual Canvas</b></a> •
   <a href="#-hermes-class-cron--routines"><b>Cron Engine</b></a> •
@@ -286,6 +287,17 @@ pnpm dev
 - **Orchestrator API**: [http://localhost:4000](http://localhost:4000)
 - **Canvas Collaborative Sync**: `ws://localhost:4000/collab`
 - **Automation Canvas**: [http://localhost:3000/[org]/cron](http://localhost:3000/[org]/cron)
+
+> 🚀 **Deploying to Production?**
+> Read the comprehensive **[Definitive Self-Hosting Production Guide](docs/self-hosting.md)** covering:
+> - Automated Single VPS Stack (`deploy/deploy.sh` with Docker Compose & Nginx)
+> - Cloudflare Zero Trust Tunnels (no open inbound ports, DDoS & SSL)
+> - Tailscale Private Mesh Networks (internal enterprise VPNs)
+> - Split Cloud Hosting (Vercel + Fly.io / Railway + Supabase)
+> - PostgreSQL Session Pooler (port 5432) vs Transaction Pooler configuration
+> - `MESH_KEK` AES-256 vault encryption & secret isolation
+> - Universal MCP Gateway setup for Claude Desktop, Cursor, and ChatGPT
+> - Automated zero-downtime rolling deploys, health gates, and backups
 
 ---
 

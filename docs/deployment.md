@@ -1,5 +1,8 @@
 # Deployment
 
+> 💡 **Looking for the definitive self-hosting manual?**
+> See the **[Complete Self-Hosting Guide](self-hosting.md)** for exhaustive production instructions across Single VPS (`deploy/`), Cloudflare Zero Trust Tunnels, Tailscale meshes, split cloud, homelab setups, and troubleshooting.
+>
 > **Self-hosting on a VPS?** Use the Docker + nginx stack in [`deploy/`](../deploy/README.md):
 > one script hardens the server, one issues TLS, and `deploy/deploy.sh` builds, migrates and
 > rolls out with health checks and automatic rollback. The sections below still apply for
