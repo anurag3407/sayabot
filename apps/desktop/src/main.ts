@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell } from "electron"
+import { app, BrowserWindow, ipcMain, Menu, MenuItemConstructorOptions, shell } from "electron"
 import * as path from "node:path"
 import * as fs from "node:fs"
 
@@ -21,7 +21,7 @@ interface DesktopConfig {
 
 let mainWindow: BrowserWindow | null = null
 let pendingDeepLinkUrl: string | null = null
-let localRunnerRunning = false
+let localRunnerRunning = true
 
 function getUserDataDir(): string {
   return app.getPath("userData")
@@ -75,13 +75,20 @@ function saveSession(session: AuthSession | null): void {
   }
 }
 
+function loadLocalHtml() {
+  if (!mainWindow) return
+  const distRendererPath = path.join(__dirname, "renderer", "index.html")
+  const srcRendererPath = path.join(__dirname, "..", "src", "renderer", "index.html")
+  const targetHtml = fs.existsSync(distRendererPath) ? distRendererPath : srcRendererPath
+  mainWindow.loadFile(targetHtml)
+}
+
 function handleDeepLink(urlStr: string): void {
   console.log("[Sayabot Desktop] Received deep link:", urlStr)
   try {
     const parsed = new URL(urlStr)
     if (parsed.protocol !== "sayabot:") return
 
-    // Expected format: sayabot://auth/callback?access_token=...&refresh_token=...&email=...
     if (parsed.host === "auth" || parsed.pathname.includes("callback")) {
       const params = parsed.searchParams
       const accessToken = params.get("access_token")
@@ -112,7 +119,7 @@ function handleDeepLink(urlStr: string): void {
   }
 }
 
-// Register protocol handler for macOS & Windows
+// Register protocol handler for macOS
 if (process.defaultApp) {
   if (process.argv.length >= 2) {
     app.setAsDefaultProtocolClient("sayabot", process.execPath, [path.resolve(process.argv[1])])
@@ -148,10 +155,71 @@ app.on("open-url", (event, urlStr) => {
   }
 })
 
+function buildAppMenu() {
+  const template: MenuItemConstructorOptions[] = [
+    {
+      label: "Sayabot",
+      submenu: [
+        { label: "About Sayabot", role: "about" },
+        { type: "separator" },
+        {
+          label: "Return to Controller",
+          accelerator: "CmdOrCtrl+H",
+          click: () => loadLocalHtml(),
+        },
+        {
+          label: "Open Workspace in Window",
+          accelerator: "CmdOrCtrl+W",
+          click: () => openWorkspaceInWindow(),
+        },
+        { type: "separator" },
+        { role: "hide" },
+        { role: "hideOthers" },
+        { role: "unhide" },
+        { type: "separator" },
+        { role: "quit" },
+      ],
+    },
+    {
+      label: "Edit",
+      submenu: [
+        { role: "undo" },
+        { role: "redo" },
+        { type: "separator" },
+        { role: "cut" },
+        { role: "copy" },
+        { role: "paste" },
+        { role: "selectAll" },
+      ],
+    },
+    {
+      label: "View",
+      submenu: [
+        { role: "reload" },
+        { role: "forceReload" },
+        { role: "toggleDevTools" },
+        { type: "separator" },
+        { role: "resetZoom" },
+        { role: "zoomIn" },
+        { role: "zoomOut" },
+        { type: "separator" },
+        { role: "togglefullscreen" },
+      ],
+    },
+    {
+      label: "Window",
+      submenu: [{ role: "minimize" }, { role: "zoom" }, { role: "close" }],
+    },
+  ]
+
+  const menu = Menu.buildFromTemplate(template)
+  Menu.setApplicationMenu(menu)
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    width: 1240,
+    height: 840,
     minWidth: 900,
     minHeight: 600,
     titleBarStyle: "hiddenInset",
@@ -165,11 +233,8 @@ function createWindow() {
     },
   })
 
-  // Load renderer
-  const distRendererPath = path.join(__dirname, "renderer", "index.html")
-  const srcRendererPath = path.join(__dirname, "..", "src", "renderer", "index.html")
-  const targetHtml = fs.existsSync(distRendererPath) ? distRendererPath : srcRendererPath
-  mainWindow.loadFile(targetHtml)
+  loadLocalHtml()
+  buildAppMenu()
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url)
@@ -188,6 +253,15 @@ function createWindow() {
   }
 }
 
+function openWorkspaceInWindow() {
+  const session = loadSession()
+  if (!session || !mainWindow) return
+  const cleanUrl = session.serverUrl.replace(/\/+$/, "")
+  // Authenticate seamlessly via /auth/complete hash tokens
+  const targetUrl = `${cleanUrl}/auth/complete#access_token=${session.accessToken}&refresh_token=${session.refreshToken}`
+  mainWindow.loadURL(targetUrl)
+}
+
 // IPC Handlers
 ipcMain.handle("auth:get-session", () => {
   return loadSession()
@@ -200,9 +274,15 @@ ipcMain.handle("auth:start-browser-auth", () => {
   shell.openExternal(authUrl)
 })
 
-ipcMain.handle("auth:sign-out", () => {
+ipcMain.handle("auth:sign-out", async () => {
   saveSession(null)
   if (mainWindow && !mainWindow.isDestroyed()) {
+    try {
+      await mainWindow.webContents.session.clearStorageData()
+    } catch (e) {
+      // ignore
+    }
+    loadLocalHtml()
     mainWindow.webContents.send("auth:session-updated", null)
   }
 })
@@ -219,9 +299,19 @@ ipcMain.handle("config:set-server-url", (_event, url: string) => {
   return cleanUrl
 })
 
+ipcMain.handle("workspace:open-in-window", () => {
+  openWorkspaceInWindow()
+})
+
 ipcMain.handle("workspace:open-in-browser", () => {
+  const session = loadSession()
   const config = loadConfig()
-  shell.openExternal(config.serverUrl)
+  const base = session?.serverUrl || config.serverUrl
+  shell.openExternal(`${base.replace(/\/+$/, "")}/login`)
+})
+
+ipcMain.handle("workspace:return-to-controller", () => {
+  loadLocalHtml()
 })
 
 ipcMain.handle("runner:get-status", () => {

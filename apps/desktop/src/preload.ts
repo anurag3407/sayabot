@@ -14,7 +14,9 @@ export interface DesktopBridge {
   signOut: () => Promise<void>
   getServerUrl: () => Promise<string>
   setServerUrl: (url: string) => Promise<string>
+  openWorkspaceInWindow: () => Promise<void>
   openWorkspaceInBrowser: () => Promise<void>
+  returnToController: () => Promise<void>
   getLocalRunnerStatus: () => Promise<{ running: boolean; port: number }>
   toggleLocalRunner: () => Promise<{ running: boolean; port: number }>
   onSessionUpdate: (callback: (session: AuthSession | null) => void) => () => void
@@ -26,7 +28,9 @@ const bridge: DesktopBridge = {
   signOut: () => ipcRenderer.invoke("auth:sign-out"),
   getServerUrl: () => ipcRenderer.invoke("config:get-server-url"),
   setServerUrl: (url: string) => ipcRenderer.invoke("config:set-server-url", url),
+  openWorkspaceInWindow: () => ipcRenderer.invoke("workspace:open-in-window"),
   openWorkspaceInBrowser: () => ipcRenderer.invoke("workspace:open-in-browser"),
+  returnToController: () => ipcRenderer.invoke("workspace:return-to-controller"),
   getLocalRunnerStatus: () => ipcRenderer.invoke("runner:get-status"),
   toggleLocalRunner: () => ipcRenderer.invoke("runner:toggle"),
   onSessionUpdate: (callback) => {
