@@ -13,10 +13,11 @@ let boss: PgBoss | null = null
 
 export async function startJobs(): Promise<PgBoss> {
   const env = getEnv()
+  const poolMax = process.env.DATABASE_POOL_MAX ? parseInt(process.env.DATABASE_POOL_MAX, 10) : 3
   const instance = new PgBoss({
     connectionString: env.DATABASE_URL,
     application_name: "sayabot-orchestrator",
-    max: 5,
+    max: Math.min(poolMax, 3),
   })
   instance.on("error", (error) => console.error("[pg-boss] error", error))
   await instance.start()
