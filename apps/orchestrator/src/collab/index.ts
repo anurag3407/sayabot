@@ -1,4 +1,14 @@
-import { computeFoldKey, extractHandles, redactSecrets, resolveMentions } from "@sayabot/core"
+import {
+  askItemsFromMetadata,
+  computeFoldKey,
+  extractHandles,
+  mergeAskItems,
+  planAsk,
+  redactSecrets,
+  resolveMentions,
+  sanitizeAskItems,
+  type AskItem,
+} from "@sayabot/core"
 import {
   agentReads,
   agentRuns,
@@ -29,6 +39,7 @@ import {
   type TaskPlanSubtask,
 } from "./tasks-service"
 import { notify } from "../db"
+import { factsForAgent, loadFactsForRoom, saveAgentFact } from "./facts"
 
 export { CollabError }
 
@@ -310,6 +321,15 @@ export async function getInbox(agent: CollabAgent, args: { markAsRead?: boolean 
       question: r.title,
       answer: typeof r.metadata.answer === "string" ? r.metadata.answer : null,
       answered_at: typeof r.metadata.answeredAt === "string" ? r.metadata.answeredAt : null,
+      ...(askItemsFromMetadata(r.metadata).length
+        ? {
+            items: askItemsFromMetadata(r.metadata).map((i) => ({
+              key: i.key,
+              question: i.question,
+              answer: i.answer ?? null,
+            })),
+          }
+        : {}),
     })),
   }
 }
@@ -752,11 +772,13 @@ export async function requestHumanDecision(
     details?: string
     options?: string[]
     foldKey?: string
+    items?: Array<{ key?: string; question: string; hint?: string; options?: string[] }>
   },
 ) {
   const roomId = await resolveAgentRoomId(agent, args.roomId || args.room)
   const options = [...new Set((args.options ?? []).map((o) => o.trim()).filter(Boolean))].slice(0, 6)
   const effectiveFoldKey = computeFoldKey(args.question, args.foldKey)
+  const items = sanitizeAskItems(args.items ?? [])
 
   // Validate linked task if provided: asks for already completed tasks are rejected as moot
   if (args.taskId) {
@@ -772,6 +794,18 @@ export async function requestHumanDecision(
         `cannot request decision on MESH-${targetTask.number}: task is already done; this ask is moot`,
       )
     }
+  }
+
+  if (items.length) {
+    return requestStructuredDecision(agent, {
+      roomId,
+      taskId: args.taskId,
+      question: args.question,
+      details: args.details,
+      options,
+      foldKey: effectiveFoldKey,
+      items,
+    })
   }
 
   // Deduplicate against still-open requests in the same room with same foldKey
@@ -864,16 +898,206 @@ export async function requestHumanDecision(
   }
 }
 
+/**
+ * Keyed questions. Known facts come straight back to the bot, keys another open question
+ * already asks are not asked twice, and only new items reach the person, merged into this
+ * bot's open question in the room when there is one.
+ */
+async function requestStructuredDecision(
+  agent: CollabAgent,
+  args: {
+    roomId: string
+    taskId?: string
+    question: string
+    details?: string
+    options: string[]
+    foldKey: string
+    items: AskItem[]
+  },
+) {
+  const db = getDb()
+  const now = new Date()
+  const [facts, openRows] = await Promise.all([
+    loadFactsForRoom(agent.orgId, args.roomId),
+    db
+      .select({
+        id: tasks.id,
+        number: tasks.number,
+        requestedByAgentId: tasks.requestedByAgentId,
+        askedCount: tasks.askedCount,
+        metadata: tasks.metadata,
+        expiresAt: tasks.expiresAt,
+      })
+      .from(tasks)
+      .where(and(eq(tasks.roomId, args.roomId), eq(tasks.kind, "request"), eq(tasks.status, "open")))
+      .orderBy(desc(tasks.createdAt))
+      .limit(50),
+  ])
+  const open = openRows.filter((row) => !row.expiresAt || row.expiresAt > now)
+  const plan = planAsk({
+    items: args.items,
+    facts,
+    roomId: args.roomId,
+    openAsks: open.map((row) => ({
+      id: row.id,
+      agentId: row.requestedByAgentId,
+      items: askItemsFromMetadata(row.metadata),
+    })),
+    agentId: agent.agentId,
+  })
+
+  const known = plan.known.map((k) => ({ key: k.key, label: k.label, answer: k.value }))
+  const alreadyAsked = plan.alreadyAsked.map((a) => {
+    const row = open.find((r) => r.id === a.askId)
+    return { key: a.key, request_id: a.askId, ref: row ? `MESH-${row.number}` : null }
+  })
+
+  if (!plan.toAsk.length) {
+    return {
+      request_id: alreadyAsked[0]?.request_id ?? null,
+      status: alreadyAsked.length ? "waiting_for_human" : "answered_from_facts",
+      folded: alreadyAsked.length > 0,
+      known,
+      already_asked: alreadyAsked,
+      next: alreadyAsked.length
+        ? "Nothing new was sent to the owner: the open items are already waiting in their inbox. Use the known answers now and keep working on anything that does not depend on the rest."
+        : "The owner already answered all of this. Use these answers; nothing was sent to them.",
+    }
+  }
+
+  const mergeTarget = plan.mergeIntoId ? open.find((row) => row.id === plan.mergeIntoId) : null
+  if (mergeTarget) {
+    const merged = mergeAskItems(askItemsFromMetadata(mergeTarget.metadata), plan.toAsk)
+    const nextCount = (mergeTarget.askedCount || 1) + 1
+    await db
+      .update(tasks)
+      .set({
+        askedCount: nextCount,
+        metadata: { ...mergeTarget.metadata, items: merged },
+        expiresAt: new Date(now.getTime() + 72 * 60 * 60 * 1000),
+        updatedAt: now,
+      })
+      .where(eq(tasks.id, mergeTarget.id))
+    await db.insert(taskEvents).values({
+      taskId: mergeTarget.id,
+      actorType: "agent",
+      actorId: agent.agentId,
+      fromStatus: "open",
+      toStatus: "open",
+      reason: "new items merged into the open question",
+      metadata: { addedKeys: plan.toAsk.map((i) => i.key), askedCount: nextCount },
+    })
+    notifyHumansNeeded({
+      roomId: args.roomId,
+      agentId: agent.agentId,
+      kind: "request",
+      detail: plan.toAsk.map((i) => i.question).join(" · ").slice(0, 200),
+    })
+    return {
+      request_id: mergeTarget.id,
+      ref: `MESH-${mergeTarget.number}`,
+      status: "waiting_for_human",
+      folded: true,
+      asked_count: nextCount,
+      added: plan.toAsk.map((i) => i.key),
+      known,
+      already_asked: alreadyAsked,
+      next: "Added to your open question instead of sending a new one. Each answer arrives as a message mentioning you as the owner fills it in.",
+    }
+  }
+
+  const [row] = await db
+    .insert(tasks)
+    .values({
+      orgId: agent.orgId,
+      roomId: args.roomId,
+      kind: "request",
+      title: args.question.slice(0, 120),
+      description: (args.details ?? "").slice(0, 4_000),
+      status: "open",
+      requestedByAgentId: agent.agentId,
+      foldKey: args.foldKey,
+      askedCount: 1,
+      expiresAt: new Date(now.getTime() + 72 * 60 * 60 * 1000),
+      metadata: {
+        source: "agent",
+        createdByAgent: agent.agentId,
+        options: args.options,
+        items: plan.toAsk,
+        ...(args.taskId ? { taskId: args.taskId } : {}),
+      },
+    })
+    .returning({ id: tasks.id, number: tasks.number })
+  if (!row) throw new CollabError("could not create the request")
+
+  await db.insert(taskEvents).values({
+    taskId: row.id,
+    actorType: "agent",
+    actorId: agent.agentId,
+    fromStatus: null,
+    toStatus: "open",
+    reason: "human decision requested",
+    metadata: { foldKey: args.foldKey, keys: plan.toAsk.map((i) => i.key) },
+  })
+  notifyHumansNeeded({ roomId: args.roomId, agentId: agent.agentId, kind: "request", detail: args.question })
+  return {
+    request_id: row.id,
+    ref: `MESH-${row.number}`,
+    status: "waiting_for_human",
+    folded: false,
+    asked_count: 1,
+    asked: plan.toAsk.map((i) => i.key),
+    known,
+    already_asked: alreadyAsked,
+    next: "Keep working on anything that does not depend on this. Each answer arrives as a message mentioning you, and get_request_status returns them.",
+  }
+}
+
+export async function getOwnerFacts(agent: CollabAgent, args: { roomId?: string; room?: string } = {}) {
+  const roomId = await resolveAgentRoomId(agent, args.roomId || args.room)
+  const facts = await loadFactsForRoom(agent.orgId, roomId)
+  return {
+    facts: factsForAgent(facts),
+    next: facts.length
+      ? "Use these before asking the owner anything. Ask only for keys that are missing here."
+      : "Nothing is recorded yet. Ask with request_human_decision using items with keys, and the answers will be kept here.",
+  }
+}
+
+export async function rememberOwnerFact(
+  agent: CollabAgent,
+  args: { roomId?: string; room?: string; key: string; value: string; note?: string },
+) {
+  const roomId = await resolveAgentRoomId(agent, args.roomId || args.room)
+  return saveAgentFact({
+    orgId: agent.orgId,
+    roomId,
+    agentId: agent.agentId,
+    key: args.key,
+    value: args.value,
+    note: args.note,
+  })
+}
+
 export async function getRequestStatus(agent: CollabAgent, args: { requestId: string }) {
   const task = await loadTaskInOrg(agent, args.requestId)
   if (task.kind !== "request") throw new CollabError("not a request")
+  const items = askItemsFromMetadata(task.metadata)
   return {
     request_id: task.id,
     ref: `MESH-${task.number}`,
     question: task.title,
-    status: task.status === "done" ? "answered" : "waiting_for_human",
+    status:
+      task.status === "done"
+        ? "answered"
+        : items.some((i) => i.answer)
+          ? "partly_answered"
+          : "waiting_for_human",
     answer: typeof task.metadata.answer === "string" ? task.metadata.answer : null,
     answered_at: typeof task.metadata.answeredAt === "string" ? task.metadata.answeredAt : null,
+    ...(items.length
+      ? { items: items.map((i) => ({ key: i.key, question: i.question, answer: i.answer ?? null })) }
+      : {}),
   }
 }
 
@@ -991,6 +1215,7 @@ export async function checkIn(
   let teammates: Array<{ handle: string; name: string; role: string }> = []
   let roomMessages: unknown[] = []
   let openTasks: unknown[] = []
+  let knownFacts: ReturnType<typeof factsForAgent> = []
 
   if (activeRoomId) {
     const [roomDetails] = await db
@@ -1027,6 +1252,7 @@ export async function checkIn(
     })
 
     openTasks = await listTasks(agent, { roomId: activeRoomId })
+    knownFacts = factsForAgent(await loadFactsForRoom(agent.orgId, activeRoomId))
   }
 
   const inbox = await getInbox(agent, { markAsRead: true })
@@ -1048,6 +1274,7 @@ export async function checkIn(
     unhandled_mentions: inbox.mentions,
     tasks_assigned_or_available: openTasks,
     answered_requests: inbox.answered_requests,
+    known_facts: knownFacts,
     recent_messages: roomMessages,
     house_rules: [
       "1. Check in whenever you begin work in the room, and use report_checkin to report state changes (or no_change) rather than filler messages.",
@@ -1055,6 +1282,7 @@ export async function checkIn(
       "3. Claim tasks with claim_task before starting work so teammates do not duplicate effort.",
       "4. Update task progress with update_task (done requires an outcome with artifact/ref; stuck requires unblock_needs).",
       "5. Always ask the room owner with request_human_decision before touching host files, spending money, or performing high-stakes actions outside Saaya.",
+      "5a. Never ask the owner for something in known_facts. When you need facts from them, send request_human_decision with items (one key per fact, e.g. start_date, expected_salary); known keys are answered for you and nothing is asked twice.",
       "6. Post updates and talk openly with teammate bots and the room owner.",
     ],
   }

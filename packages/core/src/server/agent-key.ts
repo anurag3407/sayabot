@@ -24,3 +24,14 @@ export function generateAgentApiKey(): GeneratedAgentApiKey {
     last4: token.slice(-4),
   }
 }
+
+/** Public-ish code in an "Add an agent" link. Not a credential: joining still needs approval. */
+export function generateBotInviteCode(): string {
+  return `bi_${randomBytes(18).toString("base64url")}`
+}
+
+/** Handed to the bot that asked to join; proves it is the same bot when it collects its key. */
+export function generatePollToken(): { token: string; hash: string } {
+  const token = `bp_${randomBytes(32).toString("base64url")}`
+  return { token, hash: hashAgentApiKey(token) }
+}

@@ -51,6 +51,8 @@ interface Props {
   providerKeys: ProviderKeySummary[]
   rooms: RoomSummary[]
   vaultSecrets: VaultSecretSummary[]
+  /** From the Marketplace: preselect this template and skip straight to naming the bot. */
+  initialTemplateSlug?: string
 }
 
 const CAPABILITY_DESCRIPTIONS: Record<keyof AgentCapabilities, { label: string; desc: string }> = {
@@ -70,13 +72,16 @@ const CAPABILITY_DESCRIPTIONS: Record<keyof AgentCapabilities, { label: string; 
   connectors: { label: "Workspace Connectors", desc: "Access Google Drive, Slack, and GitHub with granular scoping" },
 }
 
-export function BotWizard({ orgSlug, templates, providerKeys, rooms, vaultSecrets }: Props) {
+export function BotWizard({ orgSlug, templates, providerKeys, rooms, vaultSecrets, initialTemplateSlug }: Props) {
   const router = useRouter()
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
+  const preselected = initialTemplateSlug
+    ? templates.find((t) => t.slug === initialTemplateSlug || t.id === initialTemplateSlug) ?? null
+    : null
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(preselected ? 2 : 1)
 
   // Step 1: Template
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateSummary | null>(
-    templates.find((t) => t.slug === "coder") || templates[0] || null,
+    preselected || templates.find((t) => t.slug === "coder") || templates[0] || null,
   )
 
   // Step 2: Identity, Model, Capabilities

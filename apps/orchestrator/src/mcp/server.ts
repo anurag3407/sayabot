@@ -15,12 +15,14 @@ import {
   CollabError,
   createTask,
   getInbox,
+  getOwnerFacts,
   getRequestStatus,
   getRoomMessages,
   getVote,
   listTasks,
   planTask,
   postAgentMessage,
+  rememberOwnerFact,
   requestHumanDecision,
   resolveAgentRoomId,
   sendBotDirectMessage,
@@ -52,6 +54,7 @@ const INSTRUCTIONS = [
   "Read a room with get_room_messages before posting. Post with post_message; mention a teammate with @handle to wake them.",
   "Use the task board: claim_task before starting work so two agents never do the same job, update_task to report progress, and status \"stuck\" to ask teammates for help.",
   "Never take high-stakes actions (spending money, deleting data, sending things outside the team) on your own: call request_human_decision with clear options and wait for the answer.",
+  "Before asking the humans for a fact about them (start date, salary, city, links), read get_owner_facts. Ask only for what is missing, with request_human_decision items that each carry a key; known keys are answered for you and the same thing is never asked twice.",
   "For choices between approaches, start_vote and let the other agents cast_vote.",
 ].join("\n")
 
@@ -341,10 +344,29 @@ export const MCP_TOOLS: McpTool[] = [
       room_id: z.string().optional(),
       room: z.string().optional(),
       task_id: uuid.optional().describe("Optional task ID this request blocks or belongs to; asks for completed tasks auto-close as moot"),
-      question: z.string().min(4).max(120),
+      question: z.string().min(4).max(120).describe("One-line headline the person sees first"),
       details: z.string().max(4_000).optional(),
       options: z.array(z.string().min(1).max(60)).max(6).optional(),
       fold_key: z.string().max(64).optional().describe("Optional deduplication key; defaults to normalized question hash"),
+      items: z
+        .array(
+          z.object({
+            key: z
+              .string()
+              .max(48)
+              .describe(
+                "Stable snake_case name for the fact, e.g. start_date, work_authorization, expected_salary, current_salary, notice_period, location, relocation, linkedin_url, github_url, graduation_date, cgpa, years_of_experience, or go_<thing> for a yes/no decision",
+              ),
+            question: z.string().min(2).max(300).describe("The plain question for this one item"),
+            hint: z.string().max(300).optional().describe("Why you need it or what format helps"),
+            options: z.array(z.string().min(1).max(60)).max(6).optional().describe("Quick answers, e.g. Yes / No"),
+          }),
+        )
+        .max(8)
+        .optional()
+        .describe(
+          "Ask for several facts at once, one item each. Items already answered come back in `known` and are not shown to the person; items another open question already asks are not repeated.",
+        ),
     }),
     run: (agent, input) =>
       requestHumanDecision(agent, {
@@ -355,6 +377,37 @@ export const MCP_TOOLS: McpTool[] = [
         details: input.details,
         options: input.options,
         foldKey: input.fold_key,
+        items: input.items,
+      }),
+  }),
+  defineTool({
+    name: "get_owner_facts",
+    title: "What the owner already told us",
+    description:
+      "Facts the people in this room have already answered (start date, salary, links, decisions). Read this before asking them anything: never ask for a key that is here.",
+    schema: z.object({ room_id: z.string().optional(), room: z.string().optional() }),
+    readOnly: true,
+    run: (agent, input) => getOwnerFacts(agent, { roomId: input.room_id, room: input.room }),
+  }),
+  defineTool({
+    name: "remember_owner_fact",
+    title: "Remember a fact about the owner",
+    description:
+      "Record a fact you found in the owner's own material (their resume, a file or message they shared) so no bot asks them for it. It is saved as unconfirmed and the owner can edit or delete it. You cannot overwrite something the owner answered.",
+    schema: z.object({
+      room_id: z.string().optional(),
+      room: z.string().optional(),
+      key: z.string().min(1).max(48).describe("snake_case key, e.g. cgpa or linkedin_url"),
+      value: z.string().min(1).max(1_000),
+      note: z.string().max(300).optional().describe("Where you found it, e.g. 'resume PDF, 27 Oct'"),
+    }),
+    run: (agent, input) =>
+      rememberOwnerFact(agent, {
+        roomId: input.room_id,
+        room: input.room,
+        key: input.key,
+        value: input.value,
+        note: input.note,
       }),
   }),
   defineTool({

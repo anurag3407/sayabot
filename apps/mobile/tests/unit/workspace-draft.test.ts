@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert"
 import { isDemoMode, setDemoMode, subscribeDemoMode } from "../../src/core/session-mode.ts"
-import { roomNameSlug, taskInsertRow, taskPriority } from "../../src/core/workspace-draft.ts"
+import { delegationMessage, roomNameSlug, taskInsertRow, taskPriority } from "../../src/core/workspace-draft.ts"
 
 let failures = 0
 function test(name: string, fn: () => void) {
@@ -116,3 +116,17 @@ if (failures > 0) {
   process.exit(1)
 }
 console.log("workspace draft: all passed")
+
+test("task insert delegates to an agent only when one is chosen", () => {
+  const delegated = taskInsertRow({ orgId: "o", roomId: "r", userId: "u", title: "Draft", assigneeAgentId: "agent-1" })
+  assert.equal(delegated.assignee_agent_id, "agent-1")
+  const open = taskInsertRow({ orgId: "o", roomId: "r", userId: "u", title: "Draft", assigneeAgentId: null })
+  assert.equal("assignee_agent_id" in open, false)
+})
+
+test("delegation message mentions the agent once and carries the task", () => {
+  const msg = delegationMessage("@@hermes", " Apply to Fermi ", " use the draft ")
+  assert.ok(msg.startsWith("@hermes New task for you: Apply to Fermi\nuse the draft"))
+  assert.equal((msg.match(/@hermes/g) ?? []).length, 1)
+  assert.ok(!delegationMessage("hermes", "X").includes("undefined"))
+})

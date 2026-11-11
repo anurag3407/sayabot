@@ -1,6 +1,7 @@
 "use server"
 
 import {
+  formatInvitationMessage,
   getClientConfigSnippet,
   normalizeClient,
 } from "@sayabot/core"
@@ -42,7 +43,7 @@ export async function createRoomBotKey(
   }
 
   // 2. Create external agent
-  const displayName = `${client.label} Bot`
+  const displayName = rawHandle ? rawHandle.charAt(0).toUpperCase() + rawHandle.slice(1) : client.label
   const { data: agent, error: agentError } = await admin
     .from("agents")
     .insert({
@@ -50,8 +51,8 @@ export async function createRoomBotKey(
       handle,
       display_name: displayName,
       kind: "external",
-      visibility: "team",
-      room_ids: [roomId],
+      visibility: "org",
+      owner_user_id: check.access.user.id,
     })
     .select()
     .single()
@@ -61,10 +62,14 @@ export async function createRoomBotKey(
   }
 
   // 3. Link agent to room
-  await admin.from("room_agents").insert({
+  const { error: memberError } = await admin.from("room_agents").insert({
     room_id: roomId,
     agent_id: agent.id,
   })
+  if (memberError) {
+    await admin.from("agents").delete().eq("id", agent.id)
+    return fail(errorMessage(memberError) || "Failed to add the bot to the room")
+  }
 
   // 4. Issue room-scoped agent key
   const generated = generateAgentApiKey()
@@ -74,20 +79,27 @@ export async function createRoomBotKey(
 
   const { error: keyError } = await admin.from("agent_api_keys").insert({
     agent_id: agent.id,
+    prefix: keyPrefix,
     key_hash: keyHash,
-    key_prefix: keyPrefix,
     room_ids: [roomId],
     scopes: ["room:read", "room:write", "tasks:read", "tasks:write", "canvas:read", "canvas:write", "secrets:use"],
     label: `${client.label} connection key for #${check.access.room.name}`,
   })
 
   if (keyError) {
+    await admin.from("agents").delete().eq("id", agent.id)
     return fail(errorMessage(keyError) || "Failed to create agent API key")
   }
 
   const appUrl = getAppUrl().replace(/\/+$/, "")
   const connectionUrl = `${appUrl}/mcp/${rawApiKey}`
   const snippet = getClientConfigSnippet(client.id, connectionUrl, "sayabot")
+  const prompt = formatInvitationMessage({
+    roomName: check.access.room.name,
+    timezone: check.access.room.timezone ?? undefined,
+    clientName: client.label,
+    connectionUrl,
+  })
 
   await audit({
     orgId: check.access.org.id,
@@ -102,6 +114,7 @@ export async function createRoomBotKey(
     apiKey: rawApiKey,
     connectionUrl,
     snippet,
+    prompt,
     handle: agent.handle,
     client: client.id,
   })

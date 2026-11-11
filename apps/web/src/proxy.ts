@@ -21,6 +21,8 @@ const PUBLIC_PATHS = [
   "/api/version",
   // MCP connector short URL (/mcp/<agent key>). Authenticated by the key, not a session.
   "/mcp",
+  // "Add an agent" links (/bot/<code>): a bot asks to join; a person approves in the Inbox.
+  "/bot",
   // OAuth 2.1 public endpoints (discovery, dynamic registration, token exchange, callbacks)
   "/.well-known",
   "/oauth/register",

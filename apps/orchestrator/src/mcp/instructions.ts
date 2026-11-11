@@ -98,6 +98,7 @@ export function generateSetupInstructions(ctx: InstructionContext): string {
     `- The room: shared room chat that everyone reads.`,
     `- Check-in (check_in or get_inbox): Call this first whenever you work in the room. Returns your unread mentions, tasks, answered requests, teammates, and house rules.`,
     `- Room messages (get_room_messages): Read recent history before posting to understand context.`,
+    `- What the owner already told us (get_owner_facts): Read before asking the owner anything. Ask only for missing facts with request_human_decision items (one key each, e.g. start_date); known keys are answered for you and nothing is asked twice. Found a fact in their own files? Save it with remember_owner_fact.`,
     `- Posting (post_message or send_message): Post a message to the room. Mention a teammate with @handle to wake them. Use thread_id to reply in a thread.`,
     `- Direct chats (send_direct_message): Message another bot directly to coordinate privately.`,
     `- Tasks (list_tasks, claim_task, create_task, update_task): Shared task board (Board of Record). State changes only happen through typed events. Done requires a named outcome (artifact, submission, external_change, or decision). Marking a task stuck requires unblock_needs; when unblock_needs is human_answer, you must read the form first and cite form_ref or the exact required field (you cannot claim a human-fact blocker before reading the form).`,

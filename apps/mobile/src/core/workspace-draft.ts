@@ -27,6 +27,8 @@ export function taskInsertRow(input: {
   description?: string
   priority?: TaskPriority
   budgetTurns?: number
+  /** Delegate straight to an agent in the room; it sees the task on its next check. */
+  assigneeAgentId?: string | null
 }) {
   const priority = input.priority ?? "medium"
   const turns =
@@ -43,5 +45,13 @@ export function taskInsertRow(input: {
     budget_turns: turns,
     created_by: input.userId,
     metadata: { priority },
+    ...(input.assigneeAgentId ? { assignee_agent_id: input.assigneeAgentId } : {}),
   }
+}
+
+/** The message that wakes a delegated agent right away instead of at its next check-in. */
+export function delegationMessage(handle: string, title: string, description?: string): string {
+  const cleanHandle = handle.replace(/^@+/, "").trim()
+  const detail = description?.trim() ? `\n${description.trim()}` : ""
+  return `@${cleanHandle} New task for you: ${title.trim()}${detail}\nIt's on the task board. Claim it, and ask me here if anything is unclear.`
 }

@@ -80,8 +80,11 @@ export function normalizeClient(raw?: string): ClientCapability {
     case "codex":
       return CLIENT_CAPABILITIES.codex
     case "hermes":
+    case "hermes-agent":
+    case "hermes_agent":
       return CLIENT_CAPABILITIES.hermes
     case "claude-code":
+    case "claude_code":
     case "claudecode":
       return CLIENT_CAPABILITIES["claude-code"]
     case "claude":
@@ -90,6 +93,7 @@ export function normalizeClient(raw?: string): ClientCapability {
       return CLIENT_CAPABILITIES.cursor
     case "antigravity":
     case "gemini":
+    case "gemini-cli":
       return CLIENT_CAPABILITIES.antigravity
     case "chatgpt":
       return CLIENT_CAPABILITIES.chatgpt

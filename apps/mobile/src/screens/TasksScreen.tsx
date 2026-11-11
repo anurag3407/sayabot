@@ -27,6 +27,9 @@ import {
 } from "lucide-react-native"
 import { useTasks } from "../hooks/useTasks"
 import { useRooms } from "../hooks/useRooms"
+import { useRoomAgents } from "../hooks/useRoomAgents"
+import { postRoomMessage } from "../core/room-message"
+import { delegationMessage } from "../core/workspace-draft"
 import { useSettings } from "../hooks/useSettings"
 import { useAuth } from "../hooks/useAuth"
 import { usePalette } from "../hooks/usePalette"
@@ -49,6 +52,8 @@ export function TasksScreen() {
   const [priority, setPriority] = useState<"low" | "medium" | "high" | "urgent">("medium")
   const [budgetTurns, setBudgetTurns] = useState(12)
   const [creating, setCreating] = useState(false)
+  const [assigneeId, setAssigneeId] = useState<string | null>(null)
+  const { agents: roomAgents } = useRoomAgents(roomId)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   useEffect(() => {
@@ -61,6 +66,10 @@ export function TasksScreen() {
     if (filter === "blocked") return t.status === "blocked" || t.status === "stuck"
     return t.status === filter
   })
+
+  useEffect(() => {
+    setAssigneeId(null)
+  }, [roomId])
 
   const handleCreateTask = async () => {
     if (!title.trim()) {
@@ -83,9 +92,23 @@ export function TasksScreen() {
         description: description.trim() || undefined,
         priority,
         budgetTurns,
+        assigneeAgentId: assigneeId,
       })
 
+      // Wake the agent now rather than at its next check-in.
+      const assignee = roomAgents.find((agent) => agent.id === assigneeId)
+      if (assignee && settings.orgSlug) {
+        await postRoomMessage(
+          settings.orgSlug,
+          roomId,
+          delegationMessage(assignee.handle, title, description),
+        ).catch(() => {
+          // The task is on the board either way; the agent picks it up at its next check.
+        })
+      }
+
       setCreateModal(false)
+      setAssigneeId(null)
       setTitle("")
       setDescription("")
       setPriority("medium")
@@ -238,6 +261,40 @@ export function TasksScreen() {
                   })}
                 </ScrollView>
               )}
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Who should do it?</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.priorityRow}>
+                <TouchableOpacity
+                  style={[styles.priorityBtn, assigneeId === null && styles.priorityBtnActive]}
+                  onPress={() => setAssigneeId(null)}
+                >
+                  <Text style={[styles.priorityBtnText, assigneeId === null && styles.priorityBtnTextActive]}>
+                    Any agent
+                  </Text>
+                </TouchableOpacity>
+                {roomAgents.map((agent) => {
+                  const selected = agent.id === assigneeId
+                  return (
+                    <TouchableOpacity
+                      key={agent.id}
+                      style={[styles.priorityBtn, selected && styles.priorityBtnActive]}
+                      onPress={() => setAssigneeId(agent.id)}
+                    >
+                      <Sparkles size={12} color={selected ? colors.textInverse : colors.textSecondary} />
+                      <Text style={[styles.priorityBtnText, selected && styles.priorityBtnTextActive]}>
+                        {agent.displayName}
+                      </Text>
+                    </TouchableOpacity>
+                  )
+                })}
+              </ScrollView>
+              <Text style={styles.roomHint}>
+                {assigneeId
+                  ? "It gets a message now and works on it from wherever it runs, like your computer."
+                  : "The first agent free in the room claims it."}
+              </Text>
             </View>
 
             <View style={styles.inputGroup}>

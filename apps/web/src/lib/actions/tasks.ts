@@ -1,10 +1,11 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { extractHandles } from "@sayabot/core"
+import { applyAnswersToItems, askItemsFromMetadata, extractHandles } from "@sayabot/core"
 import { getRoomAccess, requireUser } from "@/lib/auth"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { ensureBotDmRoom } from "@/lib/bot-dm"
+import { deliverItemAnswers, resolveOpenAsksFromFacts, upsertFact } from "@/lib/facts"
 import { mutateTaskInOrchestrator, queueRoomMessage } from "@/lib/orchestrator"
 import { audit, errorMessage, fail, field, ok } from "@/lib/actions/shared"
 import type { ActionResult } from "@/lib/types"
@@ -221,26 +222,35 @@ export async function answerTaskRequestAction(input: {
   packetId?: string
   answer?: string
   alsoPost?: boolean
-  answers?: Array<{ taskId: string; answer: string; alsoPost?: boolean }>
+  /** Keyed answers for a structured question: { start_date: "June 2027" }. */
+  itemAnswers?: Record<string, string>
+  answers?: Array<{ taskId: string; answer: string; alsoPost?: boolean; itemAnswers?: Record<string, string> }>
 }): Promise<ActionResult> {
   const user = await requireUser(`/${input.orgSlug}`)
-  const items: Array<{ taskId: string; answer: string; alsoPost?: boolean }> = []
+  const items: Array<{ taskId: string; answer: string; alsoPost?: boolean; itemAnswers?: Record<string, string> }> = []
+  const hasItemAnswers = (value?: Record<string, string>) =>
+    Boolean(value && Object.values(value).some((v) => typeof v === "string" && v.trim()))
   if (input.answers && input.answers.length > 0) {
     for (const a of input.answers) {
-      const trimmed = a.answer?.trim()
-      if (trimmed) items.push({ taskId: a.taskId, answer: trimmed, alsoPost: a.alsoPost })
+      const trimmed = a.answer?.trim() ?? ""
+      if (trimmed || hasItemAnswers(a.itemAnswers)) {
+        items.push({ taskId: a.taskId, answer: trimmed, alsoPost: a.alsoPost, itemAnswers: a.itemAnswers })
+      }
     }
-  } else if (input.taskId && input.answer?.trim()) {
+  } else if (input.taskId && (input.answer?.trim() || hasItemAnswers(input.itemAnswers))) {
     items.push({
       taskId: input.taskId,
-      answer: input.answer.trim(),
+      answer: input.answer?.trim() ?? "",
       alsoPost: input.alsoPost,
+      itemAnswers: input.itemAnswers,
     })
   }
 
   if (items.length === 0) return fail("Write an answer")
 
   const admin = createAdminClient()
+  const touchedRooms = new Map<string, string>() // roomId -> orgId
+  const answeredTaskIds: string[] = []
 
   for (const item of items) {
     if (item.answer.length > 4_000) return fail("Keep answers under 4,000 characters")
@@ -282,6 +292,52 @@ export async function answerTaskRequestAction(input: {
         agentName: agent.display_name,
       })
     }
+
+    // Keyed question: answers are kept as facts and the question stays open until every item is in.
+    const askItems = askItemsFromMetadata(task.metadata)
+    if (askItems.length) {
+      const applied = applyAnswersToItems(askItems, item.itemAnswers ?? {}, "human")
+      if (!applied.answeredKeys.length && !item.answer) continue
+      for (const key of applied.answeredKeys) {
+        const answered = applied.items.find((i) => i.key === key)
+        if (!answered?.answer) continue
+        await upsertFact({
+          orgId: access.org.id,
+          roomId: task.room_id,
+          key,
+          value: answered.answer,
+          source: "answer",
+          userId: user.id,
+          taskId: task.id,
+        })
+      }
+      // A free-text note with no items left to fill closes the question too.
+      const remaining = item.answer && applied.remaining > 0 && !applied.answeredKeys.length ? 0 : applied.remaining
+      const delivered = await deliverItemAnswers({
+        taskId: task.id,
+        roomId: task.room_id,
+        agentId: agent?.id ?? null,
+        userId: user.id,
+        items: applied.items,
+        answeredKeys: applied.answeredKeys,
+        remaining,
+        extra: item.answer,
+        targetRoomId,
+        metadata: task.metadata ?? {},
+      })
+      if (!delivered.ok) return fail(delivered.error ?? "Could not post the answer")
+      touchedRooms.set(task.room_id, access.org.id)
+      answeredTaskIds.push(task.id)
+      await audit({
+        orgId: access.org.id,
+        actorId: user.id,
+        action: "request.answered",
+        target: task.id,
+        metadata: { roomId: task.room_id, targetRoomId, keys: applied.answeredKeys, remaining },
+      })
+      continue
+    }
+
     const inGroup = targetRoomId === task.room_id
     const content = inGroup && agent ? `@${agent.handle} ${item.answer}` : item.answer
     const { data: message, error } = await admin
@@ -293,7 +349,12 @@ export async function answerTaskRequestAction(input: {
         content,
         status: "complete",
         mentions: extractHandles(content),
-        metadata: { taskId: task.id, requestAnswer: true, alsoPost: item.alsoPost },
+        metadata: {
+          taskId: task.id,
+          requestAnswer: true,
+          alsoPost: item.alsoPost,
+          ...(!inGroup && agent ? { dmToAgentId: agent.id } : {}),
+        },
       })
       .select("id")
       .single()
@@ -324,6 +385,11 @@ export async function answerTaskRequestAction(input: {
       target: task.id,
       metadata: { roomId: task.room_id, targetRoomId, packetId: input.packetId },
     })
+  }
+
+  // One answer fills every other open question in the room that was waiting on the same key.
+  for (const [roomId, orgId] of touchedRooms) {
+    await resolveOpenAsksFromFacts({ orgId, roomIds: [roomId], userId: user.id, skipTaskIds: answeredTaskIds })
   }
 
   revalidatePath(`/${input.orgSlug}`, "layout")

@@ -9,10 +9,13 @@ export const metadata: Metadata = { title: "New Bot" }
 
 export default async function NewBotPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ org: string }>
+  searchParams: Promise<{ template?: string }>
 }) {
   const { org: orgSlug } = await params
+  const { template: initialTemplateSlug } = await searchParams
   const access = await requireOrgAccess(orgSlug)
   if (!access) notFound()
 
@@ -61,6 +64,7 @@ export default async function NewBotPage({
         providerKeys={providerKeys.map((k) => ({ id: k.id, provider: k.provider, label: k.label }))}
         rooms={rooms.filter((r) => r.kind !== "dm").map((r) => ({ id: r.id, name: r.name }))}
         vaultSecrets={vaultSecrets}
+        initialTemplateSlug={initialTemplateSlug}
       />
     </div>
   )

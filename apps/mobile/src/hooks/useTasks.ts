@@ -84,6 +84,7 @@ export function useTasks(roomId?: string) {
       description?: string
       priority?: TaskPriority
       budgetTurns?: number
+      assigneeAgentId?: string | null
     }) => {
       const targetRoomId = params.roomId || roomId
       const {
@@ -105,6 +106,7 @@ export function useTasks(roomId?: string) {
             description: params.description,
             priority: params.priority,
             budgetTurns: params.budgetTurns,
+            assigneeAgentId: params.assigneeAgentId,
           }),
         )
         .select(

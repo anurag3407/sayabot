@@ -1,9 +1,13 @@
 import "server-only"
 import { humanHandle } from "@/lib/human-handle"
 import { toolCallFromRow, type RawToolCallRow } from "@/lib/message-map"
+import { normalizeClient } from "@sayabot/core"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { listMemberViews, listOrgAgents } from "@/lib/queries"
 import type {
+  BotJoinRequestView,
+  OwnerFactView,
   BotChatView,
   ChatListItem,
   FileView,
@@ -171,7 +175,8 @@ export async function loadChatList(access: OrgAccess): Promise<{
     (requestsRes.data ?? []) as { id: string; fold_key: string | null; expires_at: string | null }[]
   ).filter((r) => !r.expires_at || r.expires_at > nowIso)
   const distinctQuestions = new Set(activeRequests.map((r) => r.fold_key || r.id)).size
-  const inboxCount = (approvalsRes.count ?? 0) + distinctQuestions
+  const joinRequests = await countBotJoinRequests(roomIds)
+  const inboxCount = (approvalsRes.count ?? 0) + distinctQuestions + joinRequests
   return { items, inboxCount, rooms }
 }
 
@@ -558,6 +563,86 @@ export async function loadInbox(access: OrgAccess): Promise<{
   ].slice(0, 30)
 
   return { approvals, requests, packets, agedStuck, done }
+}
+
+/** bot_invites is server-only, so it is read with the service role, scoped to rooms the person can read. */
+async function countBotJoinRequests(roomIds: string[]): Promise<number> {
+  if (!roomIds.length) return 0
+  const { count } = await createAdminClient()
+    .from("bot_invites")
+    .select("id", { count: "exact", head: true })
+    .in("room_id", roomIds)
+    .eq("status", "pending")
+    .gt("expires_at", new Date().toISOString())
+  return count ?? 0
+}
+
+export async function loadBotJoinRequests(access: OrgAccess): Promise<BotJoinRequestView[]> {
+  const rooms = await readableRooms(access.org.id)
+  if (!rooms.length) return []
+  const roomNames = new Map(rooms.map((room) => [room.id, room.name]))
+  const { data } = await createAdminClient()
+    .from("bot_invites")
+    .select("id, room_id, name, request_name, request_app, request_about, requested_at, rejected_attempts")
+    .in("room_id", rooms.map((room) => room.id))
+    .eq("status", "pending")
+    .gt("expires_at", new Date().toISOString())
+    .order("requested_at", { ascending: false })
+    .limit(50)
+  return ((data ?? []) as {
+    id: string
+    room_id: string
+    name: string | null
+    request_name: string | null
+    request_app: string | null
+    request_about: string | null
+    requested_at: string | null
+    rejected_attempts: unknown[] | null
+  }[]).map((row) => ({
+    inviteId: row.id,
+    roomId: row.room_id,
+    roomName: roomNames.get(row.room_id) ?? "room",
+    name: row.name || row.request_name || "A bot",
+    appLabel: row.request_app ? normalizeClient(row.request_app).label : null,
+    about: row.request_about,
+    requestedAt: row.requested_at ?? new Date().toISOString(),
+    rejectedAttempts: row.rejected_attempts?.length ?? 0,
+  }))
+}
+
+export async function loadOwnerFacts(access: OrgAccess): Promise<OwnerFactView[]> {
+  const supabase = await createSupabaseServerClient()
+  const [rooms, agents] = await Promise.all([readableRooms(access.org.id), listOrgAgents(access.org.id)])
+  const roomNames = new Map(rooms.map((room) => [room.id, room.name]))
+  const handles = new Map(agents.map((agent) => [agent.id, agent.handle]))
+  const { data } = await supabase
+    .from("owner_facts")
+    .select("id, key, label, value, room_id, source, source_agent_id, note, updated_at")
+    .eq("org_id", access.org.id)
+    .order("updated_at", { ascending: false })
+    .limit(300)
+  return ((data ?? []) as {
+    id: string
+    key: string
+    label: string
+    value: string
+    room_id: string | null
+    source: OwnerFactView["source"]
+    source_agent_id: string | null
+    note: string | null
+    updated_at: string
+  }[]).map((row) => ({
+    id: row.id,
+    key: row.key,
+    label: row.label,
+    value: row.value,
+    roomId: row.room_id,
+    roomName: row.room_id ? (roomNames.get(row.room_id) ?? "a room") : null,
+    source: row.source,
+    sourceAgentHandle: row.source_agent_id ? (handles.get(row.source_agent_id) ?? null) : null,
+    note: row.note,
+    updatedAt: row.updated_at,
+  }))
 }
 
 export async function loadFiles(access: OrgAccess): Promise<FileView[]> {

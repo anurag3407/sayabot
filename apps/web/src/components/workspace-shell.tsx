@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from "react"
-import { ArrowDownToLine, Bot, CircleHelp, Clock, Inbox, MessageCircle, RefreshCw, Search, Settings2 } from "lucide-react"
+import { ArrowDownToLine, Bot, CircleHelp, Clock, Inbox, MessageCircle, RefreshCw, Search, Settings2, Store } from "lucide-react"
 import { UpdateProvider, useAppUpdate } from "@/components/update-notification"
 import { signOutAction } from "@/lib/actions/auth"
 import { cn } from "@/lib/format"
@@ -36,6 +36,7 @@ const PRIMARY_NAV: { key: string; href: string; label: string; icon: NavIcon }[]
   { key: "tasks", href: "/tasks", label: "Tasks", icon: CheckIcon },
   { key: "files", href: "/files", label: "Files", icon: CanvasIcon },
   { key: "agents", href: "/agents", label: "Agents", icon: Bot },
+  { key: "marketplace", href: "/marketplace", label: "Marketplace", icon: Store },
   { key: "search", href: "/search", label: "Search", icon: Search },
 ]
 

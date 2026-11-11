@@ -96,3 +96,43 @@ export const oauthTokens = pgTable(
   },
   (t) => [index("oauth_tokens_token_hash_idx").on(t.tokenHash)],
 )
+
+export type BotInviteStatus = "waiting" | "pending" | "approved" | "joined" | "declined" | "revoked"
+
+/**
+ * "Add an agent" links. The link holds no credential: a bot opens it and asks to join, a
+ * person approves the request in their Inbox, and only then does that bot (and only the
+ * one that asked, proven by its poll token) receive its connection key, exactly once.
+ */
+export const botInvites = pgTable(
+  "bot_invites",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => orgs.id, { onDelete: "cascade" }),
+    roomId: uuid("room_id")
+      .notNull()
+      .references(() => rooms.id, { onDelete: "cascade" }),
+    code: text("code").notNull().unique(),
+    name: text("name"),
+    app: text("app"),
+    status: text("status").$type<BotInviteStatus>().notNull().default("waiting"),
+    requestName: text("request_name"),
+    requestApp: text("request_app"),
+    requestAbout: text("request_about"),
+    requestUserAgent: text("request_user_agent"),
+    requestedAt: timestamp("requested_at", { withTimezone: true }),
+    pollTokenHash: text("poll_token_hash"),
+    agentId: uuid("agent_id").references(() => agents.id, { onDelete: "set null" }),
+    createdBy: uuid("created_by").references(() => profiles.id, { onDelete: "set null" }),
+    decidedBy: uuid("decided_by").references(() => profiles.id, { onDelete: "set null" }),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    joinedAt: timestamp("joined_at", { withTimezone: true }),
+    rejectedAttempts: jsonb("rejected_attempts").$type<Array<{ at: string; app?: string; userAgent?: string }>>().notNull().default([]),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("bot_invites_room_idx").on(t.roomId, t.status), index("bot_invites_org_idx").on(t.orgId, t.status)],
+)

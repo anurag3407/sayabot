@@ -375,6 +375,32 @@ export interface DecisionPacketView {
   requests: InboxRequestView[]
 }
 
+/** A bot that opened its invite link and is waiting for a person to let it in. */
+export interface BotJoinRequestView {
+  inviteId: string
+  roomId: string
+  roomName: string
+  name: string
+  appLabel: string | null
+  about: string | null
+  requestedAt: string
+  rejectedAttempts: number
+}
+
+/** Something a person already told their bots, so nobody asks twice. */
+export interface OwnerFactView {
+  id: string
+  key: string
+  label: string
+  value: string
+  roomId: string | null
+  roomName: string | null
+  source: "answer" | "manual" | "agent"
+  sourceAgentHandle: string | null
+  note: string | null
+  updatedAt: string
+}
+
 export interface InboxDoneView {
   id: string
   kind: "approval" | "request"
