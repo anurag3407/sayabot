@@ -60,6 +60,8 @@ export function paletteFor(mode: ThemeMode) {
       surfaceLight: "#121212",
       border: "#1c1c1c",
       borderSubtle: "#161616",
+      bubbleAgent: "#0f1418",
+      bubbleAgentBorder: "#1c252c",
     }
   }
   if (mode === "emerald") {
@@ -69,6 +71,10 @@ export function paletteFor(mode: ThemeMode) {
       backgroundSecondary: "#0b1c16",
       surface: "#10261e",
       surfaceLight: "#163228",
+      border: "#1b3a2f",
+      borderSubtle: "#142d24",
+      bubbleAgent: "#0e241c",
+      bubbleAgentBorder: "#194032",
     }
   }
   return colors

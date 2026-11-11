@@ -21,7 +21,7 @@ export function TabNavigator() {
         headerShown: false,
         tabBarStyle: {
           backgroundColor: theme.surface,
-          borderTopColor: colors.borderSubtle,
+          borderTopColor: theme.borderSubtle ?? colors.borderSubtle,
           borderTopWidth: 1,
           height: 60 + insets.bottom,
           paddingBottom: Math.max(8, insets.bottom),

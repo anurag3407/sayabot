@@ -31,7 +31,7 @@ import { usePalette } from "../hooks/usePalette"
 import { colors } from "../theme"
 
 export function ChatScreen({ route, navigation }: any) {
-  const { roomId, roomName, orgSlug } = route.params
+  const { roomId = "", roomName = "room", orgSlug = "default" } = route?.params ?? {}
   const {
     messages,
     loading,
@@ -68,6 +68,7 @@ export function ChatScreen({ route, navigation }: any) {
       <KeyboardAvoidingView
         style={styles.keyboard}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 10 : 0}
       >
 
       {/* WhatsApp Chat Room Header */}

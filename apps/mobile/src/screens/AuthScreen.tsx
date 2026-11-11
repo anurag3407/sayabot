@@ -1,10 +1,9 @@
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Modal,
   Platform,
-  SafeAreaView,
   StatusBar,
   StyleSheet,
   Text,
@@ -12,6 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native"
+import { SafeAreaView } from "react-native-safe-area-context"
 import {
   Bot,
   ChevronRight,
@@ -23,12 +23,13 @@ import {
   Sparkles,
   X,
 } from "lucide-react-native"
+import { setDemoMode } from "../core/session-mode"
 import { supabase } from "../core/supabase"
 import { useSettings } from "../hooks/useSettings"
 import { colors } from "../theme"
 
 interface AuthScreenProps {
-  onEnterDemo: () => void
+  onEnterDemo?: () => void
 }
 
 export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
@@ -44,6 +45,10 @@ export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
   // Server gateway config modal
   const [serverModal, setServerModal] = useState(false)
   const [serverUrlInput, setServerUrlInput] = useState(settings.webApiUrl)
+
+  useEffect(() => {
+    setServerUrlInput(settings.webApiUrl)
+  }, [settings.webApiUrl])
 
   const handleSubmit = async () => {
     if (!email.trim() || !password) {
@@ -93,7 +98,11 @@ export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
         displayName: "Guest",
         role: "Preview",
       })
-      onEnterDemo()
+      if (onEnterDemo) {
+        onEnterDemo()
+      } else {
+        setDemoMode(true)
+      }
     } finally {
       setLoading(false)
     }

@@ -7,6 +7,7 @@ import {
 } from "react-native"
 import * as Clipboard from "expo-clipboard"
 import { Check, Copy, Terminal } from "lucide-react-native"
+import { usePalette } from "../../hooks/usePalette"
 import { useSettings } from "../../hooks/useSettings"
 import { colors, fonts } from "../../theme"
 import type { Message } from "../../types"
@@ -64,6 +65,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   const isAgent = message.senderType === "agent"
   const isSystem = message.senderType === "system"
   const { settings } = useSettings()
+  const theme = usePalette()
   const [copiedCodeIndex, setCopiedCodeIndex] = useState<number | null>(null)
   const fontSize = settings.fontSize === "compact" ? 14 : settings.fontSize === "large" ? 18 : 15
 
@@ -96,7 +98,20 @@ export function MessageBubble({ message }: MessageBubbleProps) {
 
   return (
     <View style={[styles.row, isAgent ? styles.rowAgent : styles.rowHuman]}>
-      <View style={[styles.bubble, isAgent ? styles.bubbleAgent : styles.bubbleHuman]}>
+      <View
+        style={[
+          styles.bubble,
+          isAgent
+            ? [
+                styles.bubbleAgent,
+                {
+                  backgroundColor: theme.bubbleAgent ?? colors.bubbleAgent,
+                  borderColor: theme.bubbleAgentBorder ?? colors.bubbleAgentBorder,
+                },
+              ]
+            : styles.bubbleHuman,
+        ]}
+      >
         {/* Agent Name Tag inside bubble */}
         {isAgent && senderTag && (
           <View style={styles.agentTagRow}>

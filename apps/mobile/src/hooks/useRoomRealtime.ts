@@ -14,6 +14,11 @@ export function useRoomRealtime(roomId: string, orgSlug: string) {
 
   // 1. Initial Load of Messages History
   const loadHistory = useCallback(async () => {
+    if (!roomId) {
+      setMessages([])
+      setLoading(false)
+      return
+    }
     setLoading(true)
     setError(null)
     try {
@@ -59,6 +64,7 @@ export function useRoomRealtime(roomId: string, orgSlug: string) {
 
   // 2. Realtime Channel Subscription
   useEffect(() => {
+    if (!roomId) return
     const channel = supabase.channel(`room:${roomId}`, {
       config: { private: true },
     })
@@ -139,13 +145,13 @@ export function useRoomRealtime(roomId: string, orgSlug: string) {
       .subscribe()
 
     return () => {
-      supabase.removeChannel(channel)
+      void supabase.removeChannel(channel)
     }
   }, [roomId])
 
   // 3. Send Human Message
   const sendMessage = async (content: string) => {
-    if (!content.trim()) return
+    if (!content.trim() || !roomId) return
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) throw new Error("Sign in to send a message.")
 

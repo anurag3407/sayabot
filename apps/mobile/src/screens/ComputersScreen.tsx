@@ -143,7 +143,7 @@ export function ComputersScreen() {
         renderItem={({ item }) => {
           const isRunning = item.status === "running"
           return (
-            <View style={styles.card}>
+            <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
               <View style={styles.cardTop}>
                 <View style={styles.agentInfo}>
                   <View style={styles.agentAvatar}>
@@ -181,7 +181,7 @@ export function ComputersScreen() {
               </View>
 
               {/* Sandbox Specs Grid */}
-              <View style={styles.detailsGrid}>
+              <View style={[styles.detailsGrid, { backgroundColor: theme.surfaceLight, borderColor: theme.borderSubtle }]}>
                 <View style={styles.detailItem}>
                   <Globe size={13} color={colors.textSecondary} />
                   <Text style={styles.detailText}>

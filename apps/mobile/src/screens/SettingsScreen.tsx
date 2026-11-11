@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -13,6 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native"
+import { SafeAreaView } from "react-native-safe-area-context"
 import {
   Bell,
   Bot,
@@ -31,6 +31,7 @@ import {
   LogOut,
   Moon,
   RefreshCw,
+  RotateCcw,
   Server,
   Shield,
   Sliders,
@@ -169,7 +170,7 @@ export function SettingsScreen() {
         {/* ============================================================== */}
         <View style={styles.section}>
           <Text style={styles.sectionHeader}>Profile & Workspace</Text>
-          <View style={styles.profileCard}>
+          <View style={[styles.profileCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <View style={styles.profileRow}>
               <View style={styles.avatar}>
                 <Text style={styles.avatarText}>{userInitials}</Text>
@@ -225,7 +226,7 @@ export function SettingsScreen() {
             </View>
           </View>
 
-          <View style={styles.card}>
+          <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             {/* Provider Picker Pills */}
             <Text style={styles.cardLabel}>Model Provider</Text>
             <ScrollView
@@ -405,7 +406,7 @@ export function SettingsScreen() {
         {/* ============================================================== */}
         <View style={styles.section}>
           <Text style={styles.sectionHeader}>Infrastructure & Gateway</Text>
-          <View style={styles.card}>
+          <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             {/* VPS Gateway URL */}
             <TouchableOpacity
               style={styles.rowBetween}
@@ -501,7 +502,7 @@ export function SettingsScreen() {
         {/* ============================================================== */}
         <View style={styles.section}>
           <Text style={styles.sectionHeader}>Agent Sandbox & Execution</Text>
-          <View style={styles.card}>
+          <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             {/* Tool Approval Policy */}
             <View style={styles.colBlock}>
               <View style={styles.rowLead}>
@@ -612,7 +613,7 @@ export function SettingsScreen() {
         {/* ============================================================== */}
         <View style={styles.section}>
           <Text style={styles.sectionHeader}>Appearance & Interface</Text>
-          <View style={styles.card}>
+          <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             {/* Theme Style */}
             <View style={styles.colBlock}>
               <View style={styles.rowLead}>
@@ -739,7 +740,7 @@ export function SettingsScreen() {
           <Text style={styles.sectionNote}>
             These switches are saved on this phone. This build does not deliver push alerts.
           </Text>
-          <View style={styles.card}>
+          <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <View style={styles.rowBetween}>
               <View style={styles.rowLead}>
                 <Bell size={18} color={colors.primaryBright} />
@@ -805,14 +806,14 @@ export function SettingsScreen() {
         {/* ============================================================== */}
         <View style={styles.section}>
           <Text style={styles.sectionHeader}>Data & Diagnostics</Text>
-          <View style={styles.card}>
+          <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <TouchableOpacity
               style={styles.rowBetween}
               onPress={handleResetDefaults}
               activeOpacity={0.7}
             >
               <View style={styles.rowLead}>
-                <RotateCcwIcon size={18} color={colors.accentWarning} />
+                <RotateCcw size={18} color={colors.accentWarning} />
                 <View>
                   <Text style={styles.rowTitle}>Restore Factory Defaults</Text>
                   <Text style={styles.rowSubtitle}>Reset all keys, endpoints, and preferences</Text>
@@ -828,7 +829,7 @@ export function SettingsScreen() {
         {/* ============================================================== */}
         <View style={styles.section}>
           <Text style={styles.sectionHeader}>About</Text>
-          <View style={styles.card}>
+          <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <View style={styles.aboutRow}>
               <View style={styles.aboutLogo}>
                 <Bot size={22} color={colors.primaryBright} />
@@ -1087,10 +1088,6 @@ export function SettingsScreen() {
       </Modal>
     </SafeAreaView>
   )
-}
-
-function RotateCcwIcon({ size = 18, color = "#fff" }: { size?: number; color?: string }) {
-  return <RefreshCw size={size} color={color} style={{ transform: [{ scaleX: -1 }] }} />
 }
 
 const styles = StyleSheet.create({

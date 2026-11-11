@@ -35,7 +35,7 @@ function mapTask(row: {
   }
 }
 
-export function useTasks() {
+export function useTasks(roomId?: string) {
   const [tasks, setTasks] = useState<TaskItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -53,13 +53,19 @@ export function useTasks() {
         return
       }
 
-      const { data, error: queryError } = await supabase
+      let query = supabase
         .from("tasks")
         .select(
           "id, number, title, description, status, kind, assignee_agent_id, assignee_user_id, budget_turns, turns_used, cost_usd, unblock_needs, metadata",
         )
         .order("created_at", { ascending: false })
         .limit(50)
+
+      if (roomId) {
+        query = query.eq("room_id", roomId)
+      }
+
+      const { data, error: queryError } = await query
       if (queryError) throw queryError
       setTasks((data ?? []).map((row) => mapTask(row)))
     } catch (err) {
@@ -68,22 +74,23 @@ export function useTasks() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [roomId])
 
   const createTask = useCallback(
     async (params: {
       orgId: string
-      roomId: string
+      roomId?: string
       title: string
       description?: string
       priority?: TaskPriority
       budgetTurns?: number
     }) => {
+      const targetRoomId = params.roomId || roomId
       const {
         data: { user },
       } = await supabase.auth.getUser()
       if (!user) throw new Error("Sign in to create a task.")
-      if (!params.orgId || !params.roomId) {
+      if (!params.orgId || !targetRoomId) {
         throw new Error("Choose a room. Tasks belong to a room so an agent knows where to work.")
       }
 
@@ -92,7 +99,7 @@ export function useTasks() {
         .insert(
           taskInsertRow({
             orgId: params.orgId,
-            roomId: params.roomId,
+            roomId: targetRoomId,
             userId: user.id,
             title: params.title,
             description: params.description,
@@ -111,7 +118,7 @@ export function useTasks() {
       setTasks((prev) => [newTask, ...prev])
       return newTask
     },
-    [],
+    [roomId],
   )
 
   useEffect(() => {

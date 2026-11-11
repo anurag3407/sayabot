@@ -11,7 +11,7 @@
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
-    "test": "tsc --noEmit -p tests/unit/tsconfig.json && node --experimental-strip-types tests/unit/env.test.ts && node --experimental-strip-types tests/unit/workspace-draft.test.ts"
+    "test": "tsc --noEmit -p tests/unit/tsconfig.json && node --no-warnings --experimental-strip-types tests/unit/env.test.ts && node --no-warnings --experimental-strip-types tests/unit/workspace-draft.test.ts"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "1.23.1",

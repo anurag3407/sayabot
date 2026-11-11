@@ -1,6 +1,7 @@
 import React from "react"
 import { StyleSheet, Text, View } from "react-native"
 import { AlertCircle, Bot, Clock, DollarSign, Flag } from "lucide-react-native"
+import { usePalette } from "../../hooks/usePalette"
 import { colors } from "../../theme"
 import type { TaskItem } from "../../types"
 
@@ -9,6 +10,7 @@ interface TaskCardProps {
 }
 
 export function TaskCard({ task }: TaskCardProps) {
+  const theme = usePalette()
   const isDone = task.status === "done"
   const isBlocked = task.status === "blocked" || task.status === "stuck"
   const isInProgress = task.status === "in_progress"
@@ -33,7 +35,7 @@ export function TaskCard({ task }: TaskCardProps) {
   const progressPercent = Math.min(100, Math.round((task.turnsUsed / Math.max(1, task.budgetTurns)) * 100))
 
   return (
-    <View style={[styles.card, { borderLeftColor: statusColor }]}>
+    <View style={[styles.card, { borderLeftColor: statusColor, backgroundColor: theme.surface, borderColor: theme.border }]}>
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.numberRow}>

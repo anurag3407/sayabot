@@ -10,7 +10,13 @@ export function isDemoMode(): boolean {
 export function setDemoMode(next: boolean): void {
   if (demoMode === next) return
   demoMode = next
-  for (const listener of listeners) listener(demoMode)
+  for (const listener of listeners) {
+    try {
+      listener(demoMode)
+    } catch (err) {
+      console.error("[session-mode] listener error:", err)
+    }
+  }
 }
 
 export function subscribeDemoMode(listener: Listener): () => void {
