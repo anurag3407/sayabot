@@ -16,6 +16,6 @@ config.resolver.nodeModulesPaths = [
 ]
 
 // 3. Prevent duplicate react/react-native resolutions
-config.resolver.disableHierarchicalLookup = true
+// config.resolver.disableHierarchicalLookup = true
 
 module.exports = config
