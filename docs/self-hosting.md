@@ -9,54 +9,54 @@ This guide provides an end-to-end operational manual for self-hosting Sayabot in
 ## Table of Contents
 
 1. [Pick a Way In](#1-pick-a-way-in)
-2. [Architecture & System Topology](#2-architecture-system-topology)
+2. [Architecture and System Topology](#2-architecture-and-system-topology)
    - [Component Breakdown](#component-breakdown)
-   - [Network Boundaries & Dual-Bridge Isolation](#network-boundaries-dual-bridge-isolation)
-3. [Prerequisites & System Sizing](#3-prerequisites-system-sizing)
+   - [Network Boundaries and Dual-Bridge Isolation](#network-boundaries-and-dual-bridge-isolation)
+3. [Prerequisites and System Sizing](#3-prerequisites-and-system-sizing)
    - [Hardware Sizing Guidelines](#hardware-sizing-guidelines)
-   - [Software & Operating System Requirements](#software-operating-system-requirements)
-4. [Ingress & Hosting Pathways](#4-ingress-hosting-pathways)
+   - [Software and Operating System Requirements](#software-and-operating-system-requirements)
+4. [Ingress and Hosting Pathways](#4-ingress-and-hosting-pathways)
    - [Pathway A: Single VPS Stack (`deploy/`)](#pathway-a-single-vps-stack-deploy)
    - [Pathway B: Cloudflare Zero Trust Tunnels (No Open Inbound Ports)](#pathway-b-cloudflare-zero-trust-tunnels)
    - [Pathway C: Tailscale Private Mesh Network](#pathway-c-tailscale-private-mesh-network)
    - [Pathway D: Split Cloud Hosting (Vercel + Fly.io / Railway + Supabase)](#pathway-d-split-cloud-hosting)
-   - [Pathway E: Local Homelab & On-Premises](#pathway-e-local-homelab-on-premises)
-5. [Database & Supabase Engine Setup](#5-database-supabase-engine-setup)
+   - [Pathway E: Local Homelab and On-Premises](#pathway-e-local-homelab-and-on-premises)
+5. [Database and Supabase Engine Setup](#5-database-and-supabase-engine-setup)
    - [The Pooler Dilemma: Session Pooler (5432) vs. Transaction Pooler (6543)](#the-pooler-dilemma-session-pooler-5432-vs-transaction-pooler-6543)
    - [Connection Pool Sizing (`DATABASE_POOL_MAX`)](#connection-pool-sizing-database_pool_max)
-   - [Applying Migrations & SQL Architecture](#applying-migrations-sql-architecture)
-   - [Row Level Security (RLS) & Realtime Publication](#row-level-security-rls-realtime-publication)
-   - [Authentication & OAuth Configuration](#authentication-oauth-configuration)
-6. [Environment Variables & Secret Vaults](#6-environment-variables-secret-vaults)
-   - [Key Encryption Key (`SAYABOT_KEK` / `MESH_KEK`) & In-Flight Token Swapping](#key-encryption-key-sayabot_kek-mesh_kek-in-flight-token-swapping)
+   - [Applying Migrations and SQL Architecture](#applying-migrations-and-sql-architecture)
+   - [Row Level Security (RLS) and Realtime Publication](#row-level-security-rls-and-realtime-publication)
+   - [Authentication and OAuth Configuration](#authentication-and-oauth-configuration)
+6. [Environment Variables and Secret Vaults](#6-environment-variables-and-secret-vaults)
+   - [Master Key Encryption Key (KEK) and In-Flight Token Swapping](#master-key-encryption-key-kek-and-in-flight-token-swapping)
    - [Build-Time Inlining (`NEXT_PUBLIC_*`) vs. Runtime Variables](#build-time-inlining-next_public_-vs-runtime-variables)
    - [Complete Environment Variable Dictionary](#complete-environment-variable-dictionary)
-7. [Reverse Proxy, Networking & WebSocket Tuning](#7-reverse-proxy-networking-websocket-tuning)
+7. [Reverse Proxy, Networking and WebSocket Tuning](#7-reverse-proxy-networking-and-websocket-tuning)
    - [Nginx Configuration Deep Dive](#nginx-configuration-deep-dive)
    - [Hocuspocus WebSocket Upgrade (`/collab`)](#hocuspocus-websocket-upgrade-collab)
-   - [Unbuffered Streaming for SSE & NDJSON (`/api/v1/*`, `/mcp/*`)](#unbuffered-streaming-for-sse-ndjson-apiv1-mcp)
+   - [Unbuffered Streaming for SSE and NDJSON](#unbuffered-streaming-for-sse-and-ndjson)
    - [Alternative: Caddyfile Configuration](#alternative-caddyfile-configuration)
    - [Alternative: Traefik Configuration](#alternative-traefik-configuration)
-8. [Sandboxes, Computer Use (`computerd`) & Browser CDP](#8-sandboxes-computer-use-computerd-browser-cdp)
+8. [Sandboxes, Computer Use (computerd) and Browser CDP](#8-sandboxes-computer-use-computerd-and-browser-cdp)
    - [Persistent `/home/bot` Linux Sandboxes](#persistent-homebot-linux-sandboxes)
    - [Docker Socket Security Hardening](#docker-socket-security-hardening)
    - [Headless Chromium CDP vs. Cloudflare Browser Rendering](#headless-chromium-cdp-vs-cloudflare-browser-rendering)
-   - [Egress Secret Broker & SSRF Firewall](#egress-secret-broker-ssrf-firewall)
-9. [Universal MCP Gateway & External Client Connectors](#9-universal-mcp-gateway-external-client-connectors)
+   - [Egress Secret Broker and SSRF Firewall](#egress-secret-broker-and-ssrf-firewall)
+9. [Universal MCP Gateway and External Client Connectors](#9-universal-mcp-gateway-and-external-client-connectors)
    - [Gateway Dual-Endpoint Architecture](#gateway-dual-endpoint-architecture)
    - [Connecting Claude Desktop](#connecting-claude-desktop)
    - [Connecting Claude Code CLI](#connecting-claude-code-cli)
-   - [Connecting Cursor & Windsurf](#connecting-cursor-windsurf)
+   - [Connecting Cursor and Windsurf](#connecting-cursor-and-windsurf)
    - [Connecting Codex CLI](#connecting-codex-cli)
    - [Connecting Hermes Agent CLI](#connecting-hermes-agent-cli)
    - [Connecting OpenAI ChatGPT (Custom GPT Actions)](#connecting-openai-chatgpt-custom-gpt-actions)
-10. [Day-2 Operations, Backups & Maintenance](#10-day-2-operations-backups-maintenance)
+10. [Day-2 Operations, Backups and Maintenance](#10-day-2-operations-backups-and-maintenance)
     - [Zero-Downtime Rolling Deploys with `deploy.sh`](#zero-downtime-rolling-deploys-with-deploysh)
     - [Automated Rollback Safeguards](#automated-rollback-safeguards)
-    - [Disaster Recovery & Database Backups (`canvases.ydoc_state`)](#disaster-recovery-database-backups-canvasesydoc_state)
+    - [Disaster Recovery and Database Backups (canvases.ydoc_state)](#disaster-recovery-and-database-backups-canvasesydoc_state)
     - [Persistent Agent Disk Backups (`saaya-bot-*` Volumes)](#persistent-agent-disk-backups-saaya-bot--volumes)
     - [Host Process Supervisor (Systemd Unit Template)](#host-process-supervisor-systemd-unit-template)
-    - [Log Aggregation & Health Monitoring](#log-aggregation-health-monitoring)
+    - [Log Aggregation and Health Monitoring](#log-aggregation-and-health-monitoring)
 11. [Comprehensive Troubleshooting Matrix](#11-comprehensive-troubleshooting-matrix)
 12. [Production Hardening Checklist](#12-production-hardening-checklist)
 
@@ -72,11 +72,11 @@ Choose the ingress and hosting pattern that matches your networking constraints,
 | **Behind NAT / Home Lab / Dynamic IP** | **[Pathway B: Cloudflare Zero Trust](#pathway-b-cloudflare-zero-trust-tunnels)** | None (`0`) | Required | ~7 minutes | `https://sayabot.example.com` |
 | **Internal Team / Private Corporate Network** | **[Pathway C: Tailscale Private Mesh](#pathway-c-tailscale-private-mesh-network)** | None (`0`) | MagicDNS / Tailscale | ~3 minutes | `https://sayabot-srv.tailnet.ts.net` |
 | **Serverless Web + Managed Background Compute** | **[Pathway D: Split Cloud Hosting](#pathway-d-split-cloud-hosting)** | Managed (Fly.io) | Required | ~10 minutes | `https://app.example.com` |
-| **Local Workstation / Mac Mini / Offline Rig** | **[Pathway E: Local Homelab](#pathway-e-local-homelab-on-premises)** | LAN only | Optional (`.local`) | ~2 minutes | `http://localhost:3000` |
+| **Local Workstation / Mac Mini / Offline Rig** | **[Pathway E: Local Homelab](#pathway-e-local-homelab-and-on-premises)** | LAN only | Optional (`.local`) | ~2 minutes | `http://localhost:3000` |
 
 ---
 
-## 2. Architecture & System Topology
+## 2. Architecture and System Topology
 
 Sayabot is architected as a set of decoupled, purpose-built microservices coordinated over PostgreSQL primitives and high-throughput real-time protocols:
 
@@ -139,7 +139,7 @@ Sayabot is architected as a set of decoupled, purpose-built microservices coordi
 | **`apps/egress`** | `8080` (proxy)<br>`8081` (admin) | Secret-brokering proxy. Traps outbound traffic from containers, substitutes opaque placeholders (`saaya_ph_...`) with real decrypted credentials in flight, and drops requests destined for RFC-1918 subnets or cloud metadata endpoints. |
 | **Supabase Postgres** | `5432` (session) | Managed or self-hosted PostgreSQL 15/16 database with Supabase Realtime CDC logical replication. **Must use session pooling (port 5432)** for advisory locks and `LISTEN/NOTIFY`. |
 
-### Network Boundaries & Dual-Bridge Isolation
+### Network Boundaries and Dual-Bridge Isolation
 
 In production Docker Compose deployments, Sayabot partitions container networking into two distinct bridge networks:
 
@@ -149,7 +149,7 @@ In production Docker Compose deployments, Sayabot partitions container networkin
 
 ---
 
-## 3. Prerequisites & System Sizing
+## 3. Prerequisites and System Sizing
 
 ### Hardware Sizing Guidelines
 
@@ -162,7 +162,7 @@ In production Docker Compose deployments, Sayabot partitions container networkin
 > [!IMPORTANT]
 > **Next.js Standalone Build Peak Memory**: Next.js webpack production compilation peaks between **2.8 GB and 3.2 GB of RAM**. If building directly on your VPS, configuring a **minimum of 4 GB swap space is strictly mandatory** to prevent the Linux Out-Of-Memory (OOM) killer from terminating the build process (`Exit 137`).
 
-### Software & Operating System Requirements
+### Software and Operating System Requirements
 
 - **Supported OS**: Ubuntu 22.04 LTS / 24.04 LTS, Debian 12 (Bookworm), macOS 14+ (development/homelab).
 - **Docker Engine**: Version `24.0+` or `26.0+` with the Docker Compose v2 plugin (`docker compose version`).
@@ -175,7 +175,7 @@ In production Docker Compose deployments, Sayabot partitions container networkin
 
 ---
 
-## 4. Ingress & Hosting Pathways
+## 4. Ingress and Hosting Pathways
 
 Choose the ingress pattern that matches your security model and networking architecture:
 
@@ -465,7 +465,7 @@ fly deploy
 
 ---
 
-### Pathway E: Local Homelab & On-Premises
+### Pathway E: Local Homelab and On-Premises
 
 To run Sayabot on a local home server, Mac Studio, or bare-metal machine:
 
@@ -498,7 +498,7 @@ To access from other devices on your local Wi-Fi or LAN, bind to `0.0.0.0` and s
 
 ---
 
-## 5. Database & Supabase Engine Setup
+## 5. Database and Supabase Engine Setup
 
 Sayabot utilizes PostgreSQL as a unified state engine, task queue, and event fabric.
 
@@ -542,7 +542,7 @@ DATABASE_POOL_MAX=15
 
 Formula: `(Number of Web Containers * DATABASE_POOL_MAX) + (Number of Orchestrators * DATABASE_POOL_MAX) < PostgreSQL max_connections - 5`
 
-### Applying Migrations & SQL Architecture
+### Applying Migrations and SQL Architecture
 
 Sayabot utilizes a dual-layer migration strategy:
 1. **Drizzle ORM Schema Migrations**: Relational tables (`packages/db/migrations/`).
@@ -581,7 +581,7 @@ pnpm db:seed
 0018_workspace_connectors.sql   # Universal MCP connector grants and permissions
 ```
 
-### Row Level Security (RLS) & Realtime Publication
+### Row Level Security (RLS) and Realtime Publication
 
 Sayabot isolates all tenant data at the database engine level. Every table enforces RLS checking `auth.uid()` against `organization_members`.
 
@@ -605,7 +605,7 @@ USING (
 );
 ```
 
-### Authentication & OAuth Configuration
+### Authentication and OAuth Configuration
 
 In your Supabase project dashboard (**Authentication → URL Configuration**):
 
@@ -629,9 +629,9 @@ In your Supabase project dashboard (**Authentication → URL Configuration**):
 
 ---
 
-## 6. Environment Variables & Secret Vaults
+## 6. Environment Variables and Secret Vaults
 
-### Key Encryption Key (`SAYABOT_KEK` / `MESH_KEK`) & In-Flight Token Swapping
+### Master Key Encryption Key (KEK) and In-Flight Token Swapping
 
 Sayabot employs zero-plaintext credential storage. All third-party provider keys (OpenAI, Anthropic, Tavily, AWS, GitHub PATs) and external MCP connection headers are sealed using AES-256-GCM before writing to PostgreSQL.
 
@@ -700,7 +700,7 @@ Next.js inlines environment variables prefixed with `NEXT_PUBLIC_` **directly in
 
 ---
 
-## 7. Reverse Proxy, Networking & WebSocket Tuning
+## 7. Reverse Proxy, Networking and WebSocket Tuning
 
 ### Nginx Configuration Deep Dive
 
@@ -806,7 +806,7 @@ Key requirements for `/collab`:
 - `proxy_buffering off;` to prevent chunking or delayed dispatch of CRDT sync vectors.
 - `proxy_read_timeout 1h;` to prevent idle proxies from prematurely terminating active collaborative sessions.
 
-### Unbuffered Streaming for SSE & NDJSON (`/api/v1/*`, `/mcp/*`)
+### Unbuffered Streaming for SSE and NDJSON
 
 External bot webhooks, agent thinking traces, and MCP tool responses stream continuously as Server-Sent Events (SSE) or line-delimited JSON (NDJSON).
 
@@ -882,7 +882,7 @@ http:
 
 ---
 
-## 8. Sandboxes, Computer Use (`computerd`) & Browser CDP
+## 8. Sandboxes, Computer Use (computerd) and Browser CDP
 
 Sayabot gives agents the ability to write code, execute bash scripts, inspect filesystems, and control web browsers in isolated environments.
 
@@ -932,7 +932,7 @@ Sayabot supports two headless browser automation backends for agents:
      ```
    - Configured simply by adding `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` to your environment.
 
-### Egress Secret Broker & SSRF Firewall
+### Egress Secret Broker and SSRF Firewall
 
 The `apps/egress` service acts as an outbound security boundary:
 
@@ -949,7 +949,7 @@ Agent Sandbox (Token: saaya_ph_9x12...) ──▶ apps/egress:8080 ──▶ Int
 
 ---
 
-## 9. Universal MCP Gateway & External Client Connectors
+## 9. Universal MCP Gateway and External Client Connectors
 
 Sayabot's **Universal Model Context Protocol (MCP)** gateway allows your self-hosted agents to collaborate with external AI tools and developer environments.
 
@@ -1005,7 +1005,7 @@ Verify connection:
 claude mcp list
 ```
 
-### Connecting Cursor & Windsurf
+### Connecting Cursor and Windsurf
 
 **For Cursor**:
 In `~/.cursor/mcp.json` (or `.cursor/mcp.json` in your project):
@@ -1070,7 +1070,7 @@ hermes mcp list
 
 ---
 
-## 10. Day-2 Operations, Backups & Maintenance
+## 10. Day-2 Operations, Backups and Maintenance
 
 ### Zero-Downtime Rolling Deploys with `deploy.sh`
 
@@ -1118,7 +1118,7 @@ Or roll back to a specific commit SHA:
 ./deploy/deploy.sh rollback a1b2c3d
 ```
 
-### Disaster Recovery & Database Backups (`canvases.ydoc_state`)
+### Disaster Recovery and Database Backups (canvases.ydoc_state)
 
 Because all canvas Yjs binary states, room messages, tasks, and routines are stored in PostgreSQL, backing up the database creates a complete snapshot of your Sayabot instance.
 
@@ -1216,7 +1216,7 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now sayabot
 ```
 
-### Log Aggregation & Health Monitoring
+### Log Aggregation and Health Monitoring
 
 To monitor Sayabot with uptime services (Better Stack, UptimeRobot, Datadog):
 - **Health Check Endpoint**: `https://sayabot.yourcompany.com/api/health`
