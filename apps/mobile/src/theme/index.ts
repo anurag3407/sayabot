@@ -1,54 +1,52 @@
 import { Platform } from "react-native"
 
+/**
+ * Legacy palette for the older screens (Tasks, Settings, Computers). Same keys as before,
+ * now in Sayabot's own brand (warm ink + coral) so every screen matches the new design system
+ * in src/ui. New screens use useTheme() from src/ui/theme instead.
+ */
 export const colors = {
-  // Backgrounds
-  background: "#0b141a",
-  backgroundSecondary: "#121b22",
-  surface: "#1f2c34",
-  surfaceLight: "#202c33",
-  surfaceElevated: "#233138",
-  
-  // Borders & Dividers
-  border: "#2a3942",
-  borderSubtle: "#222d34",
-  borderLight: "#374248",
-  
-  // Brand & Emeralds
-  primary: "#00a884",
-  primaryBright: "#25d366",
-  primaryDark: "#005c4b",
-  primaryMuted: "rgba(0, 168, 132, 0.15)",
-  primaryGlow: "rgba(37, 211, 102, 0.25)",
-  
-  // Chat Bubbles
-  bubbleHuman: "#005c4b",
-  bubbleHumanBorder: "#026d59",
-  bubbleAgent: "#202c33",
-  bubbleAgentBorder: "#2a3942",
-  bubbleSystem: "#182229",
+  background: "#0b0b0c",
+  backgroundSecondary: "#111113",
+  surface: "#161618",
+  surfaceLight: "#1c1c1f",
+  surfaceElevated: "#232326",
 
-  // Typography
-  textPrimary: "#e9edef",
-  textSecondary: "#8696a0",
-  textMuted: "#667781",
-  textInverse: "#111b21",
-  textPlaceholder: "#667781",
+  border: "#2a2a2e",
+  borderSubtle: "#212124",
+  borderLight: "#3a3a40",
 
-  // Accents & Badges
-  accentCyan: "#53bdeb",
-  accentGold: "#ffd279",
-  accentWarning: "#eab308",
-  accentDanger: "#f15c6d",
+  primary: "#ff5d6c",
+  primaryBright: "#ff7a86",
+  primaryDark: "#c63e4f",
+  primaryMuted: "rgba(255, 93, 108, 0.14)",
+  primaryGlow: "rgba(255, 93, 108, 0.25)",
+
+  bubbleHuman: "#3a1b20",
+  bubbleHumanBorder: "#5a2a31",
+  bubbleAgent: "#1c1c1f",
+  bubbleAgentBorder: "#2a2a2e",
+  bubbleSystem: "#141416",
+
+  textPrimary: "#f4f3f1",
+  textSecondary: "#a9a9b0",
+  textMuted: "#85858d",
+  textInverse: "#0b0b0c",
+  textPlaceholder: "#6d6d75",
+
+  accentCyan: "#5b9df5",
+  accentGold: "#f2c14e",
+  accentWarning: "#e6bc6a",
+  accentDanger: "#f0776f",
   accentDangerBg: "#3b1e1e",
-  accentPurple: "#a855f7",
-  accentBlue: "#3b82f6",
+  accentPurple: "#b79cf0",
+  accentBlue: "#5b9df5",
 
-  // Overlays
-  overlay: "rgba(0, 0, 0, 0.75)",
-  codeBg: "#06090e",
+  overlay: "rgba(0, 0, 0, 0.72)",
+  codeBg: "#08080a",
 }
 
-export type ThemeMode = "dark" | "oled" | "emerald"
+export type ThemeMode = "system" | "light" | "dark" | "oled" | "emerald"
 
 export function paletteFor(mode: ThemeMode) {
   if (mode === "oled") {

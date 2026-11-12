@@ -208,6 +208,16 @@ export class ConnectorService {
     return client.getFileContent(owner, repoName, args.path, args.ref)
   }
 
+  async readGitHubFile(args: {
+    agentId: string
+    orgId: string
+    repo: string
+    path: string
+    ref?: string
+  }): Promise<ConnectorDoc> {
+    return this.getGitHubFile(args)
+  }
+
   async getGitHubIssueOrPr(args: {
     agentId: string
     orgId: string
@@ -229,6 +239,15 @@ export class ConnectorService {
 
     const client = new GitHubConnector({ token, fetchFn: this.fetchFn })
     return client.getIssueOrPullRequest(owner, repoName, args.issueNumber)
+  }
+
+  async readGitHubIssue(args: {
+    agentId: string
+    orgId: string
+    repo: string
+    issueNumber: number
+  }): Promise<ConnectorDoc> {
+    return this.getGitHubIssueOrPr(args)
   }
 }
 

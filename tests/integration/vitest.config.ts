@@ -10,6 +10,7 @@ export default {
       "@sayabot/llm": root + "/packages/llm/src/index.ts",
       "@sayabot/db/schema": root + "/packages/db/src/schema/index.ts",
       "@sayabot/db": root + "/packages/db/src/index.ts",
+      "drizzle-orm": root + "/packages/db/node_modules/drizzle-orm",
     },
   },
   test: { include: ["**/*.test.ts"], environment: "node" },

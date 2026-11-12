@@ -3,6 +3,23 @@ import { currentWebApiUrl } from "../core/settings"
 import { supabase } from "../core/supabase"
 import type { Message, PendingApproval } from "../types"
 
+function mapRow(m: any): Message {
+  return {
+    id: m.id,
+    roomId: m.room_id,
+    threadRootId: m.thread_root_id,
+    senderType: m.sender_type,
+    senderId: m.sender_id,
+    senderName: m.metadata?.agentName || (m.sender_type === "agent" ? "Agent" : "Human"),
+    senderHandle: m.metadata?.agentHandle || null,
+    content: m.content,
+    status: m.status,
+    mentions: m.mentions || [],
+    metadata: m.metadata || {},
+    createdAt: m.created_at,
+  }
+}
+
 export function useRoomRealtime(roomId: string, orgSlug: string) {
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(true)
@@ -144,14 +161,54 @@ export function useRoomRealtime(roomId: string, orgSlug: string) {
       })
       .subscribe()
 
+    // New and edited messages (yours from another device, teammates', finished agent replies).
+    const rows = supabase
+      .channel(`room-rows:${roomId}:${Math.random().toString(36).slice(2)}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `room_id=eq.${roomId}` }, ({ new: row }) => {
+        if ((row as any).thread_root_id) return
+        const next = mapRow(row)
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === next.id)) return prev
+          // Replace the optimistic copy of a message we just sent.
+          const pending = prev.findIndex((m) => m.id.startsWith("local-") && m.content === next.content && m.senderType === next.senderType)
+          if (pending >= 0) {
+            const copy = [...prev]
+            copy[pending] = next
+            return copy
+          }
+          return [...prev, next]
+        })
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages", filter: `room_id=eq.${roomId}` }, ({ new: row }) => {
+        const next = mapRow(row)
+        setMessages((prev) => prev.map((m) => (m.id === next.id ? { ...m, ...next, content: next.content || m.content } : m)))
+      })
+      .subscribe()
+
     return () => {
       void supabase.removeChannel(channel)
+      void supabase.removeChannel(rows)
     }
   }, [roomId])
 
   // 3. Send Human Message
   const sendMessage = async (content: string) => {
     if (!content.trim() || !roomId) return
+    const localId = `local-${Date.now()}`
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: localId,
+        roomId,
+        senderType: "human",
+        senderId: null,
+        senderName: "You",
+        content: content.trim(),
+        status: "streaming",
+        createdAt: new Date().toISOString(),
+        metadata: { sending: true },
+      },
+    ])
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) throw new Error("Sign in to send a message.")
 
@@ -170,10 +227,18 @@ export function useRoomRealtime(roomId: string, orgSlug: string) {
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
+      setMessages((prev) => prev.map((m) => (m.id === localId ? { ...m, status: "error", metadata: { failed: true } } : m)))
       throw new Error(err.error || `HTTP ${res.status}`)
     }
-
-    return res.json()
+    const sent = (await res.json()) as { messageId?: string }
+    if (sent.messageId) {
+      setMessages((prev) =>
+        prev.some((m) => m.id === sent.messageId)
+          ? prev.filter((m) => m.id !== localId)
+          : prev.map((m) => (m.id === localId ? { ...m, id: sent.messageId!, status: "complete", metadata: {} } : m)),
+      )
+    }
+    return sent
   }
 
   // 4. Resolve Danger Tool Approval

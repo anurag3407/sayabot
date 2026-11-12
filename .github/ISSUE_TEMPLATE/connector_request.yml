@@ -1,0 +1,134 @@
+name: "New Connector Proposal"
+description: "Propose a new workspace connector integration (e.g., Linear, Jira, Notion, Zendesk) for Sayabot."
+title: "[Connector]: "
+labels: ["connector", "enhancement"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### Propose a New Workspace Connector 🔌
+        Sayabot connects agents directly to enterprise workspaces (Slack, Google Drive, GitHub, Jira) using a secure, zero-leak architecture:
+        - **Envelope Encryption**: All tokens and secrets are encrypted with AES-256-GCM using `MESH_KEK`.
+        - **Fine-Grained Grants**: Permissions are strictly scoped via `agent_connector_grants` (e.g., specific channels, folders, or repositories).
+        - **Provider Rate Limiting**: Built-in sliding-window rate limiters prevent API bans.
+        - **Danger Classification**: Destructive actions are gated by human-in-the-loop approval.
+
+  - type: input
+    id: provider-name
+    attributes:
+      label: "Provider / Service Name"
+      description: "Name of the service or platform to integrate."
+      placeholder: "e.g., Linear, Jira Cloud, Notion, HubSpot, Zendesk, Salesforce"
+    validations:
+      required: true
+
+  - type: input
+    id: api-docs-url
+    attributes:
+      label: "Official API Documentation URL"
+      description: "Link to the provider's developer documentation, REST/GraphQL reference, and auth guides."
+      placeholder: "https://developers.example.com/docs/api"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: auth-mechanism
+    attributes:
+      label: "Authentication Mechanism"
+      description: "How does the connector authenticate against the provider?"
+      options:
+        - "OAuth 2.0 (Authorization Code with PKCE)"
+        - "OAuth 2.0 (Client Credentials Grant)"
+        - "Personal Access Token (PAT)"
+        - "API Key / Custom Auth Header"
+        - "Webhook Signatures (HMAC-SHA256)"
+        - "Hybrid (OAuth 2.0 + Webhook Event Subscriptions)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-tools
+    attributes:
+      label: "Proposed Built-in Agent Tools"
+      description: "List the tools to expose to Sayabot agents, including tool names, parameters, and return types."
+      value: |
+        - `provider_search_items`:
+          - **Inputs**: query (string), limit (number, max 20), cursor (string)
+          - **Output**: JSON array of matching records with IDs and summaries
+          - **Danger Level**: Safe (Read-only)
+
+        - `provider_get_item`:
+          - **Inputs**: itemId (string)
+          - **Output**: Full item details, body, metadata
+          - **Danger Level**: Safe (Read-only)
+
+        - `provider_create_item`:
+          - **Inputs**: title (string), description (string), parentId (string)
+          - **Output**: Created item ID and permalink URL
+          - **Danger Level**: Mutating (Requires confirmation or grant check)
+    validations:
+      required: true
+
+  - type: textarea
+    id: fine-grained-grants
+    attributes:
+      label: "Fine-Grained Scopes & `agent_connector_grants` Schema"
+      description: "How should permissions be restricted per agent? (e.g., specific workspace IDs, projects, channels, folders, or read-only mode)."
+      placeholder: |
+        Example grant configuration:
+        - Allowed projects: ['PROJ-101', 'PROJ-102']
+        - Read-only enforcement: boolean
+        - Max items per query: 25
+    validations:
+      required: true
+
+  - type: dropdown
+    id: danger-rating
+    attributes:
+      label: "Highest Danger Rating for this Connector"
+      description: "What is the highest risk level among the tools provided?"
+      options:
+        - "Tier 1: Read-Only (Safe - search, inspect, fetch metadata; no mutation)"
+        - "Tier 2: Low-Impact Mutation (Draft creation, comments, tag assignments)"
+        - "Tier 3: High-Impact Mutation (Resource creation, edits, state changes; human approval required)"
+        - "Tier 4: Destructive / External Dispatch (Deletions, financial transactions, public notifications; strict approval gate)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: rate-limiting-and-pagination
+    attributes:
+      label: "Rate Limiting & Pagination Strategy"
+      description: "Specify provider API rate limits and recommended sliding window settings."
+      value: |
+        - **Rate Limit Window**: [e.g. 100 requests per 60 seconds per workspace]
+        - **Pagination Type**: [e.g. Cursor-based via `next_cursor` parameter]
+        - **Max Page Size**: [e.g. 50 items per request]
+        - **Backoff Strategy**: [e.g. Exponential backoff with Jitter on HTTP 429]
+    validations:
+      required: true
+
+  - type: textarea
+    id: security-considerations
+    attributes:
+      label: "Security & Credential Lifecycle"
+      description: "Detail token refresh mechanisms, webhook HMAC verification, and encryption notes."
+      placeholder: |
+        - Token Refresh: Refresh token valid for 30 days, rotated on each refresh.
+        - Webhook Secret: HMAC-SHA256 signature checked against `X-Provider-Signature`.
+        - Storage: Ciphertext, IV, and Tag stored in `workspace_connectors` using AES-256-GCM.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: connector-checklist
+    attributes:
+      label: "Connector Verification Checklist"
+      options:
+        - label: "I have reviewed existing connectors in `apps/orchestrator/src/connectors/`."
+          required: true
+        - label: "I understand that all tokens must be encrypted with `MESH_KEK` using AES-256-GCM envelope encryption."
+          required: true
+        - label: "I am willing to contribute code, tests, or test credentials for this connector."
+          required: false

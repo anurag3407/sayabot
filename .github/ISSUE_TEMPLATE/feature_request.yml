@@ -1,0 +1,113 @@
+name: "Feature Proposal"
+description: "Propose a new feature, architecture improvement, or capability for Sayabot."
+title: "[Feat]: "
+labels: ["enhancement", "needs-triage"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### Propose a New Feature for Sayabot 🚀
+        We welcome proposals for new agent capabilities, workflow nodes, connectors, UI enhancements, and infrastructure features!
+        Please review [existing issues](https://github.com/anurag3407/Mesh/issues) and [discussions](https://github.com/anurag3407/Mesh/discussions) before submitting.
+
+  - type: dropdown
+    id: feature-domain
+    attributes:
+      label: "Target Subsystem / Domain"
+      description: "Which part of the Sayabot architecture does this proposal target?"
+      multiple: true
+      options:
+        - "Autonomous Agent Scheduling & Cron Engine"
+        - "Multiplayer Collaboration & Realtime Agent Rooms"
+        - "Visual Workflow Canvas (n8n-style Node Automations)"
+        - "Computer Sandbox (computerd, Docker Isolation, Linux Desktop)"
+        - "Workspace Connectors (Slack, Drive, GitHub, Jira, etc.)"
+        - "Model Context Protocol (MCP) Gateway & Client"
+        - "Memory Engine (Multi-tier Workspace & Room Vector Memory)"
+        - "Database Schema & Drizzle ORM Migrations"
+        - "Security Architecture (RLS, AES-256-GCM Envelope Encryption, Approval Gates)"
+        - "Web Interface (Next.js 16, Monaco, Tailwind)"
+        - "Mobile App (React Native, Expo SDK 52)"
+        - "Desktop Host (Tauri System Tray & Companion)"
+        - "Developer Experience & Tooling"
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem-statement
+    attributes:
+      label: "Problem Statement & Motivation"
+      description: "What pain point or limitation does this feature address? Why is it needed?"
+      placeholder: "Describe the specific friction or unmet need in current agent workflows..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story
+    attributes:
+      label: "User Story"
+      description: "Frame the request from the perspective of an end-user, developer, or agent."
+      value: |
+        **As a** [e.g., self-hosting engineer, team lead, AI researcher]
+        **I want** [e.g., to configure granular per-channel access tokens for the Slack connector]
+        **So that** [e.g., agents can only post updates to designated incident rooms without leaking private channel history]
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: "Proposed Technical Solution & Design"
+      description: "How should this feature work? Detail the proposed architecture, APIs, CLI commands, or UI workflows."
+      placeholder: |
+        1. Architecture overview:
+        2. Proposed API endpoints or schemas:
+        3. UI/UX workflow:
+    validations:
+      required: true
+
+  - type: textarea
+    id: architectural-impact
+    attributes:
+      label: "Architectural & Monorepo Impact"
+      description: "Detail the impact on database schemas, backward compatibility, performance, and security."
+      value: |
+        - **Packages/Apps Affected**: [e.g. apps/orchestrator, packages/db, apps/web]
+        - **Database Migrations Needed**: [Yes / No / Schema changes required]
+        - **Security & Authorization**: [Impact on RLS, AES-256-GCM KEK encryption, approval gates]
+        - **Breaking Changes**: [Does this break existing configs, APIs, or database records?]
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives-considered
+    attributes:
+      label: "Alternatives Considered"
+      description: "What alternative solutions, existing tools, or workarounds did you consider, and why were they insufficient?"
+      placeholder: "e.g., Using custom scripts, third-party MCP servers, or manual webhook polling..."
+    validations:
+      required: false
+
+  - type: textarea
+    id: implementation-milestones
+    attributes:
+      label: "Implementation Plan & Milestones"
+      description: "Break down the implementation into discrete phases or tasks if known."
+      placeholder: |
+        - [ ] Phase 1: Core types and DB migration schema in packages/db
+        - [ ] Phase 2: Orchestrator service logic and tool handlers
+        - [ ] Phase 3: Web UI components and real-time room sync
+        - [ ] Phase 4: Unit, integration, and E2E test coverage
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: contribution-readiness
+    attributes:
+      label: "Contribution Readiness"
+      options:
+        - label: "I am willing to submit a Pull Request implementing this feature."
+          required: false
+        - label: "I have reviewed the existing codebase and verified this does not duplicate existing functionality."
+          required: true

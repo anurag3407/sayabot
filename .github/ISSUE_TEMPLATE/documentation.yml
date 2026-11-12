@@ -1,0 +1,100 @@
+name: "Documentation Improvement"
+description: "Report missing, outdated, or unclear documentation, guides, or API references."
+title: "[Docs]: "
+labels: ["documentation", "needs-triage"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### Help Improve Sayabot Documentation 📚
+        Clear, accurate, and comprehensive documentation is critical for self-hosters and contributors.
+        If you found a typo, an outdated configuration option, a broken link, or a missing architecture section, please let us know!
+
+  - type: dropdown
+    id: doc-section
+    attributes:
+      label: "Documentation Area / Document"
+      description: "Select which document or topic needs improvement."
+      multiple: true
+      options:
+        - "Self-Hosting Guide (docs/self-hosting.md)"
+        - "Architecture & Monorepo Map (docs/architecture.md)"
+        - "Workspace Connectors & Integrations (docs/connectors.md, docs/mcp-and-connectors.md)"
+        - "Getting Started & Local Development (docs/getting-started.md, README.md)"
+        - "Production Deployment & Cloudflare (docs/deployment.md, docs/cloudflare-integration.md)"
+        - "Rooms, Multiplayer & Turn Coordination (docs/rooms-and-collaboration.md)"
+        - "Tools, Computer Sandboxes & Egress (docs/tools-and-sandboxes.md)"
+        - "Cron Engine & Autonomous Scheduling (docs/cron-and-automations.md)"
+        - "Testing Strategy & CI (docs/testing.md)"
+        - "Mobile App & OTA Updates (docs/auto-updates.md)"
+        - "Database Schemas & Drizzle ORM"
+        - "TypeScript API Reference & JSDoc"
+        - "Other"
+    validations:
+      required: true
+
+  - type: input
+    id: doc-location
+    attributes:
+      label: "Specific Page, File Path, or Section Anchor"
+      description: "Provide the exact path or URL anchor to the documentation."
+      placeholder: "e.g., docs/self-hosting.md#row-level-security-rls-and-realtime-publication"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: issue-type
+    attributes:
+      label: "Nature of the Improvement"
+      description: "What type of documentation issue is this?"
+      options:
+        - "Outdated Instructions / Stale Configuration"
+        - "Missing Guide / Coverage Gap"
+        - "Incorrect Code Sample or CLI Command"
+        - "Broken Link / Invalid Reference"
+        - "Typographical / Grammar Fix"
+        - "Architecture Diagram Drift"
+        - "Clarity & Readability Enhancement"
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-content
+    attributes:
+      label: "Current Documentation & Issue"
+      description: "Quote the current text or explain what is missing/misleading."
+      placeholder: "Describe what is currently written and why it needs revision..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggested-revision
+    attributes:
+      label: "Suggested Revision or New Content"
+      description: "Provide the updated markdown, corrected code snippet, or suggested explanation."
+      placeholder: |
+        ```bash
+        # Provide corrected commands or markdown text here
+        ```
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: "Additional Context or References"
+      description: "Link to relevant source files, PRs, or external documentation."
+      placeholder: "e.g., See packages/db/src/schema/ for the latest table definitions..."
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: doc-checklist
+    attributes:
+      label: "Documentation Checklist"
+      options:
+        - label: "I have verified that the issue exists on the latest `main` branch."
+          required: true
+        - label: "I am willing to submit a Pull Request to fix or write this documentation."
+          required: false

@@ -90,3 +90,10 @@ export function useSettings() {
     testingConnection,
   }
 }
+
+/** Save settings from outside React (e.g. phone pairing) and update every screen at once. */
+export async function applySettings(partial: Partial<AppSettings>): Promise<AppSettings> {
+  const next = await saveSettings(partial)
+  notifyListeners(next)
+  return next
+}

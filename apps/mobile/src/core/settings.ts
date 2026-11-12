@@ -28,9 +28,13 @@ export interface AppSettings {
   autoOpenTerminal: boolean
 
   // UI & Experience
-  themeMode: "dark" | "oled" | "emerald"
+  themeMode: "system" | "light" | "dark" | "oled" | "emerald"
   fontSize: "compact" | "normal" | "large"
   hapticsEnabled: boolean
+  /** Ask for Face ID / fingerprint when the app opens or comes back after a while. */
+  appLock: boolean
+  /** Shown once after the first sign-in. */
+  onboarded: boolean
   soundEffects: boolean
 
   // Notifications
@@ -60,9 +64,11 @@ export const DEFAULT_SETTINGS: AppSettings = {
   defaultComputerProfile: "standard",
   autoOpenTerminal: false,
 
-  themeMode: "dark",
+  themeMode: "system",
   fontSize: "normal",
   hapticsEnabled: true,
+  appLock: false,
+  onboarded: false,
   soundEffects: true,
 
   pushNotifications: true,

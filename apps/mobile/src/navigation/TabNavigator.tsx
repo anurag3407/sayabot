@@ -1,93 +1,64 @@
 import React from "react"
+import { Platform, StyleSheet } from "react-native"
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs"
-import { Bell, MessageSquare, CheckSquare, Cpu, Settings } from "lucide-react-native"
+import { BlurView } from "expo-blur"
+import { Bell, CheckSquare, Ellipsis, MessageCircle } from "lucide-react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
-import { RoomsScreen } from "../screens/RoomsScreen"
+import { HomeScreen } from "../screens/HomeScreen"
 import { InboxScreen } from "../screens/InboxScreen"
+import { TasksScreen } from "../screens/TasksScreen"
+import { MoreScreen } from "../screens/MoreScreen"
 import { useInbox } from "../hooks/useInbox"
 import { useSettings } from "../hooks/useSettings"
-import { TasksScreen } from "../screens/TasksScreen"
-import { ComputersScreen } from "../screens/ComputersScreen"
-import { SettingsScreen } from "../screens/SettingsScreen"
-import { usePalette } from "../hooks/usePalette"
-import { colors } from "../theme"
+import { haptic } from "../ui/haptics"
+import { useTheme } from "../ui/theme"
 
 const Tab = createBottomTabNavigator()
 
+/** Four places: chats, what needs you, work in progress, and everything else. */
 export function TabNavigator() {
   const insets = useSafeAreaInsets()
-  const theme = usePalette()
+  const theme = useTheme()
   const { settings } = useSettings()
-  const { questions } = useInbox(settings.orgSlug)
+  const { questions, approvals } = useInbox(settings.orgSlug)
+  const waiting = questions.length + approvals
 
   return (
     <Tab.Navigator
+      screenListeners={{ tabPress: () => haptic.select() }}
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: theme.surface,
-          borderTopColor: theme.borderSubtle ?? colors.borderSubtle,
-          borderTopWidth: 1,
-          height: 60 + insets.bottom,
-          paddingBottom: Math.max(8, insets.bottom),
-          paddingTop: 8,
-          elevation: 8,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.25,
-          shadowRadius: 3,
+          position: Platform.OS === "ios" ? "absolute" : "relative",
+          backgroundColor: Platform.OS === "ios" ? "transparent" : theme.surface,
+          borderTopColor: theme.line,
+          borderTopWidth: StyleSheet.hairlineWidth,
+          height: 56 + insets.bottom,
+          paddingBottom: Math.max(6, insets.bottom),
+          paddingTop: 6,
+          elevation: 0,
         },
-        tabBarActiveTintColor: colors.primaryBright,
-        tabBarInactiveTintColor: colors.textSecondary,
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: "600",
-          marginTop: 2,
-        },
+        tabBarBackground: () =>
+          Platform.OS === "ios" ? <BlurView tint={theme.dark ? "dark" : "light"} intensity={80} style={StyleSheet.absoluteFill} /> : null,
+        tabBarActiveTintColor: theme.accent,
+        tabBarInactiveTintColor: theme.faint,
+        tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
+        sceneStyle: { backgroundColor: theme.bg },
       }}
     >
-      <Tab.Screen
-        name="RoomsTab"
-        component={RoomsScreen}
-        options={{
-          tabBarLabel: "Chats",
-          tabBarIcon: ({ color, size }) => <MessageSquare size={size} color={color} />,
-        }}
-      />
+      <Tab.Screen name="HomeTab" component={HomeScreen} options={{ tabBarLabel: "Chats", tabBarIcon: ({ color, size }) => <MessageCircle size={size} color={color} /> }} />
       <Tab.Screen
         name="InboxTab"
         component={InboxScreen}
         options={{
           tabBarLabel: "Inbox",
           tabBarIcon: ({ color, size }) => <Bell size={size} color={color} />,
-          tabBarBadge: questions.length ? questions.length : undefined,
-          tabBarBadgeStyle: { backgroundColor: colors.primaryBright, color: colors.textInverse, fontSize: 11 },
+          tabBarBadge: waiting ? waiting : undefined,
+          tabBarBadgeStyle: { backgroundColor: theme.accent, color: theme.onAccent, fontSize: 11 },
         }}
       />
-      <Tab.Screen
-        name="TasksTab"
-        component={TasksScreen}
-        options={{
-          tabBarLabel: "Tasks",
-          tabBarIcon: ({ color, size }) => <CheckSquare size={size} color={color} />,
-        }}
-      />
-      <Tab.Screen
-        name="ComputersTab"
-        component={ComputersScreen}
-        options={{
-          tabBarLabel: "Computers",
-          tabBarIcon: ({ color, size }) => <Cpu size={size} color={color} />,
-        }}
-      />
-      <Tab.Screen
-        name="SettingsTab"
-        component={SettingsScreen}
-        options={{
-          tabBarLabel: "Settings",
-          tabBarIcon: ({ color, size }) => <Settings size={size} color={color} />,
-        }}
-      />
+      <Tab.Screen name="TasksTab" component={TasksScreen} options={{ tabBarLabel: "Tasks", tabBarIcon: ({ color, size }) => <CheckSquare size={size} color={color} /> }} />
+      <Tab.Screen name="MoreTab" component={MoreScreen} options={{ tabBarLabel: "More", tabBarIcon: ({ color, size }) => <Ellipsis size={size} color={color} /> }} />
     </Tab.Navigator>
   )
 }

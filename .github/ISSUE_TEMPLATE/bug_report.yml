@@ -1,0 +1,147 @@
+name: "Bug Report"
+description: "File a structured bug report to help diagnose and resolve issues in Sayabot."
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### Thank you for reporting a bug in Sayabot! 🤖
+        Before submitting, please ensure:
+        1. You have searched [existing issues](https://github.com/anurag3407/Mesh/issues) to avoid duplicates.
+        2. If this is a **security vulnerability** or involves token leakage, report it privately via [GitHub Security Advisories](https://github.com/anurag3407/Mesh/security/advisories/new).
+        3. Do **NOT** paste raw secrets, API keys (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`), `MESH_KEK`, or production database connection strings.
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: "Affected Component / Subsystem"
+      description: "Select the primary component where the bug originates."
+      multiple: true
+      options:
+        - "apps/web (Next.js 16 App Router, Monaco Editor, Visual Canvas)"
+        - "apps/orchestrator (Hono API Engine, Turn Lifecycle, Cron Engine)"
+        - "apps/computerd (Docker Sandbox Runner, Persistent Linux Env)"
+        - "packages/db (Drizzle ORM, Supabase, PostgreSQL, RLS Policies)"
+        - "connectors (Slack, Google Drive, GitHub, Jira)"
+        - "apps/mobile (React Native, Expo SDK 52, Android/iOS)"
+        - "apps/desktop (Tauri Desktop Host, System Tray)"
+        - "apps/egress (HTTP/TCP Egress Bastion & Security Proxy)"
+        - "packages/llm (Anthropic, OpenAI, Gemini, Ollama, DeepSeek Providers)"
+        - "packages/core (Shared Types, Utilities, Turn Schemas)"
+        - "mcp-gateway (Model Context Protocol Gateway & Tools)"
+        - "deployment (Docker Compose, Reverse Proxy, Cloudflare Tunnels)"
+        - "other"
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: "Sayabot Version / Commit Hash"
+      description: "Enter the Git commit hash (e.g. `b833c92`) or release tag you are running."
+      placeholder: "e.g., commit b833c92 on branch main"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: deployment-environment
+    attributes:
+      label: "Deployment & Runtime Environment"
+      description: "How and where is your Sayabot instance running?"
+      options:
+        - "Docker Compose (Official multi-container stack)"
+        - "Local Monorepo Dev (pnpm dev with Turbo)"
+        - "Self-Hosted VPS / Dedicated Server (Linux Ubuntu/Debian)"
+        - "Cloud Hosting (AWS, GCP, Hetzner, DigitalOcean)"
+        - "Supabase Cloud + External Compute"
+        - "Supabase Local Docker Stack"
+        - "macOS (Apple Silicon M-series)"
+        - "macOS (Intel x86_64)"
+        - "Linux (x86_64 / arm64)"
+        - "Windows WSL2"
+        - "Mobile Device (Physical Android / iOS)"
+        - "Mobile Emulator / Simulator"
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: "Bug Summary"
+      description: "Provide a clear and concise description of the bug."
+      placeholder: "A concise overview of the failure mode or unexpected behavior..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction-steps
+    attributes:
+      label: "Reproduction Steps"
+      description: "Detailed step-by-step instructions to reproduce the problem from a clean state."
+      value: |
+        1. Go to '...'
+        2. Click on '....'
+        3. Trigger agent turn with prompt '....'
+        4. Observe error or unexpected state
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: "Expected Behavior"
+      description: "What did you expect to happen?"
+      placeholder: "Describe the expected outcome according to documentation and specs..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: "Actual Behavior"
+      description: "What actually happened? (Include error messages, unexpected state, crash stack trace)"
+      placeholder: "Describe the actual outcome, error code, or UI failure..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs-and-diagnostics
+    attributes:
+      label: "Logs & Terminal Diagnostics"
+      description: |
+        Paste relevant log output from `docker compose logs`, browser DevTools console, or terminal.
+        ⚠️ Ensure all auth tokens, API keys, and database passwords are redacted.
+      render: shell
+      placeholder: |
+        # Example: docker compose logs orchestrator --tail=50
+        # or browser console errors
+    validations:
+      required: false
+
+  - type: textarea
+    id: system-info
+    attributes:
+      label: "System & Software Versions"
+      description: "Provide system specifications and installed tooling versions."
+      value: |
+        - OS: [e.g. macOS 15.1, Ubuntu 24.04 LTS]
+        - Node.js version: [e.g. 24.0.0]
+        - pnpm version: [e.g. 10.33.0]
+        - Docker version: [e.g. Docker Desktop 27.2.0, Colima]
+        - Browser (if UI issue): [e.g. Chrome 130, Safari 18, Firefox 132]
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: "Pre-submission Checklist"
+      options:
+        - label: "I have searched existing GitHub issues and confirmed this is not a duplicate."
+          required: true
+        - label: "I have verified that all sensitive credentials (`MESH_KEK`, API keys, passwords) are sanitized from my logs."
+          required: true
+        - label: "I am running the latest code from `main` or have verified the bug persists on `main`."
+          required: false

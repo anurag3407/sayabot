@@ -1,0 +1,21 @@
+# GitHub Issue Template Configuration for Sayabot
+# See: https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/configuring-issue-templates-for-your-repository
+
+blank_issues_enabled: false
+
+contact_links:
+  - name: "🔒 Security Vulnerability Report (Private Disclosure)"
+    url: "https://github.com/anurag3407/Mesh/security/advisories/new"
+    about: "Report sensitive security vulnerabilities, secret leakage, or sandbox escape exploits privately. Do NOT open public issues for security vulnerabilities."
+
+  - name: "💬 GitHub Discussions & Community Forum"
+    url: "https://github.com/anurag3407/Mesh/discussions"
+    about: "Ask questions, share ideas, showcase custom agent workflows, and connect with the Sayabot community."
+
+  - name: "📖 Sayabot Technical Documentation"
+    url: "https://github.com/anurag3407/Mesh/tree/main/docs"
+    about: "Explore architecture guides, self-hosting runbooks, connectors, and sandbox configuration manuals."
+
+  - name: "🚀 Self-Hosting & Production Operations Runbook"
+    url: "https://github.com/anurag3407/Mesh/blob/main/docs/self-hosting.md"
+    about: "Step-by-step production deployment guide for Docker Compose, Supabase, ingress, and reverse proxies."

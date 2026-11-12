@@ -1,7 +1,8 @@
 import { Platform } from "react-native"
 import { ENV } from "../config/env"
 import { cleanPairCode, supabaseMismatch } from "./pair-link"
-import { currentWebApiUrl, loadSettings, saveSettings } from "./settings"
+import { applySettings } from "../hooks/useSettings"
+import { currentWebApiUrl, loadSettings } from "./settings"
 import { supabase } from "./supabase"
 
 function deviceLabel(): string {
@@ -52,7 +53,7 @@ async function pairOnce(code: string, serverUrl?: string | null): Promise<void> 
   }
   const { error } = await supabase.auth.verifyOtp({ token_hash: data.token_hash, type: "magiclink" })
   if (error) throw new Error(error.message)
-  await saveSettings({
+  await applySettings({
     webApiUrl: server,
     ...(data.org_slug ? { orgSlug: data.org_slug } : {}),
     deviceId: data.device_id ?? "",
@@ -77,5 +78,5 @@ export async function phoneWasRemoved(): Promise<boolean> {
 }
 
 export async function forgetPairing(): Promise<void> {
-  await saveSettings({ deviceId: "", deviceToken: "" })
+  await applySettings({ deviceId: "", deviceToken: "" })
 }

@@ -33,12 +33,28 @@ streams, LISTEN connections and the canvas WebSocket, so it needs a long-running
    pooler** connection string on port 5432 into `.env`.
    - Do not use the transaction pooler (6543) for `DATABASE_URL`: pg-boss, advisory locks
      and LISTEN/NOTIFY need session-pinned connections.
-3. Run `pnpm db:migrate`. It applies the Drizzle tables, then five idempotent SQL files:
-   - functions and auth profile trigger
-   - RLS policies, safe views, grants
-   - realtime publication entries and private channel authorization
-   - the tool approval notification RPC
-   - meeting, schedule, task and per-user room-read policies
+   - Sizing: Allocate at least 15 connections per web container and 15 per orchestrator
+     process (`DATABASE_POOL_MAX=15`). Ensure `(web_instances + orch_instances) * 15 < max_connections - 5`.
+3. Run `pnpm db:migrate`. It applies the Drizzle ORM base schema (`packages/db/migrations/`),
+   followed by idempotent SQL migrations (`packages/db/sql/`) applied in numerical order:
+   - `0001_functions.sql`: Core `set_updated_at()` trigger across all primary tables, plus `handle_new_user()` auth profile synchronization.
+   - `0002_rls.sql`: Multi-tenant Row Level Security (RLS) policies across rooms, orgs, agents, messages, tool calls; security definers `is_org_member()` and `is_room_member()`.
+   - `0003_realtime.sql`: Registers tables in `supabase_realtime` publication and authorizes private `room:<uuid>` channel subscriptions.
+   - `0004_rpc.sql`: Security definer RPC `notify_tool_resolution` broadcasting `pg_notify('tool_call_resolved', ...)` for asynchronous agent tool approval.
+   - `0005_ia.sql`: Information architecture layer (`meetings`, `room_schedules`, `tasks`, `task_comments`, `room_reads`) with update triggers and RLS.
+   - `0006_push.sql`: Web Push VAPID subscriptions schema (`push_subscriptions`) with strict per-user RLS (`user_id = auth.uid()`).
+   - `0007_agent_reads.sql`: High-frequency agent read cursors table (`agent_reads`), accessible exclusively to backend `service_role`.
+   - `0008_task_integrity.sql`: Board of Record task integrity (`due_at`, `unblock_needs`, fold keys, `task_events` audit table with realtime CDC).
+   - `0009_bot_platform.sql`: External bot platform schemas (`agent_templates`, `org_quotas` rate tiers, `agent_computers` sandbox records, `webhook_deliveries`).
+   - `0010_engine.sql`: Sayabot Engine v2 durable state (`waiting` status, run heartbeats, step counters, `usage_events` cached token tracking).
+   - `0011_memory.sql`: Multi-tier cognitive memory architecture (`memories` table with pgvector `vector(1536)` embeddings and scoped retrieval).
+   - `0012_permissions_fix.sql`: Permission alignment granting explicit table privileges on v2 tables to `authenticated` and `service_role`.
+   - `0013_auth_oauth_profiles.sql`: Production OAuth profile metadata synchronization for Google, GitHub, and corporate SAML logins.
+   - `0014_routines.sql`: Hermes-class autonomous agent cron routines (`routines`, `routine_runs`, visual workflow `routine_nodes`).
+   - `0018_workspace_connectors.sql`: Two-tier workspace integrations architecture:
+     - `workspace_connectors`: AES-256-GCM encrypted credentials vault (`ciphertext`, `iv`, `tag`, `last4`) for Slack, Google Drive, GitHub, Jira.
+     - `workspace_connectors_public`: Safe read-only view exposing non-sensitive metadata (name, source, status, last4) to workspace members.
+     - `agent_connector_grants`: Fine-grained agent scoping table enforcing least-privilege resource access (`allowedFolders`, `allowedChannels`, `allowedRepos`, `readOnly`).
 4. Run `pnpm db:seed` and edit prices in the app.
 5. Auth settings:
    - Site URL: `https://<web-host>`
@@ -66,23 +82,40 @@ The RLS migration creates policies on `realtime.messages` for topics named
 Generate secrets once and keep them stable:
 
 ```bash
-openssl rand -base64 32   # MESH_KEK
+openssl rand -base64 32   # MESH_KEK (or SAYABOT_KEK)
 openssl rand -hex 32      # ORCHESTRATOR_INTERNAL_SECRET
 ```
 
-Required:
+Core Platform Variables:
 
-| Variable | Used by | Notes |
-|---|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | web, orchestrator | project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | web | browser and SSR |
-| `SUPABASE_SERVICE_ROLE_KEY` | web, orchestrator | server only, never expose |
-| `DATABASE_URL` | web, orchestrator, db | session pooler |
-| `MESH_KEK` | web, orchestrator | encrypts BYOK keys and sealed config |
-| `ORCHESTRATOR_INTERNAL_SECRET` | web, orchestrator | internal HTTP auth |
-| `ORCHESTRATOR_URL` | web | e.g. `https://mesh-orch.fly.dev` |
-| `NEXT_PUBLIC_COLLAB_URL` | web | e.g. `wss://mesh-orch.fly.dev/collab` |
-| `NEXT_PUBLIC_SITE_URL` | web | auth redirects and invite links |
+| Variable                        | Used by               | Notes                                                                                                                             |
+| ------------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`      | web, orchestrator     | Supabase project URL                                                                                                              |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | web                   | browser and SSR client                                                                                                            |
+| `SUPABASE_SERVICE_ROLE_KEY`     | web, orchestrator     | server only, never expose to client                                                                                               |
+| `DATABASE_URL`                  | web, orchestrator, db | PostgreSQL connection string (**Port 5432 Session Pooler**)                                                                       |
+| `DATABASE_POOL_MAX`             | web, orchestrator     | optional, connection pool limit per process (default: `15`–`30`)                                                                  |
+| `MESH_KEK`                      | web, orchestrator     | 32-byte Base64 key for AES-256-GCM envelope encryption (`workspace_connectors`, `vaults`, bot credentials). Alias: `SAYABOT_KEK`. |
+| `ORCHESTRATOR_INTERNAL_SECRET`  | web, orchestrator     | 32-byte Hex secret authenticating internal `/internal/*` routes                                                                   |
+| `ORCHESTRATOR_URL`              | web                   | e.g. `https://mesh-orch.fly.dev` or `http://orchestrator:4000`                                                                    |
+| `NEXT_PUBLIC_COLLAB_URL`        | web                   | e.g. `wss://mesh-orch.fly.dev/collab`                                                                                             |
+| `NEXT_PUBLIC_SITE_URL`          | web                   | public app URL for auth callbacks and invite links                                                                                |
+
+Workspace Connector Variables:
+
+| Variable                     | Used by           | Notes                                                                                                                                |
+| ---------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `SLACK_CLIENT_ID`            | web, orchestrator | Slack App OAuth Client ID for workspace Slack integration                                                                            |
+| `SLACK_CLIENT_SECRET`        | web, orchestrator | Slack App OAuth Client Secret for token exchange                                                                                     |
+| `SLACK_SIGNING_SECRET`       | web, orchestrator | HMAC-SHA256 secret for validating inbound Slack Events API webhooks                                                                  |
+| `GITHUB_APP_ID`              | web, orchestrator | Numerical GitHub App ID for workspace GitHub connector installation                                                                  |
+| `GITHUB_APP_PRIVATE_KEY`     | web, orchestrator | PEM-formatted RSA private key used to sign JWTs for installation access tokens                                                       |
+| `GITHUB_APP_CLIENT_ID`       | web, orchestrator | GitHub App OAuth Client ID for user authorization flows                                                                              |
+| `GITHUB_APP_CLIENT_SECRET`   | web, orchestrator | GitHub App OAuth Client Secret                                                                                                       |
+| `GITHUB_APP_WEBHOOK_SECRET`  | web, orchestrator | Secret for HMAC-SHA256 signature verification of incoming GitHub webhooks                                                            |
+| `GOOGLE_CLIENT_ID`           | web, orchestrator | Google Cloud OAuth 2.0 Client ID for Google Workspace / Drive connector                                                              |
+| `GOOGLE_CLIENT_SECRET`       | web, orchestrator | Google Cloud OAuth 2.0 Client Secret                                                                                                 |
+| `GOOGLE_CLIENT_REDIRECT_URI` | web               | Optional explicit OAuth redirect URI (defaults to `https://${NEXT_PUBLIC_SITE_URL}/api/connectors/google/oauth` or `/auth/callback`) |
 
 Optional: `DEV_OPENAI_COMPAT_*` (fallback model), `E2B_API_KEY`,
 `BRAVE_SEARCH_API_KEY`, `MESH_ALLOW_PRIVATE_WEBHOOKS`, `NEXT_PUBLIC_SSO_ENABLED`,
@@ -140,7 +173,72 @@ primary_region = "fra"
 
 Set secrets with `fly secrets set MESH_KEK=... DATABASE_URL=...` and the rest.
 
-## 5. External bots
+## 5. Reverse Proxy & Networking for Connectors
+
+Workspace connectors (Slack, Google Drive, GitHub) require dedicated ingress handling for real-time webhooks and OAuth handshakes.
+
+### Inbound Webhook Endpoints
+
+| Endpoint                           | Source              | Verification                                                                                | Routing Requirements                                                                                                                                |
+| ---------------------------------- | ------------------- | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/api/v1/connectors/slack/events`  | Slack Events API    | HMAC-SHA256 (`X-Slack-Signature`, `X-Slack-Request-Timestamp`) using `SLACK_SIGNING_SECRET` | Disable request buffering (`proxy_request_buffering off;`). Return `200 OK` challenge response within 3s. Asynchronously queue events into pg-boss. |
+| `/api/v1/connectors/github/events` | GitHub App Webhooks | HMAC-SHA256 (`X-Hub-Signature-256`) using `GITHUB_APP_WEBHOOK_SECRET`                       | Disable request buffering. Forward raw unmodified payload bytes.                                                                                    |
+
+### OAuth Callback Routing & State Preservation
+
+- Provider callbacks land on `/auth/callback`, `/auth/complete`, or `/api/connectors/[provider]/oauth`.
+- Reverse proxies must:
+  - Preserve query strings (`?code=...&state=...`) without sanitization or truncation.
+  - Forward `#access_token` fragments to `/auth/complete`.
+  - Pass `X-Forwarded-Proto https`, `Host $host`, and `Cookie` headers intact so PKCE verification succeeds and redirect URIs match.
+
+#### Nginx Configuration Snippet
+
+```nginx
+# Webhooks: raw unbuffered ingress for HMAC validation
+location ~ ^/api/v1/connectors/(slack|github)/events$ {
+    proxy_pass http://mesh_web;
+    proxy_buffering off;
+    proxy_request_buffering off;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_set_header X-Slack-Signature $http_x_slack_signature;
+    proxy_set_header X-Slack-Request-Timestamp $http_x_slack_request_timestamp;
+    proxy_set_header X-Hub-Signature-256 $http_x_hub_signature_256;
+}
+
+# OAuth handshakes: preserve query string and PKCE cookies
+location ~ ^/(auth|api/connectors)(/|$) {
+    proxy_pass http://mesh_web;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Proto https;
+}
+```
+
+#### Caddy Configuration Snippet
+
+```caddy
+# Webhooks
+@webhooks path /api/v1/connectors/*
+handle @webhooks {
+    reverse_proxy web:3000 {
+        flush_interval -1
+        header_up Host {host}
+        header_up X-Forwarded-Proto https
+    }
+}
+
+# OAuth Handshakes
+@oauth path /auth/* /api/connectors/*
+handle @oauth {
+    reverse_proxy web:3000 {
+        header_up Host {host}
+        header_up X-Forwarded-Proto https
+    }
+}
+```
+
+## 6. External bots
 
 1. Create an external agent, copy the webhook secret shown once.
 2. Add the agent to a room.
@@ -152,7 +250,7 @@ Set secrets with `fly secrets set MESH_KEK=... DATABASE_URL=...` and the rest.
 
 The reference bot in `examples/python-bot` verifies signatures and streams NDJSON.
 
-## 6. Verification
+## 7. Verification
 
 Automated:
 
@@ -164,7 +262,7 @@ Local database and orchestrator check (no Supabase needed for this part):
 
 - A Postgres 15/16 instance with an `auth` schema stub can run `pnpm db:migrate` to
   validate SQL. RLS can be exercised by setting `request.jwt.claim.sub` and `SET ROLE
-  authenticated`.
+authenticated`.
 - The orchestrator starts against that database. The external bot flow can be tested by
   running `examples/python-bot` or a small webhook server.
 
@@ -195,7 +293,7 @@ If a direct `/auth/callback` link arrives with an implicit-flow fragment instead
 route it through `/auth/complete`, which handles the fragment. The callback route itself expects
 `code` or `token_hash` and the SSR client expects PKCE.
 
-## 7. Meetings and check-ins
+## 8. Meetings and check-ins
 
 The orchestrator scans room schedules once a minute under a Postgres advisory lock. It
 starts scheduled meetings whose start time has passed and whose end time is still in the
@@ -212,7 +310,7 @@ turn planning, turn caps and breakers apply after that.
 - The web scheduler and the web server actions write only through the admin client; the
   `authenticated` role has read access to meetings, schedules, tasks and comments.
 
-## Alerts when no tab is open (optional)
+## 9. Alerts when no tab is open (optional)
 
 Mesh shows in-app alerts without any setup. To also alert people when the app is closed, for
 approvals and agent requests, add VAPID keys:
@@ -226,11 +324,27 @@ and `VAPID_SUBJECT` (a `mailto:` or `https:` address) on the orchestrator. Each 
 alerts on with "Enable alerts". Push needs HTTPS and the production build, because the service
 worker is disabled in development.
 
-## 8. Operations
+## 10. Operations & Troubleshooting
 
-- **KEK stability:** do not rotate `MESH_KEK` without re-encrypting provider keys, agent
-  webhook secrets, MCP headers and org tool configs. Losing it makes those secrets
-  unrecoverable.
+- **KEK stability & Connector Decryption:** do not rotate `MESH_KEK` (or `SAYABOT_KEK`) without
+  re-encrypting provider keys, workspace connector credentials (`workspace_connectors`),
+  agent webhook secrets, and MCP headers. If `MESH_KEK` is altered or lost, AES-256-GCM
+  decryption throws `Unsupported state or unable to authenticate data`, causing connector tools
+  to fail. To recover, restore the original KEK or delete and re-link the integration in
+  **Workspace Settings → Connectors**.
+- **Connector Rate Limiting (HTTP 429 Backoff):** built-in `fetchWithRetry` in
+  `apps/orchestrator/src/connectors/rate-limiter.ts` automatically intercepts HTTP 429 and 5xx
+  transient errors, parsing `Retry-After` headers and applying exponential backoff with 0–250ms
+  jitter. To prevent repeated rate exhaustion across external APIs (Slack Tier 3, GitHub 5k/hr),
+  restrict agent scope via `agent_connector_grants` (`allowedFolders`, `allowedChannels`, `allowedRepos`).
+- **Connector Invalid OAuth Scope:** if an agent fails with `missing_scope` or `403 Forbidden`,
+  the OAuth token was granted with insufficient permissions. Re-authenticate the connector with
+  all required scopes (Slack: `channels:history`, `chat:write`; Google Drive: `drive.readonly`;
+  GitHub: `Contents: read`, `Issues: read`).
+- **Connector Webhook Signatures:** incoming webhooks on `/api/v1/connectors/slack/events` and
+  `/api/v1/connectors/github/events` require valid HMAC signatures (`X-Slack-Signature`,
+  `X-Hub-Signature-256`). Ensure reverse proxies pass raw unbuffered payloads (`proxy_request_buffering off;`)
+  and host clocks are NTP-synchronized.
 - **Backups:** Supabase handles Postgres backups. `canvases.ydoc_state` and
   `snapshot_text` live in the same database; restore them together.
 - **Realtime limits:** the orchestrator batches deltas every 40 ms and persists partial
