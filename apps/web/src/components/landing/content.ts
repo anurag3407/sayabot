@@ -4,7 +4,7 @@ export const SPONSOR_URL = "https://github.com/sponsors/anurag3407"
 export const DOWNLOADS = {
   web: "/signup",
   mobile: "/download",
-  macDmg: "/download",
+  macDmg: "https://github.com/anurag3407/sayabot/releases/latest/download/Sayabot-arm64.dmg",
   macArm64: "https://github.com/anurag3407/sayabot/releases/latest/download/Sayabot-arm64.dmg",
   macIntel: "https://github.com/anurag3407/sayabot/releases/latest/download/Sayabot-x64.dmg",
   androidApk: "https://github.com/anurag3407/sayabot/releases/latest/download/Sayabot.apk",

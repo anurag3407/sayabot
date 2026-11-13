@@ -66,6 +66,7 @@ export default function DownloadPage() {
             <div className="mt-8 pt-6 border-t border-white/5 space-y-3">
               <a
                 href={DOWNLOADS.macArm64}
+                download="Sayabot-arm64.dmg"
                 className="flex items-center justify-center gap-2 w-full rounded-xl bg-white px-5 py-3 text-sm font-medium text-black hover:bg-neutral-200 transition-colors shadow-sm"
               >
                 <ArrowDownToLine className="h-4 w-4" />
@@ -73,6 +74,7 @@ export default function DownloadPage() {
               </a>
               <a
                 href={DOWNLOADS.macIntel}
+                download="Sayabot-x64.dmg"
                 className="flex items-center justify-center gap-2 w-full rounded-xl bg-white/5 px-5 py-2.5 text-xs font-medium text-neutral-300 hover:bg-white/10 border border-white/10 transition-colors"
               >
                 <span>Download DMG (Intel Macs)</span>
