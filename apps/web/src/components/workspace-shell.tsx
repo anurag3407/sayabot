@@ -2,53 +2,59 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from "react"
-import { ArrowDownToLine, Bot, CircleHelp, Clock, Inbox, MessageCircle, RefreshCw, Search, Settings2, Store } from "lucide-react"
+import { useEffect, useMemo, useRef, useState, type ComponentType } from "react"
+import {
+  ArrowDownToLine,
+  BarChart3,
+  Bot,
+  CalendarClock,
+  CheckSquare,
+  ChevronDown,
+  CircleHelp,
+  FolderClosed,
+  Inbox,
+  MessageCircle,
+  RefreshCw,
+  Search,
+  Settings2,
+  Store,
+  Users,
+} from "lucide-react"
 import { UpdateProvider, useAppUpdate } from "@/components/update-notification"
 import { signOutAction } from "@/lib/actions/auth"
 import { cn } from "@/lib/format"
 import { Avatar } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { DetailsMenu } from "@/components/ui/details-menu"
+import { Mascot } from "@/components/ui/mascot"
 import { SayabotMark } from "@/components/landing/sayabot-mark"
 import { ChatList, type BotLink } from "@/components/workspace/chat-list"
 import { CommandPalette } from "@/components/command-palette"
 import { useWorkspaceActivity } from "@/components/use-workspace-activity"
-import { visibleSettingsGroups } from "@/lib/settings-nav"
-import {
-  AnalyticsIcon,
-  CanvasIcon,
-  CheckIcon,
-  CloseIcon,
-  HistoryIcon,
-  MenuIcon,
-  PlusIcon,
-} from "@/components/ui/icons"
+import { CloseIcon, MenuIcon, PlusIcon } from "@/components/ui/icons"
 import type { ChatListItem, OrgRole, OrgSummary } from "@/lib/types"
 
-type NavIcon = ComponentType<{ className?: string; width?: number; height?: number }>
+type NavIcon = ComponentType<{ className?: string }>
 
-const PRIMARY_NAV: { key: string; href: string; label: string; icon: NavIcon }[] = [
+/** Every destination, for the command palette. The sidebar only shows the everyday few. */
+const ALL_PAGES: { key: string; href: string; label: string; icon: NavIcon }[] = [
   { key: "chats", href: "", label: "Chats", icon: MessageCircle },
   { key: "inbox", href: "/inbox", label: "Inbox", icon: Inbox },
-  { key: "cron", href: "/cron", label: "Automations", icon: Clock },
-  { key: "meetings", href: "/meetings", label: "Meetings", icon: HistoryIcon },
-  { key: "tasks", href: "/tasks", label: "Tasks", icon: CheckIcon },
-  { key: "files", href: "/files", label: "Files", icon: CanvasIcon },
+  { key: "tasks", href: "/tasks", label: "To-dos", icon: CheckSquare },
+  { key: "cron", href: "/cron", label: "Routines", icon: CalendarClock },
+  { key: "files", href: "/files", label: "Files", icon: FolderClosed },
+  { key: "meetings", href: "/meetings", label: "Meetings", icon: Users },
   { key: "agents", href: "/agents", label: "Agents", icon: Bot },
-  { key: "marketplace", href: "/marketplace", label: "Marketplace", icon: Store },
+  { key: "marketplace", href: "/marketplace", label: "Find more agents", icon: Store },
   { key: "search", href: "/search", label: "Search", icon: Search },
 ]
 
-/** Settings entries this role may open, flattened from the one shared settings config. */
-function settingsLinks(role: OrgRole): { href: string; label: string }[] {
-  return [
-    { href: "/settings", label: "Overview" },
-    ...visibleSettingsGroups(role === "owner" || role === "admin").flatMap((group) =>
-      group.links.map((link) => ({ href: `/settings/${link.segment}`, label: link.label })),
-    ),
-  ]
-}
+const SIDEBAR_NAV = ALL_PAGES.filter((page) => ["inbox", "tasks", "cron"].includes(page.key))
+
+/** Quieter places that live in the account menu instead of crowding the sidebar. */
+const MENU_PAGES = ALL_PAGES.filter((page) =>
+  ["agents", "files", "meetings", "marketplace"].includes(page.key),
+)
 
 function isMuted(item: ChatListItem): boolean {
   return Boolean(item.mutedUntil && new Date(item.mutedUntil).getTime() > Date.now())
@@ -62,363 +68,320 @@ function attentionUnread(chats: ChatListItem[]): number {
   )
 }
 
-function isChatRoute(pathname: string, base: string): boolean {
+/** The Mac app hides its title bar, so the traffic lights sit over the top of the sidebar. */
+function useDesktopApp(): boolean {
+  const [desktop, setDesktop] = useState(false)
+  useEffect(() => {
+    setDesktop(Boolean((window as unknown as { sayabotDesktop?: unknown }).sayabotDesktop))
+  }, [])
+  return desktop
+}
+
+const popover =
+  "absolute z-50 w-64 overflow-hidden rounded-2xl border border-line-strong bg-panel p-1.5 shadow-[0_18px_48px_rgba(0,0,0,0.55)]"
+
+const popoverItem =
+  "flex w-full items-center gap-2.5 truncate rounded-xl px-2.5 py-2 text-left text-[13.5px] text-muted transition-colors hover:bg-raised hover:text-text"
+
+/** The workspace as a character: one friendly face instead of a logo and a name. */
+function WorkspaceHero({
+  org,
+  orgs,
+  role,
+}: {
+  org: { slug: string; name: string }
+  orgs: OrgSummary[]
+  role: OrgRole
+}) {
   return (
-    pathname === base || pathname.startsWith(`${base}/r/`) || pathname.startsWith(`${base}/chats`)
+    <DetailsMenu
+      className="relative mx-auto"
+      summaryLabel={`${org.name}: switch workspace`}
+      summaryClassName="group flex cursor-pointer list-none flex-col items-center gap-1.5 rounded-3xl px-6 pb-3 pt-2 transition-colors hover:bg-panel"
+      summary={
+        <>
+          <span className="relative block">
+            <Mascot
+              seed={org.name}
+              figure
+              shadow
+              blink
+              mood="happy"
+              className="block h-[92px] w-auto transition-transform duration-300 ease-out group-hover:-translate-y-1"
+            />
+            {role === "owner" ? (
+              <span
+                className="absolute -right-1 bottom-4 grid h-6 w-6 place-items-center rounded-full bg-m-yellow text-[12px] shadow-[0_0_0_3px_var(--color-ink)]"
+                aria-label="You own this workspace"
+                title="You own this workspace"
+              >
+                <span aria-hidden="true">♛</span>
+              </span>
+            ) : null}
+          </span>
+          <span className="flex items-center gap-1 text-[16px] font-semibold tracking-[-0.01em] text-text">
+            <span className="max-w-[200px] truncate">{org.name}</span>
+            <ChevronDown className="h-3.5 w-3.5 text-faint transition-colors group-hover:text-muted" />
+          </span>
+        </>
+      }
+    >
+      <div className={cn(popover, "left-1/2 top-full mt-1 -translate-x-1/2")}>
+        <p className="px-2.5 pb-1 pt-1 text-[12px] text-faint">Your workspaces</p>
+        {orgs.map((item) => (
+          <Link
+            key={item.id}
+            href={`/${item.slug}`}
+            className={cn(popoverItem, item.slug === org.slug && "bg-raised text-text")}
+          >
+            <Mascot seed={item.name} className="h-6 w-6 shrink-0" />
+            <span className="min-w-0 flex-1 truncate">{item.name}</span>
+          </Link>
+        ))}
+        <div className="my-1 h-px bg-line" />
+        <Link href="/new-workspace" className={popoverItem}>
+          <PlusIcon width={15} height={15} className="text-faint" />
+          New workspace
+        </Link>
+      </div>
+    </DetailsMenu>
   )
 }
 
-function navActive(key: string, href: string, pathname: string, base: string): boolean {
-  return key === "chats" ? isChatRoute(pathname, base) : pathname.startsWith(`${base}${href}`)
+function AccountMenu({
+  base,
+  user,
+  role,
+}: {
+  base: string
+  user: { displayName: string; avatarUrl: string | null; email: string | null }
+  role: OrgRole
+}) {
+  const { updateReady, restartToUpdate, checkForUpdates, checking, versionData } = useAppUpdate()
+  return (
+    <DetailsMenu
+      className="relative shrink-0"
+      summaryLabel="Your account and settings"
+      summaryClassName="relative grid h-12 w-12 cursor-pointer list-none place-items-center rounded-full bg-panel transition-colors hover:bg-raised"
+      summary={
+        <>
+          <Avatar name={user.displayName} src={user.avatarUrl} kind="human" size="md" />
+          {updateReady ? (
+            <span className="absolute right-0.5 top-0.5 flex h-3 w-3" aria-label="Update ready">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-ok opacity-60" />
+              <span className="relative inline-flex h-3 w-3 rounded-full bg-ok shadow-[0_0_0_2px_var(--color-ink)]" />
+            </span>
+          ) : null}
+        </>
+      }
+    >
+      <div className={cn(popover, "bottom-full left-0 mb-2")}>
+        <div className="flex items-center gap-2.5 px-2.5 pb-2.5 pt-1.5">
+          <Avatar name={user.displayName} src={user.avatarUrl} kind="human" size="md" />
+          <div className="min-w-0">
+            <p className="truncate text-[14px] font-medium text-text">{user.displayName}</p>
+            <p className="truncate text-[12px] text-faint">{user.email ?? role}</p>
+          </div>
+        </div>
+        {updateReady ? (
+          <button
+            type="button"
+            onClick={restartToUpdate}
+            className="mb-1 flex w-full items-center justify-center gap-1.5 rounded-xl bg-ok/15 px-2.5 py-2 text-[13px] font-medium text-ok hover:bg-ok/25"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            Restart to get the new version
+          </button>
+        ) : null}
+        <div className="h-px bg-line" />
+        <div className="py-1">
+          {MENU_PAGES.map((page) => (
+            <Link key={page.key} href={`${base}${page.href}`} className={popoverItem}>
+              <page.icon className="h-4 w-4 text-faint" />
+              {page.label}
+            </Link>
+          ))}
+        </div>
+        <div className="h-px bg-line" />
+        <div className="py-1">
+          <Link href={`${base}/settings`} className={popoverItem}>
+            <Settings2 className="h-4 w-4 text-faint" />
+            Settings
+          </Link>
+          <Link href={`${base}/analytics`} className={popoverItem}>
+            <BarChart3 className="h-4 w-4 text-faint" />
+            Usage
+          </Link>
+          <Link href="/download" className={popoverItem}>
+            <ArrowDownToLine className="h-4 w-4 text-faint" />
+            <span className="flex-1">Get the apps</span>
+            <span className="text-[11px] text-faint">
+              {versionData?.version ? `v${versionData.version}` : ""}
+            </span>
+          </Link>
+          <button
+            type="button"
+            onClick={() => void checkForUpdates()}
+            disabled={checking}
+            className={popoverItem}
+          >
+            <RefreshCw className={cn("h-4 w-4 text-faint", checking && "animate-spin")} />
+            {checking ? "Checking…" : "Check for updates"}
+          </button>
+          <Link href="/help" className={popoverItem}>
+            <CircleHelp className="h-4 w-4 text-faint" />
+            Help
+          </Link>
+        </div>
+        <div className="h-px bg-line" />
+        <form action={signOutAction} className="pt-1">
+          <button type="submit" className={popoverItem}>
+            Sign out
+          </button>
+        </form>
+      </div>
+    </DetailsMenu>
+  )
 }
 
-const railButton =
-  "peer relative grid h-10 w-10 place-items-center rounded-xl text-muted transition-colors hover:bg-panel hover:text-text"
-
-const popover =
-  "absolute bottom-0 left-full z-50 ml-2 w-60 overflow-hidden rounded-xl border border-line-strong bg-panel py-1 shadow-[0_16px_40px_rgba(0,0,0,0.5)]"
-
-const popoverItem =
-  "block truncate px-3 py-1.5 text-[13px] text-muted hover:bg-raised hover:text-text"
-
-function Tip({ children }: { children: ReactNode }) {
+/** Tiny stand-ins for the apps people connect most, so the pill reads at a glance. */
+function AppGlyphs() {
+  const glyph = "grid h-[18px] w-[18px] place-items-center rounded-[5px] text-[10px] font-bold"
   return (
-    <span
-      role="presentation"
-      className="pointer-events-none absolute left-full top-1/2 z-50 ml-2 -translate-y-1/2 whitespace-nowrap rounded-lg border border-line-strong bg-panel px-2 py-1 text-[12px] text-text opacity-0 transition-opacity peer-hover:opacity-100 peer-focus-visible:opacity-100"
-    >
-      {children}
+    <span className="flex items-center gap-1" aria-hidden="true">
+      <span className={cn(glyph, "bg-m-blue/20 text-m-blue")}>G</span>
+      <span className={cn(glyph, "bg-m-pink/20 text-m-pink")}>#</span>
+      <span className={cn(glyph, "bg-text/15 text-text")}>N</span>
     </span>
   )
 }
 
-function Rail({
-  org,
-  orgs,
-  user,
-  role,
-  pathname,
-  unread,
-  inboxCount,
-}: {
-  org: { slug: string; name: string }
-  orgs: OrgSummary[]
-  user: { displayName: string; avatarUrl: string | null; email: string | null }
-  role: OrgRole
-  pathname: string
-  unread: boolean
-  inboxCount: number
-}) {
-  const base = `/${org.slug}`
-  const settingsActive = pathname.startsWith(`${base}/settings`)
-  const usageActive = pathname.startsWith(`${base}/analytics`)
-  const { updateReady, restartToUpdate, checkForUpdates, checking, versionData } = useAppUpdate()
-
-  return (
-    <nav
-      aria-label="Workspace"
-      className="hidden w-[60px] shrink-0 flex-col items-center gap-1 py-1 md:flex"
-    >
-      <DetailsMenu
-        className="relative mb-2"
-        summaryLabel={`${org.name}: switch workspace`}
-        summaryClassName="grid h-10 w-10 cursor-pointer list-none place-items-center rounded-xl hover:bg-panel"
-        summary={<SayabotMark className="h-7 w-7" />}
-      >
-        <div className={cn(popover, "bottom-auto top-0")}>
-          <p className="px-3 pb-1 pt-1.5 text-[12px] text-faint">Workspaces</p>
-          {orgs.map((item) => (
-            <Link
-              key={item.id}
-              href={`/${item.slug}`}
-              className={cn(
-                "flex items-center justify-between gap-3 px-3 py-1.5 text-[13px] hover:bg-raised",
-                item.slug === org.slug ? "text-text" : "text-muted",
-              )}
-            >
-              <span className="truncate">{item.name}</span>
-              <span className="text-[11px] text-faint">{item.role}</span>
-            </Link>
-          ))}
-          <div className="my-1 h-px bg-line" />
-          <Link href="/new-workspace" className={popoverItem}>
-            New workspace
-          </Link>
-        </div>
-      </DetailsMenu>
-
-      {PRIMARY_NAV.map((item) => {
-        const href = `${base}${item.href}`
-        const isActive = navActive(item.key, item.href, pathname, base)
-        const count = item.key === "inbox" ? inboxCount : 0
-        return (
-          <div key={item.key} className="relative">
-            <Link
-              href={href}
-              aria-label={item.label}
-              aria-current={isActive ? "page" : undefined}
-              className={cn(railButton, isActive && "bg-raised text-text")}
-            >
-              <item.icon width={19} height={19} className="h-[19px] w-[19px]" />
-              {count > 0 ? (
-                <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-accent px-1 text-[10px] font-medium text-void">
-                  {count > 99 ? "99+" : count}
-                </span>
-              ) : item.key === "chats" && unread ? (
-                <span
-                  className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-accent"
-                  aria-label="Unread chats"
-                />
-              ) : null}
-            </Link>
-            <Tip>{item.label}</Tip>
-          </div>
-        )
-      })}
-
-      <div className="mt-auto flex flex-col items-center gap-1">
-        <DetailsMenu
-          className="relative"
-          summaryLabel="Updates"
-          summaryClassName={cn(
-            "relative grid h-10 w-10 cursor-pointer list-none place-items-center rounded-xl text-muted transition-colors hover:bg-panel hover:text-text",
-            pathname === "/download" && "bg-raised text-text",
-          )}
-          summary={
-            <>
-              <ArrowDownToLine className="h-[18px] w-[18px]" />
-              {updateReady && (
-                <span className="absolute right-1 top-1 flex h-2.5 w-2.5">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                </span>
-              )}
-            </>
-          }
-        >
-          <div className={popover}>
-            <div className="flex items-center justify-between px-3 pb-1.5 pt-1.5 border-b border-line mb-1">
-              <p className="text-[12px] font-medium text-text">Sayabot Updates</p>
-              <span className="font-mono text-[10px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
-                {versionData?.version ? `v${versionData.version}` : "v1.0.1"}
-              </span>
-            </div>
-
-            {updateReady && (
-              <div className="mx-2 my-1.5 p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-                <div className="flex items-center justify-between text-[11px] font-semibold text-emerald-400 mb-1.5">
-                  <span>⚡ Update Ready</span>
-                  <span className="font-mono text-[9px] bg-emerald-500/20 px-1 rounded">New</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={restartToUpdate}
-                  className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-black font-semibold text-[11px] rounded transition-all cursor-pointer shadow-sm"
-                >
-                  <RefreshCw className="h-3 w-3" />
-                  Restart to update
-                </button>
-              </div>
-            )}
-
-            <a
-              href="https://github.com/anurag3407/sayabot/releases/latest/download/Sayabot-arm64.dmg"
-              className={popoverItem}
-            >
-              Download macOS (.dmg)
-            </a>
-            <a
-              href="https://github.com/anurag3407/sayabot/releases/latest/download/Sayabot.apk"
-              className={popoverItem}
-            >
-              Download Android (.apk)
-            </a>
-            <button
-              type="button"
-              onClick={() => {
-                void checkForUpdates()
-              }}
-              disabled={checking}
-              className={cn(popoverItem, "w-full text-left flex items-center justify-between cursor-pointer")}
-            >
-              <span>{checking ? "Checking for updates…" : "Check for updates"}</span>
-              <RefreshCw className={cn("h-3 w-3 text-muted", checking && "animate-spin")} />
-            </button>
-            <div className="border-t border-line mt-1 pt-1">
-              <Link href="/download" className={cn(popoverItem, "text-emerald-400 font-medium")}>
-                View All Downloads →
-              </Link>
-            </div>
-          </div>
-        </DetailsMenu>
-        <div className="relative">
-          <Link
-            href={`${base}/analytics`}
-            aria-label="Usage"
-            aria-current={usageActive ? "page" : undefined}
-            className={cn(railButton, usageActive && "bg-raised text-text")}
-          >
-            <AnalyticsIcon width={18} height={18} />
-          </Link>
-          <Tip>Usage</Tip>
-        </div>
-        <div className="relative">
-          <Link href="/help" aria-label="Help" className={railButton}>
-            <CircleHelp className="h-[19px] w-[19px]" />
-          </Link>
-          <Tip>Help</Tip>
-        </div>
-        <DetailsMenu
-          className="relative"
-          summaryLabel="Settings"
-          summaryClassName={cn(
-            "grid h-10 w-10 cursor-pointer list-none place-items-center rounded-xl text-muted transition-colors hover:bg-panel hover:text-text",
-            settingsActive && "bg-raised text-text",
-          )}
-          summary={<Settings2 className="h-[19px] w-[19px]" />}
-        >
-          <div className={popover}>
-            <p className="px-3 pb-1 pt-1.5 text-[12px] text-faint">Settings</p>
-            {settingsLinks(role).map((link) => {
-              const href = `${base}${link.href}`
-              const active =
-                link.href === "/settings" ? pathname === href : pathname.startsWith(href)
-              return (
-                <Link
-                  key={link.href}
-                  href={href}
-                  className={cn(popoverItem, active && "text-text")}
-                >
-                  {link.label}
-                </Link>
-              )
-            })}
-          </div>
-        </DetailsMenu>
-        <DetailsMenu
-          className="relative mt-1"
-          summaryLabel="Your account"
-          summaryClassName="grid h-10 w-10 cursor-pointer list-none place-items-center rounded-xl hover:bg-panel"
-          summary={<Avatar name={user.displayName} src={user.avatarUrl} kind="human" size="md" />}
-        >
-          <div className={popover}>
-            <div className="border-b border-line px-3 pb-2 pt-1.5">
-              <p className="truncate text-[13px] text-text">{user.displayName}</p>
-              <p className="truncate text-[12px] text-faint">{user.email ?? role}</p>
-            </div>
-            <Link href={`${base}/settings/profile`} className={cn(popoverItem, "mt-1")}>
-              Your profile
-            </Link>
-            <form action={signOutAction}>
-              <button type="submit" className={cn(popoverItem, "w-full text-left")}>
-                Sign out
-              </button>
-            </form>
-          </div>
-        </DetailsMenu>
-      </div>
-    </nav>
-  )
-}
-
-/** Phone drawer: every destination as a grid, then the chat list. */
-function MobileDrawer({
+function Sidebar({
   org,
   orgs,
   chats,
   bots,
   user,
+  role,
   pathname,
   inboxCount,
+  desktopApp,
+  onOpenPalette,
   onNavigate,
+  headerExtra,
 }: {
   org: { slug: string; name: string }
   orgs: OrgSummary[]
   chats: ChatListItem[]
   bots: BotLink[]
   user: { displayName: string; avatarUrl: string | null; email: string | null }
+  role: OrgRole
   pathname: string
   inboxCount: number
-  onNavigate: () => void
+  desktopApp: boolean
+  onOpenPalette: () => void
+  onNavigate?: () => void
+  headerExtra?: React.ReactNode
 }) {
   const base = `/${org.slug}`
-  const tile = "flex flex-col items-center gap-1 rounded-xl py-2.5 text-[11px] text-muted"
+  const [searchOpen, setSearchOpen] = useState(false)
+  const iconButton =
+    "grid h-9 w-9 place-items-center rounded-full text-muted transition-colors hover:bg-panel hover:text-text"
+
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="grid shrink-0 grid-cols-4 gap-1 border-b border-line p-2">
-        {PRIMARY_NAV.map((item) => (
-          <Link
-            key={item.key}
-            href={`${base}${item.href}`}
-            onClick={onNavigate}
-            aria-current={navActive(item.key, item.href, pathname, base) ? "page" : undefined}
-            className={cn(
-              tile,
-              navActive(item.key, item.href, pathname, base) && "bg-raised text-text",
-            )}
+      <div
+        className={cn(
+          "flex shrink-0 items-center gap-1 px-3",
+          desktopApp ? "h-14 pl-[84px] [-webkit-app-region:drag]" : "h-14",
+        )}
+      >
+        {headerExtra}
+        <div className="ml-auto flex items-center gap-0.5 [-webkit-app-region:no-drag]">
+          <button
+            type="button"
+            onClick={() => setSearchOpen((open) => !open)}
+            onDoubleClick={onOpenPalette}
+            aria-label="Search chats"
+            aria-pressed={searchOpen}
+            title="Search chats (⌘K for everything)"
+            className={cn(iconButton, searchOpen && "bg-panel text-text")}
           >
-            <item.icon width={19} height={19} className="h-[19px] w-[19px]" />
-            {item.key === "inbox" && inboxCount > 0 ? `Inbox ${inboxCount}` : item.label}
-          </Link>
-        ))}
-        <Link href="/download" onClick={onNavigate} className={tile}>
-          <ArrowDownToLine width={19} height={19} className="h-[19px] w-[19px]" />
-          Updates
-        </Link>
-        <Link href={`${base}/analytics`} onClick={onNavigate} className={tile}>
-          <AnalyticsIcon width={19} height={19} />
-          Usage
-        </Link>
-      </div>
-      <div className="min-h-0 flex-1">
-        <ChatList orgSlug={org.slug} items={chats} bots={bots} onNavigate={onNavigate} />
-      </div>
-      <details className="shrink-0 border-t border-line">
-        <summary className="flex cursor-pointer list-none items-center gap-2.5 px-3 py-3">
-          <Avatar name={user.displayName} src={user.avatarUrl} kind="human" size="sm" />
-          <span className="min-w-0 flex-1 truncate text-[13px]">{user.displayName}</span>
-          <span className="text-[12px] text-faint">{org.name}</span>
-        </summary>
-        <div className="max-h-[40dvh] overflow-y-auto pb-2 text-[14px]">
-          {orgs
-            .filter((item) => item.slug !== org.slug)
-            .map((item) => (
-              <Link
-                key={item.id}
-                href={`/${item.slug}`}
-                onClick={onNavigate}
-                className="block px-4 py-2.5 text-muted"
-              >
-                Switch to {item.name}
-              </Link>
-            ))}
-          <Link href="/new-workspace" onClick={onNavigate} className="block px-4 py-2.5 text-muted">
-            New workspace
-          </Link>
+            <Search className="h-[18px] w-[18px]" />
+          </button>
           <Link
-            href={`${base}/settings`}
+            href={`${base}/chats/new`}
             onClick={onNavigate}
-            className="block px-4 py-2.5 text-muted"
+            aria-label="New chat"
+            title="New chat"
+            className={iconButton}
           >
-            Settings
+            <PlusIcon width={18} height={18} />
           </Link>
-          <Link
-            href={`${base}/settings/profile`}
-            onClick={onNavigate}
-            className="block px-4 py-2.5 text-muted"
-          >
-            Your profile
-          </Link>
-          <Link href="/help" onClick={onNavigate} className="block px-4 py-2.5 text-muted">
-            Help
-          </Link>
-          <form action={signOutAction}>
-            <button type="submit" className="block w-full px-4 py-2.5 text-left text-muted">
-              Sign out
-            </button>
-          </form>
         </div>
-      </details>
+      </div>
+
+      <nav aria-label="Workspace" className="shrink-0 space-y-0.5 px-3">
+        {SIDEBAR_NAV.map((item) => {
+          const href = `${base}${item.href}`
+          const active = pathname.startsWith(href)
+          const count = item.key === "inbox" ? inboxCount : 0
+          return (
+            <Link
+              key={item.key}
+              href={href}
+              onClick={onNavigate}
+              aria-current={active ? "page" : undefined}
+              className={cn(
+                "flex items-center gap-3 rounded-2xl px-2 py-1.5 text-[15px] transition-colors",
+                active ? "bg-raised text-text" : "text-text/90 hover:bg-panel",
+              )}
+            >
+              <span
+                className={cn(
+                  "grid h-9 w-9 place-items-center rounded-full transition-colors",
+                  active ? "bg-hover" : "bg-panel",
+                )}
+              >
+                <item.icon className="h-[18px] w-[18px] text-muted" />
+              </span>
+              <span className="flex-1">{item.label}</span>
+              {count > 0 ? (
+                <span className="grid h-5 min-w-5 place-items-center rounded-full bg-accent px-1.5 text-[11px] font-semibold text-void">
+                  {count > 99 ? "99+" : count}
+                </span>
+              ) : null}
+            </Link>
+          )
+        })}
+      </nav>
+
+      <div className="shrink-0 pb-1 pt-4">
+        <WorkspaceHero org={org} orgs={orgs} role={role} />
+      </div>
+
+      <div className="min-h-0 flex-1">
+        <ChatList
+          orgSlug={org.slug}
+          items={chats}
+          bots={bots}
+          onNavigate={onNavigate}
+          searchOpen={searchOpen}
+          onSearchOpenChange={setSearchOpen}
+        />
+      </div>
+
+      <div className="flex shrink-0 items-center gap-2 px-3 pb-3 pt-2">
+        <AccountMenu base={base} user={user} role={role} />
+        <Link
+          href={`${base}/settings/connectors`}
+          onClick={onNavigate}
+          className="flex h-12 min-w-0 flex-1 items-center justify-center gap-2.5 rounded-full bg-panel px-4 text-[14.5px] font-medium text-text transition-colors hover:bg-raised"
+        >
+          <span className="truncate">Connect apps</span>
+          <AppGlyphs />
+        </Link>
+      </div>
     </div>
   )
 }
@@ -453,6 +416,7 @@ export function WorkspaceShell({
   const dialogRef = useRef<HTMLDialogElement>(null)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
+  const desktopApp = useDesktopApp()
 
   useEffect(() => {
     setMobileOpen(false)
@@ -502,122 +466,89 @@ export function WorkspaceShell({
     return () => window.removeEventListener("keydown", onKeyDown)
   }, [])
 
-  const showList = isChatRoute(pathname, `/${org.slug}`)
+  const sidebarProps = {
+    org,
+    orgs,
+    chats,
+    bots,
+    user,
+    role,
+    pathname,
+    inboxCount,
+    onOpenPalette: () => setPaletteOpen(true),
+  }
 
   return (
     <UpdateProvider>
-      <div className="flex h-dvh flex-col overflow-hidden bg-void md:flex-row md:py-2 md:pr-2">
-      <Rail
-        org={org}
-        orgs={orgs}
-        user={user}
-        role={role}
-        pathname={pathname}
-        unread={totalUnread > 0}
-        inboxCount={inboxCount}
-      />
-
-      <div className="flex shrink-0 items-center gap-2 bg-ink px-2 pb-1 pt-[max(0.25rem,env(safe-area-inset-top))] md:hidden">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setMobileOpen(true)}
-          aria-label="Open workspace menu"
+      <div className="flex h-dvh flex-col overflow-hidden bg-ink md:flex-row">
+        <aside
+          className="hidden w-[300px] shrink-0 border-r border-line bg-ink md:block"
+          aria-label="Chats"
         >
-          <MenuIcon />
-        </Button>
-        <SayabotMark className="h-6 w-6" />
-        <span className="truncate text-[14px] text-text">{org.name}</span>
-        {inboxCount + totalUnread > 0 ? (
-          <span className="ml-auto mr-2 grid h-5 min-w-5 place-items-center rounded-full bg-accent px-1.5 text-[11px] font-medium text-void">
-            {inboxCount + totalUnread > 99 ? "99+" : inboxCount + totalUnread}
-          </span>
-        ) : null}
-      </div>
+          <Sidebar {...sidebarProps} desktopApp={desktopApp} />
+        </aside>
 
-      <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden bg-ink md:rounded-[18px] md:border md:border-line">
-        {showList ? (
-          <aside
-            className="hidden w-[320px] shrink-0 flex-col border-r border-line md:flex"
-            aria-label="Chats"
+        <div className="flex shrink-0 items-center gap-2 bg-ink px-2 pb-1 pt-[max(0.25rem,env(safe-area-inset-top))] md:hidden">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setMobileOpen(true)}
+            aria-label="Open workspace menu"
           >
-            <div className="flex h-12 shrink-0 items-center justify-between pl-5 pr-3">
-              <span className="truncate text-[14px] font-medium">{org.name}</span>
-              <button
-                type="button"
-                onClick={() => setPaletteOpen(true)}
-                aria-label="Open command menu"
-                title="Jump to… (⌘K)"
-                className="ml-auto mr-1 hidden h-8 items-center gap-2 rounded-lg border border-line px-2.5 text-[12px] text-faint hover:border-line-strong hover:text-text lg:flex"
-              >
-                Jump to…
-                <kbd className="font-mono text-[10px]">⌘K</kbd>
-              </button>
-              <Link
-                href={`/${org.slug}/chats/new`}
-                aria-label="New chat"
-                title="New chat"
-                className="grid h-8 w-8 place-items-center rounded-lg text-muted hover:bg-panel hover:text-text"
-              >
-                <PlusIcon width={16} height={16} />
-              </Link>
-            </div>
-            <div className="min-h-0 flex-1">
-              <ChatList orgSlug={org.slug} items={chats} bots={bots} />
-            </div>
-          </aside>
-        ) : null}
+            <MenuIcon />
+          </Button>
+          <SayabotMark className="h-6 w-6" />
+          <span className="truncate text-[14px] text-text">{org.name}</span>
+          {inboxCount + totalUnread > 0 ? (
+            <span className="ml-auto mr-2 grid h-5 min-w-5 place-items-center rounded-full bg-accent px-1.5 text-[11px] font-medium text-void">
+              {inboxCount + totalUnread > 99 ? "99+" : inboxCount + totalUnread}
+            </span>
+          ) : null}
+        </div>
 
-        <main id="main-content" tabIndex={-1} className="min-h-0 min-w-0 flex-1 outline-none">
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="min-h-0 min-w-0 flex-1 bg-ink outline-none"
+        >
           {children}
         </main>
+
+        <CommandPalette
+          open={paletteOpen}
+          onClose={() => setPaletteOpen(false)}
+          orgSlug={org.slug}
+          role={role}
+          chats={chats}
+          bots={bots}
+          pages={ALL_PAGES}
+        />
+
+        <dialog
+          ref={dialogRef}
+          className="m-0 h-dvh max-h-none w-[88vw] max-w-[340px] bg-ink p-0 pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)] text-text backdrop:bg-void/70"
+          onClose={() => setMobileOpen(false)}
+          onClick={(event) => {
+            if (event.target === dialogRef.current) setMobileOpen(false)
+          }}
+        >
+          <Sidebar
+            {...sidebarProps}
+            desktopApp={false}
+            onNavigate={() => setMobileOpen(false)}
+            headerExtra={
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => setMobileOpen(false)}
+                aria-label="Close workspace menu"
+              >
+                <CloseIcon width={15} height={15} />
+              </Button>
+            }
+          />
+        </dialog>
       </div>
-
-      <CommandPalette
-        open={paletteOpen}
-        onClose={() => setPaletteOpen(false)}
-        orgSlug={org.slug}
-        role={role}
-        chats={chats}
-        bots={bots}
-        pages={PRIMARY_NAV}
-      />
-
-      <dialog
-        ref={dialogRef}
-        className="m-0 h-dvh max-h-none w-[88vw] max-w-[360px] bg-ink p-0 pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)] text-text backdrop:bg-void/70"
-        onClose={() => setMobileOpen(false)}
-        onClick={(event) => {
-          if (event.target === dialogRef.current) setMobileOpen(false)
-        }}
-      >
-        <div className="flex h-full flex-col">
-          <div className="flex shrink-0 items-center justify-between px-3 py-2">
-            <span className="text-[14px] font-medium">{org.name}</span>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={() => setMobileOpen(false)}
-              aria-label="Close workspace menu"
-            >
-              <CloseIcon width={15} height={15} />
-            </Button>
-          </div>
-          <div className="min-h-0 flex-1">
-            <MobileDrawer
-              org={org}
-              orgs={orgs}
-              chats={chats}
-              bots={bots}
-              user={user}
-              pathname={pathname}
-              inboxCount={inboxCount}
-              onNavigate={() => setMobileOpen(false)}
-            />
-          </div>
-        </div>
-      </dialog>
-    </div>
     </UpdateProvider>
   )
 }

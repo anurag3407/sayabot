@@ -13,7 +13,7 @@ import { DetailsMenu } from "@/components/ui/details-menu"
 import { Field, Input, Select, Textarea } from "@/components/ui/field"
 import { showToast } from "@/components/ui/toast"
 import { PlusIcon } from "@/components/ui/icons"
-import { ArrowUp, Paperclip } from "lucide-react"
+import { ArrowUp } from "lucide-react"
 import { cn } from "@/lib/format"
 import type { MemberView, RoomAgentView } from "@/lib/types"
 
@@ -590,7 +590,7 @@ export function Composer({
           {options.map((option, index) => (
             <div key={`${option.group}-${option.handle}`}>
               {index === 0 || options[index - 1]?.group !== option.group ? (
-                <p className="px-2 py-1 font-mono text-[11px] text-faint">{option.group}</p>
+                <p className="px-3 py-1 text-[11px] font-medium text-faint">{option.group}</p>
               ) : null}
               <button
                 type="button"
@@ -608,8 +608,8 @@ export function Composer({
                     : "text-muted hover:bg-raised",
                 )}
               >
-                <span className="truncate font-mono text-[12px]">@{option.handle}</span>
-                <span className="truncate text-[12px] text-faint">{option.displayName}</span>
+                <span className="truncate text-[13px] text-text">{option.displayName}</span>
+                <span className="truncate text-[12px] text-faint">@{option.handle}</span>
               </button>
             </div>
           ))}
@@ -633,7 +633,7 @@ export function Composer({
 
       <div
         className={cn(
-          "relative flex items-end gap-1.5 rounded-[20px] bg-raised p-2 transition-colors focus-within:bg-hover",
+          "relative flex items-end gap-1.5 rounded-[28px] border border-line bg-panel p-2 transition-colors focus-within:border-line-strong",
           isDragging && "ring-2 ring-accent bg-accent-soft/30",
         )}
         onDragOver={(e) => {
@@ -652,7 +652,7 @@ export function Composer({
         }}
       >
         {isDragging ? (
-          <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-[20px] bg-panel/90 backdrop-blur-xs font-mono text-[13px] text-accent">
+          <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-[28px] bg-panel/90 text-[14px] text-accent backdrop-blur-xs">
             Drop PDF to attach to message
           </div>
         ) : null}
@@ -661,7 +661,7 @@ export function Composer({
           <DetailsMenu
             className="relative shrink-0"
             summaryLabel="More actions"
-            summaryClassName="grid h-10 w-10 cursor-pointer list-none place-items-center rounded-full text-muted hover:bg-line-strong/60 hover:text-text"
+            summaryClassName="grid h-10 w-10 cursor-pointer list-none place-items-center rounded-full bg-raised text-muted transition-colors hover:bg-hover hover:text-text"
             summary={<PlusIcon width={18} height={18} />}
           >
             <div className="absolute bottom-full left-0 z-10 mb-2 w-52 overflow-hidden rounded-xl border border-line-strong bg-panel py-1 shadow-[0_16px_40px_rgba(0,0,0,0.5)]">
@@ -670,13 +670,13 @@ export function Composer({
                 className={menuItemClass}
                 onClick={() => fileInputRef.current?.click()}
               >
-                Attach PDF
+                Add a PDF
               </button>
               <button type="button" className={menuItemClass} onClick={() => setQuickAction("task")}>
-                New task in this room
+                Add a to-do
               </button>
               <button type="button" className={menuItemClass} onClick={() => setQuickAction("cron")}>
-                Schedule routine (cron)
+                Do this on a schedule
               </button>
               {canAdmin && roomKind !== "dm" ? (
                 <button type="button" className={menuItemClass} onClick={() => setQuickAction("meeting")}>
@@ -692,15 +692,6 @@ export function Composer({
           </DetailsMenu>
         ) : null}
 
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-muted hover:bg-line-strong/60 hover:text-text"
-          title="Attach PDF"
-          aria-label="Attach PDF"
-        >
-          <Paperclip className="h-[18px] w-[18px]" aria-hidden="true" />
-        </button>
         <label htmlFor={`${baseId}-input`} className="sr-only">
           {placeholder}
         </label>
@@ -731,7 +722,7 @@ export function Composer({
           }
           onKeyDown={onKeyDown}
           onBlur={() => window.setTimeout(() => setMention(null), 120)}
-          className="block max-h-[220px] min-h-10 min-w-0 flex-1 resize-none bg-transparent px-2 py-[9px] text-[14px] leading-[22px] text-text outline-none placeholder:text-faint"
+          className="block max-h-[220px] min-h-10 min-w-0 flex-1 resize-none bg-transparent px-2 py-[9px] text-[15px] leading-[22px] text-text outline-none placeholder:text-faint"
         />
         {value.length > 90_000 ? (
           <span className="self-center font-mono text-[11px] text-warn">{value.length}/100000</span>
@@ -743,7 +734,7 @@ export function Composer({
           title="Send"
           onClick={() => void send()}
           disabled={pending || !value.trim()}
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-text text-void transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:bg-line-strong disabled:text-muted"
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent text-void transition-all hover:scale-105 hover:bg-accent-strong disabled:cursor-not-allowed disabled:bg-raised disabled:text-faint disabled:hover:scale-100"
         >
           <ArrowUp className="h-[18px] w-[18px]" aria-hidden />
         </button>

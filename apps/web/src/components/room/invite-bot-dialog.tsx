@@ -245,7 +245,7 @@ export function InviteBotDialog({
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="inline-flex h-11 items-center gap-1.5 rounded-sm px-3 text-[13px] text-muted transition-colors hover:bg-raised hover:text-text md:h-9"
+          className="inline-flex h-10 items-center gap-1.5 rounded-full px-3.5 text-[13px] text-muted transition-colors hover:bg-panel hover:text-text"
         >
           <BotIcon width={15} height={15} />
           <span>Add agent</span>

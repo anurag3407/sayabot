@@ -5,6 +5,8 @@ import Link from "next/link"
 import { MessageItem } from "@/components/room/message-item"
 import { Composer } from "@/components/room/composer"
 import { SetupChecklist, type SetupState } from "@/components/room/setup-checklist"
+import { StarterCard } from "@/components/room/starter-card"
+import { Mascot } from "@/components/ui/mascot"
 import { TurnStrip } from "@/components/room/turn-strip"
 import { ToolCallsList } from "@/components/room/tool-call-card"
 import { Button } from "@/components/ui/button"
@@ -255,7 +257,7 @@ export function ChatPanel({
           setShowJump(!nearBottom)
           if (nearBottom) setNewCount(0)
         }}
-        className="relative min-h-0 flex-1 overflow-y-auto"
+        className="relative min-h-0 flex-1 overflow-y-auto outline-none focus-visible:shadow-[inset_0_0_0_1px_var(--color-line-strong)]"
         role="log"
         aria-live="off"
         tabIndex={0}
@@ -263,33 +265,51 @@ export function ChatPanel({
       >
         {setup ? <SetupChecklist setup={setup} orgSlug={orgSlug} roomId={roomId} /> : null}
 
-        {!hasMessages && setup ? null : !hasMessages ? (
+        {!hasMessages && setup ? null : !hasMessages && roomKind === "dm" && roomAgents[0] ? (
+          <StarterCard
+            orgSlug={orgSlug}
+            roomId={roomId}
+            agentName={roomAgents[0].agent.displayName}
+            userName={user.displayName}
+            onSent={scrollToBottom}
+            onSomethingElse={() =>
+              document.querySelector<HTMLTextAreaElement>('[data-testid="composer"]')?.focus()
+            }
+          />
+        ) : !hasMessages ? (
           <div className="px-6 py-10">
+            {roomAgents.length ? (
+              <div className="mb-2 flex justify-center -space-x-3" aria-hidden="true">
+                {roomAgents.slice(0, 4).map(({ agent }) => (
+                  <Mascot key={agent.id} seed={agent.displayName} figure blink className="h-[84px] w-auto" />
+                ))}
+              </div>
+            ) : null}
             <EmptyState
-              title="This room is quiet"
+              title="It's quiet in here"
               body={
                 roomAgents.length
-                  ? `Mention an agent with @handle to ask it something. In this room: ${roomAgents
-                      .map(({ agent }) => `@${agent.handle}`)
-                      .join(", ")}.`
+                  ? `Say hi! Type @ and pick a name to ask ${roomAgents
+                      .map(({ agent }) => agent.displayName)
+                      .join(", ")} for help.`
                   : canAdmin
-                    ? "Add an agent to this room, then mention it with @handle."
-                    : "No agents are in this room yet. Ask a room admin to add one, or start talking with your team."
+                    ? "Add an agent to this chat, then type @ and its name to ask it something."
+                    : "No agents here yet. Ask whoever runs this chat to add one, or start talking with your team."
               }
               action={
                 canAdmin ? (
                   <Link
                     href={`/${orgSlug}/r/${roomId}/settings`}
-                    className="font-mono text-[12px] text-accent underline underline-offset-4"
+                    className="text-[13px] text-accent underline underline-offset-4"
                   >
-                    room settings
+                    Chat settings
                   </Link>
                 ) : null
               }
             />
           </div>
         ) : (
-          <div className="mx-auto w-full max-w-[820px] px-1 pb-4 pt-2">
+          <div className="mx-auto w-full max-w-[780px] px-1 pb-4 pt-2 md:px-4">
             {hasOlder ? (
               <div className="flex justify-center pt-4">
                 <Button
@@ -308,7 +328,7 @@ export function ChatPanel({
               return (
                 <div key={message.id} data-message-id={message.id}>
                   {showDay ? (
-                    <p className="px-4 pb-2 pt-6 text-center text-[12px] text-faint" aria-hidden="true">
+                    <p className="px-4 pb-2 pt-6 text-center text-[13px] capitalize text-faint" aria-hidden="true">
                       {dayLabel(message.createdAt)}
                     </p>
                   ) : null}
@@ -351,7 +371,7 @@ export function ChatPanel({
             <button
               type="button"
               onClick={scrollToBottom}
-              className="pointer-events-auto rounded-full border border-line-strong bg-raised px-3 py-2 font-mono text-[12px] text-text shadow-[0_8px_24px_rgba(0,0,0,0.45)] hover:bg-hover md:py-1.5"
+              className="pointer-events-auto rounded-full border border-line-strong bg-raised px-3.5 py-2 text-[13px] text-text shadow-[0_8px_24px_rgba(0,0,0,0.45)] hover:bg-hover md:py-1.5"
             >
               {newCount > 0 ? `↓ ${newCount} new ${newCount === 1 ? "message" : "messages"}` : "↓ Latest"}
             </button>
@@ -374,7 +394,7 @@ export function ChatPanel({
         runActivity={runActivity}
       />
 
-      <div className="mx-auto w-full max-w-[820px] shrink-0 pb-[env(safe-area-inset-bottom)]">
+      <div className="mx-auto w-full max-w-[780px] shrink-0 pb-[env(safe-area-inset-bottom)] md:px-2">
         <Composer
           orgSlug={orgSlug}
           roomId={roomId}

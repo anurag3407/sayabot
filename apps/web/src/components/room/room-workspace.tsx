@@ -18,7 +18,8 @@ import { Button } from "@/components/ui/button"
 import { CanvasIcon, SlidersIcon } from "@/components/ui/icons"
 import { RoomSkeleton } from "@/components/ui/skeleton"
 import { ModelPickerButton } from "@/components/room/model-picker"
-import { cn, TURN_MODE_SHORT } from "@/lib/format"
+import { ChevronRight } from "lucide-react"
+import { cn } from "@/lib/format"
 import type { RoomPageData } from "@/lib/types"
 
 type View = "chat" | "canvas"
@@ -189,70 +190,8 @@ export function RoomWorkspace({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <header className="flex min-h-14 shrink-0 items-center gap-3 border-b border-line px-4 py-2">
-        {data.room.kind === "dm" && data.roomAgents[0] ? (
-          <Mascot seed={data.roomAgents[0].agent.displayName} className="h-8 w-8" />
-        ) : (
-          <span aria-hidden="true" className="grid h-8 w-8 shrink-0 place-items-center rounded-[10px] bg-raised text-[14px] text-muted">
-            {roomPrefix}
-          </span>
-        )}
-        <div className="min-w-0 flex-1">
-          <h1 className="truncate text-[14px] font-medium leading-tight" data-testid="room-title">
-            {data.room.name}
-          </h1>
-          <div className="mt-0.5 hidden items-center gap-1.5 text-[12px] leading-tight text-faint md:flex">
-            {realtime.connection === "connected" ? (
-              <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-[var(--color-ok)]" />
-            ) : null}
-            <span className="truncate">
-              {data.room.kind === "dm" ? "Direct chat" : TURN_MODE_SHORT[data.room.turnMode] ?? data.room.turnMode}
-            </span>
-            <span aria-hidden="true">·</span>
-            <PresenceLine people={presence} selfId={data.user.id} />
-          </div>
-          {presence.some((person) => person.typing && person.id !== data.user.id) ? (
-            <div className="md:hidden">
-              <PresenceLine people={presence} selfId={data.user.id} />
-            </div>
-          ) : null}
-        </div>
-
-        <div className="flex shrink-0 items-center gap-1.5 md:gap-2">
-          <ModelPickerButton />
-          <div className="hidden md:block">
-            <EnableAlerts enabled={data.user.notifications !== "off"} />
-          </div>
-          {isDesktop ? (
-            <Button
-              size="icon"
-              variant={canvasOpen ? "secondary" : "ghost"}
-              aria-pressed={canvasOpen}
-              aria-label="Canvas"
-              title="Canvas"
-              onClick={() => toggleCanvas(!canvasOpen)}
-            >
-              <CanvasIcon width={16} height={16} />
-            </Button>
-          ) : null}
-          {inviteProps ? <InvitePeople {...inviteProps} /> : null}
-          {data.canAdmin ? (
-            <InviteBotDialog
-              orgSlug={data.org.slug}
-              roomId={data.room.id}
-              roomName={data.room.name}
-            />
-          ) : null}
-          {data.canAdmin ? (
-            <Link
-              href={`/${data.org.slug}/r/${data.room.id}/settings`}
-              aria-label="Room settings"
-              title="Room settings"
-              className="grid h-11 w-11 place-items-center rounded-sm text-muted hover:bg-raised hover:text-text md:h-9 md:w-9"
-            >
-              <SlidersIcon width={16} height={16} />
-            </Link>
-          ) : null}
+      <header className="grid min-h-16 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-2 px-3 py-2 md:px-4">
+        <div className="flex min-w-0 items-center gap-1">
           <div className="flex items-center gap-1 md:hidden" role="group" aria-label="Room view">
             {(["chat", "canvas"] as const).map((item) => (
               <Button
@@ -266,6 +205,105 @@ export function RoomWorkspace({
               </Button>
             ))}
           </div>
+        </div>
+
+        <div className="flex min-w-0 flex-col items-center">
+          <Link
+            href={
+              data.room.kind === "dm" && data.roomAgents[0]
+                ? `/${data.org.slug}/agents/${data.roomAgents[0].agent.id}`
+                : `/${data.org.slug}/r/${data.room.id}/settings`
+            }
+            title={data.room.kind === "dm" ? "About this agent" : "About this chat"}
+            className="group flex h-11 min-w-0 max-w-[60vw] items-center gap-2 rounded-full bg-panel py-1 pl-1.5 pr-3.5 transition-colors hover:bg-raised md:max-w-[360px]"
+          >
+            {data.room.kind === "dm" && data.roomAgents[0] ? (
+              <Mascot
+                seed={data.roomAgents[0].agent.displayName}
+                mood={realtime.turnState?.activeAgentId ? "busy" : "idle"}
+                blink
+                className="h-8 w-8 shrink-0"
+              />
+            ) : data.roomAgents.length ? (
+              <span className="flex shrink-0 -space-x-2.5 pl-0.5">
+                {data.roomAgents.slice(0, 3).map(({ agent }) => (
+                  <Mascot
+                    key={agent.id}
+                    seed={agent.displayName}
+                    className="h-7 w-7 rounded-full ring-2 ring-panel"
+                  />
+                ))}
+              </span>
+            ) : (
+              <span
+                aria-hidden="true"
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-raised text-[14px] text-muted"
+              >
+                {roomPrefix}
+              </span>
+            )}
+            <h1
+              className="truncate text-[15px] font-semibold tracking-[-0.01em]"
+              data-testid="room-title"
+            >
+              {data.room.name}
+            </h1>
+            <ChevronRight
+              aria-hidden="true"
+              className="h-4 w-4 shrink-0 text-faint transition-transform group-hover:translate-x-0.5"
+            />
+          </Link>
+          {presence.some((person) => person.typing && person.id !== data.user.id) ||
+          (data.room.kind !== "dm" && presence.length > 1) ? (
+            <div className="mt-1 text-[12px] text-faint">
+              <PresenceLine people={presence} selfId={data.user.id} />
+            </div>
+          ) : null}
+          {realtime.connection !== "connected" ? (
+            <span className="sr-only">Connecting</span>
+          ) : null}
+        </div>
+
+        <div className="flex min-w-0 shrink-0 items-center justify-end gap-1">
+          <div className="hidden lg:block">
+            <ModelPickerButton />
+          </div>
+          <div className="hidden md:block">
+            <EnableAlerts enabled={data.user.notifications !== "off"} />
+          </div>
+          {inviteProps ? <InvitePeople {...inviteProps} /> : null}
+          {data.canAdmin ? (
+            <InviteBotDialog
+              orgSlug={data.org.slug}
+              roomId={data.room.id}
+              roomName={data.room.name}
+            />
+          ) : null}
+          {isDesktop ? (
+            <button
+              type="button"
+              aria-pressed={canvasOpen}
+              aria-label="Canvas"
+              title={canvasOpen ? "Hide canvas" : "Show canvas"}
+              onClick={() => toggleCanvas(!canvasOpen)}
+              className={cn(
+                "grid h-10 w-10 place-items-center rounded-full text-muted transition-colors hover:bg-panel hover:text-text",
+                canvasOpen && "bg-panel text-text",
+              )}
+            >
+              <CanvasIcon width={17} height={17} />
+            </button>
+          ) : null}
+          {data.canAdmin ? (
+            <Link
+              href={`/${data.org.slug}/r/${data.room.id}/settings`}
+              aria-label="Chat settings"
+              title="Chat settings"
+              className="grid h-10 w-10 place-items-center rounded-full text-muted transition-colors hover:bg-panel hover:text-text"
+            >
+              <SlidersIcon width={16} height={16} />
+            </Link>
+          ) : null}
         </div>
       </header>
 

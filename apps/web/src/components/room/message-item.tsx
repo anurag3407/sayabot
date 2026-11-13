@@ -98,7 +98,7 @@ export function MessageItem({
   const streaming = message.status === "streaming"
 
   const mine = !isAgent && selfId !== null && message.senderId === selfId
-  const quietTime = "font-mono text-[11px] text-faint md:opacity-0 md:transition-opacity md:group-hover:opacity-100"
+  const quietTime = "text-[11px] text-faint md:opacity-0 md:transition-opacity md:group-hover:opacity-100"
 
   return (
     <article
@@ -172,12 +172,22 @@ export function MessageItem({
         </header>
 
         {message.content ? (
-          <div className={cn(isAgent ? "mt-0.5" : "mt-1 inline-block max-w-full rounded-[18px] bg-raised px-4 py-2.5", !isAgent && mine && "ml-auto")}>
+          <div
+            className={cn(
+              "mt-1 inline-block max-w-full rounded-[22px] px-4 py-2.5 text-[15px]",
+              isAgent ? "rounded-tl-md bg-panel" : "bg-raised",
+              mine && "ml-auto rounded-tl-[22px] rounded-tr-md",
+            )}
+          >
             <Markdown content={message.content} streaming={streaming} />
             {streaming ? <span className="streaming-caret" aria-hidden="true" /> : null}
           </div>
         ) : streaming ? (
-          <p className="mt-0.5 text-[14px] text-faint">Thinking…</p>
+          <p className="mt-1 inline-flex items-center gap-1.5 rounded-[22px] rounded-tl-md bg-panel px-4 py-3 text-[14px] text-faint" aria-label="Thinking">
+            <span className="thinking-dot" />
+            <span className="thinking-dot [animation-delay:150ms]" />
+            <span className="thinking-dot [animation-delay:300ms]" />
+          </p>
         ) : null}
 
         {message.metadata.vote ? <VoteTally vote={message.metadata.vote as VoteMeta} /> : null}

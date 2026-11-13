@@ -103,14 +103,14 @@ function ChatRow({
         data-testid="room-link"
         data-room-name={item.name}
         className={cn(
-          "flex items-center gap-3 rounded-[14px] px-2.5 py-2.5 transition-colors",
-          active ? "bg-raised" : "hover:bg-panel",
+          "flex items-center gap-3 rounded-2xl px-2.5 py-2.5 transition-colors",
+          active ? "bg-panel" : "hover:bg-panel/70",
         )}
       >
         <RowFace item={item} />
         <span className="min-w-0 flex-1">
           <span className="flex items-baseline gap-2">
-            <span className={cn("truncate text-[14px]", unread ? "font-medium text-text" : "text-text/90")}>
+            <span className={cn("truncate text-[15px]", unread ? "font-semibold text-text" : "font-medium text-text")}>
               {item.name}
             </span>
             <span className="ml-auto shrink-0 text-[12px] text-faint md:group-hover:opacity-0 md:group-focus-within:opacity-0">
@@ -214,18 +214,18 @@ function BotRow({ bot, orgSlug, onNavigate }: { bot: BotLink; orgSlug: string; o
         onClick={start}
         disabled={pending}
         title={`Start a direct chat with ${bot.displayName}`}
-        className="flex w-full items-center gap-3 rounded-[14px] px-2.5 py-2.5 text-left transition-colors hover:bg-panel disabled:opacity-60"
+        className="flex w-full items-center gap-3 rounded-2xl px-2.5 py-2.5 text-left transition-colors hover:bg-panel/70 disabled:opacity-60"
       >
         <Mascot seed={bot.displayName} className="h-11 w-11" />
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-2">
-            <span className="truncate text-[14px] text-text/90">{bot.displayName}</span>
+            <span className="truncate text-[15px] font-medium text-text">{bot.displayName}</span>
             {bot.kind === "external" ? (
               <span className="shrink-0 rounded-md bg-raised px-1.5 py-px text-[11px] text-muted">MCP</span>
             ) : null}
           </span>
           <span className={cn("mt-0.5 block truncate text-[13px]", error ? "text-danger" : "text-faint")}>
-            {pending ? "Opening…" : error ?? "No messages yet"}
+            {pending ? "Saying hi…" : error ?? "Tap to say hi"}
           </span>
         </span>
       </button>
@@ -236,8 +236,8 @@ function BotRow({ bot, orgSlug, onNavigate }: { bot: BotLink; orgSlug: string; o
 function Group({ label, children, action }: { label: string; children: React.ReactNode; action?: React.ReactNode }) {
   return (
     <div className="mb-3">
-      <div className="flex h-7 items-center justify-between px-2.5">
-        <p className="text-[12px] text-faint">{label}</p>
+      <div className="flex h-7 items-center justify-between px-2">
+        <p className="text-[12px] font-medium text-faint">{label}</p>
         {action}
       </div>
       <ul className="space-y-0.5">{children}</ul>
@@ -251,13 +251,19 @@ export function ChatList({
   items,
   bots,
   onNavigate,
+  searchOpen,
+  onSearchOpenChange,
 }: {
   orgSlug: string
   items: ChatListItem[]
   bots: BotLink[]
   onNavigate?: () => void
+  /** When given, search and filters stay tucked away until the caller opens them. */
+  searchOpen?: boolean
+  onSearchOpenChange?: (open: boolean) => void
 }) {
   const pathname = usePathname()
+  const showSearch = searchOpen ?? true
   const router = useRouter()
   const [filter, setFilter] = useState<Filter>("all")
   const [query, setQuery] = useState("")
@@ -269,13 +275,26 @@ export function ChatList({
       if (event.key !== "/" || event.metaKey || event.ctrlKey || event.altKey) return
       const target = event.target as HTMLElement | null
       if (target?.closest("input, textarea, select, [contenteditable='true']")) return
+      if (onSearchOpenChange && !searchOpen) {
+        event.preventDefault()
+        onSearchOpenChange(true)
+        return
+      }
       if (!searchInput.current?.offsetParent) return
       event.preventDefault()
       searchInput.current.focus()
     }
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
-  }, [])
+  }, [onSearchOpenChange, searchOpen])
+
+  useEffect(() => {
+    if (searchOpen) searchInput.current?.focus()
+    else if (searchOpen === false) {
+      setQuery("")
+      setFilter("all")
+    }
+  }, [searchOpen])
 
   const counts: Record<Filter, number> = {
     all: items.filter((item) => !item.archived).length,
@@ -349,7 +368,8 @@ export function ChatList({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="shrink-0 px-3 pb-2 pt-3">
+      {showSearch ? (
+      <div className="shrink-0 px-3 pb-2 pt-1">
         <label className="flex h-10 items-center gap-2.5 rounded-xl bg-panel px-3 focus-within:bg-raised">
           <Search className="h-4 w-4 shrink-0 text-faint" aria-hidden />
           <span className="sr-only">Filter chats. Press Enter to search every message.</span>
@@ -358,12 +378,16 @@ export function ChatList({
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={(event) => {
+              if (event.key === "Escape" && onSearchOpenChange) {
+                onSearchOpenChange(false)
+                return
+              }
               if (event.key === "Enter" && needle) {
                 onNavigate?.()
                 router.push(`/${orgSlug}/search?q=${encodeURIComponent(query.trim())}`)
               }
             }}
-            placeholder="Search"
+            placeholder="Find a chat"
             className="w-full bg-transparent text-[14px] text-text outline-none placeholder:text-faint"
           />
         </label>
@@ -376,7 +400,7 @@ export function ChatList({
                 onClick={() => setFilter(option.key)}
                 aria-pressed={filter === option.key}
                 className={cn(
-                  "h-7 rounded-lg px-2.5 text-[12px] transition-colors",
+                  "h-7 rounded-full px-3 text-[12px] transition-colors",
                   filter === option.key ? "bg-raised text-text" : "text-faint hover:text-text",
                 )}
               >
@@ -386,15 +410,16 @@ export function ChatList({
           </div>
         ) : null}
       </div>
+      ) : null}
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-4">
+      <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
         {pinned.length ? <Group label="Pinned">{pinned.map(row)}</Group> : null}
         {agents.length || newBots.length ? (
           <Group
-            label="Agents"
+            label="Your agents"
             action={
               <Link href={`/${orgSlug}/agents`} onClick={onNavigate} className="text-[12px] text-faint hover:text-text">
-                Manage
+                See all
               </Link>
             }
           >
@@ -404,7 +429,7 @@ export function ChatList({
             ))}
           </Group>
         ) : null}
-        {rooms.length ? <Group label="Rooms">{rooms.map(row)}</Group> : null}
+        {rooms.length ? <Group label="Group chats">{rooms.map(row)}</Group> : null}
 
         {empty ? (
           <div className="px-3 py-8 text-center">

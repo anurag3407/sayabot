@@ -4,7 +4,7 @@ import { useState, useTransition } from "react"
 import { stopGeneration } from "@/lib/actions/messages"
 import { Button } from "@/components/ui/button"
 import { StopIcon } from "@/components/ui/icons"
-import { cn } from "@/lib/format"
+import { Mascot } from "@/components/ui/mascot"
 import type { RoomAgentView, TurnStateView } from "@/lib/types"
 
 export function TurnStrip({
@@ -49,42 +49,37 @@ export function TurnStrip({
 
   return (
     <div
-      className="mx-auto flex w-full max-w-[820px] flex-wrap items-center gap-x-3 gap-y-1 px-5 py-1.5"
+      className="mx-auto flex w-full max-w-[780px] flex-wrap items-center gap-x-2.5 gap-y-1 px-5 py-1.5 md:px-6"
       aria-label="Agent activity"
     >
-      <span className="text-[12px] text-accent">Replying</span>
-      <span className={cn("text-[12px]", active || streamingRunId ? "text-text" : "text-faint")}>
-        {active ? `@${active.handle}` : streamingRunId ? "an agent" : "next agent starting"}
+      {active ? (
+        <Mascot seed={active.displayName} mood="busy" lit className="h-6 w-6 shrink-0" />
+      ) : null}
+      <span className="text-[13px] text-text">
+        {active ? active.displayName : streamingRunId ? "Your agent" : "Your agent"}
+        <span className="text-muted"> is working on it</span>
       </span>
       {runActivity?.label || runActivity?.status ? (
-        <span className="flex items-center gap-1.5 font-mono text-[11px] text-muted">
-          <span className="inline-block h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
-          {runActivity.step ? `step ${runActivity.step} · ` : ""}
-          {runActivity.label ?? runActivity.status}
+        <span className="flex min-w-0 items-center gap-1.5 text-[12px] text-muted">
+          <span className="inline-block h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-accent" />
+          <span className="truncate">{runActivity.label ?? runActivity.status}</span>
         </span>
       ) : null}
       {runActivity?.plan && runActivity.plan.length > 0 ? (
-        <span className="rounded bg-raised px-1.5 py-0.5 font-mono text-[10px] text-faint">
-          plan {completedPlanItems}/{runActivity.plan.length}
+        <span className="rounded-full bg-panel px-2 py-0.5 text-[11px] text-faint">
+          {completedPlanItems} of {runActivity.plan.length} done
         </span>
       ) : null}
       {queue.length ? (
-        <>
-          <span className="text-[12px] text-faint">Up next</span>
-          <span className="flex flex-wrap gap-1.5">
-            {queue.map((agent) => (
-              <span key={agent!.id} className="font-mono text-[12px] text-muted">
-                @{agent!.handle}
-              </span>
-            ))}
-          </span>
-        </>
+        <span className="text-[12px] text-faint">
+          then {queue.map((agent) => agent!.displayName).join(", ")}
+        </span>
       ) : null}
       {streamingRunId ? (
         <Button
           size="sm"
           variant="outline"
-          className="ml-auto md:h-6 md:px-2 md:text-[12px]"
+          className="ml-auto rounded-full md:h-7 md:px-3 md:text-[12px]"
           onClick={stop}
           disabled={pending}
         >

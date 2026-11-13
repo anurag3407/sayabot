@@ -29,17 +29,16 @@ export function ModelPickerButton({ className = "" }: { className?: string }) {
 
   return (
     <div className={`relative inline-block ${className}`}>
-      {/* The Sleek Model Pill Button matching the screenshot */}
       <button
         type="button"
         onClick={() => setOpen(!open)}
         aria-expanded={open}
         aria-haspopup="menu"
-        className="flex h-8 items-center gap-2 rounded-full border border-[#232b25] bg-[#151b17] px-3 text-xs font-medium text-[#e9e5d8] transition-colors hover:border-[#354037] hover:bg-[#1a211c] focus:outline-none"
+        className="flex h-10 items-center gap-2 rounded-full bg-panel px-3.5 text-[13px] font-medium text-text transition-colors hover:bg-raised"
       >
         <ProviderIcon provider={config.provider} size={13} className="text-[#ff7a45]" />
         <span className="max-w-[150px] truncate">{config.modelLabel}</span>
-        <ChevronDown className="h-3 w-3 text-[#7a857c]" aria-hidden="true" />
+        <ChevronDown className="h-3.5 w-3.5 text-faint" aria-hidden="true" />
       </button>
 
       {/* Floating Dropdown Popover */}

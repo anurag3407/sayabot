@@ -102,8 +102,8 @@ export function PresenceLine({
   if (typers.length === 1) text = `${typers[0]!.name} is typing`
   else if (typers.length === 2) text = `${typers[0]!.name} and ${typers[1]!.name} are typing`
   else if (typers.length > 2) text = `${typers.length} people are typing`
-  else if (others.length === 0) text = "only you here"
+  else if (others.length === 0) text = "just you"
   else if (others.length === 1) text = `${others[0]!.name} is here`
   else text = `${others.length} others here`
-  return <span className="font-mono text-[12px] text-faint">{text}</span>
+  return <span className="text-[12px] text-faint">{text}</span>
 }
