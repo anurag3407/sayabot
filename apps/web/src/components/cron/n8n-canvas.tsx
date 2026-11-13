@@ -75,6 +75,46 @@ export interface N8nCanvasProps {
     model: string
   }[]
   availableRooms: { id: string; name: string; kind: string }[]
+  /** Telegram / Discord / WhatsApp chats a routine can also send its results to. */
+  chatTargets?: RoutineChatTarget[]
+}
+
+export interface RoutineChatTarget {
+  connectorId: string
+  chatId: string
+  label: string
+}
+
+const chatKey = (t: { connectorId?: unknown; chatId?: unknown } | null | undefined) =>
+  t && typeof t.connectorId === "string" && typeof t.chatId === "string" ? `${t.connectorId}|${t.chatId}` : ""
+
+/** Form value "connectorId|chatId" → routine metadata. null clears it (PATCH merges metadata). */
+function deliverToFromForm(value: FormDataEntryValue | null) {
+  const [connectorId, chatId] = String(value ?? "").split("|")
+  return connectorId && chatId ? { connectorId, chatId } : null
+}
+
+function ChatTargetField({ id, targets, current }: { id: string; targets: RoutineChatTarget[]; current?: string }) {
+  return (
+    <Field
+      label="Also send results to"
+      htmlFor={id}
+      hint={
+        targets.length
+          ? "The agent's reply is posted in that chat when the run finishes."
+          : "Turn on a Telegram, Discord or WhatsApp chat in Settings → Connectors and list its chat ID to send results there."
+      }
+    >
+      <Select id={id} name="deliver_to" defaultValue={current ?? ""} disabled={!targets.length}>
+        <option value="">Only the room</option>
+        {targets.map((t) => (
+          <option key={chatKey(t)} value={chatKey(t)}>
+            {t.label}
+          </option>
+        ))}
+      </Select>
+    </Field>
+  )
 }
 
 const PRESET_SCHEDULES = [
@@ -91,6 +131,7 @@ export function N8nCanvas({
   initialRoutines,
   availableAgents,
   availableRooms,
+  chatTargets = [],
 }: N8nCanvasProps) {
   const [routines, setRoutines] = useState<RoutineItem[]>(initialRoutines)
   const [activeRoutineId, setActiveRoutineId] = useState<string | null>(
@@ -931,6 +972,9 @@ export function N8nCanvas({
           <div className="flex-1 overflow-y-auto p-5 space-y-5">
             {inspectorTab === "params" ? (
               <form
+                // Remount per routine: the fields are uncontrolled (defaultValue), so without
+                // this, switching routines kept the previous one's values and saved them over it.
+                key={activeRoutine.id}
                 onSubmit={async (e) => {
                   e.preventDefault()
                   const form = new FormData(e.currentTarget)
@@ -954,6 +998,7 @@ export function N8nCanvas({
                           room_id,
                           prompt,
                           timezone,
+                          metadata: { deliverTo: deliverToFromForm(form.get("deliver_to")) },
                         }),
                       },
                     )
@@ -1052,6 +1097,12 @@ export function N8nCanvas({
                     ))}
                   </Select>
                 </Field>
+
+                <ChatTargetField
+                  id="routine-deliver-to"
+                  targets={chatTargets}
+                  current={chatKey(activeRoutine.metadata?.deliverTo)}
+                />
 
                 <Field
                   label="Agent Task Prompt / Instructions"
@@ -1228,6 +1279,7 @@ export function N8nCanvas({
                       room_id,
                       prompt,
                       timezone,
+                      metadata: { deliverTo: deliverToFromForm(form.get("deliver_to")) },
                     }),
                   })
                   const data = await res.json()
@@ -1295,6 +1347,8 @@ export function N8nCanvas({
                   ))}
                 </Select>
               </Field>
+
+              <ChatTargetField id="new-deliver-to" targets={chatTargets} />
 
               <Field label="Task Prompt Instructions" htmlFor="new-prompt">
                 <Textarea

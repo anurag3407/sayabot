@@ -29,6 +29,9 @@ env_value() {
 SERVICES_CONFIG="$(env_value MESH_APP_SERVICES)"
 APP_SERVICES=(${SERVICES_CONFIG:-orchestrator web})
 EDGE_SERVICES=(nginx certbot)
+# Cloudflare Tunnel mode: no open ports, no certificate; cloudflared dials out to Cloudflare.
+TUNNEL=0
+[[ -n "$(env_value CLOUDFLARE_TUNNEL_TOKEN)" ]] && { TUNNEL=1; EDGE_SERVICES=(nginx cloudflared); }
 HEALTH_TIMEOUT="${MESH_HEALTH_TIMEOUT:-180}"
 
 c_blue=$'\033[1;34m'; c_yellow=$'\033[1;33m'; c_red=$'\033[1;31m'; c_green=$'\033[1;32m'; c_off=$'\033[0m'
@@ -40,6 +43,7 @@ die()  { printf '%s[deploy]%s %s\n' "$c_red" "$c_off" "$*" >&2; exit 1; }
 COMPOSE_ARGS=(-f "$COMPOSE_FILE")
 # microVM computers (KVM hosts): computerd gets /dev/kvm and the host's smolvm install.
 [[ "$(env_value COMPUTER_BACKEND)" == "smolvm" ]] && COMPOSE_ARGS+=(-f "$DEPLOY_DIR/docker-compose.smolvm.yml")
+(( TUNNEL )) && COMPOSE_ARGS+=(-f "$DEPLOY_DIR/docker-compose.tunnel.yml")
 compose() { MESH_TAG="${MESH_TAG:-latest}" docker compose --env-file "$ENV_FILE" "${COMPOSE_ARGS[@]}" "$@"; }
 
 # ── preflight ────────────────────────────────────────────────────────────
@@ -69,9 +73,14 @@ preflight() {
     [[ -z "$(env_value "$key")" ]] || warn "$key is set in $ENV_FILE but is derived by docker-compose.yml; it will be overridden."
   done
 
-  if ! docker run --rm -v "$DEPLOY_DIR/certbot/conf:/etc/letsencrypt:ro" alpine:3.20 \
+  if (( TUNNEL )); then
+    # docker-compose.tunnel.yml uses !reset / !override (Compose 2.24.4+).
+    local cv; cv="$(docker compose version --short 2>/dev/null | sed 's/^v//')"
+    [[ "$(printf '%s\n2.24.4\n' "$cv" | sort -V | head -n1)" == "2.24.4" ]] \
+      || die "Cloudflare Tunnel mode needs Docker Compose 2.24.4 or newer (found $cv)."
+  elif ! docker run --rm -v "$DEPLOY_DIR/certbot/conf:/etc/letsencrypt:ro" alpine:3.20 \
        test -f "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" >/dev/null 2>&1; then
-    die "No TLS certificate for $DOMAIN yet. Run ./deploy/scripts/init-letsencrypt.sh first."
+    die "No TLS certificate for $DOMAIN yet. Run ./deploy/scripts/init-letsencrypt.sh first (or set CLOUDFLARE_TUNNEL_TOKEN)."
   fi
 
   local free_kb
@@ -144,6 +153,20 @@ wait_healthy() {
 
 public_check() {
   local url="https://$DOMAIN/api/health"
+  if (( TUNNEL )); then
+    # nginx has no host port in tunnel mode: check it from inside, then through Cloudflare.
+    local ready=0
+    for _ in $(seq 1 10); do
+      compose exec -T nginx curl -fsS --max-time 5 http://127.0.0.1:8080/api/health >/dev/null 2>&1 && { ready=1; break; }
+      sleep 3
+    done
+    (( ready )) || { warn "nginx did not answer /api/health on :8080"; return 1; }
+    ok "nginx :8080 responds"
+    # Best effort: DNS, the tunnel's public hostname or a Cloudflare Access policy can lag or block it.
+    if curl -fsS --max-time 10 "$url" >/dev/null 2>&1; then ok "$url responds through the tunnel"
+    else warn "$url did not respond through Cloudflare yet. Check the tunnel's Public Hostname (→ http://nginx:8080) and that Access bypasses /api/health."; fi
+    return 0
+  fi
   for _ in $(seq 1 10); do
     # --resolve pins the request to this host, so the check does not depend on DNS/CDN.
     if curl -fsSk --max-time 5 --resolve "$DOMAIN:443:127.0.0.1" "$url" >/dev/null 2>&1; then
@@ -213,6 +236,8 @@ roll_out() {
   wait_healthy "${APP_SERVICES[@]}" || return 1
   log "Starting nginx and certbot"
   compose up -d --no-build "${EDGE_SERVICES[@]}"
+  # Switching to tunnel mode leaves the old certbot renewer running; it has nothing to do.
+  (( TUNNEL )) && compose stop certbot >/dev/null 2>&1 || true
   # Pick up config edits even when the nginx container itself was not recreated.
   compose exec -T nginx nginx -t >/dev/null 2>&1 && compose exec -T nginx nginx -s reload >/dev/null 2>&1 || true
   public_check

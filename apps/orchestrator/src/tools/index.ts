@@ -15,7 +15,7 @@ import type { ToolSet } from "ai"
 import { and, eq, isNull, or } from "drizzle-orm"
 import { z } from "zod"
 import { canvasPatchTool, canvasReadTool, canvasWriteTool } from "../canvas/tools"
-import { runMcpOnDesktop } from "../connectors/desktop-bridge"
+import { desktopOnline, runMcpOnDesktop } from "../connectors/desktop-bridge"
 import type { ConnectorSource } from "../connectors/types"
 import { getDb } from "../db"
 import { getEnv } from "../env"
@@ -374,12 +374,24 @@ export async function buildTools(args: BuildToolsArgs): Promise<BuiltTools> {
         },
       })
     }
+    const offlineApps: string[] = []
     for (const row of desktop) {
       try {
+        // Laptop asleep or app closed: leave these tools out rather than stall the turn for 25s
+        // per call. Without them the agent works with its cloud computer and web tools.
+        if (!(await desktopOnline(args.orgId, row.hostId))) {
+          offlineApps.push(row.name)
+          continue
+        }
         extraSpecs.push(...(await toolsForDesktopApp(row, args.orgId)))
       } catch (error) {
         warnings.push(`${row.name}: ${error instanceof Error ? error.message : String(error)}`)
       }
+    }
+    if (offlineApps.length) {
+      warnings.push(
+        `Skipped ${offlineApps.join(", ")}: the computer running ${offlineApps.length > 1 ? "them" : "it"} was offline, so this turn used cloud tools only.`,
+      )
     }
   }
 

@@ -17,6 +17,9 @@ export interface ToolRuntime {
   messageId?: string | null
   approvalTimeoutMs?: number
   scrub?: (s: string) => string
+  /** The message that started this turn. When it came in from Telegram/Discord/WhatsApp,
+   *  that chat is told an approval is waiting, since the person may not be in the app. */
+  triggerMetadata?: unknown
 }
 
 export interface ToolContext {
@@ -126,6 +129,17 @@ export function toAuditedTools(specs: ToolSpec[], runtime: ToolRuntime): ToolSet
             detail: spec.name,
             refId: row.id,
           })
+          if (runtime.triggerMetadata) {
+            const action = spec.name.replace(/_/g, " ")
+            void import("../connectors/inbound")
+              .then(({ deliverInboundReply }) =>
+                deliverInboundReply(
+                  runtime.triggerMetadata,
+                  `Waiting for your OK to use ${action}. Allow it from the Sayabot notification, app or Inbox. It expires in 5 minutes.`,
+                ),
+              )
+              .catch((error) => console.warn("[inbound] approval notice not delivered", error))
+          }
           const signal = options.abortSignal
           const decision = await Promise.race([
             waitForApproval(row.id, runtime.approvalTimeoutMs),

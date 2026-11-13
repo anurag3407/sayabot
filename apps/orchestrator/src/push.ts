@@ -43,9 +43,22 @@ async function roomApprovers(roomId: string): Promise<{ orgId: string; userIds: 
   }
 }
 
+/**
+ * What the service worker (apps/web/src/sw.ts) receives. An approval with a toolCallId gets
+ * Allow / Don't allow buttons that decide it without opening a tab.
+ */
+interface WebPushPayload {
+  title: string
+  body: string
+  url: string
+  tag: string
+  kind?: "approval" | "request" | "done"
+  toolCallId?: string
+}
+
 async function sendToUsers(
   userIds: string[],
-  payload: { title: string; body: string; url: string; tag: string },
+  payload: WebPushPayload,
 ): Promise<void> {
   if (!userIds.length) return
   const db = getDb()
@@ -169,7 +182,58 @@ export function notifyHumansNeeded(args: {
           ? `Wants to use ${args.detail}. It expires in 5 minutes.`
           : args.detail,
       url: `/${slug}/inbox`,
-      tag: `mesh-${args.kind}-${args.roomId}`,
+      tag: `mesh-${args.kind}-${args.refId ?? args.roomId}`,
+      kind: args.kind,
+      ...(args.kind === "approval" && args.refId ? { toolCallId: args.refId } : {}),
     })
   })().catch((error) => console.warn("[push] could not send alert", error))
+}
+
+/** First line of a reply, trimmed for a lock-screen preview. */
+function preview(text: string, max = 160): string {
+  const flat = text.replace(/[#*_`>]+/g, "").replace(/\s+/g, " ").trim()
+  return flat.length > max ? `${flat.slice(0, max - 1)}…` : flat
+}
+
+/**
+ * "Your routine finished": sent when a scheduled run's agent turn ends, so results reach the
+ * phone without anyone watching the room. Goes to whoever created the routine, or to the
+ * room's approvers when nobody did (routines made by an agent or the API).
+ */
+export function notifyRoutineFinished(args: {
+  roomId: string
+  agentId: string
+  routineName: string
+  ownerUserId: string | null
+  summary: string
+  failed: boolean
+}): void {
+  void (async () => {
+    const approvers = await roomApprovers(args.roomId)
+    if (!approvers) return
+    const userIds = args.ownerUserId ? [args.ownerUserId] : approvers.userIds
+    const [org, who] = await Promise.all([
+      getDb().select({ slug: orgs.slug }).from(orgs).where(eq(orgs.id, approvers.orgId)).limit(1),
+      agentName(args.agentId),
+    ])
+    const slug = org[0]?.slug
+    if (!slug) return
+    const title = args.failed ? `${args.routineName} didn't finish` : `${args.routineName} is done`
+    const body = preview(args.summary) || `${who} finished.`
+    await sendToPhones(userIds, {
+      title,
+      body,
+      data: { kind: "done", refId: null, roomId: args.roomId, orgSlug: slug },
+      category: "info",
+      threadId: args.roomId,
+    })
+    if (!pushReady()) return
+    await sendToUsers(userIds, {
+      title,
+      body,
+      url: `/${slug}/cron`,
+      tag: `mesh-done-${args.roomId}`,
+      kind: "done",
+    })
+  })().catch((error) => console.warn("[push] could not send routine alert", error))
 }

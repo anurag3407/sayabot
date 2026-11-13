@@ -18,6 +18,26 @@ async function sleep(ms: number, signal?: AbortSignal) {
   })
 }
 
+/** The desktop app heartbeats every 2.5s; a minute of silence means the lid is shut or it quit. */
+export const DESKTOP_OFFLINE_AFTER_MS = 60_000
+
+/**
+ * Whether the computer that would serve this org (or the named host) is up right now. Lets a turn
+ * skip desktop-only tools instead of waiting on a sleeping laptop, so the agent carries on with its
+ * cloud computer.
+ */
+export async function desktopOnline(orgId: string, preferred?: string | null, now = Date.now()): Promise<boolean> {
+  const hostId = await hostForOrg(orgId, preferred)
+  if (!hostId) return false
+  const [row] = await getDb()
+    .select({ lastSeenAt: desktopHosts.lastSeenAt })
+    .from(desktopHosts)
+    .where(eq(desktopHosts.id, hostId))
+    .limit(1)
+  const seen = row?.lastSeenAt ? new Date(row.lastSeenAt).getTime() : 0
+  return now - seen < DESKTOP_OFFLINE_AFTER_MS
+}
+
 /** The computer this org last heard from, unless a connector names one. */
 export async function hostForOrg(orgId: string, preferred?: string | null): Promise<string | null> {
   const db = getDb()

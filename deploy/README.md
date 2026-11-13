@@ -21,6 +21,7 @@ Containers run as non-root with read-only filesystems, all capabilities dropped,
 | `deploy/docker/web.Dockerfile` | Multi-stage Next.js build → standalone server image |
 | `deploy/docker/orchestrator.Dockerfile` | Orchestrator image (also runs migrations and seeds) |
 | `deploy/docker-compose.yml` | web, orchestrator, nginx, certbot, and a one-off `migrate` |
+| `deploy/docker-compose.tunnel.yml` | Cloudflare Tunnel overlay (added when `CLOUDFLARE_TUNNEL_TOKEN` is set) |
 | `deploy/nginx/` | `nginx.conf`, the site template, shared proxy and header snippets |
 | `deploy/.env.production.example` | Every setting, documented |
 | `deploy/scripts/setup-vps.sh` | One-time server hardening + Docker install (run as root) |
@@ -77,6 +78,14 @@ server, then repo → Settings → Deploy keys).
 ```
 
 Open `https://YOUR_DOMAIN`.
+
+## Cloudflare Tunnel instead of open ports
+
+Set `CLOUDFLARE_TUNNEL_TOKEN` in `.env.production`, point the tunnel's Public Hostname at
+`http://nginx:8080`, and skip `init-letsencrypt.sh`. `deploy.sh` then adds
+`docker-compose.tunnel.yml`: nginx publishes no ports, cloudflared dials out, and certbot isn't
+used. Needs Docker Compose 2.24.4+. Full steps, including Cloudflare Access bypass paths, are in
+[`docs/self-hosted-flow.md`](../docs/self-hosted-flow.md).
 
 ## Everyday operations
 

@@ -59,6 +59,16 @@ The comprehensive operational guide for hosting Sayabot on your own infrastructu
 - **Universal MCP Gateway**: Client connection guides for Claude Desktop, Claude Code, Cursor, Windsurf, and ChatGPT.
 - **Operations & reliability**: Nightly `pg_dump` backups, zero-downtime rolling updates (`deploy.sh`), rollback mechanics, and troubleshooting matrix.
 
+### 📱 [The Self-Hosted Flow: Ask Anywhere, Approve From the Lock Screen](self-hosted-flow.md)
+
+End-to-end setup for running Sayabot as a 24/7 personal agent on your own server:
+
+- **Ingress**: open ports + Let's Encrypt, or a Cloudflare Tunnel with no open ports (`CLOUDFLARE_TUNNEL_TOKEN`).
+- **Phone**: QR pairing, Allow / Don't allow and typed answers from notifications; browser notifications with Allow / Don't allow.
+- **Chat ingress**: Telegram, Discord and WhatsApp, with "waiting for your OK" notices in the chat.
+- **Automations**: results sent to a chat, plus "routine is done" alerts.
+- **Mac + cloud**: Mac tools are skipped when it sleeps, so agents carry on in their cloud computer.
+
 ### 🏛 [Architecture & Monorepo Deep Dive](architecture.md)
 
 Understand how Sayabot works under the hood:

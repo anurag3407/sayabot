@@ -1,0 +1,37 @@
+# Cloudflare Tunnel mode (CLOUDFLARE_TUNNEL_TOKEN is set). Rendered instead of templates/.
+#
+#   browser ─▶ Cloudflare edge (TLS, WAF, Access) ─▶ cloudflared ─▶ nginx :8080 ─▶ web / orchestrator
+#
+# No ports are published and no certificate is needed: Cloudflare terminates TLS and cloudflared
+# dials out. :8080 is reachable only on the internal compose network.
+
+upstream mesh_web {
+    zone mesh_web 64k;
+    server web:3000;
+    keepalive 32;
+}
+
+upstream mesh_orchestrator {
+    zone mesh_orchestrator 64k;
+    server orchestrator:4000;
+    keepalive 8;
+}
+
+server {
+    listen 8080 default_server;
+    server_name _;
+
+    # Every request arrives from the cloudflared container. Take the visitor's address from the
+    # header Cloudflare sets, so rate limits stay per visitor instead of one shared bucket.
+    # Only private (compose network) peers are trusted to set it; :8080 is never published.
+    set_real_ip_from 10.0.0.0/8;
+    set_real_ip_from 172.16.0.0/12;
+    set_real_ip_from 192.168.0.0/16;
+    real_ip_header CF-Connecting-IP;
+
+    include /etc/nginx/snippets/security-headers.conf;
+
+    limit_conn mesh_conn 100;
+
+    include /etc/nginx/snippets/mesh-locations.conf;
+}

@@ -339,6 +339,18 @@ export async function runLlmTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
         .then(({ deliverInboundReply }) => deliverInboundReply(args.trigger.metadata, redacted))
         .catch((error) => console.warn("[inbound] reply not delivered", error))
     }
+    // A routine's run history and "routine finished" alert get the agent's real outcome.
+    void import("../scheduler/routine-results")
+      .then(({ recordRoutineResult }) =>
+        recordRoutineResult({
+          metadata: args.trigger.metadata,
+          roomId: args.room.id,
+          agentId: agent.id,
+          reply: aborted || error ? null : redacted || null,
+          error: aborted ? "Stopped before it finished" : safeError,
+        }),
+      )
+      .catch((error) => console.warn("[routines] result not recorded", error))
     return redacted
   }
 
@@ -355,6 +367,7 @@ export async function runLlmTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
           runId: run.id,
           messageId: message.id,
           scrub: runScrubber,
+          triggerMetadata: args.trigger.metadata,
         },
       })
       tools = built.tools

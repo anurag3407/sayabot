@@ -77,10 +77,17 @@ interface AlertData {
   orgSlug?: string
 }
 
+// On a cold start both the response listener and getLastNotificationResponseAsync() can report
+// the same tap; without this an answer typed into the notification would be posted twice.
+const handledResponses = new Set<string>()
+
 /** Acts on a tapped alert or one of its buttons. */
 export async function handleNotificationResponse(response: Notifications.NotificationResponse): Promise<void> {
   const data = (response.notification.request.content.data ?? {}) as AlertData
   const action = response.actionIdentifier
+  const key = `${response.notification.request.identifier}:${action}`
+  if (handledResponses.has(key)) return
+  handledResponses.add(key)
   try {
     if (action === "answer" && data.refId && data.orgSlug && response.userText?.trim()) {
       await api("/api/mobile/inbox/answer", { body: { orgSlug: data.orgSlug, taskId: data.refId, answer: response.userText.trim(), alsoPost: false } })

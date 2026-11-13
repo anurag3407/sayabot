@@ -1,5 +1,5 @@
 import { getNextCronRun, isValidCron } from "@sayabot/core"
-import { agents, messages, routineRuns, routines, rooms } from "@sayabot/db"
+import { agents, messages, routineRuns, routines, rooms, workspaceConnectors } from "@sayabot/db"
 import { and, eq, lte } from "drizzle-orm"
 import { getDb, getPool } from "../db"
 import { enqueueRoomMessage } from "../jobs"
@@ -8,6 +8,35 @@ const ROUTINES_LOCK = "mesh:routine-scheduler"
 const SCAN_MS = 30_000
 
 let timer: ReturnType<typeof setInterval> | null = null
+
+const MESSAGING_SOURCES = new Set(["telegram", "discord", "whatsapp"])
+
+/**
+ * routine.metadata.deliverTo = { connectorId, chatId } also sends the agent's reply to a Telegram,
+ * Discord or WhatsApp chat. Routine metadata is user-editable, so the target is only honoured
+ * for an active messaging connector in the routine's own org whose chat has been turned on, and,
+ * when the connector lists allowed chats, only for one of those.
+ */
+export async function resolveRoutineDelivery(
+  orgId: string,
+  metadata: unknown,
+): Promise<{ platform: string; connectorId: string; chatId: string; externalId: string } | null> {
+  const deliverTo = (metadata as { deliverTo?: unknown } | null)?.deliverTo
+  if (!deliverTo || typeof deliverTo !== "object") return null
+  const { connectorId, chatId } = deliverTo as { connectorId?: unknown; chatId?: unknown }
+  if (typeof connectorId !== "string" || !/^[0-9a-f-]{36}$/i.test(connectorId)) return null
+  if (typeof chatId !== "string" || !chatId.trim() || chatId.length > 80) return null
+  const [connector] = await getDb()
+    .select({ source: workspaceConnectors.source, status: workspaceConnectors.status, config: workspaceConnectors.config })
+    .from(workspaceConnectors)
+    .where(and(eq(workspaceConnectors.id, connectorId), eq(workspaceConnectors.orgId, orgId)))
+    .limit(1)
+  if (!connector || connector.status !== "active" || !MESSAGING_SOURCES.has(connector.source)) return null
+  const inbound = ((connector.config ?? {}) as { inbound?: { enabled?: boolean; allowedChats?: string[] } }).inbound
+  if (!inbound?.enabled) return null
+  if (inbound.allowedChats?.length && !inbound.allowedChats.includes(chatId.trim())) return null
+  return { platform: connector.source, connectorId, chatId: chatId.trim(), externalId: "" }
+}
 
 export async function runRoutineNow(
   routineId: string,
@@ -61,6 +90,7 @@ export async function runRoutineNow(
 
   try {
     const content = `[Routine: ${routine.name}]\n\n@${agent.handle} ${routine.prompt}`
+    const delivery = await resolveRoutineDelivery(routine.orgId, routine.metadata)
     const [msg] = await db
       .insert(messages)
       .values({
@@ -77,6 +107,8 @@ export async function runRoutineNow(
           routineName: routine.name,
           automated: true,
           kind: "routine",
+          // deliverInboundReply sends the agent's reply here, exactly like a chat that wrote in.
+          ...(delivery ? { inbound: delivery } : {}),
         },
       })
       .returning({ id: messages.id })
@@ -107,7 +139,8 @@ export async function runRoutineNow(
         .set({
           status: "success",
           finishedAt: new Date(),
-          output: `Enqueued routine prompt message ${msg?.id} to room ${targetRoomId}`,
+          // Replaced with the agent's reply when its turn ends (routine-results.ts).
+          output: `Sent to @${agent.handle}. Waiting for the reply…`,
         })
         .where(eq(routineRuns.id, runRecord.id))
     }
