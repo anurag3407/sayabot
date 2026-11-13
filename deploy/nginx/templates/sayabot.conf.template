@@ -1,0 +1,58 @@
+# Rendered by the nginx image entrypoint: ${SAYABOT_DOMAIN} is substituted at container
+# start. Plain nginx variables ($host, $remote_addr...) are left untouched.
+
+upstream sayabot_web {
+    zone sayabot_web 64k;
+    server web:3000;
+    keepalive 32;
+}
+
+upstream sayabot_orchestrator {
+    zone sayabot_orchestrator 64k;
+    server orchestrator:4000;
+    keepalive 8;
+}
+
+# ── :80 — ACME challenges, everything else goes to HTTPS ─────────────────
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name _;
+
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+        default_type text/plain;
+    }
+
+    location / {
+        return 301 https://${SAYABOT_DOMAIN}$request_uri;
+    }
+}
+
+# ── :443 — reject unknown Host headers (IP scans, spoofed hosts) ─────────
+server {
+    listen 443 ssl default_server;
+    listen [::]:443 ssl default_server;
+    http2 on;
+    server_name _;
+    ssl_certificate     /etc/letsencrypt/live/${SAYABOT_DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${SAYABOT_DOMAIN}/privkey.pem;
+    return 444;
+}
+
+# ── :443 — Sayabot ──────────────────────────────────────────────────────────
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name ${SAYABOT_DOMAIN};
+
+    ssl_certificate     /etc/letsencrypt/live/${SAYABOT_DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${SAYABOT_DOMAIN}/privkey.pem;
+
+    include /etc/nginx/snippets/security-headers.conf;
+
+    limit_conn sayabot_conn 100;
+
+    include /etc/nginx/snippets/sayabot-locations.conf;
+}

@@ -5,14 +5,14 @@
 # No ports are published and no certificate is needed: Cloudflare terminates TLS and cloudflared
 # dials out. :8080 is reachable only on the internal compose network.
 
-upstream mesh_web {
-    zone mesh_web 64k;
+upstream sayabot_web {
+    zone sayabot_web 64k;
     server web:3000;
     keepalive 32;
 }
 
-upstream mesh_orchestrator {
-    zone mesh_orchestrator 64k;
+upstream sayabot_orchestrator {
+    zone sayabot_orchestrator 64k;
     server orchestrator:4000;
     keepalive 8;
 }
@@ -31,7 +31,7 @@ server {
 
     include /etc/nginx/snippets/security-headers.conf;
 
-    limit_conn mesh_conn 100;
+    limit_conn sayabot_conn 100;
 
-    include /etc/nginx/snippets/mesh-locations.conf;
+    include /etc/nginx/snippets/sayabot-locations.conf;
 }
