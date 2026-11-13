@@ -3,7 +3,27 @@ import { scanLocalUsage, type LocalProvider } from "@sayabot/core/scanner"
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
+const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"])
+
+/**
+ * Reads the Claude Code / Codex / Antigravity logs in the home folder of the machine running
+ * this server. That is only "your computer" when Sayabot itself runs on it, so on a hosted
+ * server (where it would read the server's files and show them to every signed-in user) the
+ * scan is switched off and the dashboard hides that view.
+ */
+function isOwnMachine(request: Request): boolean {
+  if (process.env.SAYABOT_LOCAL_USAGE_SCAN === "1") return true
+  if (process.env.SAYABOT_LOCAL_USAGE_SCAN === "0") return false
+  return LOOPBACK_HOSTS.has(new URL(request.url).hostname)
+}
+
 export async function GET(request: Request) {
+  if (!isOwnMachine(request)) {
+    return Response.json(
+      { ok: false, available: false, records: [], events: [] },
+      { headers: { "Cache-Control": "private, no-store" } },
+    )
+  }
   try {
     const url = new URL(request.url)
     const daysParam = url.searchParams.get("days")
@@ -23,6 +43,7 @@ export async function GET(request: Request) {
     return Response.json(
       {
         ok: true,
+        available: true,
         days: validDays,
         ...result,
       },
@@ -32,11 +53,12 @@ export async function GET(request: Request) {
         },
       },
     )
-  } catch (error: any) {
+  } catch (error: unknown) {
     return Response.json(
       {
         ok: false,
-        error: error?.message || "Failed to scan local developer agent usage",
+        available: true,
+        error: error instanceof Error ? error.message : "Could not read this computer's coding tool logs",
         records: [],
         summary: {
           totalTokens: 0,

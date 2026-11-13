@@ -360,6 +360,7 @@ export async function runCliTurn(
     model: outcome.model,
     tokens: outcome.usage ? { ...outcome.usage, cacheWriteTokens: 0 } : null,
     kind: "llm",
+    billing: "subscription",
     ttftMs,
     latencyMs,
   })

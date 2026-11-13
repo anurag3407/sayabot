@@ -15,27 +15,31 @@ export interface ModelPrice {
 
 export const ZERO_PRICE: ModelPrice = { inputPerMtok: 0, outputPerMtok: 0 }
 
-/** Cost in USD from per-million-token prices, rounded to six decimals. */
+/**
+ * Cost in USD from per-million-token prices, rounded to six decimals.
+ *
+ * `inputTokens` is the provider's total prompt size, which already includes cache reads and
+ * cache writes (that is how the AI SDK and the Claude/Codex logs report it). Each slice is
+ * priced once: fresh input at the input rate, cache reads at the read rate, cache writes at
+ * the write rate.
+ */
 export function computeCostUsd(usage: TokenUsage, price: ModelPrice | null | undefined): number {
   if (!price) return 0
-  const totalInput = usage.inputTokens ?? 0
+  const totalInput = Math.max(0, usage.inputTokens ?? 0)
   const cached = Math.min(totalInput, Math.max(0, usage.cachedInputTokens ?? 0))
-  const uncached = totalInput - cached
-  const output = usage.outputTokens ?? 0
+  const written = Math.min(totalInput - cached, Math.max(0, usage.cacheCreationTokens ?? 0))
+  const fresh = totalInput - cached - written
+  const output = Math.max(0, usage.outputTokens ?? 0)
 
-  const cacheReadPrice = price.cacheReadPerMtok ?? (price.inputPerMtok * 0.1) // default 90% prompt cache discount
+  // Without a configured rate, assume the common 90% read discount and no write premium.
+  const cacheReadPrice = price.cacheReadPerMtok ?? price.inputPerMtok * 0.1
   const cacheWritePrice = price.cacheWritePerMtok ?? price.inputPerMtok
 
-  const cacheWriteTokens = usage.cacheCreationTokens ?? 0
-
-  const inputCost = cached > 0
-    ? (uncached / 1_000_000) * price.inputPerMtok + (cached / 1_000_000) * cacheReadPrice
-    : (totalInput / 1_000_000) * price.inputPerMtok
-
-  const cacheWriteCost = (cacheWriteTokens / 1_000_000) * cacheWritePrice
-  const outputCost = (output / 1_000_000) * price.outputPerMtok
-
-  const cost = inputCost + cacheWriteCost + outputCost
+  const cost =
+    (fresh / 1_000_000) * price.inputPerMtok +
+    (cached / 1_000_000) * cacheReadPrice +
+    (written / 1_000_000) * cacheWritePrice +
+    (output / 1_000_000) * price.outputPerMtok
   return Math.round(cost * 1e6) / 1e6
 }
 

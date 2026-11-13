@@ -37,6 +37,30 @@ describe("computeCostUsd", () => {
       ),
     ).toBe(0.84) // 200K uncached * $3/M = $0.60 + 800K cached * $0.3/M = $0.24 -> $0.84
   })
+
+  it("prices cache writes once, since they are already part of the input total", () => {
+    // 1M prompt = 100K fresh + 600K read + 300K written; Anthropic-style rates.
+    expect(
+      computeCostUsd(
+        {
+          inputTokens: 1_000_000,
+          cachedInputTokens: 600_000,
+          cacheCreationTokens: 300_000,
+          outputTokens: 0,
+        },
+        { inputPerMtok: 3, outputPerMtok: 15, cacheReadPerMtok: 0.3, cacheWritePerMtok: 3.75 },
+      ),
+    ).toBe(1.605) // $0.30 fresh + $0.18 read + $1.125 written
+  })
+
+  it("never prices more cache traffic than the prompt held", () => {
+    expect(
+      computeCostUsd(
+        { inputTokens: 100, cachedInputTokens: 80, cacheCreationTokens: 500, outputTokens: 0 },
+        { inputPerMtok: 1_000_000, outputPerMtok: 0, cacheReadPerMtok: 0, cacheWritePerMtok: 1_000_000 },
+      ),
+    ).toBe(20) // 80 read for free + 20 written, nothing fresh
+  })
 })
 
 describe("computeCacheSavingsUsd", () => {

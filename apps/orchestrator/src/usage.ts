@@ -74,12 +74,18 @@ export async function recordUsageEvent(args: {
   kind?: UsageKind
   ttftMs?: number | null
   latencyMs?: number | null
+  /**
+   * "subscription" for runs on someone's own Claude Code / Codex / Cursor plan: the tokens
+   * still show on Usage, but they cost nothing per token, so they are never priced.
+   */
+  billing?: "api" | "subscription"
 }): Promise<number> {
   if (!args.tokens) return 0
   const { inputTokens, outputTokens, cachedInputTokens } = args.tokens
   if (inputTokens === 0 && outputTokens === 0) return 0
   try {
-    const cost = await priceUsage(args.provider, args.model, args.tokens)
+    const cost =
+      args.billing === "subscription" ? 0 : await priceUsage(args.provider, args.model, args.tokens)
     await getDb().insert(usageEvents).values({
       orgId: args.orgId,
       roomId: args.roomId ?? null,

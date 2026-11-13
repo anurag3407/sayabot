@@ -1,7 +1,6 @@
 import type { Metadata } from "next"
 import { requireOrgAccess } from "@/lib/auth"
-import { listOrgAgents, listRooms, type RoomListItem } from "@/lib/queries"
-import type { AgentView } from "@/lib/types"
+import { listOrgAgents, listRooms } from "@/lib/queries"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { loadRecentUsageEvents, loadUsageRollup } from "@/lib/usage"
 import {
@@ -10,7 +9,9 @@ import {
   type UsageEventRow,
 } from "@/components/analytics/usage-dashboard"
 
-export const metadata: Metadata = { title: "Token Usage & Analytics" }
+export const metadata: Metadata = { title: "Usage" }
+
+const PERIODS = new Set([1, 7, 30, 90])
 
 export default async function AnalyticsPage({
   params,
@@ -21,7 +22,8 @@ export default async function AnalyticsPage({
 }) {
   const { org: orgSlug } = await params
   const query = await searchParams
-  const days = query.days === "1" || query.days === "7" || query.days === "90" ? Number(query.days) : 30
+  const requested = Number(query.days)
+  const days = PERIODS.has(requested) ? requested : 30
   const access = await requireOrgAccess(orgSlug)
   const supabase = await createSupabaseServerClient()
   const since = new Date(Date.now() - days * 86_400_000).toISOString()
@@ -31,53 +33,40 @@ export default async function AnalyticsPage({
     loadUsageRollup(access.org.id, since),
     listOrgAgents(access.org.id),
     listRooms(access.org.id),
-    supabase
-      .from("model_pricing")
-      .select("provider, model, input_per_mtok, output_per_mtok"),
+    supabase.from("model_pricing").select("provider, model, input_per_mtok, output_per_mtok"),
   ])
 
-  const events = sample.events as UsageEventRow[]
-  const pricingData = ((pricingResult as any)?.data ?? []) as Array<{
+  const pricingRows = (pricingResult.data ?? []) as Array<{
     provider: string
     model: string
     input_per_mtok: number | string
     output_per_mtok: number | string
-    cache_read_per_mtok?: number | string | null
   }>
-
-  const pricing: ModelPricingInfo[] = pricingData.map((p) => ({
-    provider: p.provider,
-    model: p.model,
-    inputPerMtok: Number(p.input_per_mtok) || 0,
-    outputPerMtok: Number(p.output_per_mtok) || 0,
-    cacheReadPerMtok: p.cache_read_per_mtok ? Number(p.cache_read_per_mtok) : null,
-  }))
-
-  const agentInfos = (agents as AgentView[]).map((a) => ({
-    id: a.id,
-    handle: a.handle,
-    displayName: a.displayName,
-    avatarUrl: null,
-    role: (a.params as Record<string, any>)?.role ?? null,
-  }))
-
-  const roomInfos = (rooms as RoomListItem[]).map((r) => ({
-    id: r.id,
-    name: r.name,
+  const pricing: ModelPricingInfo[] = pricingRows.map((row) => ({
+    provider: row.provider,
+    model: row.model,
+    inputPerMtok: Number(row.input_per_mtok) || 0,
+    outputPerMtok: Number(row.output_per_mtok) || 0,
   }))
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-6xl px-5 py-8 sm:px-8">
+      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-8 sm:py-10">
         <UsageDashboard
-          initialEvents={events}
-          rollup={rollup}
+          events={sample.events as UsageEventRow[]}
           eventsComplete={sample.complete}
-          agents={agentInfos}
-          rooms={roomInfos}
+          rollup={rollup}
+          agents={agents.map((agent) => ({
+            id: agent.id,
+            handle: agent.handle,
+            displayName: agent.displayName,
+          }))}
+          rooms={rooms.map((room) => ({ id: room.id, name: room.name, kind: room.kind }))}
           pricing={pricing}
           orgSlug={orgSlug}
-          currentDays={days}
+          days={days}
+          sinceIso={since}
+          canEditPrices={access.role === "owner" || access.role === "admin"}
         />
       </div>
     </div>

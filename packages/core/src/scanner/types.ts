@@ -89,7 +89,12 @@ export interface ScannedUsageEventRow {
   model: string
   input_tokens: number
   output_tokens: number
+  /** Prompt tokens served from cache. Part of input_tokens. */
   cached_input_tokens: number
+  /** Prompt tokens written to cache. Also part of input_tokens. */
+  cache_creation_tokens: number
+  /** The coding session this call belonged to, when the log says. */
+  session_id: string | null
   cost_usd: number
   ttft_ms: number | null
   latency_ms: number | null

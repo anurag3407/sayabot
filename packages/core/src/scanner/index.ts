@@ -286,9 +286,12 @@ export async function scanLocalUsage(
     room_id: null,
     provider: r.provider,
     model: r.model,
-    input_tokens: r.totals.uncachedInputTokens + r.totals.cachedInputTokens,
+    input_tokens:
+      r.totals.uncachedInputTokens + r.totals.cachedInputTokens + r.totals.cacheCreationTokens,
     output_tokens: r.totals.outputTokens,
     cached_input_tokens: r.totals.cachedInputTokens,
+    cache_creation_tokens: r.totals.cacheCreationTokens,
+    session_id: r.sessionId ?? null,
     cost_usd: r.costUsd,
     ttft_ms: null,
     latency_ms: null,
