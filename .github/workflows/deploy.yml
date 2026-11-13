@@ -1,35 +1,31 @@
-name: Deploy to Lightsail
+name: Deploy to Production VPS
 
-# Deploy only after the Tests workflow passes on main (or by hand).
+# Trigger deploy automatically on push to main (or manually via workflow_dispatch).
 on:
-  workflow_run:
-    workflows: [Tests]
-    types: [completed]
+  push:
     branches: [main]
   workflow_dispatch:
 
 concurrency:
-  group: deploy-lightsail
+  group: deploy-production
   cancel-in-progress: false
 
 jobs:
   deploy:
-    name: Build & Deploy on Lightsail
+    name: Build & Deploy on Production VPS
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
     steps:
-      - name: Trigger Build & Rollout on Lightsail VPS
+      - name: Trigger Build & Rollout on Production VPS
         env:
-          SSH_HOST: ${{ secrets.LIGHTSAIL_HOST }}
-          SSH_USER: ${{ secrets.LIGHTSAIL_USER }}
-          SSH_KEY: ${{ secrets.LIGHTSAIL_SSH_KEY }}
-          SSH_PORT: ${{ secrets.LIGHTSAIL_PORT }}
-          # Deploy exactly the commit the Tests workflow verified, not whatever main is now.
-          DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          SSH_HOST: ${{ secrets.VPS_HOST || secrets.LIGHTSAIL_HOST }}
+          SSH_USER: ${{ secrets.VPS_USER || secrets.LIGHTSAIL_USER }}
+          SSH_KEY: ${{ secrets.VPS_SSH_KEY || secrets.LIGHTSAIL_SSH_KEY }}
+          SSH_PORT: ${{ secrets.VPS_PORT || secrets.LIGHTSAIL_PORT || '22' }}
+          DEPLOY_SHA: ${{ github.sha }}
         run: |
           set -e
           if [ -z "$SSH_HOST" ] || [ -z "$SSH_USER" ] || [ -z "$SSH_KEY" ]; then
-            echo "ERROR: Required SSH secrets (LIGHTSAIL_HOST, LIGHTSAIL_USER, LIGHTSAIL_SSH_KEY) are missing!" >&2
+            echo "ERROR: Required SSH secrets (VPS_HOST, VPS_USER, VPS_SSH_KEY) are missing!" >&2
             exit 1
           fi
 
@@ -57,9 +53,8 @@ jobs:
               -o BatchMode=yes \
               "$SSH_USER@$SSH_HOST" "bash -se -- $DEPLOY_SHA" << 'EOF'
             set -e
-            echo "==> Starting deploy on Lightsail VPS ($(uname -n))..."
+            echo "==> Starting deploy on Production VPS ($(uname -n))..."
             
-            # Support both legacy $HOME/mesh and new $HOME/sayabot, migrating if needed
             TARGET_DIR="$HOME/sayabot"
             if [ ! -d "$TARGET_DIR" ] && [ -d "$HOME/mesh" ]; then
               echo "==> Migrating existing checkout from $HOME/mesh to $TARGET_DIR..."
