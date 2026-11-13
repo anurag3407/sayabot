@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server"
 import { requireRouteUser } from "@/lib/route-auth"
+import { getPublicOrigin } from "@/lib/public-origin"
 import { buildChatGptPlanAuthUrl, exchangeChatGptPlanCode } from "@/lib/connectors/chatgpt-plan"
 
 export async function GET(request: Request) {
   const auth = await requireRouteUser()
   if ("response" in auth) return auth.response
   try {
-    const { origin } = new URL(request.url)
+    const origin = getPublicOrigin(request)
     const callbackUrl = `${origin}/oauth/callback/chatgpt`
     const { authUrl, codeVerifier, state } = await buildChatGptPlanAuthUrl(callbackUrl)
 

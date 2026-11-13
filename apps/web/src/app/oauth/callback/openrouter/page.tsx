@@ -20,10 +20,18 @@ function OpenRouterCallbackContent() {
 
     async function exchange() {
       try {
+        let codeVerifier: string | undefined
+        try {
+          codeVerifier =
+            window.sessionStorage.getItem("saaya:openrouter_code_verifier") ||
+            window.localStorage.getItem("saaya:openrouter_code_verifier") ||
+            undefined
+        } catch {}
+
         const res = await fetch("/api/connectors/openrouter/oauth", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ code }),
+          body: JSON.stringify({ code, codeVerifier }),
         })
 
         const data = (await res.json()) as {
@@ -40,6 +48,11 @@ function OpenRouterCallbackContent() {
           setErrorMessage(data.error || "Failed to exchange authorization code")
           return
         }
+
+        try {
+          window.sessionStorage.removeItem("saaya:openrouter_code_verifier")
+          window.localStorage.removeItem("saaya:openrouter_code_verifier")
+        } catch {}
 
         const tier = data.keyDetails?.isFreeTier
           ? "Free Tier Active (Ready to use all free tool-calling models)"
@@ -101,12 +114,42 @@ function OpenRouterCallbackContent() {
               <XCircle className="h-12 w-12 text-[#e37b74]" />
               <h2 className="text-lg font-medium text-[#e37b74]">Connection Failed</h2>
               <p className="text-sm text-[#9aa39b]">{errorMessage}</p>
-              <button
-                onClick={() => window.close()}
-                className="mt-4 rounded-lg bg-[#232b25] px-4 py-2 text-xs font-medium text-[#e9e5d8] hover:bg-[#354037]"
-              >
-                Close Window
-              </button>
+              <div className="mt-4 flex items-center justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setStatus("loading")
+                    try {
+                      const res = await fetch("/api/connectors/openrouter/oauth")
+                      const data = (await res.json()) as { authUrl?: string; codeVerifier?: string }
+                      if (data.codeVerifier) {
+                        try {
+                          window.sessionStorage.setItem("saaya:openrouter_code_verifier", data.codeVerifier)
+                          window.localStorage.setItem("saaya:openrouter_code_verifier", data.codeVerifier)
+                        } catch {}
+                      }
+                      if (data.authUrl) {
+                        window.location.href = data.authUrl
+                        return
+                      }
+                      throw new Error("Could not start authorization flow")
+                    } catch (err) {
+                      setStatus("error")
+                      setErrorMessage(err instanceof Error ? err.message : "Failed to restart authentication")
+                    }
+                  }}
+                  className="rounded-lg bg-[#ff7a45] px-4 py-2 text-xs font-medium text-black hover:bg-[#ff905f] transition-colors"
+                >
+                  Try Connecting Again
+                </button>
+                <button
+                  type="button"
+                  onClick={() => window.close()}
+                  className="rounded-lg bg-[#232b25] px-4 py-2 text-xs font-medium text-[#e9e5d8] hover:bg-[#354037] transition-colors"
+                >
+                  Close Window
+                </button>
+              </div>
             </div>
           )}
         </div>

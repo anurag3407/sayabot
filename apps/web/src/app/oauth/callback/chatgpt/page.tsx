@@ -21,10 +21,18 @@ function ChatGptCallbackContent() {
 
     async function exchange() {
       try {
+        let codeVerifier: string | undefined
+        try {
+          codeVerifier =
+            window.sessionStorage.getItem("saaya:chatgpt_code_verifier") ||
+            window.localStorage.getItem("saaya:chatgpt_code_verifier") ||
+            undefined
+        } catch {}
+
         const res = await fetch("/api/connectors/chatgpt/oauth", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ code }),
+          body: JSON.stringify({ code, codeVerifier }),
         })
 
         const data = (await res.json()) as {
@@ -40,6 +48,11 @@ function ChatGptCallbackContent() {
           setErrorMessage(data.error || "Failed to exchange ChatGPT authorization code")
           return
         }
+
+        try {
+          window.sessionStorage.removeItem("saaya:chatgpt_code_verifier")
+          window.localStorage.removeItem("saaya:chatgpt_code_verifier")
+        } catch {}
 
         setPlanName(data.credentials?.plan === "chatgpt_pro" ? "ChatGPT Pro Plan" : "ChatGPT Plus Plan")
         setStatus("success")

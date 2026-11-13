@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { requireRouteUser } from "@/lib/route-auth"
+import { getPublicOrigin } from "@/lib/public-origin"
 import {
   buildOpenRouterOAuthUrl,
   exchangeOpenRouterCode,
@@ -10,7 +11,7 @@ export async function GET(request: Request) {
   const auth = await requireRouteUser()
   if ("response" in auth) return auth.response
   try {
-    const { origin } = new URL(request.url)
+    const origin = getPublicOrigin(request)
     const callbackUrl = `${origin}/oauth/callback/openrouter`
     const { authUrl, codeVerifier } = await buildOpenRouterOAuthUrl(callbackUrl)
 

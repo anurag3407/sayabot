@@ -195,7 +195,13 @@ export function ManageAccountsModal({
     setOpenRouterConnecting(true)
     try {
       const res = await fetch("/api/connectors/openrouter/oauth")
-      const data = (await res.json()) as { authUrl: string }
+      const data = (await res.json()) as { authUrl: string; codeVerifier?: string }
+      if (data.codeVerifier) {
+        try {
+          window.sessionStorage.setItem("saaya:openrouter_code_verifier", data.codeVerifier)
+          window.localStorage.setItem("saaya:openrouter_code_verifier", data.codeVerifier)
+        } catch {}
+      }
       if (data.authUrl) {
         const popup = window.open(
           data.authUrl,
@@ -227,7 +233,13 @@ export function ManageAccountsModal({
     setChatGptConnecting(true)
     try {
       const res = await fetch("/api/connectors/chatgpt/oauth")
-      const data = (await res.json()) as { authUrl: string }
+      const data = (await res.json()) as { authUrl: string; codeVerifier?: string }
+      if (data.codeVerifier) {
+        try {
+          window.sessionStorage.setItem("saaya:chatgpt_code_verifier", data.codeVerifier)
+          window.localStorage.setItem("saaya:chatgpt_code_verifier", data.codeVerifier)
+        } catch {}
+      }
       if (data.authUrl) {
         const popup = window.open(
           data.authUrl,
