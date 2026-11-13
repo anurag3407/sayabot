@@ -29,3 +29,19 @@ export const devicePairings = pgTable(
   },
   (t) => [index("device_pairings_user_idx").on(t.userId, t.status)],
 )
+
+/** Expo push tokens for the phone app (push alerts with Answer / Allow buttons). */
+export const mobilePushTokens = pgTable(
+  "mobile_push_tokens",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    token: text("token").notNull().unique(),
+    platform: text("platform"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("mobile_push_tokens_user_idx").on(t.userId)],
+)

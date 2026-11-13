@@ -5,6 +5,7 @@ import { createMCPClient } from "@ai-sdk/mcp"
 import { openSecret, sealSecret } from "@sayabot/llm"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getKek } from "@/lib/env"
+import { mcpAuthProviderFor } from "@/lib/mcp-oauth"
 import {
   adminOrgAccess,
   audit,
@@ -167,6 +168,7 @@ export async function listMcpTools(orgSlug: string, serverId: string): Promise<A
         url: row.url,
         headers: headersFor(row),
         redirect: "error",
+        authProvider: mcpAuthProviderFor(row),
       },
     })
     const result = await client.listTools()
@@ -213,6 +215,7 @@ export async function invokeMcpTool(
         url: row.url,
         headers: headersFor(row),
         redirect: "error",
+        authProvider: mcpAuthProviderFor(row),
       },
     })
     const result = (await client.callTool({

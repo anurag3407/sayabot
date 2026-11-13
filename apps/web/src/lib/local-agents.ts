@@ -91,6 +91,20 @@ async function versionOf(binary: string | null): Promise<string | null> {
   return match ? match[0] : null
 }
 
+/** The models Codex lists for the signed-in account (its own cache, refreshed by Codex). */
+async function codexModels(home: string): Promise<Array<{ id: string; label: string }>> {
+  try {
+    const text = await readFile(join(process.env.CODEX_HOME || join(home, ".codex"), "models_cache.json"), "utf8")
+    const data = JSON.parse(text) as { models?: Array<{ slug?: unknown; display_name?: unknown; visibility?: unknown }> }
+    return (data.models ?? [])
+      .filter((m) => typeof m.slug === "string" && m.visibility !== "hidden")
+      .slice(0, 80)
+      .map((m) => ({ id: String(m.slug), label: typeof m.display_name === "string" ? m.display_name : String(m.slug) }))
+  } catch {
+    return []
+  }
+}
+
 export async function detectLocalAgents(): Promise<LocalAgentReport[]> {
   const home = homedir()
   return Promise.all(
@@ -111,6 +125,12 @@ export async function detectLocalAgents(): Promise<LocalAgentReport[]> {
         case "gemini":
           signedIn = (await exists(join(home, ".gemini/oauth_creds.json"))) || (await exists(join(home, ".gemini/google_accounts.json")))
           break
+        case "cursor":
+          signedIn =
+            Boolean(process.env.CURSOR_API_KEY) ||
+            (await keychainHas("cursor-access-token")) ||
+            (await fileHasKey(join(home, ".cursor/cli-config.json"), "authInfo"))
+          break
         case "opencode":
           signedIn = await exists(join(home, ".local/share/opencode/auth.json"))
           break
@@ -121,6 +141,7 @@ export async function detectLocalAgents(): Promise<LocalAgentReport[]> {
           signedIn = null
       }
       const version = await versionOf(binary)
+      const models = app.id === "codex" ? await codexModels(home) : undefined
       return {
         id: app.id,
         name: app.name,
@@ -128,6 +149,8 @@ export async function detectLocalAgents(): Promise<LocalAgentReport[]> {
         inviteApp: app.inviteApp,
         version,
         status: localAgentStatus({ installed: Boolean(binary) || appBundle, signedIn }),
+        cli: Boolean(binary),
+        ...(models?.length ? { models } : {}),
       }
     }),
   )

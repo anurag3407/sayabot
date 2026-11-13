@@ -2,11 +2,15 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useMemo, useState, useTransition } from "react"
-import { connectMarketplaceAppAction, disconnectMarketplaceServerAction } from "@/lib/actions/marketplace"
+import { useEffect, useMemo, useRef, useState, useTransition } from "react"
+import {
+  connectMarketplaceAppAction,
+  disconnectMarketplaceServerAction,
+  startMarketplaceSignInAction,
+} from "@/lib/actions/marketplace"
 import {
   APP_CATEGORIES,
-  hostMatchesApp,
+  appForHost,
   MARKETPLACE_APPS,
   type MarketplaceApp,
 } from "@/lib/marketplace"
@@ -22,6 +26,23 @@ interface ServerSummary {
   name: string
   host: string
   enabled: boolean
+  catalogApp: string | null
+  /** Sign-in apps only: whether the sign-in is done, half-done, or needs doing again. */
+  signIn: "ok" | "pending" | "signed_out" | null
+}
+
+/** Sends the browser to the vendor's sign-in page; it comes back to /api/mcp/oauth/callback. */
+async function beginSignIn(orgSlug: string, app: MarketplaceApp, serverId?: string): Promise<string | null> {
+  const result = await startMarketplaceSignInAction({ orgSlug, appId: app.id, serverId })
+  if (!result.ok) return result.error ?? `Could not start ${app.name} sign-in`
+  const target = (result.data as { authorizationUrl?: string | null } | undefined)?.authorizationUrl
+  if (target) {
+    window.location.assign(target)
+  } else {
+    showToast({ tone: "success", message: result.message ?? `${app.name} connected` })
+    window.location.reload()
+  }
+  return null
 }
 
 interface TemplateSummary {
@@ -64,6 +85,11 @@ function ConnectDialog({
   function connect() {
     setError(null)
     startTransition(async () => {
+      if (auth.kind === "oauth") {
+        const problem = await beginSignIn(orgSlug, app)
+        if (problem) setError(problem)
+        return
+      }
       const result = await connectMarketplaceAppAction({ orgSlug, appId: app.id, secret, personalUrl })
       if (!result.ok) {
         setError(result.error ?? "Could not connect")
@@ -80,6 +106,7 @@ function ConnectDialog({
   const needsInput = auth.kind === "token" || auth.kind === "url-key" || auth.kind === "personal-url"
   const canSubmit =
     auth.kind === "none" ||
+    auth.kind === "oauth" ||
     (auth.kind === "token" && (auth.optional || secret.trim())) ||
     (auth.kind === "url-key" && secret.trim()) ||
     (auth.kind === "personal-url" && personalUrl.trim())
@@ -115,6 +142,18 @@ function ConnectDialog({
             <p className="rounded-lg bg-ink p-3 text-[13px] text-muted">
               No account needed. Every agent in this workspace that has MCP tools turned on can use it.
             </p>
+          ) : null}
+          {auth.kind === "oauth" ? (
+            <div className="space-y-2 rounded-lg bg-ink p-3 text-[13px] text-muted">
+              <p>
+                You&apos;ll go to {app.name} to sign in and choose what to share, then come straight back here.
+                No keys to copy.
+              </p>
+              <p className="text-[12px] text-faint">
+                Agents act as the account you sign in with. Anything that changes data in {app.name} waits for
+                your OK in the Inbox; looking things up doesn&apos;t.
+              </p>
+            </div>
           ) : null}
           {auth.kind === "token" || auth.kind === "url-key" ? (
             <div>
@@ -156,7 +195,7 @@ function ConnectDialog({
               Stored encrypted. Agents use it through Sayabot and never see it.
             </p>
           ) : null}
-          {app.dangerousTools?.length ? (
+          {app.dangerousTools?.length && !app.dangerousTools.some((name) => name.startsWith("@")) ? (
             <p className="text-[12px] text-faint">
               Actions that change things ({app.dangerousTools.slice(0, 3).join(", ")}
               {app.dangerousTools.length > 3 ? "…" : ""}) will wait for your OK in the Inbox.
@@ -174,7 +213,7 @@ function ConnectDialog({
             {app.name} docs ↗
           </a>
           <Button variant="primary" disabled={pending || !canSubmit} onClick={connect}>
-            {pending ? "Connecting…" : "Connect"}
+            {pending ? (auth.kind === "oauth" ? "Opening…" : "Connecting…") : auth.kind === "oauth" ? `Sign in with ${app.name}` : "Connect"}
           </Button>
         </div>
       </div>
@@ -188,6 +227,7 @@ function AppRow({
   canManage,
   onConnect,
   onDisconnect,
+  onSignInAgain,
   busy,
 }: {
   app: MarketplaceApp
@@ -195,9 +235,11 @@ function AppRow({
   canManage: boolean
   onConnect: () => void
   onDisconnect: (server: ServerSummary) => void
+  onSignInAgain: (server: ServerSummary) => void
   busy: boolean
 }) {
-  const soon = app.auth.kind === "oauth"
+  const signedOut = connected?.signIn === "signed_out"
+  const unfinished = connected?.signIn === "pending"
   return (
     <li className="group flex items-center gap-3 rounded-xl p-3 transition-colors hover:bg-raised">
       <AppTile app={app} />
@@ -207,10 +249,24 @@ function AppRow({
           {app.auth.kind === "none" ? (
             <span className="rounded-full bg-ok/10 px-1.5 py-0.5 text-[10px] font-medium text-ok">No sign-up</span>
           ) : null}
+          {signedOut ? (
+            <span className="rounded-full bg-warn/10 px-1.5 py-0.5 text-[10px] font-medium text-warn">Signed out</span>
+          ) : null}
         </p>
         <p className="truncate text-[13px] text-muted">{app.tagline}</p>
       </div>
-      {connected ? (
+      {connected && (signedOut || unfinished) ? (
+        <div className="flex items-center gap-1">
+          <Button size="sm" variant="secondary" disabled={!canManage || busy} onClick={() => onSignInAgain(connected)}>
+            {signedOut ? "Sign in again" : "Finish sign-in"}
+          </Button>
+          {canManage ? (
+            <Button size="sm" variant="quiet" disabled={busy} onClick={() => onDisconnect(connected)} className="md:opacity-0 md:group-hover:opacity-100">
+              Remove
+            </Button>
+          ) : null}
+        </div>
+      ) : connected ? (
         <div className="flex items-center gap-1">
           <span className="inline-flex h-9 items-center gap-1 rounded-sm px-2 text-[13px] text-ok">
             <CheckIcon width={13} height={13} /> Connected
@@ -221,11 +277,9 @@ function AppRow({
             </Button>
           ) : null}
         </div>
-      ) : soon ? (
-        <span className="shrink-0 rounded-sm border border-line px-2.5 py-1.5 text-[12px] text-faint">Coming soon</span>
       ) : (
         <Button size="sm" variant="secondary" disabled={!canManage} onClick={onConnect} title={canManage ? undefined : "Only workspace admins can connect apps"}>
-          <PlusIcon width={13} height={13} /> Connect
+          <PlusIcon width={13} height={13} /> {app.auth.kind === "oauth" ? "Sign in" : "Connect"}
         </Button>
       )}
     </li>
@@ -238,33 +292,62 @@ export function MarketplaceView({
   servers,
   templates,
   initialTab,
+  notice,
 }: {
   orgSlug: string
   canManage: boolean
   servers: ServerSummary[]
   templates: TemplateSummary[]
   initialTab: "apps" | "agents"
+  /** Result of a sign-in that just came back from the vendor. */
+  notice?: { tone: "success" | "danger"; message: string } | null
 }) {
   const router = useRouter()
   const [tab, setTab] = useState<"apps" | "agents">(initialTab)
   const [query, setQuery] = useState("")
   const [connecting, setConnecting] = useState<MarketplaceApp | null>(null)
   const [pending, startTransition] = useTransition()
+  const [category, setCategory] = useState<string>("all")
+  const shownNotice = useRef(false)
+
+  useEffect(() => {
+    if (!notice || shownNotice.current) return
+    shownNotice.current = true
+    showToast({ tone: notice.tone, message: notice.message, durationMs: 8_000 })
+    // Drop ?connected= / ?signin_error= so a reload doesn't repeat the toast.
+    router.replace(`/${orgSlug}/marketplace`, { scroll: false })
+  }, [notice, orgSlug, router])
 
   const q = query.trim().toLowerCase()
   const apps = useMemo(
     () =>
       MARKETPLACE_APPS.filter(
-        (app) => !q || app.name.toLowerCase().includes(q) || app.tagline.toLowerCase().includes(q),
+        (app) =>
+          (category === "all" || app.category === category) &&
+          (!q || app.name.toLowerCase().includes(q) || app.tagline.toLowerCase().includes(q)),
       ),
-    [q],
+    [q, category],
   )
-  const connectedFor = (app: MarketplaceApp) => servers.find((server) => hostMatchesApp(server.host, app))
-  const catalogHosts = new Set(servers.filter((s) => MARKETPLACE_APPS.some((app) => hostMatchesApp(s.host, app))).map((s) => s.id))
+  const appIds = useMemo(() => new Set(MARKETPLACE_APPS.map((app) => app.id)), [])
+  const connectedFor = (app: MarketplaceApp) =>
+    servers.find((server) => server.catalogApp === app.id) ??
+    servers.find((server) => !server.catalogApp && appForHost(server.host)?.id === app.id)
+  const catalogHosts = new Set(
+    servers
+      .filter((s) => (s.catalogApp && appIds.has(s.catalogApp)) || appForHost(s.host) !== null)
+      .map((s) => s.id),
+  )
   const custom = servers.filter((server) => !catalogHosts.has(server.id))
   const agentTemplates = templates.filter(
     (t) => t.slug !== "blank" && (!q || t.name.toLowerCase().includes(q) || t.description.toLowerCase().includes(q)),
   )
+
+  function signInAgain(app: MarketplaceApp, server: ServerSummary) {
+    startTransition(async () => {
+      const problem = await beginSignIn(orgSlug, app, server.id)
+      if (problem) showToast({ tone: "danger", message: problem })
+    })
+  }
 
   function disconnect(server: ServerSummary) {
     startTransition(async () => {
@@ -324,6 +407,30 @@ export function MarketplaceView({
         </div>
 
         {tab === "apps" ? (
+          <div
+            role="group"
+            aria-label="Categories"
+            className="-mx-4 mt-4 flex gap-1.5 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0"
+          >
+            {[{ id: "all", label: `All ${MARKETPLACE_APPS.length}` }, ...APP_CATEGORIES].map((item) => (
+              <button
+                key={item.id}
+                aria-pressed={category === item.id}
+                onClick={() => setCategory(item.id)}
+                className={cn(
+                  "h-8 shrink-0 rounded-full border px-3 text-[12px] font-medium transition-colors",
+                  category === item.id
+                    ? "border-line-strong bg-raised text-text"
+                    : "border-line text-muted hover:text-text",
+                )}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
+
+        {tab === "apps" ? (
           <div className="mt-8 space-y-9">
             {custom.length && !q ? (
               <section>
@@ -365,6 +472,7 @@ export function MarketplaceView({
                         busy={pending}
                         onConnect={() => setConnecting(app)}
                         onDisconnect={disconnect}
+                        onSignInAgain={(server) => signInAgain(app, server)}
                       />
                     ))}
                   </ul>

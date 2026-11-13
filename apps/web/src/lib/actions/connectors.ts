@@ -16,7 +16,7 @@ import {
 } from "@/lib/actions/shared"
 import type { ActionResult } from "@/lib/types"
 
-const connectorSourceSchema = z.enum(["google_drive", "slack", "github", "jira"])
+const connectorSourceSchema = z.enum(["google_drive", "slack", "github", "jira", "discord", "telegram", "whatsapp"])
 
 export async function saveWorkspaceConnector(
   _prev: ActionResult | null,
@@ -28,7 +28,7 @@ export async function saveWorkspaceConnector(
 
   const sourceParsed = connectorSourceSchema.safeParse(field(formData, "source"))
   if (!sourceParsed.success) {
-    return fail("Choose a supported connector source (Google Drive, Slack, GitHub)")
+    return fail("Choose a supported connector source (Google Drive, Slack, GitHub, Discord, Telegram, WhatsApp)")
   }
   const source = sourceParsed.data
 
@@ -59,6 +59,22 @@ export async function saveWorkspaceConnector(
   if (defaultChannel) config.defaultChannel = defaultChannel
   const defaultOrg = optionalField(formData, "defaultOrg")
   if (defaultOrg) config.defaultOrg = defaultOrg
+  const guildId = optionalField(formData, "guildId")
+  if (guildId) {
+    if (!/^\d{5,25}$/.test(guildId)) return fail("Discord server ID is a long number")
+    config.guildId = guildId
+  }
+  const phoneNumberId = optionalField(formData, "phoneNumberId")
+  if (phoneNumberId) {
+    if (!/^\d{5,25}$/.test(phoneNumberId)) return fail("WhatsApp phone number ID is a long number")
+    config.phoneNumberId = phoneNumberId
+  }
+  if (source === "whatsapp" && !config.phoneNumberId) {
+    return fail("Add the WhatsApp phone number ID (WhatsApp Manager → API setup)")
+  }
+  if (source === "telegram" && !/^\d+:[A-Za-z0-9_-]{20,}$/.test(rawToken)) {
+    return fail("That doesn't look like a Telegram bot token. @BotFather gives one like 123456:ABC…")
+  }
 
   const encrypted = encryptSecret(rawToken, getKek())
   const admin = createAdminClient()
@@ -265,6 +281,36 @@ export async function testWorkspaceConnector(
       const data = (await res.json()) as { login?: string }
       testSuccess = true
       responseDetail = data.login ? `Connected as GitHub user @${data.login}` : "GitHub API active"
+    } else if (connector.source === "discord") {
+      const res = await fetch("https://discord.com/api/v10/users/@me", {
+        headers: { Authorization: `Bot ${token}`, "User-Agent": "Sayabot (https://sayabot.com, 1.0)" },
+      })
+      if (!res.ok) throw new Error(`Discord returned HTTP ${res.status}${res.status === 401 ? " (check the bot token)" : ""}`)
+      const data = (await res.json()) as { username?: string }
+      testSuccess = true
+      responseDetail = data.username ? `Connected as bot ${data.username}` : "Discord bot active"
+    } else if (connector.source === "telegram") {
+      // The token is part of Telegram's URL; never echo the response URL or body back.
+      const res = await fetch(`https://api.telegram.org/bot${token}/getMe`)
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; result?: { username?: string }; description?: string }
+      if (!res.ok || !data.ok) throw new Error(`Telegram: ${data.description ?? `HTTP ${res.status}`}`)
+      testSuccess = true
+      responseDetail = data.result?.username ? `Connected as @${data.result.username}` : "Telegram bot active"
+    } else if (connector.source === "whatsapp") {
+      const phoneNumberId = (connector.config as { phoneNumberId?: string } | null)?.phoneNumberId
+      if (!phoneNumberId) throw new Error("Phone number ID is missing")
+      const res = await fetch(
+        `https://graph.facebook.com/v21.0/${encodeURIComponent(phoneNumberId)}?fields=display_phone_number,verified_name`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      )
+      const data = (await res.json().catch(() => ({}))) as {
+        display_phone_number?: string
+        verified_name?: string
+        error?: { message?: string }
+      }
+      if (!res.ok) throw new Error(`WhatsApp: ${data.error?.message ?? `HTTP ${res.status}`}`)
+      testSuccess = true
+      responseDetail = `Sending as ${data.verified_name ?? "business"} (${data.display_phone_number ?? phoneNumberId})`
     } else {
       testSuccess = true
       responseDetail = "Connection verified"
@@ -287,7 +333,8 @@ export async function testWorkspaceConnector(
       detail: responseDetail,
     })
   } catch (err) {
-    const errorMsg = err instanceof Error ? err.message : String(err)
+    // Telegram puts the token in the URL; make sure no error text carries it into the DB or UI.
+    const errorMsg = (err instanceof Error ? err.message : String(err)).split(token).join("[token]")
     await admin
       .from("workspace_connectors")
       .update({
@@ -316,6 +363,7 @@ export async function saveAgentConnectorGrant(
   const allowedFoldersRaw = optionalField(formData, "allowedFolders")
   const allowedChannelsRaw = optionalField(formData, "allowedChannels")
   const allowedReposRaw = optionalField(formData, "allowedRepos")
+  const allowedRecipientsRaw = optionalField(formData, "allowedRecipients")
 
   const scopeConfig: Record<string, unknown> = {}
   if (allowedFoldersRaw) {
@@ -336,6 +384,17 @@ export async function saveAgentConnectorGrant(
       .map((s) => s.trim())
       .filter(Boolean)
   }
+
+  if (allowedRecipientsRaw) {
+    const numbers = allowedRecipientsRaw
+      .split(/[\n,]/)
+      .map((s) => s.replace(/[\s().-]/g, "").replace(/^\+/, ""))
+      .filter(Boolean)
+    const bad = numbers.find((n) => !/^\d{7,15}$/.test(n))
+    if (bad) return fail(`"${bad}" isn't a phone number with country code`)
+    scopeConfig.allowedRecipients = numbers
+  }
+  if (optionalField(formData, "readOnly")) scopeConfig.readOnly = true
 
   const admin = createAdminClient()
 

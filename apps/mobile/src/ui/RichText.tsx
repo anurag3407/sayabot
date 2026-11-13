@@ -1,5 +1,8 @@
-import React, { useMemo } from "react"
-import { Linking, Platform, ScrollView, Text as RNText, View, type TextStyle } from "react-native"
+import React, { useMemo, useState } from "react"
+import { Image, Linking, Modal, Platform, Pressable, ScrollView, Text as RNText, View, type TextStyle } from "react-native"
+import { FileText, X } from "lucide-react-native"
+import { accessTokenNow, isSayabotFile, signedInWebUrl } from "../core/api"
+import { parseBlocks } from "../core/markdown"
 import { useTheme } from "./theme"
 
 /**
@@ -7,65 +10,63 @@ import { useTheme } from "./theme"
  * `inline code`, **bold**, _italic_, links and @mentions. Plain RN Text keeps long replies fast.
  */
 
-type Block =
-  | { t: "p"; text: string }
-  | { t: "h"; text: string }
-  | { t: "li"; text: string; mark: string }
-  | { t: "code"; text: string }
-  | { t: "quote"; text: string }
+const INLINE = /(\[[^\]]+\]\([^)\s]+\)|\*\*[^*]+\*\*|`[^`]+`|_[^_\s][^_]*_|https?:\/\/[^\s)]+|@[a-z0-9][a-z0-9-]*)/gi
 
-export function parseBlocks(input: string): Block[] {
-  const blocks: Block[] = []
-  const lines = input.replace(/\r\n/g, "\n").split("\n")
-  let para: string[] = []
-  const flush = () => {
-    if (para.length) blocks.push({ t: "p", text: para.join("\n") })
-    para = []
+/** Our protected file links open signed in; other links open as they are. */
+async function openLink(url: string) {
+  if (isSayabotFile(url)) {
+    const path = url.slice(url.indexOf("/api/files/"))
+    return void Linking.openURL(await signedInWebUrl(path))
   }
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]!
-    if (line.trim().startsWith("```")) {
-      flush()
-      const code: string[] = []
-      i++
-      while (i < lines.length && !lines[i]!.trim().startsWith("```")) code.push(lines[i++]!)
-      blocks.push({ t: "code", text: code.join("\n") })
-      continue
-    }
-    const li = line.match(/^\s*([-*•]|\d+[.)])\s+(.*)$/)
-    if (li) {
-      flush()
-      blocks.push({ t: "li", mark: /\d/.test(li[1]!) ? li[1]! : "•", text: li[2]! })
-      continue
-    }
-    const h = line.match(/^#{1,4}\s+(.*)$/)
-    if (h) {
-      flush()
-      blocks.push({ t: "h", text: h[1]! })
-      continue
-    }
-    if (line.startsWith("> ")) {
-      flush()
-      blocks.push({ t: "quote", text: line.slice(2) })
-      continue
-    }
-    if (!line.trim()) {
-      flush()
-      continue
-    }
-    para.push(line)
-  }
-  flush()
-  return blocks
+  return void Linking.openURL(url)
 }
 
-const INLINE = /(\*\*[^*]+\*\*|`[^`]+`|_[^_\s][^_]*_|https?:\/\/[^\s)]+|@[a-z0-9][a-z0-9-]*)/gi
+function imageSource(url: string) {
+  const token = accessTokenNow()
+  return isSayabotFile(url) && token ? { uri: url, headers: { Authorization: `Bearer ${token}` } } : { uri: url }
+}
+
+function ChatImage({ url, alt }: { url: string; alt: string }) {
+  const theme = useTheme()
+  const [open, setOpen] = useState(false)
+  const [ratio, setRatio] = useState(4 / 3)
+  return (
+    <>
+      <Pressable onPress={() => setOpen(true)} accessibilityRole="imagebutton" accessibilityLabel={alt || "Image"}>
+        <Image
+          source={imageSource(url)}
+          onLoad={(e) => {
+            const { width, height } = e.nativeEvent.source
+            if (width && height) setRatio(Math.max(0.5, Math.min(2, width / height)))
+          }}
+          style={{ width: 240, aspectRatio: ratio, borderRadius: 14, backgroundColor: theme.raised }}
+          resizeMode="cover"
+        />
+      </Pressable>
+      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.95)", justifyContent: "center" }}>
+          <Image source={imageSource(url)} style={{ width: "100%", height: "80%" }} resizeMode="contain" />
+          <Pressable onPress={() => setOpen(false)} accessibilityLabel="Close" style={{ position: "absolute", top: 54, right: 20, width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center" }}>
+            <X size={22} color="#fff" />
+          </Pressable>
+        </View>
+      </Modal>
+    </>
+  )
+}
 
 function Inline({ text, color, accent, codeBg, base }: { text: string; color: string; accent: string; codeBg: string; base: TextStyle }) {
   const parts = text.split(INLINE).filter((p) => p !== "")
   return (
     <RNText style={[base, { color }]}>
       {parts.map((part, i) => {
+        const link = part.match(/^\[([^\]]+)\]\(([^)\s]+)\)$/)
+        if (link)
+          return (
+            <RNText key={i} style={{ color: accent, textDecorationLine: "underline" }} onPress={() => void openLink(link[2]!)}>
+              {link[1]}
+            </RNText>
+          )
         if (part.startsWith("**") && part.endsWith("**")) return <RNText key={i} style={{ fontWeight: "700" }}>{part.slice(2, -2)}</RNText>
         if (part.startsWith("`") && part.endsWith("`"))
           return (
@@ -76,7 +77,7 @@ function Inline({ text, color, accent, codeBg, base }: { text: string; color: st
         if (part.startsWith("_") && part.endsWith("_") && part.length > 2) return <RNText key={i} style={{ fontStyle: "italic" }}>{part.slice(1, -1)}</RNText>
         if (/^https?:\/\//.test(part))
           return (
-            <RNText key={i} style={{ color: accent, textDecorationLine: "underline" }} onPress={() => void Linking.openURL(part)}>
+            <RNText key={i} style={{ color: accent, textDecorationLine: "underline" }} onPress={() => void openLink(part)}>
               {part}
             </RNText>
           )
@@ -97,6 +98,21 @@ export function RichText({ text, color, mine }: { text: string; color?: string; 
   return (
     <View style={{ gap: 6 }}>
       {blocks.map((b, i) => {
+        if (b.t === "img") return <ChatImage key={i} url={b.url} alt={b.alt} />
+        if (b.t === "file")
+          return (
+            <Pressable
+              key={i}
+              onPress={() => void openLink(b.url)}
+              accessibilityRole="link"
+              style={{ flexDirection: "row", alignItems: "center", gap: 8, padding: 10, borderRadius: 12, backgroundColor: mine ? "rgba(0,0,0,0.12)" : theme.raised }}
+            >
+              <FileText size={18} color={fg} />
+              <RNText numberOfLines={1} style={{ color: fg, fontSize: 15, flexShrink: 1 }}>
+                {b.name}
+              </RNText>
+            </Pressable>
+          )
         if (b.t === "code")
           return (
             <ScrollView key={i} horizontal showsHorizontalScrollIndicator={false} style={{ backgroundColor: mine ? "rgba(0,0,0,0.14)" : theme.bg, borderRadius: 10 }}>

@@ -17,6 +17,8 @@ function mapTask(row: {
   cost_usd: number | string | null
   unblock_needs: string | null
   metadata: unknown
+  room_id?: string
+  updated_at?: string
 }): TaskItem {
   return {
     id: row.id,
@@ -32,6 +34,8 @@ function mapTask(row: {
     turnsUsed: row.turns_used ?? 0,
     costUsd: Number(row.cost_usd ?? 0),
     unblockNeeds: row.unblock_needs,
+    roomId: row.room_id,
+    updatedAt: row.updated_at,
   }
 }
 
@@ -56,9 +60,10 @@ export function useTasks(roomId?: string) {
       let query = supabase
         .from("tasks")
         .select(
-          "id, number, title, description, status, kind, assignee_agent_id, assignee_user_id, budget_turns, turns_used, cost_usd, unblock_needs, metadata",
+          "id, number, title, description, status, kind, assignee_agent_id, assignee_user_id, budget_turns, turns_used, cost_usd, unblock_needs, metadata, room_id, updated_at",
         )
-        .order("created_at", { ascending: false })
+        .eq("kind", "task")
+        .order("updated_at", { ascending: false })
         .limit(50)
 
       if (roomId) {
@@ -110,7 +115,7 @@ export function useTasks(roomId?: string) {
           }),
         )
         .select(
-          "id, number, title, description, status, kind, assignee_agent_id, assignee_user_id, budget_turns, turns_used, cost_usd, unblock_needs, metadata",
+          "id, number, title, description, status, kind, assignee_agent_id, assignee_user_id, budget_turns, turns_used, cost_usd, unblock_needs, metadata, room_id, updated_at",
         )
         .single()
 

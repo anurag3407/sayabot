@@ -887,7 +887,7 @@ export async function requestHumanDecision(
     },
   })
 
-  notifyHumansNeeded({ roomId, agentId: agent.agentId, kind: "request", detail: args.question })
+  notifyHumansNeeded({ roomId, agentId: agent.agentId, kind: "request", detail: args.question, refId: row.id })
   return {
     request_id: row.id,
     ref: `MESH-${row.number}`,
@@ -992,6 +992,7 @@ async function requestStructuredDecision(
       agentId: agent.agentId,
       kind: "request",
       detail: plan.toAsk.map((i) => i.question).join(" · ").slice(0, 200),
+      refId: mergeTarget.id,
     })
     return {
       request_id: mergeTarget.id,
@@ -1039,7 +1040,7 @@ async function requestStructuredDecision(
     reason: "human decision requested",
     metadata: { foldKey: args.foldKey, keys: plan.toAsk.map((i) => i.key) },
   })
-  notifyHumansNeeded({ roomId: args.roomId, agentId: agent.agentId, kind: "request", detail: args.question })
+  notifyHumansNeeded({ roomId: args.roomId, agentId: agent.agentId, kind: "request", detail: args.question, refId: row.id })
   return {
     request_id: row.id,
     ref: `MESH-${row.number}`,

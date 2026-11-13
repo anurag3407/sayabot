@@ -1,6 +1,7 @@
 import { z } from "zod"
 import type { ToolSpec } from "../tools/audited"
 import { getMemoryService } from "./service"
+import type { MemoryAccessContext } from "./modules/sources"
 
 export interface MemoryToolsArgs {
   orgId: string
@@ -8,23 +9,31 @@ export interface MemoryToolsArgs {
   roomId: string
 }
 
+const NOT_FOUND = "Memory not found, or not one you can change from this room."
+
 export function memoryTools(args: MemoryToolsArgs): ToolSpec[] {
   const service = getMemoryService()
   const { orgId, agentId, roomId } = args
+  const access: MemoryAccessContext = { orgId, agentId, roomId }
 
   const rememberTool: ToolSpec = {
     name: "remember",
     description:
-      "Save a durable fact, decision, belief, hypothesis, or procedure across turns. Supports epistemic status, emotional salience, evidence links, and superseding previous beliefs.",
+      "Save a durable fact, decision, preference, belief, hypothesis, or procedure across turns. " +
+      "Scopes: 'agent' = private to you in every room (default), 'room' = shared with everyone in this room, " +
+      "'org' = the whole workspace. Saving again with the same title updates that memory. " +
+      "Supports epistemic status, emotional salience, evidence links, and superseding an older belief.",
     schema: z.object({
       title: z.string().min(1).max(200),
       body: z.string().min(1).max(4096),
       scope: z.enum(["agent", "room", "org"]).default("agent"),
       kind: z.enum(["fact", "preference", "decision", "procedure", "episode"]).default("fact"),
       epistemic_status: z
-        .enum(["verified", "belief", "hypothesis", "superseded", "withdrawn"])
+        .enum(["verified", "belief", "hypothesis"])
         .default("belief")
-        .describe("Ground truth status: verified, working belief, or unconfirmed hypothesis"),
+        .describe(
+          "verified (checked against evidence), belief (working assumption), or hypothesis (unconfirmed)",
+        ),
       confidence: z.number().min(0.0).max(1.0).optional().default(0.85),
       emotional_salience: z
         .number()
@@ -34,8 +43,15 @@ export function memoryTools(args: MemoryToolsArgs): ToolSpec[] {
         .default(0.5)
         .describe("Importance/surprise factor to resist Ebbinghaus forgetting decay"),
       perspective: z.enum(["first_person", "third_person"]).optional().default("first_person"),
-      evidence_refs: z.array(z.string()).optional().describe("URIs, filepaths, or references supporting this belief"),
-      supersedes_memory_id: z.string().uuid().optional().describe("ID of an older memory that this belief supersedes"),
+      evidence_refs: z
+        .array(z.string())
+        .optional()
+        .describe("URIs, filepaths, or references supporting this belief"),
+      supersedes_memory_id: z
+        .string()
+        .uuid()
+        .optional()
+        .describe("ID of an older memory that this belief supersedes"),
       tags: z.array(z.string()).optional(),
       pinned: z.boolean().optional(),
     }),
@@ -45,7 +61,7 @@ export function memoryTools(args: MemoryToolsArgs): ToolSpec[] {
       body: string
       scope: "agent" | "room" | "org"
       kind: "fact" | "preference" | "decision" | "procedure" | "episode"
-      epistemic_status: "verified" | "belief" | "hypothesis" | "superseded" | "withdrawn"
+      epistemic_status: "verified" | "belief" | "hypothesis"
       confidence?: number
       emotional_salience?: number
       perspective?: "first_person" | "third_person"
@@ -76,8 +92,9 @@ export function memoryTools(args: MemoryToolsArgs): ToolSpec[] {
         throw new Error("Failed to save memory")
       }
 
+      let superseded: boolean | undefined
       if (input.supersedes_memory_id) {
-        await service.supersedeBelief(input.supersedes_memory_id, memory.id, orgId)
+        superseded = await service.supersedeBelief(input.supersedes_memory_id, memory.id, access)
       }
 
       return {
@@ -86,6 +103,7 @@ export function memoryTools(args: MemoryToolsArgs): ToolSpec[] {
         title: memory.title,
         scope: memory.scope,
         epistemic_status: memory.epistemicStatus,
+        ...(superseded === undefined ? {} : { superseded }),
       }
     },
   }
@@ -93,16 +111,26 @@ export function memoryTools(args: MemoryToolsArgs): ToolSpec[] {
   const recallTool: ToolSpec = {
     name: "recall",
     description:
-      "Search cognitive memory across agent, room, and org scopes using hybrid relevance, retention decay, emotional salience, and epistemic weighting.",
+      "Search your memory: your private memories, this room's shared memories, workspace memories, and what the owner already told you (owner facts). " +
+      "Ranked by relevance (full-text, semantic, keyword), retention decay, salience and epistemic status. Cite results as [#id] when you use them.",
     schema: z.object({
       query: z.string().min(1),
       scope: z.enum(["agent", "room", "org"]).optional(),
       epistemic_filter: z
         .array(z.enum(["verified", "belief", "hypothesis", "superseded", "withdrawn"]))
         .optional()
-        .describe("Optional filter to restrict memories to specific epistemic statuses"),
-      min_salience: z.number().min(0.0).max(1.0).optional().describe("Minimum emotional salience threshold"),
-      include_links: z.boolean().optional().default(true).describe("Whether to include knowledge graph wikilinks"),
+        .describe("Restrict to these epistemic statuses (default: verified, belief, hypothesis)"),
+      min_salience: z
+        .number()
+        .min(0.0)
+        .max(1.0)
+        .optional()
+        .describe("Minimum emotional salience threshold"),
+      include_links: z
+        .boolean()
+        .optional()
+        .default(true)
+        .describe("Whether to include knowledge graph wikilinks"),
       limit: z.number().int().positive().max(20).optional().default(8),
     }),
     dangerous: false,
@@ -114,24 +142,33 @@ export function memoryTools(args: MemoryToolsArgs): ToolSpec[] {
       include_links?: boolean
       limit?: number
     }) => {
-      const matches = await service.recall({
-        orgId,
-        query: input.query,
-        scope: input.scope,
-        agentId,
-        roomId,
-        epistemicFilter: input.epistemic_filter,
-        minSalience: input.min_salience,
-        includeLinks: input.include_links,
-        limit: input.limit,
-      })
+      const [matches, facts] = await Promise.all([
+        service.recall({
+          orgId,
+          query: input.query,
+          scope: input.scope,
+          agentId,
+          roomId,
+          epistemicFilter: input.epistemic_filter,
+          minSalience: input.min_salience,
+          includeLinks: input.include_links,
+          limit: input.limit,
+          minRelevance: 0.1,
+          reinforce: true,
+        }),
+        input.scope
+          ? Promise.resolve({ facts: [], total: 0 })
+          : service
+              .relevantOwnerFacts({ orgId, roomId, query: input.query, limit: 5 })
+              .catch(() => ({ facts: [], total: 0 })),
+      ])
 
       return {
         query: input.query,
         count: matches.length,
         memories: matches.map((m) => ({
           id: m.id,
-          scope: m.scope,
+          scope: m.scope === "agent" ? "private" : m.scope,
           title: m.title,
           body: m.body,
           kind: m.kind,
@@ -139,9 +176,14 @@ export function memoryTools(args: MemoryToolsArgs): ToolSpec[] {
           confidence: m.confidence,
           emotional_salience: m.emotionalSalience,
           retention: m.retention,
+          relevance: m.relevance,
           score: m.score,
           links: m.links,
         })),
+        ...(facts.facts.length > 0 ? { owner_facts: facts.facts } : {}),
+        ...(matches.length === 0 && facts.facts.length === 0
+          ? { hint: "No matching memories. Try other keywords or a broader query." }
+          : {}),
       }
     },
   }
@@ -149,11 +191,18 @@ export function memoryTools(args: MemoryToolsArgs): ToolSpec[] {
   const openLoopTool: ToolSpec = {
     name: "open_loop",
     description:
-      "Track, update, or resolve commitments, promises, and active blockers across turns.",
+      "Track, update, or resolve your commitments, promises, and active blockers across turns.",
     schema: z.object({
-      action: z.enum(["create", "update", "resolve", "list"]).describe("Action to perform on open loops"),
+      action: z
+        .enum(["create", "update", "resolve", "list"])
+        .describe("Action to perform on open loops"),
       id: z.string().uuid().optional().describe("Open loop ID for update or resolve"),
-      description: z.string().min(1).max(2048).optional().describe("Description of the commitment or promise"),
+      description: z
+        .string()
+        .min(1)
+        .max(2048)
+        .optional()
+        .describe("Description of the commitment or promise"),
       due_in_hours: z.number().positive().optional().describe("Hours until this commitment is due"),
       status: z.enum(["open", "in_progress", "blocked", "resolved", "dropped"]).optional(),
       blocker_reason: z.string().optional().describe("Reason if loop is blocked"),
@@ -189,25 +238,31 @@ export function memoryTools(args: MemoryToolsArgs): ToolSpec[] {
         const updated = await service.updateOpenLoop({
           id: input.id,
           orgId,
+          agentId,
           status: input.status,
           blockerReason: input.blocker_reason,
           resolution: input.resolution,
+          dueAt: input.due_in_hours
+            ? new Date(Date.now() + input.due_in_hours * 60 * 60 * 1000)
+            : undefined,
         })
-        return { ok: !!updated, loop: updated }
+        return updated ? { ok: true, loop: updated } : { ok: false, error: "Open loop not found." }
       }
 
       if (input.action === "resolve") {
         if (!input.id) throw new Error("id required for open_loop resolve")
-        const resolved = await service.resolveOpenLoop(input.id, orgId, input.resolution ?? "Resolved")
-        return { ok: !!resolved, loop: resolved }
+        const resolved = await service.resolveOpenLoop(
+          input.id,
+          orgId,
+          agentId,
+          input.resolution ?? "Resolved",
+        )
+        return resolved
+          ? { ok: true, loop: resolved }
+          : { ok: false, error: "Open loop not found." }
       }
 
-      // list action
-      const loops = await service.getActiveLoops({
-        orgId,
-        agentId,
-        roomId,
-      })
+      const loops = await service.getActiveLoops({ orgId, agentId, roomId })
       return { ok: true, count: loops.length, loops }
     },
   }
@@ -245,7 +300,7 @@ export function memoryTools(args: MemoryToolsArgs): ToolSpec[] {
 
       if (input.action === "belief_lineage") {
         if (!input.memory_id) throw new Error("memory_id required for belief_lineage")
-        const lineage = await service.getBeliefLineage(input.memory_id, orgId)
+        const lineage = await service.getBeliefLineage(input.memory_id, access)
         return {
           ok: true,
           lineage: lineage.map((l) => ({
@@ -264,21 +319,24 @@ export function memoryTools(args: MemoryToolsArgs): ToolSpec[] {
   const graphWalkTool: ToolSpec = {
     name: "graph_walk",
     description:
-      "Traverse the knowledge graph starting from a memory node along relational links and concept wikilinks.",
+      "Traverse the knowledge graph starting from a memory node along relational links and concept [[wikilinks]].",
     schema: z.object({
       start_memory_id: z.string().uuid().describe("Root memory ID to start graph exploration"),
-      max_depth: z.number().int().min(1).max(2).optional().default(1).describe("Search depth (1 or 2 hops)"),
+      max_depth: z
+        .number()
+        .int()
+        .min(1)
+        .max(2)
+        .optional()
+        .default(1)
+        .describe("Search depth (1 or 2 hops)"),
       limit: z.number().int().positive().max(20).optional().default(10),
     }),
     dangerous: false,
-    execute: async (input: {
-      start_memory_id: string
-      max_depth?: number
-      limit?: number
-    }) => {
+    execute: async (input: { start_memory_id: string; max_depth?: number; limit?: number }) => {
       const graph = await service.graphWalk({
-        orgId,
         startMemoryId: input.start_memory_id,
+        access,
         maxDepth: input.max_depth,
         limit: input.limit,
       })
@@ -301,25 +359,34 @@ export function memoryTools(args: MemoryToolsArgs): ToolSpec[] {
 
   const forgetTool: ToolSpec = {
     name: "forget",
-    description: "Delete or withdraw an outdated/falsified memory item by its ID.",
+    description:
+      "Retract an outdated or falsified memory by ID. By default it is withdrawn (kept for audit, never recalled). " +
+      "hard_delete=true erases it permanently and needs a person's approval.",
     schema: z.object({
       id: z.string().uuid(),
       reason: z.string().optional().describe("Reason for withdrawal or retraction"),
-      hard_delete: z.boolean().optional().default(false).describe("Whether to permanently delete instead of mark withdrawn"),
+      hard_delete: z
+        .boolean()
+        .optional()
+        .default(false)
+        .describe("Permanently delete instead of withdraw (requires approval)"),
     }),
-    dangerous: false,
+    dangerous: (input) => input.hard_delete === true,
     execute: async (input: { id: string; reason?: string; hard_delete?: boolean }) => {
-      if (input.reason && !input.hard_delete && typeof service.withdrawBelief === "function") {
-        const withdrawn = await service.withdrawBelief(
-          input.id,
-          orgId,
-          input.reason,
-        )
-        return { ok: !!withdrawn, id: input.id, action: "withdrawn" }
+      if (input.hard_delete) {
+        const deleted = await service.forget(input.id, access)
+        return deleted
+          ? { ok: true, id: input.id, action: "deleted" }
+          : { ok: false, id: input.id, error: NOT_FOUND }
       }
-
-      const success = await service.forget(input.id, orgId)
-      return { ok: success, id: input.id }
+      const withdrawn = await service.withdrawBelief(
+        input.id,
+        access,
+        input.reason ?? "Retracted by agent",
+      )
+      return withdrawn
+        ? { ok: true, id: input.id, action: "withdrawn" }
+        : { ok: false, id: input.id, error: NOT_FOUND }
     },
   }
 

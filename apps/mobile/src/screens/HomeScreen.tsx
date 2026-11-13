@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from "react"
+import React, { useEffect, useMemo, useRef, useState } from "react"
 import {
   Animated,
   FlatList,
@@ -123,7 +123,7 @@ function ChatRow({
   )
 }
 
-export function HomeScreen({ navigation }: any) {
+export function HomeScreen({ navigation, route }: any) {
   const theme = useTheme()
   const insets = useSafeAreaInsets()
   const { data, loading, error, refresh } = useHome()
@@ -134,6 +134,10 @@ export function HomeScreen({ navigation }: any) {
   const [newChatOpen, setNewChatOpen] = useState(false)
   const [actionsFor, setActionsFor] = useState<HomeChat | null>(null)
   const scrollY = useRef(new Animated.Value(0)).current
+  // Home-screen shortcut "New chat".
+  useEffect(() => {
+    if (route?.params?.action === "new-chat") setNewChatOpen(true)
+  }, [route?.params?.at, route?.params?.action])
 
   const agents = useMemo(() => new Map((data?.agents ?? []).map((a) => [a.id, a])), [data])
   const orgSlug = data?.org.slug ?? ""

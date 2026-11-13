@@ -1,6 +1,13 @@
 import { parseCapabilities } from "@sayabot/core"
 import { agentConnectorGrants, agents, mcpServers, workspaceConnectors } from "@sayabot/db"
-import { connectMcpServers, openSecret } from "@sayabot/llm"
+import {
+  connectMcpServers,
+  openMcpOAuthState,
+  openSecret,
+  sealMcpOAuthState,
+  StoredMcpOAuthProvider,
+  type McpServerConfig,
+} from "@sayabot/llm"
 import type { ToolSet } from "ai"
 import { and, eq, isNull, or } from "drizzle-orm"
 import { z } from "zod"
@@ -61,11 +68,13 @@ async function loadMcpConfigs(args: BuildToolsArgs) {
   const allowList = args.agent.toolIds
   const filtered = allowList.length ? rows.filter((row) => allowList.includes(row.id)) : rows
   const warnings: string[] = []
-  const configs = filtered.map((row) => {
+  const kek = getEnv().MESH_KEK
+  const configs: McpServerConfig[] = []
+  for (const row of filtered) {
     let headers: Record<string, string> | undefined
     if (row.headersEnc) {
       try {
-        const parsed = JSON.parse(openSecret(row.headersEnc, getEnv().MESH_KEK)) as {
+        const parsed = JSON.parse(openSecret(row.headersEnc, kek)) as {
           headers?: Record<string, string>
         }
         headers = parsed.headers
@@ -73,16 +82,56 @@ async function loadMcpConfigs(args: BuildToolsArgs) {
         warnings.push(`MCP server "${row.name}" has unreadable headers; connecting without them`)
       }
     }
-    return {
+    let authProvider: StoredMcpOAuthProvider | undefined
+    if (row.authKind === "oauth") {
+      if (row.authStatus !== "ok" || !row.oauthEnc) {
+        warnings.push(`${row.name} needs a workspace admin to sign in again (Marketplace → ${row.name})`)
+        continue
+      }
+      try {
+        authProvider = mcpOAuthProvider(row.id, row.name, openMcpOAuthState(row.oauthEnc, kek), kek)
+      } catch {
+        warnings.push(`${row.name} has an unreadable sign-in; a workspace admin must sign in again`)
+        continue
+      }
+    }
+    configs.push({
       id: row.id,
       name: row.name,
       transport: row.transport,
       url: row.url,
       headers,
+      ...(authProvider ? { authProvider } : {}),
       dangerousTools: row.dangerousTools,
-    }
-  })
+    })
+  }
   return { configs, warnings }
+}
+
+/**
+ * Refreshed tokens are saved back to the row. A refresh the vendor refuses ends in a
+ * redirect to its sign-in page, which a run cannot follow: mark the app signed out so the
+ * Marketplace shows "Sign in again" instead of failing every run quietly.
+ */
+function mcpOAuthProvider(serverId: string, name: string, state: Parameters<typeof sealMcpOAuthState>[0], kek: string) {
+  const db = getDb()
+  return new StoredMcpOAuthProvider({
+    serverId,
+    state,
+    persist: async (next) => {
+      await db
+        .update(mcpServers)
+        .set({ oauthEnc: sealMcpOAuthState(next, kek), updatedAt: new Date() })
+        .where(eq(mcpServers.id, serverId))
+    },
+    onRedirect: () => {
+      void db
+        .update(mcpServers)
+        .set({ authStatus: "signed_out", updatedAt: new Date() })
+        .where(eq(mcpServers.id, serverId))
+        .catch((error: unknown) => console.warn(`[mcp] could not mark ${name} signed out`, error))
+    },
+  })
 }
 
 /**

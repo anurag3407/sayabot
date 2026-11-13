@@ -1,10 +1,11 @@
 "use server"
 
-import { sealSecret } from "@sayabot/llm"
+import { beginMcpOAuth, sealSecret } from "@sayabot/llm"
 import { listMcpTools } from "@/lib/actions/mcp"
 import { adminOrgAccess, audit, errorMessage, fail, ok, revalidateOrg } from "@/lib/actions/shared"
 import { getKek } from "@/lib/env"
-import { findMarketplaceApp } from "@/lib/marketplace"
+import { findMarketplaceApp, type MarketplaceApp } from "@/lib/marketplace"
+import { mcpOAuthRedirectUrl, persistMcpOAuth, readMcpOAuth } from "@/lib/mcp-oauth"
 import { createAdminClient } from "@/lib/supabase/admin"
 import type { ActionResult } from "@/lib/types"
 
@@ -30,7 +31,7 @@ export async function connectMarketplaceAppAction(input: {
 
   switch (app.auth.kind) {
     case "oauth":
-      return fail(`${app.name} needs a sign-in flow that isn't available yet.`)
+      return fail(`${app.name} connects with a sign-in. Use Sign in instead.`)
     case "none":
       break
     case "token":
@@ -72,6 +73,7 @@ export async function connectMarketplaceAppAction(input: {
       dangerous_tools: app.dangerousTools ?? [],
       enabled: true,
       created_by: check.access.user.id,
+      catalog_app: app.id,
     })
     .select("id")
     .single()
@@ -119,4 +121,95 @@ export async function disconnectMarketplaceServerAction(input: { orgSlug: string
   })
   revalidateOrg(input.orgSlug)
   return ok(`${server.name} disconnected`)
+}
+
+/** What a sign-in app may do without asking: reads only, unless the catalog names the writes. */
+function signInDangerousTools(app: MarketplaceApp): string[] {
+  return app.dangerousTools?.length ? app.dangerousTools : ["@writes"]
+}
+
+/**
+ * Starts "Sign in with …" for a Marketplace app. Returns the vendor's sign-in page; the browser
+ * goes there and the vendor sends it back to /api/mcp/oauth/callback. Passing `serverId` signs
+ * an existing connection in again (expired or revoked tokens).
+ */
+export async function startMarketplaceSignInAction(input: {
+  orgSlug: string
+  appId: string
+  serverId?: string
+}): Promise<ActionResult> {
+  const check = await adminOrgAccess(input.orgSlug)
+  if ("error" in check) return fail(check.error)
+  const app = findMarketplaceApp(input.appId)
+  if (!app) return fail("App not found")
+  if (app.auth.kind !== "oauth") return fail(`${app.name} connects with a key, not a sign-in`)
+
+  const admin = createAdminClient()
+  const orgId = check.access.org.id
+  let row: { id: string; url: string; oauth_enc: string | null } | null = null
+  if (input.serverId) {
+    const { data } = await admin
+      .from("mcp_servers")
+      .select("id, org_id, url, oauth_enc, auth_kind")
+      .eq("id", input.serverId)
+      .maybeSingle()
+    if (!data || data.org_id !== orgId || data.auth_kind !== "oauth") return fail("Connection not found")
+    row = data
+  } else {
+    // A sign-in that was started and abandoned is picked up again rather than duplicated.
+    const { data: pendingRow } = await admin
+      .from("mcp_servers")
+      .select("id, url, oauth_enc")
+      .eq("org_id", orgId)
+      .eq("catalog_app", app.id)
+      .eq("auth_status", "pending")
+      .is("room_id", null)
+      .limit(1)
+      .maybeSingle()
+    if (pendingRow) {
+      row = pendingRow
+    } else {
+      const { data: created, error } = await admin
+        .from("mcp_servers")
+        .insert({
+          org_id: orgId,
+          room_id: null,
+          name: app.name,
+          transport: app.transport,
+          url: app.url,
+          headers_enc: null,
+          dangerous_tools: signInDangerousTools(app),
+          enabled: true,
+          created_by: check.access.user.id,
+          auth_kind: "oauth",
+          auth_status: "pending",
+          catalog_app: app.id,
+        })
+        .select("id, url, oauth_enc")
+        .single()
+      if (error || !created) return fail(errorMessage(error) || "Could not start the sign-in")
+      row = created
+    }
+  }
+
+  try {
+    const { authorizationUrl } = await beginMcpOAuth({
+      serverId: row.id,
+      serverUrl: row.url,
+      redirectUrl: mcpOAuthRedirectUrl(),
+      persist: persistMcpOAuth(row.id),
+      previous: readMcpOAuth(row) ?? undefined,
+    })
+    if (!authorizationUrl) {
+      await admin.from("mcp_servers").update({ auth_status: "ok" }).eq("id", row.id)
+      revalidateOrg(input.orgSlug)
+      return ok(`${app.name} connected`, { serverId: row.id, authorizationUrl: null })
+    }
+    if (input.serverId) {
+      await admin.from("mcp_servers").update({ auth_status: "pending" }).eq("id", row.id)
+    }
+    return ok(`Opening ${app.name} sign-in`, { serverId: row.id, authorizationUrl })
+  } catch (error) {
+    return fail(`${app.name} sign-in could not start: ${errorMessage(error)}`)
+  }
 }

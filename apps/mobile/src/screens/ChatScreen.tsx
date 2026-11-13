@@ -3,6 +3,9 @@ import {
   ActivityIndicator,
   Animated,
   FlatList,
+  Image,
+  PanResponder,
+  ScrollView,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -12,7 +15,10 @@ import {
 } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import * as Clipboard from "expo-clipboard"
-import { ArrowDown, ArrowUp, ChevronLeft, Copy, CornerUpLeft, Hash, ShieldAlert, SquareTerminal } from "lucide-react-native"
+import * as DocumentPicker from "expo-document-picker"
+import * as ImagePicker from "expo-image-picker"
+import { ArrowDown, ArrowUp, Camera, ChevronLeft, Copy, CornerUpLeft, FileText, Hash, ImageIcon, Plus, ShieldAlert, SquareTerminal, X } from "lucide-react-native"
+import { attachmentMarkdown, uploadToRoom, type Picked } from "../core/api"
 import { TerminalDrawer } from "../components/chat/TerminalDrawer"
 import { useInbox } from "../hooks/useInbox"
 import { useRoomAgents } from "../hooks/useRoomAgents"
@@ -74,9 +80,44 @@ function TypingDots() {
 
 type Item = { kind: "day"; key: string; label: string } | { kind: "msg"; key: string; message: Message; first: boolean; last: boolean }
 
-function MessageRow({ item, onLongPress }: { item: Extract<Item, { kind: "msg" }>; onLongPress: (m: Message) => void }) {
+function MessageRow({
+  item,
+  onLongPress,
+  onReply,
+  queued,
+}: {
+  item: Extract<Item, { kind: "msg" }>
+  onLongPress: (m: Message) => void
+  onReply: (m: Message) => void
+  queued: boolean
+}) {
   const theme = useTheme()
   const m = item.message
+  // Swipe right to reply, like the messaging apps people already know.
+  const dx = useRef(new Animated.Value(0)).current
+  const fired = useRef(false)
+  const pan = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_e, g) => g.dx > 14 && Math.abs(g.dy) < 10,
+      onPanResponderMove: (_e, g) => {
+        const x = Math.max(0, Math.min(80, g.dx))
+        dx.setValue(x)
+        if (x > 60 && !fired.current) {
+          fired.current = true
+          haptic.select()
+        }
+      },
+      onPanResponderRelease: () => {
+        if (fired.current) onReply(m)
+        fired.current = false
+        Animated.spring(dx, { toValue: 0, useNativeDriver: true, bounciness: 6 }).start()
+      },
+      onPanResponderTerminate: () => {
+        fired.current = false
+        Animated.spring(dx, { toValue: 0, useNativeDriver: true }).start()
+      },
+    }),
+  ).current
   const mine = m.senderType === "human" && (m.senderName === "You" || m.id.startsWith("local-") || !m.metadata?.agentName)
   if (m.senderType === "system") {
     return (
@@ -93,7 +134,13 @@ function MessageRow({ item, onLongPress }: { item: Extract<Item, { kind: "msg" }
   const sending = Boolean(m.metadata?.sending)
   const isAgent = m.senderType === "agent"
   return (
-    <View style={{ flexDirection: "row", justifyContent: mine ? "flex-end" : "flex-start", paddingHorizontal: space.md, marginTop: item.first ? 10 : 2 }}>
+    <Animated.View
+      {...pan.panHandlers}
+      style={{ flexDirection: "row", justifyContent: mine ? "flex-end" : "flex-start", paddingHorizontal: space.md, marginTop: item.first ? 10 : 2, transform: [{ translateX: dx }] }}
+    >
+      <Animated.View style={{ position: "absolute", left: 6, top: "40%", opacity: dx.interpolate({ inputRange: [0, 60], outputRange: [0, 1] }) }}>
+        <CornerUpLeft size={18} color={theme.muted} />
+      </Animated.View>
       {!mine ? (
         <View style={{ width: 36, marginRight: 6, justifyContent: "flex-end" }}>
           {item.last && isAgent ? <Mascot seed={m.senderHandle ?? m.senderName ?? "agent"} size={28} working={m.status === "streaming"} /> : null}
@@ -137,13 +184,15 @@ function MessageRow({ item, onLongPress }: { item: Extract<Item, { kind: "msg" }
               ? "Not sent · long press to copy"
               : sending
                 ? "Sending…"
+                : queued
+                  ? "Queued · read after the current reply"
                 : m.status === "error"
                   ? "Stopped with an error"
                   : new Date(m.createdAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
           </Text>
         ) : null}
       </View>
-    </View>
+    </Animated.View>
   )
 }
 
@@ -162,6 +211,10 @@ export function ChatScreen({ route, navigation }: any) {
   const [terminalOpen, setTerminalOpen] = useState(false)
   const [atBottom, setAtBottom] = useState(true)
   const [deciding, setDeciding] = useState(false)
+  const [attachments, setAttachments] = useState<Picked[]>([])
+  const [attachOpen, setAttachOpen] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [queuedIds, setQueuedIds] = useState<string[]>([])
   const listRef = useRef<FlatList<Item>>(null)
   const inputRef = useRef<TextInput>(null)
 
@@ -186,18 +239,62 @@ export function ChatScreen({ route, navigation }: any) {
   const mentionQuery = draft.match(/@([a-z0-9-]*)$/i)?.[1]?.toLowerCase()
   const mentionMatches = mentionQuery !== undefined ? agents.filter((a) => a.handle.toLowerCase().startsWith(mentionQuery)) : []
 
+  useEffect(() => {
+    if (!working) setQueuedIds([])
+  }, [working])
+
   async function send() {
     const text = draft.trim()
-    if (!text) return
-    setDraft("")
+    if (!text && !attachments.length) return
     setSendError(null)
     haptic.tap()
     try {
-      await sendMessage(text)
+      let content = text
+      if (attachments.length) {
+        setUploading(true)
+        const links: string[] = []
+        for (const file of attachments) links.push(attachmentMarkdown(await uploadToRoom(roomId, file)))
+        content = [text, ...links].filter(Boolean).join("\n")
+        setAttachments([])
+        setUploading(false)
+      }
+      setDraft("")
+      const sent = await sendMessage(content)
+      if (working && sent?.messageId) setQueuedIds((ids) => [...ids, sent.messageId!])
     } catch (err) {
+      setUploading(false)
       setSendError(err instanceof Error ? err.message : "Couldn't send")
       haptic.warn()
     }
+  }
+
+  async function pickPhotos(camera: boolean) {
+    setAttachOpen(false)
+    const perm = camera ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (!perm.granted) return setSendError(camera ? "Camera access is off for Sayabot in Settings." : "Photo access is off for Sayabot in Settings.")
+    const res = camera
+      ? await ImagePicker.launchCameraAsync({ quality: 0.8 })
+      : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], allowsMultipleSelection: true, selectionLimit: 4, quality: 0.8 })
+    if (res.canceled) return
+    setAttachments((a) =>
+      [...a, ...res.assets.map((x) => ({ uri: x.uri, name: x.fileName ?? `photo-${Date.now()}.jpg`, type: x.mimeType ?? "image/jpeg", size: x.fileSize, isImage: true }))].slice(0, 6),
+    )
+  }
+
+  async function pickFile() {
+    setAttachOpen(false)
+    const res = await DocumentPicker.getDocumentAsync({ multiple: true, copyToCacheDirectory: true })
+    if (res.canceled) return
+    setAttachments((a) =>
+      [...a, ...res.assets.map((x) => ({ uri: x.uri, name: x.name, type: x.mimeType ?? "application/octet-stream", size: x.size, isImage: (x.mimeType ?? "").startsWith("image/") }))].slice(0, 6),
+    )
+  }
+
+  function replyTo(m: Message) {
+    const quote = m.content.split("\n").slice(0, 2).join(" ").slice(0, 160)
+    const who = m.senderType === "agent" && m.senderHandle ? `@${m.senderHandle} ` : ""
+    setDraft(`> ${quote}\n${who}`)
+    setTimeout(() => inputRef.current?.focus(), 200)
   }
 
   const headAgent = agents[0]
@@ -283,7 +380,7 @@ export function ChatScreen({ route, navigation }: any) {
                   </Text>
                 </View>
               ) : (
-                <MessageRow item={item} onLongPress={setActionFor} />
+                <MessageRow item={item} onLongPress={setActionFor} onReply={replyTo} queued={queuedIds.includes(item.message.id)} />
               )
             }
           />
@@ -362,7 +459,34 @@ export function ChatScreen({ route, navigation }: any) {
           </Text>
         ) : null}
 
+        {attachments.length ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: space.md, paddingTop: 6 }}>
+            {attachments.map((a, i) => (
+              <View key={`${a.uri}-${i}`} style={{ width: 72, height: 72, borderRadius: 14, overflow: "hidden", backgroundColor: theme.card, alignItems: "center", justifyContent: "center" }}>
+                {a.isImage ? (
+                  <Image source={{ uri: a.uri }} style={{ width: 72, height: 72 }} />
+                ) : (
+                  <View style={{ alignItems: "center", gap: 4, padding: 6 }}>
+                    <FileText size={20} color={theme.muted} />
+                    <Text variant="caption" tone="muted" numberOfLines={2} center>
+                      {a.name}
+                    </Text>
+                  </View>
+                )}
+                <Pressable
+                  onPress={() => setAttachments((list) => list.filter((_, j) => j !== i))}
+                  accessibilityLabel={`Remove ${a.name}`}
+                  style={{ position: "absolute", top: 4, right: 4, width: 22, height: 22, borderRadius: 11, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center" }}
+                >
+                  <X size={13} color="#fff" />
+                </Pressable>
+              </View>
+            ))}
+          </ScrollView>
+        ) : null}
+
         <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8, paddingHorizontal: space.md, paddingTop: 6, paddingBottom: Math.max(insets.bottom, 10), backgroundColor: theme.bg }}>
+          <IconButton label="Attach" size={44} icon={<Plus size={22} color={theme.text} />} onPress={() => setAttachOpen(true)} />
           <View style={{ flex: 1, minHeight: 44, maxHeight: 140, borderRadius: 22, backgroundColor: theme.card, borderWidth: StyleSheet.hairlineWidth, borderColor: theme.lineStrong, paddingHorizontal: 16, justifyContent: "center" }}>
             <TextInput
               ref={inputRef}
@@ -377,20 +501,20 @@ export function ChatScreen({ route, navigation }: any) {
           </View>
           <Pressable
             onPress={send}
-            disabled={!draft.trim()}
+            disabled={(!draft.trim() && !attachments.length) || uploading}
             accessibilityRole="button"
             accessibilityLabel="Send"
             style={({ pressed }) => ({
               width: 44,
               height: 44,
               borderRadius: 22,
-              backgroundColor: draft.trim() ? theme.accent : theme.raised,
+              backgroundColor: draft.trim() || attachments.length ? theme.accent : theme.raised,
               alignItems: "center",
               justifyContent: "center",
               transform: [{ scale: pressed ? 0.94 : 1 }],
             })}
           >
-            <ArrowUp size={22} color={draft.trim() ? theme.onAccent : theme.faint} />
+            {uploading ? <ActivityIndicator color={theme.onAccent} /> : <ArrowUp size={22} color={draft.trim() || attachments.length ? theme.onAccent : theme.faint} />}
           </Pressable>
         </View>
       </KeyboardAvoidingView>
@@ -411,15 +535,21 @@ export function ChatScreen({ route, navigation }: any) {
               icon={<CornerUpLeft size={16} color={theme.text} />}
               title="Reply"
               onPress={() => {
-                const quote = actionFor.content.split("\n").slice(0, 2).join(" ").slice(0, 160)
-                const who = actionFor.senderType === "agent" && actionFor.senderHandle ? `@${actionFor.senderHandle} ` : ""
-                setDraft(`> ${quote}\n${who}`)
+                const m = actionFor
                 setActionFor(null)
-                setTimeout(() => inputRef.current?.focus(), 250)
+                replyTo(m)
               }}
             />
           </Group>
         ) : null}
+      </Sheet>
+
+      <Sheet visible={attachOpen} onClose={() => setAttachOpen(false)} title="Add to message" height={0.4}>
+        <Group>
+          <Row icon={<ImageIcon size={16} color={theme.text} />} title="Photos" subtitle="Up to 4 at a time" onPress={() => void pickPhotos(false)} />
+          <Row icon={<Camera size={16} color={theme.text} />} title="Camera" onPress={() => void pickPhotos(true)} />
+          <Row icon={<FileText size={16} color={theme.text} />} title="File" subtitle="PDF, documents, spreadsheets · up to 15 MB" onPress={() => void pickFile()} />
+        </Group>
       </Sheet>
 
       <Sheet visible={questionsOpen} onClose={() => setQuestionsOpen(false)} title="Questions for you" height={0.85}>

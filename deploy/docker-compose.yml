@@ -165,11 +165,20 @@ services:
       PORT: "4100"
       DOCKER_HOST: "unix:///var/run/docker.sock"
       ORCHESTRATOR_URL: http://orchestrator:4000
+      EGRESS_ADMIN_URL: http://egress:8081
+      # agentd fast path: a private control volume instead of a network hop, so
+      # computerd stays off botnet and egress remains the only dual-homed service.
+      AGENTD_CTL_ROOT: /srv/saaya-agentd
+      AGENTD_CTL_VOLUME: saaya-agentd
+      # Capacity: "auto" sizes from Docker host memory (COMPUTER_MEM_FRACTION, default 0.6).
+      COMPUTER_MAX_RUNNING: ${COMPUTER_MAX_RUNNING:-auto}
+      COMPUTER_IDLE_MS: ${COMPUTER_IDLE_MS:-600000}
     read_only: true
     tmpfs:
       - /tmp
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - saaya-agentd:/srv/saaya-agentd
     depends_on:
       orchestrator:
         condition: service_healthy
@@ -200,3 +209,8 @@ networks:
     name: botnet
     driver: bridge
     internal: true
+
+volumes:
+  # Fixed name: computerd mounts per-computer subpaths of it into bot containers.
+  saaya-agentd:
+    name: saaya-agentd

@@ -33,6 +33,8 @@ export function AgentConnectorScopeManager({
   const [allowedFolders, setAllowedFolders] = useState("")
   const [allowedChannels, setAllowedChannels] = useState("")
   const [allowedRepos, setAllowedRepos] = useState("")
+  const [allowedRecipients, setAllowedRecipients] = useState("")
+  const [readOnly, setReadOnly] = useState(false)
 
   const selectedConnector = availableConnectors.find((c) => c.id === selectedConnectorId)
 
@@ -48,6 +50,8 @@ export function AgentConnectorScopeManager({
     if (allowedFolders) formData.append("allowedFolders", allowedFolders)
     if (allowedChannels) formData.append("allowedChannels", allowedChannels)
     if (allowedRepos) formData.append("allowedRepos", allowedRepos)
+    if (allowedRecipients) formData.append("allowedRecipients", allowedRecipients)
+    if (readOnly) formData.append("readOnly", "1")
 
     startTransition(async () => {
       const res = await saveAgentConnectorGrant(null, formData)
@@ -57,6 +61,8 @@ export function AgentConnectorScopeManager({
         setAllowedFolders("")
         setAllowedChannels("")
         setAllowedRepos("")
+        setAllowedRecipients("")
+        setReadOnly(false)
         router.refresh()
       }
     })
@@ -83,7 +89,7 @@ export function AgentConnectorScopeManager({
             Workspace Knowledge Connectors
           </h3>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Tier-2 scoping: grant access to company Google Drive, Slack, or GitHub with strict boundaries.
+            Tier-2 scoping: give this agent Drive, Slack, GitHub, Discord, Telegram or WhatsApp, limited to what it needs.
           </p>
         </div>
         <Link
@@ -97,7 +103,7 @@ export function AgentConnectorScopeManager({
       {/* Current Grants */}
       {grants.length === 0 ? (
         <p className="text-xs text-muted-foreground">
-          No workspace connectors granted to this bot. Add one below to let this agent search Drive, Slack, or GitHub.
+          No workspace connectors granted to this bot. Add one below to let this agent use your Drive, chats or repos.
         </p>
       ) : (
         <div className="divide-y divide-border rounded-lg border border-border bg-panel">
@@ -126,14 +132,22 @@ export function AgentConnectorScopeManager({
                       <span>Folders: {scopes.allowedFolders.join(", ")}</span>
                     )}
                     {scopes.allowedChannels && scopes.allowedChannels.length > 0 && (
-                      <span>Channels: #{scopes.allowedChannels.join(", #")}</span>
+                      <span>
+                        {source === "telegram" ? "Chats" : "Channels"}:{" "}
+                        {source === "slack" ? `#${scopes.allowedChannels.join(", #")}` : scopes.allowedChannels.join(", ")}
+                      </span>
                     )}
+                    {Array.isArray(scopes.allowedRecipients) && scopes.allowedRecipients.length > 0 && (
+                      <span>Numbers: {(scopes.allowedRecipients as string[]).join(", ")}</span>
+                    )}
+                    {scopes.readOnly === true && <span>Read only</span>}
                     {scopes.allowedRepos && scopes.allowedRepos.length > 0 && (
                       <span>Repos: {scopes.allowedRepos.join(", ")}</span>
                     )}
                     {!scopes.allowedFolders?.length &&
                       !scopes.allowedChannels?.length &&
-                      !scopes.allowedRepos?.length && (
+                      !scopes.allowedRepos?.length &&
+                      !(Array.isArray(scopes.allowedRecipients) && scopes.allowedRecipients.length) && (
                         <span className="text-faint">Full workspace access for this connector</span>
                       )}
                   </div>
@@ -200,6 +214,37 @@ export function AgentConnectorScopeManager({
               </Field>
             )}
 
+            {(selectedConnector?.source === "discord" || selectedConnector?.source === "telegram") && (
+              <Field
+                label={selectedConnector.source === "discord" ? "Allowed channel IDs" : "Allowed chat IDs"}
+                htmlFor="grant-chats"
+              >
+                <Input
+                  id="grant-chats"
+                  placeholder={selectedConnector.source === "discord" ? "e.g. 1180123456789012345" : "e.g. 123456789, -1001234567890"}
+                  value={allowedChannels}
+                  onChange={(e) => setAllowedChannels(e.target.value)}
+                />
+                <HelpText>
+                  {selectedConnector.source === "discord"
+                    ? "Right-click a channel → Copy Channel ID (turn on Developer Mode in Discord settings). Blank = every channel the bot sees."
+                    : "Blank = any chat that messages the bot. The agent sees chat IDs in telegram_read_messages."}
+                </HelpText>
+              </Field>
+            )}
+
+            {selectedConnector?.source === "whatsapp" && (
+              <Field label="Numbers this agent may message" htmlFor="grant-recipients">
+                <Input
+                  id="grant-recipients"
+                  placeholder="e.g. +14155550123, +447700900123"
+                  value={allowedRecipients}
+                  onChange={(e) => setAllowedRecipients(e.target.value)}
+                />
+                <HelpText>Blank = any number. Every message still waits for your OK in the Inbox.</HelpText>
+              </Field>
+            )}
+
             {selectedConnector?.source === "github" && (
               <Field label="Allowed Repositories (owner/repo)" htmlFor="grant-repos">
                 <Input
@@ -212,6 +257,13 @@ export function AgentConnectorScopeManager({
               </Field>
             )}
           </div>
+
+          {selectedConnector && ["slack", "discord", "telegram", "whatsapp"].includes(selectedConnector.source) && (
+            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+              <input type="checkbox" checked={readOnly} onChange={(e) => setReadOnly(e.target.checked)} />
+              Read only: this agent can look, but never send messages
+            </label>
+          )}
 
           {error && <p className="text-xs text-danger">{error}</p>}
 

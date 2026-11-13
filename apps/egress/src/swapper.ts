@@ -22,6 +22,48 @@ const identityCache = new Map<string, { identity: { agentId: string; orgId: stri
 export function flushGrantCache() {
   grantCache.clear()
   identityCache.clear()
+  secretIdentityCache.clear()
+}
+
+const secretIdentityCache = new Map<string, { identity: { agentId: string; orgId: string }; expiresAt: number }>()
+
+/** Parses `Proxy-Authorization: Basic base64(user:secret)` and returns the secret. */
+export function proxySecretFrom(header: string | string[] | undefined): string | null {
+  const value = Array.isArray(header) ? header[0] : header
+  const m = value?.match(/^Basic\s+([A-Za-z0-9+/=]+)$/i)
+  if (!m?.[1]) return null
+  const decoded = Buffer.from(m[1], "base64").toString("utf8")
+  const i = decoded.indexOf(":")
+  return i >= 0 && decoded.length > i + 1 ? decoded.slice(i + 1) : null
+}
+
+/**
+ * Identity from a per-agent proxy credential. computerd adds it on the host side of a
+ * microVM's egress socket, so it never enters the computer and cannot be forged by it.
+ */
+export async function resolveAgentIdentityBySecret(secret: string): Promise<{ agentId: string; orgId: string } | null> {
+  const cached = secretIdentityCache.get(secret)
+  if (cached && cached.expiresAt > Date.now()) return cached.identity
+  try {
+    const res = await fetch(`${ORCHESTRATOR_URL}/internal/egress/identity`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-internal-secret": INTERNAL_SECRET },
+      body: JSON.stringify({ proxySecret: secret }),
+    })
+    if (res.ok) {
+      const data = (await res.json()) as { agentId: string; orgId: string }
+      secretIdentityCache.set(secret, { identity: data, expiresAt: Date.now() + 60_000 })
+      return data
+    }
+  } catch (e) {
+    console.warn("[egress] failed to resolve agent identity from proxy credential", e)
+  }
+  return null
+}
+
+/** Drops the cached owner of a container IP; computerd calls this whenever a computer starts or stops. */
+export function forgetIdentity(containerIp: string): boolean {
+  return identityCache.delete(containerIp)
 }
 
 export async function resolveAgentIdentity(containerIp: string): Promise<{ agentId: string; orgId: string } | null> {

@@ -17,12 +17,7 @@ import {
   scanAntigravityDatabase,
   scanAntigravityUsage,
 } from "./antigravity"
-import {
-  CLAUDE_SYNTHETIC_MODEL,
-  parseClaudeLine,
-  scanClaudeFile,
-  scanClaudeUsage,
-} from "./claude"
+import { CLAUDE_SYNTHETIC_MODEL, parseClaudeLine, scanClaudeFile, scanClaudeUsage } from "./claude"
 import { scanCodexFile, scanCodexUsage } from "./codex"
 import { scanLocalUsage } from "./index"
 
@@ -130,15 +125,10 @@ describe("Local Usage Scanner - Antigravity Protobuf & SQLite", () => {
       ])
 
       // data contains field 3 (modelId 1318 = tag 24: 0xa6, 0x0a) and field 4 (usage = tag 34, len usageBuf.length)
-      const dataBuf = new Uint8Array([
-        24, 0xa6, 0x0a,
-        34, usageBuf.length, ...usageBuf,
-      ])
+      const dataBuf = new Uint8Array([24, 0xa6, 0x0a, 34, usageBuf.length, ...usageBuf])
 
       // root contains field 1 (tag 10, len dataBuf.length)
-      const rootBuf = new Uint8Array([
-        10, dataBuf.length, ...dataBuf,
-      ])
+      const rootBuf = new Uint8Array([10, dataBuf.length, ...dataBuf])
 
       db.prepare("INSERT INTO gen_metadata (idx, data) VALUES (?, ?)").run(0, rootBuf)
 
@@ -159,23 +149,29 @@ describe("Local Usage Scanner - Antigravity Protobuf & SQLite", () => {
     }
   })
 
-  it("scans real Antigravity DBs if present on machine without errors", () => {
-    const home = os.homedir()
-    const antigravityDir = path.join(home, ".gemini", "antigravity", "conversations")
-    if (fs.existsSync(antigravityDir)) {
-      const records = scanAntigravityUsage({
-        directories: [antigravityDir],
-        sinceMs: Date.now() - 30 * 86_400_000,
-      })
-      expect(Array.isArray(records)).toBe(true)
-      if (records.length > 0) {
-        const first = records[0]!
-        expect(first.provider).toBe("antigravity")
-        expect(typeof first.model).toBe("string")
-        expect(first.totals.uncachedInputTokens).toBeGreaterThanOrEqual(0)
+  // Reads the developer's real ~/.gemini data, so it is opt-in: its runtime depends on how
+  // much local history exists (it exceeded the 5s default on a machine with a large history).
+  it.runIf(process.env.SAYABOT_SCAN_REAL_DATA === "1")(
+    "scans real Antigravity DBs if present on machine without errors",
+    { timeout: 120_000 },
+    () => {
+      const home = os.homedir()
+      const antigravityDir = path.join(home, ".gemini", "antigravity", "conversations")
+      if (fs.existsSync(antigravityDir)) {
+        const records = scanAntigravityUsage({
+          directories: [antigravityDir],
+          sinceMs: Date.now() - 30 * 86_400_000,
+        })
+        expect(Array.isArray(records)).toBe(true)
+        if (records.length > 0) {
+          const first = records[0]!
+          expect(first.provider).toBe("antigravity")
+          expect(typeof first.model).toBe("string")
+          expect(first.totals.uncachedInputTokens).toBeGreaterThanOrEqual(0)
+        }
       }
-    }
-  })
+    },
+  )
 })
 
 describe("Local Usage Scanner - Claude Code Parser", () => {
@@ -379,8 +375,16 @@ describe("Local Usage Scanner - Codex Session Parser", () => {
 
 describe("Local Usage Scanner - Orchestrator & Aggregations", () => {
   it("orchestrates all local providers and produces unified summary and events", async () => {
-    // Run scanLocalUsage with options
-    const result = await scanLocalUsage({ days: 30 })
+    // Hermetic: point every provider at an empty directory instead of the developer's real
+    // history, whose size made this test exceed the 5s timeout on a busy machine.
+    const empty = fs.mkdtempSync(path.join(os.tmpdir(), "scan-empty-"))
+    const result = await scanLocalUsage({
+      days: 30,
+      antigravityDirs: [empty],
+      claudeDirs: [empty],
+      codexDirs: [empty],
+    })
+    fs.rmSync(empty, { recursive: true, force: true })
     expect(result).toBeDefined()
     expect(result.summary).toBeDefined()
     expect(Array.isArray(result.records)).toBe(true)

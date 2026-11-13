@@ -1,9 +1,8 @@
 import React from "react"
-import { Linking, ScrollView, View } from "react-native"
+import { ScrollView, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import * as LocalAuthentication from "expo-local-authentication"
-import { BarChart3, Bot, Fingerprint, Laptop, LogOut, Moon, Settings2, Smartphone, Store, Vibrate } from "lucide-react-native"
-import { currentWebApiUrl } from "../core/settings"
+import { BarChart3, Bot, CalendarClock, Fingerprint, Laptop, LogOut, Moon, Settings2, Smartphone, Store, Vibrate } from "lucide-react-native"
 import { useAuth } from "../hooks/useAuth"
 import { compactNumber, useHome } from "../hooks/useHome"
 import { useSettings } from "../hooks/useSettings"
@@ -22,7 +21,7 @@ export function MoreScreen({ navigation }: any) {
   const { data } = useHome()
   const { settings, updateSettings } = useSettings()
   const { signOut } = useAuth()
-  const web = (path: string) => void Linking.openURL(`${currentWebApiUrl()}/${data?.org.slug ?? settings.orgSlug}${path}`)
+  const page = (path: string, title: string) => navigation.navigate("WebPage", { path: `/${data?.org.slug ?? settings.orgSlug}${path}`, title })
   const totals = (data?.agents ?? []).reduce(
     (acc, a) => ({ tokens: acc.tokens + (a.usage?.tokens ?? 0), cost: acc.cost + (a.usage?.costUsd ?? 0) }),
     { tokens: 0, cost: 0 },
@@ -56,9 +55,10 @@ export function MoreScreen({ navigation }: any) {
 
       <Group title={data?.org.name ?? "Workspace"}>
         <Row icon={<Laptop {...ICON} />} iconBg="#5b9df5" title="Computers" subtitle="Remote desktop and agents on your Mac" onPress={() => navigation.navigate("Computers")} />
-        <Row icon={<BarChart3 {...ICON} />} iconBg="#4fcdb0" title="Usage" value={`${compactNumber(totals.tokens)} · $${totals.cost.toFixed(2)}`} onPress={() => web("/analytics")} />
-        <Row icon={<Bot {...ICON} />} iconBg="#b79cf0" title="Agents" subtitle="Models, create or invite" onPress={() => web("/agents")} />
-        <Row icon={<Store {...ICON} />} iconBg="#f2c14e" title="Marketplace" subtitle="Apps and ready-made agents" onPress={() => web("/marketplace")} />
+        <Row icon={<BarChart3 {...ICON} />} iconBg="#4fcdb0" title="Usage" value={`${compactNumber(totals.tokens)} · $${totals.cost.toFixed(2)}`} onPress={() => navigation.navigate("Usage")} />
+        <Row icon={<Bot {...ICON} />} iconBg="#b79cf0" title="Agents" subtitle="Models, create or invite" onPress={() => page("/agents", "Agents")} />
+        <Row icon={<Store {...ICON} />} iconBg="#f2c14e" title="Marketplace" subtitle="Apps and ready-made agents" onPress={() => page("/marketplace", "Marketplace")} />
+        <Row icon={<CalendarClock {...ICON} />} iconBg="#ff7a70" title="Routines" subtitle="Things agents do on a schedule" onPress={() => page("/cron", "Routines")} />
       </Group>
 
       <Group title="This phone">
@@ -91,7 +91,7 @@ export function MoreScreen({ navigation }: any) {
           }}
         />
         <ToggleRow icon={<Fingerprint {...ICON} />} iconBg="#7fce95" title="App lock" subtitle="Face ID or fingerprint to open Sayabot" value={settings.appLock} onChange={(v) => void toggleLock(v)} />
-        <Row icon={<Smartphone {...ICON} />} iconBg="#ee5fb8" title="Phones signed in" onPress={() => web("/settings/phones")} />
+        <Row icon={<Smartphone {...ICON} />} iconBg="#ee5fb8" title="Phones signed in" onPress={() => page("/settings/phones", "Phones")} />
         <Row icon={<Settings2 {...ICON} />} iconBg="#85858d" title="Advanced" subtitle="Server address, notifications, diagnostics" onPress={() => navigation.navigate("AdvancedSettings")} />
       </Group>
 

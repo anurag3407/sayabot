@@ -348,6 +348,8 @@ const computerStateSchema = z.object({
   containerId: z.string().nullable().optional(),
   containerIp: z.string().nullable().optional(),
   error: z.string().nullable().optional(),
+  // SHA-256 of the per-agent egress proxy credential computerd adds for microVM computers.
+  proxySecretHash: z.string().regex(/^[0-9a-f]{64}$/).optional(),
 })
 
 internalRoutes.post("/internal/computer/state", async (c) => {
@@ -365,6 +367,7 @@ internalRoutes.post("/internal/computer/state", async (c) => {
       containerId: parsed.data.containerId !== undefined ? parsed.data.containerId : undefined,
       containerIp: parsed.data.containerIp !== undefined ? parsed.data.containerIp : undefined,
       error: parsed.data.error !== undefined ? parsed.data.error : undefined,
+      proxySecretHash: parsed.data.proxySecretHash,
       lastActiveAt: now,
     })
     .where(eq(agentComputers.agentId, parsed.data.agentId))

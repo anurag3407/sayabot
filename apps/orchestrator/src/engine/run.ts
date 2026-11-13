@@ -17,6 +17,9 @@ import { consumeRunInterrupts, registerRun, unregisterRun } from "../active-runs
 import { ComputerClient } from "../computer/client"
 import { getDb } from "../db"
 import { recordUsageEvent } from "../usage"
+import { syncMemoryMirror } from "../memory/mirror"
+import { runInBackground } from "../memory/modules/background"
+import { citedMemoryIds } from "../memory/modules/retrieval"
 import { getMemoryService } from "../memory/service"
 import { broadcast } from "../realtime"
 import {
@@ -151,6 +154,9 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
 
   const scrubPlaintexts = [resolved.apiKey].filter(Boolean) as string[]
   const runScrubber = createRunScrubber(scrubPlaintexts)
+  const agentCaps = parseCapabilities(agent.capabilities)
+  // Ids of memories injected this turn; citations of them in the reply reinforce them.
+  let recalledMemoryIds: string[] = []
 
   let tools: ToolSet = {}
   let toolSpecs: ToolSpec[] = []
@@ -269,17 +275,30 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
     send({ type: "message.done", messageId: message.id, status })
     await chain
 
-    // WS2 M5: Post-run automatic memory extraction pass
-    if (fullRaw && !aborted && !error) {
+    // Post-run memory pass. Runs in the background so the room lock is released and the
+    // turn returns without waiting on another model call. Only redacted text leaves here.
+    if (agentCaps.memory && redacted && !aborted && !error) {
       try {
         const memoryService = getMemoryService()
-        await memoryService.extractMemoriesFromTranscript({
-          orgId: room.orgId,
-          roomId: room.id,
-          agentId: agent.id,
-          transcriptText: fullRaw,
-          agent,
+        const transcriptText = buildExtractionTranscript({
+          triggerSender: args.trigger.senderType,
+          triggerText: redactSecrets(runScrubber(args.trigger.content ?? "")).text,
+          agentName: agent.displayName,
+          reply: redacted,
         })
+        runInBackground("memory.extract", () =>
+          memoryService.extractMemoriesFromTranscript({
+            orgId: room.orgId,
+            roomId: room.id,
+            agentId: agent.id,
+            transcriptText,
+            agent,
+          }),
+        )
+        const cited = citedMemoryIds(redacted, recalledMemoryIds)
+        if (cited.length > 0) {
+          runInBackground("memory.reinforce", () => memoryService.reinforce(room.orgId, cited))
+        }
       } catch {}
     }
 
@@ -315,80 +334,85 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
       )
     }
 
-    // Pre-turn memory recall & pinned digest (WS2 M4)
+    // Pre-turn memory: pinned digest (cached prefix), relevant recall and owner facts
+    // (volatile tail), active commitments. Skipped entirely when memory is disabled, and
+    // best-effort otherwise: a memory failure never fails the turn.
     let pinnedMemories: Array<{ id: string; title: string; body: string }> = []
     let recalledMemories: Array<{ id: string; title: string; body: string; scope?: string }> = []
     let activeOpenLoopsSummary = ""
-    try {
-      const memoryService = getMemoryService()
-      pinnedMemories = await memoryService.getPinnedDigest({
-        orgId: room.orgId,
-        agentId: agent.id,
-        roomId: room.id,
-      })
-
-      const recallQuery = [args.trigger.content, taskBrief].filter(Boolean).join(" ").slice(0, 500)
-      const recalled = await memoryService.recall({
-        orgId: room.orgId,
-        query: recallQuery,
-        agentId: agent.id,
-        roomId: room.id,
-        limit: 8,
-      })
-      recalledMemories = recalled.map((m) => ({
-        id: m.id,
-        title: m.title,
-        body: m.body,
-        scope: m.scope,
-      }))
-
+    let ownerFactsSummary = ""
+    if (agentCaps.memory) {
       try {
-        const activeLoops = await memoryService.getActiveLoops({
-          orgId: room.orgId,
-          agentId: agent.id,
-          roomId: room.id,
-          limit: 5,
-        })
-        if (activeLoops.length > 0) {
+        const memoryService = getMemoryService()
+        const recallQuery = [args.trigger.content, taskBrief].filter(Boolean).join(" ").slice(0, 1000)
+        // Each source fails on its own (sync throws included) without dropping the others.
+        const settle = <T,>(load: () => Promise<T>, fallback: T): Promise<T> =>
+          Promise.resolve().then(load).catch(() => fallback)
+        const [pinned, recalled, loops, facts] = await Promise.all([
+          settle(() => memoryService.getPinnedDigest({ orgId: room.orgId, agentId: agent.id, roomId: room.id }), []),
+          settle(
+            () =>
+              memoryService.recall({
+                orgId: room.orgId,
+                query: recallQuery,
+                agentId: agent.id,
+                roomId: room.id,
+                limit: 8,
+                excludePinned: true,
+                minRelevance: 0.2,
+                reinforce: false,
+              }),
+            [],
+          ),
+          settle(
+            () => memoryService.getActiveLoops({ orgId: room.orgId, agentId: agent.id, roomId: room.id, limit: 5 }),
+            [],
+          ),
+          // A small fact set is shown whole so the agent never re-asks; a large one by relevance.
+          settle(
+            () =>
+              memoryService.relevantOwnerFacts({
+                orgId: room.orgId,
+                roomId: room.id,
+                query: recallQuery,
+                limit: 8,
+                showAllUpTo: 12,
+              }),
+            { facts: [], total: 0 },
+          ),
+        ])
+        pinnedMemories = pinned
+        recalledMemories = recalled.map((m) => ({
+          id: m.id,
+          title: m.title,
+          body: m.body,
+          scope: m.scope === "agent" ? "private" : m.scope,
+        }))
+        recalledMemoryIds = recalled.map((m) => m.id)
+        if (loops.length > 0) {
           activeOpenLoopsSummary =
             "Active Commitments & Open Loops:\n" +
-            activeLoops.map((l) => `- [${l.status.toUpperCase()}] ${l.description}`).join("\n")
+            loops.map((l) => `- [${l.status.toUpperCase()}] (id=${l.id}) ${l.description}`).join("\n")
         }
-      } catch {}
+        if (facts.facts.length > 0) {
+          ownerFactsSummary =
+            "Known owner facts (already answered; do not ask again):\n" +
+            facts.facts.map((f) => `- ${f.label}: ${f.value}`).join("\n") +
+            (facts.total > facts.facts.length
+              ? `\n(${facts.total - facts.facts.length} more; use recall to search them.)`
+              : "")
+        }
 
-      // WS2 M8: Mirror durable memory into /home/bot/.saaya/memory/ for bots with computers
-      const agentCaps = parseCapabilities(agent.capabilities)
-      if (agentCaps.computer) {
-        try {
-          const { memoryMd, openLoopsMd, topics } = await memoryService.generateMemoryMirror({
-            orgId: room.orgId,
-            agentId: agent.id,
-            roomId: room.id,
-          })
-          const compClient = new ComputerClient()
-          await compClient.writeFile(agent.id, {
-            path: "/home/bot/.saaya/memory/MEMORY.md",
-            content: memoryMd,
-            allowOverwriteLarge: true,
-          })
-          if (openLoopsMd) {
-            await compClient.writeFile(agent.id, {
-              path: "/home/bot/.saaya/memory/OPEN_LOOPS.md",
-              content: openLoopsMd,
-              allowOverwriteLarge: true,
-            })
-          }
-          for (const [tag, topicContent] of Object.entries(topics)) {
-            const safeTag = tag.replace(/[^a-zA-Z0-9_-]/g, "_")
-            await compClient.writeFile(agent.id, {
-              path: `/home/bot/.saaya/memory/topics/${safeTag}.md`,
-              content: topicContent,
-              allowOverwriteLarge: true,
-            })
-          }
-        } catch {}
+        // Mirror room-independent memory into the agent's computer, off the critical path.
+        if (agentCaps.computer) {
+          runInBackground("memory.mirror", () =>
+            syncMemoryMirror({ orgId: room.orgId, agentId: agent.id, client: new ComputerClient() }),
+          )
+        }
+      } catch (memoryError) {
+        console.warn("[memory] pre-turn context failed:", redactSecrets(runScrubber(String(memoryError))).text)
       }
-    } catch {}
+    }
 
     // Load available skills for the org
     let skillsIndex: Array<{ slug: string; description: string }> = []
@@ -416,6 +440,7 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
         contextBlocks: [
           canvasContext ? `Room Canvases:\n${canvasContext}` : "",
           !taskBrief && taskContext ? `Open Tasks in Room:\n${taskContext}` : "",
+          ownerFactsSummary,
           activeOpenLoopsSummary,
         ],
         currentTrigger: args.trigger.content,
@@ -859,4 +884,19 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
     error,
     aborted,
   }
+}
+
+/** One turn as the memory extractor sees it: who asked what, and what the agent replied. */
+export function buildExtractionTranscript(args: {
+  triggerSender: string
+  triggerText: string
+  agentName: string
+  reply: string
+}): string {
+  const who =
+    args.triggerSender === "human" ? "Human" : args.triggerSender === "agent" ? "Another agent" : "System"
+  const parts: string[] = []
+  if (args.triggerText.trim()) parts.push(`${who}: ${args.triggerText.trim().slice(0, 2500)}`)
+  parts.push(`${args.agentName} (you): ${args.reply.trim().slice(0, 3500)}`)
+  return parts.join("\n\n")
 }

@@ -20,6 +20,10 @@ export interface LocalAgentReport {
   inviteApp: string
   version: string | null
   status: LocalAgentStatus
+  /** The app's command-line tool is here, so Sayabot can run it directly. */
+  cli: boolean
+  /** Models the app offers this account, when it keeps a list (Codex). */
+  models?: Array<{ id: string; label: string }>
 }
 
 export const LOCAL_AGENT_APPS: readonly LocalAgentApp[] = [
@@ -27,7 +31,8 @@ export const LOCAL_AGENT_APPS: readonly LocalAgentApp[] = [
   { id: "codex", name: "Codex", icon: "openai", binaries: ["codex"], inviteApp: "codex" },
   { id: "gemini", name: "Gemini CLI", icon: "google", binaries: ["gemini"], inviteApp: "antigravity" },
   { id: "opencode", name: "OpenCode", icon: "opencode", binaries: ["opencode"], inviteApp: "generic" },
-  { id: "cursor", name: "Cursor", icon: "cursor", binaries: ["cursor-agent", "cursor"], macApp: "/Applications/Cursor.app", inviteApp: "cursor" },
+  // `cursor-agent` is Cursor's CLI; plain `cursor` only opens the editor, and `agent` can be another app.
+  { id: "cursor", name: "Cursor", icon: "cursor", binaries: ["cursor-agent"], macApp: "/Applications/Cursor.app", inviteApp: "cursor" },
   { id: "hermes", name: "Hermes", icon: "hermes", binaries: ["hermes"], inviteApp: "hermes" },
   { id: "antigravity", name: "Antigravity", icon: "antigravity", binaries: ["antigravity"], macApp: "/Applications/Antigravity.app", inviteApp: "antigravity" },
 ]

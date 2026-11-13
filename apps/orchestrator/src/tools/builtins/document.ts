@@ -1,5 +1,4 @@
 import { z } from "zod"
-import { getEnv } from "../../env"
 import { assertSafeWebhookUrl } from "../../ssrf"
 import type { ToolSpec } from "../audited"
 import { resolveToolCredential, type OrgToolConfig } from "../secrets"
@@ -334,7 +333,7 @@ async function executeMistralOcr(
 async function executeVisionLlm(
   source: string,
   _apiKey?: string,
-  options?: { signal?: AbortSignal },
+  _options?: { signal?: AbortSignal },
 ): Promise<DocumentExtractOutput> {
   const started = Date.now()
   // Simulated or direct vision prompt extraction

@@ -37,7 +37,10 @@ export function calculateRetention(params: RetentionParams): number {
 }
 
 export interface ScoreParams {
-  keywordMatchRatio: number
+  /** Query relevance in [0, 1] (full-text, vector and keyword signals blended). */
+  relevance?: number
+  /** @deprecated use `relevance`; kept for callers that only have keyword overlap. */
+  keywordMatchRatio?: number
   pinned: boolean
   confidence: number
   emotionalSalience: number
@@ -73,13 +76,15 @@ export function compositeMemoryScore(params: ScoreParams): number {
 
   const pinnedBoost = params.pinned ? 0.35 : 0.0
 
+  const relevance = params.relevance ?? params.keywordMatchRatio ?? 0
+
   // Weights:
-  // - 40% Keyword match relevance
+  // - 40% Query relevance
   // - 20% Retention (Ebbinghaus decay)
   // - 20% Emotional salience (importance/surprise)
   // - 20% Confidence
   const baseScore =
-    params.keywordMatchRatio * 0.4 +
+    relevance * 0.4 +
     params.retention * 0.2 +
     params.emotionalSalience * 0.2 +
     params.confidence * 0.2

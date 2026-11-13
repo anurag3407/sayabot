@@ -1,4 +1,21 @@
-export type ConnectorSource = "google_drive" | "slack" | "github" | "jira"
+export type ConnectorSource =
+  | "google_drive"
+  | "slack"
+  | "github"
+  | "jira"
+  | "discord"
+  | "telegram"
+  | "whatsapp"
+
+/** Sources with native tools in the orchestrator. Jira is reached through the Atlassian app. */
+export const NATIVE_CONNECTOR_SOURCES: ConnectorSource[] = [
+  "google_drive",
+  "slack",
+  "github",
+  "discord",
+  "telegram",
+  "whatsapp",
+]
 
 export interface ConnectorDoc {
   id: string
@@ -32,7 +49,11 @@ export interface ConnectorSearchOptions {
 
 export interface ConnectorScopeConfig {
   allowedFolders?: string[]
+  /** Slack/Discord channel IDs or Telegram chat IDs this agent may read and post to. */
   allowedChannels?: string[]
   allowedRepos?: string[]
+  /** WhatsApp numbers (country code first) this agent may message. */
+  allowedRecipients?: string[]
+  /** No send tools at all, even with approval. */
   readOnly?: boolean
 }

@@ -3,13 +3,13 @@ import { decryptSecret } from "@sayabot/llm"
 import {
   agentConnectorGrants,
   workspaceConnectors,
-  type AgentConnectorGrantRow,
   type WorkspaceConnectorRow,
 } from "@sayabot/db"
 import { getDb } from "../db"
 import { getEnv } from "../env"
 import { GitHubConnector } from "./github"
 import { GoogleDriveConnector } from "./google-drive"
+import { DiscordConnector, normalizePhone, TelegramConnector, WhatsAppConnector } from "./messaging"
 import { SlackConnector } from "./slack"
 import type { ConnectorDoc, ConnectorScopeConfig, ConnectorSource } from "./types"
 
@@ -248,6 +248,121 @@ export class ConnectorService {
     issueNumber: number
   }): Promise<ConnectorDoc> {
     return this.getGitHubIssueOrPr(args)
+  }
+
+  // ── Messaging (Slack send, Discord, Telegram, WhatsApp) ──────────────────
+
+  /** A send needs a grant that is not read-only; the channel must be in scope when one is set. */
+  private assertCanSend(scope: ConnectorScopeConfig, label: string) {
+    if (scope.readOnly) throw new Error(`Access Denied: this agent has read-only access to ${label}.`)
+  }
+
+  private assertChannel(scope: ConnectorScopeConfig, channel: string, label: string) {
+    const allowed = scope.allowedChannels
+    if (allowed && allowed.length > 0 && !allowed.includes(channel.replace(/^#/, ""))) {
+      throw new Error(`Access Denied: ${label} ${channel} is outside this agent's allowed list (${allowed.join(", ")}).`)
+    }
+  }
+
+  async postSlackMessage(args: {
+    agentId: string
+    orgId: string
+    channel: string
+    text: string
+    threadTs?: string
+  }): Promise<{ ts: string; channel: string }> {
+    const { connector, token } = await this.getDecryptedConnector(args.orgId, "slack")
+    const scope = await this.getAgentScope(args.agentId, connector.id)
+    this.assertCanSend(scope, "Slack")
+    this.assertChannel(scope, args.channel, "Slack channel")
+    return new SlackConnector({ botToken: token, fetchFn: this.fetchFn }).postMessage(args.channel, args.text, args.threadTs)
+  }
+
+  private async discord(orgId: string, agentId: string) {
+    const { connector, token } = await this.getDecryptedConnector(orgId, "discord")
+    const scope = await this.getAgentScope(agentId, connector.id)
+    const config = (connector.config ?? {}) as { guildId?: string }
+    return { scope, config, client: new DiscordConnector({ botToken: token, fetchFn: this.fetchFn }) }
+  }
+
+  async listDiscordChannels(args: { agentId: string; orgId: string; guildId?: string }) {
+    const { scope, config, client } = await this.discord(args.orgId, args.agentId)
+    const guildId = args.guildId ?? config.guildId
+    if (!guildId) {
+      const guilds = await client.listGuilds()
+      return { guilds, channels: [] as { id: string; name: string }[] }
+    }
+    const channels = await client.listChannels(guildId)
+    const allowed = scope.allowedChannels
+    return {
+      guilds: [] as { id: string; name: string }[],
+      channels: allowed?.length ? channels.filter((c) => allowed.includes(c.id)) : channels,
+    }
+  }
+
+  async readDiscordMessages(args: { agentId: string; orgId: string; channelId: string; limit?: number }) {
+    const { scope, client } = await this.discord(args.orgId, args.agentId)
+    this.assertChannel(scope, args.channelId, "Discord channel")
+    return client.readMessages(args.channelId, args.limit)
+  }
+
+  async sendDiscordMessage(args: { agentId: string; orgId: string; channelId: string; content: string }) {
+    const { scope, client } = await this.discord(args.orgId, args.agentId)
+    this.assertCanSend(scope, "Discord")
+    this.assertChannel(scope, args.channelId, "Discord channel")
+    return client.sendMessage(args.channelId, args.content)
+  }
+
+  private async telegram(orgId: string, agentId: string) {
+    const { connector, token } = await this.getDecryptedConnector(orgId, "telegram")
+    const scope = await this.getAgentScope(agentId, connector.id)
+    return { scope, client: new TelegramConnector({ botToken: token, fetchFn: this.fetchFn }) }
+  }
+
+  async readTelegramMessages(args: { agentId: string; orgId: string; limit?: number }) {
+    const { scope, client } = await this.telegram(args.orgId, args.agentId)
+    const messages = await client.recentMessages(args.limit)
+    const allowed = scope.allowedChannels
+    return allowed?.length ? messages.filter((m) => allowed.includes(m.chatId)) : messages
+  }
+
+  async sendTelegramMessage(args: { agentId: string; orgId: string; chatId: string; text: string }) {
+    const { scope, client } = await this.telegram(args.orgId, args.agentId)
+    this.assertCanSend(scope, "Telegram")
+    this.assertChannel(scope, args.chatId, "Telegram chat")
+    return client.sendMessage(args.chatId, args.text)
+  }
+
+  private async whatsapp(orgId: string, agentId: string, to: string) {
+    const { connector, token } = await this.getDecryptedConnector(orgId, "whatsapp")
+    const scope = await this.getAgentScope(agentId, connector.id)
+    this.assertCanSend(scope, "WhatsApp")
+    const number = normalizePhone(to)
+    const allowed = (scope.allowedRecipients ?? []).map((n) => {
+      try {
+        return normalizePhone(n)
+      } catch {
+        return n
+      }
+    })
+    if (allowed.length > 0 && !allowed.includes(number)) {
+      throw new Error(`Access Denied: +${number} is not one of the numbers this agent may message.`)
+    }
+    const config = (connector.config ?? {}) as { phoneNumberId?: string }
+    return {
+      number,
+      client: new WhatsAppConnector({ accessToken: token, phoneNumberId: config.phoneNumberId ?? "", fetchFn: this.fetchFn }),
+    }
+  }
+
+  async sendWhatsAppText(args: { agentId: string; orgId: string; to: string; text: string }) {
+    const { number, client } = await this.whatsapp(args.orgId, args.agentId, args.to)
+    return client.sendText(number, args.text)
+  }
+
+  async sendWhatsAppTemplate(args: { agentId: string; orgId: string; to: string; template: string; language: string }) {
+    const { number, client } = await this.whatsapp(args.orgId, args.agentId, args.to)
+    return client.sendTemplate(number, args.template, args.language)
   }
 }
 

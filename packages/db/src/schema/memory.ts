@@ -5,6 +5,7 @@ import {
   jsonb,
   numeric,
   pgTable,
+  real,
   text,
   timestamp,
   uuid,
@@ -66,6 +67,12 @@ export const memories = pgTable(
     decayHalfLifeDays: integer("decay_half_life_days").notNull().default(30),
     withdrawalReason: text("withdrawal_reason"),
 
+    // Semantic recall (0027): embedding from the org's active embedding provider. Stored as
+    // real[] so the column exists without pgvector; recall casts to vector when it is installed.
+    embedding: real("embedding").array(),
+    embeddingModel: text("embedding_model"),
+    embeddedAt: timestamp("embedded_at", { withTimezone: true }),
+
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -76,6 +83,7 @@ export const memories = pgTable(
     index("memories_epistemic_idx").on(t.orgId, t.epistemicStatus),
     index("memories_salience_idx").on(t.orgId, t.emotionalSalience),
     index("memories_target_agent_idx").on(t.orgId, t.targetAgentId),
+    index("memories_agent_room_idx").on(t.orgId, t.agentId, t.roomId),
   ],
 )
 
@@ -93,9 +101,7 @@ export const memorySources = pgTable(
     config: jsonb("config").notNull().default({}),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [
-    index("memory_sources_org_idx").on(t.orgId, t.federated),
-  ],
+  (t) => [index("memory_sources_org_idx").on(t.orgId, t.federated)],
 )
 
 // ── 3. Open Loops Table (Commitments, promises & follow-ups across turns) ────
@@ -141,9 +147,7 @@ export const memoryLinks = pgTable(
     targetMemoryId: uuid("target_memory_id").references(() => memories.id, { onDelete: "cascade" }),
     targetSlug: text("target_slug"),
     relationship: memoryLinkTypeEnum("relationship").notNull().default("relates_to"),
-    weight: numeric("weight", { precision: 3, scale: 2, mode: "number" })
-      .notNull()
-      .default(1.0),
+    weight: numeric("weight", { precision: 3, scale: 2, mode: "number" }).notNull().default(1.0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

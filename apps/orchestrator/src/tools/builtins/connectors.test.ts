@@ -10,6 +10,14 @@ const mockConnectorService = vi.hoisted(() => ({
   searchGitHubCode: vi.fn(),
   getGitHubFile: vi.fn(),
   getGitHubIssueOrPr: vi.fn(),
+  postSlackMessage: vi.fn(),
+  listDiscordChannels: vi.fn(),
+  readDiscordMessages: vi.fn(),
+  sendDiscordMessage: vi.fn(),
+  readTelegramMessages: vi.fn(),
+  sendTelegramMessage: vi.fn(),
+  sendWhatsAppText: vi.fn(),
+  sendWhatsAppTemplate: vi.fn(),
 }))
 
 vi.mock("../../connectors/service", () => ({
@@ -28,21 +36,22 @@ describe("connectorTools", () => {
   })
 
   describe("registration and source filtering", () => {
-    it("registers all 7 tools by default when sources option is omitted", () => {
+    it("registers the 8 Drive, Slack and GitHub tools by default when sources option is omitted", () => {
       const tools = connectorTools(defaultOpts)
-      expect(tools).toHaveLength(7)
+      expect(tools).toHaveLength(8)
       const names = tools.map((t) => t.name)
       expect(names).toEqual([
         "gdrive_search",
         "gdrive_read_file",
         "slack_search",
         "slack_read_thread",
+        "slack_send_message",
         "github_search_code",
         "github_get_file",
         "github_get_issue_or_pr",
       ])
       for (const tool of tools) {
-        expect(tool.dangerous).toBe(false)
+        expect(tool.dangerous).toBe(tool.name === "slack_send_message")
         expect(tool.description).toBeTruthy()
         expect(tool.schema).toBeDefined()
         expect(typeof tool.execute).toBe("function")
@@ -54,7 +63,7 @@ describe("connectorTools", () => {
       expect(gdriveOnly.map((t) => t.name)).toEqual(["gdrive_search", "gdrive_read_file"])
 
       const slackOnly = connectorTools({ ...defaultOpts, sources: ["slack"] })
-      expect(slackOnly.map((t) => t.name)).toEqual(["slack_search", "slack_read_thread"])
+      expect(slackOnly.map((t) => t.name)).toEqual(["slack_search", "slack_read_thread", "slack_send_message"])
 
       const githubOnly = connectorTools({ ...defaultOpts, sources: ["github"] })
       expect(githubOnly.map((t) => t.name)).toEqual([
@@ -757,6 +766,47 @@ describe("connectorTools", () => {
           tool.execute({ repo: "sayalabs/core", issue_number: 9999 }),
         ).rejects.toThrow("Not Found: GitHub issue #9999 does not exist")
       })
+    })
+  })
+
+  describe("messaging connectors", () => {
+    it("registers Discord, Telegram and WhatsApp tools and gates every send", () => {
+      const tools = connectorTools({ ...defaultOpts, sources: ["discord", "telegram", "whatsapp"] })
+      const byName = Object.fromEntries(tools.map((t) => [t.name, t]))
+      expect(Object.keys(byName)).toEqual([
+        "discord_list_channels",
+        "discord_read_messages",
+        "discord_send_message",
+        "telegram_read_messages",
+        "telegram_send_message",
+        "whatsapp_send_message",
+        "whatsapp_send_template",
+      ])
+      for (const tool of tools) {
+        expect(tool.dangerous).toBe(/_send_/.test(tool.name))
+      }
+    })
+
+    it("passes the agent and org through to the service on send", async () => {
+      mockConnectorService.sendDiscordMessage.mockResolvedValue({ id: "m1", url: "https://discord.com/channels/1/2/m1" })
+      const tool = connectorTools({ ...defaultOpts, sources: ["discord"] }).find((t) => t.name === "discord_send_message")!
+      const result = (await tool.execute({ channel_id: "123456", content: "hi" })) as { ok: boolean; id: string }
+      expect(result).toMatchObject({ ok: true, id: "m1" })
+      expect(mockConnectorService.sendDiscordMessage).toHaveBeenCalledWith({
+        agentId: "agent-test-456",
+        orgId: "org-test-123",
+        channelId: "123456",
+        content: "hi",
+      })
+    })
+
+    it("defaults the WhatsApp template language", async () => {
+      mockConnectorService.sendWhatsAppTemplate.mockResolvedValue({ id: "wamid.1" })
+      const tool = connectorTools({ ...defaultOpts, sources: ["whatsapp"] }).find((t) => t.name === "whatsapp_send_template")!
+      await tool.execute({ to: "+14155550123", template: "hello_world" })
+      expect(mockConnectorService.sendWhatsAppTemplate).toHaveBeenCalledWith(
+        expect.objectContaining({ template: "hello_world", language: "en_US" }),
+      )
     })
   })
 })

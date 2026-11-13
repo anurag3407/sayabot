@@ -24,6 +24,14 @@ export const mcpServers = pgTable(
     transport: mcpTransportEnum("transport").notNull().default("http"),
     url: text("url").notNull(),
     headersEnc: text("headers_enc"),
+    /** "static" (headers or nothing) or "oauth" (browser sign-in, see oauthEnc). */
+    authKind: text("auth_kind").notNull().default("static"),
+    /** Sealed McpOAuthState: client registration, PKCE verifier, state, tokens. */
+    oauthEnc: text("oauth_enc"),
+    /** "ok", "pending" (sign-in started) or "signed_out" (tokens gone or refused). */
+    authStatus: text("auth_status").notNull().default("ok"),
+    /** Marketplace app id this row was made from, when it came from the catalog. */
+    catalogApp: text("catalog_app"),
     dangerousTools: text("dangerous_tools").array().notNull().default([]),
     enabled: boolean("enabled").notNull().default(true),
     createdBy: uuid("created_by").references(() => profiles.id, { onDelete: "set null" }),

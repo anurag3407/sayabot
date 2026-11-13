@@ -13,7 +13,7 @@
     "build:apk": "eas build -p android --profile preview",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
-    "test": "tsc --noEmit -p tests/unit/tsconfig.json && node --no-warnings --experimental-strip-types tests/unit/env.test.ts && node --no-warnings --experimental-strip-types tests/unit/workspace-draft.test.ts"
+    "test": "tsc --noEmit -p tests/unit/tsconfig.json && node --no-warnings --experimental-strip-types tests/unit/env.test.ts && node --no-warnings --experimental-strip-types tests/unit/workspace-draft.test.ts && node --no-warnings --experimental-strip-types tests/unit/markdown.test.ts"
   },
   "dependencies": {
     "@babel/runtime": "^8.1.0",
@@ -27,8 +27,17 @@
     "expo-asset": "^11.0.5",
     "expo-blur": "~14.0.3",
     "expo-clipboard": "~7.0.1",
+    "expo-constants": "~17.0.8",
+    "expo-device": "~7.0.3",
+    "expo-document-picker": "~13.0.3",
     "expo-haptics": "~14.0.1",
+    "expo-image-manipulator": "~13.0.6",
+    "expo-image-picker": "~16.0.6",
+    "expo-linking": "~7.0.5",
     "expo-local-authentication": "~15.0.2",
+    "expo-notifications": "~0.29.14",
+    "expo-quick-actions": "3.0.1",
+    "expo-share-intent": "3.2.3",
     "expo-status-bar": "~2.0.0",
     "expo-system-ui": "^4.0.9",
     "expo-updates": "^0.27.5",
@@ -38,7 +47,8 @@
     "react-native": "0.76.9",
     "react-native-safe-area-context": "4.12.0",
     "react-native-screens": "~4.4.0",
-    "react-native-svg": "15.8.0"
+    "react-native-svg": "15.8.0",
+    "react-native-webview": "13.12.5"
   },
   "devDependencies": {
     "@types/react": "^18.3.31",

@@ -19,7 +19,7 @@ export const workspaceConnectors = pgTable(
       .notNull()
       .references(() => orgs.id, { onDelete: "cascade" }),
     ownerUserId: uuid("owner_user_id").references(() => profiles.id, { onDelete: "set null" }),
-    source: text("source").notNull(), // 'google_drive', 'slack', 'github', 'jira'
+    source: text("source").notNull(), // google_drive, slack, github, jira, discord, telegram, whatsapp
     name: text("name").notNull(),
     status: text("status").notNull().default("active"),
     authType: text("auth_type").notNull().default("token"),

@@ -1,4 +1,4 @@
-import { agents, orgMembers, orgs, pushSubscriptions, roomMembers, rooms } from "@sayabot/db"
+import { agents, mobilePushTokens, orgMembers, orgs, pushSubscriptions, roomMembers, rooms } from "@sayabot/db"
 import { and, eq, inArray } from "drizzle-orm"
 import webpush from "web-push"
 import { getDb } from "./db"
@@ -77,6 +77,52 @@ async function sendToUsers(
   )
 }
 
+const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send"
+
+/**
+ * Phone alerts through Expo's push service. A question carries the "question" category
+ * (Answer with a text box); an approval carries "approval" (Allow / Don't allow), so people can
+ * act from the lock screen. Tokens Expo reports as gone are deleted.
+ */
+async function sendToPhones(
+  userIds: string[],
+  payload: { title: string; body: string; data: Record<string, unknown>; category: string; threadId: string },
+): Promise<void> {
+  if (!userIds.length) return
+  const db = getDb()
+  const tokens = await db
+    .select({ id: mobilePushTokens.id, token: mobilePushTokens.token })
+    .from(mobilePushTokens)
+    .where(inArray(mobilePushTokens.userId, userIds))
+  if (!tokens.length) return
+  const messages = tokens.map((t) => ({
+    to: t.token,
+    title: payload.title,
+    body: payload.body.slice(0, 180),
+    data: payload.data,
+    categoryId: payload.category,
+    sound: "default",
+    priority: "high",
+    channelId: "agents",
+    threadId: payload.threadId,
+  }))
+  try {
+    const res = await fetch(EXPO_PUSH_URL, {
+      method: "POST",
+      headers: { "content-type": "application/json", accept: "application/json" },
+      body: JSON.stringify(messages),
+      signal: AbortSignal.timeout(10_000),
+    })
+    const json = (await res.json().catch(() => null)) as { data?: Array<{ status: string; details?: { error?: string } }> } | null
+    const gone = (json?.data ?? [])
+      .map((r, i) => (r.status === "error" && r.details?.error === "DeviceNotRegistered" ? tokens[i]?.id : null))
+      .filter((id): id is string => Boolean(id))
+    if (gone.length) await db.delete(mobilePushTokens).where(inArray(mobilePushTokens.id, gone))
+  } catch (error) {
+    console.warn("[push] phone delivery failed", error)
+  }
+}
+
 async function agentName(agentId: string): Promise<string> {
   const [agent] = await getDb()
     .select({ name: agents.displayName })
@@ -95,8 +141,9 @@ export function notifyHumansNeeded(args: {
   agentId: string
   kind: "approval" | "request"
   detail: string
+  /** The question (task id) or tool call waiting, so a phone alert can act on it directly. */
+  refId?: string
 }): void {
-  if (!pushReady()) return
   void (async () => {
     const approvers = await roomApprovers(args.roomId)
     if (!approvers) return
@@ -106,6 +153,15 @@ export function notifyHumansNeeded(args: {
     ])
     const slug = org[0]?.slug
     if (!slug) return
+    const title = args.kind === "approval" ? `${who} needs your approval` : `${who} has a question`
+    await sendToPhones(approvers.userIds, {
+      title,
+      body: args.kind === "approval" ? `Wants to use ${args.detail.replace(/_/g, " ")}. It expires in 5 minutes.` : args.detail,
+      data: { kind: args.kind, refId: args.refId ?? null, roomId: args.roomId, orgSlug: slug },
+      category: args.refId ? (args.kind === "approval" ? "approval" : "question") : "info",
+      threadId: args.roomId,
+    })
+    if (!pushReady()) return
     await sendToUsers(approvers.userIds, {
       title: args.kind === "approval" ? `${who} needs your approval` : `${who} has a question`,
       body:

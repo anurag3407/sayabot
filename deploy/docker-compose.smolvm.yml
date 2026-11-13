@@ -1,0 +1,29 @@
+# microVM computers for KVM hosts. Used automatically by deploy.sh when
+# COMPUTER_BACKEND=smolvm is set in .env.production; run deploy/scripts/setup-computers.sh first.
+#
+# Each agent gets a smolvm microVM (own kernel, own disk) with no network. Its only
+# ways out are two sockets under SMOLVM_RUN_DIR: agentd control and egress, which
+# computerd forwards to egress:8080 with that agent's proxy credential.
+services:
+  computerd:
+    devices:
+      - /dev/kvm:/dev/kvm
+    environment:
+      COMPUTER_BACKEND: smolvm
+      SMOLVM_BIN: /opt/smolvm/smolvm
+      SMOLVM_IMAGE: /srv/computer-image.tar
+      SMOLVM_DATA_DIR: /var/lib/smolvm
+      SMOLVM_RUN_DIR: /run/saaya-vm
+      HOME: /var/lib/smolvm
+      EGRESS_PROXY_URL: http://egress:8080
+    tmpfs:
+      - /run/saaya-vm:mode=0700
+    volumes:
+      - /opt/smolvm:/opt/smolvm:ro
+      - ${SAAYA_STATE_DIR:-/var/lib/saaya}/computer-image.tar:/srv/computer-image.tar:ro
+      - saaya-smolvm:/var/lib/smolvm
+
+volumes:
+  # Every agent's VM disk lives here; back it up like a database volume.
+  saaya-smolvm:
+    name: saaya-smolvm

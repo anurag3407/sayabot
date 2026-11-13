@@ -51,7 +51,7 @@ export async function rememberAction(input: RememberInput): Promise<ActionResult
         source: "human",
         confidence: 1.0,
         pinned: false,
-        created_by_user: access.user.id,
+        created_by_user_id: access.user.id,
       })
       .select("id")
       .single()

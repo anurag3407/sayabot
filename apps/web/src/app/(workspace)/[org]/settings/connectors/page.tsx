@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import Link from "next/link"
 import { notFound } from "next/navigation"
 import { requireOrgAdmin } from "@/lib/auth"
 import { listWorkspaceConnectors } from "@/lib/queries"
@@ -38,6 +39,24 @@ const SOURCE_INFO: Record<
     description: "Search repo source code, retrieve files, and inspect issues, PR discussions, and code reviews.",
     color: "border-purple-500/20 bg-purple-500/5 text-purple-400",
   },
+  discord: {
+    label: "Discord",
+    icon: "🎮",
+    description: "Read server channels and post messages as your bot. Every post waits for approval.",
+    color: "border-indigo-500/20 bg-indigo-500/5 text-indigo-400",
+  },
+  telegram: {
+    label: "Telegram",
+    icon: "✈️",
+    description: "Read what people send your bot and reply to them. Every reply waits for approval.",
+    color: "border-sky-500/20 bg-sky-500/5 text-sky-400",
+  },
+  whatsapp: {
+    label: "WhatsApp",
+    icon: "📱",
+    description: "Send WhatsApp messages and templates from your business number. Every message waits for approval.",
+    color: "border-green-500/20 bg-green-500/5 text-green-400",
+  },
 }
 
 export default async function ConnectorsSettingsPage({
@@ -67,6 +86,19 @@ export default async function ConnectorsSettingsPage({
         </div>
       </div>
 
+      <div className="flex flex-col gap-2 rounded-lg border border-border bg-panel p-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-[12px] text-muted">
+          Looking for Notion, Jira, Linear, Canva, CRMs or finance apps? Over 200 more apps connect
+          with a single sign-in from the Marketplace.
+        </p>
+        <Link
+          href={`/${orgSlug}/marketplace`}
+          className="shrink-0 text-[12px] font-medium text-accent hover:underline"
+        >
+          Open Marketplace →
+        </Link>
+      </div>
+
       {/* 2. Active Connectors */}
       <Section
         title="Active Workspace Connectors"
@@ -75,7 +107,7 @@ export default async function ConnectorsSettingsPage({
         {connectors.length === 0 ? (
           <EmptyState
             title="No connectors linked yet"
-            body="Add your first Google Drive, Slack, or GitHub connector below to empower your agents with real workspace knowledge."
+            body="Add Google Drive, Slack, GitHub, Discord, Telegram or WhatsApp below. For Notion, Jira, Linear, Canva and 200+ more, use the Marketplace."
           />
         ) : (
           <div className="divide-y divide-border rounded-lg border border-border bg-panel">

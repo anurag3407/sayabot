@@ -2,27 +2,37 @@
   "expo": {
     "name": "Sayabot",
     "slug": "sayabot",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "automatic",
     "scheme": "sayabot",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#070907"
+      "backgroundColor": "#0b0b0c"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "in.sayalabs.sayabot"
+      "bundleIdentifier": "in.sayalabs.sayabot",
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "Sayabot uses Face ID to keep your chats private when App lock is on.",
+        "NSPhotoLibraryUsageDescription": "Choose photos to send to your agents.",
+        "NSCameraUsageDescription": "Take photos to send to your agents."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#070907"
+        "backgroundColor": "#0b0b0c"
       },
-      "package": "in.sayalabs.sayabot"
+      "package": "in.sayalabs.sayabot",
+      "permissions": [
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT",
+        "android.permission.POST_NOTIFICATIONS"
+      ]
     },
     "updates": {
       "enabled": true,
@@ -40,6 +50,44 @@
         "projectId": "c593211b-5f01-4021-9025-aa03c0a701cc"
       }
     },
-    "owner": "anurag3407"
+    "owner": "anurag3407",
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Choose photos to send to your agents.",
+          "cameraPermission": "Take photos to send to your agents."
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Sayabot uses Face ID to keep your chats private when App lock is on."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#ff5d6c"
+        }
+      ],
+      "expo-quick-actions",
+      [
+        "expo-share-intent",
+        {
+          "iosActivationRules": {
+            "NSExtensionActivationSupportsText": true,
+            "NSExtensionActivationSupportsWebURLWithMaxCount": 1,
+            "NSExtensionActivationSupportsImageWithMaxCount": 4,
+            "NSExtensionActivationSupportsFileWithMaxCount": 4
+          },
+          "androidIntentFilters": [
+            "text/*",
+            "image/*",
+            "application/pdf"
+          ]
+        }
+      ]
+    ]
   }
 }

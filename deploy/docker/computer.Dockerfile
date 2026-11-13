@@ -2,6 +2,15 @@
 # Sayabot bot computer container image (runs inside gVisor runsc).
 # Standard profile: bash, git, python3, nodejs 24, ripgrep, jq, agentd.
 
+# agentd is pre-bundled to plain JS so neither the daemon nor the docker-exec
+# fallback CLI pays a TypeScript compile on start.
+FROM node:24-bookworm-slim AS agentd-build
+WORKDIR /build
+COPY apps/computerd/agentd/ ./agentd/
+RUN npm install --no-save --package-lock=false --no-audit --no-fund esbuild@0.28.2 \
+  && npx esbuild agentd/agentd.ts agentd/agentd-cli.ts --bundle --platform=node --target=node24 \
+     --format=esm --external:typescript --outdir=dist --out-extension:.js=.mjs
+
 FROM debian:bookworm-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -34,14 +43,14 @@ RUN mkdir -p /opt/agentd /run /home/bot/.saaya \
   && chown -R bot:bot /run \
   && chmod 1777 /run
 
-# Bundle agentd and entrypoint
-COPY apps/computerd/agentd/ /opt/agentd/
+# Bundled agentd + entrypoint. typescript stays external (code intelligence loads it).
+COPY --from=agentd-build /build/dist/ /opt/agentd/
 # Keep this compiler version aligned with apps/computerd/package.json.
 RUN npm install --prefix /opt/agentd --no-save --package-lock=false --ignore-scripts --no-audit --no-fund typescript@5.9.3
 
 COPY <<'EOF' /opt/agentd/agentd-cli
 #!/bin/bash
-exec tsx /opt/agentd/agentd-cli.ts "$@"
+exec node /opt/agentd/agentd-cli.mjs "$@"
 EOF
 
 RUN chmod +x /opt/agentd/agentd-cli && ln -sf /opt/agentd/agentd-cli /usr/local/bin/agentd-cli
@@ -60,8 +69,8 @@ if ! grep -q ".saaya/env" /home/bot/.bashrc 2>/dev/null; then
   echo '[ -f "$HOME/.saaya/env" ] && source "$HOME/.saaya/env"' >> /home/bot/.bashrc
 fi
 
-# Start agentd in background
-exec tsx /opt/agentd/agentd.ts
+# Start agentd (listens on /run/agentd.sock, plus $AGENTD_CTL_SOCK when computerd mounted one)
+exec node /opt/agentd/agentd.mjs
 EOF
 
 RUN chmod +x /opt/agentd/entrypoint.sh

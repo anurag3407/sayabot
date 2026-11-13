@@ -27,6 +27,27 @@ const CONNECTOR_SOURCES = [
     placeholder: "ghp_... or github_pat_...",
     help: "Requires 'repo' scope. Agents can search codebase symbols, read source files, and inspect issues and review comments.",
   },
+  {
+    value: "discord",
+    label: "Discord (Read and post in server channels)",
+    tokenLabel: "Discord bot token",
+    placeholder: "MTE4…",
+    help: "discord.com/developers → New Application → Bot → Reset Token. Turn on Message Content Intent, then invite the bot to your server (OAuth2 → URL Generator → bot, with Read Messages and Send Messages).",
+  },
+  {
+    value: "telegram",
+    label: "Telegram (Bot chats and channels)",
+    tokenLabel: "Telegram bot token",
+    placeholder: "123456789:ABC…",
+    help: "Message @BotFather in Telegram, send /newbot, and paste the token it gives you. People start a chat with the bot; agents can read those chats and reply.",
+  },
+  {
+    value: "whatsapp",
+    label: "WhatsApp Business (Send messages)",
+    tokenLabel: "WhatsApp Cloud API access token",
+    placeholder: "EAAG…",
+    help: "Meta for Developers → your app → WhatsApp → API setup. Use a permanent System User token for anything beyond testing.",
+  },
 ]
 
 export function ConnectorAddForm({ orgSlug }: { orgSlug: string }) {
@@ -62,7 +83,13 @@ export function ConnectorAddForm({ orgSlug }: { orgSlug: string }) {
                 ? "Company Google Drive"
                 : source === "slack"
                   ? "Engineering Slack"
-                  : "Core GitHub Org"
+                  : source === "discord"
+                    ? "Community Discord"
+                    : source === "telegram"
+                      ? "Support bot"
+                      : source === "whatsapp"
+                        ? "Business WhatsApp"
+                        : "Core GitHub Org"
             }
             required
           />
@@ -99,6 +126,20 @@ export function ConnectorAddForm({ orgSlug }: { orgSlug: string }) {
             placeholder="e.g. general or engineering"
           />
           <HelpText>Default fallback channel for message searches.</HelpText>
+        </Field>
+      )}
+
+      {source === "discord" && (
+        <Field label="Discord server ID (Optional)" htmlFor="discord-guild">
+          <Input id="discord-guild" name="guildId" inputMode="numeric" placeholder="e.g. 1180123456789012345" />
+          <HelpText>Right-click your server → Copy Server ID (needs Developer Mode). Lets agents list its channels.</HelpText>
+        </Field>
+      )}
+
+      {source === "whatsapp" && (
+        <Field label="Phone number ID" htmlFor="wa-phone-id">
+          <Input id="wa-phone-id" name="phoneNumberId" inputMode="numeric" placeholder="e.g. 106540352242922" required />
+          <HelpText>Shown under API setup next to your business number. It&apos;s an ID, not the phone number itself.</HelpText>
         </Field>
       )}
 

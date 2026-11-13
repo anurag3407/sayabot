@@ -7,3 +7,24 @@ onlyBuiltDependencies:
   - esbuild
   - sharp
   - unrs-resolver
+
+# expo-share-intent's config plugin requires @expo/plist without declaring it.
+packageExtensions:
+  expo-share-intent@3:
+    dependencies:
+      "@expo/plist": "0.2.2"
+  # next's .d.ts files import "react" without declaring @types/react, so under pnpm they
+  # resolved to the hoisted @types/react@18 (from apps/mobile) and broke web's typecheck.
+  # Declaring the optional peer makes web's next resolve web's own @types/react@19.
+  next@16:
+    peerDependencies:
+      "@types/react": "*"
+    peerDependenciesMeta:
+      "@types/react":
+        optional: true
+  streamdown@2:
+    peerDependencies:
+      "@types/react": "*"
+    peerDependenciesMeta:
+      "@types/react":
+        optional: true

@@ -44,6 +44,8 @@ export interface TaskItem {
   turnsUsed: number
   costUsd: number
   unblockNeeds?: string | null
+  roomId?: string
+  updatedAt?: string
 }
 
 export interface PendingApproval {

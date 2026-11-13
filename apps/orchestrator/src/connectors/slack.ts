@@ -209,4 +209,25 @@ export class SlackConnector {
       },
     }
   }
+
+  /**
+   * Posts a message (optionally as a thread reply). Never retried: a timeout must not post twice.
+   * Dangerous tool; it runs only after a person approves it.
+   */
+  async postMessage(channel: string, text: string, threadTs?: string): Promise<{ ts: string; channel: string }> {
+    if (!text.trim()) throw new Error("Message is empty")
+    const res = await fetchWithRetry(
+      "https://slack.com/api/chat.postMessage",
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${this.config.botToken}`, "Content-Type": "application/json; charset=utf-8" },
+        body: JSON.stringify({ channel, text: text.slice(0, 40_000), ...(threadTs ? { thread_ts: threadTs } : {}) }),
+      },
+      { fetchFn: this.config.fetchFn, maxRetries: 0 },
+    )
+    if (!res.ok) throw new Error(`Slack post failed with HTTP ${res.status}`)
+    const data = (await res.json()) as { ok?: boolean; error?: string; ts?: string; channel?: string }
+    if (!data.ok || !data.ts) throw new Error(`Slack API error: ${data.error || "unknown error"}`)
+    return { ts: data.ts, channel: data.channel ?? channel }
+  }
 }

@@ -1,15 +1,20 @@
 import { and, desc, eq, inArray } from "drizzle-orm"
-import { memories, memoryLinks, type MemoryRow } from "@sayabot/db"
-import type { EpistemicStatus, MemoryLinkType } from "../types"
+import { redactSecrets } from "@sayabot/core"
+import { memories, memoryLinks, type Db, type MemoryRow } from "@sayabot/db"
+import type { EpistemicStatus, MemoryKind, MemoryLinkType } from "../types"
+import { queryTerms } from "./retrieval"
+import { buildScopeConditions, canReadMemory, type MemoryAccessContext } from "./sources"
 
 export interface AssertBeliefInput {
   orgId: string
   scope: "agent" | "room" | "org"
   agentId?: string | null
   roomId?: string | null
+  kind?: MemoryKind
   title: string
   body: string
   tags?: string[]
+  source?: "agent" | "consolidation"
   epistemicStatus?: EpistemicStatus
   confidence?: number
   emotionalSalience?: number
@@ -44,18 +49,23 @@ export interface ContradictionCandidate {
 /**
  * Epistemic Belief Engine
  * Manages the lifecycle of beliefs: hypothesis -> belief -> verified -> superseded | withdrawn.
+ *
+ * Access control lives in MemoryService: these methods trust that the caller already
+ * checked the memory ids it passes belong to what the agent may change.
  */
 export class BeliefEngine {
-  constructor(private db: any) {}
+  constructor(private db: Db) {}
 
   /**
-   * Asserts a belief or hypothesis.
-   * If `supersedesMemoryId` is specified, it automatically archives the prior belief
-   * and creates an epistemic `supersedes` link in `memory_links`.
+   * Asserts a belief or hypothesis. Title and body are scrubbed of secrets before storage.
+   * If `supersedesMemoryId` is specified, it archives the prior belief and records a
+   * `supersedes` link in `memory_links`.
    */
   async assertBelief(input: AssertBeliefInput): Promise<MemoryRow> {
     const epistemicStatus = input.epistemicStatus ?? "belief"
-    const confidence = input.confidence ?? (epistemicStatus === "verified" ? 1.0 : epistemicStatus === "hypothesis" ? 0.6 : 0.85)
+    const confidence =
+      input.confidence ??
+      (epistemicStatus === "verified" ? 1.0 : epistemicStatus === "hypothesis" ? 0.6 : 0.85)
 
     const [inserted] = await this.db
       .insert(memories)
@@ -64,11 +74,11 @@ export class BeliefEngine {
         scope: input.scope,
         agentId: input.agentId ?? null,
         roomId: input.roomId ?? null,
-        kind: "decision", // beliefs and epistemic conclusions are stored as decisions or facts
-        title: input.title,
-        body: input.body,
+        kind: input.kind ?? "decision",
+        title: redactSecrets(input.title.slice(0, 200)).text,
+        body: redactSecrets(input.body.slice(0, 4096)).text,
         tags: input.tags ?? [],
-        source: "agent",
+        source: input.source ?? "agent",
         confidence,
         pinned: false,
         perspective: input.perspective ?? "first_person",
@@ -80,6 +90,7 @@ export class BeliefEngine {
         createdByUserId: input.createdByUserId ?? null,
       })
       .returning()
+    if (!inserted) throw new Error("Failed to insert belief")
 
     if (input.supersedesMemoryId) {
       await this.supersedeBelief({
@@ -101,7 +112,7 @@ export class BeliefEngine {
       .update(memories)
       .set({
         epistemicStatus: "withdrawn",
-        withdrawalReason: input.reason,
+        withdrawalReason: redactSecrets(input.reason.slice(0, 500)).text,
         updatedAt: new Date(),
       })
       .where(and(eq(memories.id, input.memoryId), eq(memories.orgId, input.orgId)))
@@ -114,6 +125,7 @@ export class BeliefEngine {
    * Supersedes an old belief with a new belief, marking old as superseded and creating a graph link.
    */
   async supersedeBelief(input: SupersedeBeliefInput): Promise<boolean> {
+    if (input.oldMemoryId === input.newMemoryId) return false
     const [old] = await this.db
       .update(memories)
       .set({
@@ -142,8 +154,8 @@ export class BeliefEngine {
   }
 
   /**
-   * Scans active memories for potential contradictions before a new belief is finalized.
-   * Compares keyword terms and epistemic claims on matching topics.
+   * Scans the active memories the caller can see for potential contradictions with a
+   * candidate belief, by topic overlap on title keywords.
    */
   async detectContradictions(input: {
     orgId: string
@@ -152,27 +164,32 @@ export class BeliefEngine {
     agentId?: string | null
     roomId?: string | null
   }): Promise<ContradictionCandidate[]> {
-    const titleTokens = input.title.toLowerCase().split(/\s+/).filter((t) => t.length > 3)
+    const titleTokens = queryTerms(input.title).filter((t) => t.length > 3)
     if (titleTokens.length === 0) return []
 
-    // Fetch active (non-withdrawn, non-superseded) memories with matching tags or title keywords
     const activeRows = await this.db
       .select({
         id: memories.id,
         title: memories.title,
         body: memories.body,
+        tags: memories.tags,
         epistemicStatus: memories.epistemicStatus,
       })
       .from(memories)
       .where(
         and(
-          eq(memories.orgId, input.orgId),
+          buildScopeConditions({
+            orgId: input.orgId,
+            agentId: input.agentId,
+            roomId: input.roomId,
+          }),
           inArray(memories.epistemicStatus, ["verified", "belief", "hypothesis"]),
         ),
       )
       .orderBy(desc(memories.createdAt))
-      .limit(50)
+      .limit(100)
 
+    const wantedTags = new Set((input.tags ?? []).map((t) => t.toLowerCase()))
     const candidates: ContradictionCandidate[] = []
 
     for (const row of activeRows) {
@@ -181,29 +198,36 @@ export class BeliefEngine {
       for (const token of titleTokens) {
         if (rowText.includes(token)) overlapCount++
       }
+      const sharedTag = (row.tags ?? []).some((t) => wantedTags.has(t.toLowerCase()))
 
-      // If significant topic overlap exists, check for negations or conflicting status
-      if (overlapCount >= Math.min(2, titleTokens.length)) {
+      if (overlapCount >= Math.min(2, titleTokens.length) || (sharedTag && overlapCount >= 1)) {
         candidates.push({
           existingMemoryId: row.id,
           existingTitle: row.title,
           existingStatus: row.epistemicStatus as EpistemicStatus,
-          reason: `High topic overlap (${overlapCount} matching keywords) with existing ${row.epistemicStatus}: "${row.title}"`,
+          reason: `High topic overlap (${overlapCount} matching keywords${sharedTag ? ", shared tag" : ""}) with existing ${row.epistemicStatus}: "${row.title}"`,
         })
       }
     }
 
-    return candidates
+    return candidates.slice(0, 10)
   }
 
   /**
    * Traverses backward through the supersede chain to reveal how a belief evolved.
+   * Stops at the first memory the caller cannot read.
    */
-  async getBeliefLineage(memoryId: string, orgId: string): Promise<MemoryRow[]> {
+  async getBeliefLineage(
+    memoryId: string,
+    orgId: string,
+    access: MemoryAccessContext,
+  ): Promise<MemoryRow[]> {
     const lineage: MemoryRow[] = []
+    const seen = new Set<string>()
     let currentId: string | null = memoryId
 
-    while (currentId && lineage.length < 10) {
+    while (currentId && lineage.length < 10 && !seen.has(currentId)) {
+      seen.add(currentId)
       const rows: MemoryRow[] = await this.db
         .select()
         .from(memories)
@@ -212,6 +236,14 @@ export class BeliefEngine {
 
       const item = rows[0]
       if (!item) break
+      const readable = canReadMemory({
+        memoryScope: item.scope,
+        memoryAgentId: item.agentId,
+        memoryRoomId: item.roomId,
+        requestingAgentId: access.agentId,
+        requestingRoomId: access.roomId,
+      })
+      if (!readable) break
       lineage.push(item)
 
       // Find memory that this superseded
@@ -220,6 +252,7 @@ export class BeliefEngine {
         .from(memoryLinks)
         .where(
           and(
+            eq(memoryLinks.orgId, orgId),
             eq(memoryLinks.sourceMemoryId, item.id),
             eq(memoryLinks.relationship, "supersedes"),
           ),

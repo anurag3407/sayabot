@@ -1,5 +1,6 @@
-import { and, desc, eq, inArray } from "drizzle-orm"
-import { openLoops, type OpenLoopRow } from "@sayabot/db"
+import { and, desc, eq, inArray, isNull } from "drizzle-orm"
+import { redactSecrets } from "@sayabot/core"
+import { openLoops, type Db, type OpenLoopRow } from "@sayabot/db"
 import type { OpenLoopStatus } from "../types"
 
 export interface CreateOpenLoopInput {
@@ -14,6 +15,8 @@ export interface CreateOpenLoopInput {
 export interface UpdateOpenLoopInput {
   id: string
   orgId: string
+  /** Loops belong to one agent; only that agent may change them. */
+  agentId: string
   status?: OpenLoopStatus
   blockerReason?: string | null
   resolution?: string | null
@@ -25,7 +28,7 @@ export interface UpdateOpenLoopInput {
  * Tracks cognitive commitments, promises, and blockers across interaction turns.
  */
 export class OpenLoopsManager {
-  constructor(private db: any) {}
+  constructor(private db: Db) {}
 
   /**
    * Registers a new open loop for an agent.
@@ -37,13 +40,14 @@ export class OpenLoopsManager {
         orgId: input.orgId,
         agentId: input.agentId,
         roomId: input.roomId ?? null,
-        description: input.description,
+        description: redactSecrets(input.description.slice(0, 2048)).text,
         status: "open",
         dueAt: input.dueAt ?? null,
         sourceRef: input.sourceRef ?? null,
       })
       .returning()
 
+    if (!inserted) throw new Error("Failed to create open loop")
     return inserted
   }
 
@@ -56,14 +60,26 @@ export class OpenLoopsManager {
     }
 
     if (input.status !== undefined) updateData.status = input.status
-    if (input.blockerReason !== undefined) updateData.blockerReason = input.blockerReason
-    if (input.resolution !== undefined) updateData.resolution = input.resolution
+    if (input.blockerReason !== undefined) {
+      updateData.blockerReason = input.blockerReason
+        ? redactSecrets(input.blockerReason).text
+        : null
+    }
+    if (input.resolution !== undefined) {
+      updateData.resolution = input.resolution ? redactSecrets(input.resolution).text : null
+    }
     if (input.dueAt !== undefined) updateData.dueAt = input.dueAt
 
     const [updated] = await this.db
       .update(openLoops)
       .set(updateData)
-      .where(and(eq(openLoops.id, input.id), eq(openLoops.orgId, input.orgId)))
+      .where(
+        and(
+          eq(openLoops.id, input.id),
+          eq(openLoops.orgId, input.orgId),
+          eq(openLoops.agentId, input.agentId),
+        ),
+      )
       .returning()
 
     return updated ?? null
@@ -72,10 +88,16 @@ export class OpenLoopsManager {
   /**
    * Marks an open loop as resolved with explanation.
    */
-  async resolveOpenLoop(id: string, orgId: string, resolution: string): Promise<OpenLoopRow | null> {
+  async resolveOpenLoop(
+    id: string,
+    orgId: string,
+    agentId: string,
+    resolution: string,
+  ): Promise<OpenLoopRow | null> {
     return this.updateOpenLoop({
       id,
       orgId,
+      agentId,
       status: "resolved",
       resolution,
     })
@@ -88,6 +110,8 @@ export class OpenLoopsManager {
     orgId: string
     agentId: string
     roomId?: string | null
+    /** Only loops not tied to any room (safe to show outside a room). */
+    roomless?: boolean
     limit?: number
   }): Promise<OpenLoopRow[]> {
     const conditions = [
@@ -96,18 +120,18 @@ export class OpenLoopsManager {
       inArray(openLoops.status, ["open", "in_progress", "blocked"]),
     ]
 
-    if (input.roomId) {
+    if (input.roomless) {
+      conditions.push(isNull(openLoops.roomId))
+    } else if (input.roomId) {
       conditions.push(eq(openLoops.roomId, input.roomId))
     }
 
-    const rows = await this.db
+    return this.db
       .select()
       .from(openLoops)
       .where(and(...conditions))
       .orderBy(desc(openLoops.createdAt))
       .limit(input.limit ?? 20)
-
-    return rows
   }
 
   /**

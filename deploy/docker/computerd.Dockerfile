@@ -18,6 +18,8 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
 COPY packages ./packages
 COPY apps/computerd ./apps/computerd
 RUN pnpm install --filter "@sayabot/computerd..." --filter "@sayabot/core"
+# Bundled agentd, uploaded into cloud (E2B) computers on first boot.
+RUN pnpm --filter @sayabot/computerd build:agentd
 
 FROM node:${NODE_VERSION}-bookworm-slim AS runtime
 ARG GIT_COMMIT_SHA=unknown

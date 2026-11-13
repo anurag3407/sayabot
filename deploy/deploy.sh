@@ -37,7 +37,10 @@ ok()   { printf '%s[deploy]%s %s\n' "$c_green" "$c_off" "$*"; }
 warn() { printf '%s[deploy]%s %s\n' "$c_yellow" "$c_off" "$*" >&2; }
 die()  { printf '%s[deploy]%s %s\n' "$c_red" "$c_off" "$*" >&2; exit 1; }
 
-compose() { MESH_TAG="${MESH_TAG:-latest}" docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" "$@"; }
+COMPOSE_ARGS=(-f "$COMPOSE_FILE")
+# microVM computers (KVM hosts): computerd gets /dev/kvm and the host's smolvm install.
+[[ "$(env_value COMPUTER_BACKEND)" == "smolvm" ]] && COMPOSE_ARGS+=(-f "$DEPLOY_DIR/docker-compose.smolvm.yml")
+compose() { MESH_TAG="${MESH_TAG:-latest}" docker compose --env-file "$ENV_FILE" "${COMPOSE_ARGS[@]}" "$@"; }
 
 # ── preflight ────────────────────────────────────────────────────────────
 preflight() {
@@ -174,11 +177,29 @@ build_images() {
   for svc in "${APP_SERVICES[@]}"; do
     docker tag "$prefix/$svc:$MESH_TAG" "$prefix/$svc:latest"
   done
+  build_computer_image
 }
 
 pull_images() {
   log "Pulling images for $MESH_TAG"
   compose pull "${APP_SERVICES[@]}"
+  build_computer_image
+}
+
+# The per-agent computer image is started by computerd, not by compose, so compose
+# never builds it. Without this step every computer fails with "No such image".
+build_computer_image() {
+  [[ " ${APP_SERVICES[*]} " == *" computerd "* ]] || return 0
+  local tag; tag="$(env_value COMPUTE_IMAGE_TAG)"; tag="${tag:-latest}"
+  log "Building computer image saaya/computer:$tag"
+  DOCKER_BUILDKIT=1 docker build -q -f "$DEPLOY_DIR/docker/computer.Dockerfile" \
+    -t "saaya/computer:$tag" "$REPO_DIR" >/dev/null || die "Building the computer image failed."
+  if [[ "$(env_value COMPUTER_BACKEND)" == "smolvm" ]]; then
+    # smolvm boots OCI images without a Docker daemon; hand it the same image as an archive.
+    local dir="${SAAYA_STATE_DIR:-/var/lib/saaya}"
+    mkdir -p "$dir" && docker save "saaya/computer:$tag" -o "$dir/computer-image.tar.tmp" \
+      && mv "$dir/computer-image.tar.tmp" "$dir/computer-image.tar" || die "Exporting the computer image for smolvm failed."
+  fi
 }
 
 run_migrations() {

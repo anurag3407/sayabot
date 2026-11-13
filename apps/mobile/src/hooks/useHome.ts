@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { currentWebApiUrl } from "../core/settings"
 import { supabase } from "../core/supabase"
 import { applySettings, useSettings } from "./useSettings"
@@ -42,72 +42,111 @@ export interface HomeData {
 const CACHE_KEY = "@sayabot/home_cache_v1"
 
 /**
- * The home screen's data: shown instantly from the last copy on the phone, then refreshed from
- * the server and kept live (new messages, agents starting/finishing, questions arriving).
+ * One shared copy of the home data for the whole app (Chats, More, Tasks, agent pages all read
+ * it): shown instantly from the phone's last copy, refreshed from the server, and kept live by a
+ * single realtime subscription that runs while any screen is using it.
  */
-export function useHome() {
-  const { settings } = useSettings()
-  const [data, setData] = useState<HomeData | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const debounce = useRef<ReturnType<typeof setTimeout> | null>(null)
+interface HomeState {
+  data: HomeData | null
+  loading: boolean
+  error: string | null
+}
+let state: HomeState = { data: null, loading: true, error: null }
+const listeners = new Set<(s: HomeState) => void>()
+let users = 0
+let orgSlugNow = ""
+let stopLive: (() => void) | null = null
+let debounce: ReturnType<typeof setTimeout> | null = null
+let inflight: Promise<void> | null = null
 
-  useEffect(() => {
-    void AsyncStorage.getItem(CACHE_KEY).then((raw) => {
-      if (!raw) return
-      try {
-        setData((current) => current ?? (JSON.parse(raw) as HomeData))
-        setLoading(false)
-      } catch {
-        // ignore a bad cache
-      }
-    })
-  }, [])
+function set(next: Partial<HomeState>) {
+  state = { ...state, ...next }
+  listeners.forEach((l) => l(state))
+}
 
-  const refresh = useCallback(async () => {
+void AsyncStorage.getItem(CACHE_KEY).then((raw) => {
+  if (!raw || state.data) return
+  try {
+    set({ data: JSON.parse(raw) as HomeData, loading: false })
+  } catch {
+    // ignore a bad cache
+  }
+})
+
+export function refreshHome(): Promise<void> {
+  if (inflight) return inflight
+  inflight = (async () => {
     try {
       const {
         data: { session },
       } = await supabase.auth.getSession()
       if (!session) return
-      const res = await fetch(`${currentWebApiUrl()}/api/mobile/home?orgSlug=${encodeURIComponent(settings.orgSlug)}`, {
+      const res = await fetch(`${currentWebApiUrl()}/api/mobile/home?orgSlug=${encodeURIComponent(orgSlugNow)}`, {
         headers: { Authorization: `Bearer ${session.access_token}` },
       })
       const json = (await res.json().catch(() => ({}))) as HomeData & { error?: string }
       if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`)
-      setData(json)
-      setError(null)
+      set({ data: json, error: null, loading: false })
       void AsyncStorage.setItem(CACHE_KEY, JSON.stringify(json))
-      if (json.org?.slug && json.org.slug !== settings.orgSlug) void applySettings({ orgSlug: json.org.slug })
+      if (json.org?.slug && json.org.slug !== orgSlugNow) {
+        orgSlugNow = json.org.slug
+        void applySettings({ orgSlug: json.org.slug })
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load your chats")
+      set({ error: err instanceof Error ? err.message : "Could not load your chats", loading: false })
     } finally {
-      setLoading(false)
+      inflight = null
+    }
+  })()
+  return inflight
+}
+
+function soon() {
+  if (debounce) clearTimeout(debounce)
+  debounce = setTimeout(() => void refreshHome(), 700)
+}
+
+function startLive() {
+  const channel = supabase
+    .channel(`home:${Math.random().toString(36).slice(2)}`)
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, soon)
+    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages" }, soon)
+    .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, soon)
+    .subscribe()
+  const timer = setInterval(() => void refreshHome(), 45_000)
+  stopLive = () => {
+    clearInterval(timer)
+    void supabase.removeChannel(channel)
+  }
+}
+
+export function useHome() {
+  const { settings } = useSettings()
+  const [snapshot, setSnapshot] = useState<HomeState>(state)
+
+  useEffect(() => {
+    listeners.add(setSnapshot)
+    users += 1
+    if (users === 1) startLive()
+    return () => {
+      listeners.delete(setSnapshot)
+      users -= 1
+      if (users === 0) {
+        stopLive?.()
+        stopLive = null
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    if (settings.orgSlug !== orgSlugNow || !state.data) {
+      orgSlugNow = settings.orgSlug
+      void refreshHome()
     }
   }, [settings.orgSlug])
 
-  const soon = useCallback(() => {
-    if (debounce.current) clearTimeout(debounce.current)
-    debounce.current = setTimeout(() => void refresh(), 700)
-  }, [refresh])
-
-  useEffect(() => {
-    void refresh()
-    const channel = supabase
-      .channel(`home:${Math.random().toString(36).slice(2)}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, soon)
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages" }, soon)
-      .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, soon)
-      .subscribe()
-    const timer = setInterval(() => void refresh(), 45_000)
-    return () => {
-      clearInterval(timer)
-      if (debounce.current) clearTimeout(debounce.current)
-      void supabase.removeChannel(channel)
-    }
-  }, [refresh, soon])
-
-  return { data, loading, error, refresh }
+  const refresh = useCallback(() => refreshHome(), [])
+  return { data: snapshot.data, loading: snapshot.loading, error: snapshot.error, refresh }
 }
 
 /** "now", "3m", "2h", "Tue", "12 Nov". */

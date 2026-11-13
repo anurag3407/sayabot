@@ -2,6 +2,7 @@ import React, { useState } from "react"
 import { View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import * as LocalAuthentication from "expo-local-authentication"
+import { enablePush } from "../core/push"
 import { useSettings } from "../hooks/useSettings"
 import { Button, Chip } from "../ui/controls"
 import { haptic } from "../ui/haptics"
@@ -17,6 +18,7 @@ export function OnboardingScreen() {
   const insets = useSafeAreaInsets()
   const { settings, updateSettings } = useSettings()
   const [step, setStep] = useState(0)
+  const [alertsOn, setAlertsOn] = useState(false)
   const current = STEPS[step]!
 
   async function finish() {
@@ -80,6 +82,15 @@ export function OnboardingScreen() {
                 <Chip key={mode} label={mode === "system" ? "Automatic" : mode[0]!.toUpperCase() + mode.slice(1)} selected={settings.themeMode === mode} onPress={() => void updateSettings({ themeMode: mode })} />
               ))}
             </View>
+            <Chip
+              label={settings.pushNotifications && alertsOn ? "Alerts on" : "Get alerts when an agent needs you"}
+              selected={alertsOn}
+              onPress={async () => {
+                const ok = await enablePush(true).catch(() => false)
+                setAlertsOn(ok)
+                if (ok) void updateSettings({ pushNotifications: true })
+              }}
+            />
             <Chip
               label={settings.appLock ? "App lock on" : "Lock with Face ID / fingerprint"}
               selected={settings.appLock}

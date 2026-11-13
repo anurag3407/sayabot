@@ -23,13 +23,13 @@ import type { RunLlmTurnArgs, TurnResult } from "./llm"
 
 export interface LocalRunnerConfig {
   hostId: string
-  app: "claude-code" | "codex" | "gemini" | "opencode"
+  app: "claude-code" | "codex" | "gemini" | "opencode" | "cursor"
 }
 
 export function localRunnerConfig(params: Record<string, unknown> | null | undefined): LocalRunnerConfig | null {
   const runner = params?.runner as Record<string, unknown> | undefined
   if (!runner || typeof runner.hostId !== "string" || !/^[0-9a-f-]{36}$/i.test(runner.hostId)) return null
-  const app = ["claude-code", "codex", "gemini", "opencode"].includes(String(runner.app)) ? (runner.app as LocalRunnerConfig["app"]) : "claude-code"
+  const app = ["claude-code", "codex", "gemini", "opencode", "cursor"].includes(String(runner.app)) ? (runner.app as LocalRunnerConfig["app"]) : "claude-code"
   return { hostId: runner.hostId, app }
 }
 

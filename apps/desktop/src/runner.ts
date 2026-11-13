@@ -33,6 +33,9 @@ export function commandFor(app: string, prompt: string, lastMessageFile: string)
       return { bin: "gemini", args: ["-p", "Answer the request given on standard input."], stdin: prompt }
     case "opencode":
       return { bin: "opencode", args: ["run", prompt.slice(-100_000)], stdin: null }
+    case "cursor":
+      // No --force: Cursor proposes changes but doesn't apply them on its own.
+      return { bin: "cursor-agent", args: ["-p", "--output-format", "text", prompt.slice(-100_000)], stdin: null }
     case "claude-code":
     default:
       return { bin: "claude", args: ["-p", "--output-format", "text"], stdin: prompt }

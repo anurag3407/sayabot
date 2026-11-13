@@ -1,12 +1,14 @@
 /**
  * The Marketplace catalog: remote MCP servers people can connect in a click or two.
- * Only servers that work with what Sayabot speaks today (Streamable HTTP or SSE, auth by a
- * static header or a key in the URL) are connectable. Sign-in-only servers are listed as
- * "coming soon" rather than shown as broken buttons.
+ * Hand-written entries below cover apps set up with a key; `CATALOG_APPS` adds a few hundred
+ * more, most of them "Sign in with …" (OAuth 2.1 with dynamic client registration, so nothing
+ * has to be registered with the vendor first; see lib/mcp-oauth.ts).
  *
  * URLs and the final server config are built on the server from this list; the browser only
  * ever sends an app id and the person's key.
  */
+
+import { CATALOG_APPS } from "./marketplace-catalog"
 
 export type AppAuth =
   | { kind: "none" }
@@ -22,7 +24,17 @@ export type AppAuth =
   | { kind: "personal-url"; label: string; help: string; placeholder: string; host: string }
   | { kind: "oauth" }
 
-export type AppCategory = "developer" | "knowledge" | "search" | "data" | "business" | "automation"
+export type AppCategory =
+  | "developer"
+  | "productivity"
+  | "knowledge"
+  | "search"
+  | "data"
+  | "sales"
+  | "finance"
+  | "design"
+  | "automation"
+  | "business"
 
 export interface MarketplaceApp {
   id: string
@@ -35,17 +47,24 @@ export interface MarketplaceApp {
   /** Brand tint for the tile. */
   color: string
   docs: string
-  /** Tools that change things; calls to these wait for a person's OK. */
+  /**
+   * Tools that change things; calls to these wait for a person's OK. `@writes` means every tool
+   * not named like a read (get_, list_, search_ ...), for apps whose tool names vary.
+   */
   dangerousTools?: string[]
 }
 
 export const APP_CATEGORIES: { id: AppCategory; label: string }[] = [
-  { id: "developer", label: "Developer tools" },
+  { id: "productivity", label: "Work & productivity" },
   { id: "knowledge", label: "Docs & knowledge" },
-  { id: "search", label: "Search & web" },
-  { id: "data", label: "Data & databases" },
-  { id: "business", label: "Business" },
+  { id: "developer", label: "Developer tools" },
+  { id: "search", label: "Search & research" },
+  { id: "data", label: "Data & analytics" },
+  { id: "sales", label: "Sales & marketing" },
+  { id: "finance", label: "Money & finance" },
+  { id: "design", label: "Design & media" },
   { id: "automation", label: "Automation" },
+  { id: "business", label: "More apps" },
 ]
 
 const bearer = (label: string, help: string, optional = false): AppAuth => ({
@@ -57,7 +76,7 @@ const bearer = (label: string, help: string, optional = false): AppAuth => ({
   optional,
 })
 
-export const MARKETPLACE_APPS: MarketplaceApp[] = [
+const KEY_APPS: MarketplaceApp[] = [
   {
     id: "github",
     name: "GitHub",
@@ -69,17 +88,6 @@ export const MARKETPLACE_APPS: MarketplaceApp[] = [
     color: "#24292f",
     docs: "https://github.com/github/github-mcp-server",
     dangerousTools: ["create_or_update_file", "push_files", "merge_pull_request", "delete_file"],
-  },
-  {
-    id: "linear",
-    name: "Linear",
-    tagline: "Issues, projects and cycles",
-    category: "developer",
-    url: "https://mcp.linear.app/mcp",
-    transport: "http",
-    auth: bearer("API key", "Linear → Settings → Security & access → Personal API keys."),
-    color: "#5e6ad2",
-    docs: "https://linear.app/docs/mcp",
   },
   {
     id: "semgrep",
@@ -256,7 +264,7 @@ export const MARKETPLACE_APPS: MarketplaceApp[] = [
     id: "stripe",
     name: "Stripe",
     tagline: "Customers, payments, invoices and refunds",
-    category: "business",
+    category: "finance",
     url: "https://mcp.stripe.com",
     transport: "http",
     auth: bearer("Restricted API key", "Use a restricted key (rk_…) with only the access you want agents to have."),
@@ -264,46 +272,14 @@ export const MARKETPLACE_APPS: MarketplaceApp[] = [
     docs: "https://docs.stripe.com/mcp",
     dangerousTools: ["create_refund", "create_payment_link", "cancel_subscription", "create_invoice"],
   },
-  {
-    id: "zapier",
-    name: "Zapier",
-    tagline: "Let agents use 8,000+ apps through your Zaps",
-    category: "automation",
-    url: "https://mcp.zapier.com",
-    transport: "http",
-    auth: {
-      kind: "personal-url",
-      label: "Your Zapier MCP URL",
-      help: "mcp.zapier.com → New MCP server → copy its server URL.",
-      placeholder: "https://mcp.zapier.com/api/mcp/s/…",
-      host: "mcp.zapier.com",
-    },
-    color: "#ff4f00",
-    docs: "https://zapier.com/mcp",
-  },
-  {
-    id: "composio",
-    name: "Composio",
-    tagline: "Hundreds of apps behind one connection",
-    category: "automation",
-    url: "https://mcp.composio.dev",
-    transport: "http",
-    auth: {
-      kind: "personal-url",
-      label: "Your Composio MCP URL",
-      help: "composio.dev → MCP → create a server and copy its URL.",
-      placeholder: "https://mcp.composio.dev/…",
-      host: "composio.dev",
-    },
-    color: "#7c3aed",
-    docs: "https://docs.composio.dev",
-  },
-  // Sign-in (OAuth) only today. Listed so people know they're coming.
-  { id: "notion", name: "Notion", tagline: "Pages, databases and docs", category: "business", url: "https://mcp.notion.com/mcp", transport: "http", auth: { kind: "oauth" }, color: "#191919", docs: "https://developers.notion.com/docs/mcp" },
-  { id: "sentry", name: "Sentry", tagline: "Errors and performance issues", category: "developer", url: "https://mcp.sentry.dev/mcp", transport: "http", auth: { kind: "oauth" }, color: "#362d59", docs: "https://docs.sentry.io/product/sentry-mcp/" },
-  { id: "atlassian", name: "Jira & Confluence", tagline: "Tickets and team pages", category: "business", url: "https://mcp.atlassian.com/v1/sse", transport: "sse", auth: { kind: "oauth" }, color: "#0052cc", docs: "https://www.atlassian.com/platform/remote-mcp-server" },
-  { id: "vercel", name: "Vercel", tagline: "Deployments, logs and projects", category: "developer", url: "https://mcp.vercel.com", transport: "http", auth: { kind: "oauth" }, color: "#000000", docs: "https://vercel.com/docs/mcp" },
 ]
+
+const KEY_APP_IDS = new Set(KEY_APPS.map((app) => app.id))
+
+export const MARKETPLACE_APPS: MarketplaceApp[] = [
+  ...KEY_APPS,
+  ...CATALOG_APPS.filter((app) => !KEY_APP_IDS.has(app.id)),
+].sort((a, b) => a.name.localeCompare(b.name, "en", { sensitivity: "base" }))
 
 export function findMarketplaceApp(id: string): MarketplaceApp | null {
   return MARKETPLACE_APPS.find((app) => app.id === id) ?? null
@@ -319,4 +295,30 @@ export function hostMatchesApp(host: string, app: MarketplaceApp): boolean {
     return false
   }
   return host === appHost || host.endsWith(`.${appHost}`)
+}
+
+function appHost(app: MarketplaceApp): string {
+  try {
+    return app.auth.kind === "personal-url" ? app.auth.host : new URL(app.url).host
+  } catch {
+    return ""
+  }
+}
+
+/**
+ * The one catalog app a saved server's host belongs to: an exact host first, otherwise the
+ * longest parent domain (docs.mcp.cloudflare.com is Cloudflare Docs, not Cloudflare).
+ */
+export function appForHost(host: string): MarketplaceApp | null {
+  let best: MarketplaceApp | null = null
+  let bestLength = -1
+  for (const app of MARKETPLACE_APPS) {
+    if (!hostMatchesApp(host, app)) continue
+    const length = appHost(app).length
+    if (length > bestLength) {
+      best = app
+      bestLength = length
+    }
+  }
+  return best
 }

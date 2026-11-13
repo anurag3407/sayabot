@@ -98,7 +98,9 @@ export function AgentModelPicker({
         : "Choose a model"
       : keyId.startsWith("host:")
         ? `${currentGroup?.models.find((m) => m.id === model)?.label.split(" ·")[0] ?? model} on ${currentGroup?.label ?? "your computer"}`
-        : (model ?? "Choose a model")
+        : keyId.startsWith("cli:")
+          ? `${currentGroup?.models.find((m) => m.id === model)?.label ?? model ?? "Default"} · ${keyId === "cli:codex" ? "Codex" : keyId === "cli:cursor" ? "Cursor" : "Claude Code"}`
+          : (model ?? "Choose a model")
 
   function save(nextKey: string | null, nextModel: string | null, nextEffort = effort) {
     const prev = { keyId, model, effort }

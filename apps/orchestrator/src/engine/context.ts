@@ -263,6 +263,7 @@ export function buildEngineContext(args: BuildEngineContextArgs): EngineContextR
   if (args.volatileTail.recalledMemories && args.volatileTail.recalledMemories.length > 0) {
     tailParts.push(
       "<recalled>\n" +
+        "Memories that may be relevant. When you rely on one, cite it as [#id].\n" +
         args.volatileTail.recalledMemories
           .map((m) => `[#${m.id}] (${m.scope || "team"}) ${m.title}: ${m.body}`)
           .join("\n") +

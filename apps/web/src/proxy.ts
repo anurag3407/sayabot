@@ -26,6 +26,8 @@ const PUBLIC_PATHS = [
   // Desktop app (authenticated by its host token) and remote-desktop signaling (session or bearer).
   "/api/desktop",
   "/api/remote",
+  // Chat attachments: the route checks room access itself (cookie or bearer).
+  "/api/files",
   // OAuth 2.1 public endpoints (discovery, dynamic registration, token exchange, callbacks)
   "/.well-known",
   "/oauth/register",

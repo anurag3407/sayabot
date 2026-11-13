@@ -20,6 +20,9 @@ import {
   renderTranscript,
 } from "./context"
 import { streamAgentText } from "./stream-agent"
+import { agentCliRunner } from "./cli"
+import { cheapCliModel } from "./cli-agent"
+import { createCliLanguageModel } from "./cli-model"
 
 export interface RunLlmTurnArgs {
   room: RoomRow
@@ -69,6 +72,16 @@ export function getCheapModelName(provider: string, customCheap?: string): strin
 
 export async function resolveAgentCheapModel(agent: AgentRow): Promise<ResolvedModel> {
   const customCheap = (agent.params as Record<string, unknown> | null)?.cheapModel as string | undefined
+  // Claude Code / Codex / Cursor on this computer: background jobs use its fast model, no key.
+  const cli = await agentCliRunner(agent)
+  if (cli) {
+    const cheap = cheapCliModel(cli, customCheap)
+    return {
+      model: createCliLanguageModel(cheap, agent.handle),
+      provider: cheap.app,
+      modelName: cheap.model ?? cheap.app,
+    }
+  }
   const db = getDb()
   if (agent.providerKeyId) {
     const [key] = await db
@@ -122,6 +135,14 @@ export function resolveEffortLevel(params: {
 }
 
 export async function resolveAgentModel(agent: AgentRow): Promise<ResolvedModel> {
+  const cli = await agentCliRunner(agent)
+  if (cli) {
+    return {
+      model: createCliLanguageModel(cli, agent.handle),
+      provider: cli.app,
+      modelName: cli.model ?? cli.app,
+    }
+  }
   const db = getDb()
   if (agent.providerKeyId) {
     const [key] = await db
@@ -147,7 +168,7 @@ export async function resolveAgentModel(agent: AgentRow): Promise<ResolvedModel>
   const dev = devModelConfig()
   if (!dev) {
     throw new Error(
-      `@${agent.handle} has no API key yet. A workspace admin can add one in Settings, then choose it on the Agents page.`,
+      `@${agent.handle} has no model yet. Sign in to Claude Code or Codex on the computer running Sayabot (no key needed), or add an API key in Settings and choose it on the Agents page.`,
     )
   }
   const modelName = agent.model ?? dev.model

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto"
 import { createMCPClient } from "@ai-sdk/mcp"
 import { assertSafeEgressHost } from "@sayabot/core/server"
+import type { OAuthClientProvider } from "@ai-sdk/mcp"
 import type { ToolSet } from "ai"
 
 export interface McpServerConfig {
@@ -9,7 +10,23 @@ export interface McpServerConfig {
   transport: "http" | "sse"
   url: string
   headers?: Record<string, string>
+  /** Sign-in servers: adds the bearer token and refreshes it on a 401. */
+  authProvider?: OAuthClientProvider
+  /**
+   * Tool names that wait for a person's OK. `*` means every tool; `@writes` means every tool
+   * whose name does not start with a read verb (get, list, search, ...), for catalog apps whose
+   * tool names are not known ahead of time.
+   */
   dangerousTools: string[]
+}
+
+const READ_VERBS = /^(get|list|search|read|fetch|find|lookup|view|describe|retrieve|show|whoami|count|preview|download)(_|-|$|[A-Z])/
+
+/** Whether a call to `toolName` on this server needs a person's OK first. */
+export function isDangerousMcpTool(dangerousTools: string[], toolName: string): boolean {
+  if (dangerousTools.includes(toolName) || dangerousTools.includes("*")) return true
+  if (dangerousTools.includes("@writes")) return !READ_VERBS.test(toolName)
+  return false
 }
 
 export interface McpToolAnnotations {
@@ -187,7 +204,13 @@ export async function connectMcpServers(servers: McpServerConfig[], options: Mcp
         if (!allowLocal) await assertSafeEgressHost(url.hostname)
         requestSignal.throwIfAborted()
         client = await createMCPClient({
-          transport: { type: server.transport, url: url.href, headers: server.headers, redirect: "error" },
+          transport: {
+            type: server.transport,
+            url: url.href,
+            headers: server.headers,
+            redirect: "error",
+            ...(server.authProvider ? { authProvider: server.authProvider } : {}),
+          },
           initializationOptions: { signal: requestSignal, timeout: timeoutMs, maxTotalTimeout: timeoutMs },
           maxRetries: 0,
           onUncaughtError: () => {
@@ -304,7 +327,7 @@ export async function connectMcpServers(servers: McpServerConfig[], options: Mcp
       execute: async (input, executionOptions) => callRaw(server.id, originalName, input as Record<string, unknown>, executionOptions?.abortSignal),
     }
     meta[name] = { serverId: server.id, serverName: server.name, originalName,
-      dangerous: server.dangerousTools.includes(originalName), ...(annotations ? { annotations } : {}) }
+      dangerous: isDangerousMcpTool(server.dangerousTools, originalName), ...(annotations ? { annotations } : {}) }
   }
   return { tools, meta, errors, close,
     call: async (serverId, toolName, args, callSignal) => textContent(await callRaw(serverId, toolName, args, callSignal)) }

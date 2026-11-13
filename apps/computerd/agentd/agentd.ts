@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process"
-import { createServer, type Socket } from "node:net"
+import { createConnection, createServer, type Server, type Socket } from "node:net"
 import { chmodSync, existsSync, mkdirSync, readdirSync, statSync, unlinkSync, writeFileSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import { constants as osConstants } from "node:os"
@@ -27,7 +27,12 @@ if (typeof process.getuid === "function" && process.getuid() === 0) {
   }
 }
 
-export function startAgentd(socketPath = SOCKET_PATH) {
+/**
+ * `mode` is 0600 for the in-container socket. The control socket that computerd
+ * reaches through the private agentd-ctl volume uses 0666: computerd runs as a
+ * different uid without CAP_DAC_OVERRIDE, and only this container mounts that dir.
+ */
+export function startAgentd(socketPath = SOCKET_PATH, mode = 0o600) {
   try {
     if (existsSync(socketPath)) unlinkSync(socketPath)
   } catch {}
@@ -55,7 +60,7 @@ export function startAgentd(socketPath = SOCKET_PATH) {
 
   server.listen(socketPath, () => {
     try {
-      chmodSync(socketPath, 0o600)
+      chmodSync(socketPath, mode)
     } catch (err) {
       console.warn(`[agentd] Failed to set permissions on ${socketPath}:`, err)
     }
@@ -105,8 +110,10 @@ async function handleRequest(client: Socket, jsonStr: string) {
       }
 
       // Merge environment with non-interactive defaults and /home/bot/.saaya/env
+      // Internal plumbing paths are not part of the user's environment.
+      const { AGENTD_CTL_SOCK: _ctl, AGENTD_EGRESS_SOCK: _egress, ...baseEnv } = process.env
       const finalEnv: Record<string, string> = {
-        ...process.env,
+        ...(baseEnv as Record<string, string>),
         ...NON_INTERACTIVE_ENV,
         HOME: BOT_HOME,
         ...env,
@@ -319,6 +326,31 @@ async function handleRequest(client: Socket, jsonStr: string) {
   }
 }
 
-if (process.argv[1]?.endsWith("agentd.ts") || process.argv[1]?.endsWith("agentd.js")) {
+/**
+ * In a microVM with no network, the only way out is a host socket bridged in at
+ * `socketPath`. This relays 127.0.0.1:<port> to it so ordinary HTTP_PROXY clients work.
+ */
+export function startEgressRelay(socketPath: string, port = 8080, host = "127.0.0.1"): Server {
+  const server = createServer((client) => {
+    const upstream = createConnection(socketPath)
+    const close = () => {
+      client.destroy()
+      upstream.destroy()
+    }
+    client.on("error", close)
+    upstream.on("error", close)
+    client.pipe(upstream).pipe(client)
+  })
+  server.on("error", (err) => console.error(`[agentd] egress relay failed: ${err.message}`))
+  server.listen(port, host, () => console.log(`[agentd] egress relay ${host}:${port} -> ${socketPath}`))
+  return server
+}
+
+const entry = process.argv[1] ?? ""
+if (/(^|\/)agentd\.(ts|js|mjs)$/.test(entry)) {
   startAgentd()
+  const ctlSock = process.env.AGENTD_CTL_SOCK
+  if (ctlSock && existsSync(dirname(ctlSock))) startAgentd(ctlSock, 0o666)
+  const egressSock = process.env.AGENTD_EGRESS_SOCK
+  if (egressSock) startEgressRelay(egressSock, Number(process.env.AGENTD_EGRESS_PORT || 8080))
 }

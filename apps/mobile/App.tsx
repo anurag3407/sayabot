@@ -1,6 +1,7 @@
 import React from "react"
 import { StatusBar } from "expo-status-bar"
 import { SafeAreaProvider } from "react-native-safe-area-context"
+import { ShareIntentProvider } from "expo-share-intent"
 import { RootNavigator } from "./src/navigation/RootNavigator"
 import { useTheme } from "./src/ui/theme"
 
@@ -11,9 +12,11 @@ function ThemedStatusBar() {
 
 export default function App() {
   return (
-    <SafeAreaProvider>
-      <ThemedStatusBar />
-      <RootNavigator />
-    </SafeAreaProvider>
+    <ShareIntentProvider options={{ resetOnBackground: true }}>
+      <SafeAreaProvider>
+        <ThemedStatusBar />
+        <RootNavigator />
+      </SafeAreaProvider>
+    </ShareIntentProvider>
   )
 }

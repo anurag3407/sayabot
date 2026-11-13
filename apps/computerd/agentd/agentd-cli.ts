@@ -1,8 +1,28 @@
+import { readFileSync, unlinkSync } from "node:fs"
 import { createConnection } from "node:net"
 import { StringDecoder } from "node:string_decoder"
 
 const socketPath = process.env.AGENTD_SOCK || "/run/agentd.sock"
-const input = process.argv[2] || ""
+
+/**
+ * The request arrives as one or more argv chunks (joined in order), or as `@<path>` to a file
+ * that is read and deleted. A single argv string is capped at 128 KiB on Linux, so callers
+ * split large requests (file writes, patches) instead of failing with E2BIG.
+ */
+function readRequest(args: string[]): string {
+  const [first] = args
+  if (args.length === 1 && first?.startsWith("@")) {
+    const path = first.slice(1)
+    const text = readFileSync(path, "utf8")
+    try {
+      unlinkSync(path)
+    } catch {}
+    return text
+  }
+  return args.join("")
+}
+
+const input = readRequest(process.argv.slice(2))
 let request: { op?: string; timeoutMs?: number }
 try {
   request = JSON.parse(input)

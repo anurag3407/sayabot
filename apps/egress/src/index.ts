@@ -6,7 +6,7 @@ import { timingSafeEqual } from "node:crypto"
 import { Hono } from "hono"
 import { serve } from "@hono/node-server"
 import { assertSafeEgressHost } from "./ssrf"
-import { flushGrantCache, isHostAllowed, reportViolation, requestApproval, resolveAgentIdentity, resolvePlaceholder } from "./swapper"
+import { flushGrantCache, forgetIdentity, isHostAllowed, proxySecretFrom, resolveAgentIdentityBySecret, reportViolation, requestApproval, resolveAgentIdentity, resolvePlaceholder } from "./swapper"
 import { scrubResponseText } from "./scrub"
 
 const PROXY_PORT = Number(process.env.PROXY_PORT || 8080)
@@ -39,6 +39,16 @@ adminApp.get("/health", (c) => {
 adminApp.post("/flush", (c) => {
   flushGrantCache()
   return c.json({ flushed: true })
+})
+
+// Computer IPs are reused as bot computers sleep and wake; computerd resets the
+// IP -> agent mapping before a container that received an IP can send traffic.
+adminApp.post("/identity/forget", async (c) => {
+  const body = (await c.req.json().catch(() => null)) as { containerIp?: unknown } | null
+  if (!body || typeof body.containerIp !== "string" || !body.containerIp) {
+    return c.json({ error: "containerIp required" }, 400)
+  }
+  return c.json({ forgotten: forgetIdentity(body.containerIp) })
 })
 
 serve({ fetch: adminApp.fetch, port: ADMIN_PORT }, () => {
@@ -86,6 +96,28 @@ function startInvalidationStream() {
 
 startInvalidationStream()
 
+// ── Computer identity ───────────────────────────────────────────────────────
+
+// A proxy credential is sent on the first request of a connection; keep-alive requests
+// that follow on the same TCP connection inherit it.
+const connectionIdentity = new WeakMap<Socket, { agentId: string; orgId: string }>()
+
+async function identifyConnection(
+  req: IncomingMessage,
+): Promise<{ agentId: string; orgId: string } | null | "invalid"> {
+  const secret = proxySecretFrom(req.headers["proxy-authorization"])
+  if (secret) {
+    const identity = await resolveAgentIdentityBySecret(secret)
+    if (!identity) return "invalid"
+    connectionIdentity.set(req.socket, identity)
+    return identity
+  }
+  const bound = connectionIdentity.get(req.socket)
+  if (bound) return bound
+  const remoteIp = req.socket.remoteAddress?.replace(/^::ffff:/, "") || ""
+  return remoteIp ? resolveAgentIdentity(remoteIp) : null
+}
+
 // ── Proxy Listener (:8080) ──────────────────────────────────────────────────
 
 const proxyServer = createServer(async (req: IncomingMessage, res: ServerResponse) => {
@@ -102,15 +134,16 @@ const proxyServer = createServer(async (req: IncomingMessage, res: ServerRespons
 
     const host = parsedUrl.hostname
 
-    // Authenticate connecting container by network IP rather than client header
-    const remoteIp = req.socket.remoteAddress?.replace(/^::ffff:/, "") || ""
+    // Identify the computer: by per-agent proxy credential (microVM computers, added by
+    // computerd on the host side) or else by container IP on botnet (Docker computers).
     let agentId = "anonymous"
-    if (remoteIp) {
-      const resolved = await resolveAgentIdentity(remoteIp)
-      if (resolved?.agentId) {
-        agentId = resolved.agentId
-      }
+    const identified = await identifyConnection(req)
+    if (identified === "invalid") {
+      res.writeHead(407, { "content-type": "text/plain", "proxy-authenticate": 'Basic realm="saaya"' })
+      res.end("saaya: invalid proxy credential")
+      return
     }
+    if (identified?.agentId) agentId = identified.agentId
     // Reject attempts to spoof x-saaya-agent-id if it contradicts resolved container IP
     const headerAgentId = req.headers["x-saaya-agent-id"] as string | undefined
     if (headerAgentId && agentId !== "anonymous" && headerAgentId !== agentId) {
@@ -274,6 +307,10 @@ proxyServer.on("connect", async (req: IncomingMessage, clientSocket: Socket, hea
   const port = Number(rawPort || 443)
 
   try {
+    if ((await identifyConnection(req)) === "invalid") {
+      clientSocket.end('HTTP/1.1 407 Proxy Authentication Required\r\nProxy-Authenticate: Basic realm="saaya"\r\n\r\n')
+      return
+    }
     if (!host) throw new Error("Missing host in CONNECT request")
     if (port !== 443) {
       throw new Error(`CONNECT tunnel restricted to port 443 (requested: ${port})`)

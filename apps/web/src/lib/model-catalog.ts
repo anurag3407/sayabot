@@ -43,6 +43,7 @@ const RUNNER_APPS: Record<string, string> = {
   codex: "Codex",
   gemini: "Gemini CLI",
   opencode: "OpenCode",
+  cursor: "Cursor",
 }
 
 export interface RunnerHost {
@@ -52,10 +53,46 @@ export interface RunnerHost {
   localAgents: Array<{ id: string; status: string }>
 }
 
+/** An app signed in on the computer this server runs on (Claude Code, Codex). */
+export interface ServerCliApp {
+  id: string
+  version: string | null
+  status: string
+  /** Its command-line tool is installed (Cursor the editor alone doesn't count). */
+  cli: boolean
+  models?: PickerModel[]
+}
+
+/** Models offered for apps on this computer; "default" leaves the choice to the app. */
+const CLI_MODELS: Record<string, { provider: string; label: string; models: PickerModel[] }> = {
+  "claude-code": {
+    provider: "anthropic",
+    label: "Claude",
+    models: [
+      { id: "default", label: "Claude Code default" },
+      { id: "claude-opus-5-5", label: "Claude Opus 5.5" },
+      { id: "claude-sonnet-5-5", label: "Claude Sonnet 5.5" },
+      { id: "claude-haiku-5-5", label: "Claude Haiku 5.5" },
+      { id: "claude-fable-5-2", label: "Claude Fable 5.2" },
+    ],
+  },
+  codex: {
+    provider: "openai",
+    label: "Codex",
+    models: [{ id: "default", label: "Codex default (your Codex settings)" }],
+  },
+  cursor: {
+    provider: "cursor",
+    label: "Cursor",
+    models: [{ id: "default", label: "Cursor default (Auto)" }],
+  },
+}
+
 export async function buildModelCatalog(
   keys: ProviderKeyView[],
   inUse: Array<{ keyId: string | null; model: string | null }>,
   hosts: RunnerHost[] = [],
+  serverApps: ServerCliApp[] = [],
 ): Promise<PickerGroup[]> {
   let registry: Awaited<ReturnType<typeof getAllGroupedModels>>["groups"] = []
   try {
@@ -70,6 +107,30 @@ export async function buildModelCatalog(
   }
 
   const groups: PickerGroup[] = []
+  // Apps already signed in on this computer come first: no key, no login, your own subscription.
+  for (const app of serverApps) {
+    const spec = CLI_MODELS[app.id]
+    if (!spec) continue
+    const keyId = `cli:${app.id}`
+    const used = inUse.some((use) => use.keyId === keyId)
+    if ((!app.cli || app.status !== "ready") && !used) continue
+    const models = [...spec.models]
+    const seen = new Set(models.map((m) => m.id))
+    for (const m of app.models ?? []) addModel(models, seen, m)
+    for (const use of inUse) {
+      if (use.keyId === keyId && use.model) addModel(models, seen, { id: use.model, label: use.model })
+    }
+    groups.push({
+      keyId,
+      provider: spec.provider,
+      label: spec.label,
+      detail:
+        app.status === "ready"
+          ? `${app.version ? `${app.version} · ` : ""}${RUNNER_APPS[app.id]} on this computer · your subscription`
+          : `${RUNNER_APPS[app.id]} isn't signed in right now. Run it once in a terminal and sign in.`,
+      models,
+    })
+  }
   if (devModelConfigured()) {
     groups.push({ keyId: null, provider: "sayabot", label: "Sayabot default", detail: "Set by your server", models: [] })
   }

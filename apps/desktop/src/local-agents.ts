@@ -11,7 +11,7 @@ import { delimiter, dirname, join } from "node:path"
  */
 
 export interface LocalAgent {
-  id: "claude-code" | "codex" | "gemini" | "opencode" | "hermes"
+  id: "claude-code" | "codex" | "gemini" | "opencode" | "hermes" | "cursor"
   name: string
   binary: string | null
   status: "ready" | "signed_out" | "not_installed"
@@ -84,6 +84,15 @@ export async function detectLocalAgents(): Promise<LocalAgent[]> {
     { id: "gemini", name: "Gemini CLI", bin: "gemini", signedIn: () => exists(join(home, ".gemini/oauth_creds.json")) },
     { id: "opencode", name: "OpenCode", bin: "opencode", signedIn: () => exists(join(home, ".local/share/opencode/auth.json")) },
     { id: "hermes", name: "Hermes", bin: "hermes", signedIn: () => exists(join(home, ".hermes")) },
+    {
+      id: "cursor",
+      name: "Cursor",
+      bin: "cursor-agent",
+      signedIn: async () =>
+        Boolean(process.env.CURSOR_API_KEY) ||
+        (await keychainHas("cursor-access-token")) ||
+        (await readFile(join(home, ".cursor/cli-config.json"), "utf8").then((t) => t.includes('"authInfo"'), () => false)),
+    },
   ]
   return Promise.all(
     specs.map(async (spec) => {

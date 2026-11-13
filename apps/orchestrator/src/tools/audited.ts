@@ -124,6 +124,7 @@ export function toAuditedTools(specs: ToolSpec[], runtime: ToolRuntime): ToolSet
             agentId: runtime.agentId,
             kind: "approval",
             detail: spec.name,
+            refId: row.id,
           })
           const signal = options.abortSignal
           const decision = await Promise.race([

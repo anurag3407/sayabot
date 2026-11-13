@@ -18,6 +18,7 @@ import { getDb, notify } from "./db"
 import { isInternalRequest } from "./internal-auth"
 import { enqueueRoomMessage } from "./jobs"
 import { loadMessage } from "./runner/context"
+import { agentCliRunner, runCliOnce } from "./runner/cli"
 import { resolveAgentModel } from "./runner/llm"
 import { applyTaskMutation } from "./collab/tasks-service"
 import { executeWebSearch } from "./tools/builtins/web-search"
@@ -181,6 +182,15 @@ export function createApp() {
     if (agent.kind === "external") return c.json({ error: "external agents have no model" }, 400)
     const started = Date.now()
     try {
+      const cli = await agentCliRunner(agent)
+      if (cli) {
+        const out = await runCliOnce(cli, agent.systemPrompt || "", "Reply with the single word: ok")
+        return c.json({
+          text: redactSecrets(out.text).text.slice(0, 300),
+          model: out.model,
+          latencyMs: Date.now() - started,
+        })
+      }
       const resolved = await resolveAgentModel(agent)
       const result = await generateText({
         model: resolved.model,

@@ -232,13 +232,25 @@ Turborepo will spin up all workspace microservices in parallel:
 
 If you want your agents to have access to persistent Linux containers (`/home/bot`), full bash terminal execution, ripgrep, git, and headless Chromium CDP automation:
 
-1. Ensure **Docker Desktop** (or OrbStack) is running.
-2. In a separate terminal tab, build and run `computerd`:
-   ```bash
-   pnpm --filter @sayabot/computerd dev
-   ```
-3. `computerd` spins up Docker containers with persistent volumes per-agent on port `8088`.
-4. Now, when an agent runs `computer_shell` or `browser_open`, it executes inside an isolated Docker container with resource quotas and full PTY terminal support.
+Every agent gets its own computer. Pick whichever your machine supports — `computerd` detects it (`COMPUTER_BACKEND=auto`):
+
+| Your machine | Install | What each agent gets |
+| :--- | :--- | :--- |
+| Mac with Apple silicon | `brew install smol-machines/tap/smolvm` | a microVM with its own kernel (no Docker needed) |
+| Linux with KVM | `sudo deploy/scripts/setup-computers.sh` | a microVM with its own kernel |
+| Anything with Docker Desktop / OrbStack | nothing | a container |
+| Not enough RAM/CPU for local computers | set `COMPUTER_BACKEND=e2b` and `E2B_API_KEY` | a cloud microVM (E2B) |
+
+Then, in a separate terminal tab:
+
+```bash
+pnpm --filter @sayabot/computerd build:agentd   # once; used by the e2b backend
+pnpm --filter @sayabot/computerd dev
+```
+
+`computerd` listens on port `4100` and logs the backend it chose. Idle computers sleep after
+10 minutes (disk kept) and wake on the agent's next tool call. See
+[Tools & Sandboxes](tools-and-sandboxes.md#how-computers-are-allocated) for the details.
 
 ---
 
@@ -257,8 +269,8 @@ If you want your agents to have access to persistent Linux containers (`/home/bo
 - **Solution**: Check the console output of `pnpm dev`. Ensure no other process is bound to port 4000 (`lsof -i :4000`).
 
 ### 4. `Tool call failed: docker daemon is not reachable`
-- **Cause**: The agent has the `computer` capability enabled, but Docker is not running on your host machine.
-- **Solution**: Start Docker Desktop / OrbStack. If you do not need Linux containers, toggle off the `computer` capability in Agent Settings (`/[org]/agents`).
+- **Cause**: The agent has the `computer` capability enabled, but no computer backend is available (Docker not running, smolvm not installed, no `E2B_API_KEY`).
+- **Solution**: Install smolvm (Apple silicon / KVM), start Docker Desktop / OrbStack, or set `COMPUTER_BACKEND=e2b`. If you do not need Linux computers, toggle off the `computer` capability in Agent Settings (`/[org]/agents`).
 
 ---
 

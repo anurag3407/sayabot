@@ -40,6 +40,55 @@ When an agent is configured with the `computer` capability, Sayabot allocates a 
 - **Real-Time Shell Streaming**: Standard output and error streams are chunked and broadcast to the room in real time.
 - **Safety Auditing**: Destructive commands (`rm -rf /`, formatting commands) trigger human approval gates before execution.
 
+### How computers are allocated
+
+Every agent gets **its own computer** — its own machine and its own disk — on whichever
+backend the host can run. `COMPUTER_BACKEND=auto` (the default) picks the strongest one available:
+
+| Backend | Isolation | Runs on | Sleep when idle | Egress |
+| :--- | :--- | :--- | :--- | :--- |
+| **`smolvm`** | microVM with its own kernel ([smolvm](https://github.com/smol-machines/smolvm), libkrun) | Apple-silicon Mac, Linux with `/dev/kvm` | VM stopped, disk kept, ~1 s boot | **No network.** A per-agent socket into Saaya egress; computerd adds the agent's proxy credential on the host side |
+| **`docker`** | container, optionally **gVisor** (`COMPUTER_DOCKER_RUNTIME=runsc`, no KVM needed) | any Docker host, incl. small VPSes | container stopped, volume kept | `botnet` → egress, identified by container IP |
+| **`e2b`** | E2B cloud microVM (Firecracker) | anywhere with `E2B_API_KEY` — nothing runs locally | E2B pause (memory + disk kept), resumed on next call | direct internet; `$SECRET{...}` placeholders are **not** substituted |
+
+Which one to use:
+
+- **Mac (Apple silicon), no Docker:** `brew install smol-machines/tap/smolvm` — `auto` picks it.
+  Point `SMOLVM_IMAGE` at a registry ref or a `docker save` tarball of `saaya/computer`.
+- **VPS or server with KVM** (bare metal, or a VPS with nested virtualization):
+  `sudo deploy/scripts/setup-computers.sh` installs a pinned, checksum-verified smolvm and prints the settings.
+- **VPS without KVM** (most small cloud VPSes): the same script installs gVisor and registers it with Docker.
+- **A machine too small to host computers at all:** `COMPUTER_BACKEND=e2b` with `E2B_API_KEY`.
+
+What every backend shares — the lifecycle in `apps/computerd/src/lifecycle.ts`:
+
+| Mechanism | Behaviour |
+| :--- | :--- |
+| **Concurrency cap** | At most `COMPUTER_MAX_RUNNING` computers run at once. `auto` fits `COMPUTER_MEM_FRACTION` (0.6) of host memory at `COMPUTER_MEM_MB` (1024) each — doubled for smolvm, whose guest memory is elastic — or `E2B_MAX_RUNNING` (20) on e2b. |
+| **Sleep when idle** | No call for `COMPUTER_IDLE_MS` (10 min) puts the computer to sleep. The next tool call wakes it. |
+| **LRU eviction** | At the cap, the least recently used computer idle for `COMPUTER_EVICT_GRACE_MS` (60 s) sleeps to admit a new one. Computers used more recently (an agent mid-turn) are never evicted; the request waits up to `COMPUTER_ADMIT_TIMEOUT_MS` (60 s), then fails with HTTP 503. |
+| **Wake and retry** | A computer stopped behind computerd's back (OOM, reboot, manual stop) is woken and the call retried once. |
+| **Egress identity** | Docker: computerd resets egress's cached IP → agent mapping whenever a computer starts or stops, so a reused IP is never attributed to its previous owner. smolvm: identity is a per-agent proxy credential derived by computerd (`COMPUTERD_PROXY_KEY`, default the internal secret) that never enters the VM; the orchestrator stores only its hash. |
+
+`GET /v1/capacity` on computerd shows the backend, the cap, running computers and their idle time.
+
+#### Fast path to agentd
+
+On smolvm and Docker, computerd reaches agentd over a Unix socket (smolvm: exposed from the VM;
+Docker: a per-container subpath of the private `saaya-agentd` volume, so computerd stays off
+`botnet`). A call costs about a millisecond. Otherwise computerd falls back to running the
+pre-bundled `agentd-cli.mjs` (`docker exec`, `smolvm machine exec`, or E2B commands); large
+requests are split across arguments or passed as a file, so 2 MB file writes work on every path.
+Docker's fast path is off when computerd runs directly on your computer, under gVisor, or on
+Docker Engine older than 26 (API 1.45).
+
+#### Deploying with docker compose
+
+`deploy/deploy.sh` builds `saaya/computer` whenever `computerd` is in `MESH_APP_SERVICES`
+(previously nothing built it, so computers failed with "No such image"). With
+`COMPUTER_BACKEND=smolvm` it also exports the image for smolvm and adds
+`deploy/docker-compose.smolvm.yml`, which gives computerd `/dev/kvm` and the host's `/opt/smolvm`.
+
 ### Linux Shell & File Tools
 
 #### 1. `computer_shell`

@@ -262,7 +262,7 @@ async function executeE2bSandbox(
 async function executeModalCloud(
   cmdOrCode: string,
   apiKey?: string,
-  signal?: AbortSignal,
+  _signal?: AbortSignal,
 ): Promise<ExecutionResult> {
   const started = Date.now()
   if (!apiKey) throw new Error("Modal token is required to execute in Modal Labs cloud sandbox.")
@@ -280,7 +280,7 @@ async function executeDaytonaCloud(
   cmd: string,
   apiKey?: string,
   baseUrl?: string,
-  signal?: AbortSignal,
+  _signal?: AbortSignal,
 ): Promise<ExecutionResult> {
   const started = Date.now()
   if (!apiKey) throw new Error("Daytona API token is required for Daytona workspace execution.")
@@ -296,7 +296,7 @@ async function executeDaytonaCloud(
 async function executeRemoteSsh(
   cmd: string,
   host?: string,
-  signal?: AbortSignal,
+  _signal?: AbortSignal,
 ): Promise<ExecutionResult> {
   const started = Date.now()
   if (!host) throw new Error("SSH host connection string (user@host) is required for SSH backend.")

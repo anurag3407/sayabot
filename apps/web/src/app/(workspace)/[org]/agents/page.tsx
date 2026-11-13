@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { headers } from "next/headers"
 import Link from "next/link"
 import { isOrgAdmin, requireOrgAccess } from "@/lib/auth"
 import { listMcpServers, listOrgAgents, listProviderKeys, listRooms } from "@/lib/queries"
@@ -14,6 +15,8 @@ import { AgentTestButton } from "@/components/agents/agent-test-button"
 import { Mascot } from "@/components/ui/mascot"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { buildModelCatalog } from "@/lib/model-catalog"
+import { devModelConfigured } from "@/lib/env"
+import { detectLocalAgents, localDetectionAllowed } from "@/lib/local-agents"
 import { formatTokens, formatUsd, relativeTime } from "@/lib/format"
 import { loadUsageRollup, usageByAgent } from "@/lib/usage"
 import { DeleteAgentButton } from "@/components/agents/delete-agent-button"
@@ -42,7 +45,8 @@ export default async function AgentsPage({
   const addableRooms = rooms.filter((room) => room.kind !== "dm")
   const since = new Date(Date.now() - 30 * 86_400_000).toISOString()
   const runnerOf = (a: (typeof agents)[number]) => {
-    const r = a.params?.runner as { hostId?: string; app?: string } | undefined
+    const r = a.params?.runner as { hostId?: string; app?: string; where?: string; model?: string } | undefined
+    if (r?.where === "server" && r.app) return { keyId: `cli:${r.app}`, model: r.model ?? "default" }
     return r?.hostId ? { keyId: `host:${r.hostId}`, model: r.app ?? null } : null
   }
   const { data: hostRows } = await createAdminClient()
@@ -53,6 +57,12 @@ export default async function AgentsPage({
   const runnerHosts = ((hostRows ?? []) as { id: string; name: string; settings: { runnerEnabled?: boolean } | null; local_agents: Array<{ id: string; status: string }> | null }[]).map(
     (h) => ({ id: h.id, name: h.name, runnerEnabled: Boolean(h.settings?.runnerEnabled), localAgents: h.local_agents ?? [] }),
   )
+  // Claude Code / Codex already signed in on this computer (when the server is the person's own Mac).
+  const requestHeaders = await headers()
+  const serverApps =
+    canEdit && localDetectionAllowed(requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host"))
+      ? (await detectLocalAgents().catch(() => [])).filter((a) => a.id === "claude-code" || a.id === "codex" || a.id === "cursor")
+      : []
   const [rollup, catalog] = await Promise.all([
     loadUsageRollup(access.org.id, since),
     canEdit
@@ -60,6 +70,7 @@ export default async function AgentsPage({
           keys,
           agents.map((a) => runnerOf(a) ?? { keyId: a.providerKeyId, model: a.model }),
           runnerHosts,
+          serverApps,
         )
       : Promise.resolve([]),
   ])
@@ -69,6 +80,11 @@ export default async function AgentsPage({
     (acc, u) => ({ tokens: acc.tokens + u.inputTokens + u.outputTokens, cost: acc.cost + u.costUsd, requests: acc.requests + u.requests }),
     { tokens: 0, cost: 0, requests: 0 },
   )
+  // An agent with no key and no server default answers through the first signed-in app here.
+  const fallbackApp = devModelConfigured() ? null : serverApps.find((a) => a.cli && a.status === "ready")
+  const currentOf = (a: (typeof agents)[number]) =>
+    runnerOf(a) ??
+    (!a.providerKeyId && fallbackApp ? { keyId: `cli:${fallbackApp.id}`, model: "default" } : { keyId: a.providerKeyId, model: a.model })
   const pickerGroups = catalog.length
     ? catalog
     : keys.map((key) => ({ keyId: key.id, provider: key.provider, label: key.label, detail: key.provider, models: [] }))
@@ -147,8 +163,8 @@ export default async function AgentsPage({
                                 orgSlug={orgSlug}
                                 agentId={agent.id}
                                 groups={pickerGroups}
-                                currentKeyId={runnerOf(agent)?.keyId ?? agent.providerKeyId}
-                                currentModel={runnerOf(agent)?.model ?? agent.model}
+                                currentKeyId={currentOf(agent).keyId}
+                                currentModel={currentOf(agent).model}
                                 currentEffort={typeof agent.params.effort === "string" ? agent.params.effort : null}
                                 disabled={!canEdit}
                               />

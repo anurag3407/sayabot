@@ -7,6 +7,8 @@ import { sealSecret } from "@sayabot/llm"
 import { randomBytes } from "node:crypto"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getKek } from "@/lib/env"
+import { headers } from "next/headers"
+import { localDetectionAllowed } from "@/lib/local-agents"
 import { testAgentInOrchestrator } from "@/lib/orchestrator"
 import {
   adminOrgAccess,
@@ -446,7 +448,7 @@ export async function setAgentModelAction(input: {
     if (!host || host.revoked_at || host.user_id !== check.access.user.id) {
       return fail("You can only pick a computer you set up yourself")
     }
-    if (!model || !["claude-code", "codex", "gemini", "opencode"].includes(model)) return fail("Pick an app on that computer")
+    if (!model || !["claude-code", "codex", "gemini", "opencode", "cursor"].includes(model)) return fail("Pick an app on that computer")
     params.runner = { hostId: host.id, app: model }
     const { error } = await admin
       .from("agents")
@@ -462,6 +464,32 @@ export async function setAgentModelAction(input: {
     })
     revalidateOrg(input.orgSlug)
     return ok(`@${agent.handle} now runs on ${host.name}`)
+  }
+  // "This computer": Claude Code / Codex signed in on the machine Sayabot runs on. No key, no login.
+  if (input.providerKeyId?.startsWith("cli:")) {
+    const app = input.providerKeyId.slice(4)
+    if (app !== "claude-code" && app !== "codex" && app !== "cursor") return fail("Pick Claude Code, Codex or Cursor")
+    const requestHeaders = await headers()
+    if (!localDetectionAllowed(requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host"))) {
+      return fail("Apps on this computer are only available when Sayabot runs on your own machine")
+    }
+    if (model && model !== "default" && !/^[\w./:@~-]{1,120}$/.test(model)) return fail("That model id isn't valid")
+    params.runner = { where: "server", app, ...(model && model !== "default" ? { model } : {}) }
+    const { error } = await admin
+      .from("agents")
+      .update({ provider_key_id: null, model: null, params, owner_user_id: check.access.user.id })
+      .eq("id", agent.id)
+    if (error) return fail(errorMessage(error))
+    await audit({
+      orgId: check.access.org.id,
+      actorId: check.access.user.id,
+      action: "agent.runner_set",
+      target: agent.id,
+      metadata: { where: "server", app, model },
+    })
+    revalidateOrg(input.orgSlug)
+    const appName = app === "codex" ? "Codex" : app === "cursor" ? "Cursor" : "Claude Code"
+    return ok(`@${agent.handle} now uses ${appName} on this computer`)
   }
   delete params.runner
 

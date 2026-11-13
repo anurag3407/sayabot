@@ -1,683 +1,286 @@
-import React, { useEffect, useState } from "react"
-import {
-  ActivityIndicator,
-  FlatList,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  RefreshControl,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native"
-import { SafeAreaView } from "react-native-safe-area-context"
-import {
-  AlertCircle,
-  CheckSquare,
-  Clock,
-  Flag,
-  Plus,
-  RefreshCw,
-  Sparkles,
-  X,
-} from "lucide-react-native"
-import { useTasks } from "../hooks/useTasks"
-import { useRooms } from "../hooks/useRooms"
-import { useRoomAgents } from "../hooks/useRoomAgents"
+import React, { useEffect, useMemo, useState } from "react"
+import { FlatList, Pressable, RefreshControl, TextInput, View } from "react-native"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { CheckCircle2, CircleDashed, CircleDot, Hash, OctagonAlert, Plus } from "lucide-react-native"
 import { postRoomMessage } from "../core/room-message"
+import { supabase } from "../core/supabase"
 import { delegationMessage } from "../core/workspace-draft"
-import { useSettings } from "../hooks/useSettings"
-import { useAuth } from "../hooks/useAuth"
-import { usePalette } from "../hooks/usePalette"
-import { TaskCard } from "../components/tasks/TaskCard"
-import { colors } from "../theme"
+import { shortTime, useHome, type HomeAgent } from "../hooks/useHome"
+import { useTasks } from "../hooks/useTasks"
+import { Button, Chip, EmptyState, IconButton } from "../ui/controls"
+import { haptic } from "../ui/haptics"
+import { Mascot } from "../ui/Mascot"
+import { Sheet } from "../ui/Sheet"
+import { Text } from "../ui/Text"
+import { radius, space, useTheme } from "../ui/theme"
+import type { TaskItem } from "../types"
 
-export function TasksScreen() {
-  const { settings } = useSettings()
-  const { session, signOut } = useAuth()
-  const theme = usePalette()
-  const { tasks, loading, error, refresh, createTask } = useTasks()
-  const { rooms, orgId } = useRooms(settings.orgSlug)
-  const [filter, setFilter] = useState<"all" | "in_progress" | "blocked" | "done">("all")
-  const [roomId, setRoomId] = useState<string | null>(null)
+type Filter = "active" | "stuck" | "done"
 
-  // Create Task Modal
-  const [createModal, setCreateModal] = useState(false)
-  const [title, setTitle] = useState("")
-  const [description, setDescription] = useState("")
-  const [priority, setPriority] = useState<"low" | "medium" | "high" | "urgent">("medium")
-  const [budgetTurns, setBudgetTurns] = useState(12)
+function StatusIcon({ status }: { status: TaskItem["status"] }) {
+  const theme = useTheme()
+  if (status === "done") return <CheckCircle2 size={20} color={theme.ok} />
+  if (status === "stuck" || status === "blocked") return <OctagonAlert size={20} color={theme.warn} />
+  if (status === "in_progress") return <CircleDot size={20} color={theme.accent} />
+  return <CircleDashed size={20} color={theme.faint} />
+}
+
+const STATUS_LABEL: Record<string, string> = {
+  open: "Not started",
+  in_progress: "In progress",
+  stuck: "Stuck",
+  blocked: "Stuck",
+  done: "Done",
+}
+
+/** Work handed to agents: what's moving, what's stuck, what's done, and a quick way to delegate. */
+export function TasksScreen({ navigation, route }: any) {
+  const theme = useTheme()
+  const insets = useSafeAreaInsets()
+  const { tasks, loading, refresh, createTask } = useTasks()
+  const { data } = useHome()
+  const [filter, setFilter] = useState<Filter>("active")
+  const [refreshing, setRefreshing] = useState(false)
   const [creating, setCreating] = useState(false)
-  const [assigneeId, setAssigneeId] = useState<string | null>(null)
-  const { agents: roomAgents } = useRoomAgents(roomId)
-  const [errorMsg, setErrorMsg] = useState<string | null>(null)
-
+  const [detail, setDetail] = useState<TaskItem | null>(null)
   useEffect(() => {
-    if (roomId && rooms.some((room) => room.id === roomId)) return
-    setRoomId(rooms[0]?.id ?? null)
-  }, [rooms, roomId])
+    if (route?.params?.action === "new-task") setCreating(true)
+  }, [route?.params?.at, route?.params?.action])
+  const agents = useMemo(() => new Map((data?.agents ?? []).map((a) => [a.id, a])), [data])
+  const rooms = useMemo(() => new Map((data?.chats ?? []).filter((c) => c.kind !== "dm").map((c) => [c.id, c])), [data])
 
-  const filtered = tasks.filter((t) => {
-    if (filter === "all") return true
-    if (filter === "blocked") return t.status === "blocked" || t.status === "stuck"
-    return t.status === filter
-  })
-
-  useEffect(() => {
-    setAssigneeId(null)
-  }, [roomId])
-
-  const handleCreateTask = async () => {
-    if (!title.trim()) {
-      setErrorMsg("Please enter a task title.")
-      return
-    }
-    if (!orgId || !roomId) {
-      setErrorMsg("Create a room first. A task has to live in one.")
-      return
-    }
-
-    setCreating(true)
-    setErrorMsg(null)
-
-    try {
-      await createTask({
-        orgId,
-        roomId,
-        title: title.trim(),
-        description: description.trim() || undefined,
-        priority,
-        budgetTurns,
-        assigneeAgentId: assigneeId,
-      })
-
-      // Wake the agent now rather than at its next check-in.
-      const assignee = roomAgents.find((agent) => agent.id === assigneeId)
-      if (assignee && settings.orgSlug) {
-        await postRoomMessage(
-          settings.orgSlug,
-          roomId,
-          delegationMessage(assignee.handle, title, description),
-        ).catch(() => {
-          // The task is on the board either way; the agent picks it up at its next check.
-        })
-      }
-
-      setCreateModal(false)
-      setAssigneeId(null)
-      setTitle("")
-      setDescription("")
-      setPriority("medium")
-      setBudgetTurns(12)
-    } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : "Failed to create task.")
-    } finally {
-      setCreating(false)
-    }
+  const counts = {
+    active: tasks.filter((t) => t.status === "open" || t.status === "in_progress").length,
+    stuck: tasks.filter((t) => t.status === "stuck" || t.status === "blocked").length,
+    done: tasks.filter((t) => t.status === "done").length,
   }
+  const shown = tasks.filter((t) =>
+    filter === "active" ? t.status === "open" || t.status === "in_progress" : filter === "stuck" ? t.status === "stuck" || t.status === "blocked" : t.status === "done",
+  )
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      <StatusBar barStyle="light-content" backgroundColor={theme.surface} />
-
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: theme.surface }]}>
-        <View>
-          <Text style={styles.title}>Autonomous Tasks</Text>
-          <Text style={styles.subtitle}>Work you hand to an agent</Text>
-        </View>
-        <TouchableOpacity style={styles.refreshBtn} onPress={refresh}>
-          <RefreshCw size={18} color={colors.textSecondary} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Filter Tabs */}
-      <View style={styles.tabsRow}>
-        {(["all", "in_progress", "blocked", "done"] as const).map((tab) => (
-          <TouchableOpacity
-            key={tab}
-            style={[styles.tab, filter === tab && styles.tabActive]}
-            onPress={() => setFilter(tab)}
-          >
-            <Text style={[styles.tabText, filter === tab && styles.tabTextActive]}>
-              {tab.replace("_", " ").toUpperCase()}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* Task List */}
+    <View style={{ flex: 1, backgroundColor: theme.bg }}>
       <FlatList
-        data={filtered}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <TaskCard task={item} />}
-        contentContainerStyle={styles.listContent}
+        data={shown}
+        keyExtractor={(t) => t.id}
+        contentContainerStyle={{ paddingTop: insets.top + 12, paddingHorizontal: space.lg, paddingBottom: 140, gap: 10 }}
         refreshControl={
-          <RefreshControl refreshing={loading} onRefresh={refresh} tintColor={colors.primary} />
+          <RefreshControl
+            refreshing={refreshing}
+            tintColor={theme.accent}
+            onRefresh={async () => {
+              setRefreshing(true)
+              await refresh()
+              setRefreshing(false)
+            }}
+          />
         }
-        ListEmptyComponent={
-          !loading ? (
-            <View style={styles.emptyContainer}>
-              <View style={styles.emptyIconBadge}>
-                <CheckSquare size={36} color={colors.primary} />
-              </View>
-              <Text style={styles.emptyTitle}>{error ? "Tasks are unavailable" : "No tasks in this view"}</Text>
-              <Text style={styles.emptySubtitle}>
-                {error ?? "Create a task in a room. It stays open until someone moves it."}
+        ListHeaderComponent={
+          <View style={{ marginBottom: space.md }}>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <Text variant="largeTitle" accessibilityRole="header" style={{ flex: 1 }}>
+                Tasks
               </Text>
-              <TouchableOpacity
-                style={styles.emptyCreateBtn}
-                onPress={() => (session ? setCreateModal(true) : void signOut())}
-              >
-                {session ? <Plus size={16} color={colors.textInverse} /> : null}
-                <Text style={styles.emptyCreateBtnText}>{session ? "Create a task" : "Sign in"}</Text>
-              </TouchableOpacity>
+              <IconButton label="New task" icon={<Plus size={20} color={theme.onAccent} />} tint={theme.accent} onPress={() => setCreating(true)} />
             </View>
-          ) : null
-        }
-      />
-
-      {/* FAB: Create Task */}
-      <TouchableOpacity
-        style={styles.fab}
-        activeOpacity={0.85}
-        onPress={() => setCreateModal(true)}
-      >
-        <Plus size={24} color={colors.textInverse} />
-      </TouchableOpacity>
-
-      {/* Create Task Modal */}
-      <Modal visible={createModal} animationType="slide" transparent>
-        <KeyboardAvoidingView
-          style={styles.modalBackdrop}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-        >
-          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.modalScroll}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalHeader}>
-              <View style={styles.modalTitleRow}>
-                <Sparkles size={18} color={colors.primaryBright} />
-                <Text style={styles.modalTitle}>New Autonomous Task</Text>
-              </View>
-              <TouchableOpacity onPress={() => setCreateModal(false)}>
-                <X size={20} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
-
-            {errorMsg && (
-              <View style={styles.errorAlert}>
-                <AlertCircle size={14} color={colors.accentDanger} />
-                <Text style={styles.errorAlertText}>{errorMsg}</Text>
-              </View>
-            )}
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Task Title</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g. Audit security dependencies and create report"
-                placeholderTextColor={colors.textPlaceholder}
-                value={title}
-                onChangeText={setTitle}
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Description / Instructions</Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                placeholder="Detailed instructions for the agent computer run..."
-                placeholderTextColor={colors.textPlaceholder}
-                value={description}
-                onChangeText={setDescription}
-                multiline
-                numberOfLines={3}
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Room</Text>
-              {rooms.length === 0 ? (
-                <Text style={styles.roomHint}>Create a room before adding a task.</Text>
-              ) : (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.priorityRow}>
-                  {rooms.map((room) => {
-                    const selected = room.id === roomId
-                    return (
-                      <TouchableOpacity
-                        key={room.id}
-                        style={[styles.priorityBtn, selected && styles.priorityBtnActive]}
-                        onPress={() => setRoomId(room.id)}
-                      >
-                        <Text style={[styles.priorityBtnText, selected && styles.priorityBtnTextActive]}>
-                          {room.name}
-                        </Text>
-                      </TouchableOpacity>
-                    )
-                  })}
-                </ScrollView>
-              )}
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Who should do it?</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.priorityRow}>
-                <TouchableOpacity
-                  style={[styles.priorityBtn, assigneeId === null && styles.priorityBtnActive]}
-                  onPress={() => setAssigneeId(null)}
-                >
-                  <Text style={[styles.priorityBtnText, assigneeId === null && styles.priorityBtnTextActive]}>
-                    Any agent
-                  </Text>
-                </TouchableOpacity>
-                {roomAgents.map((agent) => {
-                  const selected = agent.id === assigneeId
-                  return (
-                    <TouchableOpacity
-                      key={agent.id}
-                      style={[styles.priorityBtn, selected && styles.priorityBtnActive]}
-                      onPress={() => setAssigneeId(agent.id)}
-                    >
-                      <Sparkles size={12} color={selected ? colors.textInverse : colors.textSecondary} />
-                      <Text style={[styles.priorityBtnText, selected && styles.priorityBtnTextActive]}>
-                        {agent.displayName}
-                      </Text>
-                    </TouchableOpacity>
-                  )
-                })}
-              </ScrollView>
-              <Text style={styles.roomHint}>
-                {assigneeId
-                  ? "It gets a message now and works on it from wherever it runs, like your computer."
-                  : "The first agent free in the room claims it."}
-              </Text>
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Priority</Text>
-              <View style={styles.priorityRow}>
-                {(["low", "medium", "high", "urgent"] as const).map((p) => {
-                  const isSelected = priority === p
-                  return (
-                    <TouchableOpacity
-                      key={p}
-                      style={[styles.priorityBtn, isSelected && styles.priorityBtnActive]}
-                      onPress={() => setPriority(p)}
-                    >
-                      <Flag
-                        size={12}
-                        color={isSelected ? colors.textInverse : colors.textSecondary}
-                      />
-                      <Text
-                        style={[
-                          styles.priorityBtnText,
-                          isSelected && styles.priorityBtnTextActive,
-                        ]}
-                      >
-                        {p.toUpperCase()}
-                      </Text>
-                    </TouchableOpacity>
-                  )
-                })}
-              </View>
-            </View>
-
-            <View style={styles.rowBetween}>
-              <View style={styles.rowLead}>
-                <Clock size={16} color={colors.textSecondary} />
-                <View>
-                  <Text style={styles.rowTitle}>Budget Limit (Turns)</Text>
-                  <Text style={styles.rowSubtitle}>Max model turns allowed for task</Text>
-                </View>
-              </View>
-              <View style={styles.stepperContainer}>
-                <TouchableOpacity
-                  style={styles.stepperBtn}
-                  onPress={() => setBudgetTurns(Math.max(3, budgetTurns - 1))}
-                >
-                  <Text style={styles.stepperText}>-</Text>
-                </TouchableOpacity>
-                <Text style={styles.stepperValue}>{budgetTurns}</Text>
-                <TouchableOpacity
-                  style={styles.stepperBtn}
-                  onPress={() => setBudgetTurns(Math.min(50, budgetTurns + 1))}
-                >
-                  <Text style={styles.stepperText}>+</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <View style={styles.modalActionRow}>
-              <TouchableOpacity
-                style={styles.modalCancelBtn}
-                onPress={() => setCreateModal(false)}
-                disabled={creating}
-              >
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.modalSubmitBtn}
-                onPress={handleCreateTask}
-                disabled={creating || rooms.length === 0}
-              >
-                {creating ? (
-                  <ActivityIndicator size="small" color={colors.textInverse} />
-                ) : (
-                  <>
-                    <Plus size={16} color={colors.textInverse} />
-                    <Text style={styles.modalSubmitText}>Create task</Text>
-                  </>
-                )}
-              </TouchableOpacity>
+            <View style={{ flexDirection: "row", gap: 8, marginTop: space.md }}>
+              <Chip label={`Active ${counts.active || ""}`.trim()} selected={filter === "active"} onPress={() => setFilter("active")} />
+              <Chip label={`Stuck ${counts.stuck || ""}`.trim()} selected={filter === "stuck"} onPress={() => setFilter("stuck")} />
+              <Chip label="Done" selected={filter === "done"} onPress={() => setFilter("done")} />
             </View>
           </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </Modal>
-    </SafeAreaView>
+        }
+        ListEmptyComponent={
+          loading ? null : (
+            <EmptyState
+              icon={<CheckCircle2 size={40} color={theme.faint} />}
+              title={filter === "active" ? "Nothing in progress" : filter === "stuck" ? "Nothing is stuck" : "Nothing finished yet"}
+              body={filter === "active" ? "Hand an agent something to do, and it shows up here." : undefined}
+              action={filter === "active" ? <Button title="New task" onPress={() => setCreating(true)} /> : undefined}
+            />
+          )
+        }
+        renderItem={({ item }) => {
+          const agent = item.assigneeAgentId ? agents.get(item.assigneeAgentId) : undefined
+          const room = item.roomId ? rooms.get(item.roomId) : undefined
+          return (
+            <Pressable
+              onPress={() => {
+                haptic.tap()
+                setDetail(item)
+              }}
+              accessibilityRole="button"
+              style={({ pressed }) => ({ backgroundColor: theme.card, borderRadius: radius.lg, padding: space.lg, gap: 8, opacity: pressed ? 0.85 : 1 })}
+            >
+              <View style={{ flexDirection: "row", gap: 10, alignItems: "flex-start" }}>
+                <StatusIcon status={item.status} />
+                <Text variant="callout" weight="600" style={{ flex: 1 }} numberOfLines={3}>
+                  {item.title}
+                </Text>
+              </View>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingLeft: 30 }}>
+                {agent ? <Mascot seed={agent.handle} size={20} working={item.status === "in_progress"} /> : null}
+                <Text variant="caption" tone="muted" numberOfLines={1} style={{ flex: 1 }}>
+                  {[agent ? agent.name : "Any agent", room ? `#${room.name}` : null, STATUS_LABEL[item.status], item.updatedAt ? shortTime(item.updatedAt) : null]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </Text>
+              </View>
+              {item.unblockNeeds && (item.status === "stuck" || item.status === "blocked") ? (
+                <Text variant="caption" tone="warn" style={{ paddingLeft: 30 }}>
+                  Needs: {item.unblockNeeds.replace(/_/g, " ")}
+                </Text>
+              ) : null}
+            </Pressable>
+          )
+        }}
+      />
+
+      <NewTaskSheet
+        visible={creating}
+        onClose={() => setCreating(false)}
+        orgSlug={data?.org.slug ?? ""}
+        rooms={[...rooms.values()].map((r) => ({ id: r.id, name: r.name, agentIds: r.agentIds }))}
+        agents={data?.agents ?? []}
+        create={async (input) => {
+          const { data: org } = await supabase.from("orgs").select("id").eq("slug", data?.org.slug ?? "").maybeSingle()
+          if (!org?.id) throw new Error("No workspace")
+          await createTask({ orgId: org.id, ...input })
+        }}
+        onDone={() => {
+          setCreating(false)
+          void refresh()
+        }}
+      />
+
+      <Sheet visible={Boolean(detail)} onClose={() => setDetail(null)} title={detail ? STATUS_LABEL[detail.status] : ""} height={0.6}>
+        {detail ? (
+          <View style={{ gap: space.md }}>
+            <Text variant="title">{detail.title}</Text>
+            {detail.description ? (
+              <Text variant="body" tone="muted">
+                {detail.description}
+              </Text>
+            ) : null}
+            {detail.assigneeAgentId && agents.get(detail.assigneeAgentId) ? (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                <Mascot seed={agents.get(detail.assigneeAgentId)!.handle} size={32} />
+                <Text variant="callout">{agents.get(detail.assigneeAgentId)!.name} is on it</Text>
+              </View>
+            ) : (
+              <Text variant="callout" tone="muted">
+                Waiting for an agent to pick it up
+              </Text>
+            )}
+            {detail.roomId && rooms.get(detail.roomId) ? (
+              <Button
+                title={`Open #${rooms.get(detail.roomId)!.name}`}
+                variant="secondary"
+                icon={<Hash size={16} color={theme.text} />}
+                onPress={() => {
+                  const room = rooms.get(detail.roomId!)!
+                  setDetail(null)
+                  navigation.navigate("Chat", { roomId: room.id, roomName: room.name, orgSlug: data?.org.slug })
+                }}
+              />
+            ) : null}
+          </View>
+        ) : null}
+      </Sheet>
+    </View>
   )
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: colors.surface,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  title: {
-    color: colors.textPrimary,
-    fontSize: 20,
-    fontWeight: "700",
-  },
-  subtitle: {
-    color: colors.primaryBright,
-    fontSize: 12,
-    fontWeight: "600",
-    marginTop: 2,
-  },
-  refreshBtn: {
-    padding: 6,
-    borderRadius: 8,
-    backgroundColor: colors.surfaceLight,
-  },
-  tabsRow: {
-    flexDirection: "row",
-    backgroundColor: colors.surface,
-    paddingHorizontal: 12,
-    paddingBottom: 10,
-    gap: 8,
-    borderBottomWidth: 1,
-    borderColor: colors.borderSubtle,
-  },
-  tab: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 16,
-    backgroundColor: colors.surfaceLight,
-    borderWidth: 1,
-    borderColor: colors.borderSubtle,
-  },
-  tabActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primaryBright,
-  },
-  tabText: {
-    color: colors.textSecondary,
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  tabTextActive: {
-    color: colors.textInverse,
-  },
-  listContent: {
-    padding: 12,
-    paddingBottom: 90,
-  },
-  fab: {
-    position: "absolute",
-    right: 18,
-    bottom: 22,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.primary,
-    alignItems: "center",
-    justifyContent: "center",
-    elevation: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.35,
-    shadowRadius: 3,
-  },
-  emptyContainer: {
-    padding: 40,
-    alignItems: "center",
-    gap: 12,
-  },
-  emptyIconBadge: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: colors.surfaceLight,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 4,
-  },
-  emptyTitle: {
-    color: colors.textPrimary,
-    fontSize: 17,
-    fontWeight: "700",
-  },
-  emptySubtitle: {
-    color: colors.textSecondary,
-    fontSize: 13,
-    textAlign: "center",
-    lineHeight: 18,
-    maxWidth: 280,
-  },
-  emptyCreateBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: colors.primary,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 20,
-    marginTop: 8,
-  },
-  emptyCreateBtnText: {
-    color: colors.textInverse,
-    fontSize: 14,
-    fontWeight: "700",
-  },
+function NewTaskSheet({
+  visible,
+  onClose,
+  orgSlug,
+  rooms,
+  agents,
+  create,
+  onDone,
+}: {
+  visible: boolean
+  onClose: () => void
+  orgSlug: string
+  rooms: Array<{ id: string; name: string; agentIds: string[] }>
+  agents: HomeAgent[]
+  create: (input: { roomId: string; title: string; description?: string; priority?: "low" | "medium" | "high" | "urgent"; assigneeAgentId?: string | null }) => Promise<void>
+  onDone: () => void
+}) {
+  const theme = useTheme()
+  const [title, setTitle] = useState("")
+  const [details, setDetails] = useState("")
+  const [roomId, setRoomId] = useState<string | null>(rooms[0]?.id ?? null)
+  const [who, setWho] = useState<string | null>(null)
+  const [urgent, setUrgent] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  useEffect(() => {
+    if (!roomId && rooms[0]) setRoomId(rooms[0].id)
+  }, [rooms, roomId])
+  const roomAgents = agents.filter((a) => rooms.find((r) => r.id === roomId)?.agentIds.includes(a.id))
 
-  // Modal styles
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: colors.overlay,
-    justifyContent: "flex-end",
-  },
-  modalScroll: {
-    flexGrow: 1,
-    justifyContent: "flex-end",
-  },
-  roomHint: {
-    color: colors.textSecondary,
-    fontSize: 12.5,
-  },
-  modalCard: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
-    gap: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  modalHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  modalTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  modalTitle: {
-    color: colors.textPrimary,
-    fontSize: 18,
-    fontWeight: "700",
-  },
-  errorAlert: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: colors.accentDangerBg,
-    padding: 10,
-    borderRadius: 8,
-  },
-  errorAlertText: {
-    color: colors.accentDanger,
-    fontSize: 12.5,
-    fontWeight: "600",
-  },
-  inputGroup: {
-    gap: 6,
-  },
-  inputLabel: {
-    color: colors.textSecondary,
-    fontSize: 12,
-    fontWeight: "600",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  input: {
-    backgroundColor: colors.surfaceLight,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    color: colors.textPrimary,
-    fontSize: 15,
-    borderWidth: 1,
-    borderColor: colors.borderSubtle,
-  },
-  textArea: {
-    minHeight: 70,
-    textAlignVertical: "top",
-  },
-  priorityRow: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  priorityBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 4,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: colors.surfaceLight,
-    borderWidth: 1,
-    borderColor: colors.borderSubtle,
-  },
-  priorityBtnActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primaryBright,
-  },
-  priorityBtnText: {
-    color: colors.textSecondary,
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  priorityBtnTextActive: {
-    color: colors.textInverse,
-  },
-  rowBetween: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  rowLead: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  rowTitle: {
-    color: colors.textPrimary,
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  rowSubtitle: {
-    color: colors.textSecondary,
-    fontSize: 11.5,
-  },
-  stepperContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.surfaceLight,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.borderSubtle,
-  },
-  stepperBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  stepperText: {
-    color: colors.textPrimary,
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  stepperValue: {
-    color: colors.primaryBright,
-    fontSize: 14,
-    fontWeight: "700",
-    paddingHorizontal: 8,
-  },
-  modalActionRow: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    alignItems: "center",
-    gap: 10,
-    marginTop: 8,
-  },
-  modalCancelBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  modalCancelText: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  modalSubmitBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: colors.primary,
-    paddingHorizontal: 20,
-    paddingVertical: 11,
-    borderRadius: 10,
-  },
-  modalSubmitText: {
-    color: colors.textInverse,
-    fontSize: 14,
-    fontWeight: "700",
-  },
-})
+  async function submit() {
+    if (!roomId) return
+    setBusy(true)
+    setError(null)
+    try {
+      await create({ roomId, title: title.trim(), description: details.trim() || undefined, priority: urgent ? "urgent" : "medium", assigneeAgentId: who })
+      const agent = agents.find((a) => a.id === who)
+      if (agent) await postRoomMessage(orgSlug, roomId, delegationMessage(agent.handle, title, details)).catch(() => {})
+      haptic.success()
+      setTitle("")
+      setDetails("")
+      setWho(null)
+      setUrgent(false)
+      onDone()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't create the task")
+      haptic.warn()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const field = { borderRadius: radius.md, backgroundColor: theme.raised, paddingHorizontal: 14, color: theme.text, fontSize: 16 } as const
+  return (
+    <Sheet visible={visible} onClose={onClose} title="New task" height={0.85}>
+      <TextInput value={title} onChangeText={setTitle} placeholder="What needs doing?" placeholderTextColor={theme.faint} autoFocus style={{ ...field, height: 50 }} />
+      <TextInput
+        value={details}
+        onChangeText={setDetails}
+        placeholder="Details, links, what done looks like (optional)"
+        placeholderTextColor={theme.faint}
+        multiline
+        style={{ ...field, minHeight: 90, paddingTop: 12, marginTop: 10, textAlignVertical: "top" }}
+      />
+      <Text variant="footnote" tone="muted" style={{ marginTop: space.lg, marginBottom: 8 }}>
+        In which chat?
+      </Text>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+        {rooms.map((r) => (
+          <Chip key={r.id} label={`#${r.name}`} selected={r.id === roomId} onPress={() => { setRoomId(r.id); setWho(null) }} />
+        ))}
+      </View>
+      <Text variant="footnote" tone="muted" style={{ marginTop: space.lg, marginBottom: 8 }}>
+        Who should do it?
+      </Text>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+        <Chip label="Any agent" selected={who === null} onPress={() => setWho(null)} />
+        {roomAgents.map((a) => (
+          <Chip key={a.id} label={a.name} selected={who === a.id} icon={<Mascot seed={a.handle} size={18} />} onPress={() => setWho(a.id)} />
+        ))}
+      </View>
+      <View style={{ flexDirection: "row", gap: 8, marginTop: space.lg }}>
+        <Chip label={urgent ? "Urgent ✓" : "Mark urgent"} selected={urgent} onPress={() => setUrgent(!urgent)} />
+      </View>
+      {error ? (
+        <Text variant="footnote" tone="danger" style={{ marginTop: space.md }}>
+          {error}
+        </Text>
+      ) : null}
+      <Button title={who ? "Hand it over" : "Add task"} onPress={submit} loading={busy} disabled={!title.trim() || !roomId} style={{ marginTop: space.xl }} />
+    </Sheet>
+  )
+}
