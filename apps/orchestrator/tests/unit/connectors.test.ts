@@ -157,6 +157,59 @@ describe("SlackConnector", () => {
     expect(results[0]?.content).toContain("@Alex")
   })
 
+  it("searches channel history when the token cannot use search.messages", async () => {
+    const mockFetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("search.messages")) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ ok: false, error: "not_allowed_token_type" }), {
+            status: 200,
+          }),
+        )
+      }
+      if (url.includes("conversations.list")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              channels: [
+                { id: "C001", name: "engineering" },
+                { id: "C002", name: "random" },
+              ],
+            }),
+            { status: 200 },
+          ),
+        )
+      }
+      if (url.includes("conversations.history") && url.includes("C001")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              messages: [
+                { user: "U9", text: "unrelated standup", ts: "1.1" },
+                { text: "checkout bug in payments", username: "sam", ts: "1690000000.000100" },
+              ],
+            }),
+            { status: 200 },
+          ),
+        )
+      }
+      return Promise.resolve(
+        new Response(JSON.stringify({ ok: false, error: "unexpected" }), { status: 200 }),
+      )
+    })
+
+    const connector = new SlackConnector({ botToken: "xoxb-test", fetchFn: mockFetch })
+    const results = await connector.searchMessages({
+      query: "checkout bug",
+      allowedChannels: ["engineering"],
+    })
+    expect(results).toHaveLength(1)
+    expect(results[0]?.metadata.channelId).toBe("C001")
+    expect(results[0]?.content).toContain("checkout bug")
+    expect(mockFetch.mock.calls.some((call) => String(call[0]).includes("C002"))).toBe(false)
+  })
+
   it("fetches thread replies in chronological order", async () => {
     const mockReplies = {
       ok: true,
@@ -166,9 +219,9 @@ describe("SlackConnector", () => {
       ],
     }
 
-    const mockFetch = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify(mockReplies), { status: 200 }),
-    )
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify(mockReplies), { status: 200 }))
 
     const connector = new SlackConnector({
       botToken: "xoxb-test",
@@ -195,9 +248,9 @@ describe("GitHubConnector", () => {
       ],
     }
 
-    const mockFetch = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify(mockCodeResults), { status: 200 }),
-    )
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify(mockCodeResults), { status: 200 }))
 
     const connector = new GitHubConnector({
       token: "ghp-test",
@@ -227,9 +280,9 @@ describe("GitHubConnector", () => {
       size: 14,
     }
 
-    const mockFetch = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify(mockFilePayload), { status: 200 }),
-    )
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify(mockFilePayload), { status: 200 }))
 
     const connector = new GitHubConnector({
       token: "ghp-test",

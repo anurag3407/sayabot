@@ -7,10 +7,9 @@ import { Section } from "@/components/settings/section"
 import { EmptyState } from "@/components/ui/empty"
 import { ConnectorAddForm } from "@/components/settings/connector-add-form"
 import { ConnectorChatForm } from "@/components/settings/connector-chat-form"
-import {
-  DeleteConnectorButton,
-  TestConnectorButton,
-} from "@/components/settings/connector-actions"
+import { DeleteConnectorButton, TestConnectorButton } from "@/components/settings/connector-actions"
+import { BrandLogo } from "@/components/connectors/brand-logo"
+import { brandLogo } from "@/lib/brand-logos"
 
 export const maxDuration = 60
 
@@ -25,37 +24,43 @@ const SOURCE_INFO: Record<
   google_drive: {
     label: "Google Drive",
     icon: "📁",
-    description: "Search documents, read Google Docs text, export Google Sheets to CSV, and inspect presentations.",
+    description:
+      "Search documents, read Google Docs text, export Google Sheets to CSV, and inspect presentations.",
     color: "border-blue-500/20 bg-blue-500/5 text-blue-400",
   },
   slack: {
     label: "Slack",
     icon: "💬",
-    description: "Search workspace conversation history, resolve thread replies, and lookup team members.",
+    description:
+      "Search workspace conversation history, resolve thread replies, and lookup team members.",
     color: "border-emerald-500/20 bg-emerald-500/5 text-emerald-400",
   },
   github: {
     label: "GitHub",
     icon: "🐙",
-    description: "Search repo source code, retrieve files, and inspect issues, PR discussions, and code reviews.",
+    description:
+      "Search repo source code, retrieve files, and inspect issues, PR discussions, and code reviews.",
     color: "border-purple-500/20 bg-purple-500/5 text-purple-400",
   },
   discord: {
     label: "Discord",
     icon: "🎮",
-    description: "Read server channels and post messages as your bot. Every post waits for approval.",
+    description:
+      "Read server channels and post messages as your bot. Every post waits for approval.",
     color: "border-indigo-500/20 bg-indigo-500/5 text-indigo-400",
   },
   telegram: {
     label: "Telegram",
     icon: "✈️",
-    description: "Read what people send your bot and reply to them. Every reply waits for approval.",
+    description:
+      "Read what people send your bot and reply to them. Every reply waits for approval.",
     color: "border-sky-500/20 bg-sky-500/5 text-sky-400",
   },
   whatsapp: {
     label: "WhatsApp",
     icon: "📱",
-    description: "Send WhatsApp messages and templates from your business number. Every message waits for approval.",
+    description:
+      "Send WhatsApp messages and templates from your business number. Every message waits for approval.",
     color: "border-green-500/20 bg-green-500/5 text-green-400",
   },
   onepassword: {
@@ -102,9 +107,12 @@ export default async function ConnectorsSettingsPage({
             ⚡ Two-Tier Enterprise Connectors Architecture
           </h2>
           <p className="text-[12px] leading-relaxed text-muted">
-            <strong>Tier 1 (Workspace Level):</strong> Connect your company tools once here with AES-256-GCM encryption. Credentials never leave the secure server.
+            <strong>Tier 1 (Workspace Level):</strong> Connect your company tools once here with
+            AES-256-GCM encryption. Credentials never leave the secure server.
             <br />
-            <strong>Tier 2 (Agent Scoping):</strong> In each agent&apos;s settings, grant access to specific connectors and restrict allowed folders (Google Drive), channels (Slack), or repositories (GitHub). No agent can access resources outside its granted scope.
+            <strong>Tier 2 (Agent Scoping):</strong> In each agent&apos;s settings, grant access to
+            specific connectors and restrict allowed folders (Google Drive), channels (Slack), or
+            repositories (GitHub). No agent can access resources outside its granted scope.
           </p>
         </div>
       </div>
@@ -151,7 +159,13 @@ export default async function ConnectorsSettingsPage({
                 >
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-lg">{info.icon}</span>
+                      {brandLogo(connector.source) ? (
+                        <span className="grid h-7 w-7 place-items-center rounded-md bg-white ring-1 ring-black/10">
+                          <BrandLogo id={connector.source} size={16} />
+                        </span>
+                      ) : (
+                        <span className="text-lg">{info.icon}</span>
+                      )}
                       <span className="font-medium text-text">{connector.name}</span>
                       <span
                         className={`rounded-full px-2 py-0.5 font-mono text-[10px] uppercase font-semibold ${info.color}`}
@@ -160,9 +174,7 @@ export default async function ConnectorsSettingsPage({
                       </span>
                       <span
                         className={`inline-flex items-center rounded-full px-2 py-0.5 font-mono text-[10px] font-medium ${
-                          isError
-                            ? "bg-danger/10 text-danger"
-                            : "bg-ok/10 text-ok"
+                          isError ? "bg-danger/10 text-danger" : "bg-ok/10 text-ok"
                         }`}
                       >
                         {isError ? "● Error" : "● Active"}
@@ -171,7 +183,9 @@ export default async function ConnectorsSettingsPage({
 
                     <p className="text-[12px] text-muted">{info.description}</p>
 
-                    {(connector.source === "telegram" || connector.source === "discord" || connector.source === "whatsapp") &&
+                    {(connector.source === "telegram" ||
+                      connector.source === "discord" ||
+                      connector.source === "whatsapp") &&
                     rooms.length > 0 &&
                     agents.length > 0 ? (
                       <ConnectorChatForm
@@ -179,38 +193,42 @@ export default async function ConnectorsSettingsPage({
                         connectorId={connector.id}
                         source={connector.source}
                         rooms={rooms}
-                        agents={agents.map((agent) => ({ id: agent.id, handle: agent.handle, displayName: agent.displayName }))}
+                        agents={agents.map((agent) => ({
+                          id: agent.id,
+                          handle: agent.handle,
+                          displayName: agent.displayName,
+                        }))}
                         inbound={
-                          (connector.config.inbound as {
-                            enabled?: boolean
-                            roomId?: string
-                            agentId?: string
-                            allowedChats?: string[]
-                          } | undefined) ?? null
+                          (connector.config.inbound as
+                            | {
+                                enabled?: boolean
+                                roomId?: string
+                                agentId?: string
+                                allowedChats?: string[]
+                              }
+                            | undefined) ?? null
                         }
                       />
                     ) : null}
 
                     <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px] text-faint">
-                      <span>Key ends in <code className="font-mono text-text">...{connector.last4}</code></span>
+                      <span>
+                        Key ends in{" "}
+                        <code className="font-mono text-text">...{connector.last4}</code>
+                      </span>
                       {connector.lastSyncedAt && (
                         <span>
                           • Last verified: {new Date(connector.lastSyncedAt).toLocaleString()}
                         </span>
                       )}
                       {connector.errorMessage && (
-                        <span className="text-danger">
-                          • {connector.errorMessage}
-                        </span>
+                        <span className="text-danger">• {connector.errorMessage}</span>
                       )}
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2 self-end sm:self-center">
-                    <TestConnectorButton
-                      orgSlug={orgSlug}
-                      connectorId={connector.id}
-                    />
+                    <TestConnectorButton orgSlug={orgSlug} connectorId={connector.id} />
                     <DeleteConnectorButton
                       orgSlug={orgSlug}
                       connectorId={connector.id}

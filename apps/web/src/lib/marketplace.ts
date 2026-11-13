@@ -89,7 +89,10 @@ const KEY_APPS: MarketplaceApp[] = [
     category: "developer",
     url: "https://api.githubcopilot.com/mcp/",
     transport: "http",
-    auth: bearer("Personal access token", "github.com → Settings → Developer settings → Personal access tokens."),
+    auth: bearer(
+      "Personal access token",
+      "github.com → Settings → Developer settings → Personal access tokens.",
+    ),
     color: "#24292f",
     docs: "https://github.com/github/github-mcp-server",
     dangerousTools: ["create_or_update_file", "push_files", "merge_pull_request", "delete_file"],
@@ -178,7 +181,11 @@ const KEY_APPS: MarketplaceApp[] = [
     category: "knowledge",
     url: "https://huggingface.co/mcp",
     transport: "http",
-    auth: bearer("Access token (optional)", "Optional. huggingface.co → Settings → Access tokens. Without one you get public data only.", true),
+    auth: bearer(
+      "Access token (optional)",
+      "Optional. huggingface.co → Settings → Access tokens. Without one you get public data only.",
+      true,
+    ),
     color: "#ffb000",
     docs: "https://huggingface.co/settings/mcp",
   },
@@ -272,12 +279,28 @@ const KEY_APPS: MarketplaceApp[] = [
     category: "finance",
     url: "https://mcp.stripe.com",
     transport: "http",
-    auth: bearer("Restricted API key", "Use a restricted key (rk_…) with only the access you want agents to have."),
+    auth: { kind: "oauth" },
     color: "#635bff",
     docs: "https://docs.stripe.com/mcp",
-    dangerousTools: ["create_refund", "create_payment_link", "cancel_subscription", "create_invoice"],
+    dangerousTools: ["@writes"],
   },
 ]
+
+/**
+ * Connectors checked against the live vendor: each one either opens that vendor's sign-in
+ * page (dynamic registration) or connects with a token because the vendor does not allow
+ * registration. GitHub is the token one. Slack and Google Drive are native workspace connectors.
+ */
+export const FEATURED_APP_IDS = [
+  "github",
+  "notion",
+  "linear",
+  "atlassian",
+  "stripe",
+  "sentry",
+  "cloudflare",
+  "canva",
+] as const
 
 const LOCAL_MARKETPLACE: MarketplaceApp[] = LOCAL_APPS.map((app) => ({
   id: app.id,
@@ -287,7 +310,14 @@ const LOCAL_MARKETPLACE: MarketplaceApp[] = LOCAL_APPS.map((app) => ({
   url: `stdio://${app.id}`,
   transport: "stdio",
   auth: app.env
-    ? { kind: "token", header: "", prefix: "", label: app.env.label, help: app.env.help, env: app.env.name }
+    ? {
+        kind: "token",
+        header: "",
+        prefix: "",
+        label: app.env.label,
+        help: app.env.help,
+        env: app.env.name,
+      }
     : { kind: "none" },
   color: app.color,
   docs: app.docs,

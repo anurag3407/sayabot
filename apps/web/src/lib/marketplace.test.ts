@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest"
-import { APP_CATEGORIES, appForHost, findMarketplaceApp, MARKETPLACE_APPS } from "./marketplace"
+import { brandLogo } from "./brand-logos"
+import {
+  APP_CATEGORIES,
+  appForHost,
+  FEATURED_APP_IDS,
+  findMarketplaceApp,
+  MARKETPLACE_APPS,
+} from "./marketplace"
 
 describe("Marketplace catalog", () => {
   it("has a few hundred apps with unique ids", () => {
@@ -27,8 +34,19 @@ describe("Marketplace catalog", () => {
   })
 
   it("offers sign-in for the big sign-in-only apps", () => {
-    for (const id of ["notion", "atlassian", "linear", "canva", "sentry", "vercel"]) {
+    for (const id of ["notion", "atlassian", "linear", "canva", "sentry", "vercel", "stripe"]) {
       expect(findMarketplaceApp(id)?.auth.kind, id).toBe("oauth")
+    }
+  })
+
+  it("gives the featured connectors a real brand mark", () => {
+    expect(findMarketplaceApp("github")?.auth.kind).toBe("token")
+    for (const id of FEATURED_APP_IDS) {
+      expect(findMarketplaceApp(id), id).toBeTruthy()
+      expect(brandLogo(id)?.path.length, id).toBeGreaterThan(40)
+    }
+    for (const id of ["google_drive", "slack", "discord", "telegram", "whatsapp"]) {
+      expect(brandLogo(id)?.path.length, id).toBeGreaterThan(40)
     }
   })
 })

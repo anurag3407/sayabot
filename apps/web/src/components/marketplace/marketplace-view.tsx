@@ -8,9 +8,12 @@ import {
   disconnectMarketplaceServerAction,
   startMarketplaceSignInAction,
 } from "@/lib/actions/marketplace"
+import { BrandLogo } from "@/components/connectors/brand-logo"
+import { brandLogo } from "@/lib/brand-logos"
 import {
   APP_CATEGORIES,
   appForHost,
+  FEATURED_APP_IDS,
   MARKETPLACE_APPS,
   type MarketplaceApp,
 } from "@/lib/marketplace"
@@ -32,7 +35,11 @@ interface ServerSummary {
 }
 
 /** Sends the browser to the vendor's sign-in page; it comes back to /api/mcp/oauth/callback. */
-async function beginSignIn(orgSlug: string, app: MarketplaceApp, serverId?: string): Promise<string | null> {
+async function beginSignIn(
+  orgSlug: string,
+  app: MarketplaceApp,
+  serverId?: string,
+): Promise<string | null> {
   const result = await startMarketplaceSignInAction({ orgSlug, appId: app.id, serverId })
   if (!result.ok) return result.error ?? `Could not start ${app.name} sign-in`
   const target = (result.data as { authorizationUrl?: string | null } | undefined)?.authorizationUrl
@@ -54,13 +61,27 @@ interface TemplateSummary {
 }
 
 function AppTile({ app, size = 44 }: { app: MarketplaceApp; size?: number }) {
+  if (brandLogo(app.id)) {
+    return (
+      <span
+        aria-hidden
+        className="grid shrink-0 place-items-center rounded-[12px] bg-white shadow-sm ring-1 ring-black/10"
+        style={{ width: size, height: size }}
+      >
+        <BrandLogo id={app.id} size={Math.round(size * 0.58)} />
+      </span>
+    )
+  }
   return (
     <span
       aria-hidden
       className="grid shrink-0 place-items-center rounded-[12px] font-semibold text-white shadow-sm"
       style={{ width: size, height: size, background: app.color, fontSize: size * 0.4 }}
     >
-      {app.name.replace(/[^A-Za-z0-9]/g, "").charAt(0).toUpperCase()}
+      {app.name
+        .replace(/[^A-Za-z0-9]/g, "")
+        .charAt(0)
+        .toUpperCase()}
     </span>
   )
 }
@@ -90,7 +111,12 @@ function ConnectDialog({
         if (problem) setError(problem)
         return
       }
-      const result = await connectMarketplaceAppAction({ orgSlug, appId: app.id, secret, personalUrl })
+      const result = await connectMarketplaceAppAction({
+        orgSlug,
+        appId: app.id,
+        secret,
+        personalUrl,
+      })
       if (!result.ok) {
         setError(result.error ?? "Could not connect")
         return
@@ -103,7 +129,8 @@ function ConnectDialog({
     })
   }
 
-  const needsInput = auth.kind === "token" || auth.kind === "url-key" || auth.kind === "personal-url"
+  const needsInput =
+    auth.kind === "token" || auth.kind === "url-key" || auth.kind === "personal-url"
   const canSubmit =
     auth.kind === "none" ||
     auth.kind === "oauth" ||
@@ -140,18 +167,19 @@ function ConnectDialog({
         <div className="mt-5 space-y-3">
           {auth.kind === "none" ? (
             <p className="rounded-lg bg-ink p-3 text-[13px] text-muted">
-              No account needed. Every agent in this workspace that has MCP tools turned on can use it.
+              No account needed. Every agent in this workspace that has MCP tools turned on can use
+              it.
             </p>
           ) : null}
           {auth.kind === "oauth" ? (
             <div className="space-y-2 rounded-lg bg-ink p-3 text-[13px] text-muted">
               <p>
-                You&apos;ll go to {app.name} to sign in and choose what to share, then come straight back here.
-                No keys to copy.
+                You&apos;ll go to {app.name} to sign in and choose what to share, then come straight
+                back here. No keys to copy.
               </p>
               <p className="text-[12px] text-faint">
-                Agents act as the account you sign in with. Anything that changes data in {app.name} waits for
-                your OK in the Inbox; looking things up doesn&apos;t.
+                Agents act as the account you sign in with. Anything that changes data in {app.name}{" "}
+                waits for your OK in the Inbox; looking things up doesn&apos;t.
               </p>
             </div>
           ) : null}
@@ -197,14 +225,16 @@ function ConnectDialog({
           ) : null}
           {app.runOn === "desktop" ? (
             <p className="text-[12px] text-faint">
-              This runs on a computer with the Sayabot app open. It can see what is on that computer, not the server.
+              This runs on a computer with the Sayabot app open. It can see what is on that
+              computer, not the server.
             </p>
           ) : app.runOn === "server" ? (
             <p className="text-[12px] text-faint">
               The first time an agent uses it, Sayabot installs the program next to itself.
             </p>
           ) : null}
-          {app.dangerousTools?.length && !app.dangerousTools.some((name) => name.startsWith("@")) ? (
+          {app.dangerousTools?.length &&
+          !app.dangerousTools.some((name) => name.startsWith("@")) ? (
             <p className="text-[12px] text-faint">
               Actions that change things ({app.dangerousTools.slice(0, 3).join(", ")}
               {app.dangerousTools.length > 3 ? "…" : ""}) will wait for your OK in the Inbox.
@@ -218,11 +248,22 @@ function ConnectDialog({
         </div>
 
         <div className="mt-5 flex items-center justify-between gap-2">
-          <a href={app.docs} target="_blank" rel="noreferrer" className="text-[13px] text-muted hover:text-text hover:underline">
+          <a
+            href={app.docs}
+            target="_blank"
+            rel="noreferrer"
+            className="text-[13px] text-muted hover:text-text hover:underline"
+          >
             {app.name} docs ↗
           </a>
           <Button variant="primary" disabled={pending || !canSubmit} onClick={connect}>
-            {pending ? (auth.kind === "oauth" ? "Opening…" : "Connecting…") : auth.kind === "oauth" ? `Sign in with ${app.name}` : "Connect"}
+            {pending
+              ? auth.kind === "oauth"
+                ? "Opening…"
+                : "Connecting…"
+              : auth.kind === "oauth"
+                ? `Sign in with ${app.name}`
+                : "Connect"}
           </Button>
         </div>
       </div>
@@ -256,21 +297,36 @@ function AppRow({
         <p className="flex items-center gap-2 text-[14px] font-medium text-text">
           {app.name}
           {app.auth.kind === "none" ? (
-            <span className="rounded-full bg-ok/10 px-1.5 py-0.5 text-[10px] font-medium text-ok">No sign-up</span>
+            <span className="rounded-full bg-ok/10 px-1.5 py-0.5 text-[10px] font-medium text-ok">
+              No sign-up
+            </span>
           ) : null}
           {signedOut ? (
-            <span className="rounded-full bg-warn/10 px-1.5 py-0.5 text-[10px] font-medium text-warn">Signed out</span>
+            <span className="rounded-full bg-warn/10 px-1.5 py-0.5 text-[10px] font-medium text-warn">
+              Signed out
+            </span>
           ) : null}
         </p>
         <p className="truncate text-[13px] text-muted">{app.tagline}</p>
       </div>
       {connected && (signedOut || unfinished) ? (
         <div className="flex items-center gap-1">
-          <Button size="sm" variant="secondary" disabled={!canManage || busy} onClick={() => onSignInAgain(connected)}>
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={!canManage || busy}
+            onClick={() => onSignInAgain(connected)}
+          >
             {signedOut ? "Sign in again" : "Finish sign-in"}
           </Button>
           {canManage ? (
-            <Button size="sm" variant="quiet" disabled={busy} onClick={() => onDisconnect(connected)} className="md:opacity-0 md:group-hover:opacity-100">
+            <Button
+              size="sm"
+              variant="quiet"
+              disabled={busy}
+              onClick={() => onDisconnect(connected)}
+              className="md:opacity-0 md:group-hover:opacity-100"
+            >
               Remove
             </Button>
           ) : null}
@@ -281,13 +337,25 @@ function AppRow({
             <CheckIcon width={13} height={13} /> Connected
           </span>
           {canManage ? (
-            <Button size="sm" variant="quiet" disabled={busy} onClick={() => onDisconnect(connected)} className="md:opacity-0 md:group-hover:opacity-100">
+            <Button
+              size="sm"
+              variant="quiet"
+              disabled={busy}
+              onClick={() => onDisconnect(connected)}
+              className="md:opacity-0 md:group-hover:opacity-100"
+            >
               Remove
             </Button>
           ) : null}
         </div>
       ) : (
-        <Button size="sm" variant="secondary" disabled={!canManage} onClick={onConnect} title={canManage ? undefined : "Only workspace admins can connect apps"}>
+        <Button
+          size="sm"
+          variant="secondary"
+          disabled={!canManage}
+          onClick={onConnect}
+          title={canManage ? undefined : "Only workspace admins can connect apps"}
+        >
           <PlusIcon width={13} height={13} /> {app.auth.kind === "oauth" ? "Sign in" : "Connect"}
         </Button>
       )}
@@ -328,15 +396,21 @@ export function MarketplaceView({
   }, [notice, orgSlug, router])
 
   const q = query.trim().toLowerCase()
-  const apps = useMemo(
-    () =>
-      MARKETPLACE_APPS.filter(
-        (app) =>
-          (category === "all" || app.category === category) &&
-          (!q || app.name.toLowerCase().includes(q) || app.tagline.toLowerCase().includes(q)),
-      ),
-    [q, category],
-  )
+  const apps = useMemo(() => {
+    const matched = MARKETPLACE_APPS.filter(
+      (app) =>
+        (category === "all" || app.category === category) &&
+        (!q || app.name.toLowerCase().includes(q) || app.tagline.toLowerCase().includes(q)),
+    )
+    if (q || category !== "all") return matched
+    const rank = (id: string) => {
+      const index = FEATURED_APP_IDS.indexOf(id as (typeof FEATURED_APP_IDS)[number])
+      return index === -1 ? FEATURED_APP_IDS.length : index
+    }
+    return [...matched].sort(
+      (a, b) => rank(a.id) - rank(b.id) || a.name.localeCompare(b.name, "en"),
+    )
+  }, [q, category])
   const appIds = useMemo(() => new Set(MARKETPLACE_APPS.map((app) => app.id)), [])
   const connectedFor = (app: MarketplaceApp) =>
     servers.find((server) => server.catalogApp === app.id) ??
@@ -348,7 +422,9 @@ export function MarketplaceView({
   )
   const custom = servers.filter((server) => !catalogHosts.has(server.id))
   const agentTemplates = templates.filter(
-    (t) => t.slug !== "blank" && (!q || t.name.toLowerCase().includes(q) || t.description.toLowerCase().includes(q)),
+    (t) =>
+      t.slug !== "blank" &&
+      (!q || t.name.toLowerCase().includes(q) || t.description.toLowerCase().includes(q)),
   )
 
   function signInAgain(app: MarketplaceApp, server: ServerSummary) {
@@ -361,7 +437,10 @@ export function MarketplaceView({
   function disconnect(server: ServerSummary) {
     startTransition(async () => {
       const result = await disconnectMarketplaceServerAction({ orgSlug, serverId: server.id })
-      showToast({ tone: result.ok ? "neutral" : "danger", message: result.ok ? (result.message ?? "Removed") : (result.error ?? "Could not remove") })
+      showToast({
+        tone: result.ok ? "neutral" : "danger",
+        message: result.ok ? (result.message ?? "Removed") : (result.error ?? "Could not remove"),
+      })
       router.refresh()
     })
   }
@@ -379,7 +458,11 @@ export function MarketplaceView({
         </header>
 
         <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div role="tablist" aria-label="Marketplace" className="flex rounded-lg border border-line bg-ink p-1">
+          <div
+            role="tablist"
+            aria-label="Marketplace"
+            className="flex rounded-lg border border-line bg-ink p-1"
+          >
             {(["apps", "agents"] as const).map((value) => (
               <button
                 key={value}
@@ -396,7 +479,11 @@ export function MarketplaceView({
             ))}
           </div>
           <div className="relative flex-1">
-            <SearchIcon width={15} height={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
+            <SearchIcon
+              width={15}
+              height={15}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint"
+            />
             <Input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
@@ -421,21 +508,23 @@ export function MarketplaceView({
             aria-label="Categories"
             className="-mx-4 mt-4 flex gap-1.5 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0"
           >
-            {[{ id: "all", label: `All ${MARKETPLACE_APPS.length}` }, ...APP_CATEGORIES].map((item) => (
-              <button
-                key={item.id}
-                aria-pressed={category === item.id}
-                onClick={() => setCategory(item.id)}
-                className={cn(
-                  "h-8 shrink-0 rounded-full border px-3 text-[12px] font-medium transition-colors",
-                  category === item.id
-                    ? "border-line-strong bg-raised text-text"
-                    : "border-line text-muted hover:text-text",
-                )}
-              >
-                {item.label}
-              </button>
-            ))}
+            {[{ id: "all", label: `All ${MARKETPLACE_APPS.length}` }, ...APP_CATEGORIES].map(
+              (item) => (
+                <button
+                  key={item.id}
+                  aria-pressed={category === item.id}
+                  onClick={() => setCategory(item.id)}
+                  className={cn(
+                    "h-8 shrink-0 rounded-full border px-3 text-[12px] font-medium transition-colors",
+                    category === item.id
+                      ? "border-line-strong bg-raised text-text"
+                      : "border-line text-muted hover:text-text",
+                  )}
+                >
+                  {item.label}
+                </button>
+              ),
+            )}
           </div>
         ) : null}
 
@@ -446,7 +535,10 @@ export function MarketplaceView({
                 <h2 className="text-[15px] font-medium text-text">Your custom connections</h2>
                 <ul className="mt-2 grid gap-1 md:grid-cols-2">
                   {custom.map((server) => (
-                    <li key={server.id} className="flex items-center gap-3 rounded-xl p-3 hover:bg-raised">
+                    <li
+                      key={server.id}
+                      className="flex items-center gap-3 rounded-xl p-3 hover:bg-raised"
+                    >
                       <span className="grid h-11 w-11 place-items-center rounded-[12px] bg-hover text-[16px] font-semibold text-text">
                         {server.name.charAt(0).toUpperCase()}
                       </span>
@@ -454,7 +546,10 @@ export function MarketplaceView({
                         <p className="text-[14px] font-medium text-text">{server.name}</p>
                         <p className="truncate text-[13px] text-muted">{server.host}</p>
                       </div>
-                      <Link href={`/${orgSlug}/settings/tools`} className="text-[13px] text-muted hover:text-text">
+                      <Link
+                        href={`/${orgSlug}/settings/tools`}
+                        className="text-[13px] text-muted hover:text-text"
+                      >
                         Manage
                       </Link>
                     </li>
@@ -467,7 +562,10 @@ export function MarketplaceView({
               if (!inCategory.length) return null
               return (
                 <section key={category.id} aria-labelledby={`cat-${category.id}`}>
-                  <h2 id={`cat-${category.id}`} className="flex items-baseline gap-2 text-[15px] font-medium text-text">
+                  <h2
+                    id={`cat-${category.id}`}
+                    className="flex items-baseline gap-2 text-[15px] font-medium text-text"
+                  >
                     {category.label}
                     <span className="text-[13px] font-normal text-faint">{inCategory.length}</span>
                   </h2>
@@ -490,7 +588,8 @@ export function MarketplaceView({
             })}
             {!apps.length ? (
               <p className="rounded-xl border border-dashed border-line p-6 text-center text-[14px] text-faint">
-                No app matches &ldquo;{query}&rdquo;. You can still add any MCP server with Add custom.
+                No app matches &ldquo;{query}&rdquo;. You can still add any MCP server with Add
+                custom.
               </p>
             ) : null}
           </div>
@@ -498,7 +597,10 @@ export function MarketplaceView({
           <div className="mt-8">
             <ul className="grid gap-1 md:grid-cols-2">
               {agentTemplates.map((template) => (
-                <li key={template.id} className="flex items-center gap-3 rounded-xl p-3 hover:bg-raised">
+                <li
+                  key={template.id}
+                  className="flex items-center gap-3 rounded-xl p-3 hover:bg-raised"
+                >
                   <Mascot seed={template.slug} className="h-11 w-11 shrink-0" />
                   <div className="min-w-0 flex-1">
                     <p className="text-[14px] font-medium text-text">
@@ -516,13 +618,18 @@ export function MarketplaceView({
               ))}
             </ul>
             <div className="mt-8 rounded-xl border border-line bg-panel p-5">
-              <p className="text-[15px] font-medium text-text">Already use an agent somewhere else?</p>
-              <p className="mt-1 text-[13px] text-muted">
-                Hermes, Claude Code, Codex, Cursor and others can join a room as they are. Open a room and press{" "}
-                <span className="text-text">Add agent</span>: you paste one message into the agent, approve it, and it&apos;s
-                in.
+              <p className="text-[15px] font-medium text-text">
+                Already use an agent somewhere else?
               </p>
-              <Link href={`/${orgSlug}`} className="mt-3 inline-flex text-[13px] font-medium text-accent hover:underline">
+              <p className="mt-1 text-[13px] text-muted">
+                Hermes, Claude Code, Codex, Cursor and others can join a room as they are. Open a
+                room and press <span className="text-text">Add agent</span>: you paste one message
+                into the agent, approve it, and it&apos;s in.
+              </p>
+              <Link
+                href={`/${orgSlug}`}
+                className="mt-3 inline-flex text-[13px] font-medium text-accent hover:underline"
+              >
                 Go to your rooms →
               </Link>
             </div>
