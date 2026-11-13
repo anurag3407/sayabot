@@ -6,6 +6,7 @@ import { enqueueRoomMessage, startJobs, stopJobs } from "./jobs"
 import { setCollabEnqueue } from "./collab"
 import { startMeetingScheduler, stopMeetingScheduler } from "./scheduler/meetings"
 import { startMemoryScheduler } from "./memory/scheduler"
+import { startDiscordGateway } from "./connectors/discord-gateway"
 import { startRoutineScheduler } from "./scheduler/routines"
 import { startApprovalListener } from "./tools/approvals"
 import { startBotReplyListener } from "./bot-reply"
@@ -52,6 +53,7 @@ void import("./engine/resume").then(({ recoverStaleRuns }) =>
   ),
 )
 setCollabEnqueue(enqueueRoomMessage)
+startDiscordGateway()
 startMeetingScheduler()
 startRoutineScheduler()
 startMemoryScheduler()

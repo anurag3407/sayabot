@@ -82,6 +82,16 @@ export async function POST(request: Request) {
     .select("id", { count: "exact", head: true })
     .eq("host_id", host.id)
     .eq("status", "queued")
+  const { count: secretJobs } = await admin
+    .from("desktop_secret_jobs")
+    .select("id", { count: "exact", head: true })
+    .eq("host_id", host.id)
+    .eq("status", "queued")
+  const { count: mcpCalls } = await admin
+    .from("desktop_mcp_calls")
+    .select("id", { count: "exact", head: true })
+    .eq("host_id", host.id)
+    .eq("status", "queued")
 
   return NextResponse.json({
     settings: host.settings,
@@ -93,5 +103,7 @@ export async function POST(request: Request) {
       offer: s.offer,
     })),
     queuedJobs: queuedJobs ?? 0,
+    secretJobs: secretJobs ?? 0,
+    mcpCalls: mcpCalls ?? 0,
   })
 }

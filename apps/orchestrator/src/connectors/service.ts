@@ -1,5 +1,5 @@
 import { and, eq } from "drizzle-orm"
-import { decryptSecret } from "@sayabot/llm"
+import { decryptSecret, unwrapConnectorSecret } from "@sayabot/llm"
 import {
   agentConnectorGrants,
   workspaceConnectors,
@@ -10,6 +10,7 @@ import { getEnv } from "../env"
 import { GitHubConnector } from "./github"
 import { GoogleDriveConnector } from "./google-drive"
 import { DiscordConnector, normalizePhone, TelegramConnector, WhatsAppConnector } from "./messaging"
+import { queryPasswordManager, type PasswordConfig, type PasswordSource } from "./passwords"
 import { SlackConnector } from "./slack"
 import type { ConnectorDoc, ConnectorScopeConfig, ConnectorSource } from "./types"
 
@@ -52,14 +53,16 @@ export class ConnectorService {
     }
 
     const kek = this.kek ?? getEnv().MESH_KEK
-    const token = decryptSecret(
-      {
-        ciphertext: connector.ciphertext,
-        iv: connector.iv,
-        tag: connector.tag,
-      },
-      kek,
-    )
+    const token = unwrapConnectorSecret(
+      decryptSecret(
+        {
+          ciphertext: connector.ciphertext,
+          iv: connector.iv,
+          tag: connector.tag,
+        },
+        kek,
+      ),
+    ).token
 
     return { connector, token }
   }
@@ -363,6 +366,32 @@ export class ConnectorService {
   async sendWhatsAppTemplate(args: { agentId: string; orgId: string; to: string; template: string; language: string }) {
     const { number, client } = await this.whatsapp(args.orgId, args.agentId, args.to)
     return client.sendTemplate(number, args.template, args.language)
+  }
+
+  async queryPassword(args: {
+    agentId: string
+    orgId: string
+    source: PasswordSource
+    action: "search" | "read"
+    query: string
+    vault?: string
+    signal?: AbortSignal
+  }): Promise<unknown> {
+    const { connector, token } = await this.getDecryptedConnector(args.orgId, args.source)
+    const scope = await this.getAgentScope(args.agentId, connector.id)
+    const config = { ...((connector.config ?? {}) as PasswordConfig) }
+    if (scope.allowedVaults?.length) config.allowedVaults = scope.allowedVaults
+    return queryPasswordManager({
+      source: args.source,
+      action: args.action,
+      query: args.query,
+      vault: args.vault,
+      token,
+      config,
+      orgId: args.orgId,
+      connectorId: connector.id,
+      signal: args.signal,
+    })
   }
 }
 

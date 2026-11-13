@@ -6,6 +6,9 @@ export type ConnectorSource =
   | "discord"
   | "telegram"
   | "whatsapp"
+  | "onepassword"
+  | "bitwarden"
+  | "protonpass"
 
 /** Sources with native tools in the orchestrator. Jira is reached through the Atlassian app. */
 export const NATIVE_CONNECTOR_SOURCES: ConnectorSource[] = [
@@ -15,6 +18,9 @@ export const NATIVE_CONNECTOR_SOURCES: ConnectorSource[] = [
   "discord",
   "telegram",
   "whatsapp",
+  "onepassword",
+  "bitwarden",
+  "protonpass",
 ]
 
 export interface ConnectorDoc {
@@ -54,6 +60,8 @@ export interface ConnectorScopeConfig {
   allowedRepos?: string[]
   /** WhatsApp numbers (country code first) this agent may message. */
   allowedRecipients?: string[]
+  /** Password-manager vault names or ids this agent may read. */
+  allowedVaults?: string[]
   /** No send tools at all, even with approval. */
   readOnly?: boolean
 }

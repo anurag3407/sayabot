@@ -1,9 +1,10 @@
 "use server"
 
 import { z } from "zod"
-import { encryptSecret, decryptSecret, last4 } from "@sayabot/llm"
+import { randomBytes } from "node:crypto"
+import { encryptSecret, decryptSecret, last4, unwrapConnectorSecret, wrapConnectorSecret } from "@sayabot/llm"
 import { createAdminClient } from "@/lib/supabase/admin"
-import { getKek } from "@/lib/env"
+import { getAppUrl, getKek } from "@/lib/env"
 import {
   adminOrgAccess,
   audit,
@@ -16,7 +17,18 @@ import {
 } from "@/lib/actions/shared"
 import type { ActionResult } from "@/lib/types"
 
-const connectorSourceSchema = z.enum(["google_drive", "slack", "github", "jira", "discord", "telegram", "whatsapp"])
+const connectorSourceSchema = z.enum([
+  "google_drive",
+  "slack",
+  "github",
+  "jira",
+  "discord",
+  "telegram",
+  "whatsapp",
+  "onepassword",
+  "bitwarden",
+  "protonpass",
+])
 
 export async function saveWorkspaceConnector(
   _prev: ActionResult | null,
@@ -28,7 +40,7 @@ export async function saveWorkspaceConnector(
 
   const sourceParsed = connectorSourceSchema.safeParse(field(formData, "source"))
   if (!sourceParsed.success) {
-    return fail("Choose a supported connector source (Google Drive, Slack, GitHub, Discord, Telegram, WhatsApp)")
+    return fail("Choose a supported connector source (Google Drive, Slack, GitHub, Discord, Telegram, WhatsApp, 1Password, Bitwarden, Proton Pass)")
   }
   const source = sourceParsed.data
 
@@ -37,10 +49,7 @@ export async function saveWorkspaceConnector(
     return fail("Connector name must be between 1 and 80 characters")
   }
 
-  const rawToken = field(formData, "token")
-  if (rawToken.length < 4) {
-    return fail("Access token, bot token, or service key is required")
-  }
+  let rawToken = field(formData, "token")
 
   const rawConfigStr = optionalField(formData, "configJson")
   let config: Record<string, unknown> = {}
@@ -72,6 +81,32 @@ export async function saveWorkspaceConnector(
   if (source === "whatsapp" && !config.phoneNumberId) {
     return fail("Add the WhatsApp phone number ID (WhatsApp Manager → API setup)")
   }
+  const passwordSources = new Set(["onepassword", "bitwarden", "protonpass"])
+  const onComputer = formData.get("onComputer") === "on" || source === "protonpass"
+  if (passwordSources.has(source)) {
+    if (onComputer) {
+      config.authMode = "computer"
+      if (rawToken.length < 4) rawToken = "desktop"
+    } else if (rawToken.length < 4) {
+      return fail("Paste the access token, or choose the app signed in on this computer")
+    } else {
+      config.authMode = "api"
+    }
+    if (source === "onepassword" && config.authMode === "api") {
+      const connectUrl = optionalField(formData, "connectUrl") ?? ""
+      let parsed: URL
+      try {
+        parsed = new URL(connectUrl)
+      } catch {
+        return fail("1Password Connect needs an https URL")
+      }
+      if (parsed.protocol !== "https:") return fail("1Password Connect needs an https URL")
+      config.connectUrl = `${parsed.origin}${parsed.pathname.replace(/\/+$/, "")}`
+    }
+    if (source === "bitwarden") config.region = optionalField(formData, "region") === "eu" ? "eu" : "us"
+  } else if (rawToken.length < 4) {
+    return fail("Access token, bot token, or service key is required")
+  }
   if (source === "telegram" && !/^\d+:[A-Za-z0-9_-]{20,}$/.test(rawToken)) {
     return fail("That doesn't look like a Telegram bot token. @BotFather gives one like 123456:ABC…")
   }
@@ -85,12 +120,27 @@ export async function saveWorkspaceConnector(
     // Update existing
     const { data: existing } = await admin
       .from("workspace_connectors")
-      .select("id, org_id")
+      .select("id, org_id, ciphertext, iv, tag, config")
       .eq("id", connectorId)
       .maybeSingle()
 
     if (!existing || existing.org_id !== check.access.org.id) {
       return fail("Connector not found")
+    }
+    const previousConfig = (existing.config ?? {}) as { inbound?: unknown }
+    if (previousConfig.inbound && !config.inbound) config.inbound = previousConfig.inbound
+    try {
+      const previous = unwrapConnectorSecret(
+        decryptSecret({ ciphertext: existing.ciphertext, iv: existing.iv, tag: existing.tag }, getKek()),
+      )
+      if (previous.inboundSecret) {
+        const again = encryptSecret(wrapConnectorSecret(rawToken, previous.inboundSecret), getKek())
+        encrypted.ciphertext = again.ciphertext
+        encrypted.iv = again.iv
+        encrypted.tag = again.tag
+      }
+    } catch {
+      // A key that cannot be read is replaced by the new one.
     }
 
     const { error } = await admin
@@ -213,14 +263,16 @@ export async function testWorkspaceConnector(
 
   let token: string
   try {
-    token = decryptSecret(
-      {
-        ciphertext: connector.ciphertext,
-        iv: connector.iv,
-        tag: connector.tag,
-      },
-      getKek(),
-    )
+    token = unwrapConnectorSecret(
+      decryptSecret(
+        {
+          ciphertext: connector.ciphertext,
+          iv: connector.iv,
+          tag: connector.tag,
+        },
+        getKek(),
+      ),
+    ).token
   } catch {
     await admin
       .from("workspace_connectors")
@@ -296,6 +348,26 @@ export async function testWorkspaceConnector(
       if (!res.ok || !data.ok) throw new Error(`Telegram: ${data.description ?? `HTTP ${res.status}`}`)
       testSuccess = true
       responseDetail = data.result?.username ? `Connected as @${data.result.username}` : "Telegram bot active"
+    } else if (connector.source === "onepassword" || connector.source === "bitwarden" || connector.source === "protonpass") {
+      const passwordConfig = (connector.config ?? {}) as { authMode?: string; connectUrl?: string; region?: string }
+      if (passwordConfig.authMode === "computer" || token === "desktop") {
+        testSuccess = true
+        responseDetail = "Saved for the app signed in on a computer with Sayabot open"
+      } else if (connector.source === "onepassword" && passwordConfig.connectUrl) {
+        const res = await fetch(`${passwordConfig.connectUrl.replace(/\/+$/, "")}/v1/vaults`, { headers: { Authorization: `Bearer ${token}` } })
+        if (!res.ok) throw new Error(`1Password Connect returned HTTP ${res.status}`)
+        testSuccess = true
+        responseDetail = "1Password Connect answered"
+      } else if (connector.source === "bitwarden") {
+        const host = passwordConfig.region === "eu" ? "https://api.bitwarden.eu" : "https://api.bitwarden.com"
+        const res = await fetch(`${host}/public/secrets`, { headers: { Authorization: `Bearer ${token}` } })
+        if (!res.ok) throw new Error(`Bitwarden returned HTTP ${res.status}`)
+        testSuccess = true
+        responseDetail = "Bitwarden Secrets Manager answered"
+      } else {
+        testSuccess = true
+        responseDetail = "Saved. It will run through the app on your computer."
+      }
     } else if (connector.source === "whatsapp") {
       const phoneNumberId = (connector.config as { phoneNumberId?: string } | null)?.phoneNumberId
       if (!phoneNumberId) throw new Error("Phone number ID is missing")
@@ -364,6 +436,7 @@ export async function saveAgentConnectorGrant(
   const allowedChannelsRaw = optionalField(formData, "allowedChannels")
   const allowedReposRaw = optionalField(formData, "allowedRepos")
   const allowedRecipientsRaw = optionalField(formData, "allowedRecipients")
+  const allowedVaultsRaw = optionalField(formData, "allowedVaults")
 
   const scopeConfig: Record<string, unknown> = {}
   if (allowedFoldersRaw) {
@@ -393,6 +466,12 @@ export async function saveAgentConnectorGrant(
     const bad = numbers.find((n) => !/^\d{7,15}$/.test(n))
     if (bad) return fail(`"${bad}" isn't a phone number with country code`)
     scopeConfig.allowedRecipients = numbers
+  }
+  if (allowedVaultsRaw) {
+    const vaults = allowedVaultsRaw.split(/[\n,]/).map((s) => s.trim()).filter(Boolean).slice(0, 20)
+    const bad = vaults.find((name) => name.length > 80 || name.startsWith("-"))
+    if (bad) return fail("That vault name isn't allowed")
+    scopeConfig.allowedVaults = vaults
   }
   if (optionalField(formData, "readOnly")) scopeConfig.readOnly = true
 
@@ -486,4 +565,85 @@ export async function deleteAgentConnectorGrant(input: {
 
   revalidateOrg(input.orgSlug)
   return ok("Connector access revoked from agent")
+}
+
+/** A message to the bot becomes a turn in one room, and the agent's answer is sent back. */
+export async function saveConnectorChat(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const orgSlug = field(formData, "orgSlug")
+  const check = await adminOrgAccess(orgSlug)
+  if ("error" in check) return fail(check.error)
+  const connectorId = field(formData, "connectorId")
+  const roomId = field(formData, "roomId")
+  const agentId = field(formData, "agentId")
+  const enabled = formData.get("enabled") === "on"
+  const admin = createAdminClient()
+  const { data: connector } = await admin.from("workspace_connectors").select("*").eq("id", connectorId).maybeSingle()
+  if (!connector || connector.org_id !== check.access.org.id) return fail("Connector not found")
+  if (connector.source !== "telegram" && connector.source !== "discord" && connector.source !== "whatsapp") {
+    return fail("Only Telegram, Discord and WhatsApp can chat with an agent")
+  }
+  const { data: room } = await admin.from("rooms").select("id").eq("id", roomId).eq("org_id", check.access.org.id).maybeSingle()
+  if (!room) return fail("Pick a room in this workspace")
+  const { data: agent } = await admin.from("agents").select("id, handle").eq("id", agentId).eq("org_id", check.access.org.id).maybeSingle()
+  if (!agent) return fail("Pick an agent in this workspace")
+  const { data: member } = await admin.from("room_agents").select("agent_id").eq("room_id", roomId).eq("agent_id", agentId).maybeSingle()
+  if (!member) return fail("Add that agent to the room first. Mention rooms only wake agents who are in them.")
+
+  const allowedChats = (optionalField(formData, "allowedChats") ?? "")
+    .split(/[\n,]/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .slice(0, 30)
+  const badChat = allowedChats.find((id) => !/^[-A-Za-z0-9_]{1,80}$/.test(id))
+  if (badChat) return fail(`"${badChat}" isn't a chat id`)
+
+  let plain: string
+  try {
+    plain = decryptSecret({ ciphertext: connector.ciphertext, iv: connector.iv, tag: connector.tag }, getKek())
+  } catch {
+    return fail("Could not read the saved token")
+  }
+  const current = unwrapConnectorSecret(plain)
+  const inboundSecret = current.inboundSecret ?? randomBytes(24).toString("base64url")
+  const sealed = encryptSecret(wrapConnectorSecret(current.token, inboundSecret), getKek())
+  const config = { ...((connector.config ?? {}) as Record<string, unknown>), inbound: { enabled, roomId, agentId, allowedChats } }
+  const { error } = await admin
+    .from("workspace_connectors")
+    .update({
+      ciphertext: sealed.ciphertext,
+      iv: sealed.iv,
+      tag: sealed.tag,
+      config,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", connector.id)
+  if (error) return fail(errorMessage(error))
+
+  const callback = `${getAppUrl()}/api/messaging/${connector.source}/${connector.id}?k=${encodeURIComponent(inboundSecret)}`
+  if (connector.source === "telegram") {
+    const endpoint = enabled ? "setWebhook" : "deleteWebhook"
+    const res = await fetch(`https://api.telegram.org/bot${current.token}/${endpoint}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(enabled ? { url: callback, secret_token: inboundSecret, allowed_updates: ["message"] } : {}),
+    }).catch(() => null)
+    const data = (await res?.json().catch(() => null)) as { ok?: boolean; description?: string } | null
+    if (!res?.ok || !data?.ok) {
+      const detail = (data?.description ?? "Telegram did not accept the webhook").split(current.token).join("[token]")
+      return fail(`Saved, but Telegram said: ${detail}`)
+    }
+  }
+
+  revalidateOrg(orgSlug)
+  if (!enabled) return ok("Chat with this bot is off")
+  if (connector.source === "discord") {
+    return ok(`Messages to the bot now start a turn with @${agent.handle}. Turn on Message Content Intent, and leave the Sayabot server running.`)
+  }
+  if (connector.source === "whatsapp") {
+    return ok(`In Meta, set the callback URL to ${callback} and the verify token to the same secret that's in that URL.`)
+  }
+  return ok(`Telegram is pointed at this workspace. Messages to the bot start a turn with @${agent.handle}.`)
 }

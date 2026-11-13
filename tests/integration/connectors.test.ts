@@ -18,7 +18,7 @@ const ORG_ID = "00000000-0000-0000-0000-000000000001"
 const AGENT_ID = "00000000-0000-0000-0000-000000000002"
 const UNAUTHORIZED_AGENT_ID = "00000000-0000-0000-0000-000000000099"
 
-const GDRIVE_TOKEN = "ya29.a0AfH6SMA-google-drive-test-token-secret"
+const GDRIVE_TOKEN = "ya29.mock-google-drive-test-token-secret"
 const SLACK_TOKEN = "xoxb-mock-slack-test-token-redact-12345"
 const GITHUB_TOKEN = "ghp_mocktesttoken1234567890abcdefghijklmnopqrstuvwxyz"
 

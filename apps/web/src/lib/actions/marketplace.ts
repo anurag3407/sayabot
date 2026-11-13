@@ -28,8 +28,17 @@ export async function connectMarketplaceAppAction(input: {
   const secret = input.secret?.trim() ?? ""
   let url = app.url
   const headers: Record<string, string> = {}
+  let sealedEnv: Record<string, string> | null = null
 
-  switch (app.auth.kind) {
+  if (app.transport === "stdio") {
+    if (app.auth.kind === "token" && app.auth.env) {
+      if (!secret) return fail(`Paste your ${app.auth.label.toLowerCase()}`)
+      if (!/^[A-Z][A-Z0-9_]{0,40}$/.test(app.auth.env)) return fail("That app isn't set up to take a key")
+      sealedEnv = { [app.auth.env]: secret }
+    }
+  }
+
+  if (app.transport !== "stdio") switch (app.auth.kind) {
     case "oauth":
       return fail(`${app.name} connects with a sign-in. Use Sign in instead.`)
     case "none":
@@ -69,7 +78,11 @@ export async function connectMarketplaceAppAction(input: {
       name: app.name,
       transport: app.transport,
       url,
-      headers_enc: Object.keys(headers).length ? sealSecret(JSON.stringify({ headers }), getKek()) : null,
+      headers_enc: sealedEnv
+        ? sealSecret(JSON.stringify({ env: sealedEnv }), getKek())
+        : Object.keys(headers).length
+          ? sealSecret(JSON.stringify({ headers }), getKek())
+          : null,
       dangerous_tools: app.dangerousTools ?? [],
       enabled: true,
       created_by: check.access.user.id,
@@ -86,6 +99,15 @@ export async function connectMarketplaceAppAction(input: {
     target: app.name,
     metadata: { marketplaceApp: app.id, transport: app.transport },
   })
+
+  if (app.transport === "stdio") {
+    revalidateOrg(input.orgSlug)
+    const where =
+      app.runOn === "desktop"
+        ? "It runs on a computer with the Sayabot app open."
+        : "The first time an agent uses it, Sayabot installs the program."
+    return ok(`${app.name} saved. ${where}`, { serverId: server.id, reachable: true })
+  }
 
   const test = await listMcpTools(input.orgSlug, server.id)
   revalidateOrg(input.orgSlug)

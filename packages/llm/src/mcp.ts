@@ -7,9 +7,13 @@ import type { ToolSet } from "ai"
 export interface McpServerConfig {
   id: string
   name: string
-  transport: "http" | "sse"
+  transport: "http" | "sse" | "stdio"
   url: string
   headers?: Record<string, string>
+  /** Local programs only. `npx` with a catalog argv; never a path the user typed. */
+  command?: string
+  args?: string[]
+  env?: Record<string, string>
   /** Sign-in servers: adds the bearer token and refreshes it on a 401. */
   authProvider?: OAuthClientProvider
   /**
@@ -136,6 +140,28 @@ function textContent(result: Awaited<ReturnType<Client["callTool"]>>): string {
   }).join("\n")
 }
 
+/** Only catalog programs: `npx -y <package>` with optional extra args that are not flags. */
+function stdioTransport(server: McpServerConfig): { command: string; args: string[]; env: Record<string, string>; stderr: "ignore" } {
+  const args = server.args ?? []
+  const packageArg = args[1] ?? ""
+  if (
+    server.command !== "npx" ||
+    args[0] !== "-y" ||
+    !/^(@[a-z0-9._-]+\/)?[a-z0-9._-]+$/.test(packageArg) ||
+    args.slice(2).some((arg) => arg.startsWith("-") || /[\s]/.test(arg))
+  ) {
+    throw new Error("This local app isn't one Sayabot can start")
+  }
+  const env: Record<string, string> = {}
+  if (process.env.PATH) env.PATH = process.env.PATH
+  if (process.env.HOME) env.HOME = process.env.HOME
+  for (const [key, value] of Object.entries(server.env ?? {})) {
+    if (!/^[A-Z][A-Z0-9_]{0,40}$/.test(key) || typeof value !== "string") throw new Error("Invalid environment for a local app")
+    env[key] = value
+  }
+  return { command: "npx", args: [...args], env, stderr: "ignore" }
+}
+
 /** Fail individual servers closed, leaving healthy configured servers available. */
 export async function connectMcpServers(servers: McpServerConfig[], options: McpConnectionOptions = {}): Promise<McpToolsResult> {
   const timeoutMs = budget(options.timeoutMs, 15_000)
@@ -193,24 +219,30 @@ export async function connectMcpServers(servers: McpServerConfig[], options: Mcp
     let failed = false
     try {
       if (!server.id || idCounts.get(server.id) !== 1) throw new Error("Duplicate or empty MCP server ID")
-      if (server.transport !== "http" && server.transport !== "sse") throw new Error("Unsupported MCP transport")
-      const url = new URL(server.url)
+      if (server.transport !== "http" && server.transport !== "sse" && server.transport !== "stdio") {
+        throw new Error("Unsupported MCP transport")
+      }
+      const stdio = server.transport === "stdio" ? stdioTransport(server) : null
+      const url = stdio ? null : new URL(server.url)
       const allowLocal = process.env.ALLOW_LOCAL_MCP === "true"
-      if (url.protocol !== "https:" && !(allowLocal && url.protocol === "http:")) {
+      if (url && url.protocol !== "https:" && !(allowLocal && url.protocol === "http:")) {
         throw new Error("MCP URL must use HTTPS (HTTP requires ALLOW_LOCAL_MCP)")
       }
-      if (url.username || url.password || url.hash) throw new Error("MCP URL cannot contain credentials or a fragment")
+      if (url && (url.username || url.password || url.hash)) throw new Error("MCP URL cannot contain credentials or a fragment")
       const result = await bounded(async (requestSignal) => {
-        if (!allowLocal) await assertSafeEgressHost(url.hostname)
+        if (url && !allowLocal) await assertSafeEgressHost(url.hostname)
         requestSignal.throwIfAborted()
+        const transport = stdio
+          ? new (await import("@ai-sdk/mcp/mcp-stdio")).StdioMCPTransport(stdio)
+          : {
+              type: server.transport as "http" | "sse",
+              url: url!.href,
+              headers: server.headers,
+              redirect: "error" as const,
+              ...(server.authProvider ? { authProvider: server.authProvider } : {}),
+            }
         client = await createMCPClient({
-          transport: {
-            type: server.transport,
-            url: url.href,
-            headers: server.headers,
-            redirect: "error",
-            ...(server.authProvider ? { authProvider: server.authProvider } : {}),
-          },
+          transport,
           initializationOptions: { signal: requestSignal, timeout: timeoutMs, maxTotalTimeout: timeoutMs },
           maxRetries: 0,
           onUncaughtError: () => {

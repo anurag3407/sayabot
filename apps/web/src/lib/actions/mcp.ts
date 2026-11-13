@@ -160,6 +160,9 @@ export async function listMcpTools(orgSlug: string, serverId: string): Promise<A
   if ("error" in check) return fail(check.error)
   const row = await loadServer(check.access.org.id, serverId)
   if (!row) return fail("MCP server not found")
+  if (row.transport === "stdio") {
+    return ok("This program runs when an agent uses it.", { tools: [] })
+  }
   let client
   try {
     client = await createMCPClient({

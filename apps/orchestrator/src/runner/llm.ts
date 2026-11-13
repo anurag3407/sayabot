@@ -334,6 +334,11 @@ export async function runLlmTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
 
     send({ type: "message.done", messageId: message.id, status })
     await chain
+    if (!aborted && !error && redacted) {
+      void import("../connectors/inbound")
+        .then(({ deliverInboundReply }) => deliverInboundReply(args.trigger.metadata, redacted))
+        .catch((error) => console.warn("[inbound] reply not delivered", error))
+    }
     return redacted
   }
 

@@ -2,6 +2,9 @@ import { parseCapabilities } from "@sayabot/core"
 import { agentConnectorGrants, agents, mcpServers, workspaceConnectors } from "@sayabot/db"
 import {
   connectMcpServers,
+  findLocalApp,
+  isDangerousMcpTool,
+  mcpToolName,
   openMcpOAuthState,
   openSecret,
   sealMcpOAuthState,
@@ -12,6 +15,7 @@ import type { ToolSet } from "ai"
 import { and, eq, isNull, or } from "drizzle-orm"
 import { z } from "zod"
 import { canvasPatchTool, canvasReadTool, canvasWriteTool } from "../canvas/tools"
+import { runMcpOnDesktop } from "../connectors/desktop-bridge"
 import type { ConnectorSource } from "../connectors/types"
 import { getDb } from "../db"
 import { getEnv } from "../env"
@@ -70,17 +74,47 @@ async function loadMcpConfigs(args: BuildToolsArgs) {
   const warnings: string[] = []
   const kek = getEnv().MESH_KEK
   const configs: McpServerConfig[] = []
+  const desktop: DesktopLocalApp[] = []
   for (const row of filtered) {
     let headers: Record<string, string> | undefined
+    let env: Record<string, string> | undefined
     if (row.headersEnc) {
       try {
         const parsed = JSON.parse(openSecret(row.headersEnc, kek)) as {
           headers?: Record<string, string>
+          env?: Record<string, string>
         }
         headers = parsed.headers
+        env = parsed.env
       } catch {
         warnings.push(`MCP server "${row.name}" has unreadable headers; connecting without them`)
       }
+    }
+    const local = findLocalApp(row.catalogApp)
+    if (local) {
+      const dangerousTools = row.dangerousTools.length ? row.dangerousTools : [...local.dangerousTools]
+      if (local.where === "desktop") {
+        desktop.push({
+          id: row.id,
+          name: row.name,
+          appId: local.id,
+          hostId: row.hostId,
+          dangerousTools,
+          cache: row.toolCache,
+        })
+      } else {
+        configs.push({
+          id: row.id,
+          name: row.name,
+          transport: "stdio",
+          url: `stdio://${local.id}`,
+          command: local.command,
+          args: [...local.args],
+          env,
+          dangerousTools,
+        })
+      }
+      continue
     }
     let authProvider: StoredMcpOAuthProvider | undefined
     if (row.authKind === "oauth") {
@@ -105,7 +139,51 @@ async function loadMcpConfigs(args: BuildToolsArgs) {
       dangerousTools: row.dangerousTools,
     })
   }
-  return { configs, warnings }
+  return { configs, desktop, warnings }
+}
+
+interface DesktopLocalApp {
+  id: string
+  name: string
+  appId: string
+  hostId: string | null
+  dangerousTools: string[]
+  cache: { at: string; tools: Array<{ name: string; description?: string }> } | null
+}
+
+async function toolsForDesktopApp(row: DesktopLocalApp, orgId: string): Promise<ToolSpec[]> {
+  let listed = row.cache?.tools ?? []
+  const fresh = Boolean(row.cache?.at) && Date.now() - Date.parse(row.cache!.at) < 24 * 60 * 60_000
+  if (!fresh || listed.length === 0) {
+    const result = (await runMcpOnDesktop({
+      orgId,
+      serverId: row.id,
+      appId: row.appId,
+      method: "tools/list",
+      hostId: row.hostId,
+    })) as { tools?: Array<{ name?: string; description?: string }> }
+    listed = (result?.tools ?? []).flatMap((tool) => (tool.name ? [{ name: tool.name, description: tool.description }] : []))
+    await getDb()
+      .update(mcpServers)
+      .set({ toolCache: { at: new Date().toISOString(), tools: listed }, updatedAt: new Date() })
+      .where(eq(mcpServers.id, row.id))
+  }
+  return listed.slice(0, 80).map((tool) => ({
+    name: mcpToolName(row.name, tool.name),
+    description: tool.description || `${tool.name} from ${row.name}`,
+    schema: z.record(z.string(), z.unknown()),
+    dangerous: isDangerousMcpTool(row.dangerousTools, tool.name),
+    execute: async (input: Record<string, unknown>, signal?: AbortSignal) =>
+      runMcpOnDesktop({
+        orgId,
+        serverId: row.id,
+        appId: row.appId,
+        method: "tools/call",
+        params: { name: tool.name, arguments: input },
+        hostId: row.hostId,
+        signal,
+      }),
+  }))
 }
 
 /**
@@ -268,7 +346,7 @@ export async function buildTools(args: BuildToolsArgs): Promise<BuiltTools> {
   const extraSpecs: ToolSpec[] = []
   let closeMcp = async () => {}
   if (caps.mcp) {
-    const { configs, warnings: configWarnings } = await loadMcpConfigs(args)
+    const { configs, desktop, warnings: configWarnings } = await loadMcpConfigs(args)
     warnings.push(...configWarnings)
 
     const mcp = await connectMcpServers(configs)
@@ -295,6 +373,13 @@ export async function buildTools(args: BuildToolsArgs): Promise<BuiltTools> {
           return mcp.call(meta.serverId, meta.originalName, input)
         },
       })
+    }
+    for (const row of desktop) {
+      try {
+        extraSpecs.push(...(await toolsForDesktopApp(row, args.orgId)))
+      } catch (error) {
+        warnings.push(`${row.name}: ${error instanceof Error ? error.message : String(error)}`)
+      }
     }
   }
 

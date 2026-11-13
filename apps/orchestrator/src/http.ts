@@ -16,6 +16,7 @@ import { loadCanvas } from "./canvas/server"
 import { restoreCanvasSnapshot } from "./canvas/tools"
 import { getDb, notify } from "./db"
 import { isInternalRequest } from "./internal-auth"
+import { acceptInbound, eventsFromPayload, type InboundPlatform } from "./connectors/inbound"
 import { enqueueRoomMessage } from "./jobs"
 import { loadMessage } from "./runner/context"
 import { agentCliRunner, runCliOnce } from "./runner/cli"
@@ -132,6 +133,27 @@ export function createApp() {
     await interruptRoom(parsed.data.roomId)
     await enqueueRoomMessage(parsed.data.roomId, parsed.data.messageId)
     return c.json({ queued: true }, 202)
+  })
+
+  app.post("/internal/inbound", async (c) => {
+    const body = (await c.req.json().catch(() => null)) as {
+      platform?: string
+      connectorId?: string
+      key?: string
+      raw?: string
+    } | null
+    const platform = body?.platform
+    if (platform !== "telegram" && platform !== "whatsapp") return c.json({ error: "unsupported" }, 400)
+    if (!body?.connectorId || typeof body.raw !== "string" || body.raw.length > 100_000) {
+      return c.json({ error: "invalid body" }, 400)
+    }
+    const events = eventsFromPayload(platform as InboundPlatform, body.raw)
+    if (events.length === 0) return c.json({ queued: false })
+    const results = []
+    for (const event of events.slice(0, 10)) {
+      results.push(await acceptInbound({ connectorId: body.connectorId, platform, key: body.key, ...event }))
+    }
+    return c.json({ results })
   })
 
   app.post("/internal/runs/:runId/stop", async (c) => {

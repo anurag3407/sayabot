@@ -8,6 +8,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core"
 import { toolCallStatusEnum, mcpTransportEnum } from "./enums"
+import { desktopHosts } from "./desktop"
 import { orgs, profiles } from "./identity"
 import { agentRuns, messages } from "./messages"
 import { rooms } from "./rooms"
@@ -32,6 +33,10 @@ export const mcpServers = pgTable(
     authStatus: text("auth_status").notNull().default("ok"),
     /** Marketplace app id this row was made from, when it came from the catalog. */
     catalogApp: text("catalog_app"),
+    /** Computer that runs a desktop-only local app (Obsidian, Paper, Apple apps). */
+    hostId: uuid("host_id").references(() => desktopHosts.id, { onDelete: "set null" }),
+    /** Last tools/list from a desktop app, so a turn doesn't wait on the computer to start. */
+    toolCache: jsonb("tool_cache").$type<{ at: string; tools: Array<{ name: string; description?: string }> } | null>(),
     dangerousTools: text("dangerous_tools").array().notNull().default([]),
     enabled: boolean("enabled").notNull().default(true),
     createdBy: uuid("created_by").references(() => profiles.id, { onDelete: "set null" }),

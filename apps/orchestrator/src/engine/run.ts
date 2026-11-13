@@ -274,6 +274,11 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
 
     send({ type: "message.done", messageId: message.id, status })
     await chain
+    if (!aborted && !error && redacted) {
+      void import("../connectors/inbound")
+        .then(({ deliverInboundReply }) => deliverInboundReply(args.trigger.metadata, redacted))
+        .catch((error) => console.warn("[inbound] reply not delivered", error))
+    }
 
     // Post-run memory pass. Runs in the background so the room lock is released and the
     // turn returns without waiting on another model call. Only redacted text leaves here.

@@ -365,6 +365,34 @@ export function connectorTools(opts: ConnectorToolsOptions): ToolSpec[] {
   if (sources.includes("github")) {
     tools.push(githubSearchCodeTool, githubGetFileTool, githubGetIssueOrPrTool)
   }
+  for (const source of ["onepassword", "bitwarden", "protonpass"] as const) {
+    if (!sources.includes(source)) continue
+    const label = source === "onepassword" ? "1Password" : source === "bitwarden" ? "Bitwarden" : "Proton Pass"
+    tools.push(
+      {
+        name: `${source}_search`,
+        description: `Find ${label} items by name. Returns titles and ids only, never the secret.`,
+        schema: z.object({
+          query: z.string().min(1).max(200),
+          vault: z.string().max(80).optional().describe("Vault name or id, when the agent is limited to some vaults"),
+        }),
+        dangerous: false,
+        execute: async (input: { query: string; vault?: string }) =>
+          service.queryPassword({ agentId, orgId, source, action: "search", query: input.query, vault: input.vault }),
+      },
+      {
+        name: `${source}_read`,
+        description: `Read one ${label} item, including its password. Waits for a person's OK.`,
+        schema: z.object({
+          query: z.string().min(1).max(200).describe("Item id or exact name from search"),
+          vault: z.string().max(80).optional(),
+        }),
+        dangerous: true,
+        execute: async (input: { query: string; vault?: string }, signal?: AbortSignal) =>
+          service.queryPassword({ agentId, orgId, source, action: "read", query: input.query, vault: input.vault, signal }),
+      },
+    )
+  }
   if (sources.includes("discord")) {
     tools.push(discordListChannelsTool, discordReadTool, discordSendTool)
   }

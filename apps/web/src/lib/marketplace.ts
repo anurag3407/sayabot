@@ -8,6 +8,7 @@
  * ever sends an app id and the person's key.
  */
 
+import { LOCAL_APPS } from "@sayabot/llm"
 import { CATALOG_APPS } from "./marketplace-catalog"
 
 export type AppAuth =
@@ -19,6 +20,8 @@ export type AppAuth =
       label: string
       help: string
       optional?: boolean
+      /** When set, the pasted key is an environment variable for a local program, not an HTTP header. */
+      env?: string
     }
   | { kind: "url-key"; label: string; help: string; template: string }
   | { kind: "personal-url"; label: string; help: string; placeholder: string; host: string }
@@ -42,7 +45,9 @@ export interface MarketplaceApp {
   tagline: string
   category: AppCategory
   url: string
-  transport: "http" | "sse"
+  transport: "http" | "sse" | "stdio"
+  /** Local programs. Desktop ones need the Sayabot app open on that computer. */
+  runOn?: "server" | "desktop"
   auth: AppAuth
   /** Brand tint for the tile. */
   color: string
@@ -274,10 +279,27 @@ const KEY_APPS: MarketplaceApp[] = [
   },
 ]
 
-const KEY_APP_IDS = new Set(KEY_APPS.map((app) => app.id))
+const LOCAL_MARKETPLACE: MarketplaceApp[] = LOCAL_APPS.map((app) => ({
+  id: app.id,
+  name: app.name,
+  tagline: app.tagline,
+  category: app.category,
+  url: `stdio://${app.id}`,
+  transport: "stdio",
+  auth: app.env
+    ? { kind: "token", header: "", prefix: "", label: app.env.label, help: app.env.help, env: app.env.name }
+    : { kind: "none" },
+  color: app.color,
+  docs: app.docs,
+  dangerousTools: [...app.dangerousTools],
+  runOn: app.where,
+}))
+
+const KEY_APP_IDS = new Set([...KEY_APPS, ...LOCAL_MARKETPLACE].map((app) => app.id))
 
 export const MARKETPLACE_APPS: MarketplaceApp[] = [
   ...KEY_APPS,
+  ...LOCAL_MARKETPLACE,
   ...CATALOG_APPS.filter((app) => !KEY_APP_IDS.has(app.id)),
 ].sort((a, b) => a.name.localeCompare(b.name, "en", { sensitivity: "base" }))
 
@@ -287,7 +309,7 @@ export function findMarketplaceApp(id: string): MarketplaceApp | null {
 
 /** Whether a saved MCP server (by host) came from this catalog app. */
 export function hostMatchesApp(host: string, app: MarketplaceApp): boolean {
-  if (!host) return false
+  if (!host || app.transport === "stdio") return false
   let appHost: string
   try {
     appHost = app.auth.kind === "personal-url" ? app.auth.host : new URL(app.url).host

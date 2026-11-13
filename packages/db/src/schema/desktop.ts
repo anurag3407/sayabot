@@ -86,3 +86,55 @@ export const localRunnerJobs = pgTable(
   },
   (t) => [index("local_runner_jobs_host_idx").on(t.hostId, t.status)],
 )
+
+/**
+ * A password-manager read that has to run on the person's computer (`op`, `bw`, `pass-cli`).
+ * The result is sealed. The token is never stored on this row; the claim route reads it.
+ */
+export const desktopSecretJobs = pgTable(
+  "desktop_secret_jobs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    hostId: uuid("host_id")
+      .notNull()
+      .references(() => desktopHosts.id, { onDelete: "cascade" }),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => orgs.id, { onDelete: "cascade" }),
+    connectorId: uuid("connector_id").notNull(),
+    source: text("source").notNull(),
+    action: text("action").notNull(),
+    query: text("query").notNull(),
+    vault: text("vault"),
+    status: text("status").notNull().default("queued"),
+    resultEnc: text("result_enc"),
+    error: text("error"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (t) => [index("desktop_secret_jobs_host_idx").on(t.hostId, t.status)],
+)
+
+/** One MCP call for a local app that only runs on the person's computer. */
+export const desktopMcpCalls = pgTable(
+  "desktop_mcp_calls",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    hostId: uuid("host_id")
+      .notNull()
+      .references(() => desktopHosts.id, { onDelete: "cascade" }),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => orgs.id, { onDelete: "cascade" }),
+    serverId: uuid("server_id").notNull(),
+    appId: text("app_id").notNull(),
+    method: text("method").notNull(),
+    params: jsonb("params").$type<Record<string, unknown>>().notNull().default({}),
+    status: text("status").notNull().default("queued"),
+    result: jsonb("result").$type<unknown>(),
+    error: text("error"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (t) => [index("desktop_mcp_calls_host_idx").on(t.hostId, t.status)],
+)

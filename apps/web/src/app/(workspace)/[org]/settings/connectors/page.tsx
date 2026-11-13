@@ -2,10 +2,11 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { requireOrgAdmin } from "@/lib/auth"
-import { listWorkspaceConnectors } from "@/lib/queries"
+import { listOrgAgents, listRooms, listWorkspaceConnectors } from "@/lib/queries"
 import { Section } from "@/components/settings/section"
 import { EmptyState } from "@/components/ui/empty"
 import { ConnectorAddForm } from "@/components/settings/connector-add-form"
+import { ConnectorChatForm } from "@/components/settings/connector-chat-form"
 import {
   DeleteConnectorButton,
   TestConnectorButton,
@@ -57,6 +58,24 @@ const SOURCE_INFO: Record<
     description: "Send WhatsApp messages and templates from your business number. Every message waits for approval.",
     color: "border-green-500/20 bg-green-500/5 text-green-400",
   },
+  onepassword: {
+    label: "1Password",
+    icon: "🔑",
+    description: "Search item titles, and read a secret only after someone approves it.",
+    color: "border-blue-500/20 bg-blue-500/5 text-blue-400",
+  },
+  bitwarden: {
+    label: "Bitwarden",
+    icon: "🔐",
+    description: "Search secret names, and read a value only after someone approves it.",
+    color: "border-amber-500/20 bg-amber-500/5 text-amber-400",
+  },
+  protonpass: {
+    label: "Proton Pass",
+    icon: "🛡️",
+    description: "Looks up items through the Proton Pass app on a computer with Sayabot open.",
+    color: "border-violet-500/20 bg-violet-500/5 text-violet-400",
+  },
 }
 
 export default async function ConnectorsSettingsPage({
@@ -68,7 +87,11 @@ export default async function ConnectorsSettingsPage({
   const access = await requireOrgAdmin(orgSlug)
   if (!access) notFound()
 
-  const connectors = await listWorkspaceConnectors(access.org.id)
+  const [connectors, rooms, agents] = await Promise.all([
+    listWorkspaceConnectors(access.org.id),
+    listRooms(access.org.id),
+    listOrgAgents(access.org.id),
+  ])
 
   return (
     <div className="space-y-8">
@@ -147,6 +170,26 @@ export default async function ConnectorsSettingsPage({
                     </div>
 
                     <p className="text-[12px] text-muted">{info.description}</p>
+
+                    {(connector.source === "telegram" || connector.source === "discord" || connector.source === "whatsapp") &&
+                    rooms.length > 0 &&
+                    agents.length > 0 ? (
+                      <ConnectorChatForm
+                        orgSlug={orgSlug}
+                        connectorId={connector.id}
+                        source={connector.source}
+                        rooms={rooms}
+                        agents={agents.map((agent) => ({ id: agent.id, handle: agent.handle, displayName: agent.displayName }))}
+                        inbound={
+                          (connector.config.inbound as {
+                            enabled?: boolean
+                            roomId?: string
+                            agentId?: string
+                            allowedChats?: string[]
+                          } | undefined) ?? null
+                        }
+                      />
+                    ) : null}
 
                     <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px] text-faint">
                       <span>Key ends in <code className="font-mono text-text">...{connector.last4}</code></span>

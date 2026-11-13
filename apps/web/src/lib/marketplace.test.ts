@@ -11,7 +11,8 @@ describe("Marketplace catalog", () => {
   it("uses HTTPS and a known category everywhere", () => {
     const categories = new Set(APP_CATEGORIES.map((c) => c.id))
     for (const app of MARKETPLACE_APPS) {
-      expect(new URL(app.url).protocol, app.id).toBe("https:")
+      if (app.transport === "stdio") expect(app.url, app.id).toBe(`stdio://${app.id}`)
+      else expect(new URL(app.url).protocol, app.id).toBe("https:")
       expect(categories.has(app.category), app.id).toBe(true)
       expect(app.tagline.length, app.id).toBeGreaterThan(3)
     }
@@ -19,7 +20,7 @@ describe("Marketplace catalog", () => {
 
   it("never matches one saved server to two apps", () => {
     for (const app of MARKETPLACE_APPS) {
-      if (app.auth.kind === "personal-url") continue
+      if (app.auth.kind === "personal-url" || app.transport === "stdio") continue
       const host = new URL(app.url).host
       expect(appForHost(host)?.id, host).toBe(app.id)
     }

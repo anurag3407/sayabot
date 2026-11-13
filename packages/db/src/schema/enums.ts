@@ -41,7 +41,7 @@ export const turnRoleEnum = pgEnum("turn_role", [
   "moderator",
 ])
 export const canvasKindEnum = pgEnum("canvas_kind", ["markdown", "code", "svg", "html"])
-export const mcpTransportEnum = pgEnum("mcp_transport", ["http", "sse"])
+export const mcpTransportEnum = pgEnum("mcp_transport", ["http", "sse", "stdio"])
 export const toolCallStatusEnum = pgEnum("tool_call_status", [
   "pending_approval",
   "approved",

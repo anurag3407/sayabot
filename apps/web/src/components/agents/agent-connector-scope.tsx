@@ -34,6 +34,7 @@ export function AgentConnectorScopeManager({
   const [allowedChannels, setAllowedChannels] = useState("")
   const [allowedRepos, setAllowedRepos] = useState("")
   const [allowedRecipients, setAllowedRecipients] = useState("")
+  const [allowedVaults, setAllowedVaults] = useState("")
   const [readOnly, setReadOnly] = useState(false)
 
   const selectedConnector = availableConnectors.find((c) => c.id === selectedConnectorId)
@@ -51,6 +52,7 @@ export function AgentConnectorScopeManager({
     if (allowedChannels) formData.append("allowedChannels", allowedChannels)
     if (allowedRepos) formData.append("allowedRepos", allowedRepos)
     if (allowedRecipients) formData.append("allowedRecipients", allowedRecipients)
+    if (allowedVaults) formData.append("allowedVaults", allowedVaults)
     if (readOnly) formData.append("readOnly", "1")
 
     startTransition(async () => {
@@ -143,6 +145,9 @@ export function AgentConnectorScopeManager({
                     {scopes.readOnly === true && <span>Read only</span>}
                     {scopes.allowedRepos && scopes.allowedRepos.length > 0 && (
                       <span>Repos: {scopes.allowedRepos.join(", ")}</span>
+                    )}
+                    {Array.isArray(scopes.allowedVaults) && scopes.allowedVaults.length > 0 && (
+                      <span>Vaults: {(scopes.allowedVaults as string[]).join(", ")}</span>
                     )}
                     {!scopes.allowedFolders?.length &&
                       !scopes.allowedChannels?.length &&
@@ -242,6 +247,20 @@ export function AgentConnectorScopeManager({
                   onChange={(e) => setAllowedRecipients(e.target.value)}
                 />
                 <HelpText>Blank = any number. Every message still waits for your OK in the Inbox.</HelpText>
+              </Field>
+            )}
+
+            {(selectedConnector?.source === "onepassword" ||
+              selectedConnector?.source === "bitwarden" ||
+              selectedConnector?.source === "protonpass") && (
+              <Field label="Allowed vaults" htmlFor="grant-vaults">
+                <Input
+                  id="grant-vaults"
+                  placeholder="e.g. Employee, Shared"
+                  value={allowedVaults}
+                  onChange={(e) => setAllowedVaults(e.target.value)}
+                />
+                <HelpText>Blank = every vault the token can see. Search still returns titles only.</HelpText>
               </Field>
             )}
 

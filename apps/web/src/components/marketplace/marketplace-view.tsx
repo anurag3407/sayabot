@@ -195,6 +195,15 @@ function ConnectDialog({
               Stored encrypted. Agents use it through Sayabot and never see it.
             </p>
           ) : null}
+          {app.runOn === "desktop" ? (
+            <p className="text-[12px] text-faint">
+              This runs on a computer with the Sayabot app open. It can see what is on that computer, not the server.
+            </p>
+          ) : app.runOn === "server" ? (
+            <p className="text-[12px] text-faint">
+              The first time an agent uses it, Sayabot installs the program next to itself.
+            </p>
+          ) : null}
           {app.dangerousTools?.length && !app.dangerousTools.some((name) => name.startsWith("@")) ? (
             <p className="text-[12px] text-faint">
               Actions that change things ({app.dangerousTools.slice(0, 3).join(", ")}

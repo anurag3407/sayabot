@@ -3,7 +3,9 @@ import * as path from "node:path"
 import * as fs from "node:fs"
 import { DesktopHost } from "./host"
 import { detectLocalAgents } from "./local-agents"
+import { LocalMcpHost } from "./local-mcp"
 import { LocalRunner } from "./runner"
+import { VaultRunner } from "./vault-cli"
 
 const DEFAULT_SERVER_URL = "https://sayabot.sayalabs.in"
 const CONFIG_FILE = "sayabot-config.json"
@@ -25,6 +27,8 @@ interface DesktopConfig {
 let mainWindow: BrowserWindow | null = null
 let host: DesktopHost | null = null
 let runner: LocalRunner | null = null
+let vaults: VaultRunner | null = null
+let localMcp: LocalMcpHost | null = null
 
 /** Remote desktop + local runner: this computer as a Sayabot host, once someone is signed in. */
 function startHost(): void {
@@ -39,9 +43,13 @@ function startHost(): void {
       onHeartbeat: (reply) => {
         localRunnerRunning = Boolean(reply.settings.runnerEnabled)
         void runner?.maybeRun(reply.queuedJobs, Boolean(reply.settings.runnerEnabled))
+        void vaults?.maybeRun(reply.secretJobs ?? 0)
+        void localMcp?.maybeRun(reply.mcpCalls ?? 0)
       },
     })
     runner = new LocalRunner(host)
+    vaults = new VaultRunner(host)
+    localMcp = new LocalMcpHost(host)
   }
   void host.start()
 }

@@ -27,6 +27,8 @@ export interface HeartbeatReply {
   settings: { whoCanControl?: string; askOnComputer?: boolean; runnerEnabled?: boolean }
   sessions: Array<{ id: string; viewerName: string; isOwner: boolean; control: boolean; offer: string | null }>
   queuedJobs: number
+  secretJobs?: number
+  mcpCalls?: number
 }
 
 const HOST_FILE = "sayabot-host.json"

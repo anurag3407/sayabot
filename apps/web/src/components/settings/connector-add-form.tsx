@@ -48,6 +48,27 @@ const CONNECTOR_SOURCES = [
     placeholder: "EAAG…",
     help: "Meta for Developers → your app → WhatsApp → API setup. Use a permanent System User token for anything beyond testing.",
   },
+  {
+    value: "onepassword",
+    label: "1Password",
+    tokenLabel: "Connect token or service-account token",
+    placeholder: "ops_… or leave blank if the app is signed in",
+    help: "Connect: your Connect server URL plus its token. Or tick the computer option and leave this blank if `op` is already signed in there.",
+  },
+  {
+    value: "bitwarden",
+    label: "Bitwarden",
+    tokenLabel: "Secrets Manager access token or session key",
+    placeholder: "0.… or leave blank if the app is signed in",
+    help: "Secrets Manager: an access token. Or tick the computer option if `bw` is unlocked on that computer.",
+  },
+  {
+    value: "protonpass",
+    label: "Proton Pass",
+    tokenLabel: "Leave blank if Proton Pass is signed in on this computer",
+    placeholder: "optional",
+    help: "Proton Pass runs through `pass-cli` on a computer with the Sayabot app open. Search returns titles only. Reading a secret waits for approval.",
+  },
 ]
 
 export function ConnectorAddForm({ orgSlug }: { orgSlug: string }) {
@@ -102,10 +123,32 @@ export function ConnectorAddForm({ orgSlug }: { orgSlug: string }) {
           name="token"
           type="password"
           placeholder={current.placeholder}
-          required
+          required={source !== "protonpass" && source !== "onepassword" && source !== "bitwarden"}
         />
         <HelpText>{current.help}</HelpText>
       </Field>
+
+      {(source === "onepassword" || source === "bitwarden" || source === "protonpass") && source !== "protonpass" && (
+        <label className="flex items-center gap-2 text-[13px] text-text">
+          <input type="checkbox" name="onComputer" />
+          Use the app signed in on a computer, instead of an API
+        </label>
+      )}
+      {source === "onepassword" && (
+        <Field label="1Password Connect URL" htmlFor="op-connect">
+          <Input id="op-connect" name="connectUrl" placeholder="https://connect.example.com" />
+          <HelpText>Only for Connect. Leave blank when using the app on a computer.</HelpText>
+        </Field>
+      )}
+      {source === "bitwarden" && (
+        <Field label="Bitwarden region" htmlFor="bw-region">
+          <Select id="bw-region" name="region" defaultValue="us">
+            <option value="us">bitwarden.com</option>
+            <option value="eu">bitwarden.eu</option>
+          </Select>
+          <HelpText>Used for Secrets Manager. Ignored when the app runs on a computer.</HelpText>
+        </Field>
+      )}
 
       {source === "google_drive" && (
         <Field label="Google Drive Domain / Root Folder (Optional)" htmlFor="drive-domain">
