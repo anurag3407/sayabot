@@ -1,4 +1,5 @@
 import "server-only"
+import { publicSayaAi, readSayaAiConfig, type SayaAiConfig, type SayaAiPublic } from "@sayabot/core"
 
 export function requireEnv(name: string): string {
   const value = process.env[name]
@@ -48,9 +49,25 @@ export function getAppUrl(): string {
   ).replace(/\/+$/, "")
 }
 
-/** True when agents without their own key can use the server's shared model. */
+/**
+ * The operator's Saya AI provider (SAYA_AI_* in .env, or the older DEV_OPENAI_COMPAT_* values).
+ * Read per request, so the picker, phones and the Mac app show the current models as soon as the
+ * server restarts with new values. Never send this to a browser; use sayaAiPublic().
+ */
+export function sayaAi(): SayaAiConfig | null {
+  const config = readSayaAiConfig(process.env)
+  return config?.apiKey ? config : null
+}
+
+/** Safe for clients: names and aliases only, no key, endpoint or real model ids. */
+export function sayaAiPublic(): SayaAiPublic | null {
+  const config = sayaAi()
+  return config ? publicSayaAi(config) : null
+}
+
+/** True when agents without their own key can use the server's shared model (Saya AI). */
 export function devModelConfigured(): boolean {
-  return Boolean(process.env.DEV_OPENAI_COMPAT_BASE_URL && process.env.DEV_OPENAI_COMPAT_MODEL)
+  return sayaAi() !== null
 }
 
 function envBool(name: string): boolean {

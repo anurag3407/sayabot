@@ -1,6 +1,6 @@
 import "server-only"
 import { getAllGroupedModels } from "@/lib/connectors/registry"
-import { devModelConfigured } from "@/lib/env"
+import { sayaAiPublic } from "@/lib/env"
 import { effectiveProvider } from "@/lib/format"
 import { MODEL_SUGGESTIONS } from "@/lib/model-options"
 import type { ProviderKeyView } from "@/lib/types"
@@ -131,8 +131,20 @@ export async function buildModelCatalog(
       models,
     })
   }
-  if (devModelConfigured()) {
-    groups.push({ keyId: null, provider: "sayabot", label: "Sayabot default", detail: "Set by your server", models: [] })
+  // Saya AI: the server operator's models. Agents store an alias (saya/pro), never the real id, so
+  // the operator can change what's behind it in .env and every agent follows on its next turn.
+  const saya = sayaAiPublic()
+  if (saya) {
+    groups.push({
+      keyId: null,
+      provider: "saya",
+      label: saya.name,
+      detail: "Provided by this server · no key needed · always up to date",
+      models: [
+        { id: "", label: `Automatic · ${saya.defaultLabel}` },
+        ...saya.models.map((m) => ({ id: m.value, label: m.label })),
+      ],
+    })
   }
   for (const key of keys) {
     const provider = effectiveProvider(key.provider, key.baseUrl)

@@ -1,5 +1,6 @@
 "use client"
 
+import { agentModelText, type SayaAiPublic } from "@sayabot/core"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
@@ -49,12 +50,15 @@ export function NewChatView({
   members,
   selfId,
   agents,
+  saya = null,
   initialTab = "room",
 }: {
   orgSlug: string
   members: MemberView[]
   selfId: string
   agents: AgentView[]
+  /** The server's Saya AI models (names only), to label agents that use them. */
+  saya?: SayaAiPublic | null
   initialTab?: Tab
 }) {
   const [tab, setTab] = useState<Tab>(initialTab)
@@ -137,9 +141,7 @@ export function NewChatView({
                         <span className="font-mono text-[11px] text-faint">@{agent.handle}</span>
                       </p>
                       <p className="mt-0.5 font-mono text-[11px] text-faint">
-                        {agent.kind === "external"
-                          ? "external agent"
-                          : (agent.model ?? (agent.providerKeyId ? "default model" : "no API key yet"))}
+                        {agentModelText(agent, saya)}
                       </p>
                     </div>
                     <BotStartButton orgSlug={orgSlug} agentId={agent.id} />

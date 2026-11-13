@@ -5,7 +5,7 @@ import { createGroq } from "@ai-sdk/groq"
 import { createOpenAI } from "@ai-sdk/openai"
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible"
 import type { LanguageModel } from "ai"
-import type { Provider } from "@sayabot/core"
+import { readSayaAiConfig, resolveSayaFastModel, resolveSayaModel, type Provider } from "@sayabot/core"
 import { decryptSecret } from "./crypto"
 
 export interface LanguageModelConfig {
@@ -123,13 +123,28 @@ export function createLanguageModel(config: LanguageModelConfig): LanguageModel 
   }
 }
 
-/** Dev fallback used when an agent has no BYOK key attached. */
+/**
+ * The operator's Saya AI model for a stored agent value (`saya/<alias>`, or null for the default).
+ * Read from the environment on every call, so an edit to SAYA_AI_* reaches every agent on the next
+ * turn after the server restarts with the new values. See @sayabot/core saya-ai.ts.
+ */
+export function sayaModelConfig(
+  stored: string | null | undefined,
+  env: NodeJS.ProcessEnv = process.env,
+  which: "chosen" | "fast" = "chosen",
+): (LanguageModelConfig & { alias: string; label: string }) | null {
+  const config = readSayaAiConfig(env)
+  if (!config || !config.apiKey) return null
+  const model = which === "fast" ? resolveSayaFastModel(config) : resolveSayaModel(config, stored)
+  const provider: Provider = config.protocol
+  return { provider, apiKey: config.apiKey, baseUrl: config.baseUrl, model: model.id, alias: model.alias, label: model.label }
+}
+
+/** The server's shared model for agents with no key of their own: Saya AI's current default. */
 export function devModelConfig(env: NodeJS.ProcessEnv = process.env): LanguageModelConfig | null {
-  const baseUrl = env.DEV_OPENAI_COMPAT_BASE_URL
-  const apiKey = env.DEV_OPENAI_COMPAT_API_KEY
-  const model = env.DEV_OPENAI_COMPAT_MODEL
-  if (!baseUrl || !apiKey || !model) return null
-  return { provider: "openai-compatible", apiKey, baseUrl, model }
+  const saya = sayaModelConfig(null, env)
+  if (!saya) return null
+  return { provider: saya.provider, apiKey: saya.apiKey, baseUrl: saya.baseUrl, model: saya.model }
 }
 
 export interface ProviderKeyRow {

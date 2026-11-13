@@ -1,7 +1,9 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { redirect } from "next/navigation"
+import { agentModelText } from "@sayabot/core"
 import { requireRoomAccess } from "@/lib/auth"
+import { sayaAiPublic } from "@/lib/env"
 import {
   listMemberViews,
   listOrgAgents,
@@ -34,6 +36,7 @@ export default async function RoomSettingsPage({
 }) {
   const { org: orgSlug, roomId } = await params
   const access = await requireRoomAccess(orgSlug, roomId)
+  const saya = sayaAiPublic()
   if (!access.canAdmin) redirect(`/${orgSlug}/r/${roomId}`)
 
   const [roomAgents, orgAgents, schedule, orgMembers, roomMembers] = await Promise.all([
@@ -259,7 +262,7 @@ export default async function RoomSettingsPage({
                     <span className="font-mono text-[12px] text-text">@{agent.handle}</span>
                     <span className="text-[12px] text-muted">{agent.displayName}</span>
                     <span className="font-mono text-[11px] text-faint">
-                      {agent.kind === "external" ? "external" : (agent.model ?? "server default")}
+                      {agentModelText(agent, saya)}
                     </span>
                     <div className="ml-auto">
                       <ActionForm

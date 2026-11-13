@@ -1,12 +1,12 @@
 "use server"
 
 import { z } from "zod"
-import { DEFAULT_CAPABILITIES, parseCapabilities, redactSecrets } from "@sayabot/core"
+import { DEFAULT_CAPABILITIES, isSayaModel, parseCapabilities, redactSecrets, sayaModelLabel, sayaModelValue } from "@sayabot/core"
 import { generateWebhookSecret } from "@sayabot/core/server"
 import { sealSecret } from "@sayabot/llm"
 import { randomBytes } from "node:crypto"
 import { createAdminClient } from "@/lib/supabase/admin"
-import { getKek } from "@/lib/env"
+import { getKek, sayaAi } from "@/lib/env"
 import { headers } from "next/headers"
 import { localDetectionAllowed } from "@/lib/local-agents"
 import { testAgentInOrchestrator } from "@/lib/orchestrator"
@@ -503,9 +503,21 @@ export async function setAgentModelAction(input: {
     if (!model) return fail("Pick a model")
   }
 
+  // Saya AI (no key): store the alias, never the real id, so .env changes reach this agent.
+  // null means "Automatic": follow the server's current default.
+  let storedModel: string | null = input.providerKeyId ? model : null
+  if (!input.providerKeyId && model) {
+    const saya = sayaAi()
+    if (!saya) return fail("This server has no Saya AI models set up")
+    if (!isSayaModel(model) || !saya.models.some((m) => sayaModelValue(m.alias) === model)) {
+      return fail("That Saya AI model isn't offered by this server any more")
+    }
+    storedModel = model
+  }
+
   const { error } = await admin
     .from("agents")
-    .update({ provider_key_id: input.providerKeyId, model: input.providerKeyId ? model : null, params })
+    .update({ provider_key_id: input.providerKeyId, model: storedModel, params })
     .eq("id", agent.id)
   if (error) return fail(errorMessage(error))
   await audit({
@@ -516,5 +528,7 @@ export async function setAgentModelAction(input: {
     metadata: { model, providerKeyId: input.providerKeyId, effort: params.effort ?? null },
   })
   revalidateOrg(input.orgSlug)
+  const saya = !input.providerKeyId ? sayaAi() : null
+  if (saya) return ok(`@${agent.handle} now uses ${sayaModelLabel(saya, storedModel)}`)
   return ok(model ? `@${agent.handle} now uses ${model}` : `@${agent.handle} uses the default model`)
 }

@@ -50,8 +50,24 @@ describe("web env helpers", () => {
     expect(m.devModelConfigured()).toBe(false)
   })
 
-  it("devModelConfigured needs both base URL and model", async () => {
+  it("devModelConfigured needs a base URL, model and key, like the orchestrator", async () => {
     expect((await load({ DEV_OPENAI_COMPAT_BASE_URL: "http://x" })).devModelConfigured()).toBe(false)
-    expect((await load({ DEV_OPENAI_COMPAT_BASE_URL: "http://x", DEV_OPENAI_COMPAT_MODEL: "m" })).devModelConfigured()).toBe(true)
+    // Without a key the orchestrator can't run it, so the picker must not offer it.
+    expect((await load({ DEV_OPENAI_COMPAT_BASE_URL: "http://x", DEV_OPENAI_COMPAT_MODEL: "m" })).devModelConfigured()).toBe(false)
+    expect(
+      (await load({ DEV_OPENAI_COMPAT_BASE_URL: "http://x", DEV_OPENAI_COMPAT_MODEL: "m", DEV_OPENAI_COMPAT_API_KEY: "k" })).devModelConfigured(),
+    ).toBe(true)
+  })
+
+  it("exposes Saya AI to clients without the key, endpoint or real ids", async () => {
+    const m = await load({
+      SAYA_AI_BASE_URL: "https://llm.example.com/v1",
+      SAYA_AI_API_KEY: "sk-secret",
+      SAYA_AI_MODELS: "pro=real-model-id|Saya Pro",
+    })
+    expect(m.devModelConfigured()).toBe(true)
+    const view = m.sayaAiPublic()
+    expect(view?.models).toEqual([{ value: "saya/pro", label: "Saya Pro" }])
+    expect(JSON.stringify(view)).not.toMatch(/sk-secret|llm\.example|real-model-id/)
   })
 })

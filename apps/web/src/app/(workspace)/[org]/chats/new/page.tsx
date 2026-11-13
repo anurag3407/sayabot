@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { requireOrgAccess } from "@/lib/auth"
+import { sayaAiPublic } from "@/lib/env"
 import { listMemberViews, listOrgAgents } from "@/lib/queries"
 import { NewChatView } from "@/components/ia/new-chat-view"
 
@@ -25,6 +26,7 @@ export default async function NewChatPage({
       members={members}
       selfId={access.user.id}
       agents={agents}
+      saya={sayaAiPublic()}
       initialTab={tab === "agent" ? "bot" : "room"}
     />
   )

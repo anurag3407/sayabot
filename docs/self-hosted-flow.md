@@ -128,6 +128,51 @@ until the Mac is back. Anything the cloud computer can do continues. The cloud c
 `MESH_APP_SERVICES="orchestrator web computerd egress"` and
 `deploy/scripts/setup-computers.sh` on the VPS (see [`tools-and-sandboxes.md`](tools-and-sandboxes.md)).
 
+## 6. Saya AI: your own model, for everyone, always current
+
+Saya AI is a provider that you, the server operator, run for every user. It sits next to the
+hosted providers in the model picker and needs no key from anyone. You set it in
+`deploy/.env.production`:
+
+```bash
+SAYA_AI_NAME=Saya AI
+SAYA_AI_BASE_URL=https://llm.example.com/v1     # any OpenAI-compatible endpoint
+SAYA_AI_API_KEY=sk-...
+SAYA_AI_PROTOCOL=openai-compatible              # or: openai | anthropic
+SAYA_AI_MODELS=pro=gpt-5.1|Saya Pro,fast=gpt-5.1-mini|Saya Fast
+SAYA_AI_DEFAULT=pro                             # "Automatic" and new agents
+SAYA_AI_FAST=fast                               # titles, memory, summaries, critics
+```
+
+Then run `./deploy/deploy.sh reload`. That takes seconds with no rebuild. Plain `restart` keeps the
+old values.
+
+**How updates reach everyone silently.** Agents never store your real model id. They store an
+alias (`saya/pro`), or nothing at all for **Automatic**. Every turn resolves the alias against the
+server's current environment. So when you change `pro=gpt-5.1` to `pro=gpt-6`, or point the
+endpoint somewhere else, and reload:
+
+| Where                | What people see                                                      | Update needed |
+| -------------------- | -------------------------------------------------------------------- | ------------- |
+| Web app              | The picker lists your models by label; agents run on the new id      | none          |
+| Mac app              | Same as web (it loads your server)                                   | none          |
+| Phone app            | Agent profiles show "Saya Pro"; chats and routines run on the new id | none          |
+| Agents & Automations | Pick up the new model on their next turn                             | none          |
+
+- **Add a model:** add `alias=id|Label` to `SAYA_AI_MODELS`. It appears in the picker after reload.
+- **Retire a model:** remove its alias. Agents that used it move to `SAYA_AI_DEFAULT` instead of
+  failing.
+- **Rename the provider:** `SAYA_AI_NAME`.
+- Keep aliases stable and change the ids behind them freely.
+
+**Privacy.** Browsers and phones only ever receive names and aliases
+(`GET /api/providers/saya`). The key, endpoint and real model ids stay on the server, and they are
+stripped from every agent subprocess, the same as the other server secrets. Usage and cost
+records store the real model id, so spend stays accurate across model changes.
+
+A server that only has the older `DEV_OPENAI_COMPAT_*` values shows them as Saya AI with one
+model. Nothing needs migrating.
+
 ## The whole loop
 
 1. **Ask** from the phone app, browser, Mac, Telegram, or let an Automation fire.
@@ -147,4 +192,6 @@ until the Mac is back. Anything the cloud computer can do continues. The cloud c
 | Allow on a notification opens the Inbox             | The approval expired (5 min) or someone already decided it.                                                                                                                      |
 | Telegram bot doesn't answer                         | Connector → Chat is on and your chat ID is in Allowed chats. Saving the Chat form again re-registers Telegram's webhook. With Cloudflare Access, `/api/messaging/*` is bypassed. |
 | Routine results not in Telegram                     | "Also send results to" only lists chats in a connector's Allowed chats.                                                                                                          |
+| Saya AI missing from the picker                     | `SAYA_AI_BASE_URL`, `SAYA_AI_API_KEY` and `SAYA_AI_MODELS` are set, then `./deploy/deploy.sh reload`. Check `/api/providers/saya` while signed in.                               |
+| Changed a Saya AI model id, nothing changed         | You ran `restart` instead of `reload`. Containers only read `.env.production` when recreated.                                                                                    |
 | Tunnel deploy: "did not respond through Cloudflare" | The tunnel's Public Hostname points at `http://nginx:8080`, and Access bypasses `/api/health`.                                                                                   |

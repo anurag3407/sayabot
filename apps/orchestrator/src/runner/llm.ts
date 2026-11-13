@@ -1,7 +1,7 @@
-import { createRunScrubber, redactSecrets, type TurnRole } from "@sayabot/core"
+import { createRunScrubber, isSayaModel, redactSecrets, type TurnRole } from "@sayabot/core"
 import { agentRuns, messages, providerKeys, tasks } from "@sayabot/db"
 import { recordUsageEvent, tokensFrom } from "../usage"
-import { createLanguageModel, devModelConfig, providerKeyToApiKey } from "@sayabot/llm"
+import { createLanguageModel, devModelConfig, providerKeyToApiKey, sayaModelConfig } from "@sayabot/llm"
 import type { LanguageModel, LanguageModelUsage, ToolSet } from "ai"
 import { eq, sql } from "drizzle-orm"
 import { registerRun, unregisterRun } from "../active-runs"
@@ -82,8 +82,20 @@ export async function resolveAgentCheapModel(agent: AgentRow): Promise<ResolvedM
       modelName: cheap.model ?? cheap.app,
     }
   }
+  // Saya AI (or no key at all): background work uses the operator's fast model, read live.
+  if (isSayaModel(agent.model) || !agent.providerKeyId) {
+    const fast = sayaModelConfig(agent.model, process.env, "fast")
+    if (fast) {
+      const modelName = customCheap?.trim() || fast.model
+      return {
+        model: createLanguageModel({ ...fast, model: modelName }),
+        provider: fast.provider,
+        modelName,
+      }
+    }
+  }
   const db = getDb()
-  if (agent.providerKeyId) {
+  if (agent.providerKeyId && !isSayaModel(agent.model)) {
     const [key] = await db
       .select()
       .from(providerKeys)
@@ -141,6 +153,21 @@ export async function resolveAgentModel(agent: AgentRow): Promise<ResolvedModel>
       model: createCliLanguageModel(cli, agent.handle),
       provider: cli.app,
       modelName: cli.model ?? cli.app,
+    }
+  }
+  // Saya AI: the stored alias is resolved against the server's env on every turn, so the operator
+  // can swap the endpoint or the model behind an alias without anyone re-picking it.
+  if (isSayaModel(agent.model)) {
+    const saya = sayaModelConfig(agent.model)
+    if (!saya) {
+      throw new Error(
+        `@${agent.handle} uses Saya AI, but this server has no Saya AI model set up. Ask the server admin to set SAYA_AI_BASE_URL, SAYA_AI_API_KEY and SAYA_AI_MODELS, or pick another model on the Agents page.`,
+      )
+    }
+    return {
+      model: createLanguageModel(saya),
+      provider: saya.provider,
+      modelName: saya.model,
     }
   }
   const db = getDb()

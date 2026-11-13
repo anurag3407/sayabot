@@ -7,6 +7,7 @@
 #   ./deploy/deploy.sh rollback        return to the previous release's images
 #   ./deploy/deploy.sh migrate         run database migrations only
 #   ./deploy/deploy.sh seed            seed starter model prices
+#   ./deploy/deploy.sh reload          apply .env.production edits (e.g. SAYA_AI_* models) without a build
 #   ./deploy/deploy.sh status | logs [service] | restart [service] | down | releases
 #
 # A release = images tagged with the git short SHA. Rollouts are health-gated: if the
@@ -306,7 +307,7 @@ cmd_rollback() {
   record_release "$target"
 }
 
-usage() { sed -n '2,15p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,16p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
 
 main() {
   local cmd="${1:-deploy}"
@@ -324,6 +325,15 @@ main() {
       MESH_TAG="$(current_release)"; export MESH_TAG
       compose ps
       echo; log "Current release: ${MESH_TAG:-none}" ;;
+    reload)
+      # `restart` keeps the old environment; `up` recreates containers whose env_file changed.
+      # Server-only values (SAYA_AI_*, keys, tokens) apply this way. NEXT_PUBLIC_* need a full deploy.
+      preflight; acquire_lock
+      MESH_TAG="$(current_release)"; [[ -n "$MESH_TAG" ]] || die "No release deployed yet. Run ./deploy/deploy.sh first."
+      export MESH_TAG
+      log "Applying .env.production to ${APP_SERVICES[*]} ($MESH_TAG)"
+      compose up -d --no-build --force-recreate "${APP_SERVICES[@]}"
+      wait_healthy "${APP_SERVICES[@]}" && public_check && ok "New settings are live" || die "Services are not healthy after reload. Check: ./deploy/deploy.sh logs" ;;
     logs) MESH_TAG="$(current_release)"; export MESH_TAG; compose logs -f --tail 200 "$@" ;;
     restart) MESH_TAG="$(current_release)"; export MESH_TAG; compose restart "$@" ;;
     down) MESH_TAG="$(current_release)"; export MESH_TAG; compose down ;;

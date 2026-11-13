@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server"
+import { sayaModelLabel } from "@sayabot/core"
+import { sayaAi } from "@/lib/env"
 import { getOrgAccess } from "@/lib/auth"
 import { userFromRequest } from "@/lib/route-bearer"
 import { createAdminClient } from "@/lib/supabase/admin"
@@ -40,7 +42,7 @@ export async function GET(request: Request) {
   const since = new Date(Date.now() - 30 * 86_400_000).toISOString()
 
   const [agentsRes, roomAgentsRes, readsRes, messagesRes, requestsRes, approvalsRes, runsRes, rollupRes] = await Promise.all([
-    c.from("agents").select("id, handle, display_name, kind, model, params, bio").eq("org_id", access.org.id),
+    c.from("agents").select("id, handle, display_name, kind, model, provider_key_id, params, bio").eq("org_id", access.org.id),
     roomIds.length ? c.from("room_agents").select("room_id, agent_id").in("room_id", roomIds) : Promise.resolve({ data: [] }),
     roomIds.length ? c.from("room_reads").select("room_id, last_read_at, pinned, muted_until, archived").eq("user_id", who.user.id).in("room_id", roomIds) : Promise.resolve({ data: [] }),
     roomIds.length
@@ -69,7 +71,8 @@ export async function GET(request: Request) {
     c.rpc("usage_rollup", { p_org: access.org.id, p_since: since }),
   ])
 
-  const agents = (agentsRes.data ?? []) as { id: string; handle: string; display_name: string; kind: string; model: string | null; params: Record<string, unknown> | null; bio: string | null }[]
+  const saya = sayaAi()
+  const agents = (agentsRes.data ?? []) as { id: string; handle: string; display_name: string; kind: string; model: string | null; provider_key_id: string | null; params: Record<string, unknown> | null; bio: string | null }[]
   const agentById = new Map(agents.map((a) => [a.id, a]))
   const working = new Map<string, string>() // agentId -> roomId
   for (const run of (runsRes.data ?? []) as { agent_id: string; room_id: string }[]) working.set(run.agent_id, run.room_id)
@@ -140,7 +143,15 @@ export async function GET(request: Request) {
           name: a.display_name,
           kind: a.kind,
           about: a.bio,
-          model: runner?.app ? `${runner.app} on your computer` : (a.model ?? (a.kind === "external" ? "Its own app" : "Default model")),
+          // Saya AI agents are labelled from the server's current config, so phones show the new
+          // model name the moment the operator changes it: no app update.
+          model: runner?.app
+            ? `${runner.app} on your computer`
+            : a.kind === "external"
+              ? "Its own app"
+              : !a.provider_key_id && saya
+                ? sayaModelLabel(saya, a.model)
+                : (a.model ?? "Default model"),
           workingRoomId: working.get(a.id) ?? null,
           usage: u
             ? { tokens: u.inputTokens + u.outputTokens, runs: u.requests, costUsd: u.costUsd, lastAt: u.lastAt, topModel: u.topModel }

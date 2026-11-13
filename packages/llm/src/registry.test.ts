@@ -3,6 +3,7 @@ import {
   MissingModelConfigError,
   createLanguageModel,
   devModelConfig,
+  sayaModelConfig,
   getProviderCapabilities,
   buildProviderOptions,
 } from "./registry"
@@ -106,5 +107,39 @@ describe("getProviderCapabilities & buildProviderOptions", () => {
     expect(opts.openai).toEqual({
       reasoningEffort: "medium",
     })
+  })
+})
+
+describe("sayaModelConfig", () => {
+  const env = {
+    SAYA_AI_BASE_URL: "https://llm.example.com/v1",
+    SAYA_AI_API_KEY: "sk-saya",
+    SAYA_AI_MODELS: "pro=model-a|Saya Pro,fast=model-b|Saya Fast",
+    SAYA_AI_PROTOCOL: "anthropic",
+  }
+
+  it("resolves the stored alias to the operator's current model and protocol", () => {
+    expect(sayaModelConfig("saya/pro", env)).toMatchObject({
+      provider: "anthropic",
+      model: "model-a",
+      alias: "pro",
+    })
+    expect(sayaModelConfig("saya/pro", { ...env, SAYA_AI_MODELS: "pro=model-z" })?.model).toBe(
+      "model-z",
+    )
+  })
+
+  it("uses the fast alias for background work and the default for agents with none", () => {
+    expect(sayaModelConfig(null, env, "fast")?.model).toBe("model-b")
+    expect(devModelConfig(env)).toEqual({
+      provider: "anthropic",
+      apiKey: "sk-saya",
+      baseUrl: "https://llm.example.com/v1",
+      model: "model-a",
+    })
+  })
+
+  it("is off without a key", () => {
+    expect(sayaModelConfig("saya/pro", { ...env, SAYA_AI_API_KEY: "" })).toBeNull()
   })
 })

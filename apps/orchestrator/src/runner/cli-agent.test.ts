@@ -64,6 +64,8 @@ describe("cliEnvironment", () => {
       MESH_KEK: "k",
       DATABASE_URL: "postgres://",
       SUPABASE_SERVICE_ROLE_KEY: "s",
+      SAYA_AI_API_KEY: "sk-saya",
+      CLOUDFLARE_TUNNEL_TOKEN: "t",
       CLAUDE_CONFIG_DIR: "/Users/me/.claude-work",
     })
     expect(env.HOME).toBe("/Users/me")
@@ -77,6 +79,8 @@ describe("cliEnvironment", () => {
       "MESH_KEK",
       "DATABASE_URL",
       "SUPABASE_SERVICE_ROLE_KEY",
+      "SAYA_AI_API_KEY",
+      "CLOUDFLARE_TUNNEL_TOKEN",
     ]) {
       expect(env[name]).toBeUndefined()
     }

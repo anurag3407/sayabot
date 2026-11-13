@@ -68,6 +68,7 @@ End-to-end setup for running Sayabot as a 24/7 personal agent on your own server
 - **Chat ingress**: Telegram, Discord and WhatsApp, with "waiting for your OK" notices in the chat.
 - **Automations**: results sent to a chat, plus "routine is done" alerts.
 - **Mac + cloud**: Mac tools are skipped when it sleeps, so agents carry on in their cloud computer.
+- **Saya AI**: your own provider for every user, set in `.env`. Model changes reach web, phone and Mac with no update.
 
 ### 🏛 [Architecture & Monorepo Deep Dive](architecture.md)
 
