@@ -1,5 +1,6 @@
-import { computeCostUsd, pickModelPrice, type PriceRow } from "@sayabot/core"
+import { computeCostUsd, pickModelPrice, type ModelPrice, type PriceRow } from "@sayabot/core"
 import { modelPricing, usageEvents } from "@sayabot/db"
+import { listPriceFor } from "@sayabot/llm/models"
 import type { LanguageModelUsage } from "ai"
 import { getDb } from "./db"
 
@@ -50,8 +51,23 @@ export function tokensFrom(usage: LanguageModelUsage | null | undefined): UsageT
   }
 }
 
+/**
+ * A row on the pricing page wins; without one, the list price from the model manifest or
+ * models.dev, so a new model is priced the day it ships instead of counting as free.
+ */
+function listPrice(provider: string, model: string): ModelPrice | null {
+  const list = listPriceFor(provider, model)
+  if (!list) return null
+  return {
+    inputPerMtok: list.inputPerMillion,
+    outputPerMtok: list.outputPerMillion,
+    ...(list.cachedInputPerMillion !== undefined ? { cacheReadPerMtok: list.cachedInputPerMillion } : {}),
+    ...(list.cacheWritePerMillion !== undefined ? { cacheWritePerMtok: list.cacheWritePerMillion } : {}),
+  }
+}
+
 export async function priceUsage(provider: string, model: string, tokens: UsageTokens): Promise<number> {
-  const price = pickModelPrice(await priceRows(), provider, model)
+  const price = pickModelPrice(await priceRows(), provider, model) ?? listPrice(provider, model)
   return computeCostUsd(
     {
       inputTokens: tokens.inputTokens,

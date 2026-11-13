@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useEffect, useMemo, useRef, useState, type ComponentType } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from "react"
 import {
   ArrowDownToLine,
   BarChart3,
@@ -30,7 +30,11 @@ import { Mascot } from "@/components/ui/mascot"
 import { SayabotMark } from "@/components/landing/sayabot-mark"
 import { ChatList, type BotLink } from "@/components/workspace/chat-list"
 import { CommandPalette } from "@/components/command-palette"
+import { SidebarPlanRings } from "@/components/usage/plan-rings"
 import { useWorkspaceActivity } from "@/components/use-workspace-activity"
+import { IconRail } from "@/components/workspace/icon-rail"
+import { Titlebar } from "@/components/workspace/titlebar"
+import { TitlebarSlotContext } from "@/components/workspace/titlebar-slot"
 import { CloseIcon, MenuIcon, PlusIcon } from "@/components/ui/icons"
 import type { ChatListItem, OrgRole, OrgSummary } from "@/lib/types"
 
@@ -50,6 +54,13 @@ const ALL_PAGES: { key: string; href: string; label: string; icon: NavIcon }[] =
 ]
 
 const SIDEBAR_NAV = ALL_PAGES.filter((page) => ["inbox", "tasks", "cron"].includes(page.key))
+
+/** Places behind the rail's "more" button on wide screens. */
+const RAIL_MORE_PAGES = ALL_PAGES.filter((page) =>
+  ["agents", "files", "meetings", "search"].includes(page.key),
+)
+
+const LIST_OPEN_KEY = "sayabot:chat-list-open"
 
 /** Quieter places that live in the account menu instead of crowding the sidebar. */
 const MENU_PAGES = ALL_PAGES.filter((page) =>
@@ -75,6 +86,43 @@ function useDesktopApp(): boolean {
     setDesktop(Boolean((window as unknown as { sayabotDesktop?: unknown }).sayabotDesktop))
   }, [])
   return desktop
+}
+
+/** Wide screens get the rail, tabs and title bar; phones keep the drawer. */
+function useWideScreen(): boolean {
+  const [wide, setWide] = useState(false)
+  useEffect(() => {
+    const query = window.matchMedia("(min-width: 768px)")
+    const apply = () => setWide(query.matches)
+    apply()
+    query.addEventListener("change", apply)
+    return () => query.removeEventListener("change", apply)
+  }, [])
+  return wide
+}
+
+/** Whether the chat list column is showing, remembered on this device. */
+function useListOpen(): [boolean, () => void] {
+  const [open, setOpen] = useState(true)
+  useEffect(() => {
+    try {
+      if (window.localStorage.getItem(LIST_OPEN_KEY) === "0") setOpen(false)
+    } catch {
+      // Stays open.
+    }
+  }, [])
+  const toggle = useCallback(() => {
+    setOpen((previous) => {
+      const next = !previous
+      try {
+        window.localStorage.setItem(LIST_OPEN_KEY, next ? "1" : "0")
+      } catch {
+        // The choice lasts for this visit.
+      }
+      return next
+    })
+  }, [])
+  return [open, toggle]
 }
 
 const popover =
@@ -152,20 +200,37 @@ function AccountMenu({
   base,
   user,
   role,
+  compact = false,
 }: {
   base: string
   user: { displayName: string; avatarUrl: string | null; email: string | null }
   role: OrgRole
+  /** The rail version: a small square that opens to the right. */
+  compact?: boolean
 }) {
   const { updateReady, restartToUpdate, checkForUpdates, checking, versionData } = useAppUpdate()
   return (
     <DetailsMenu
       className="relative shrink-0"
       summaryLabel="Your account and settings"
-      summaryClassName="relative grid h-12 w-12 cursor-pointer list-none place-items-center rounded-full bg-panel transition-colors hover:bg-raised"
+      summaryClassName={
+        compact
+          ? "relative grid h-11 w-11 cursor-pointer list-none place-items-center rounded-xl transition-colors hover:bg-panel"
+          : "relative grid h-12 w-12 cursor-pointer list-none place-items-center rounded-full bg-panel transition-colors hover:bg-raised"
+      }
       summary={
         <>
-          <Avatar name={user.displayName} src={user.avatarUrl} kind="human" size="md" />
+          {compact ? (
+            <Avatar
+              name={user.displayName}
+              src={user.avatarUrl}
+              kind="human"
+              size="lg"
+              className="h-9 w-9 rounded-[10px] border-0 bg-m-coral/90 font-sans text-[13px] text-void"
+            />
+          ) : (
+            <Avatar name={user.displayName} src={user.avatarUrl} kind="human" size="md" />
+          )}
           {updateReady ? (
             <span className="absolute right-0.5 top-0.5 flex h-3 w-3" aria-label="Update ready">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-ok opacity-60" />
@@ -175,7 +240,7 @@ function AccountMenu({
         </>
       }
     >
-      <div className={cn(popover, "bottom-full left-0 mb-2")}>
+      <div className={cn(popover, compact ? "bottom-0 left-full ml-2" : "bottom-full left-0 mb-2")}>
         <div className="flex items-center gap-2.5 px-2.5 pb-2.5 pt-1.5">
           <Avatar name={user.displayName} src={user.avatarUrl} kind="human" size="md" />
           <div className="min-w-0">
@@ -371,6 +436,10 @@ function Sidebar({
         />
       </div>
 
+      <div className="shrink-0 px-3 pt-1">
+        <SidebarPlanRings usageHref={`${base}/analytics`} onNavigate={onNavigate} />
+      </div>
+
       <div className="flex shrink-0 items-center gap-2 px-3 pb-3 pt-2">
         <AccountMenu base={base} user={user} role={role} />
         <Link
@@ -417,6 +486,9 @@ export function WorkspaceShell({
   const [mobileOpen, setMobileOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
   const desktopApp = useDesktopApp()
+  const wide = useWideScreen()
+  const [listOpen, toggleList] = useListOpen()
+  const [titlebarSlot, setTitlebarSlot] = useState<HTMLDivElement | null>(null)
 
   useEffect(() => {
     setMobileOpen(false)
@@ -480,13 +552,21 @@ export function WorkspaceShell({
 
   return (
     <UpdateProvider>
-      <div className="flex h-dvh flex-col overflow-hidden bg-ink md:flex-row">
-        <aside
-          className="hidden w-[300px] shrink-0 border-r border-line bg-ink md:block"
-          aria-label="Chats"
-        >
-          <Sidebar {...sidebarProps} desktopApp={desktopApp} />
-        </aside>
+      <TitlebarSlotContext.Provider value={wide ? titlebarSlot : null}>
+      <div className="flex h-dvh flex-col overflow-hidden bg-ink md:bg-void">
+        <div className="hidden md:block">
+          <Titlebar
+            orgSlug={org.slug}
+            chats={chats}
+            pages={ALL_PAGES}
+            pathname={pathname}
+            currentRoomId={currentRoomId}
+            desktopApp={desktopApp}
+            listOpen={listOpen}
+            onToggleList={toggleList}
+            slotRef={setTitlebarSlot}
+          />
+        </div>
 
         <div className="flex shrink-0 items-center gap-2 bg-ink px-2 pb-1 pt-[max(0.25rem,env(safe-area-inset-top))] md:hidden">
           <Button
@@ -506,13 +586,42 @@ export function WorkspaceShell({
           ) : null}
         </div>
 
-        <main
-          id="main-content"
-          tabIndex={-1}
-          className="min-h-0 min-w-0 flex-1 bg-ink outline-none"
-        >
-          {children}
-        </main>
+        <div className="flex min-h-0 flex-1">
+          <div className="hidden md:flex">
+            <IconRail
+              orgSlug={org.slug}
+              pathname={pathname}
+              inboxCount={inboxCount}
+              morePages={RAIL_MORE_PAGES}
+              onOpenPalette={() => setPaletteOpen(true)}
+              account={<AccountMenu base={`/${org.slug}`} user={user} role={role} compact />}
+            />
+          </div>
+
+          <div className="flex min-w-0 flex-1 overflow-hidden bg-ink md:mb-2 md:mr-2 md:rounded-2xl md:border md:border-line">
+            {listOpen ? (
+              <aside
+                className="hidden w-[300px] shrink-0 flex-col border-r border-line pt-3 md:flex"
+                aria-label="Chats"
+              >
+                <ChatList
+                  orgSlug={org.slug}
+                  items={chats}
+                  bots={bots}
+                  newChatHref={`/${org.slug}/chats/new`}
+                />
+              </aside>
+            ) : null}
+
+            <main
+              id="main-content"
+              tabIndex={-1}
+              className="min-h-0 min-w-0 flex-1 bg-ink outline-none"
+            >
+              {children}
+            </main>
+          </div>
+        </div>
 
         <CommandPalette
           open={paletteOpen}
@@ -549,6 +658,7 @@ export function WorkspaceShell({
           />
         </dialog>
       </div>
+      </TitlebarSlotContext.Provider>
     </UpdateProvider>
   )
 }

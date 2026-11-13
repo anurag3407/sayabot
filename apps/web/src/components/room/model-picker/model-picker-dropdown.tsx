@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Check, ChevronDown, ChevronRight, ChevronUp, Loader2, Search, Settings, X } from "lucide-react"
+import { ChevronDown, ChevronsUpDown, Loader2, Plus, Search, SlidersHorizontal, X } from "lucide-react"
 import { ProviderIcon } from "./provider-icons"
 import type { ModelOption, SelectedModelConfig, ThinkingEffort } from "@/lib/connectors/types"
 import {
@@ -11,6 +11,7 @@ import {
   saveStoredThinkingEffort,
 } from "@/lib/connectors/registry"
 import type { ProviderGroupData } from "@/lib/connectors/registry"
+import { cn } from "@/lib/format"
 
 interface ModelPickerDropdownProps {
   currentModel?: SelectedModelConfig
@@ -27,6 +28,62 @@ const THINKING_LEVELS: { id: ThinkingEffort; label: string }[] = [
   { id: "max", label: "Max" },
 ]
 
+/** The first few of each provider are the ones people pick; the rest fold away. */
+const SUGGESTED = 4
+
+const railButton =
+  "grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted transition-colors hover:bg-raised hover:text-text"
+
+function ModelRow({
+  model,
+  groupLabel,
+  showGroup,
+  selected,
+  onPick,
+}: {
+  model: ModelOption
+  groupLabel: string
+  showGroup: boolean
+  selected: boolean
+  onPick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      role="menuitemradio"
+      aria-checked={selected}
+      onClick={onPick}
+      className={cn(
+        "flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left transition-colors",
+        selected ? "bg-raised" : "hover:bg-raised/60",
+      )}
+    >
+      <span
+        aria-hidden="true"
+        className={cn(
+          "grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full border-[1.5px]",
+          selected ? "border-text" : "border-line-strong",
+        )}
+      >
+        {selected ? <span className="h-2 w-2 rounded-full bg-text" /> : null}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center gap-2">
+          <span className={cn("truncate text-[14px]", selected ? "font-medium text-text" : "text-text/90")}>
+            {model.label}
+          </span>
+          {model.route ? (
+            <span className="shrink-0 rounded-md bg-raised px-1.5 py-px text-[11px] lowercase text-muted">
+              {model.route}
+            </span>
+          ) : null}
+        </span>
+        {showGroup ? <span className="block truncate text-[11.5px] text-faint">{groupLabel}</span> : null}
+      </span>
+    </button>
+  )
+}
+
 export function ModelPickerDropdown({
   currentModel = DEFAULT_MODEL_CONFIG,
   onSelectModel,
@@ -36,7 +93,8 @@ export function ModelPickerDropdown({
   const [searchQuery, setSearchQuery] = useState("")
   const [groups, setGroups] = useState<ProviderGroupData[]>([])
   const [loading, setLoading] = useState(true)
-  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
+  const [activeGroupId, setActiveGroupId] = useState<string>(currentModel.instanceId)
+  const [olderOpen, setOlderOpen] = useState(false)
   const [selected, setSelected] = useState<SelectedModelConfig>(currentModel)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
@@ -44,7 +102,6 @@ export function ModelPickerDropdown({
     setSelected(currentModel)
   }, [currentModel])
 
-  // Load models from API or registry
   useEffect(() => {
     let cancelled = false
     async function load() {
@@ -56,9 +113,7 @@ export function ModelPickerDropdown({
         })
         if (!res.ok) throw new Error("Failed to fetch")
         const data = (await res.json()) as { groups: ProviderGroupData[] }
-        if (!cancelled && Array.isArray(data.groups)) {
-          setGroups(data.groups)
-        }
+        if (!cancelled && Array.isArray(data.groups)) setGroups(data.groups)
       } catch {
         if (!cancelled) {
           const fallback = await getAllGroupedModels()
@@ -68,33 +123,31 @@ export function ModelPickerDropdown({
         if (!cancelled) setLoading(false)
       }
     }
-
     void load()
     return () => {
       cancelled = true
     }
   }, [])
 
-  // Close on outside click
   useEffect(() => {
-    function handlePointerDown(e: PointerEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        onClose()
-      }
+    function handlePointerDown(event: PointerEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) onClose()
+    }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose()
     }
     window.addEventListener("pointerdown", handlePointerDown)
-    return () => window.removeEventListener("pointerdown", handlePointerDown)
+    window.addEventListener("keydown", handleKeyDown)
+    return () => {
+      window.removeEventListener("pointerdown", handlePointerDown)
+      window.removeEventListener("keydown", handleKeyDown)
+    }
   }, [onClose])
 
-  const toggleGroupExpand = (groupId: string) => {
-    setExpandedGroups((prev) => ({
-      ...prev,
-      [groupId]: !prev[groupId],
-    }))
-  }
+  const activeGroup = groups.find((group) => group.id === activeGroupId) ?? groups[0] ?? null
 
-  const handlePickModel = (group: ProviderGroupData, model: ModelOption) => {
-    const nextConfig: SelectedModelConfig = {
+  function pick(group: ProviderGroupData, model: ModelOption) {
+    const next: SelectedModelConfig = {
       instanceId: group.id,
       modelId: model.id,
       modelLabel: model.label,
@@ -102,233 +155,236 @@ export function ModelPickerDropdown({
       providerGroup: group.label,
       thinkingEffort: selected.thinkingEffort,
     }
-    setSelected(nextConfig)
-    saveStoredModelSelection(nextConfig)
-    onSelectModel?.(nextConfig)
+    setSelected(next)
+    saveStoredModelSelection(next)
+    onSelectModel?.(next)
     onClose()
   }
 
-  const handlePickThinking = (effort?: ThinkingEffort) => {
-    const nextConfig: SelectedModelConfig = {
-      ...selected,
-      thinkingEffort: effort,
-    }
-    setSelected(nextConfig)
+  function pickEffort(effort?: ThinkingEffort) {
+    const next: SelectedModelConfig = { ...selected, thinkingEffort: effort }
+    setSelected(next)
     saveStoredThinkingEffort(effort)
-    onSelectModel?.(nextConfig)
+    onSelectModel?.(next)
   }
 
-  // Filter groups and models based on search query
-  const filteredGroups = useMemo(() => {
-    if (!searchQuery.trim()) return groups
-    const q = searchQuery.toLowerCase().trim()
-
-    return groups
-      .map((group) => {
-        const matchingModels = group.models.filter(
-          (m) =>
-            m.label.toLowerCase().includes(q) ||
-            m.id.toLowerCase().includes(q) ||
-            group.label.toLowerCase().includes(q),
+  const needle = searchQuery.trim().toLowerCase()
+  const results = useMemo(() => {
+    if (!needle) return []
+    return groups.flatMap((group) =>
+      group.models
+        .filter(
+          (model) =>
+            model.label.toLowerCase().includes(needle) ||
+            model.id.toLowerCase().includes(needle) ||
+            group.label.toLowerCase().includes(needle),
         )
-        return {
-          ...group,
-          models: matchingModels,
-        }
-      })
-      .filter((group) => group.models.length > 0)
-  }, [groups, searchQuery])
+        .map((model) => ({ group, model })),
+    )
+  }, [groups, needle])
+
+  const isSelected = (group: ProviderGroupData, model: ModelOption) =>
+    selected.modelId === model.id && (selected.instanceId === group.id || !selected.instanceId)
+
+  const suggested = activeGroup?.models.slice(0, SUGGESTED) ?? []
+  const older = activeGroup?.models.slice(SUGGESTED) ?? []
 
   return (
     <div
       ref={dropdownRef}
-      className="absolute top-full right-0 z-50 mt-1.5 flex w-[320px] max-h-[580px] flex-col overflow-hidden rounded-2xl border border-[#232b25] bg-[#101411] text-[#e9e5d8] shadow-2xl backdrop-blur-md"
+      className="absolute right-0 top-full z-50 mt-2 flex h-[min(460px,calc(100dvh-80px))] w-[min(500px,calc(100vw-24px))] overflow-hidden rounded-2xl border border-line-strong bg-panel text-text shadow-[0_24px_64px_rgba(0,0,0,0.6)]"
       role="menu"
-      aria-label="Model selector"
+      aria-label="Choose a model"
     >
-      {/* 1. Search Bar */}
-      <div className="flex h-10 shrink-0 items-center gap-2 border-b border-[#232b25] px-3.5">
-        <Search className="h-4 w-4 shrink-0 text-[#7a857c]" aria-hidden="true" />
-        <input
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search models"
-          className="min-w-0 flex-1 bg-transparent text-[13px] text-[#e9e5d8] outline-none placeholder:text-[#7a857c]"
-          autoFocus
-        />
-        {searchQuery && (
-          <button
-            type="button"
-            onClick={() => setSearchQuery("")}
-            className="flex h-5 w-5 items-center justify-center rounded-full text-[#7a857c] hover:bg-[#1a211c] hover:text-[#e9e5d8]"
-            aria-label="Clear search"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        )}
-      </div>
-
-      {/* 2. Scrollable Models List */}
-      <div className="min-h-0 flex-1 overflow-y-auto p-1.5 space-y-1">
-        {/* Current Active Model */}
-        <div
-          onClick={() => onClose()}
-          className="group flex cursor-pointer items-center justify-between rounded-xl px-2.5 py-2 hover:bg-[#1a211c] transition-colors"
-        >
-          <div className="flex min-w-0 items-center gap-2.5">
-            <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#1a211c] text-[#ff7a45]">
-              <ProviderIcon provider={selected.provider} size={14} />
-            </div>
-            <div className="flex min-w-0 flex-col">
-              <span className="truncate text-[13px] font-medium text-[#e9e5d8]">
-                {selected.modelLabel}
-              </span>
-              <span className="truncate text-[11px] text-[#7a857c]">
-                Saaya's model
-              </span>
-            </div>
-          </div>
-          <Check className="h-4 w-4 shrink-0 text-blue-500" aria-hidden="true" />
-        </div>
-
-        <div className="my-1 h-[1px] bg-[#232b25]" />
-
-        {/* Loading Indicator */}
-        {loading && (
-          <div className="flex items-center justify-center gap-2 py-6 text-xs text-[#7a857c]">
-            <Loader2 className="h-4 w-4 animate-spin text-[#ff7a45]" />
-            Loading catalog...
-          </div>
-        )}
-
-        {/* Groups */}
-        {!loading &&
-          filteredGroups.map((group) => {
-            const isExpanded = Boolean(expandedGroups[group.id]) || Boolean(searchQuery.trim())
-            // Show top 4 models by default unless expanded or searching
-            const displayModels = isExpanded ? group.models : group.models.slice(0, 4)
-
-            return (
-              <div key={group.id} className="space-y-0.5 pt-1">
-                {/* Group Header */}
-                <div className="flex items-center gap-2 px-2.5 py-1 text-[11px] font-medium text-[#7a857c]">
-                  <ProviderIcon provider={group.provider} size={13} className="text-[#9aa39b]" />
-                  <span className="truncate">{group.label}</span>
-                </div>
-
-                {/* Models Rows */}
-                {displayModels.map((m) => {
-                  const isCurrent = selected.modelId === m.id
-                  return (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => handlePickModel(group, m)}
-                      className={`group flex w-full cursor-pointer items-center justify-between rounded-xl px-2.5 py-1.5 text-left transition-colors ${
-                        isCurrent ? "bg-[#1a211c]" : "hover:bg-[#151b17]"
-                      }`}
-                    >
-                      <div className="flex min-w-0 flex-col pl-6">
-                        <span
-                          className={`truncate text-[13px] ${
-                            isCurrent ? "font-medium text-[#e9e5d8]" : "text-[#9aa39b] group-hover:text-[#e9e5d8]"
-                          }`}
-                        >
-                          {m.label}
-                        </span>
-                        {m.route && (
-                          <span className="text-[10px] text-[#7a857c]">{m.route}</span>
-                        )}
-                      </div>
-                      {isCurrent && (
-                        <Check className="h-3.5 w-3.5 shrink-0 text-blue-500" aria-hidden="true" />
-                      )}
-                    </button>
-                  )
-                })}
-
-                {/* Show All / Show Suggested Accordion Button */}
-                {group.models.length > 4 && !searchQuery.trim() && (
-                  <button
-                    type="button"
-                    onClick={() => toggleGroupExpand(group.id)}
-                    className="flex w-full items-center justify-between rounded-xl px-2.5 py-1.5 pl-8 text-xs text-[#9aa39b] hover:bg-[#151b17] hover:text-[#e9e5d8] transition-colors"
-                  >
-                    <span>
-                      {isExpanded ? "Show suggested" : `Show all ${group.models.length} models`}
-                    </span>
-                    {isExpanded ? (
-                      <ChevronUp className="h-3.5 w-3.5" />
-                    ) : (
-                      <ChevronDown className="h-3.5 w-3.5" />
-                    )}
-                  </button>
-                )}
-              </div>
-            )
-          })}
-
-        {!loading && filteredGroups.length === 0 && (
-          <div className="py-6 text-center text-xs text-[#7a857c]">
-            No models matching "{searchQuery}"
-          </div>
-        )}
-      </div>
-
-      {/* 3. Thinking Effort Controls */}
-      <div className="shrink-0 border-t border-[#232b25] p-2 space-y-1.5 bg-[#101411]">
-        <div className="flex items-center justify-between px-1">
-          <span className="text-[11px] font-medium text-[#7a857c]">Thinking</span>
-          {selected.thinkingEffort ? (
-            <button
-              onClick={() => handlePickThinking(undefined)}
-              className="text-[11px] text-[#ff7a45] hover:underline"
-            >
-              Reset to Default
-            </button>
-          ) : (
-            <span className="text-[11px] text-[#7a857c]">Default</span>
-          )}
-        </div>
-
-        {/* 5-pill track */}
-        <div className="grid grid-cols-5 gap-0.5 rounded-full bg-[#151b17] p-1 border border-[#232b25]/60">
-          {THINKING_LEVELS.map((level) => {
-            const active = selected.thinkingEffort === level.id
+      {/* Providers */}
+      <div className="flex w-[60px] shrink-0 flex-col items-center gap-1.5 border-r border-line bg-void/50 py-2.5">
+        <div className="flex min-h-0 flex-1 flex-col items-center gap-1.5 overflow-y-auto [scrollbar-width:none]">
+          {groups.map((group) => {
+            const active = activeGroup?.id === group.id && !needle
             return (
               <button
-                key={level.id}
+                key={group.id}
                 type="button"
-                onClick={() => handlePickThinking(level.id)}
-                className={`truncate rounded-full py-1 text-[11px] transition-all text-center ${
-                  active
-                    ? "bg-[#232b25] font-semibold text-[#e9e5d8] shadow-xs"
-                    : "text-[#7a857c] hover:text-[#e9e5d8]"
-                }`}
+                onClick={() => {
+                  setActiveGroupId(group.id)
+                  setOlderOpen(false)
+                  setSearchQuery("")
+                }}
+                aria-pressed={active}
+                aria-label={group.label}
+                title={group.label}
+                className={cn(
+                  railButton,
+                  "relative",
+                  active && "bg-raised text-text ring-1 ring-line-strong",
+                  group.status === "needs_setup" && !active && "opacity-50",
+                )}
               >
-                {level.label}
+                <ProviderIcon provider={group.provider} size={20} />
               </button>
             )
           })}
         </div>
-      </div>
-
-      {/* 4. Bottom Action: Manage AI accounts */}
-      <div className="shrink-0 border-t border-[#232b25] p-1 bg-[#101411]">
         <button
           type="button"
           onClick={() => {
             onClose()
             onOpenManageAccounts()
           }}
-          className="flex w-full items-center justify-between rounded-xl px-2.5 py-2 text-xs font-medium text-[#e9e5d8] hover:bg-[#1a211c] transition-colors"
+          aria-label="Manage AI accounts"
+          title="Manage AI accounts"
+          className={railButton}
         >
-          <div className="flex items-center gap-2">
-            <Settings className="h-3.5 w-3.5 text-[#9aa39b]" />
-            <span>Manage AI accounts</span>
-          </div>
-          <ChevronRight className="h-3.5 w-3.5 text-[#7a857c]" />
+          <SlidersHorizontal className="h-[18px] w-[18px]" />
         </button>
+        <button
+          type="button"
+          onClick={() => {
+            onClose()
+            onOpenManageAccounts()
+          }}
+          aria-label="Connect another AI account"
+          title="Connect another AI account"
+          className={railButton}
+        >
+          <Plus className="h-[18px] w-[18px]" />
+        </button>
+      </div>
+
+      {/* Models */}
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="shrink-0 px-4 pb-2 pt-3.5">
+          <p className="truncate text-[16px] font-semibold tracking-[-0.01em]">
+            {needle ? "All models" : activeGroup?.label ?? "Models"}
+          </p>
+          <p className="mt-0.5 truncate text-[12.5px] text-faint">
+            {needle
+              ? `${results.length} ${results.length === 1 ? "match" : "matches"}`
+              : activeGroup
+                ? [activeGroup.account, activeGroup.status === "needs_setup" ? "needs setup" : null]
+                    .filter(Boolean)
+                    .join(" · ") || `${activeGroup.totalCount} models`
+                : ""}
+          </p>
+        </div>
+
+        <div className="shrink-0 px-3 pb-2">
+          <label className="flex h-10 items-center gap-2 rounded-xl bg-raised px-3">
+            <Search className="h-4 w-4 shrink-0 text-faint" aria-hidden="true" />
+            <input
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Search models"
+              aria-label="Search models"
+              className="min-w-0 flex-1 bg-transparent text-[14px] text-text outline-none placeholder:text-faint"
+              autoFocus
+            />
+            {searchQuery ? (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="grid h-5 w-5 place-items-center rounded-full text-faint hover:bg-hover hover:text-text"
+                aria-label="Clear search"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            ) : null}
+          </label>
+        </div>
+
+        <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-3 pb-2">
+          {loading ? (
+            <div className="flex items-center justify-center gap-2 py-8 text-[13px] text-faint">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading models…
+            </div>
+          ) : needle ? (
+            results.length ? (
+              results.map(({ group, model }) => (
+                <ModelRow
+                  key={`${group.id}:${model.id}`}
+                  model={model}
+                  groupLabel={group.label}
+                  showGroup
+                  selected={isSelected(group, model)}
+                  onPick={() => pick(group, model)}
+                />
+              ))
+            ) : (
+              <p className="py-8 text-center text-[13px] text-faint">No models match “{searchQuery}”</p>
+            )
+          ) : activeGroup ? (
+            <>
+              {suggested.map((model) => (
+                <ModelRow
+                  key={model.id}
+                  model={model}
+                  groupLabel={activeGroup.label}
+                  showGroup={false}
+                  selected={isSelected(activeGroup, model)}
+                  onPick={() => pick(activeGroup, model)}
+                />
+              ))}
+              {older.length ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setOlderOpen((open) => !open)}
+                    aria-expanded={olderOpen}
+                    className="flex w-full items-center gap-2 rounded-xl bg-raised/60 py-2 pl-[42px] pr-3 text-left text-[14px] text-text/90 transition-colors hover:bg-raised"
+                  >
+                    <span>Older models</span>
+                    <span className="rounded-full bg-hover px-1.5 text-[11px] text-muted">{older.length}</span>
+                    <ChevronDown
+                      className={cn("ml-auto h-4 w-4 text-faint transition-transform", olderOpen && "rotate-180")}
+                    />
+                  </button>
+                  {olderOpen
+                    ? older.map((model) => (
+                        <ModelRow
+                          key={model.id}
+                          model={model}
+                          groupLabel={activeGroup.label}
+                          showGroup={false}
+                          selected={isSelected(activeGroup, model)}
+                          onPick={() => pick(activeGroup, model)}
+                        />
+                      ))
+                    : null}
+                </>
+              ) : null}
+            </>
+          ) : (
+            <p className="py-8 text-center text-[13px] text-faint">No AI accounts connected yet.</p>
+          )}
+        </div>
+
+        <div className="flex shrink-0 items-center justify-between gap-3 border-t border-line px-4 py-2.5">
+          <label htmlFor="model-picker-effort" className="text-[13px] text-faint">
+            Effort
+          </label>
+          <span className="relative">
+            <select
+              id="model-picker-effort"
+              value={selected.thinkingEffort ?? ""}
+              onChange={(event) =>
+                pickEffort((event.target.value || undefined) as ThinkingEffort | undefined)
+              }
+              className="h-9 w-[150px] cursor-pointer appearance-none rounded-xl bg-raised pl-3 pr-8 text-[13.5px] text-text outline-none hover:bg-hover"
+            >
+              <option value="">Default</option>
+              {THINKING_LEVELS.map((level) => (
+                <option key={level.id} value={level.id}>
+                  {level.label}
+                </option>
+              ))}
+            </select>
+            <ChevronsUpDown
+              className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-faint"
+              aria-hidden="true"
+            />
+          </span>
+        </div>
       </div>
     </div>
   )

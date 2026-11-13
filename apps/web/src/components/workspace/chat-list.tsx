@@ -4,6 +4,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useMemo, useRef, useState, useTransition } from "react"
 import { Search } from "lucide-react"
+import { PlusIcon } from "@/components/ui/icons"
 import { openBotDmAction, setChatPreferenceAction } from "@/lib/actions/room-state"
 import { showToast } from "@/components/ui/toast"
 import { Mascot } from "@/components/ui/mascot"
@@ -43,10 +44,10 @@ function shortDate(iso: string | null): string {
 
 function RowFace({ item }: { item: ChatListItem }) {
   if (item.isBotDm) {
-    return <Mascot seed={item.agentNames[0] ?? item.name} className="h-11 w-11" />
+    return <Mascot seed={item.agentNames[0] ?? item.name} className="h-12 w-12 shrink-0" />
   }
   return (
-    <span className="relative grid h-11 w-11 shrink-0 place-items-center rounded-[14px] bg-raised text-[15px] font-medium text-muted">
+    <span className="relative grid h-12 w-12 shrink-0 place-items-center rounded-[16px] bg-raised text-[16px] font-medium text-muted">
       {item.kind === "public" ? "#" : item.name.slice(0, 1).toUpperCase()}
       {item.agentNames[0] ? (
         <Mascot seed={item.agentNames[0]} className="absolute -bottom-1 -right-1 h-[22px] w-[22px]" />
@@ -104,7 +105,7 @@ function ChatRow({
         data-room-name={item.name}
         className={cn(
           "flex items-center gap-3 rounded-2xl px-2.5 py-2.5 transition-colors",
-          active ? "bg-panel" : "hover:bg-panel/70",
+          active ? "bg-raised/80" : "hover:bg-panel",
         )}
       >
         <RowFace item={item} />
@@ -113,6 +114,11 @@ function ChatRow({
             <span className={cn("truncate text-[15px]", unread ? "font-semibold text-text" : "font-medium text-text")}>
               {item.name}
             </span>
+            {!item.isBotDm && item.agentNames[0] ? (
+              <span className="max-w-[64px] shrink-0 truncate rounded-md bg-raised px-1.5 py-px text-[11px] text-muted">
+                {item.agentNames[0]}
+              </span>
+            ) : null}
             <span className="ml-auto shrink-0 text-[12px] text-faint md:group-hover:opacity-0 md:group-focus-within:opacity-0">
               {shortDate(item.lastAt)}
             </span>
@@ -214,9 +220,9 @@ function BotRow({ bot, orgSlug, onNavigate }: { bot: BotLink; orgSlug: string; o
         onClick={start}
         disabled={pending}
         title={`Start a direct chat with ${bot.displayName}`}
-        className="flex w-full items-center gap-3 rounded-2xl px-2.5 py-2.5 text-left transition-colors hover:bg-panel/70 disabled:opacity-60"
+        className="flex w-full items-center gap-3 rounded-2xl px-2.5 py-2.5 text-left transition-colors hover:bg-panel disabled:opacity-60"
       >
-        <Mascot seed={bot.displayName} className="h-11 w-11" />
+        <Mascot seed={bot.displayName} className="h-12 w-12 shrink-0" />
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-2">
             <span className="truncate text-[15px] font-medium text-text">{bot.displayName}</span>
@@ -253,11 +259,17 @@ export function ChatList({
   onNavigate,
   searchOpen,
   onSearchOpenChange,
+  newChatHref,
 }: {
   orgSlug: string
   items: ChatListItem[]
   bots: BotLink[]
   onNavigate?: () => void
+  /**
+   * The roomy desktop column: search always showing with a new-chat button beside it, one flat
+   * list, and filters only while you are searching.
+   */
+  newChatHref?: string
   /** When given, search and filters stay tucked away until the caller opens them. */
   searchOpen?: boolean
   onSearchOpenChange?: (open: boolean) => void
@@ -269,6 +281,8 @@ export function ChatList({
   const [query, setQuery] = useState("")
   const [pending, startTransition] = useTransition()
   const searchInput = useRef<HTMLInputElement>(null)
+  const [searchFocused, setSearchFocused] = useState(false)
+  const flat = Boolean(newChatHref)
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -361,16 +375,26 @@ export function ChatList({
     />
   )
 
-  const visibleFilters = FILTERS.filter(
-    (option) => option.key === "all" || option.key === filter || counts[option.key] > 0,
-  )
+  const visibleFilters =
+    flat && !searchFocused && !needle && filter === "all"
+      ? []
+      : FILTERS.filter(
+          (option) => option.key === "all" || option.key === filter || counts[option.key] > 0,
+        )
   const empty = !pinned.length && !agents.length && !rooms.length && !newBots.length
 
   return (
     <div className="flex h-full min-h-0 flex-col">
       {showSearch ? (
-      <div className="shrink-0 px-3 pb-2 pt-1">
-        <label className="flex h-10 items-center gap-2.5 rounded-xl bg-panel px-3 focus-within:bg-raised">
+      <div
+        className="shrink-0 px-3 pb-2 pt-1"
+        onFocus={() => setSearchFocused(true)}
+        onBlur={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setSearchFocused(false)
+        }}
+      >
+        <div className="flex items-center gap-1.5">
+        <label className="flex h-10 min-w-0 flex-1 items-center gap-2.5 rounded-xl bg-panel px-3 focus-within:bg-raised">
           <Search className="h-4 w-4 shrink-0 text-faint" aria-hidden />
           <span className="sr-only">Filter chats. Press Enter to search every message.</span>
           <input
@@ -387,10 +411,22 @@ export function ChatList({
                 router.push(`/${orgSlug}/search?q=${encodeURIComponent(query.trim())}`)
               }
             }}
-            placeholder="Find a chat"
+            placeholder={flat ? "Search" : "Find a chat"}
             className="w-full bg-transparent text-[14px] text-text outline-none placeholder:text-faint"
           />
         </label>
+        {newChatHref ? (
+          <Link
+            href={newChatHref}
+            onClick={onNavigate}
+            aria-label="New chat"
+            title="New chat"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted transition-colors hover:bg-panel hover:text-text"
+          >
+            <PlusIcon width={19} height={19} />
+          </Link>
+        ) : null}
+        </div>
         {visibleFilters.length > 1 ? (
           <div className="mt-2 flex flex-wrap gap-1" role="group" aria-label="Filter chats">
             {visibleFilters.map((option) => (
@@ -413,8 +449,17 @@ export function ChatList({
       ) : null}
 
       <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
-        {pinned.length ? <Group label="Pinned">{pinned.map(row)}</Group> : null}
-        {agents.length || newBots.length ? (
+        {flat && !empty ? (
+          <ul className="space-y-0.5">
+            {pinned.map(row)}
+            {filtered.filter((item) => !item.pinned).map(row)}
+            {newBots.map((bot) => (
+              <BotRow key={bot.id} bot={bot} orgSlug={orgSlug} onNavigate={onNavigate} />
+            ))}
+          </ul>
+        ) : null}
+        {!flat && pinned.length ? <Group label="Pinned">{pinned.map(row)}</Group> : null}
+        {!flat && (agents.length || newBots.length) ? (
           <Group
             label="Your agents"
             action={
@@ -429,7 +474,7 @@ export function ChatList({
             ))}
           </Group>
         ) : null}
-        {rooms.length ? <Group label="Group chats">{rooms.map(row)}</Group> : null}
+        {!flat && rooms.length ? <Group label="Group chats">{rooms.map(row)}</Group> : null}
 
         {empty ? (
           <div className="px-3 py-8 text-center">

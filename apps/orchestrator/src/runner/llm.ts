@@ -2,6 +2,7 @@ import { createRunScrubber, isSayaModel, redactSecrets, type TurnRole } from "@s
 import { agentRuns, messages, providerKeys, tasks } from "@sayabot/db"
 import { recordUsageEvent, tokensFrom } from "../usage"
 import { createLanguageModel, devModelConfig, providerKeyToApiKey, sayaModelConfig } from "@sayabot/llm"
+import { isEffortLevel, type EffortLevel } from "@sayabot/llm/models/effort"
 import type { LanguageModel, LanguageModelUsage, ToolSet } from "ai"
 import { eq, sql } from "drizzle-orm"
 import { registerRun, unregisterRun } from "../active-runs"
@@ -133,11 +134,9 @@ export function resolveEffortLevel(params: {
   configuredEffort?: string
   hasTask: boolean
   isSubagent?: boolean
-}): "low" | "medium" | "high" | "max" | undefined {
+}): EffortLevel | undefined {
   const eff = params.configuredEffort ?? "auto"
-  if (eff === "low" || eff === "medium" || eff === "high" || eff === "max") {
-    return eff
-  }
+  if (isEffortLevel(eff)) return eff
   if (eff === "auto") {
     if (params.isSubagent) return "low"
     if (params.hasTask) return "high"

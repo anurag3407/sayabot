@@ -15,10 +15,10 @@ import { InvitePeople, RoomInviteNudge } from "@/components/room/invite-people"
 import { PresenceLine } from "@/components/ui/avatar"
 import { Mascot } from "@/components/ui/mascot"
 import { Button } from "@/components/ui/button"
-import { CanvasIcon, SlidersIcon } from "@/components/ui/icons"
+import { SlidersIcon } from "@/components/ui/icons"
 import { RoomSkeleton } from "@/components/ui/skeleton"
-import { ModelPickerButton } from "@/components/room/model-picker"
-import { ChevronRight } from "lucide-react"
+import { TitlebarActions, useTitlebarSlot } from "@/components/workspace/titlebar-slot"
+import { ChevronRight, PanelRight } from "lucide-react"
 import { cn } from "@/lib/format"
 import type { RoomPageData } from "@/lib/types"
 
@@ -68,6 +68,8 @@ export function RoomWorkspace({
   const [view, setView] = useState<View>(initialCanvasId ? "canvas" : "chat")
   const [canvasOpen, setCanvasOpen] = useState(Boolean(initialCanvasId) || canvasHasContent(data))
   const [threadRootId, setThreadRootId] = useState<string | null>(initialThreadId)
+  // On wide screens the tab names the chat, so its buttons move up into the title bar.
+  const inTitlebar = Boolean(useTitlebarSlot())
   const { defaultLayout, onLayoutChanged } = useDefaultLayout({
     id: "room-split",
     panelIds: ["room-chat", "room-canvas"],
@@ -188,9 +190,61 @@ export function RoomWorkspace({
         }
       : null
 
+  const actionButton = cn(
+    "grid place-items-center text-muted transition-colors hover:bg-panel hover:text-text",
+    inTitlebar ? "h-9 w-9 rounded-lg" : "h-10 w-10 rounded-full",
+  )
+
+  const actions = (
+    <>
+      <div className="hidden md:block">
+        <EnableAlerts enabled={data.user.notifications !== "off"} />
+      </div>
+      {inviteProps ? <InvitePeople {...inviteProps} /> : null}
+      {data.canAdmin ? (
+        <InviteBotDialog orgSlug={data.org.slug} roomId={data.room.id} roomName={data.room.name} />
+      ) : null}
+      {data.canAdmin ? (
+        <Link
+          href={`/${data.org.slug}/r/${data.room.id}/settings`}
+          aria-label="Chat settings"
+          title="Chat settings"
+          className={actionButton}
+        >
+          <SlidersIcon width={16} height={16} />
+        </Link>
+      ) : null}
+      {isDesktop ? (
+        <button
+          type="button"
+          aria-pressed={canvasOpen}
+          aria-label="Canvas"
+          title={canvasOpen ? "Hide canvas" : "Show canvas"}
+          onClick={() => toggleCanvas(!canvasOpen)}
+          className={cn(actionButton, canvasOpen && "bg-panel text-text")}
+        >
+          <PanelRight className="h-[18px] w-[18px]" />
+        </button>
+      ) : null}
+    </>
+  )
+
+  const someoneTyping = presence.some((person) => person.typing && person.id !== data.user.id)
+
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <header className="grid min-h-16 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-2 px-3 py-2 md:px-4">
+      {inTitlebar ? <TitlebarActions fallback={false}>{actions}</TitlebarActions> : null}
+      {inTitlebar && someoneTyping ? (
+        <div className="shrink-0 px-4 pt-2 text-center text-[12px] text-faint">
+          <PresenceLine people={presence} selfId={data.user.id} />
+        </div>
+      ) : null}
+      <header
+        className={cn(
+          "grid min-h-16 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-2 px-3 py-2 md:px-4",
+          inTitlebar && "hidden",
+        )}
+      >
         <div className="flex min-w-0 items-center gap-1">
           <div className="flex items-center gap-1 md:hidden" role="group" aria-label="Room view">
             {(["chat", "canvas"] as const).map((item) => (
@@ -265,45 +319,7 @@ export function RoomWorkspace({
         </div>
 
         <div className="flex min-w-0 shrink-0 items-center justify-end gap-1">
-          <div className="hidden lg:block">
-            <ModelPickerButton />
-          </div>
-          <div className="hidden md:block">
-            <EnableAlerts enabled={data.user.notifications !== "off"} />
-          </div>
-          {inviteProps ? <InvitePeople {...inviteProps} /> : null}
-          {data.canAdmin ? (
-            <InviteBotDialog
-              orgSlug={data.org.slug}
-              roomId={data.room.id}
-              roomName={data.room.name}
-            />
-          ) : null}
-          {isDesktop ? (
-            <button
-              type="button"
-              aria-pressed={canvasOpen}
-              aria-label="Canvas"
-              title={canvasOpen ? "Hide canvas" : "Show canvas"}
-              onClick={() => toggleCanvas(!canvasOpen)}
-              className={cn(
-                "grid h-10 w-10 place-items-center rounded-full text-muted transition-colors hover:bg-panel hover:text-text",
-                canvasOpen && "bg-panel text-text",
-              )}
-            >
-              <CanvasIcon width={17} height={17} />
-            </button>
-          ) : null}
-          {data.canAdmin ? (
-            <Link
-              href={`/${data.org.slug}/r/${data.room.id}/settings`}
-              aria-label="Chat settings"
-              title="Chat settings"
-              className="grid h-10 w-10 place-items-center rounded-full text-muted transition-colors hover:bg-panel hover:text-text"
-            >
-              <SlidersIcon width={16} height={16} />
-            </Link>
-          ) : null}
+          {inTitlebar ? null : actions}
         </div>
       </header>
 

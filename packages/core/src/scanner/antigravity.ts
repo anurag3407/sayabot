@@ -1,9 +1,22 @@
 import fs from "node:fs"
 import path from "node:path"
 import os from "node:os"
-import { DatabaseSync } from "node:sqlite"
+import type { DatabaseSync } from "node:sqlite"
 import type { LocalProvider, ScannedUsageRecord, UsageTokenTotals } from "./types"
 import { computeUsageCacheSavings, computeUsageCost, getModelPrice } from "./pricing"
+
+/**
+ * node:sqlite only exists on Node 22.5+. Electron 34 (the Mac app) runs Node 20, so the module is
+ * looked up at call time: there, Antigravity history is skipped instead of crashing every scan.
+ */
+function loadSqlite(): typeof import("node:sqlite") | null {
+  try {
+    const get = (process as { getBuiltinModule?: (id: string) => unknown }).getBuiltinModule
+    return (get?.("node:sqlite") as typeof import("node:sqlite") | undefined) ?? null
+  } catch {
+    return null
+  }
+}
 
 export const ANTIGRAVITY_MODEL_IDS: Record<number, string> = {
   246: "gemini-2.5-pro",
@@ -382,7 +395,9 @@ export function scanAntigravityDatabase(
     const fallbackTimestamp = stat.mtimeMs
     const sessionId = path.basename(dbPath, ".db")
 
-    db = new DatabaseSync(dbPath, { readOnly: true })
+    const sqlite = loadSqlite()
+    if (!sqlite) return []
+    db = new sqlite.DatabaseSync(dbPath, { readOnly: true })
 
     const tables = new Set(
       db

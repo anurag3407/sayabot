@@ -87,6 +87,9 @@ importers:
 
   apps/desktop:
     devDependencies:
+      '@sayabot/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@types/node':
         specifier: ^24.0.0
         version: 24.19.2
@@ -96,6 +99,9 @@ importers:
       electron-builder:
         specifier: ^26.18.0
         version: 26.18.0(electron-builder-squirrel-windows@26.18.0)
+      esbuild:
+        specifier: ^0.25.12
+        version: 0.25.12
       typescript:
         specifier: ^5.9.0
         version: 5.9.3

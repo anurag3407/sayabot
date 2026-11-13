@@ -20,6 +20,7 @@ export * from "./antigravity"
 export * from "./claude"
 export * from "./codex"
 export * from "./limits"
+export * from "./plan-limits"
 
 /**
  * High-performance orchestrator that scans all local developer agent stores

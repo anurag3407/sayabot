@@ -1,0 +1,247 @@
+{
+  "version": 1,
+  "updatedAt": "2026-11-14T00:00:00Z",
+  "engines": {
+    "claude-code": {
+      "default": "claude-sonnet-5-5",
+      "models": [
+        {
+          "id": "claude-fable-5-2",
+          "name": "Claude Fable 5.2",
+          "status": "current",
+          "contextWindow": 1000000,
+          "minCliVersion": "2.1.321"
+        },
+        {
+          "id": "claude-opus-5-5",
+          "name": "Claude Opus 5.5",
+          "status": "current",
+          "contextWindow": 1000000
+        },
+        {
+          "id": "claude-sonnet-5-5",
+          "name": "Claude Sonnet 5.5",
+          "status": "current",
+          "contextWindow": 1000000
+        },
+        {
+          "id": "claude-haiku-5-5",
+          "name": "Claude Haiku 5.5",
+          "status": "current",
+          "contextWindow": 1000000
+        },
+        {
+          "id": "claude-fable-5-1",
+          "name": "Claude Fable 5.1",
+          "status": "current"
+        },
+        {
+          "id": "claude-opus-5",
+          "name": "Claude Opus 5",
+          "status": "current"
+        },
+        {
+          "id": "claude-sonnet-5",
+          "name": "Claude Sonnet 5",
+          "status": "current"
+        },
+        {
+          "id": "claude-haiku-4-5",
+          "name": "Claude Haiku 4.5",
+          "status": "current"
+        }
+      ]
+    },
+    "codex": {
+      "default": "gpt-5.6-sol",
+      "models": [
+        {
+          "id": "gpt-6-astra",
+          "name": "GPT-6 Astra",
+          "status": "current"
+        },
+        {
+          "id": "gpt-6-sol",
+          "name": "GPT-6 Sol",
+          "status": "current"
+        },
+        {
+          "id": "gpt-6-luna",
+          "name": "GPT-6 Luna",
+          "status": "current"
+        },
+        {
+          "id": "gpt-5.6-sol",
+          "name": "GPT-5.6 Sol",
+          "status": "current"
+        },
+        {
+          "id": "gpt-5.6-terra",
+          "name": "GPT-5.6 Terra",
+          "status": "current"
+        },
+        {
+          "id": "gpt-5.6-luna",
+          "name": "GPT-5.6 Luna",
+          "status": "current"
+        },
+        {
+          "id": "gpt-5.5",
+          "name": "GPT-5.5",
+          "status": "current"
+        },
+        {
+          "id": "gpt-5.4",
+          "name": "GPT-5.4",
+          "status": "current"
+        },
+        {
+          "id": "gpt-5.4-mini",
+          "name": "GPT-5.4 Mini",
+          "status": "current"
+        }
+      ]
+    },
+    "cursor": {
+      "default": "auto",
+      "models": [
+        {
+          "id": "auto",
+          "name": "Auto",
+          "status": "current"
+        },
+        {
+          "id": "composer-2.5",
+          "name": "Composer 2.5",
+          "status": "current"
+        },
+        {
+          "id": "composer-2.5-fast",
+          "name": "Composer 2.5 Fast",
+          "status": "current"
+        }
+      ]
+    }
+  },
+  "prices": {
+    "claude-fable-5-2": {
+      "inputPerMillion": 8,
+      "outputPerMillion": 40,
+      "cachedInputPerMillion": 0.2,
+      "asOf": "2026-11-14",
+      "source": "https://models.dev"
+    },
+    "claude-opus-5-5": {
+      "inputPerMillion": 4,
+      "outputPerMillion": 20,
+      "cachedInputPerMillion": 0.2,
+      "asOf": "2026-11-14",
+      "source": "https://models.dev"
+    },
+    "claude-sonnet-5-5": {
+      "inputPerMillion": 2,
+      "outputPerMillion": 10,
+      "cachedInputPerMillion": 0.1,
+      "asOf": "2026-11-14",
+      "source": "https://models.dev"
+    },
+    "claude-haiku-5-5": {
+      "inputPerMillion": 0.1,
+      "outputPerMillion": 0.5,
+      "cachedInputPerMillion": 0.01,
+      "asOf": "2026-11-14",
+      "source": "https://models.dev"
+    },
+    "claude-fable-5-1": {
+      "inputPerMillion": 10,
+      "outputPerMillion": 50,
+      "cachedInputPerMillion": 0.25,
+      "asOf": "2026-11-14",
+      "source": "https://models.dev"
+    },
+    "claude-opus-5": {
+      "inputPerMillion": 5,
+      "outputPerMillion": 25,
+      "cachedInputPerMillion": 0.5,
+      "asOf": "2026-11-14",
+      "source": "https://models.dev"
+    },
+    "claude-sonnet-5": {
+      "inputPerMillion": 2,
+      "outputPerMillion": 10,
+      "cachedInputPerMillion": 0.2,
+      "asOf": "2026-11-14",
+      "source": "https://models.dev"
+    },
+    "claude-haiku-4-5": {
+      "inputPerMillion": 1,
+      "outputPerMillion": 5,
+      "cachedInputPerMillion": 0.1,
+      "asOf": "2026-11-14",
+      "source": "https://models.dev"
+    },
+    "gpt-6-astra": {
+      "inputPerMillion": 10,
+      "outputPerMillion": 50,
+      "cachedInputPerMillion": 1,
+      "asOf": "2026-11-14",
+      "source": "https://models.dev"
+    },
+    "gpt-6-sol": {
+      "inputPerMillion": 2,
+      "outputPerMillion": 10,
+      "cachedInputPerMillion": 0.2,
+      "asOf": "2026-11-14",
+      "source": "https://models.dev"
+    },
+    "gpt-6-luna": {
+      "inputPerMillion": 0.1,
+      "outputPerMillion": 0.5,
+      "cachedInputPerMillion": 0.01,
+      "asOf": "2026-11-14",
+      "source": "https://models.dev"
+    },
+    "gpt-5.6-sol": {
+      "inputPerMillion": 4,
+      "outputPerMillion": 20,
+      "cachedInputPerMillion": 0.4,
+      "asOf": "2026-11-14",
+      "source": "https://models.dev"
+    },
+    "gpt-5.6-terra": {
+      "inputPerMillion": 2,
+      "outputPerMillion": 12,
+      "cachedInputPerMillion": 0.2,
+      "asOf": "2026-11-14",
+      "source": "https://models.dev"
+    },
+    "gpt-5.6-luna": {
+      "inputPerMillion": 0.2,
+      "outputPerMillion": 1.2,
+      "cachedInputPerMillion": 0.02,
+      "asOf": "2026-11-14",
+      "source": "https://models.dev"
+    },
+    "gpt-5.5": {
+      "inputPerMillion": 5,
+      "outputPerMillion": 30,
+      "cachedInputPerMillion": 0.5,
+      "asOf": "2026-11-14",
+      "source": "https://models.dev"
+    },
+    "gpt-5.4": {
+      "inputPerMillion": 2.5,
+      "outputPerMillion": 15,
+      "cachedInputPerMillion": 0.25,
+      "asOf": "2026-11-14",
+      "source": "https://models.dev"
+    },
+    "gpt-5.4-mini": {
+      "inputPerMillion": 0.75,
+      "outputPerMillion": 4.5,
+      "cachedInputPerMillion": 0.075,
+      "asOf": "2026-11-14",
+      "source": "https://models.dev"
+    }
+  }
+}

@@ -3,6 +3,7 @@ import { readdirSync } from "node:fs"
 import { access, constants, readFile, stat } from "node:fs/promises"
 import { homedir, userInfo } from "node:os"
 import { delimiter, join } from "node:path"
+import { clampEffort, ENGINE_EFFORT_LEVELS, type EffortLevel } from "@sayabot/llm/models/effort"
 
 /**
  * Agents that answer through Claude Code, Codex or Cursor installed on the computer this
@@ -18,6 +19,8 @@ export interface CliRunnerConfig {
   app: CliApp
   /** Model id passed to the app; null uses the app's own default. */
   model: string | null
+  /** Reasoning effort passed to the app (`--effort` / `model_reasoning_effort`); unset uses its default. */
+  effort?: EffortLevel
 }
 
 export const CLI_APPS: readonly CliApp[] = ["claude-code", "codex", "cursor"]
@@ -49,14 +52,18 @@ export function cliRunnerConfig(
   if (!CLI_APPS.includes(runner.app as CliApp)) return null
   const model =
     typeof runner.model === "string" && MODEL_ID.test(runner.model) ? runner.model : null
-  return { app: runner.app as CliApp, model }
+  const app = runner.app as CliApp
+  const effort = clampEffort(params?.effort as string | undefined, ENGINE_EFFORT_LEVELS[app] ?? [])
+  return { app, model, ...(effort ? { effort } : {}) }
 }
 
 /** The fast model an app uses for background jobs (moderator, memory); null keeps its default. */
 export function cheapCliModel(config: CliRunnerConfig, custom?: string): CliRunnerConfig {
-  if (custom && MODEL_ID.test(custom)) return { ...config, model: custom }
-  if (config.app === "claude-code") return { ...config, model: "claude-haiku-5-5" }
-  return config
+  // Background jobs run at the app's default effort, not the agent's chosen one.
+  const { effort: _effort, ...base } = config
+  if (custom && MODEL_ID.test(custom)) return { ...base, model: custom }
+  if (config.app === "claude-code") return { ...base, model: "claude-haiku-5-5" }
+  return base
 }
 
 /**
@@ -271,6 +278,7 @@ export function cliCommand(
         "read-only",
         ...mcpArgs,
         ...(config.model ? ["--model", config.model] : []),
+        ...(config.effort ? ["-c", `model_reasoning_effort=${JSON.stringify(config.effort)}`] : []),
         "-",
       ],
       stdin: `${system}\n\n${prompt}`,
@@ -317,6 +325,7 @@ export function cliCommand(
       "--disable-slash-commands",
       "--exclude-dynamic-system-prompt-sections",
       ...(config.model ? ["--model", config.model] : []),
+      ...(config.effort ? ["--effort", config.effort] : []),
       "--system-prompt",
       system.slice(0, 60_000),
     ],

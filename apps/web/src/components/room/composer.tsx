@@ -633,7 +633,7 @@ export function Composer({
 
       <div
         className={cn(
-          "relative flex items-end gap-1.5 rounded-[28px] border border-line bg-panel p-2 transition-colors focus-within:border-line-strong",
+          "relative flex items-end gap-1.5 rounded-[28px] border border-line bg-panel/70 p-2 transition-colors focus-within:border-line-strong",
           isDragging && "ring-2 ring-accent bg-accent-soft/30",
         )}
         onDragOver={(e) => {
@@ -734,7 +734,7 @@ export function Composer({
           title="Send"
           onClick={() => void send()}
           disabled={pending || !value.trim()}
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent text-void transition-all hover:scale-105 hover:bg-accent-strong disabled:cursor-not-allowed disabled:bg-raised disabled:text-faint disabled:hover:scale-100"
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-text text-void transition-all hover:scale-105 hover:bg-white disabled:cursor-not-allowed disabled:bg-raised disabled:text-faint disabled:hover:scale-100"
         >
           <ArrowUp className="h-[18px] w-[18px]" aria-hidden />
         </button>

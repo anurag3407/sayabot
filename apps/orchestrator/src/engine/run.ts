@@ -11,6 +11,7 @@ import {
   tasks,
 } from "@sayabot/db"
 import { buildProviderOptions, flushLangfuse, recordStepToLangfuse } from "@sayabot/llm"
+import { clampEffort, modelEffortLevels } from "@sayabot/llm/models"
 import { stepCountIs, streamText, type LanguageModelUsage, type ModelMessage, type SystemModelMessage, type ToolSet } from "ai"
 import { eq, sql } from "drizzle-orm"
 import { consumeRunInterrupts, registerRun, unregisterRun } from "../active-runs"
@@ -475,10 +476,11 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
     const instructionTokens = estimateMessageTokens(instructions)
 
     const configuredEffort = params.effort as string | undefined
-    const effort = resolveEffortLevel({
-      configuredEffort,
-      hasTask: Boolean(args.taskId),
-    })
+    // A level the model does not take (saved for another model) falls back to its default.
+    const effort = clampEffort(
+      resolveEffortLevel({ configuredEffort, hasTask: Boolean(args.taskId) }),
+      modelEffortLevels(resolved.provider, resolved.modelName),
+    )
     const providerOptions = buildProviderOptions({
       provider: resolved.provider as any,
       effort,

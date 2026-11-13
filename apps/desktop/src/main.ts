@@ -392,6 +392,53 @@ ipcMain.handle("app:get-version", () => {
   return app.getVersion()
 })
 
+// ---------- Usage: plan limits and coding-tool token history read on this Mac ----------
+
+interface UsageModule {
+  readPlanLimits: (force?: boolean) => Promise<unknown[]>
+  readLocalUsage: (days: number) => Promise<{ available: boolean; events: unknown[] }>
+}
+
+let usageModule: UsageModule | null = null
+
+/** Built separately (esbuild) because it bundles @sayabot/core; loaded on first use. */
+function usage(): UsageModule {
+  if (!usageModule) usageModule = require(path.join(__dirname, "usage.js")) as UsageModule
+  return usageModule
+}
+
+/** Only the Sayabot workspace (or this app's own screens) may ask for usage. */
+function fromWorkspace(event: Electron.IpcMainInvokeEvent): boolean {
+  const url = event.senderFrame?.url ?? ""
+  if (url.startsWith("file://")) return true
+  const base = loadSession()?.serverUrl ?? loadConfig().serverUrl
+  try {
+    return new URL(url).origin === new URL(base).origin
+  } catch {
+    return false
+  }
+}
+
+ipcMain.handle("usage:plan-limits", async (event, force?: boolean) => {
+  if (!fromWorkspace(event)) return []
+  try {
+    return await usage().readPlanLimits(force === true)
+  } catch (error) {
+    console.error("[Sayabot Desktop] Could not read plan limits", error)
+    return []
+  }
+})
+
+ipcMain.handle("usage:local", async (event, days?: number) => {
+  if (!fromWorkspace(event)) return { available: false, events: [] }
+  try {
+    return await usage().readLocalUsage(Number(days) || 30)
+  } catch (error) {
+    console.error("[Sayabot Desktop] Could not read local usage", error)
+    return { available: false, events: [] }
+  }
+})
+
 app.whenReady().then(() => {
   createWindow()
   startHost()

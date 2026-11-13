@@ -18,6 +18,8 @@ import {
   type UsageRow,
 } from "@/lib/usage-summary"
 import { Mascot } from "@/components/ui/mascot"
+import { PlanLimitsSection } from "@/components/usage/plan-rings"
+import { readDesktopLocalUsage } from "@/lib/desktop-bridge"
 import { UsageBars, seriesColor } from "./usage-bars"
 
 export type UsageEventRow = RawEvent
@@ -197,12 +199,15 @@ export function UsageDashboard({
     events: [],
   })
 
-  // Reading coding-tool logs only works when Sayabot runs on this computer; the route says so.
+  // Coding-tool logs live on the person's computer. The Mac app reads them there; otherwise the
+  // server can, but only when Sayabot itself runs on this computer (the route says which).
   useEffect(() => {
     let cancelled = false
     setLocal((state) => ({ ...state, loading: true }))
-    fetch(`/api/usage/local?days=${days}`)
-      .then((response) => (response.ok ? response.json() : null))
+    const fromServer = () =>
+      fetch(`/api/usage/local?days=${days}`).then((response) => (response.ok ? response.json() : null))
+    readDesktopLocalUsage(days)
+      .then((desktop) => (desktop ? { available: true, events: desktop } : fromServer()))
       .then((data: { available?: boolean; events?: UsageEventRow[] } | null) => {
         if (cancelled) return
         setLocal({
@@ -324,6 +329,8 @@ export function UsageDashboard({
           ))}
         </nav>
       </header>
+
+      <PlanLimitsSection />
 
       {local.available ? (
         <Segmented

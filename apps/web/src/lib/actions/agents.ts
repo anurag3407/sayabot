@@ -4,6 +4,7 @@ import { z } from "zod"
 import { DEFAULT_CAPABILITIES, isSayaModel, parseCapabilities, redactSecrets, sayaModelLabel, sayaModelValue } from "@sayabot/core"
 import { generateWebhookSecret } from "@sayabot/core/server"
 import { sealSecret } from "@sayabot/llm"
+import { EFFORT_LEVELS } from "@sayabot/llm/models/effort"
 import { randomBytes } from "node:crypto"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getKek, sayaAi } from "@/lib/env"
@@ -406,7 +407,29 @@ export async function createBotFromTemplate(
   return ok(`@${agent.handle} created successfully!`, { agent })
 }
 
-const EFFORTS = new Set(["low", "medium", "high", "max"])
+const EFFORTS = new Set<string>(EFFORT_LEVELS)
+
+/**
+ * The refresh button in the model picker: reads every model list again now instead of waiting
+ * for its schedule (models.dev daily, the model manifest hourly, CLI lists every 6 hours, key
+ * lists every 10 minutes, subscription usage every 45 seconds).
+ */
+export async function refreshModelListsAction(orgSlug: string): Promise<ActionResult> {
+  const check = await adminOrgAccess(orgSlug)
+  if ("error" in check) return fail(check.error)
+  const models = await import("@sayabot/llm/models")
+  models.clearProviderModelCache()
+  models.clearPlanUsageCache()
+  const host = (await headers()).get("x-forwarded-host") ?? (await headers()).get("host")
+  const local = localDetectionAllowed(host)
+  await Promise.all([
+    models.modelCatalog().refresh({ force: true }),
+    models.modelManifest().refresh({ force: true }),
+    local ? models.codexModelCatalog({ force: true }).catch(() => null) : Promise.resolve(null),
+  ])
+  revalidateOrg(orgSlug)
+  return ok("Model lists refreshed")
+}
 
 /**
  * The model picker on an agent card: provider account + model + thinking effort, saved

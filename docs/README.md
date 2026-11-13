@@ -17,6 +17,7 @@ docs/
 ├── cron-and-automations.md        # Hermes cron engine & n8n-style visual canvas
 ├── rooms-and-collaboration.md     # Multiplayer rooms, live canvas, memory & tasks
 ├── tools-and-sandboxes.md         # 40+ built-in tools, Linux sandboxes & browser CDP
+├── models-and-pricing.md         # Model picker: live models, prices, effort, plan usage
 ├── connectors.md                  # Two-tier workspace connectors (Slack, Drive, GitHub, Jira)
 ├── mcp-and-connectors.md          # Universal MCP gateway & bring-your-own-bot
 ├── deployment.md                  # Production deployment (VPS, Docker, Supabase)

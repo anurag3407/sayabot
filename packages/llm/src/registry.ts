@@ -1,3 +1,4 @@
+import type { EffortLevel } from "./models/effort"
 import { createAnthropic } from "@ai-sdk/anthropic"
 import { createCerebras } from "@ai-sdk/cerebras"
 import { createGoogle } from "@ai-sdk/google"
@@ -171,7 +172,7 @@ export interface ProviderCapabilities {
   defaultContextWindow: number
 }
 
-export type EffortLevel = "low" | "medium" | "high" | "max"
+export type { EffortLevel }
 
 const PROVIDER_CAPABILITIES: Record<Provider, ProviderCapabilities> = {
   anthropic: {
@@ -377,11 +378,13 @@ export function buildProviderOptions(args: BuildProviderOptionsArgs): Record<str
     if (cacheBreakpoint) {
       anthropicOpts.cacheControl = { type: "ephemeral" }
     }
-    if (effort) {
-      const budgetMap: Record<EffortLevel, number> = {
+    // "none" turns thinking off; the caller clamps the budget to the model's output limit.
+    if (effort && effort !== "none") {
+      const budgetMap: Record<Exclude<EffortLevel, "none">, number> = {
         low: 1024,
         medium: 2048,
         high: 4096,
+        xhigh: 6144,
         max: 8192,
       }
       anthropicOpts.thinking = { type: "enabled", budgetTokens: budgetMap[effort] }
@@ -391,8 +394,9 @@ export function buildProviderOptions(args: BuildProviderOptionsArgs): Record<str
     }
   } else if (provider === "openai") {
     const openaiOpts: Record<string, unknown> = {}
+    // The picker only offers levels the model lists (models.dev / Codex), so pass it through.
     if (effort) {
-      openaiOpts.reasoningEffort = effort === "max" ? "high" : effort
+      openaiOpts.reasoningEffort = effort
     }
     if (Object.keys(openaiOpts).length > 0) {
       options.openai = openaiOpts

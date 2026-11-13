@@ -5,19 +5,22 @@
   "private": true,
   "main": "dist/main.js",
   "scripts": {
-    "dev": "tsc && cp -r src/renderer dist/ && electron .",
-    "build": "tsc && cp -r src/renderer dist/",
-    "typecheck": "tsc --noEmit",
+    "dev": "tsc && pnpm build:usage && cp -r src/renderer dist/ && electron .",
+    "build": "tsc && pnpm build:usage && cp -r src/renderer dist/",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.usage.json",
     "package:mac": "pnpm build && electron-builder --mac",
     "package:dmg": "pnpm build && electron-builder --mac dmg",
     "package:arm64": "pnpm build && electron-builder --mac --arm64",
-    "package:x64": "pnpm build && electron-builder --mac --x64"
+    "package:x64": "pnpm build && electron-builder --mac --x64",
+    "build:usage": "esbuild src/usage/index.ts --bundle --platform=node --target=node20 --format=cjs --outfile=dist/usage.js"
   },
   "dependencies": {},
   "devDependencies": {
+    "@sayabot/core": "workspace:*",
     "@types/node": "^24.0.0",
     "electron": "^34.2.0",
     "electron-builder": "^26.18.0",
+    "esbuild": "^0.25.12",
     "typescript": "^5.9.0"
   },
   "build": {

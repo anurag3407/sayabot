@@ -5,9 +5,12 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./local-apps": "./src/local-apps.ts"
+    "./local-apps": "./src/local-apps.ts",
+    "./models": "./src/models/index.ts",
+    "./models/effort": "./src/models/effort.ts"
   },
   "scripts": {
+    "catalog:snapshot": "tsx scripts/snapshot-models-dev.ts",
     "typecheck": "tsc",
     "test": "vitest run",
     "lint": "eslint src"

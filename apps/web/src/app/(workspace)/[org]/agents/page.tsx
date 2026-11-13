@@ -67,6 +67,7 @@ export default async function AgentsPage({
     loadUsageRollup(access.org.id, since),
     canEdit
       ? buildModelCatalog(
+          access.org.id,
           keys,
           agents.map((a) => runnerOf(a) ?? { keyId: a.providerKeyId, model: a.model }),
           runnerHosts,
@@ -87,7 +88,15 @@ export default async function AgentsPage({
     (!a.providerKeyId && fallbackApp ? { keyId: `cli:${fallbackApp.id}`, model: "default" } : { keyId: a.providerKeyId, model: a.model })
   const pickerGroups = catalog.length
     ? catalog
-    : keys.map((key) => ({ keyId: key.id, provider: key.provider, label: key.label, detail: key.provider, models: [] }))
+    : keys.map((key) => ({
+        keyId: key.id,
+        provider: key.provider,
+        label: key.label,
+        detail: key.provider,
+        section: "key" as const,
+        models: [],
+        effortLevels: [],
+      }))
 
   return (
     <div className="h-full overflow-y-auto">
