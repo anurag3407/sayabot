@@ -3,7 +3,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { clampEffort, normalizeEffortLevels } from "./effort"
-import { codexCatalogFromRows, parseOrgBlockedModels } from "./engine-models"
+import { claudeCatalogFromRows, codexCatalogFromRows, parseOrgBlockedModels } from "./engine-models"
 import {
   BUNDLED_MODEL_MANIFEST,
   manifestPrice,
@@ -227,6 +227,59 @@ describe("engine catalogs", () => {
     expect(catalog?.options.map((o) => o.id)).toEqual(["gpt-6-astra", "acme/llama"])
     expect(catalog?.options[0]).toMatchObject({ effort: ["low", "xhigh"], defaultEffort: "low" })
     expect(catalog?.options[1]?.custom).toBe(true)
+  })
+
+  it("reads Claude Code's own model list: aliases resolved, default noted, bad ids dropped", () => {
+    const catalog = claudeCatalogFromRows(
+      [
+        {
+          value: "default",
+          resolvedModel: "claude-opus-5-5",
+          displayName: "Default (recommended)",
+        },
+        {
+          value: "opus",
+          resolvedModel: "claude-opus-5-5",
+          displayName: "Opus 5.5",
+          supportsEffort: true,
+          supportedEffortLevels: ["low", "medium", "high", "xhigh", "max", "ultra"],
+        },
+        { value: "opus", resolvedModel: "claude-opus-5-5", displayName: "Opus 5.5 again" },
+        { value: "claude-haiku-4-5-20251001", displayName: "Haiku 4.5" },
+        { value: "claude-opus-5-5[1m]", displayName: "Opus 5.5 (1M)", supportsEffort: true },
+        { value: "rm -rf /", displayName: "Bad" },
+        { value: 42, displayName: "Not a string" },
+      ],
+      "2.1.325",
+    )
+    expect(catalog?.source).toBe("live")
+    expect(catalog?.cliVersion).toBe("2.1.325")
+    expect(catalog?.default).toBe("claude-opus-5-5")
+    const ids = catalog?.options.filter((o) => !o.needsCliUpdate).map((o) => o.id)
+    expect(ids).toEqual(["claude-opus-5-5", "claude-haiku-4-5-20251001", "claude-opus-5-5[1m]"])
+    expect(catalog?.options[0]).toMatchObject({
+      label: "Opus 5.5",
+      effort: ["low", "medium", "high", "xhigh", "max"],
+    })
+    // No effort support listed means Default only.
+    expect(catalog?.options[1]?.effort).toEqual([])
+  })
+
+  it("marks manifest models the installed Claude Code is too old for", () => {
+    const catalog = claudeCatalogFromRows(
+      [{ value: "sonnet", resolvedModel: "claude-sonnet-5-5" }],
+      "0.0.1",
+    )
+    const needsUpdate = catalog?.options.filter((o) => o.needsCliUpdate) ?? []
+    expect(needsUpdate.length).toBeGreaterThan(0)
+    expect(needsUpdate.every((o) => o.id !== "claude-sonnet-5-5")).toBe(true)
+  })
+
+  it("gives up on a Claude Code list with no usable model", () => {
+    expect(
+      claudeCatalogFromRows([{ value: "default", resolvedModel: "claude-opus-5-5" }]),
+    ).toBeNull()
+    expect(claudeCatalogFromRows([])).toBeNull()
   })
 
   it("reads the models an organization blocks", () => {

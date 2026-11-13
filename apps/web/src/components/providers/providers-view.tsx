@@ -1,5 +1,6 @@
 "use client"
 
+import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { ChevronRight, Laptop } from "lucide-react"
 import { saveProviderKey } from "@/lib/actions/keys"
@@ -252,6 +253,7 @@ export function ProvidersView({
   rooms: { id: string; name: string }[]
 }) {
   const [accountsOpen, setAccountsOpen] = useState(false)
+  const router = useRouter()
   const keysFor = (id: string) => keys.filter((k) => effectiveProvider(k.provider, k.baseUrl) === id)
   const connected = PROVIDERS.filter((p) => keysFor(p.id).length > 0)
   const others = PROVIDERS.filter((p) => keysFor(p.id).length === 0)
@@ -318,7 +320,14 @@ export function ProvidersView({
         </ul>
       </section>
 
-      <ManageAccountsModal isOpen={accountsOpen} onClose={() => setAccountsOpen(false)} />
+      <ManageAccountsModal
+        orgSlug={orgSlug}
+        isOpen={accountsOpen}
+        onClose={() => {
+          setAccountsOpen(false)
+          router.refresh()
+        }}
+      />
     </div>
   )
 }

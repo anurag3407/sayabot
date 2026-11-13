@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { providerForBaseUrl } from "@/lib/ai-accounts"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -149,10 +150,7 @@ export function statusTone(status: string): string {
  */
 export function effectiveProvider(provider: string, baseUrl: string | null | undefined): string {
   if (provider !== "openai-compatible" || !baseUrl) return provider
-  if (/openrouter\.ai/i.test(baseUrl)) return "openrouter"
-  if (/githubcopilot\.com/i.test(baseUrl)) return "copilot"
-  if (/cloudflare\.com/i.test(baseUrl)) return "cloudflare"
-  return provider
+  return providerForBaseUrl(baseUrl) ?? provider
 }
 
 /** 1536 → "1.5 KB", 1.4e9 → "1.4 GB". */

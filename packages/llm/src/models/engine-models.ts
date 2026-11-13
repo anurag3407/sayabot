@@ -1,7 +1,7 @@
 import { execFile, spawn } from "node:child_process"
 import { readdirSync, readFileSync } from "node:fs"
 import { access, constants, readFile, stat } from "node:fs/promises"
-import { homedir } from "node:os"
+import { homedir, tmpdir } from "node:os"
 import { delimiter, join } from "node:path"
 import { ENGINE_EFFORT_LEVELS, normalizeEffortLevels, type EffortLevel } from "./effort"
 import { providersCacheDir } from "./http"
@@ -27,10 +27,12 @@ import {
  * the way OpenMausBot reads them:
  *  - Codex: asks the CLI itself (`codex app-server`, JSON-RPC `model/list`), with each model's
  *    effort levels and default; falls back to Codex's own models_cache.json, then the manifest.
- *  - Claude Code: has no list command, so the manifest, minus models the organization blocks
- *    (`modelAccessCache` in ~/.claude.json), with models the installed CLI is too old for marked.
+ *  - Claude Code: asks the CLI itself (the `initialize` control request of its stream-json mode,
+ *    which is what the Agent SDK's `supportedModels()` reads), minus models the organization
+ *    blocks (`modelAccessCache` in ~/.claude.json); falls back to the manifest.
  *  - Cursor: the manifest.
- * A list read from a CLI is kept on disk for 6 hours so the picker opens without starting it.
+ * A list read from a CLI is kept on disk for 6 hours so the picker opens without starting it, and
+ * read again at once when the installed CLI's version changes.
  */
 
 export interface EngineModel {
@@ -56,6 +58,8 @@ export interface EngineCatalog {
   source: "live" | "cache" | "manifest"
   checkedAt: number
   effortLevels: EffortLevel[]
+  /** The CLI version that listed these models; a cached list from another version is stale. */
+  cliVersion?: string
 }
 
 export const ENGINE_CACHE_FRESH_MS = 6 * 60 * 60_000
@@ -152,6 +156,7 @@ function readEngineCache(engine: ManifestEngine): EngineCatalog | null {
       source: "cache",
       checkedAt: typeof raw.checkedAt === "number" ? raw.checkedAt : 0,
       effortLevels: normalizeEffortLevels(raw.effortLevels ?? []),
+      ...(typeof raw.cliVersion === "string" ? { cliVersion: raw.cliVersion } : {}),
     }
   } catch {
     return null
@@ -266,16 +271,197 @@ function withUsableDefault(catalog: EngineCatalog): EngineCatalog {
 }
 
 export async function claudeModelCatalog(
-  env: NodeJS.ProcessEnv = process.env,
+  options: { force?: boolean; env?: NodeJS.ProcessEnv } = {},
 ): Promise<EngineCatalog> {
-  const version = await engineVersion(await findEngineBinary("claude-code", env))
-  const catalog = manifestCatalog("claude-code", version)
+  const env = options.env ?? process.env
+  const binary = await findEngineBinary("claude-code", env)
+  const version = await engineVersion(binary)
   const blocked = await claudeOrgBlocks(env)
+  const cached = readEngineCache("claude-code")
+  const age = cached ? Date.now() - cached.checkedAt : Infinity
+  const cacheFits = cached && (!version || cached.cliVersion === version)
+  if (cached && cacheFits && !options.force && age >= 0 && age < ENGINE_CACHE_FRESH_MS) {
+    return withOrgBlocks(cached, blocked)
+  }
+  const rows = binary ? await fetchClaudeModelRows(binary, env) : null
+  const live = rows ? claudeCatalogFromRows(rows, version) : null
+  if (live) {
+    writeEngineCache("claude-code", live)
+    return withOrgBlocks(live, blocked)
+  }
+  if (cached && cacheFits) return withOrgBlocks(cached, blocked)
+  return withOrgBlocks(manifestCatalog("claude-code", version), blocked)
+}
+
+function withOrgBlocks(catalog: EngineCatalog, blocked: Set<string>): EngineCatalog {
   return withUsableDefault({
     ...catalog,
-    options: catalog.options.map((o) =>
-      blocked.has(modelKey(o.id)) ? { ...o, orgBlocked: true } : o,
-    ),
+    options: catalog.options.map((o) => {
+      const { orgBlocked: _previous, ...rest } = o
+      return blocked.has(modelKey(o.id)) ? { ...rest, orgBlocked: true } : rest
+    }),
+  })
+}
+
+// ── Claude Code: the CLI's own list ─────────────────────────────────────────────────────────
+
+/** One entry of the `models` array in Claude Code's `initialize` response. */
+export interface ClaudeModelRow {
+  value?: unknown
+  resolvedModel?: unknown
+  displayName?: unknown
+  description?: unknown
+  supportsEffort?: unknown
+  supportedEffortLevels?: unknown
+}
+
+/** Same rule the manifest applies: an id reaches a command line, and `[1m]` picks 1M context. */
+const CLAUDE_MODEL_ID = /^[a-z0-9][a-z0-9._:/-]{0,159}(?:\[1m\])?$/i
+
+const text = (value: unknown, max = 120): string | null =>
+  typeof value === "string" && value.trim() && value.length <= max ? value.trim() : null
+
+/**
+ * Turns Claude Code's model list into picker rows. Aliases (`opus`, `sonnet`) become the model
+ * they resolve to, so a saved agent keeps its model when the alias moves on; `default` only says
+ * which model that is. Manifest models the installed CLI is too old for are added, marked, so the
+ * picker can say "update the app" instead of leaving them out.
+ */
+export function claudeCatalogFromRows(
+  rows: readonly ClaudeModelRow[],
+  version: string | null = null,
+): EngineCatalog | null {
+  const manifest = modelManifest().current()
+  const entry = manifest.engines["claude-code"]
+  const options: EngineModel[] = []
+  const seen = new Set<string>()
+  let defaultModel: string | null = null
+  for (const row of rows) {
+    const value = text(row.value, 160)
+    const id = text(row.resolvedModel, 160) ?? value
+    if (!id || !CLAUDE_MODEL_ID.test(id)) continue
+    if (value === "default") {
+      defaultModel = id
+      continue
+    }
+    if (seen.has(id)) continue
+    seen.add(id)
+    const listed = entry?.models.find((m) => modelKey(m.id) === modelKey(id))
+    const catalogModel = findCatalogModel(modelCatalog().get(), "anthropic", id)
+    const levels = Array.isArray(row.supportedEffortLevels)
+      ? normalizeEffortLevels(row.supportedEffortLevels)
+      : []
+    const effort = row.supportsEffort === true && levels.length ? levels : []
+    const price = listPriceFor("anthropic", id, manifest)
+    const contextWindow = listed?.contextWindow ?? catalogModel?.limit?.context
+    options.push({
+      id,
+      label: text(row.displayName) ?? listed?.name ?? id,
+      effort,
+      ...(contextWindow ? { contextWindow } : {}),
+      ...(price ? { price } : {}),
+    })
+  }
+  if (!options.length) return null
+  const installed = parseVersionTriple(version)
+  for (const m of entry?.models ?? []) {
+    if (m.status !== "current" || seen.has(m.id) || !m.minCliVersion) continue
+    const floor = parseVersionTriple(m.minCliVersion)
+    if (!installed || !floor || versionAtLeast(installed, floor)) continue
+    options.push({ id: m.id, label: m.name, needsCliUpdate: m.minCliVersion })
+  }
+  return {
+    default: defaultModel && seen.has(defaultModel) ? defaultModel : (options[0]?.id ?? "default"),
+    options,
+    source: "live",
+    checkedAt: Date.now(),
+    effortLevels: [...(ENGINE_EFFORT_LEVELS["claude-code"] ?? [])],
+    ...(version ? { cliVersion: version } : {}),
+  }
+}
+
+/**
+ * Starts `claude` in stream-json mode, sends only the `initialize` control request and reads the
+ * `models` it answers with. No prompt is sent, so no model runs and nothing is spent. MCP servers
+ * are off and only user settings load, so a project's hooks never run. Only the model list is kept:
+ * the rest of the answer (account email, organization) is dropped here. Resolves null on any failure.
+ */
+export function fetchClaudeModelRows(
+  binary: string,
+  env: NodeJS.ProcessEnv = process.env,
+): Promise<ClaudeModelRow[] | null> {
+  return new Promise((resolve) => {
+    let settled = false
+    let buffer = ""
+    const requestId = `sayabot-models-${Date.now()}`
+    const child = spawn(
+      binary,
+      [
+        "-p",
+        "--input-format",
+        "stream-json",
+        "--output-format",
+        "stream-json",
+        "--verbose",
+        "--setting-sources",
+        "user",
+        "--strict-mcp-config",
+        "--mcp-config",
+        JSON.stringify({ mcpServers: {} }),
+      ],
+      { env, cwd: tmpdir(), stdio: ["pipe", "pipe", "ignore"] },
+    )
+    const finish = (value: ClaudeModelRow[] | null) => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      try {
+        child.stdin.end()
+      } catch {
+        // already closed
+      }
+      child.kill("SIGTERM")
+      resolve(value)
+    }
+    const timer = setTimeout(() => finish(null), CLI_TIMEOUT_MS)
+    timer.unref?.()
+    child.stdout.setEncoding("utf8")
+    child.stdout.on("data", (chunk: string) => {
+      buffer += chunk
+      if (buffer.length > 4 * 1024 * 1024) return finish(null)
+      let newline: number
+      while ((newline = buffer.indexOf("\n")) !== -1) {
+        const line = buffer.slice(0, newline)
+        buffer = buffer.slice(newline + 1)
+        if (!line.trim()) continue
+        let message: {
+          type?: unknown
+          response?: { subtype?: unknown; request_id?: unknown; response?: { models?: unknown } }
+        }
+        try {
+          message = JSON.parse(line)
+        } catch {
+          continue
+        }
+        if (message.type !== "control_response" || message.response?.request_id !== requestId)
+          continue
+        const models = message.response?.response?.models
+        return finish(
+          message.response?.subtype === "success" && Array.isArray(models)
+            ? (models as ClaudeModelRow[])
+            : null,
+        )
+      }
+    })
+    child.on("error", () => finish(null))
+    child.on("close", () => finish(null))
+    try {
+      child.stdin.write(
+        `${JSON.stringify({ type: "control_request", request_id: requestId, request: { subtype: "initialize" } })}\n`,
+      )
+    } catch {
+      finish(null)
+    }
   })
 }
 
@@ -481,7 +667,5 @@ export async function engineModelCatalog(
   if (engine === "codex") return codexModelCatalog(options)
   if (options.force) await modelManifest().refresh({ force: true })
   else await modelManifest().refreshOnDemand()
-  return engine === "claude-code"
-    ? claudeModelCatalog(options.env)
-    : cursorModelCatalog(options.env)
+  return engine === "claude-code" ? claudeModelCatalog(options) : cursorModelCatalog(options.env)
 }

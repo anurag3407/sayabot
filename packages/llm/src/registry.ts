@@ -6,7 +6,13 @@ import { createGroq } from "@ai-sdk/groq"
 import { createOpenAI } from "@ai-sdk/openai"
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible"
 import type { LanguageModel } from "ai"
-import { readSayaAiConfig, resolveSayaFastModel, resolveSayaModel, type Provider } from "@sayabot/core"
+import {
+  readSayaAiConfig,
+  resolveSayaFastModel,
+  resolveSayaModel,
+  type Provider,
+} from "@sayabot/core"
+import { COPILOT_API_BASE, copilotFetch, isCopilotBaseUrl } from "./copilot"
 import { decryptSecret } from "./crypto"
 
 export interface LanguageModelConfig {
@@ -47,10 +53,12 @@ export function createLanguageModel(config: LanguageModelConfig): LanguageModel 
         },
       })(model)
     case "copilot":
+      // The saved key is a GitHub sign-in; each call swaps it for a short-lived Copilot token.
       return createOpenAICompatible({
         name: "copilot",
-        baseURL: baseURL || "https://api.githubcopilot.com",
+        baseURL: baseURL || COPILOT_API_BASE,
         apiKey,
+        fetch: copilotFetch(apiKey),
       })(model)
     case "opencode":
       return createOpenAICompatible({
@@ -103,11 +111,12 @@ export function createLanguageModel(config: LanguageModelConfig): LanguageModel 
     case "cloudflare": {
       const accountId = process.env.CLOUDFLARE_ACCOUNT_ID
       const gatewayId = process.env.CLOUDFLARE_AI_GATEWAY_ID
-      const defaultBaseUrl = accountId && gatewayId
-        ? `https://gateway.ai.cloudflare.com/v1/${accountId}/${gatewayId}/workers-ai`
-        : accountId
-          ? `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/v1`
-          : "https://api.cloudflare.com/client/v4/ai/v1"
+      const defaultBaseUrl =
+        accountId && gatewayId
+          ? `https://gateway.ai.cloudflare.com/v1/${accountId}/${gatewayId}/workers-ai`
+          : accountId
+            ? `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/v1`
+            : "https://api.cloudflare.com/client/v4/ai/v1"
       return createOpenAICompatible({
         name: "cloudflare",
         baseURL: baseURL || defaultBaseUrl,
@@ -117,6 +126,15 @@ export function createLanguageModel(config: LanguageModelConfig): LanguageModel 
     case "openai-compatible":
       if (!baseURL) {
         throw new MissingModelConfigError("openai-compatible providers require a base URL")
+      }
+      // Copilot keys are stored as OpenAI-compatible rows pointing at its API.
+      if (isCopilotBaseUrl(baseURL)) {
+        return createOpenAICompatible({
+          name: "copilot",
+          baseURL,
+          apiKey,
+          fetch: copilotFetch(apiKey),
+        })(model)
       }
       return createOpenAICompatible({ name: "sayabot-compatible", baseURL, apiKey })(model)
     default:
@@ -138,7 +156,14 @@ export function sayaModelConfig(
   if (!config || !config.apiKey) return null
   const model = which === "fast" ? resolveSayaFastModel(config) : resolveSayaModel(config, stored)
   const provider: Provider = config.protocol
-  return { provider, apiKey: config.apiKey, baseUrl: config.baseUrl, model: model.id, alias: model.alias, label: model.label }
+  return {
+    provider,
+    apiKey: config.apiKey,
+    baseUrl: config.baseUrl,
+    model: model.id,
+    alias: model.alias,
+    label: model.label,
+  }
 }
 
 /** The server's shared model for agents with no key of their own: Saya AI's current default. */
@@ -348,16 +373,18 @@ const PROVIDER_CAPABILITIES: Record<Provider, ProviderCapabilities> = {
 }
 
 export function getProviderCapabilities(provider: Provider): ProviderCapabilities {
-  return PROVIDER_CAPABILITIES[provider] ?? {
-    supportsPromptCache: false,
-    supportsServerCompaction: false,
-    supportsContextEditing: false,
-    supportsEffort: false,
-    supportsMidConversationSystem: true,
-    supportsParallelTools: true,
-    supportsComputerUse: false,
-    defaultContextWindow: 32_000,
-  }
+  return (
+    PROVIDER_CAPABILITIES[provider] ?? {
+      supportsPromptCache: false,
+      supportsServerCompaction: false,
+      supportsContextEditing: false,
+      supportsEffort: false,
+      supportsMidConversationSystem: true,
+      supportsParallelTools: true,
+      supportsComputerUse: false,
+      defaultContextWindow: 32_000,
+    }
+  )
 }
 
 export interface BuildProviderOptionsArgs {
@@ -369,7 +396,9 @@ export interface BuildProviderOptionsArgs {
 /**
  * Builds provider-specific options for AI SDK calls in a provider-neutral way.
  */
-export function buildProviderOptions(args: BuildProviderOptionsArgs): Record<string, Record<string, unknown>> {
+export function buildProviderOptions(
+  args: BuildProviderOptionsArgs,
+): Record<string, Record<string, unknown>> {
   const { provider, effort, cacheBreakpoint } = args
   const options: Record<string, Record<string, unknown>> = {}
 

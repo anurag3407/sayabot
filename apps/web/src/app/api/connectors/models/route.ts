@@ -29,9 +29,12 @@ export async function GET(request: Request) {
     await Promise.all([
       models.modelCatalog().refresh({ force: true }),
       models.modelManifest().refresh({ force: true }),
-      localDetectionAllowed(host)
-        ? models.codexModelCatalog({ force: true }).catch(() => null)
-        : Promise.resolve(null),
+      ...(localDetectionAllowed(host)
+        ? [
+            models.codexModelCatalog({ force: true }).catch(() => null),
+            models.claudeModelCatalog({ force: true }).catch(() => null),
+          ]
+        : []),
     ])
   }
   // Without `refresh`, buildModelCatalog refreshes models.dev and the manifest in the background:

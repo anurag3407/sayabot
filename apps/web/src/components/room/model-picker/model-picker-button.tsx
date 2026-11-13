@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { ChevronDown, ChevronUp } from "lucide-react"
 import { GroupIcon, ModelPickerDropdown } from "./model-picker-dropdown"
+import { ManageAccountsModal } from "./manage-accounts-modal"
 import {
   AUTO_SELECTION,
   MODEL_SELECTION_EVENT,
@@ -11,6 +12,35 @@ import {
   type ModelSelection,
 } from "@/lib/model-selection"
 import { cn } from "@/lib/format"
+
+/** What the old browser-only accounts dialog left behind, a real OpenRouter key among it. */
+const LEGACY_KEYS = [
+  "saaya:openrouter-key",
+  "saaya:openrouter-tier",
+  "saaya:openrouter_code_verifier",
+  "saaya:chatgpt-plan",
+  "saaya:chatgpt_code_verifier",
+  "saaya:copilot-plan",
+  "saaya:opencode-sub",
+  "saaya:deepseek-sub",
+  "saaya:minimax-sub",
+  "saaya:grok-sub",
+  "saaya:kimi-sub",
+  "saaya:qwen-sub",
+  "saaya:cursor-sub",
+  "saaya:model-selection",
+]
+
+function forgetLegacyAccounts() {
+  try {
+    for (const key of LEGACY_KEYS) {
+      window.localStorage.removeItem(key)
+      window.sessionStorage.removeItem(key)
+    }
+  } catch {
+    // Storage blocked: nothing was saved there either.
+  }
+}
 
 export function ModelPickerButton({
   orgSlug,
@@ -23,9 +53,11 @@ export function ModelPickerButton({
   variant?: "pill" | "titlebar"
 }) {
   const [open, setOpen] = useState(false)
+  const [accounts, setAccounts] = useState<{ open: boolean; provider?: string }>({ open: false })
   const [selection, setSelection] = useState<ModelSelection>(AUTO_SELECTION)
 
   useEffect(() => {
+    forgetLegacyAccounts()
     setSelection(readModelSelection(orgSlug))
     function onChanged(event: Event) {
       const detail = (event as CustomEvent<{ orgSlug: string; selection: ModelSelection }>).detail
@@ -67,9 +99,17 @@ export function ModelPickerButton({
             setSelection(next)
             saveModelSelection(orgSlug, next)
           }}
+          onManageAccounts={(provider) => setAccounts({ open: true, provider })}
           onClose={() => setOpen(false)}
         />
       ) : null}
+
+      <ManageAccountsModal
+        orgSlug={orgSlug}
+        isOpen={accounts.open}
+        initialProvider={accounts.provider}
+        onClose={() => setAccounts({ open: false })}
+      />
     </div>
   )
 }

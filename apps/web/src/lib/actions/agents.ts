@@ -426,6 +426,7 @@ export async function refreshModelListsAction(orgSlug: string): Promise<ActionRe
     models.modelCatalog().refresh({ force: true }),
     models.modelManifest().refresh({ force: true }),
     local ? models.codexModelCatalog({ force: true }).catch(() => null) : Promise.resolve(null),
+    local ? models.claudeModelCatalog({ force: true }).catch(() => null) : Promise.resolve(null),
   ])
   revalidateOrg(orgSlug)
   return ok("Model lists refreshed")

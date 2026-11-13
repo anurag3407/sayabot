@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto"
 import { ENGINE_EFFORT_LEVELS, type EffortLevel } from "./effort"
 import { errorText, fetchCapped, safeCredentialUrl, type FetchLike } from "./http"
+import { COPILOT_HEADERS, copilotSessionToken } from "../copilot"
 import { manifestPrice } from "./manifest"
 import { catalogPrice, findCatalogModel, modelCatalog, type ListPrice } from "./models-dev"
 
@@ -71,6 +72,8 @@ export function providerModelsUrl(
 }
 
 function headersFor(provider: string, key: string): Record<string, string> {
+  if (provider === "copilot")
+    return { authorization: `Bearer ${key}`, accept: "application/json", ...COPILOT_HEADERS }
   if (provider === "anthropic")
     return { "x-api-key": key, "anthropic-version": "2023-06-01", accept: "application/json" }
   if (provider === "google") return { "x-goog-api-key": key, accept: "application/json" }
@@ -253,11 +256,18 @@ async function readProviderModels(input: {
       "Sayabot reads a model list only over HTTPS or from this computer, so the key is not sent in the clear",
     )
   }
+  // A Copilot key is a GitHub sign-in: its model list wants the short-lived Copilot token.
+  let apiKey = input.apiKey
+  if (input.provider === "copilot" && apiKey) {
+    try {
+      apiKey = await copilotSessionToken(apiKey, input.fetch ? { fetch: input.fetch } : {})
+    } catch (error) {
+      return fallback(errorText(error))
+    }
+  }
   const [response, freeTier] = await Promise.all([
     fetchCapped(url, {
-      headers: input.apiKey
-        ? headersFor(input.provider, input.apiKey)
-        : { accept: "application/json" },
+      headers: apiKey ? headersFor(input.provider, apiKey) : { accept: "application/json" },
       timeoutMs: TIMEOUT_MS,
       maxBytes: MAX_BYTES,
       fetch: input.fetch,

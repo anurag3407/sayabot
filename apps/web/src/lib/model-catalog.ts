@@ -265,7 +265,15 @@ export async function buildModelCatalog(
     if (!spec) return
     const keyId = `cli:${app.id}`
     const list = engineLists[index]
-    const models: PickerModel[] = [{ id: "default", label: spec.defaultLabel }]
+    // Claude Code says which model its default is today, so the row can name it.
+    const defaultModel =
+      app.id === "claude-code" ? list?.options.find((o) => o.id === list.default) : undefined
+    const models: PickerModel[] = [
+      {
+        id: "default",
+        label: defaultModel ? `${spec.defaultLabel} · ${defaultModel.label}` : spec.defaultLabel,
+      },
+    ]
     const seen = new Set(models.map((m) => m.id))
     for (const row of list?.options ?? []) addModel(models, seen, fromEngine(row))
     for (const m of app.models ?? []) addModel(models, seen, { id: m.id, label: m.label })

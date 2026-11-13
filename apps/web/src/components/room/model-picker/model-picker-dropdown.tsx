@@ -39,7 +39,7 @@ const AUTO_GROUP: PickerGroup = {
   effortLevels: [],
 }
 
-function useModelList(orgSlug: string) {
+export function useModelList(orgSlug: string) {
   const [list, setList] = useState<ModelList | null>(() => lastLists.get(orgSlug) ?? null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -176,11 +176,14 @@ export function ModelPickerDropdown({
   orgSlug,
   selection,
   onSelect,
+  onManageAccounts,
   onClose,
 }: {
   orgSlug: string
   selection: ModelSelection
   onSelect: (selection: ModelSelection) => void
+  /** Opens Manage AI accounts on a provider, or on the first one. */
+  onManageAccounts: (provider?: string) => void
   onClose: () => void
 }) {
   const { list, loading, error, reload } = useModelList(orgSlug)
@@ -313,15 +316,18 @@ export function ModelPickerDropdown({
         >
           <SlidersHorizontal className="h-[18px] w-[18px]" />
         </Link>
-        <Link
-          href={`${base}/settings/keys`}
-          onClick={onClose}
-          aria-label="Add an AI account"
-          title="Add an AI account"
+        <button
+          type="button"
+          onClick={() => {
+            onClose()
+            onManageAccounts()
+          }}
+          aria-label="Manage AI accounts"
+          title="Manage AI accounts"
           className={railButton}
         >
           <Plus className="h-[18px] w-[18px]" />
-        </Link>
+        </button>
       </div>
 
       {/* Models */}

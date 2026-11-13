@@ -6,7 +6,6 @@ import {
   OPENROUTER_FAILURES,
   OPENROUTER_FREE_MODELS_PREFERENCE,
 } from "./openrouter"
-import { buildChatGptPlanAuthUrl } from "./chatgpt-plan"
 
 describe("OpenRouter Connector", () => {
   it("detects free models correctly", () => {
@@ -42,18 +41,5 @@ describe("OpenRouter Connector", () => {
   it("has tool-capable models in priority order", () => {
     expect(OPENROUTER_FREE_MODELS_PREFERENCE[0]).toBe("nvidia/nemotron-3-super-120b-a12b:free")
     expect(OPENROUTER_FREE_MODELS_PREFERENCE).toContain("google/gemma-4-31b-it:free")
-  })
-})
-
-describe("OpenAI & ChatGPT Plan Subscription", () => {
-  it("builds ChatGPT direct token OAuth authorization URL", async () => {
-    const { authUrl, codeVerifier, state } = await buildChatGptPlanAuthUrl(
-      "http://localhost:3000/auth/callback",
-    )
-    expect(authUrl).toContain("https://auth.openai.com/api/accounts/authorize")
-    expect(authUrl).toContain("chatgpt.tokens.use.direct")
-    expect(authUrl).toContain("code_challenge_method=S256")
-    expect(codeVerifier.length).toBe(64)
-    expect(state.length).toBe(32)
   })
 })

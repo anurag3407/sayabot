@@ -293,26 +293,27 @@ vi.mock("@/lib/connectors/openrouter", async (importOriginal) => {
   }
 })
 
-vi.mock("@/lib/connectors/chatgpt-plan", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/connectors/chatgpt-plan")>()
-  return {
-    ...actual,
-    buildChatGptPlanAuthUrl: vi.fn(async (callbackUrl: string) => ({
-      authUrl: `https://auth.openai.com/authorize?redirect_uri=${encodeURIComponent(callbackUrl)}`,
-      codeVerifier: "mock_chatgpt_pkce_verifier_secret_67890",
-      state: "mock_state_uuid_123",
-    })),
-    exchangeChatGptPlanCode: vi.fn(async (code: string, verifier: string, redirectUri: string) => {
-      if (code === "bad-code") throw new Error("Token exchange failed: invalid code")
+const storedKeys: Array<{ provider: string; secret: string; label?: string; orgSlug: string }> = []
+
+vi.mock("@/lib/provider-key-store", () => ({
+  storeProviderKey: vi.fn(
+    async (input: { access: { org: { slug: string } }; provider: string; secret: string; label?: string }) => {
+      storedKeys.push({
+        provider: input.provider,
+        secret: input.secret,
+        label: input.label,
+        orgSlug: input.access.org.slug,
+      })
       return {
-        accessToken: "mock_chatgpt_access_token",
-        refreshToken: "mock_chatgpt_refresh_token",
-        expiresAt: Math.floor(Date.now() / 1000) + 3600,
-        planType: "plus",
+        ok: true,
+        keyId: `key-${storedKeys.length}`,
+        label: input.label ?? input.provider,
+        last4: input.secret.slice(-4),
+        models: 3,
       }
-    }),
-  }
-})
+    },
+  ),
+}))
 
 // Route handlers
 import { GET as getModels } from "../../src/app/api/connectors/models/route"
@@ -323,10 +324,6 @@ import {
   GET as getOpenRouterOAuth,
   POST as postOpenRouterOAuth,
 } from "../../src/app/api/connectors/openrouter/oauth/route"
-import {
-  GET as getChatGptOAuth,
-  POST as postChatGptOAuth,
-} from "../../src/app/api/connectors/chatgpt/oauth/route"
 
 // Server actions
 import {
@@ -339,7 +336,6 @@ import {
 import { decryptSecret, encryptSecret } from "@sayabot/llm"
 import * as copilotConnector from "../../src/lib/connectors/copilot"
 import * as openRouterConnector from "../../src/lib/connectors/openrouter"
-import * as chatGptConnector from "../../src/lib/connectors/chatgpt-plan"
 import * as modelCatalog from "../../src/lib/model-catalog"
 
 const realFetch = globalThis.fetch
@@ -406,26 +402,6 @@ describe("Web Connectors API & Server Actions Integration Suite", () => {
 
       const postRes = await postOpenRouterOAuth(
         new Request("http://localhost/api/connectors/openrouter/oauth", {
-          method: "POST",
-          body: JSON.stringify({ code: "code-123", codeVerifier: "verif-123" }),
-        }),
-      )
-      expect(postRes.status).toBe(401)
-      const postData = await postRes.json()
-      expect(postData.error).toBe("Sign in required")
-    })
-
-    it("returns 401 when unauthenticated on GET and POST /api/connectors/chatgpt/oauth", async () => {
-      mockCurrentUser = null
-      const getRes = await getChatGptOAuth(
-        new Request("http://localhost/api/connectors/chatgpt/oauth"),
-      )
-      expect(getRes.status).toBe(401)
-      const getData = await getRes.json()
-      expect(getData.error).toBe("Sign in required")
-
-      const postRes = await postChatGptOAuth(
-        new Request("http://localhost/api/connectors/chatgpt/oauth", {
           method: "POST",
           body: JSON.stringify({ code: "code-123", codeVerifier: "verif-123" }),
         }),
@@ -589,7 +565,7 @@ describe("Web Connectors API & Server Actions Integration Suite", () => {
       const res = await postCopilot(
         new Request("http://localhost/api/connectors/copilot", {
           method: "POST",
-          body: JSON.stringify({ deviceCode: "pending-code" }),
+          body: JSON.stringify({ deviceCode: "pending-code", org: "test-org" }),
         }),
       )
       expect(res.status).toBe(200)
@@ -597,18 +573,36 @@ describe("Web Connectors API & Server Actions Integration Suite", () => {
       expect(data.status).toBe("pending")
     })
 
-    it("POST returns complete status with session when authorized", async () => {
+    it("POST saves the GitHub sign-in to the workspace and returns no token", async () => {
       const res = await postCopilot(
         new Request("http://localhost/api/connectors/copilot", {
           method: "POST",
-          body: JSON.stringify({ deviceCode: "complete-code" }),
+          body: JSON.stringify({ deviceCode: "complete-code", org: "test-org" }),
         }),
       )
       expect(res.status).toBe(200)
-      const data = (await res.json()) as { status: string; session: typeof mockCopilotSession }
+      const data = (await res.json()) as { status: string; label: string; last4: string }
       expect(data.status).toBe("complete")
-      expect(data.session.githubToken).toBe("gho_mock_github_oauth_token")
-      expect(data.session.chatEnabled).toBe(true)
+      expect(data.last4).toBe("oken")
+      expect(storedKeys.at(-1)).toMatchObject({
+        provider: "copilot",
+        secret: "gho_valid_token",
+        orgSlug: "test-org",
+      })
+      const payload = JSON.stringify(data)
+      expect(payload).not.toContain("gho_")
+      expect(payload).not.toContain("tid=")
+    })
+
+    it("POST refuses a member, before polling GitHub", async () => {
+      mockUserRole = "member"
+      const res = await postCopilot(
+        new Request("http://localhost/api/connectors/copilot", {
+          method: "POST",
+          body: JSON.stringify({ deviceCode: "complete-code", org: "test-org" }),
+        }),
+      )
+      expect(res.status).toBe(403)
     })
 
     it("POST returns 500 when polling throws", async () => {
@@ -618,7 +612,7 @@ describe("Web Connectors API & Server Actions Integration Suite", () => {
       const res = await postCopilot(
         new Request("http://localhost/api/connectors/copilot", {
           method: "POST",
-          body: JSON.stringify({ deviceCode: "rate-limited-code" }),
+          body: JSON.stringify({ deviceCode: "rate-limited-code", org: "test-org" }),
         }),
       )
       expect(res.status).toBe(500)
@@ -636,9 +630,10 @@ describe("Web Connectors API & Server Actions Integration Suite", () => {
         new Request("http://localhost/api/connectors/openrouter/oauth"),
       )
       expect(res.status).toBe(200)
-      const body = (await res.json()) as { authUrl: string; codeVerifier: string }
+      const body = (await res.json()) as { authUrl: string; codeVerifier?: string }
       expect(body.authUrl).toContain("openrouter.ai/auth")
-      expect(body.codeVerifier).toBe("mock_openrouter_pkce_verifier_secret_12345")
+      // The verifier travels only in the httpOnly cookie.
+      expect(body.codeVerifier).toBeUndefined()
 
       // Verify cookie is set
       const cookie = res.cookies.get("openrouter_pkce_verifier")
@@ -671,21 +666,37 @@ describe("Web Connectors API & Server Actions Integration Suite", () => {
       expect(data.error).toBe("Missing authorization code or code verifier")
     })
 
-    it("POST exchanges code with codeVerifier in body", async () => {
+    it("POST saves the OpenRouter key to the workspace and never returns it", async () => {
       const res = await postOpenRouterOAuth(
         new Request("http://localhost/api/connectors/openrouter/oauth", {
           method: "POST",
           body: JSON.stringify({
             code: "valid-code",
             codeVerifier: "mock_openrouter_pkce_verifier_secret_12345",
+            org: "test-org",
           }),
         }),
       )
       expect(res.status).toBe(200)
-      const data = (await res.json()) as { ok: boolean; apiKey: string; keyDetails: any }
+      const data = (await res.json()) as { ok: boolean; label: string; last4: string }
       expect(data.ok).toBe(true)
-      expect(data.apiKey).toBe("sk-or-v1-mock-api-key-999")
-      expect(data.keyDetails.label).toBe("Sayalabs Integration Key")
+      expect(data.last4).toBe("-999")
+      expect(JSON.stringify(data)).not.toContain("sk-or-v1-mock-api-key-999")
+      expect(storedKeys.at(-1)).toMatchObject({
+        provider: "openrouter",
+        secret: "sk-or-v1-mock-api-key-999",
+        orgSlug: "test-org",
+      })
+    })
+
+    it("POST refuses to save without a workspace the person administers", async () => {
+      const res = await postOpenRouterOAuth(
+        new Request("http://localhost/api/connectors/openrouter/oauth", {
+          method: "POST",
+          body: JSON.stringify({ code: "valid-code", codeVerifier: "v", org: "other-org" }),
+        }),
+      )
+      expect(res.status).toBe(403)
     })
 
     it("POST retrieves codeVerifier from cookie header when omitted in body", async () => {
@@ -693,7 +704,8 @@ describe("Web Connectors API & Server Actions Integration Suite", () => {
         new Request("http://localhost/api/connectors/openrouter/oauth", {
           method: "POST",
           headers: {
-            cookie: "openrouter_pkce_verifier=verifier_from_cookie_value; other=1",
+            cookie:
+              "openrouter_pkce_verifier=verifier_from_cookie_value; openrouter_oauth_org=test-org; other=1",
           },
           body: JSON.stringify({ code: "valid-code" }),
         }),
@@ -701,92 +713,19 @@ describe("Web Connectors API & Server Actions Integration Suite", () => {
       expect(res.status).toBe(200)
       const data = await res.json()
       expect(data.ok).toBe(true)
-      expect(data.apiKey).toBe("sk-or-v1-mock-api-key-999")
+      expect(data.apiKey).toBeUndefined()
     })
 
     it("POST returns 500 when code exchange fails", async () => {
       const res = await postOpenRouterOAuth(
         new Request("http://localhost/api/connectors/openrouter/oauth", {
           method: "POST",
-          body: JSON.stringify({ code: "bad-code", codeVerifier: "any-verifier" }),
+          body: JSON.stringify({ code: "bad-code", codeVerifier: "any-verifier", org: "test-org" }),
         }),
       )
       expect(res.status).toBe(500)
       const data = await res.json()
       expect(data.error).toContain("Invalid authorization code")
-    })
-  })
-
-  // =========================================================================
-  // 5. /api/connectors/chatgpt/oauth Route Handler
-  // =========================================================================
-  describe("/api/connectors/chatgpt/oauth", () => {
-    it("GET generates ChatGPT auth URL and sets PKCE cookie", async () => {
-      const res = await getChatGptOAuth(
-        new Request("http://localhost/api/connectors/chatgpt/oauth"),
-      )
-      expect(res.status).toBe(200)
-      const body = (await res.json()) as { authUrl: string; codeVerifier: string; state: string }
-      expect(body.authUrl).toContain("auth.openai.com")
-      expect(body.codeVerifier).toBe("mock_chatgpt_pkce_verifier_secret_67890")
-      expect(body.state).toBe("mock_state_uuid_123")
-
-      const cookie = res.cookies.get("chatgpt_pkce_verifier")
-      expect(cookie).toBeDefined()
-      expect(cookie?.value).toBe("mock_chatgpt_pkce_verifier_secret_67890")
-    })
-
-    it("GET returns 500 when URL generation fails", async () => {
-      vi.spyOn(chatGptConnector, "buildChatGptPlanAuthUrl").mockRejectedValueOnce(
-        new Error("Failed to craft PKCE state"),
-      )
-      const res = await getChatGptOAuth(
-        new Request("http://localhost/api/connectors/chatgpt/oauth"),
-      )
-      expect(res.status).toBe(500)
-      const data = await res.json()
-      expect(data.error).toContain("Failed to craft PKCE state")
-    })
-
-    it("POST rejects requests missing code with 400", async () => {
-      const res = await postChatGptOAuth(
-        new Request("http://localhost/api/connectors/chatgpt/oauth", {
-          method: "POST",
-          body: JSON.stringify({}),
-        }),
-      )
-      expect(res.status).toBe(400)
-      const data = await res.json()
-      expect(data.error).toBe("Missing authorization code or verifier")
-    })
-
-    it("POST exchanges code using cookie verifier", async () => {
-      const res = await postChatGptOAuth(
-        new Request("http://localhost/api/connectors/chatgpt/oauth", {
-          method: "POST",
-          headers: {
-            cookie: "chatgpt_pkce_verifier=mock_chatgpt_pkce_verifier_secret_67890",
-          },
-          body: JSON.stringify({ code: "valid-chatgpt-code" }),
-        }),
-      )
-      expect(res.status).toBe(200)
-      const data = (await res.json()) as { ok: boolean; credentials: any }
-      expect(data.ok).toBe(true)
-      expect(data.credentials.accessToken).toBe("mock_chatgpt_access_token")
-      expect(data.credentials.planType).toBe("plus")
-    })
-
-    it("POST returns 500 when code exchange fails", async () => {
-      const res = await postChatGptOAuth(
-        new Request("http://localhost/api/connectors/chatgpt/oauth", {
-          method: "POST",
-          body: JSON.stringify({ code: "bad-code", codeVerifier: "test-verif" }),
-        }),
-      )
-      expect(res.status).toBe(500)
-      const data = await res.json()
-      expect(data.error).toContain("Token exchange failed")
     })
   })
 

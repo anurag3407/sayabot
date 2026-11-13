@@ -4,13 +4,12 @@ import { z } from "zod"
 import { generateText } from "ai"
 import {
   createLanguageModel,
-  encryptSecret,
-  last4,
   providerKeyToApiKey,
 } from "@sayabot/llm"
 import { PROVIDERS, redactSecrets } from "@sayabot/core"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getKek } from "@/lib/env"
+import { storeProviderKey } from "@/lib/provider-key-store"
 import { defaultModel } from "@/lib/model-options"
 import {
   adminOrgAccess,
@@ -34,56 +33,48 @@ export async function saveProviderKey(
   const check = await adminOrgAccess(orgSlug)
   if ("error" in check) return fail(check.error)
   const provider = providerSchema.safeParse(field(formData, "provider"))
-  const label = field(formData, "label")
-  // Local servers (Ollama, LM Studio) take no key; store a placeholder so the row is valid.
-  const rawKey = field(formData, "apiKey")
-  const apiKey = !rawKey && field(formData, "provider") === "openai-compatible" ? "no-key-needed" : rawKey
-  const baseUrl = optionalField(formData, "baseUrl")
   if (!provider.success) return fail("Choose a provider")
+  const label = field(formData, "label")
   if (label.length < 1 || label.length > 60) return fail("Label must be 1 to 60 characters")
-  if (apiKey.length < 8) return fail("Paste the provider API key")
-  if (provider.data === "openai-compatible" && !baseUrl) {
-    return fail("Custom OpenAI-compatible providers need a base URL")
-  }
-  if (baseUrl && !/^https?:\/\//.test(baseUrl)) return fail("Base URL must start with http(s)://")
-  const dbProvider =
-    provider.data === "openrouter" || provider.data === "copilot"
-      ? "openai-compatible"
-      : provider.data
-  const effectiveBaseUrl =
-    baseUrl ||
-    (provider.data === "openrouter"
-      ? "https://openrouter.ai/api/v1"
-      : provider.data === "copilot"
-        ? "https://api.githubcopilot.com"
-        : null)
-  const encrypted = encryptSecret(apiKey, getKek())
-  const admin = createAdminClient()
-  const { data: saved, error } = await admin
-    .from("provider_keys")
-    .insert({
-      org_id: check.access.org.id,
-      owner_user_id: check.access.user.id,
-      provider: dbProvider,
-      base_url: effectiveBaseUrl,
-      label,
-      ciphertext: encrypted.ciphertext,
-      iv: encrypted.iv,
-      tag: encrypted.tag,
-      last4: last4(apiKey),
-    })
-    .select("id")
-    .single()
-  if (error || !saved) return fail(errorMessage(error))
-  await audit({
-    orgId: check.access.org.id,
-    actorId: check.access.user.id,
-    action: "provider_key.created",
-    target: label,
-    metadata: { provider: provider.data, last4: last4(apiKey) },
+  const saved = await storeProviderKey({
+    access: check.access,
+    provider: provider.data,
+    secret: field(formData, "apiKey"),
+    label,
+    baseUrl: optionalField(formData, "baseUrl"),
   })
-  revalidateOrg(orgSlug)
-  return ok("Key saved", { keyId: saved.id })
+  if (!saved.ok) return fail(saved.error)
+  return ok("Key saved", { keyId: saved.keyId })
+}
+
+/**
+ * The Manage AI accounts dialog: saves a key for a provider and checks it at once by reading the
+ * provider's model list with it. A key the provider refuses is not kept.
+ */
+export async function connectAccountAction(input: {
+  orgSlug: string
+  provider: string
+  apiKey: string
+  label?: string
+  baseUrl?: string | null
+}): Promise<ActionResult> {
+  const check = await adminOrgAccess(input.orgSlug)
+  if ("error" in check) return fail(check.error)
+  const saved = await storeProviderKey({
+    access: check.access,
+    provider: input.provider,
+    secret: input.apiKey,
+    label: input.label,
+    baseUrl: input.baseUrl,
+    verify: true,
+  })
+  if (!saved.ok) return fail(saved.error)
+  const message =
+    saved.note ??
+    (saved.models !== null
+      ? `Connected · ${saved.models} ${saved.models === 1 ? "model" : "models"}`
+      : "Connected")
+  return ok(message, { keyId: saved.keyId, label: saved.label, last4: saved.last4 })
 }
 
 export async function deleteProviderKey(input: {

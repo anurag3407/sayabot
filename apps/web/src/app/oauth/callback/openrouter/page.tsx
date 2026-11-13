@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { CheckCircle2, Loader2, XCircle } from "lucide-react"
+import type { OpenRouterAuthMessage } from "@/lib/ai-accounts"
 
 function OpenRouterCallbackContent() {
   const searchParams = useSearchParams()
@@ -10,159 +11,113 @@ function OpenRouterCallbackContent() {
   const errorParam = searchParams.get("error")
 
   const [status, setStatus] = useState<"loading" | "success" | "error">(code ? "loading" : "error")
-  const [errorMessage, setErrorMessage] = useState<string | null>(errorParam || (code ? null : "No authorization code found"))
-  const [tierInfo, setTierInfo] = useState<string | null>(null)
+  const [errorMessage, setErrorMessage] = useState<string | null>(
+    errorParam || (code ? null : "No authorization code came back from OpenRouter"),
+  )
+  const [detail, setDetail] = useState<string | null>(null)
 
   useEffect(() => {
     if (!code) return
-
     let cancelled = false
 
     async function exchange() {
       try {
-        let codeVerifier: string | undefined
-        try {
-          codeVerifier =
-            window.sessionStorage.getItem("saaya:openrouter_code_verifier") ||
-            window.localStorage.getItem("saaya:openrouter_code_verifier") ||
-            undefined
-        } catch {}
-
+        // The verifier and the workspace come from httpOnly cookies set when the sign-in started.
         const res = await fetch("/api/connectors/openrouter/oauth", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ code, codeVerifier }),
+          body: JSON.stringify({ code }),
         })
-
-        const data = (await res.json()) as {
+        const data = (await res.json().catch(() => ({}))) as {
           ok?: boolean
-          apiKey?: string
-          keyDetails?: { isFreeTier?: boolean; creditsRemaining?: number }
+          label?: string
+          last4?: string
+          freeTier?: boolean
+          creditsRemaining?: number
           error?: string
         }
-
         if (cancelled) return
-
         if (!res.ok || !data.ok) {
           setStatus("error")
-          setErrorMessage(data.error || "Failed to exchange authorization code")
+          setErrorMessage(data.error || "OpenRouter did not finish the sign-in")
           return
         }
-
-        try {
-          window.sessionStorage.removeItem("saaya:openrouter_code_verifier")
-          window.localStorage.removeItem("saaya:openrouter_code_verifier")
-        } catch {}
-
-        const tier = data.keyDetails?.isFreeTier
-          ? "Free Tier Active (Ready to use all free tool-calling models)"
-          : `Active Account (${typeof data.keyDetails?.creditsRemaining === "number" ? `$${data.keyDetails.creditsRemaining.toFixed(2)} credits` : "Paid Tier"})`
-        setTierInfo(tier)
+        setDetail(
+          data.freeTier
+            ? "Free tier: the free tool-calling models are ready to use."
+            : typeof data.creditsRemaining === "number"
+              ? `$${data.creditsRemaining.toFixed(2)} in credits.`
+              : "Ready to use.",
+        )
         setStatus("success")
-
-        // Broadcast to opener if in a popup window
         if (window.opener) {
-          window.opener.postMessage(
-            {
-              type: "OPENROUTER_AUTH_SUCCESS",
-              apiKey: data.apiKey,
-              keyDetails: data.keyDetails,
-            },
-            "*",
-          )
-          setTimeout(() => {
-            window.close()
-          }, 1500)
+          const message: OpenRouterAuthMessage = {
+            type: "OPENROUTER_AUTH_SUCCESS",
+            label: data.label ?? "OpenRouter",
+            freeTier: Boolean(data.freeTier),
+          }
+          // Same origin only: nothing else may hear that an account was connected.
+          window.opener.postMessage(message, window.location.origin)
+          setTimeout(() => window.close(), 1500)
         }
       } catch (err) {
         if (!cancelled) {
           setStatus("error")
-          setErrorMessage(err instanceof Error ? err.message : "Network error during authentication")
+          setErrorMessage(err instanceof Error ? err.message : "Network error during sign-in")
         }
       }
     }
 
     void exchange()
-
     return () => {
       cancelled = true
     }
   }, [code])
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#070907] p-4 text-[#e9e5d8]">
-      <div className="w-full max-w-md rounded-2xl border border-[#232b25] bg-[#101411] p-6 shadow-2xl text-center">
-        {status === "loading" && (
+    <div className="flex min-h-screen items-center justify-center bg-ink p-4 text-text">
+      <div className="w-full max-w-md rounded-2xl border border-line bg-panel p-6 text-center">
+        {status === "loading" ? (
           <div className="flex flex-col items-center gap-3 py-6">
-            <Loader2 className="h-10 w-10 animate-spin text-[#ff7a45]" />
-            <h2 className="text-lg font-medium">Connecting OpenRouter Account...</h2>
-            <p className="text-sm text-[#9aa39b]">Exchanging authorization credentials securely.</p>
+            <Loader2 className="h-10 w-10 animate-spin text-muted" />
+            <h1 className="text-lg font-medium">Connecting OpenRouter…</h1>
+            <p className="text-sm text-faint">Saving the key to your workspace.</p>
+          </div>
+        ) : status === "success" ? (
+          <div className="flex flex-col items-center gap-3 py-6">
+            <CheckCircle2 className="h-12 w-12 text-ok" />
+            <h1 className="text-lg font-medium">OpenRouter is connected</h1>
+            {detail ? <p className="text-sm text-muted">{detail}</p> : null}
+            <p className="text-xs text-faint">This window closes on its own.</p>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-3 py-6">
+            <XCircle className="h-12 w-12 text-danger" />
+            <h1 className="text-lg font-medium">OpenRouter is not connected</h1>
+            <p className="text-sm text-muted">{errorMessage}</p>
+            <p className="text-xs text-faint">
+              Close this window and start again from Manage AI accounts.
+            </p>
+            <button
+              type="button"
+              onClick={() => window.close()}
+              className="mt-2 rounded-lg bg-raised px-4 py-2 text-[13px] font-medium text-text hover:bg-hover"
+            >
+              Close window
+            </button>
           </div>
         )}
-
-        {status === "success" && (
-          <div className="flex flex-col items-center gap-3 py-6">
-            <CheckCircle2 className="h-12 w-12 text-[#8fbf9f]" />
-            <h2 className="text-lg font-medium text-[#8fbf9f]">OpenRouter Connected!</h2>
-            {tierInfo && <p className="text-xs font-mono text-[#9aa39b]">{tierInfo}</p>}
-            <p className="text-xs text-[#7a857c]">This window will close automatically, or you may return to Saaya.</p>
-          </div>
-        )}
-
-        {status === "error" && (
-            <div className="flex flex-col items-center gap-3 py-6">
-              <XCircle className="h-12 w-12 text-[#e37b74]" />
-              <h2 className="text-lg font-medium text-[#e37b74]">Connection Failed</h2>
-              <p className="text-sm text-[#9aa39b]">{errorMessage}</p>
-              <div className="mt-4 flex items-center justify-center gap-3">
-                <button
-                  type="button"
-                  onClick={async () => {
-                    setStatus("loading")
-                    try {
-                      const res = await fetch("/api/connectors/openrouter/oauth")
-                      const data = (await res.json()) as { authUrl?: string; codeVerifier?: string }
-                      if (data.codeVerifier) {
-                        try {
-                          window.sessionStorage.setItem("saaya:openrouter_code_verifier", data.codeVerifier)
-                          window.localStorage.setItem("saaya:openrouter_code_verifier", data.codeVerifier)
-                        } catch {}
-                      }
-                      if (data.authUrl) {
-                        window.location.href = data.authUrl
-                        return
-                      }
-                      throw new Error("Could not start authorization flow")
-                    } catch (err) {
-                      setStatus("error")
-                      setErrorMessage(err instanceof Error ? err.message : "Failed to restart authentication")
-                    }
-                  }}
-                  className="rounded-lg bg-[#ff7a45] px-4 py-2 text-xs font-medium text-black hover:bg-[#ff905f] transition-colors"
-                >
-                  Try Connecting Again
-                </button>
-                <button
-                  type="button"
-                  onClick={() => window.close()}
-                  className="rounded-lg bg-[#232b25] px-4 py-2 text-xs font-medium text-[#e9e5d8] hover:bg-[#354037] transition-colors"
-                >
-                  Close Window
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
       </div>
-    )
+    </div>
+  )
 }
 
 export default function OpenRouterCallbackPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-screen items-center justify-center bg-[#070907] p-4 text-[#e9e5d8]">
-          <Loader2 className="h-10 w-10 animate-spin text-[#ff7a45]" />
+        <div className="flex min-h-screen items-center justify-center bg-ink">
+          <Loader2 className="h-10 w-10 animate-spin text-muted" />
         </div>
       }
     >
