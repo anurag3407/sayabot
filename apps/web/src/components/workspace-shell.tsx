@@ -222,13 +222,13 @@ function Rail({
             )}
 
             <a
-              href="https://github.com/anurag3407/Mesh/releases/latest/download/Sayabot-arm64.dmg"
+              href="https://github.com/anurag3407/sayabot/releases/latest/download/Sayabot-arm64.dmg"
               className={popoverItem}
             >
               Download macOS (.dmg)
             </a>
             <a
-              href="https://github.com/anurag3407/Mesh/releases/latest/download/Sayabot.apk"
+              href="https://github.com/anurag3407/sayabot/releases/latest/download/Sayabot.apk"
               className={popoverItem}
             >
               Download Android (.apk)

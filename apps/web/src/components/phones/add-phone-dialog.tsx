@@ -17,7 +17,7 @@ interface Pairing {
   expiresAt: string
 }
 
-const ANDROID_APK = "https://github.com/anurag3407/Mesh/releases/latest/download/Sayabot.apk"
+const ANDROID_APK = "https://github.com/anurag3407/sayabot/releases/latest/download/Sayabot.apk"
 
 function useCountdown(expiresAt: string | null) {
   const [left, setLeft] = useState(0)
