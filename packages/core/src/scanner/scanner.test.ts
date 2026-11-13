@@ -7,7 +7,6 @@ import {
   computeUsageCacheSavings,
   computeUsageCost,
   DEFAULT_FALLBACK_PRICE,
-  DEFAULT_MODEL_PRICES,
   getModelPrice,
   normalizeModelKey,
 } from "./pricing"
@@ -17,8 +16,8 @@ import {
   scanAntigravityDatabase,
   scanAntigravityUsage,
 } from "./antigravity"
-import { CLAUDE_SYNTHETIC_MODEL, parseClaudeLine, scanClaudeFile, scanClaudeUsage } from "./claude"
-import { scanCodexFile, scanCodexUsage } from "./codex"
+import { CLAUDE_SYNTHETIC_MODEL, parseClaudeLine, scanClaudeFile } from "./claude"
+import { scanCodexFile } from "./codex"
 import { scanLocalUsage } from "./index"
 
 describe("Local Usage Scanner - Pricing", () => {

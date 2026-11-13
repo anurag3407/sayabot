@@ -1,7 +1,7 @@
 "use client"
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
-import { RefreshCw, Sparkles, X, CheckCircle2 } from "lucide-react"
+import { RefreshCw, X } from "lucide-react"
 import { cn } from "@/lib/format"
 
 export interface VersionData {

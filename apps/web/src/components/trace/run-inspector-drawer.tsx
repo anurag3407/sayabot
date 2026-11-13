@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useTransition } from "react"
+import { useEffect, useState } from "react"
 import { getRunTraceAction } from "@/lib/actions/trace"
 import type { RunStepKind, RunStepView, RunTraceView } from "@/lib/types"
 import { CloseIcon, CopyIcon, TraceIcon, CheckIcon } from "@/components/ui/icons"

@@ -12,6 +12,10 @@
 !.env.example
 deploy/.env*
 deploy/certbot
+deploy/.releases
+deploy/.deploy.lock
+.pnpm-store
+brag-output
 deploy/backups
 e2e
 playwright-report

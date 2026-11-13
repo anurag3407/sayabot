@@ -139,7 +139,7 @@ export async function getRunTraceAction(input: {
 
   // Fetch steps for subagent runs
   const subagentIds = (rawSubagentRuns ?? []).map((r) => r.id)
-  let subagentStepsMap: Record<string, RunStepView[]> = {}
+  const subagentStepsMap: Record<string, RunStepView[]> = {}
 
   if (subagentIds.length > 0) {
     const { data: rawSubSteps } = await admin

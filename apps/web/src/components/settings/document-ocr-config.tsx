@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { Check, Copy, Cpu, Database, HardDrive, HelpCircle, Layers, Server, Sparkles, Zap } from "lucide-react"
+import { Check, Copy, Cpu, HardDrive, Layers, Server, Sparkles, Zap } from "lucide-react"
 import { saveOrgToolConfig, testDocumentOcrAction } from "@/lib/actions/mcp"
 import { ActionForm } from "@/components/ui/action-form"
 import { Field, Input, Select } from "@/components/ui/field"

@@ -1,4 +1,3 @@
-import type { ModelPrice } from "../cost"
 export type { ModelPrice } from "../cost"
 
 export type LocalProvider = "antigravity" | "claude" | "codex" | "cursor" | "opencode" | "other"

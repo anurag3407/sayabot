@@ -1,4 +1,4 @@
-import type { ProviderLimitGroup, ProviderLimitWindow, ScannedUsageRecord } from "./types"
+import type { ProviderLimitGroup, ScannedUsageRecord } from "./types"
 
 
 function formatDurationRemaining(ms: number): string {

@@ -178,9 +178,9 @@ export function UsageDashboard({
   const [localEvents, setLocalEvents] = useState<UsageEventRow[]>([])
   const [localLimits, setLocalLimits] = useState<ProviderLimitGroup[]>([])
   const [localLoading, setLocalLoading] = useState<boolean>(false)
-  const [localLoaded, setLocalLoaded] = useState<boolean>(false)
-  const [localProvidersFound, setLocalProvidersFound] = useState<string[]>([])
-  const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null)
+  const [, setLocalLoaded] = useState<boolean>(false)
+  const [, setLocalProvidersFound] = useState<string[]>([])
+  const [, setLastRefreshedAt] = useState<Date | null>(null)
 
   const agentsById = useMemo(() => new Map(agents.map((a) => [a.id, a])), [agents])
   const roomsById = useMemo(() => new Map(rooms.map((r) => [r.id, r.name])), [rooms])

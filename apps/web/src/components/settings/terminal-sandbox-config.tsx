@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Cpu, HardDrive, Key, Layers, Radio, Server, Terminal, Zap } from "lucide-react"
+import { Cpu, HardDrive, Layers } from "lucide-react"
 import { saveOrgToolConfig } from "@/lib/actions/mcp"
 import { ActionForm } from "@/components/ui/action-form"
 import { Field, Input, Select } from "@/components/ui/field"

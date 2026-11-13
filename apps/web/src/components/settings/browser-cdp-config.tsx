@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Globe, Code2, KeyRound, MessageSquare, Monitor, ShieldCheck, Terminal, Zap } from "lucide-react"
+import { Globe, Code2, KeyRound, MessageSquare, Monitor, ShieldCheck, Terminal } from "lucide-react"
 
 export function BrowserCdpConfig() {
   const [activeTab, setActiveTab] = useState<"overview" | "tools" | "vault">("tools")

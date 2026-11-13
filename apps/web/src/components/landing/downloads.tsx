@@ -3,7 +3,6 @@ import { ArrowDownToLine } from "lucide-react"
 import { Mascot } from "@/components/ui/mascot"
 import { SectionHead } from "./section-head"
 import { AndroidIcon, AppleIcon, WindowsIcon } from "./brand-icons"
-import { DOWNLOADS } from "./content"
 
 const READY = [
   { name: "Sayabot for Mac", meta: "Native macOS .dmg with deep-link OAuth & local computer use", href: "/download", cta: "Download Mac App (.dmg)", icon: AppleIcon, bg: "linear-gradient(165deg,#ecdfff,#c6a3ee)", seed: "Pip" },

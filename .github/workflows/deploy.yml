@@ -1,8 +1,11 @@
 name: Deploy to Lightsail
 
+# Deploy only after the Tests workflow passes on main (or by hand).
 on:
-  push:
-    branches: [ main ]
+  workflow_run:
+    workflows: [Tests]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
 
 concurrency:
@@ -13,6 +16,7 @@ jobs:
   deploy:
     name: Build & Deploy on Lightsail
     runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
     steps:
       - name: Trigger Build & Rollout on Lightsail VPS
         env:
@@ -20,6 +24,8 @@ jobs:
           SSH_USER: ${{ secrets.LIGHTSAIL_USER }}
           SSH_KEY: ${{ secrets.LIGHTSAIL_SSH_KEY }}
           SSH_PORT: ${{ secrets.LIGHTSAIL_PORT }}
+          # Deploy exactly the commit the Tests workflow verified, not whatever main is now.
+          DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
         run: |
           set -e
           if [ -z "$SSH_HOST" ] || [ -z "$SSH_USER" ] || [ -z "$SSH_KEY" ]; then
@@ -49,7 +55,7 @@ jobs:
               -o ServerAliveInterval=15 \
               -o ServerAliveCountMax=60 \
               -o BatchMode=yes \
-              "$SSH_USER@$SSH_HOST" 'bash -se' << 'EOF'
+              "$SSH_USER@$SSH_HOST" "bash -se -- $DEPLOY_SHA" << 'EOF'
             set -e
             echo "==> Starting deploy on Lightsail VPS ($(uname -n))..."
             
@@ -61,7 +67,8 @@ jobs:
             cd "$HOME/mesh"
             echo "==> Fetching latest changes from origin/main..."
             git fetch origin main
-            git reset --hard origin/main
+            git reset --hard "${1:-origin/main}"
+            echo "==> Deploying $(git rev-parse --short=12 HEAD)"
             
             echo "==> Checking required deploy files..."
             if [ ! -f "deploy/.env.production" ]; then

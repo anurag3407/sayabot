@@ -286,7 +286,6 @@ export async function testWorkspaceConnector(
   }
 
   const startTime = Date.now()
-  let testSuccess = false
   let responseDetail = ""
 
   try {
@@ -301,7 +300,6 @@ export async function testWorkspaceConnector(
         throw new Error(`Google API returned HTTP ${res.status}: ${await res.text()}`)
       }
       const data = (await res.json()) as { user?: { displayName?: string; emailAddress?: string } }
-      testSuccess = true
       responseDetail = data.user?.emailAddress ? `Connected as ${data.user.emailAddress}` : "Google Drive API active"
     } else if (connector.source === "slack") {
       const res = await fetch("https://slack.com/api/auth.test", {
@@ -317,7 +315,6 @@ export async function testWorkspaceConnector(
       if (!data.ok) {
         throw new Error(`Slack error: ${data.error ?? "unknown"}`)
       }
-      testSuccess = true
       responseDetail = `Connected to workspace "${data.team}" as @${data.user}`
     } else if (connector.source === "github") {
       const res = await fetch("https://api.github.com/user", {
@@ -331,7 +328,6 @@ export async function testWorkspaceConnector(
         throw new Error(`GitHub API returned HTTP ${res.status}: ${await res.text()}`)
       }
       const data = (await res.json()) as { login?: string }
-      testSuccess = true
       responseDetail = data.login ? `Connected as GitHub user @${data.login}` : "GitHub API active"
     } else if (connector.source === "discord") {
       const res = await fetch("https://discord.com/api/v10/users/@me", {
@@ -339,33 +335,27 @@ export async function testWorkspaceConnector(
       })
       if (!res.ok) throw new Error(`Discord returned HTTP ${res.status}${res.status === 401 ? " (check the bot token)" : ""}`)
       const data = (await res.json()) as { username?: string }
-      testSuccess = true
       responseDetail = data.username ? `Connected as bot ${data.username}` : "Discord bot active"
     } else if (connector.source === "telegram") {
       // The token is part of Telegram's URL; never echo the response URL or body back.
       const res = await fetch(`https://api.telegram.org/bot${token}/getMe`)
       const data = (await res.json().catch(() => ({}))) as { ok?: boolean; result?: { username?: string }; description?: string }
       if (!res.ok || !data.ok) throw new Error(`Telegram: ${data.description ?? `HTTP ${res.status}`}`)
-      testSuccess = true
       responseDetail = data.result?.username ? `Connected as @${data.result.username}` : "Telegram bot active"
     } else if (connector.source === "onepassword" || connector.source === "bitwarden" || connector.source === "protonpass") {
       const passwordConfig = (connector.config ?? {}) as { authMode?: string; connectUrl?: string; region?: string }
       if (passwordConfig.authMode === "computer" || token === "desktop") {
-        testSuccess = true
         responseDetail = "Saved for the app signed in on a computer with Sayabot open"
       } else if (connector.source === "onepassword" && passwordConfig.connectUrl) {
         const res = await fetch(`${passwordConfig.connectUrl.replace(/\/+$/, "")}/v1/vaults`, { headers: { Authorization: `Bearer ${token}` } })
         if (!res.ok) throw new Error(`1Password Connect returned HTTP ${res.status}`)
-        testSuccess = true
         responseDetail = "1Password Connect answered"
       } else if (connector.source === "bitwarden") {
         const host = passwordConfig.region === "eu" ? "https://api.bitwarden.eu" : "https://api.bitwarden.com"
         const res = await fetch(`${host}/public/secrets`, { headers: { Authorization: `Bearer ${token}` } })
         if (!res.ok) throw new Error(`Bitwarden returned HTTP ${res.status}`)
-        testSuccess = true
         responseDetail = "Bitwarden Secrets Manager answered"
       } else {
-        testSuccess = true
         responseDetail = "Saved. It will run through the app on your computer."
       }
     } else if (connector.source === "whatsapp") {
@@ -381,10 +371,8 @@ export async function testWorkspaceConnector(
         error?: { message?: string }
       }
       if (!res.ok) throw new Error(`WhatsApp: ${data.error?.message ?? `HTTP ${res.status}`}`)
-      testSuccess = true
       responseDetail = `Sending as ${data.verified_name ?? "business"} (${data.display_phone_number ?? phoneNumberId})`
     } else {
-      testSuccess = true
       responseDetail = "Connection verified"
     }
 

@@ -306,7 +306,7 @@ function deduplicateCandidates(
     let bestTimestamp = 0
     let bestTimestampQuality = -1
     let bestDedupeKey = group[0]!.record.dedupeKey
-    let sessionId = group[0]!.record.sessionId
+    const sessionId = group[0]!.record.sessionId
 
     let maxUncached = 0
     let maxCached = 0

@@ -1,9 +1,8 @@
 import type { Metadata } from "next"
 import Link from "next/link"
-import { ArrowDownToLine, CheckCircle2, Cpu, Smartphone, Laptop, ShieldCheck, Terminal, Globe, ArrowRight } from "lucide-react"
+import { ArrowDownToLine, CheckCircle2, Terminal, ArrowRight } from "lucide-react"
 import { PublicShell } from "@/components/public/public-shell"
 import { Mascot } from "@/components/ui/mascot"
-import { Button } from "@/components/ui/button"
 import { AppleIcon, AndroidIcon } from "@/components/landing/brand-icons"
 import { DOWNLOADS } from "@/components/landing/content"
 
