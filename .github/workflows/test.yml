@@ -44,6 +44,7 @@ jobs:
       - name: Start services (smoke lane needs only web + orchestrator health)
         env:
           DATABASE_URL: postgres://u:p@localhost:5432/db
+          SAYABOT_KEK: ci-test-kek
           MESH_KEK: ci-test-kek
           SUPABASE_URL: https://ci.supabase.co
           NEXT_PUBLIC_SUPABASE_URL: https://ci.supabase.co

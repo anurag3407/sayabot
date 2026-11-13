@@ -53,7 +53,7 @@ install_smolvm() {
 
 Add to deploy/.env.production:
   COMPUTER_BACKEND=smolvm
-  MESH_APP_SERVICES="orchestrator web computerd egress"
+  SAYABOT_APP_SERVICES="orchestrator web computerd egress"
 Then run ./deploy/deploy.sh (it builds the computer image and exports it for smolvm).
 EOF
 }
@@ -80,7 +80,7 @@ install_gvisor() {
 Add to deploy/.env.production:
   COMPUTER_BACKEND=docker
   COMPUTER_DOCKER_RUNTIME=runsc
-  MESH_APP_SERVICES="orchestrator web computerd egress"
+  SAYABOT_APP_SERVICES="orchestrator web computerd egress"
 Then run ./deploy/deploy.sh.
 EOF
 }

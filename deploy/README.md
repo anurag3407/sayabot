@@ -51,10 +51,10 @@ terminal before you close the root session.
 
 ```bash
 ssh deploy@YOUR_IP
-git clone git@github.com:YOU/mesh.git ~/mesh && cd ~/mesh
+git clone git@github.com:YOU/sayabot.git ~/sayabot && cd ~/sayabot
 cp deploy/.env.production.example deploy/.env.production
 chmod 600 deploy/.env.production
-nano deploy/.env.production        # MESH_DOMAIN, LETSENCRYPT_EMAIL, Supabase, secrets
+nano deploy/.env.production        # SAYABOT_DOMAIN, LETSENCRYPT_EMAIL, Supabase, secrets
 ```
 
 For a private repo, add a read-only deploy key to GitHub (`ssh-keygen -t ed25519` on the
@@ -109,7 +109,7 @@ What a deploy does:
 4. Recreates orchestrator then web, waits for their health checks, then reloads nginx and checks
    `https://DOMAIN/api/health` through it.
 5. If any check fails, it restores the previous release's images automatically.
-6. Records the release and prunes images older than `MESH_KEEP_RELEASES` releases.
+6. Records the release and prunes images older than `SAYABOT_KEEP_RELEASES` releases.
 
 **Rollbacks don't undo migrations.** Keep migrations backward compatible with the previous
 release: add tables and columns, and drop them in a later release.
@@ -120,11 +120,11 @@ because Hocuspocus canvas state lives in one process (see Known limits in the ro
 
 ## Building in CI instead of on the server
 
-Builds on a small VPS are slow. To build elsewhere, set `MESH_IMAGE_PREFIX=ghcr.io/you/mesh`,
+Builds on a small VPS are slow. To build elsewhere, set `SAYABOT_IMAGE_PREFIX=ghcr.io/you/sayabot`,
 then build and push both images from CI or your laptop with the same `NEXT_PUBLIC_*` build args:
 
 ```bash
-export MESH_TAG=$(git rev-parse --short=12 HEAD)
+export SAYABOT_TAG=$(git rev-parse --short=12 HEAD)
 docker compose --env-file deploy/.env.production -f deploy/docker-compose.yml build web orchestrator
 docker compose --env-file deploy/.env.production -f deploy/docker-compose.yml push web orchestrator
 ```
@@ -135,9 +135,9 @@ Then run `./deploy/deploy.sh --ref <same commit> --pull` on the server, after `d
 
 - Runtime secrets (`SUPABASE_SERVICE_ROLE_KEY`, `E2B_API_KEY`, …): edit `.env.production`, then
   `./deploy/deploy.sh` (or `docker compose ... up -d` to recreate without a rebuild).
-- **`NEXT_PUBLIC_*` values and `MESH_DOMAIN` are compiled into the browser bundle.** Changing them
+- **`NEXT_PUBLIC_*` values and `SAYABOT_DOMAIN` are compiled into the browser bundle.** Changing them
   needs a rebuild: `./deploy/deploy.sh`.
-- **Never change `MESH_KEK`.** It encrypts every stored provider key and secret. Back up
+- **Never change `SAYABOT_KEK` (or legacy `MESH_KEK`).** It encrypts every stored provider key and secret. Back up
   `.env.production` somewhere safe, such as a password manager.
 
 ## Security checklist
@@ -159,5 +159,5 @@ Then run `./deploy/deploy.sh --ref <same commit> --pull` on the server, after `d
 | Orchestrator restarts | `logs orchestrator`: `DATABASE_URL` must be the session pooler on 5432 |
 | Canvas never connects | Browser console: `wss://DOMAIN/collab` must return 101. Rebuild after changing the domain |
 | MCP client says unauthorized | Key revoked, or the URL lost its `/mcp/<key>` suffix |
-| 429 responses | nginx rate limits in `deploy/nginx/nginx.conf` (`mesh_api`, `mesh_auth`, `mesh_general`) |
+| 429 responses | nginx rate limits in `deploy/nginx/nginx.conf` (`sayabot_api`, `sayabot_auth`, `sayabot_general`) |
 | Build killed (exit 137) | Out of memory: check that swap is on (`swapon --show`), or build in CI |

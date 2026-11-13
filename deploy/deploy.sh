@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Mesh production deploys on a single VPS.
+# Sayabot production deploys on a single VPS.
 #
 #   ./deploy/deploy.sh                 build the current checkout, migrate, roll out
 #   ./deploy/deploy.sh --ref v1.4.0    check out a tag/branch/commit first (git fetch)
-#   ./deploy/deploy.sh --pull          pull prebuilt images (MESH_IMAGE_PREFIX registry) instead of building
+#   ./deploy/deploy.sh --pull          pull prebuilt images (SAYABOT_IMAGE_PREFIX registry) instead of building
 #   ./deploy/deploy.sh rollback        return to the previous release's images
 #   ./deploy/deploy.sh migrate         run database migrations only
 #   ./deploy/deploy.sh seed            seed starter model prices
@@ -11,7 +11,7 @@
 #   ./deploy/deploy.sh status | logs [service] | restart [service] | down | releases
 #
 # A release = images tagged with the git short SHA. Rollouts are health-gated: if the
-# new containers are not healthy (or https://MESH_DOMAIN/api/health fails), the
+# new containers are not healthy (or https://SAYABOT_DOMAIN/api/health fails), the
 # previous release is restored automatically. Migrations are forward-only, so keep
 # them backwards compatible with the previous release (add columns, don't drop them).
 set -Eeuo pipefail
@@ -27,13 +27,26 @@ env_value() {
   (grep -E "^$1=" "$ENV_FILE" 2>/dev/null || true) | tail -n1 | cut -d= -f2- | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//"
 }
 
-SERVICES_CONFIG="$(env_value MESH_APP_SERVICES)"
+env_fallback() {
+  local val
+  val="$(env_value "$1")"
+  if [[ -n "$val" ]]; then
+    echo "$val"
+  elif [[ $# -ge 2 ]]; then
+    env_value "$2"
+  fi
+}
+
+SERVICES_CONFIG="${SAYABOT_APP_SERVICES:-${MESH_APP_SERVICES:-$(env_fallback SAYABOT_APP_SERVICES MESH_APP_SERVICES)}}"
 APP_SERVICES=(${SERVICES_CONFIG:-orchestrator web})
 EDGE_SERVICES=(nginx certbot)
 # Cloudflare Tunnel mode: no open ports, no certificate; cloudflared dials out to Cloudflare.
 TUNNEL=0
 [[ -n "$(env_value CLOUDFLARE_TUNNEL_TOKEN)" ]] && { TUNNEL=1; EDGE_SERVICES=(nginx cloudflared); }
-HEALTH_TIMEOUT="${MESH_HEALTH_TIMEOUT:-180}"
+HEALTH_TIMEOUT="${SAYABOT_HEALTH_TIMEOUT:-${MESH_HEALTH_TIMEOUT:-$(env_fallback SAYABOT_HEALTH_TIMEOUT MESH_HEALTH_TIMEOUT)}}"
+HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-180}"
+
+DOMAIN="${SAYABOT_DOMAIN:-${MESH_DOMAIN:-$(env_fallback SAYABOT_DOMAIN MESH_DOMAIN)}}"
 
 c_blue=$'\033[1;34m'; c_yellow=$'\033[1;33m'; c_red=$'\033[1;31m'; c_green=$'\033[1;32m'; c_off=$'\033[0m'
 log()  { printf '%s[deploy]%s %s\n' "$c_blue" "$c_off" "$*"; }
@@ -45,7 +58,10 @@ COMPOSE_ARGS=(-f "$COMPOSE_FILE")
 # microVM computers (KVM hosts): computerd gets /dev/kvm and the host's smolvm install.
 [[ "$(env_value COMPUTER_BACKEND)" == "smolvm" ]] && COMPOSE_ARGS+=(-f "$DEPLOY_DIR/docker-compose.smolvm.yml")
 (( TUNNEL )) && COMPOSE_ARGS+=(-f "$DEPLOY_DIR/docker-compose.tunnel.yml")
-compose() { MESH_TAG="${MESH_TAG:-latest}" docker compose --env-file "$ENV_FILE" "${COMPOSE_ARGS[@]}" "$@"; }
+compose() {
+  local tag="${SAYABOT_TAG:-${MESH_TAG:-latest}}"
+  SAYABOT_TAG="$tag" MESH_TAG="$tag" docker compose --env-file "$ENV_FILE" "${COMPOSE_ARGS[@]}" "$@"
+}
 
 # ── preflight ────────────────────────────────────────────────────────────
 preflight() {
@@ -59,14 +75,21 @@ preflight() {
   [[ "$perms" == "600" || "$perms" == "400" ]] || warn "$ENV_FILE is mode $perms; run: chmod 600 $ENV_FILE"
 
   local missing=()
-  for key in MESH_DOMAIN NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY \
-             DATABASE_URL MESH_KEK ORCHESTRATOR_INTERNAL_SECRET; do
+  for key in NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY \
+             DATABASE_URL ORCHESTRATOR_INTERNAL_SECRET; do
     [[ -n "$(env_value "$key")" ]] || missing+=("$key")
   done
+
+  DOMAIN="${SAYABOT_DOMAIN:-${MESH_DOMAIN:-$(env_fallback SAYABOT_DOMAIN MESH_DOMAIN)}}"
+  [[ -n "$DOMAIN" ]] || missing+=(SAYABOT_DOMAIN)
+
+  local kek
+  kek="${SAYABOT_KEK:-${MESH_KEK:-$(env_fallback SAYABOT_KEK MESH_KEK)}}"
+  [[ -n "$kek" ]] || missing+=(SAYABOT_KEK)
+
   ((${#missing[@]} == 0)) || die "Empty required values in $ENV_FILE: ${missing[*]}"
 
-  DOMAIN="$(env_value MESH_DOMAIN)"
-  [[ "$DOMAIN" != "mesh.example.com" ]] || die "Set MESH_DOMAIN to your real domain."
+  [[ "$DOMAIN" != "sayabot.example.com" && "$DOMAIN" != "mesh.example.com" ]] || die "Set SAYABOT_DOMAIN to your real domain."
   [[ "$(env_value DATABASE_URL)" != *":6543/"* ]] || die "DATABASE_URL uses the transaction pooler (6543). Use the session pooler (5432)."
   (( $(env_value ORCHESTRATOR_INTERNAL_SECRET | wc -c) > 16 )) || die "ORCHESTRATOR_INTERNAL_SECRET must be at least 16 characters."
 
@@ -107,7 +130,8 @@ record_release() {
 
 images_exist() {
   local prefix tag="$1"
-  prefix="$(env_value MESH_IMAGE_PREFIX)"; prefix="${prefix:-mesh}"
+  prefix="${SAYABOT_IMAGE_PREFIX:-${MESH_IMAGE_PREFIX:-$(env_fallback SAYABOT_IMAGE_PREFIX MESH_IMAGE_PREFIX)}}"
+  prefix="${prefix:-sayabot}"
   for svc in "${APP_SERVICES[@]}"; do
     docker image inspect "$prefix/$svc:$tag" >/dev/null 2>&1 || return 1
   done
@@ -115,8 +139,10 @@ images_exist() {
 
 prune_old_images() {
   local keep prefix
-  keep="$(env_value MESH_KEEP_RELEASES)"; keep="${keep:-3}"
-  prefix="$(env_value MESH_IMAGE_PREFIX)"; prefix="${prefix:-mesh}"
+  keep="${SAYABOT_KEEP_RELEASES:-${MESH_KEEP_RELEASES:-$(env_fallback SAYABOT_KEEP_RELEASES MESH_KEEP_RELEASES)}}"
+  keep="${keep:-3}"
+  prefix="${SAYABOT_IMAGE_PREFIX:-${MESH_IMAGE_PREFIX:-$(env_fallback SAYABOT_IMAGE_PREFIX MESH_IMAGE_PREFIX)}}"
+  prefix="${prefix:-sayabot}"
   [[ -f "$RELEASES_FILE" ]] || return 0
   mapfile -t keep_tags < <(awk '{print $1}' "$RELEASES_FILE" | tail -n "$keep")
   for image in "${APP_SERVICES[@]}"; do
@@ -194,18 +220,20 @@ checkout() {
 }
 
 build_images() {
-  log "Building images for $MESH_TAG (first build takes several minutes)"
+  log "Building images for $SAYABOT_TAG (first build takes several minutes)"
   DOCKER_BUILDKIT=1 compose build --pull "${APP_SERVICES[@]}"
   # Keep a moving `latest` so manual `docker compose` commands use the newest release.
-  local prefix; prefix="$(env_value MESH_IMAGE_PREFIX)"; prefix="${prefix:-mesh}"
+  local prefix
+  prefix="${SAYABOT_IMAGE_PREFIX:-${MESH_IMAGE_PREFIX:-$(env_fallback SAYABOT_IMAGE_PREFIX MESH_IMAGE_PREFIX)}}"
+  prefix="${prefix:-sayabot}"
   for svc in "${APP_SERVICES[@]}"; do
-    docker tag "$prefix/$svc:$MESH_TAG" "$prefix/$svc:latest"
+    docker tag "$prefix/$svc:$SAYABOT_TAG" "$prefix/$svc:latest"
   done
   build_computer_image
 }
 
 pull_images() {
-  log "Pulling images for $MESH_TAG"
+  log "Pulling images for $SAYABOT_TAG"
   compose pull "${APP_SERVICES[@]}"
   build_computer_image
 }
@@ -232,7 +260,7 @@ run_migrations() {
 }
 
 roll_out() {
-  log "Starting orchestrator and web ($MESH_TAG)"
+  log "Starting orchestrator and web ($SAYABOT_TAG)"
   compose up -d --no-build --remove-orphans "${APP_SERVICES[@]}"
   wait_healthy "${APP_SERVICES[@]}" || return 1
   log "Starting nginx and certbot"
@@ -249,8 +277,9 @@ rollback_to() {
   [[ -n "$tag" ]] || die "No previous release recorded to roll back to."
   images_exist "$tag" || die "Images for release $tag are no longer on this host."
   warn "Rolling back to $tag"
+  SAYABOT_TAG="$tag"
   MESH_TAG="$tag"
-  export MESH_TAG
+  export SAYABOT_TAG MESH_TAG
   compose up -d --no-build --remove-orphans "${APP_SERVICES[@]}"
   wait_healthy "${APP_SERVICES[@]}" && public_check && ok "Rolled back to $tag"
 }
@@ -271,22 +300,23 @@ cmd_deploy() {
 
   local previous
   previous="$(current_release)"
-  MESH_TAG="$(git -C "$REPO_DIR" rev-parse --short=12 HEAD)"
-  export MESH_TAG
-  log "Deploying $MESH_TAG to $DOMAIN${previous:+ (current: $previous)}"
+  SAYABOT_TAG="$(git -C "$REPO_DIR" rev-parse --short=12 HEAD)"
+  MESH_TAG="$SAYABOT_TAG"
+  export SAYABOT_TAG MESH_TAG
+  log "Deploying $SAYABOT_TAG to $DOMAIN${previous:+ (current: $previous)}"
 
   if (( pull )); then pull_images; else build_images; fi
   [[ "${SKIP_MIGRATIONS:-0}" == "1" ]] || run_migrations
 
   if roll_out; then
-    record_release "$MESH_TAG"
+    record_release "$SAYABOT_TAG"
     prune_old_images
-    ok "Release $MESH_TAG is live at https://$DOMAIN"
+    ok "Release $SAYABOT_TAG is live at https://$DOMAIN"
   else
-    warn "Release $MESH_TAG failed its health checks."
-    if [[ -n "$previous" && "$previous" != "$MESH_TAG" ]]; then
+    warn "Release $SAYABOT_TAG failed its health checks."
+    if [[ -n "$previous" && "$previous" != "$SAYABOT_TAG" ]]; then
       rollback_to "$previous" || die "Rollback to $previous also failed. Check: ./deploy/deploy.sh logs"
-      die "Deploy of $MESH_TAG failed and was rolled back to $previous."
+      die "Deploy of $SAYABOT_TAG failed and was rolled back to $previous."
     fi
     die "Deploy failed and there is no previous release to fall back to. Check: ./deploy/deploy.sh logs"
   fi
@@ -317,26 +347,44 @@ main() {
       [[ "$cmd" == deploy ]] || set -- "$cmd" "$@"
       cmd_deploy "$@" ;;
     rollback) cmd_rollback "$@" ;;
-    migrate) preflight; MESH_TAG="$(current_release)"; MESH_TAG="${MESH_TAG:-latest}"; export MESH_TAG; run_migrations; ok "Migrations applied" ;;
+    migrate)
+      preflight
+      SAYABOT_TAG="$(current_release)"
+      SAYABOT_TAG="${SAYABOT_TAG:-latest}"
+      MESH_TAG="$SAYABOT_TAG"
+      export SAYABOT_TAG MESH_TAG
+      run_migrations
+      ok "Migrations applied" ;;
     seed)
-      preflight; MESH_TAG="$(current_release)"; MESH_TAG="${MESH_TAG:-latest}"; export MESH_TAG
+      preflight
+      SAYABOT_TAG="$(current_release)"
+      SAYABOT_TAG="${SAYABOT_TAG:-latest}"
+      MESH_TAG="$SAYABOT_TAG"
+      export SAYABOT_TAG MESH_TAG
       compose --profile tools run --rm migrate node --import tsx src/seed.ts ;;
     status)
-      MESH_TAG="$(current_release)"; export MESH_TAG
+      SAYABOT_TAG="$(current_release)"
+      MESH_TAG="$SAYABOT_TAG"
+      export SAYABOT_TAG MESH_TAG
       compose ps
-      echo; log "Current release: ${MESH_TAG:-none}" ;;
+      echo; log "Current release: ${SAYABOT_TAG:-none}" ;;
     reload)
       # `restart` keeps the old environment; `up` recreates containers whose env_file changed.
       # Server-only values (SAYA_AI_*, keys, tokens) apply this way. NEXT_PUBLIC_* need a full deploy.
       preflight; acquire_lock
-      MESH_TAG="$(current_release)"; [[ -n "$MESH_TAG" ]] || die "No release deployed yet. Run ./deploy/deploy.sh first."
-      export MESH_TAG
-      log "Applying .env.production to ${APP_SERVICES[*]} ($MESH_TAG)"
+      SAYABOT_TAG="$(current_release)"
+      [[ -n "$SAYABOT_TAG" ]] || die "No release deployed yet. Run ./deploy/deploy.sh first."
+      MESH_TAG="$SAYABOT_TAG"
+      export SAYABOT_TAG MESH_TAG
+      log "Applying .env.production to ${APP_SERVICES[*]} ($SAYABOT_TAG)"
       compose up -d --no-build --force-recreate "${APP_SERVICES[@]}"
       wait_healthy "${APP_SERVICES[@]}" && public_check && ok "New settings are live" || die "Services are not healthy after reload. Check: ./deploy/deploy.sh logs" ;;
-    logs) MESH_TAG="$(current_release)"; export MESH_TAG; compose logs -f --tail 200 "$@" ;;
-    restart) MESH_TAG="$(current_release)"; export MESH_TAG; compose restart "$@" ;;
-    down) MESH_TAG="$(current_release)"; export MESH_TAG; compose down ;;
+    logs)
+      SAYABOT_TAG="$(current_release)"; MESH_TAG="$SAYABOT_TAG"; export SAYABOT_TAG MESH_TAG; compose logs -f --tail 200 "$@" ;;
+    restart)
+      SAYABOT_TAG="$(current_release)"; MESH_TAG="$SAYABOT_TAG"; export SAYABOT_TAG MESH_TAG; compose restart "$@" ;;
+    down)
+      SAYABOT_TAG="$(current_release)"; MESH_TAG="$SAYABOT_TAG"; export SAYABOT_TAG MESH_TAG; compose down ;;
     releases) [[ -f "$RELEASES_FILE" ]] && cat "$RELEASES_FILE" || echo "No releases yet." ;;
     -h|--help|help) usage ;;
     *) usage; exit 1 ;;

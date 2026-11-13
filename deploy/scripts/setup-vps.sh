@@ -117,7 +117,7 @@ chmod 600 "$AUTH_KEYS"
 if [[ "$HARDEN_SSH" == "yes" ]]; then
   if [[ -s "$AUTH_KEYS" ]]; then
     log "Hardening SSH (key-only auth, no root password login, port ${SSH_PORT})"
-    cat >/etc/ssh/sshd_config.d/99-mesh-hardening.conf <<EOF
+    cat >/etc/ssh/sshd_config.d/99-sayabot-hardening.conf <<EOF
 Port ${SSH_PORT}
 PermitRootLogin prohibit-password
 PasswordAuthentication no
@@ -156,7 +156,7 @@ ufw allow 443/tcp comment "https" >/dev/null
 ufw --force enable >/dev/null
 
 log "Configuring fail2ban for sshd"
-cat >/etc/fail2ban/jail.d/mesh.local <<EOF
+cat >/etc/fail2ban/jail.d/sayabot.local <<EOF
 [sshd]
 enabled  = true
 port     = ${SSH_PORT}
@@ -179,7 +179,7 @@ if [[ "$SWAP_SIZE" != "0" ]] && ! swapon --show | grep -q .; then
 fi
 
 log "Applying sysctl tuning"
-cat >/etc/sysctl.d/99-mesh.conf <<'EOF'
+cat >/etc/sysctl.d/99-sayabot.conf <<'EOF'
 vm.swappiness = 10
 net.core.somaxconn = 4096
 net.ipv4.tcp_max_syn_backlog = 4096
@@ -194,7 +194,7 @@ cat <<EOF
 
 Next steps (as ${DEPLOY_USER}):
   ssh -p ${SSH_PORT} ${DEPLOY_USER}@<this-server>
-  git clone <your repo> ~/mesh && cd ~/mesh
+  git clone <your repo> ~/sayabot && cd ~/sayabot
   cp deploy/.env.production.example deploy/.env.production && chmod 600 deploy/.env.production
   \$EDITOR deploy/.env.production
   ./deploy/scripts/init-letsencrypt.sh

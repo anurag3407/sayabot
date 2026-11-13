@@ -59,12 +59,19 @@ jobs:
             set -e
             echo "==> Starting deploy on Lightsail VPS ($(uname -n))..."
             
-            if [ ! -d "$HOME/mesh" ]; then
-              echo "==> Cloning repository into $HOME/mesh..."
-              git clone https://github.com/anurag3407/Mesh.git "$HOME/mesh"
+            # Support both legacy $HOME/mesh and new $HOME/sayabot, migrating if needed
+            TARGET_DIR="$HOME/sayabot"
+            if [ ! -d "$TARGET_DIR" ] && [ -d "$HOME/mesh" ]; then
+              echo "==> Migrating existing checkout from $HOME/mesh to $TARGET_DIR..."
+              mv "$HOME/mesh" "$TARGET_DIR"
+            fi
+
+            if [ ! -d "$TARGET_DIR" ]; then
+              echo "==> Cloning repository into $TARGET_DIR..."
+              git clone https://github.com/anurag3407/sayabot.git "$TARGET_DIR"
             fi
             
-            cd "$HOME/mesh"
+            cd "$TARGET_DIR"
             echo "==> Fetching latest changes from origin/main..."
             git fetch origin main
             git reset --hard "${1:-origin/main}"

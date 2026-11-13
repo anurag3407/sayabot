@@ -9,7 +9,7 @@ body:
       value: |
         ### Propose a New Workspace Connector 🔌
         Sayabot connects agents directly to enterprise workspaces (Slack, Google Drive, GitHub, Jira) using a secure, zero-leak architecture:
-        - **Envelope Encryption**: All tokens and secrets are encrypted with AES-256-GCM using `MESH_KEK`.
+        - **Envelope Encryption**: All tokens and secrets are encrypted with AES-256-GCM using `SAYABOT_KEK`.
         - **Fine-Grained Grants**: Permissions are strictly scoped via `agent_connector_grants` (e.g., specific channels, folders, or repositories).
         - **Provider Rate Limiting**: Built-in sliding-window rate limiters prevent API bans.
         - **Danger Classification**: Destructive actions are gated by human-in-the-loop approval.
@@ -128,7 +128,7 @@ body:
       options:
         - label: "I have reviewed existing connectors in `apps/orchestrator/src/connectors/`."
           required: true
-        - label: "I understand that all tokens must be encrypted with `MESH_KEK` using AES-256-GCM envelope encryption."
+        - label: "I understand that all tokens must be encrypted with `SAYABOT_KEK` using AES-256-GCM envelope encryption."
           required: true
         - label: "I am willing to contribute code, tests, or test credentials for this connector."
           required: false

@@ -5,17 +5,17 @@ blank_issues_enabled: false
 
 contact_links:
   - name: "🔒 Security Vulnerability Report (Private Disclosure)"
-    url: "https://github.com/anurag3407/Mesh/security/advisories/new"
+    url: "https://github.com/anurag3407/sayabot/security/advisories/new"
     about: "Report sensitive security vulnerabilities, secret leakage, or sandbox escape exploits privately. Do NOT open public issues for security vulnerabilities."
 
   - name: "💬 GitHub Discussions & Community Forum"
-    url: "https://github.com/anurag3407/Mesh/discussions"
+    url: "https://github.com/anurag3407/sayabot/discussions"
     about: "Ask questions, share ideas, showcase custom agent workflows, and connect with the Sayabot community."
 
   - name: "📖 Sayabot Technical Documentation"
-    url: "https://github.com/anurag3407/Mesh/tree/main/docs"
+    url: "https://github.com/anurag3407/sayabot/tree/main/docs"
     about: "Explore architecture guides, self-hosting runbooks, connectors, and sandbox configuration manuals."
 
   - name: "🚀 Self-Hosting & Production Operations Runbook"
-    url: "https://github.com/anurag3407/Mesh/blob/main/docs/self-hosting.md"
+    url: "https://github.com/anurag3407/sayabot/blob/main/docs/self-hosting.md"
     about: "Step-by-step production deployment guide for Docker Compose, Supabase, ingress, and reverse proxies."

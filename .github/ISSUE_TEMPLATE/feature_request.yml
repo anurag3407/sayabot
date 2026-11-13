@@ -9,7 +9,7 @@ body:
       value: |
         ### Propose a New Feature for Sayabot 🚀
         We welcome proposals for new agent capabilities, workflow nodes, connectors, UI enhancements, and infrastructure features!
-        Please review [existing issues](https://github.com/anurag3407/Mesh/issues) and [discussions](https://github.com/anurag3407/Mesh/discussions) before submitting.
+        Please review [existing issues](https://github.com/anurag3407/sayabot/issues) and [discussions](https://github.com/anurag3407/sayabot/discussions) before submitting.
 
   - type: dropdown
     id: feature-domain

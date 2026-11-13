@@ -99,7 +99,7 @@ If database changes are included:
 
 <!-- Sayabot enforces a strict zero-trust and envelope-encryption security perimeter. -->
 
-- [ ] **Envelope Encryption**: Any connector tokens, API keys, or credentials use AES-256-GCM envelope encryption with `MESH_KEK` (`ciphertext`, `iv`, `tag`).
+- [ ] **Envelope Encryption**: Any connector tokens, API keys, or credentials use AES-256-GCM envelope encryption with `SAYABOT_KEK` (`ciphertext`, `iv`, `tag`).
 - [ ] **Zero Secret Leakage**: No raw API keys, passwords, database URLs, or tokens are logged or returned to client responses.
 - [ ] **Multi-Tenant RLS**: Row-Level Security policies prevent cross-tenant workspace/room data leaks.
 - [ ] **Input Validation**: All endpoints and tool parameters use strict Zod / Hono schema validation.

@@ -9,9 +9,9 @@ body:
       value: |
         ### Thank you for reporting a bug in Sayabot! 🤖
         Before submitting, please ensure:
-        1. You have searched [existing issues](https://github.com/anurag3407/Mesh/issues) to avoid duplicates.
-        2. If this is a **security vulnerability** or involves token leakage, report it privately via [GitHub Security Advisories](https://github.com/anurag3407/Mesh/security/advisories/new).
-        3. Do **NOT** paste raw secrets, API keys (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`), `MESH_KEK`, or production database connection strings.
+        1. You have searched [existing issues](https://github.com/anurag3407/sayabot/issues) to avoid duplicates.
+        2. If this is a **security vulnerability** or involves token leakage, report it privately via [GitHub Security Advisories](https://github.com/anurag3407/sayabot/security/advisories/new).
+        3. Do **NOT** paste raw secrets, API keys (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`), `SAYABOT_KEK`, or production database connection strings.
 
   - type: dropdown
     id: component
@@ -141,7 +141,7 @@ body:
       options:
         - label: "I have searched existing GitHub issues and confirmed this is not a duplicate."
           required: true
-        - label: "I have verified that all sensitive credentials (`MESH_KEK`, API keys, passwords) are sanitized from my logs."
+        - label: "I have verified that all sensitive credentials (`SAYABOT_KEK`, API keys, passwords) are sanitized from my logs."
           required: true
         - label: "I am running the latest code from `main` or have verified the bug persists on `main`."
           required: false

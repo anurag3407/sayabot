@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Issues the first Let's Encrypt certificate for MESH_DOMAIN. Run once per server,
+# Issues the first Let's Encrypt certificate for SAYABOT_DOMAIN. Run once per server,
 # before the first deploy (renewal is automatic afterwards via the certbot service).
 #
 #   ./deploy/scripts/init-letsencrypt.sh            # real certificate
@@ -28,9 +28,19 @@ die() { printf '\033[1;31m[tls]\033[0m %s\n' "$*" >&2; exit 1; }
 
 [[ -f "$ENV_FILE" ]] || die "Missing $ENV_FILE (copy .env.production.example first)."
 env_value() { grep -E "^$1=" "$ENV_FILE" | tail -n1 | cut -d= -f2- | sed -e 's/^"//' -e 's/"$//'; }
-DOMAIN="$(env_value MESH_DOMAIN)"
+env_fallback() {
+  local val
+  val="$(env_value "$1")"
+  if [[ -n "$val" ]]; then
+    echo "$val"
+  elif [[ $# -ge 2 ]]; then
+    env_value "$2"
+  fi
+}
+
+DOMAIN="${SAYABOT_DOMAIN:-${MESH_DOMAIN:-$(env_fallback SAYABOT_DOMAIN MESH_DOMAIN)}}"
 EMAIL="$(env_value LETSENCRYPT_EMAIL)"
-[[ -n "$DOMAIN" && "$DOMAIN" != "mesh.example.com" ]] || die "Set MESH_DOMAIN in $ENV_FILE."
+[[ -n "$DOMAIN" && "$DOMAIN" != "sayabot.example.com" && "$DOMAIN" != "mesh.example.com" ]] || die "Set SAYABOT_DOMAIN in $ENV_FILE."
 [[ -n "$EMAIL" && "$EMAIL" != "ops@example.com" ]] || die "Set LETSENCRYPT_EMAIL in $ENV_FILE."
 
 mkdir -p "$DEPLOY_DIR/certbot/conf" "$DEPLOY_DIR/certbot/www"

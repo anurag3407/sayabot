@@ -2,19 +2,23 @@
 #   docker compose -f docker-compose.yml -f docker-compose.tunnel.yml ...
 #
 # nginx publishes nothing and serves plain HTTP on the internal :8080; cloudflared dials out to
-# Cloudflare and forwards https://MESH_DOMAIN to it. certbot is not used.
+# Cloudflare and forwards https://SAYABOT_DOMAIN to it. certbot is not used.
 #
 # In the Cloudflare dashboard (Zero Trust → Networks → Tunnels → your tunnel → Public Hostname):
-#   MESH_DOMAIN  →  Service: HTTP  →  URL: nginx:8080
+#   SAYABOT_DOMAIN  →  Service: HTTP  →  URL: nginx:8080
 # WebSockets (/collab) work through the tunnel with no extra settings.
 
 services:
   nginx:
     ports: !reset []
+    environment:
+      SAYABOT_DOMAIN: ${SAYABOT_DOMAIN:-${MESH_DOMAIN}}
+      MESH_DOMAIN: ${SAYABOT_DOMAIN:-${MESH_DOMAIN}}
     volumes: !override
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/templates-tunnel:/etc/nginx/templates:ro
       - ./nginx/snippets:/etc/nginx/snippets:ro
+      - ./nginx/snippets/sayabot-locations.conf:/etc/nginx/snippets/sayabot-locations.conf:ro
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/api/health || exit 1"]
       interval: 15s
@@ -39,7 +43,10 @@ services:
         max-size: "20m"
         max-file: "5"
     networks:
-      - mesh
+      - sayabot
     depends_on:
       nginx:
         condition: service_healthy
+
+networks:
+  sayabot:
