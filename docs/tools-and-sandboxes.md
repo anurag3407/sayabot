@@ -84,9 +84,10 @@ Docker Engine older than 26 (API 1.45).
 
 #### Deploying with docker compose
 
-`deploy/deploy.sh` builds `saaya/computer` whenever `computerd` is in `MESH_APP_SERVICES`
-(previously nothing built it, so computers failed with "No such image"). With
-`COMPUTER_BACKEND=smolvm` it also exports the image for smolvm and adds
+`deploy/deploy.sh` builds the `saaya/computer` image whenever `computerd` is included in `SAYABOT_APP_SERVICES`
+(with legacy fallback to `MESH_APP_SERVICES`; previously nothing built it, so computers failed with "No such image").
+Application services use the `SAYABOT_IMAGE_PREFIX` (default: `sayabot`, e.g., `sayabot/computerd`, `sayabot/egress`).
+With `COMPUTER_BACKEND=smolvm`, `deploy/deploy.sh` also exports the image for smolvm and adds
 `deploy/docker-compose.smolvm.yml`, which gives computerd `/dev/kvm` and the host's `/opt/smolvm`.
 
 ### Linux Shell & File Tools

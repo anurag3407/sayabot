@@ -41,7 +41,7 @@ Developer & Contributor Manuals:
 Start here if you want to run Sayabot on your local machine. Covers:
 
 - System prerequisites (Node 24, pnpm 10, Docker, Supabase).
-- Generating encryption keys (`MESH_KEK`, `ORCHESTRATOR_INTERNAL_SECRET`).
+- Generating encryption keys (`SAYABOT_KEK` [alias `MESH_KEK`], `ORCHESTRATOR_INTERNAL_SECRET`).
 - Supabase project creation, session pooler connection, and authentication config.
 - Applying database migrations (`0001` through `0014_routines.sql`).
 - First sign-in and workspace onboarding wizard.
@@ -51,10 +51,10 @@ Start here if you want to run Sayabot on your local machine. Covers:
 
 The comprehensive operational guide for hosting Sayabot on your own infrastructure:
 
-- **Ingress pathways**: Automated Single VPS (`deploy/`), Cloudflare Zero Trust Tunnels, Tailscale Private Mesh, Split Cloud (Vercel + Fly.io), and Local Homelab.
+- **Ingress pathways**: Automated Single VPS (`deploy/` with `setup-vps.sh` and `deploy.sh`), Cloudflare Zero Trust Tunnels, Tailscale Private Network, Split Cloud (Vercel + Fly.io), and Local Homelab.
 - **Database configuration**: Supabase Session Pooler (port 5432) vs Transaction Pooler (6543), migrations, and RLS.
-- **Secrets & encryption**: `MESH_KEK` (AES-256-GCM), `ORCHESTRATOR_INTERNAL_SECRET`, and full environment variable dictionary.
-- **Networking & WebSockets**: Nginx/Caddy proxy tuning, Hocuspocus WSS (`/collab`), and unbuffered SSE/NDJSON streaming.
+- **Secrets & encryption**: `SAYABOT_KEK` (AES-256-GCM envelope encryption with legacy `MESH_KEK` alias), `ORCHESTRATOR_INTERNAL_SECRET`, and full environment variable dictionary (`SAYABOT_DOMAIN`, `SAYABOT_APP_SERVICES`, etc.).
+- **Networking & WebSockets**: Nginx proxy tuning (`sayabot-locations.conf`, `sayabot.conf.template`), Hocuspocus WSS (`/collab`), and unbuffered SSE/NDJSON streaming.
 - **Sandboxes & execution**: `computerd` persistent Docker containers, headless Chromium CDP, and egress SSRF firewall.
 - **Universal MCP Gateway**: Client connection guides for Claude Desktop, Claude Code, Cursor, Windsurf, and ChatGPT.
 - **Operations & reliability**: Nightly `pg_dump` backups, zero-downtime rolling updates (`deploy.sh`), rollback mechanics, and troubleshooting matrix.
@@ -63,7 +63,7 @@ The comprehensive operational guide for hosting Sayabot on your own infrastructu
 
 End-to-end setup for running Sayabot as a 24/7 personal agent on your own server:
 
-- **Ingress**: open ports + Let's Encrypt, or a Cloudflare Tunnel with no open ports (`CLOUDFLARE_TUNNEL_TOKEN`).
+- **Ingress**: open ports + Let's Encrypt (`SAYABOT_DOMAIN`), or a Cloudflare Tunnel with no open ports (`CLOUDFLARE_TUNNEL_TOKEN`).
 - **Phone**: QR pairing, Allow / Don't allow and typed answers from notifications; browser notifications with Allow / Don't allow.
 - **Chat ingress**: Telegram, Discord and WhatsApp, with "waiting for your OK" notices in the chat.
 - **Automations**: results sent to a chat, plus "routine is done" alerts.
@@ -113,7 +113,7 @@ Explore the execution capabilities of Sayabot agents:
 Connect enterprise systems of record with zero-trust security:
 
 - **Two-Tier Architecture**: Organization-level credential vaults (`workspace_connectors`) decoupled from agent grants (`agent_connector_grants`).
-- **Cryptographic Security**: AES-256-GCM envelope encryption with `MESH_KEK`, zero token leakage, and PostgreSQL RLS.
+- **Cryptographic Security**: AES-256-GCM envelope encryption with `SAYABOT_KEK` (legacy alias `MESH_KEK`), zero token leakage, and PostgreSQL RLS.
 - **Provider Guides**: Setup for **Slack**, **Google Drive**, **GitHub**, and **Jira** (OAuth & API tokens, scopes, event subscriptions).
 - **Fine-Grained Scopes**: Enforce channel, folder, repo, and read-only boundaries per agent.
 - **Provider Rate Limiting**: Adaptive sliding-window exponential backoff with jitter and standard HTTP `Retry-After` header parsing.
@@ -131,9 +131,9 @@ Connect any AI tool or external client:
 
 Deploy Sayabot to high-availability environments:
 
-- Single-node VPS deployment with Docker Compose, Caddy/Nginx, and Let's Encrypt.
+- Single-node VPS deployment with Docker Compose (`deploy/docker-compose.yml`), automated VPS setup (`setup-vps.sh`), Nginx (`sayabot-locations.conf`), and Let's Encrypt (`init-letsencrypt.sh`).
 - Managed cloud setups: Supabase hosted, AWS/GCP container services, and background workers.
-- Environment variable configuration reference.
+- Environment variable configuration reference (`SAYABOT_DOMAIN`, `SAYABOT_KEK`, `SAYABOT_APP_SERVICES`, `SAYABOT_IMAGE_PREFIX`).
 
 ### 🧪 [Testing & Quality Verification](testing.md)
 
@@ -154,7 +154,7 @@ Mandatory high-priority manual for AI coding assistants (Claude, Cursor, Copilot
 - **Monorepo Directory Map**: In-depth anatomical breakdown of `apps/`, `packages/`, and `deploy/`.
 - **Exact pnpm & Turbo Commands**: Filtered commands for dev, build, typecheck, migrations, and tests.
 - **Five Golden Architectural Rules**:
-  1. _Never hardcode or leak secrets_: AES-256-GCM envelope encryption with `MESH_KEK` (`@sayabot/llm`).
+  1. _Never hardcode or leak secrets_: AES-256-GCM envelope encryption with `SAYABOT_KEK` / `MESH_KEK` (`@sayabot/llm`).
   2. _Never bypass room PostgreSQL advisory locks_: Deterministic serialization with `withRoomLock()`.
   3. _Database changes MUST follow Drizzle schemas_: Table definitions in `packages/db/src/schema/` and SQL migrations.
   4. _Dangerous tools MUST pass human approval gates_: Asynchronous human-in-the-loop gates in `toAuditedTools`.

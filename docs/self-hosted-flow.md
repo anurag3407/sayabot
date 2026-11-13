@@ -15,20 +15,22 @@ says what each step really does, including the limits.
 
 ## 0. Put the server online
 
-Follow [`deploy/README.md`](../deploy/README.md). There are two ways to expose it:
+Follow [`deploy/README.md`](../deploy/README.md). Copy `deploy/.env.production.example` to `deploy/.env.production` and configure your domain (`SAYABOT_DOMAIN`, legacy fallback `MESH_DOMAIN`), master encryption key (`SAYABOT_KEK`, legacy fallback `MESH_KEK`), and Supabase connection strings.
 
-|                         | Open ports + Let's Encrypt (default)      | Cloudflare Tunnel                   |
-| ----------------------- | ----------------------------------------- | ----------------------------------- |
-| Ports open on the VPS   | 22, 80, 443                               | 22 only                             |
-| Certificate             | `init-letsencrypt.sh`, renewed by certbot | Cloudflare's, nothing to renew      |
-| Turn it on              | nothing to set                            | set `CLOUDFLARE_TUNNEL_TOKEN`       |
-| SSO in front of the app | no                                        | optional, through Cloudflare Access |
+There are two ways to expose it:
+
+|                         | Open ports + Let's Encrypt (default)                  | Cloudflare Tunnel                   |
+| ----------------------- | ----------------------------------------------------- | ----------------------------------- |
+| Ports open on the VPS   | 22, 80, 443                                           | 22 only                             |
+| Certificate             | `deploy/scripts/init-letsencrypt.sh`, renewed by certbot | Cloudflare's, nothing to renew      |
+| Turn it on              | nothing to set                                        | set `CLOUDFLARE_TUNNEL_TOKEN`       |
+| SSO in front of the app | no                                                    | optional, through Cloudflare Access |
 
 **Tunnel setup:**
 
 1. Cloudflare dashboard → Zero Trust → Networks → Tunnels → **Create a tunnel** (cloudflared).
    Copy the token.
-2. On the tunnel, add a **Public Hostname**: your `MESH_DOMAIN` → Service **HTTP** → `nginx:8080`.
+2. On the tunnel, add a **Public Hostname**: your `SAYABOT_DOMAIN` (or legacy `MESH_DOMAIN`) → Service **HTTP** → `nginx:8080`.
 3. Put the token in `deploy/.env.production` as `CLOUDFLARE_TUNNEL_TOKEN=…` and run
    `./deploy/deploy.sh`. Skip `init-letsencrypt.sh`.
 4. Close the web ports: `sudo ufw delete allow 80/tcp && sudo ufw delete allow 443/tcp`.
@@ -125,7 +127,7 @@ was offline"_. Nothing stalls. Before this change, each call waited 25 seconds a
 
 This is not a live migration. Work that needs your Mac (a local file, a desktop-only app) waits
 until the Mac is back. Anything the cloud computer can do continues. The cloud computer needs
-`MESH_APP_SERVICES="orchestrator web computerd egress"` and
+`SAYABOT_APP_SERVICES="orchestrator web computerd egress"` (legacy fallback: `MESH_APP_SERVICES`) and
 `deploy/scripts/setup-computers.sh` on the VPS (see [`tools-and-sandboxes.md`](tools-and-sandboxes.md)).
 
 ## 6. Saya AI: your own model, for everyone, always current
@@ -166,9 +168,9 @@ endpoint somewhere else, and reload:
 - Keep aliases stable and change the ids behind them freely.
 
 **Privacy.** Browsers and phones only ever receive names and aliases
-(`GET /api/providers/saya`). The key, endpoint and real model ids stay on the server, and they are
-stripped from every agent subprocess, the same as the other server secrets. Usage and cost
-records store the real model id, so spend stays accurate across model changes.
+(`GET /api/providers/saya`). The key, endpoint and real model ids stay on the server (sealed using
+`SAYABOT_KEK`), and they are stripped from every agent subprocess, the same as the other server
+secrets. Usage and cost records store the real model id, so spend stays accurate across model changes.
 
 A server that only has the older `DEV_OPENAI_COMPAT_*` values shows them as Saya AI with one
 model. Nothing needs migrating.

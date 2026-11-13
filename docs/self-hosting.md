@@ -142,11 +142,11 @@ Sayabot is architected as a set of decoupled, purpose-built microservices coordi
 
 ### Network Boundaries and Dual-Bridge Isolation
 
-In production Docker Compose deployments, Sayabot partitions container networking into two distinct bridge networks:
+In production Docker Compose deployments (`deploy/docker-compose.yml`), Sayabot defines the `sayabot` stack and partitions container networking into two distinct bridge networks:
 
-1. **`mesh` (External Network)**: Standard Docker bridge network connecting `nginx`, `web`, `orchestrator`, and `egress`. Only `nginx` publishes host ports (`80` and `443`).
+1. **`sayabot` (External Network)**: Standard Docker bridge network connecting `nginx`, `web`, `orchestrator`, and `egress`. Only `nginx` publishes host ports (`80` and `443`).
 2. **`botnet` (`internal: true`)**: A dedicated bridge with **no default gateway to the external WAN**. Agent sandbox containers spawned by `computerd` reside solely on `botnet`.
-3. **The Egress Bastion**: The only container attached to both `mesh` and `botnet` is `apps/egress`. This guarantees that sandbox commands (`curl`, `git`, `npm`) cannot bypass security proxies or attack private cloud subnets directly.
+3. **The Egress Bastion**: The only container attached to both `sayabot` and `botnet` is `apps/egress`. This guarantees that sandbox commands (`curl`, `git`, `npm`) cannot bypass security proxies or attack private cloud subnets directly.
 
 ---
 
@@ -193,7 +193,7 @@ Internet ──▶ Nginx (:80/:443) ──┬──▶ apps/web (:3000) ──�
 
 #### Step 1: Automated VPS Server Hardening
 
-Run the automated provisioning script from your local machine to harden SSH, configure UFW, create a dedicated non-root `deploy` user, enable fail2ban, and allocate 4 GB swap:
+Run the automated provisioning script (`deploy/scripts/setup-vps.sh`) from your local machine to harden SSH, configure UFW, create a dedicated non-root `deploy` user, enable fail2ban, apply kernel sysctl tuning, and allocate 4 GB swap:
 
 ```bash
 # 1. Copy hardening script to the remote host
@@ -206,6 +206,14 @@ ssh root@YOUR_SERVER_IP 'bash /root/setup-vps.sh \
   --swap 4G'
 ```
 
+What `setup-vps.sh` configures automatically:
+- **SSH Hardening (`/etc/ssh/sshd_config.d/99-sayabot-hardening.conf`)**: Enforces key-only authentication, disables password authentication and root password login (`PermitRootLogin prohibit-password`, `PasswordAuthentication no`), limits auth attempts (`MaxAuthTries 4`), and configures keepalives.
+- **UFW Firewall**: Sets default drop incoming policy; allows only SSH, HTTP (`80/tcp`), and HTTPS (`443/tcp`).
+- **Fail2ban (`/etc/fail2ban/jail.d/sayabot.local`)**: Protects sshd against brute-force attempts (bans IPs exceeding 5 failures within 10 minutes for 1 hour).
+- **Kernel Sysctl Tuning (`/etc/sysctl.d/99-sayabot.conf`)**: Optimizes networking connection queues (`net.core.somaxconn = 4096`, `net.ipv4.tcp_max_syn_backlog = 4096`), lowers swappiness (`vm.swappiness = 10`), expands local port range (`10240 65535`), enables TCP SYN cookies, and raises `fs.file-max = 1048576`.
+- **Swap Allocation**: Provisions 4 GB swap to prevent out-of-memory errors during container builds.
+- **Clone Target Directory**: Clones the repository into `~/sayabot` for the `deploy` user.
+
 Verify you can log in as `deploy` before closing the root session:
 
 ```bash
@@ -214,7 +222,7 @@ ssh deploy@YOUR_SERVER_IP
 
 #### Step 2: Clone Repository & Configure Environment
 
-Log in as the `deploy` user, clone your repository, and initialize the production environment file:
+Log in as the `deploy` user, clone your repository to `~/sayabot`, and initialize the production environment file:
 
 ```bash
 # Clone repository
@@ -239,7 +247,8 @@ openssl rand -hex 32
 Edit `deploy/.env.production` and configure your settings:
 
 ```env
-MESH_DOMAIN=sayabot.yourcompany.com
+# Primary domain (legacy fallback: MESH_DOMAIN)
+SAYABOT_DOMAIN=sayabot.yourcompany.com
 LETSENCRYPT_EMAIL=admin@yourcompany.com
 
 # Supabase Credentials (Session Pooler on Port 5432)
@@ -248,13 +257,13 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOi...
 SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOi...
 DATABASE_URL=postgresql://postgres.xxxxxxxxxxxx:[PASSWORD]@aws-0-us-east-1.pooler.supabase.com:5432/postgres
 
-# Master Cryptographic Secrets
+# Master Cryptographic Secrets (primary: SAYABOT_KEK, legacy fallback: MESH_KEK)
 SAYABOT_KEK=your_generated_base64_kek_here
-MESH_KEK=your_generated_base64_kek_here
 ORCHESTRATOR_INTERNAL_SECRET=your_generated_hex_secret_here
 
-# Services to build (web + orchestrator standard; computerd + egress if running Docker sandboxes)
-MESH_APP_SERVICES="orchestrator web"
+# Services to build (primary: SAYABOT_APP_SERVICES, legacy fallback: MESH_APP_SERVICES)
+# Standard: "orchestrator web" (add "computerd egress" if running persistent Docker sandboxes)
+SAYABOT_APP_SERVICES="orchestrator web"
 ```
 
 #### Step 3: Issue Let's Encrypt TLS Certificate
@@ -395,7 +404,8 @@ sudo tailscale cert sayabot-srv.your-tailnet.ts.net
 In your `deploy/.env.production`, set:
 
 ```env
-MESH_DOMAIN=sayabot-srv.your-tailnet.ts.net
+# Primary domain (legacy fallback: MESH_DOMAIN)
+SAYABOT_DOMAIN=sayabot-srv.your-tailnet.ts.net
 NEXT_PUBLIC_SITE_URL=https://sayabot-srv.your-tailnet.ts.net
 NEXT_PUBLIC_COLLAB_URL=wss://sayabot-srv.your-tailnet.ts.net/collab
 ```
@@ -482,6 +492,7 @@ fly deploy
    NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
    SUPABASE_SERVICE_ROLE_KEY=eyJ...
    DATABASE_URL=postgresql://postgres.xxx:pass@aws-0-region.pooler.supabase.com:5432/postgres
+   SAYABOT_DOMAIN=sayabot.yourcompany.com
    SAYABOT_KEK=your_base64_kek
    MESH_KEK=your_base64_kek
    ORCHESTRATOR_INTERNAL_SECRET=your_hex_secret
@@ -507,7 +518,7 @@ pnpm install
 cp .env.example .env
 
 # Generate keys
-openssl rand -base64 32  # Add to SAYABOT_KEK and MESH_KEK
+openssl rand -base64 32  # Add to SAYABOT_KEK (or legacy MESH_KEK)
 openssl rand -hex 32     # Add to ORCHESTRATOR_INTERNAL_SECRET
 
 # 3. Apply database migrations
@@ -623,7 +634,7 @@ flowchart TD
     Admin -->|Assigns Granular Scope| ACG[agent_connector_grants Table<br/>allowedFolders, allowedChannels, allowedRepos]
     ACG -->|Binds to| Agent[Target Agent]
     Agent -->|Tool Call| Tool[Built-in Connector Tool]
-    Tool -->|Decrypt with MESH_KEK| Orch[Orchestrator Backend]
+    Tool -->|Decrypt with SAYABOT_KEK| Orch[Orchestrator Backend]
     Orch -->|Enforces Scope Limits| ExtAPI[External API: Slack / GitHub / Drive]
 ```
 
@@ -731,11 +742,11 @@ In your Supabase project dashboard (**Authentication → URL Configuration**):
 Sayabot employs zero-plaintext credential storage across all services. Third-party provider keys (OpenAI, Anthropic, Gemini, DeepSeek), workspace connector credentials (Slack Bot tokens, GitHub App tokens, Google Drive OAuth tokens), external MCP connection headers, and bot webhook secrets are sealed using authenticated AES-256-GCM encryption before writing to PostgreSQL.
 
 ```
-Plaintext Credential ──▶ AES-256-GCM Encrypt(MESH_KEK) ──▶ { ciphertext, iv, tag } + last4
+Plaintext Credential ──▶ AES-256-GCM Encrypt(SAYABOT_KEK) ──▶ { ciphertext, iv, tag } + last4
 ```
 
 - **Cryptographic Specifications**:
-  - The KEK (`MESH_KEK` or `SAYABOT_KEK`) must be a cryptographically secure 32-byte (256-bit) Base64-encoded string generated via `openssl rand -base64 32`.
+  - The KEK (primary `SAYABOT_KEK`, backwards-compatible fallback `MESH_KEK`) must be a cryptographically secure 32-byte (256-bit) Base64-encoded string generated via `openssl rand -base64 32`.
   - Encryption uses Node.js `crypto.createCipheriv('aes-256-gcm', key, iv)` with a randomized 12-byte initialization vector (IV) and a 16-byte authentication tag per encryption operation.
   - The database records the ciphertext, hex-encoded IV, auth tag, and the trailing 4 characters (`last4`) to enable human operator recognition in the settings UI without ever exposing plaintext secrets.
 - **Envelope Encryption for Connectors**:
@@ -744,14 +755,14 @@ Plaintext Credential ──▶ AES-256-GCM Encrypt(MESH_KEK) ──▶ { ciphert
   - Credentials are wiped from memory after turn resolution; raw tokens are never passed to client browser sessions, stored in localStorage, or logged to disk.
 
 > [!WARNING]
-> **Immutability of `MESH_KEK` / `SAYABOT_KEK`**: Do NOT rotate or alter this key without running an explicit re-encryption migration script across the `workspace_connectors`, `vaults`, `mcp_servers`, and `agent_credentials` tables. If the KEK is lost or altered, all stored connector tokens and BYOK API keys become permanently cryptographically unrecoverable.
+> **Immutability of `SAYABOT_KEK` / `MESH_KEK`**: Do NOT rotate or alter this key without running an explicit re-encryption migration script across the `workspace_connectors`, `vaults`, `mcp_servers`, and `agent_credentials` tables. If the KEK is lost or altered, all stored connector tokens and BYOK API keys become permanently cryptographically unrecoverable.
 
 ### Build-Time Inlining (`NEXT_PUBLIC_*`) vs. Runtime Variables
 
 Next.js inlines environment variables prefixed with `NEXT_PUBLIC_` **directly into client JavaScript bundles at compile time**.
 
-- Modifying `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SITE_URL`, or `MESH_DOMAIN` **requires rebuilding the Docker image** (`./deploy/deploy.sh`).
-- Modifying runtime backend secrets (`SUPABASE_SERVICE_ROLE_KEY`, `MESH_KEK`, `SLACK_CLIENT_SECRET`, etc.) only requires restarting the containers:
+- Modifying `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SITE_URL`, or `SAYABOT_DOMAIN` **requires rebuilding the Docker image** (`./deploy/deploy.sh`).
+- Modifying runtime backend secrets (`SUPABASE_SERVICE_ROLE_KEY`, `SAYABOT_KEK`, `SLACK_CLIENT_SECRET`, etc.) only requires restarting the containers:
   ```bash
   docker compose --env-file deploy/.env.production -f deploy/docker-compose.yml up -d
   ```
@@ -760,19 +771,20 @@ Next.js inlines environment variables prefixed with `NEXT_PUBLIC_` **directly in
 
 | Variable Name                           | Target Service               | Mandatory? | Default Value                 | Description                                                                                                                                     |
 | :-------------------------------------- | :--------------------------- | :--------: | :---------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `MESH_DOMAIN`                           | Nginx, Web, Docker           |  **Yes**   | `mesh.example.com`            | Public FQDN where Sayabot is accessible.                                                                                                        |
+| `SAYABOT_DOMAIN`                        | Nginx, Web, Docker           |  **Yes**   | `sayabot.example.com`         | Public FQDN where Sayabot is accessible. (Legacy fallback: `MESH_DOMAIN`).                                                                      |
+| `MESH_DOMAIN`                           | Nginx, Web, Docker           |   Alias    | —                             | Backwards-compatible legacy alias for `SAYABOT_DOMAIN`.                                                                                          |
 | `LETSENCRYPT_EMAIL`                     | Certbot                      |  **Yes**   | `ops@example.com`             | Email for Let's Encrypt renewal & expiration notifications.                                                                                     |
 | `NEXT_PUBLIC_SUPABASE_URL`              | Web, Orchestrator            |  **Yes**   | `https://xxxx.supabase.co`    | Supabase API URL.                                                                                                                               |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY`         | Web (Browser & SSR)          |  **Yes**   | —                             | Supabase public anonymous API key.                                                                                                              |
 | `SUPABASE_SERVICE_ROLE_KEY`             | Web, Orchestrator            |  **Yes**   | —                             | High-privilege Supabase key. **Never expose to client.**                                                                                        |
 | `DATABASE_URL`                          | Web, Orchestrator, DB        |  **Yes**   | —                             | PostgreSQL connection string (**Port 5432 Session Pooler**).                                                                                    |
 | `DATABASE_POOL_MAX`                     | DB Client                    |  Optional  | `30`                          | Maximum PostgreSQL client connection pool size per process.                                                                                     |
-| `MESH_KEK`                              | Web, Orchestrator            |  **Yes**   | —                             | 32-byte Base64 Key Encryption Key for AES-256-GCM envelope encryption (`workspace_connectors`, `vaults`, `mcp_servers`, bot secrets).           |
-| `SAYABOT_KEK`                           | Web, Orchestrator            |   Alias    | —                             | Primary / backwards-compatible alias for `MESH_KEK` (codebase checks `SAYABOT_KEK` then `MESH_KEK`).                                            |
+| `SAYABOT_KEK`                           | Web, Orchestrator            |  **Yes**   | —                             | 32-byte Base64 Key Encryption Key for AES-256-GCM envelope encryption (`workspace_connectors`, `vaults`, `mcp_servers`, bot secrets). Legacy alias: `MESH_KEK`. |
+| `MESH_KEK`                              | Web, Orchestrator            |   Alias    | —                             | Backwards-compatible legacy alias for `SAYABOT_KEK`.                                                                                             |
 | `ORCHESTRATOR_INTERNAL_SECRET`          | Web, Orchestrator, Computerd |  **Yes**   | —                             | 32-byte Hex secret authenticating internal `/internal/*` routes.                                                                                |
 | `ORCHESTRATOR_URL`                      | Web                          |    Auto    | `http://orchestrator:4000`    | Internal URL for web server actions to reach the turn engine.                                                                                   |
-| `NEXT_PUBLIC_SITE_URL`                  | Web                          |    Auto    | `https://${MESH_DOMAIN}`      | Public web URL for auth callbacks and invite links.                                                                                             |
-| `NEXT_PUBLIC_COLLAB_URL`                | Web                          |    Auto    | `wss://${MESH_DOMAIN}/collab` | Public WebSocket endpoint for Yjs live canvas sync.                                                                                             |
+| `NEXT_PUBLIC_SITE_URL`                  | Web                          |    Auto    | `https://${SAYABOT_DOMAIN}`   | Public web URL for auth callbacks and invite links.                                                                                             |
+| `NEXT_PUBLIC_COLLAB_URL`                | Web                          |    Auto    | `wss://${SAYABOT_DOMAIN}/collab` | Public WebSocket endpoint for Yjs live canvas sync.                                                                                           |
 | `SLACK_CLIENT_ID`                       | Web, Orchestrator            | Connector  | —                             | Slack App OAuth Client ID for workspace Slack connector handshake.                                                                              |
 | `SLACK_CLIENT_SECRET`                   | Web, Orchestrator            | Connector  | —                             | Slack App OAuth Client Secret for exchanging OAuth codes for bot tokens (`xoxb-`).                                                              |
 | `SLACK_SIGNING_SECRET`                  | Web, Orchestrator            | Connector  | —                             | HMAC-SHA256 signing secret for verifying inbound Slack Events API webhooks at `/api/v1/connectors/slack/events`.                                |
@@ -783,7 +795,7 @@ Next.js inlines environment variables prefixed with `NEXT_PUBLIC_` **directly in
 | `GITHUB_APP_WEBHOOK_SECRET`             | Web, Orchestrator            | Connector  | —                             | Secret string for HMAC-SHA256 signature verification (`x-hub-signature-256`) of incoming GitHub webhooks at `/api/v1/connectors/github/events`. |
 | `GOOGLE_CLIENT_ID`                      | Web, Orchestrator            | Connector  | —                             | Google Cloud OAuth 2.0 Client ID for Google Workspace / Google Drive connector integration.                                                     |
 | `GOOGLE_CLIENT_SECRET`                  | Web, Orchestrator            | Connector  | —                             | Google Cloud OAuth 2.0 Client Secret for exchanging Google OAuth authorization codes.                                                           |
-| `GOOGLE_CLIENT_REDIRECT_URI`            | Web                          | Connector  | —                             | Explicit Google OAuth redirect URI (defaults to `https://${MESH_DOMAIN}/api/connectors/google/oauth` or `/auth/callback`).                      |
+| `GOOGLE_CLIENT_REDIRECT_URI`            | Web                          | Connector  | —                             | Explicit Google OAuth redirect URI (defaults to `https://${SAYABOT_DOMAIN}/api/connectors/google/oauth` or `/auth/callback`).                    |
 | `COMPUTERD_URL`                         | Orchestrator                 |  Optional  | `http://computerd:4100`       | Internal URL for sandbox daemon.                                                                                                                |
 | `EGRESS_URL`                            | Orchestrator                 |  Optional  | `http://egress:8081`          | Internal URL for secret broker admin API.                                                                                                       |
 | `EGRESS_PROXY_URL`                      | Orchestrator                 |  Optional  | `http://egress:8080`          | Internal HTTP proxy URL for outbound sandbox traffic.                                                                                           |
@@ -805,13 +817,22 @@ Next.js inlines environment variables prefixed with `NEXT_PUBLIC_` **directly in
 | `CLOUDFLARE_R2_BUCKET`                  | Orchestrator                 |  Optional  | —                             | R2 Bucket name for zero-egress artifacts and canvases.                                                                                          |
 | `CLOUDFLARE_R2_ACCESS_KEY_ID`           | Orchestrator                 |  Optional  | —                             | S3-compatible Access Key ID for Cloudflare R2.                                                                                                  |
 | `CLOUDFLARE_R2_SECRET_ACCESS_KEY`       | Orchestrator                 |  Optional  | —                             | S3-compatible Secret Access Key for Cloudflare R2.                                                                                              |
-| `SAYABOT_ALLOW_PRIVATE_WEBHOOKS`        | Orchestrator                 |  Dev Only  | `false`                       | Allow webhooks to private RFC-1918 IPs. **Must be false in prod.**                                                                              |
-| `MESH_ALLOW_PRIVATE_WEBHOOKS`           | Orchestrator                 |  Dev Only  | `false`                       | Alias for `SAYABOT_ALLOW_PRIVATE_WEBHOOKS`.                                                                                                     |
-| `MESH_IMAGE_PREFIX`                     | Deploy                       |  Optional  | `mesh`                        | Registry image prefix (e.g. `ghcr.io/yourorg/sayabot`).                                                                                         |
-| `MESH_KEEP_RELEASES`                    | Deploy                       |  Optional  | `3`                           | Number of previous releases to retain for rollback.                                                                                             |
-| `MESH_APP_SERVICES`                     | Deploy                       |  Optional  | `orchestrator web`            | Space-delimited list of services to build and deploy.                                                                                           |
-| `MESH_WEB_MEMORY`                       | Docker Compose               |  Optional  | `1g`                          | Memory allocation limit for `web` container.                                                                                                    |
-| `MESH_ORCHESTRATOR_MEMORY`              | Docker Compose               |  Optional  | `1g`                          | Memory allocation limit for `orchestrator` container.                                                                                           |
+| `SAYABOT_ALLOW_PRIVATE_WEBHOOKS`        | Orchestrator                 |  Dev Only  | `false`                       | Allow webhooks to private RFC-1918 IPs. **Must be false in prod.** Legacy alias: `MESH_ALLOW_PRIVATE_WEBHOOKS`.                                 |
+| `MESH_ALLOW_PRIVATE_WEBHOOKS`           | Orchestrator                 |  Dev Only  | `false`                       | Backwards-compatible legacy alias for `SAYABOT_ALLOW_PRIVATE_WEBHOOKS`.                                                                         |
+| `SAYABOT_IMAGE_PREFIX`                  | Deploy                       |  Optional  | `sayabot`                     | Registry image prefix (e.g. `sayabot` or `ghcr.io/yourorg/sayabot`). Legacy alias: `MESH_IMAGE_PREFIX`.                                         |
+| `MESH_IMAGE_PREFIX`                     | Deploy                       |   Alias    | `mesh`                        | Backwards-compatible legacy alias for `SAYABOT_IMAGE_PREFIX`.                                                                                   |
+| `SAYABOT_TAG`                           | Deploy                       |  Optional  | `latest`                      | Docker image tag for deployed containers (defaults to current git commit short SHA). Legacy alias: `MESH_TAG`.                                 |
+| `MESH_TAG`                              | Deploy                       |   Alias    | —                             | Backwards-compatible legacy alias for `SAYABOT_TAG`.                                                                                             |
+| `SAYABOT_KEEP_RELEASES`                 | Deploy                       |  Optional  | `3`                           | Number of previous releases to retain for rollback. Legacy alias: `MESH_KEEP_RELEASES`.                                                         |
+| `MESH_KEEP_RELEASES`                    | Deploy                       |   Alias    | —                             | Backwards-compatible legacy alias for `SAYABOT_KEEP_RELEASES`.                                                                                   |
+| `SAYABOT_APP_SERVICES`                  | Deploy                       |  Optional  | `orchestrator web`            | Space-delimited list of services to build and deploy. Legacy alias: `MESH_APP_SERVICES`.                                                         |
+| `MESH_APP_SERVICES`                     | Deploy                       |   Alias    | —                             | Backwards-compatible legacy alias for `SAYABOT_APP_SERVICES`.                                                                                   |
+| `SAYABOT_HEALTH_TIMEOUT`                | Deploy                       |  Optional  | `180`                         | Health check timeout in seconds before triggering automatic rollback. Legacy alias: `MESH_HEALTH_TIMEOUT`.                                     |
+| `MESH_HEALTH_TIMEOUT`                   | Deploy                       |   Alias    | —                             | Backwards-compatible legacy alias for `SAYABOT_HEALTH_TIMEOUT`.                                                                                 |
+| `SAYABOT_WEB_MEMORY`                    | Docker Compose               |  Optional  | `1g`                          | Memory allocation limit for `web` container. Legacy alias: `MESH_WEB_MEMORY`.                                                                    |
+| `MESH_WEB_MEMORY`                       | Docker Compose               |   Alias    | —                             | Backwards-compatible legacy alias for `SAYABOT_WEB_MEMORY`.                                                                                      |
+| `SAYABOT_ORCHESTRATOR_MEMORY`           | Docker Compose               |  Optional  | `1g`                          | Memory allocation limit for `orchestrator` container. Legacy alias: `MESH_ORCHESTRATOR_MEMORY`.                                                 |
+| `MESH_ORCHESTRATOR_MEMORY`              | Docker Compose               |   Alias    | —                             | Backwards-compatible legacy alias for `SAYABOT_ORCHESTRATOR_MEMORY`.                                                                             |
 
 ---
 
@@ -819,117 +840,158 @@ Next.js inlines environment variables prefixed with `NEXT_PUBLIC_` **directly in
 
 ### Nginx Configuration Deep Dive
 
-The Nginx configuration template (`deploy/nginx/templates/mesh.conf.template`) is rendered dynamically on startup using `envsubst`:
+Sayabot's reverse proxy setup is organized into modular templates and snippets under `deploy/nginx/`:
 
-```nginx
-# Upstream definitions with keepalive connections
-upstream mesh_web {
-    zone mesh_web 64k;
-    server web:3000;
-    keepalive 32;
-}
+1. **Global Nginx Settings (`deploy/nginx/nginx.conf`)**:
+   Defines the shared SSL session cache (`shared:SayabotTLS:10m`), URL log masking for API tokens (`sayabot_ak_` and `mesh_ak_`), and rate-limiting zones:
+   ```nginx
+   # SSL cache
+   ssl_session_cache shared:SayabotTLS:10m;
 
-upstream mesh_orchestrator {
-    zone mesh_orchestrator 64k;
-    server orchestrator:4000;
-    keepalive 8;
-}
+   # Rate limit & connection zones
+   limit_req_zone  $binary_remote_addr zone=sayabot_general:20m rate=30r/s;
+   limit_req_zone  $binary_remote_addr zone=sayabot_api:20m     rate=20r/s;
+   limit_req_zone  $binary_remote_addr zone=sayabot_auth:10m    rate=10r/m;
+   limit_conn_zone $binary_remote_addr zone=sayabot_conn:20m;
+   ```
 
-server {
-    listen 443 ssl default_server;
-    listen [::]:443 ssl default_server;
-    http2 on;
-    server_name _;
-    # Reject unrecognized Host headers
-    return 444;
-}
+2. **Site Template (`deploy/nginx/templates/sayabot.conf.template`)**:
+   Rendered dynamically on container startup using `envsubst` to substitute `${SAYABOT_DOMAIN}`:
+   ```nginx
+   upstream sayabot_web {
+       zone sayabot_web 64k;
+       server web:3000;
+       keepalive 32;
+   }
 
-server {
-    listen 443 ssl;
-    listen [::]:443 ssl;
-    http2 on;
-    server_name ${MESH_DOMAIN};
+   upstream sayabot_orchestrator {
+       zone sayabot_orchestrator 64k;
+       server orchestrator:4000;
+       keepalive 8;
+   }
 
-    ssl_certificate     /etc/letsencrypt/live/${MESH_DOMAIN}/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/${MESH_DOMAIN}/privkey.pem;
+   # :80 — ACME challenges, redirect everything else to HTTPS
+   server {
+       listen 80 default_server;
+       listen [::]:80 default_server;
+       server_name _;
 
-    include /etc/nginx/snippets/security-headers.conf;
-    limit_conn mesh_conn 100;
+       location ^~ /.well-known/acme-challenge/ {
+           root /var/www/certbot;
+           default_type text/plain;
+       }
 
-    # 1. Canvas Realtime WebSocket (Hocuspocus)
-    location = /collab {
-        include /etc/nginx/snippets/proxy.conf;
-        proxy_pass http://mesh_orchestrator;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_read_timeout 1h;
-        proxy_send_timeout 1h;
-        proxy_buffering off;
-    }
+       location / {
+           return 301 https://${SAYABOT_DOMAIN}$request_uri;
+       }
+   }
 
-    # 2. Universal MCP Gateway & External Bot API (Streaming SSE/NDJSON)
-    location ~ ^/(api/v1|mcp)/ {
-        limit_req zone=mesh_api burst=60 nodelay;
-        include /etc/nginx/snippets/proxy.conf;
-        proxy_pass http://mesh_web;
-        proxy_buffering off;
-        proxy_request_buffering off;
-        proxy_cache off;
-        proxy_read_timeout 330s;
-        proxy_send_timeout 330s;
-        add_header X-Accel-Buffering no;
-    }
+   # :443 — reject unknown Host headers (IP scans, spoofed hosts)
+   server {
+       listen 443 ssl default_server;
+       listen [::]:443 ssl default_server;
+       http2 on;
+       server_name _;
+       ssl_certificate     /etc/letsencrypt/live/${SAYABOT_DOMAIN}/fullchain.pem;
+       ssl_certificate_key /etc/letsencrypt/live/${SAYABOT_DOMAIN}/privkey.pem;
+       return 444;
+   }
 
-    # 3. Workspace Connector Webhooks (Slack Events API & GitHub App Webhooks)
-    # Raw request body must NOT be buffered to guarantee HMAC-SHA256 signature verification.
-    location ~ ^/api/v1/connectors/(slack|github)/events$ {
-        limit_req zone=mesh_api burst=100 nodelay;
-        include /etc/nginx/snippets/proxy.conf;
-        proxy_pass http://mesh_web;
-        proxy_buffering off;
-        proxy_request_buffering off;
-        proxy_read_timeout 30s;
-        proxy_send_timeout 30s;
-        # Preserve original payload and headers for signature validation
-        proxy_set_header X-Slack-Signature $http_x_slack_signature;
-        proxy_set_header X-Slack-Request-Timestamp $http_x_slack_request_timestamp;
-        proxy_set_header X-Hub-Signature-256 $http_x_hub_signature_256;
-    }
+   # :443 — Sayabot application
+   server {
+       listen 443 ssl;
+       listen [::]:443 ssl;
+       http2 on;
+       server_name ${SAYABOT_DOMAIN};
 
-    # 4. Liveness Check
-    location = /api/health {
-        access_log off;
-        include /etc/nginx/snippets/proxy.conf;
-        proxy_pass http://mesh_web;
-    }
+       ssl_certificate     /etc/letsencrypt/live/${SAYABOT_DOMAIN}/fullchain.pem;
+       ssl_certificate_key /etc/letsencrypt/live/${SAYABOT_DOMAIN}/privkey.pem;
 
-    # 5. Auth, OAuth Handshakes & Rate-Guarded Routes
-    # Preserves query parameters (?code=...&state=...) and session cookies for PKCE verification.
-    location ~ ^/(login|signup|forgot-password|reset-password|auth|api/connectors)(/|$) {
-        limit_req zone=mesh_auth burst=30 nodelay;
-        include /etc/nginx/snippets/proxy.conf;
-        proxy_pass http://mesh_web;
-        proxy_set_header X-Forwarded-Proto https;
-        proxy_set_header Host $host;
-    }
+       include /etc/nginx/snippets/security-headers.conf;
+       limit_conn sayabot_conn 100;
 
-    # 6. Immutable Static Assets
-    location /_next/static/ {
-        include /etc/nginx/snippets/proxy.conf;
-        proxy_pass http://mesh_web;
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
+       include /etc/nginx/snippets/sayabot-locations.conf;
+   }
+   ```
 
-    # 7. Default App Catch-All
-    location / {
-        limit_req zone=mesh_general burst=50 nodelay;
-        include /etc/nginx/snippets/proxy.conf;
-        proxy_pass http://mesh_web;
-    }
-}
-```
+3. **Route Locations Snippet (`deploy/nginx/snippets/sayabot-locations.conf`)**:
+   Shared across standard TLS (`templates/`) and Cloudflare Tunnel (`templates-tunnel/`) configurations:
+   ```nginx
+   # 1. Canvas Realtime WebSocket (Hocuspocus)
+   location = /collab {
+       include /etc/nginx/snippets/proxy.conf;
+       proxy_pass http://sayabot_orchestrator;
+       proxy_http_version 1.1;
+       proxy_set_header Upgrade $http_upgrade;
+       proxy_set_header Connection "upgrade";
+       proxy_read_timeout 1h;
+       proxy_send_timeout 1h;
+       proxy_buffering off;
+   }
+
+   # 2. Universal MCP Gateway & External Bot API (Streaming SSE/NDJSON)
+   location ~ ^/(api/v1|mcp)/ {
+       limit_req zone=sayabot_api burst=60 nodelay;
+       include /etc/nginx/snippets/proxy.conf;
+       proxy_pass http://sayabot_web;
+       proxy_buffering off;
+       proxy_request_buffering off;
+       proxy_cache off;
+       proxy_read_timeout 330s;
+       proxy_send_timeout 330s;
+       add_header X-Accel-Buffering no;
+       include /etc/nginx/snippets/security-headers.conf;
+   }
+
+   # 3. Workspace Connector Webhooks (Slack Events API & GitHub App Webhooks)
+   # Raw request body must NOT be buffered to guarantee HMAC-SHA256 signature verification.
+   location ~ ^/api/v1/connectors/(slack|github)/events$ {
+       limit_req zone=sayabot_api burst=100 nodelay;
+       include /etc/nginx/snippets/proxy.conf;
+       proxy_pass http://sayabot_web;
+       proxy_buffering off;
+       proxy_request_buffering off;
+       proxy_read_timeout 30s;
+       proxy_send_timeout 30s;
+       proxy_set_header X-Slack-Signature $http_x_slack_signature;
+       proxy_set_header X-Slack-Request-Timestamp $http_x_slack_request_timestamp;
+       proxy_set_header X-Hub-Signature-256 $http_x_hub_signature_256;
+   }
+
+   # 4. Liveness Check
+   location = /api/health {
+       access_log off;
+       include /etc/nginx/snippets/proxy.conf;
+       proxy_pass http://sayabot_web;
+   }
+
+   # 5. Auth, OAuth Handshakes & Rate-Guarded Routes
+   location ~ ^/(login|signup|forgot-password|reset-password|auth|api/connectors)(/|$) {
+       limit_req zone=sayabot_auth burst=30 nodelay;
+       include /etc/nginx/snippets/proxy.conf;
+       proxy_pass http://sayabot_web;
+       proxy_set_header X-Forwarded-Proto https;
+       proxy_set_header Host $host;
+   }
+
+   # 6. Immutable Static Assets
+   location /_next/static/ {
+       include /etc/nginx/snippets/proxy.conf;
+       proxy_pass http://sayabot_web;
+       expires 1y;
+       add_header Cache-Control "public, max-age=31536000, immutable";
+       include /etc/nginx/snippets/security-headers.conf;
+   }
+
+   # 7. Default App Catch-All
+   location / {
+       limit_req zone=sayabot_general burst=100 nodelay;
+       include /etc/nginx/snippets/proxy.conf;
+       proxy_pass http://sayabot_web;
+       proxy_buffering off;
+       proxy_read_timeout 120s;
+   }
+   ```
 
 ### Reverse Proxy & Networking for Connectors (Webhooks & OAuth Callback Routing)
 
@@ -962,7 +1024,7 @@ sequenceDiagram
     Web-->>Proxy: 200 OK (Instant acknowledgment < 3s)
     Proxy-->>Ext: 200 OK (Prevents provider retry loops)
     Web->>Orch: Enqueue event into pg-boss
-    Orch->>DB: Decrypt token with MESH_KEK & check scope
+    Orch->>DB: Decrypt token with SAYABOT_KEK & check scope
     Orch->>Ext: Execute agent turn & post reply
 ```
 
@@ -1110,13 +1172,13 @@ When an agent is configured with the `computer` capability, `computerd` provisio
 
 ### Docker Socket Security Hardening
 
-The `computerd` daemon connects to `/var/run/docker.sock` to control worker containers:
+The `computerd` daemon connects to `/var/run/docker.sock` to control worker containers in the `sayabot` stack (which uses images `sayabot/web`, `sayabot/orchestrator`, `sayabot/computerd`, `sayabot/egress`):
 
 ```yaml
 # deploy/docker-compose.yml excerpt
 computerd:
   user: "0:0"
-  image: mesh/computerd:latest
+  image: sayabot/computerd:latest
   security_opt:
     - no-new-privileges:true
   cap_drop:
@@ -1184,7 +1246,7 @@ Sayabot exposes two ingress routes for Model Context Protocol connections:
    ```
    _With `Authorization: Bearer :token` header._
 
-To generate a token: Navigate to **Agent Settings** (`/[org]/agents/[handle]` → **API Tokens**) and generate a new key.
+To generate a token: Navigate to **Agent Settings** (`/[org]/agents/[handle]` → **API Tokens**) and generate a new key. Sayabot agent API tokens use the prefix `sayabot_ak_...` (backwards-compatible with legacy `mesh_ak_...` keys). URL paths containing these tokens (`/mcp/sayabot_ak_...` or `/api/v1/mcp/sayabot_ak_...`) are automatically masked in reverse proxy access logs.
 
 ### Connecting Claude Desktop
 
@@ -1203,12 +1265,14 @@ Edit your `claude_desktop_config.json`:
   }
 }
 ```
+*(Replace `YOUR_AGENT_API_TOKEN` with your `sayabot_ak_...` or legacy `mesh_ak_...` token)*
 
 ### Connecting Claude Code CLI
 
 Register your self-hosted Sayabot instance directly in the Claude Code command-line tool:
 
 ```bash
+# Using your sayabot_ak_... or legacy mesh_ak_... token:
 claude mcp add --transport http sayabot https://sayabot.yourcompany.com/mcp/YOUR_AGENT_API_TOKEN
 ```
 
@@ -1275,7 +1339,7 @@ hermes mcp list
 
 1. Open ChatGPT → **Explore GPTs** → **Create a GPT**.
 2. Go to **Configure** → **Actions** → **Create new action**.
-3. Under **Authentication**, select **API Key** (Auth Type: Bearer), and paste your Agent API Token.
+3. Under **Authentication**, select **API Key** (Auth Type: Bearer), and paste your Agent API Token (`sayabot_ak_...` or `mesh_ak_...`).
 4. Set the Schema Import URL to:
    ```
    https://sayabot.yourcompany.com/api/v1/mcp/openapi.json
@@ -1297,11 +1361,18 @@ The deployment manager (`deploy/deploy.sh`) provides automated rollout lifecycle
 # Deploy a specific tag or branch
 ./deploy/deploy.sh --ref v1.2.0
 
-# Deploy pulling pre-built images from GHCR / Docker Hub
+# Deploy pulling pre-built images from registry (SAYABOT_IMAGE_PREFIX)
+./deploy/deploy.sh --pull
 ./deploy/deploy.sh --ref v1.2.0 --pull
+
+# Apply .env.production changes without rebuilding images
+./deploy/deploy.sh reload
 
 # Run database migrations only
 ./deploy/deploy.sh migrate
+
+# Seed starter model pricing and agent templates
+./deploy/deploy.sh seed
 
 # View operational status and container health
 ./deploy/deploy.sh status
@@ -1309,6 +1380,16 @@ The deployment manager (`deploy/deploy.sh`) provides automated rollout lifecycle
 # Follow real-time container logs
 ./deploy/deploy.sh logs web
 ./deploy/deploy.sh logs orchestrator
+
+# Restart a specific service
+./deploy/deploy.sh restart web
+./deploy/deploy.sh restart orchestrator
+
+# View release history
+./deploy/deploy.sh releases
+
+# Stop and remove the deployment stack
+./deploy/deploy.sh down
 ```
 
 ### Automated Rollback Safeguards
@@ -1320,7 +1401,7 @@ During a rollout:
 1. Migrations are executed first.
 2. The `orchestrator` container is recreated and tested against its internal `/health` check.
 3. The `web` container is recreated and tested against `/api/health`.
-4. Nginx is reloaded and an end-to-end HTTPS check is performed against `https://${MESH_DOMAIN}/api/health`.
+4. Nginx is reloaded and an end-to-end HTTPS check is performed against `https://${SAYABOT_DOMAIN}/api/health`.
 5. **If any check fails or times out**, `deploy.sh` aborts the rollout, restores the previous release images, and issues an alert!
 
 To manually roll back to the previous release at any time:
@@ -1458,18 +1539,18 @@ docker compose --env-file deploy/.env.production -f deploy/docker-compose.yml lo
 
 | Failure Mode / Symptom                                                                                | Exact Root Cause                                                                                                                                                           | Immediate Remediation                                                                                                                                                                                                                                                                                                                      |
 | :---------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **WebSocket 101 Handshake Failure**<br>`wss://.../collab fails` (HTTP 400 / 502 / 404)                | 1. Reverse proxy stripped `Upgrade` or `Connection` headers.<br>2. Cloudflare Dashboard **WebSockets** toggle is disabled.<br>3. `NEXT_PUBLIC_COLLAB_URL` domain mismatch. | 1. Ensure Nginx passes `proxy_set_header Upgrade $http_upgrade;` and `proxy_set_header Connection "upgrade";`.<br>2. In Cloudflare Dashboard, navigate to **Network** and toggle **WebSockets** to **ON**.<br>3. Rebuild images with `./deploy/deploy.sh` if `MESH_DOMAIN` was modified.                                                   |
+| **WebSocket 101 Handshake Failure**<br>`wss://.../collab fails` (HTTP 400 / 502 / 404)                | 1. Reverse proxy stripped `Upgrade` or `Connection` headers.<br>2. Cloudflare Dashboard **WebSockets** toggle is disabled.<br>3. `NEXT_PUBLIC_COLLAB_URL` domain mismatch. | 1. Ensure Nginx passes `proxy_set_header Upgrade $http_upgrade;` and `proxy_set_header Connection "upgrade";`.<br>2. In Cloudflare Dashboard, navigate to **Network** and toggle **WebSockets** to **ON**.<br>3. Rebuild images with `./deploy/deploy.sh` if `SAYABOT_DOMAIN` was modified.                                                   |
 | **Database Pool Exhaustion**<br>`remaining connection slots reserved...` / `too many clients already` | Default `DATABASE_POOL_MAX=30` per container exceeded Supabase database client limit (typically 60 on free/starter tiers).                                                 | Set `DATABASE_POOL_MAX=15` in `deploy/.env.production`. Restart services with `./deploy/deploy.sh restart orchestrator && ./deploy/deploy.sh restart web`.                                                                                                                                                                                 |
 | **Transaction Pooler Loop (Port 6543)**<br>Orchestrator restarts, advisory locks lost mid-turn        | `DATABASE_URL` connects to port `6543` (transaction pooling) instead of `5432` (session pooling).                                                                          | Edit `deploy/.env.production`. Change port `6543` to `5432` in the PostgreSQL connection string. Run `./deploy/deploy.sh restart orchestrator`.                                                                                                                                                                                            |
 | **Docker Build OOM (Exit 137)**<br>Compiler killed during `pnpm build`                                | Next.js standalone webpack/turbopack compilation peaked beyond physical RAM limit (2.8–3.2 GB).                                                                            | 1. Allocate 4 GB swap: `sudo fallocate -l 4G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile`.<br>2. Or build pre-compiled images in GitHub Actions and deploy with `./deploy/deploy.sh --pull`.                                                                                                   |
 | **Postgres Error: `permission denied` or RLS Violation**                                              | Missing SQL migrations or unapplied role permissions in PostgreSQL.                                                                                                        | Run database migrations explicitly: `./deploy/deploy.sh migrate`. Verify that the migration runner completed all files through `0018_workspace_connectors.sql`.                                                                                                                                                                            |
 | **Secret Decryption / KEK Mismatch**<br>`Unsupported state or unable to authenticate data`            | `SAYABOT_KEK` / `MESH_KEK` differs from the key used when credentials were encrypted.                                                                                      | Restore the original base64 key from your secure vault backup. AES-256-GCM authenticated encryption cryptographically fails if the key changes.                                                                                                                                                                                            |
-| **Connector Decryption Failure**<br>`Failed to decrypt connector token` during tool calls             | `MESH_KEK` in `.env.production` does not match the key used when workspace connector credentials were encrypted into `workspace_connectors`.                               | 1. Restore original `MESH_KEK` from vault backup.<br>2. Or re-link integration: delete connector under **Workspace Settings → Connectors**, re-enter credentials/OAuth, and re-assign agent grants under **Agent Settings → Connectors**.                                                                                                  |
+| **Connector Decryption Failure**<br>`Failed to decrypt connector token` during tool calls             | `SAYABOT_KEK` (or legacy `MESH_KEK`) in `.env.production` does not match the key used when workspace connector credentials were encrypted into `workspace_connectors`.     | 1. Restore original `SAYABOT_KEK` / `MESH_KEK` from vault backup.<br>2. Or re-link integration: delete connector under **Workspace Settings → Connectors**, re-enter credentials/OAuth, and re-assign agent grants under **Agent Settings → Connectors**.                                                                                  |
 | **Connector Rate Limiting (HTTP 429)**<br>Agent turn stalls when searching Drive, Slack, or GitHub    | Target SaaS provider rate limit exceeded (e.g. Slack Tier 3 50 req/min, GitHub 5,000 req/hr, Google Drive queries).                                                        | Built-in `fetchWithRetry` (`rate-limiter.ts`) automatically backs off with jitter and honors `Retry-After`. To reduce load: 1. Narrow scope via `agent_connector_grants` (`allowedFolders`, `allowedChannels`, `allowedRepos`). 2. Reduce agent query frequency or request higher provider API quotas.                                     |
 | **Connector Invalid Scope / HTTP 403**<br>`missing_scope` or `Resource not accessible`                | Installed OAuth token or App installation lacks required permission scopes for the requested tool operation.                                                               | 1. Review required scopes (Slack: `channels:history`, `chat:write`; Drive: `drive.readonly`; GitHub: `Contents: read`, `Issues: read`).<br>2. Re-install or update app permissions in provider console, then re-link connector in **Workspace Settings → Connectors**.<br>3. Verify agent has an active grant in `agent_connector_grants`. |
 | **Connector Webhook Signature Failure**<br>`401/403 Invalid signature` on `/api/v1/connectors/*`      | 1. `SLACK_SIGNING_SECRET` or `GITHUB_APP_WEBHOOK_SECRET` mismatch.<br>2. Reverse proxy modified/buffered raw POST payload.<br>3. Server clock drift > 300s.                | 1. Verify secrets in `deploy/.env.production`.<br>2. Ensure `proxy_request_buffering off;` is active in Nginx / Caddy to pass raw payload for HMAC verification.<br>3. Synchronize server system clock via NTP (`sudo timedatectl set-ntp true`).                                                                                          |
-| **MCP Client returns `401 Unauthorized`**                                                             | Expired, revoked, or malformed Agent Token in request URL.                                                                                                                 | Ensure the URL format is `https://DOMAIN/mcp/mesh_ak_...`. Generate a fresh Agent API key under **Agent Settings → API Tokens**.                                                                                                                                                                                                           |
-| **HTTP 429 Too Many Requests**                                                                        | Exceeded Nginx rate limits defined in `deploy/nginx/nginx.conf`.                                                                                                           | Increase rate limit burst values in `deploy/nginx/nginx.conf` (`mesh_api`, `mesh_auth`, `mesh_general`), then reload Nginx: `docker compose ... exec nginx nginx -s reload`.                                                                                                                                                               |
+| **MCP Client returns `401 Unauthorized`**                                                             | Expired, revoked, or malformed Agent Token in request URL.                                                                                                                 | Ensure the URL format is `https://DOMAIN/mcp/sayabot_ak_...` (or legacy `mesh_ak_...`). Generate a fresh Agent API key under **Agent Settings → API Tokens**.                                                                                                                                                                              |
+| **HTTP 429 Too Many Requests**                                                                        | Exceeded Nginx rate limits defined in `deploy/nginx/nginx.conf`.                                                                                                           | Increase rate limit burst values in `deploy/nginx/nginx.conf` (`sayabot_api`, `sayabot_auth`, `sayabot_general`), then reload Nginx: `docker compose ... exec nginx nginx -s reload`.                                                                                                                                                     |
 | **Certbot ACME Failure: `Challenge failed for domain`**                                               | DNS A record does not resolve to the server IP or port 80 is blocked by a firewall / CDN proxy.                                                                            | 1. Verify DNS: `dig +short A yourdomain.com`.<br>2. Check firewall: `sudo ufw allow 80/tcp && sudo ufw allow 443/tcp`.<br>3. If using Cloudflare DNS, set to DNS-only (Grey Cloud) during issuance or pass `--skip-dns-check`.                                                                                                             |
 | **Webhook SSRF Error: `Blocked private network IP`**                                                  | Bot webhook points to `localhost` or an RFC-1918 internal IP address.                                                                                                      | Outbound webhooks to private subnets are blocked by default. For local development testing only, set `SAYABOT_ALLOW_PRIVATE_WEBHOOKS=true` in `.env.production`.                                                                                                                                                                           |
 | **Realtime CDC Messages Not Updating in UI**                                                          | Supabase Realtime publication missing for room channels.                                                                                                                   | Run `pnpm db:migrate` to ensure `0003_realtime.sql` applied. In Supabase Dashboard, verify **Realtime** is toggled **ON** for the `messages` table.                                                                                                                                                                                        |
@@ -1488,7 +1569,7 @@ Before announcing your self-hosted Sayabot instance to team members or external 
 - [ ] **Pool Sizing Configured**: `DATABASE_POOL_MAX` tuned to avoid exceeding database tier connection limits.
 - [ ] **TLS Certificate**: Domain graded **A or A+** on [Qualys SSL Labs](https://www.ssllabs.com/ssltest/).
 - [ ] **Supabase Security**: Row Level Security (RLS) enabled on all database tables; service role key is never bundled in frontend code.
-- [ ] **Health Monitoring**: External monitoring service (Better Stack, UptimeRobot) pinging `https://${MESH_DOMAIN}/api/health` every 60 seconds.
+- [ ] **Health Monitoring**: External monitoring service (Better Stack, UptimeRobot) pinging `https://${SAYABOT_DOMAIN}/api/health` every 60 seconds.
 - [ ] **Automated Backups**: Nightly compressed `pg_dump` jobs active with verified off-site retention (`canvases.ydoc_state` preserved).
 - [ ] **Persistent Sandboxes**: Agent volumes (`saaya-bot-*`) backed up if stateful bash routines are in production.
 - [ ] **Swap Memory**: At least 4 GB swap configured to safeguard against compiler spikes.

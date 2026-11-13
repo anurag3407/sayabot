@@ -82,7 +82,7 @@ The RLS migration creates policies on `realtime.messages` for topics named
 Generate secrets once and keep them stable:
 
 ```bash
-openssl rand -base64 32   # MESH_KEK (or SAYABOT_KEK)
+openssl rand -base64 32   # SAYABOT_KEK (alias MESH_KEK)
 openssl rand -hex 32      # ORCHESTRATOR_INTERNAL_SECRET
 ```
 
@@ -95,10 +95,11 @@ Core Platform Variables:
 | `SUPABASE_SERVICE_ROLE_KEY`     | web, orchestrator     | server only, never expose to client                                                                                               |
 | `DATABASE_URL`                  | web, orchestrator, db | PostgreSQL connection string (**Port 5432 Session Pooler**)                                                                       |
 | `DATABASE_POOL_MAX`             | web, orchestrator     | optional, connection pool limit per process (default: `15`–`30`)                                                                  |
-| `MESH_KEK`                      | web, orchestrator     | 32-byte Base64 key for AES-256-GCM envelope encryption (`workspace_connectors`, `vaults`, bot credentials). Alias: `SAYABOT_KEK`. |
+| `SAYABOT_KEK`                   | web, orchestrator     | 32-byte Base64 key for AES-256-GCM envelope encryption (`workspace_connectors`, `vaults`, bot credentials). Legacy alias: `MESH_KEK`. |
+| `SAYABOT_DOMAIN`                | deploy, nginx         | Public hostname for self-hosted deployments (e.g. `sayabot.example.com`). Legacy alias: `MESH_DOMAIN`.                             |
 | `ORCHESTRATOR_INTERNAL_SECRET`  | web, orchestrator     | 32-byte Hex secret authenticating internal `/internal/*` routes                                                                   |
-| `ORCHESTRATOR_URL`              | web                   | e.g. `https://mesh-orch.fly.dev` or `http://orchestrator:4000`                                                                    |
-| `NEXT_PUBLIC_COLLAB_URL`        | web                   | e.g. `wss://mesh-orch.fly.dev/collab`                                                                                             |
+| `ORCHESTRATOR_URL`              | web                   | e.g. `https://sayabot-orch.fly.dev` or `http://orchestrator:4000`                                                                 |
+| `NEXT_PUBLIC_COLLAB_URL`        | web                   | e.g. `wss://sayabot-orch.fly.dev/collab`                                                                                          |
 | `NEXT_PUBLIC_SITE_URL`          | web                   | public app URL for auth callbacks and invite links                                                                                |
 
 Workspace Connector Variables:
@@ -118,8 +119,8 @@ Workspace Connector Variables:
 | `GOOGLE_CLIENT_REDIRECT_URI` | web               | Optional explicit OAuth redirect URI (defaults to `https://${NEXT_PUBLIC_SITE_URL}/api/connectors/google/oauth` or `/auth/callback`) |
 
 Optional: `DEV_OPENAI_COMPAT_*` (fallback model), `E2B_API_KEY`,
-`BRAVE_SEARCH_API_KEY`, `MESH_ALLOW_PRIVATE_WEBHOOKS`, `NEXT_PUBLIC_SSO_ENABLED`,
-`NEXT_PUBLIC_GITHUB_AUTH_ENABLED`, `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED`.
+`BRAVE_SEARCH_API_KEY`, `SAYABOT_ALLOW_PRIVATE_WEBHOOKS` (alias `MESH_ALLOW_PRIVATE_WEBHOOKS`),
+`NEXT_PUBLIC_SSO_ENABLED`, `NEXT_PUBLIC_GITHUB_AUTH_ENABLED`, `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED`.
 
 Because `NEXT_PUBLIC_*` values are inlined at build time, rebuild the web app after
 changing them.
@@ -129,7 +130,7 @@ changing them.
 - Import the monorepo. Set the root directory to `apps/web` and enable "include files
   outside the root" so `packages/*` resolves. Build command:
   `pnpm --filter @sayabot/web build`. Output: `.next`.
-- Add the environment variables above. Do not add `MESH_KEK` to any `NEXT_PUBLIC_*` name.
+- Add the environment variables above. Do not add `SAYABOT_KEK` (or `MESH_KEK`) to any `NEXT_PUBLIC_*` name.
 - The build uses webpack because Serwist injects the service worker; the `build` script
   already passes `--webpack`.
 - The bot API proxy lives at `/api/v1/*` and forwards to `ORCHESTRATOR_URL`. External
@@ -153,7 +154,7 @@ changing them.
 Fly.io sketch:
 
 ```toml
-app = "mesh-orch"
+app = "sayabot-orch"
 primary_region = "fra"
 
 [build]
@@ -171,7 +172,7 @@ primary_region = "fra"
   cpus = 1
 ```
 
-Set secrets with `fly secrets set MESH_KEK=... DATABASE_URL=...` and the rest.
+Set secrets with `fly secrets set SAYABOT_KEK=... DATABASE_URL=...` and the rest.
 
 ## 5. Reverse Proxy & Networking for Connectors
 
@@ -194,10 +195,36 @@ Workspace connectors (Slack, Google Drive, GitHub) require dedicated ingress han
 
 #### Nginx Configuration Snippet
 
+Production deployments define upstreams in `deploy/nginx/templates/sayabot.conf.template` and include modular route locations from `deploy/nginx/snippets/sayabot-locations.conf`:
+
 ```nginx
+# Upstream definitions (deploy/nginx/templates/sayabot.conf.template)
+upstream sayabot_web {
+    zone sayabot_web 64k;
+    server web:3000;
+    keepalive 32;
+}
+
+upstream sayabot_orchestrator {
+    zone sayabot_orchestrator 64k;
+    server orchestrator:4000;
+    keepalive 8;
+}
+
+# Included route rules (deploy/nginx/snippets/sayabot-locations.conf)
+
+# Canvas sync (Hocuspocus WebSocket) straight to orchestrator
+location = /collab {
+    include /etc/nginx/snippets/proxy.conf;
+    proxy_pass http://sayabot_orchestrator;
+    proxy_read_timeout 1h;
+    proxy_send_timeout 1h;
+    proxy_buffering off;
+}
+
 # Webhooks: raw unbuffered ingress for HMAC validation
 location ~ ^/api/v1/connectors/(slack|github)/events$ {
-    proxy_pass http://mesh_web;
+    proxy_pass http://sayabot_web;
     proxy_buffering off;
     proxy_request_buffering off;
     proxy_set_header Host $host;
@@ -209,9 +236,18 @@ location ~ ^/api/v1/connectors/(slack|github)/events$ {
 
 # OAuth handshakes: preserve query string and PKCE cookies
 location ~ ^/(auth|api/connectors)(/|$) {
-    proxy_pass http://mesh_web;
+    proxy_pass http://sayabot_web;
     proxy_set_header Host $host;
     proxy_set_header X-Forwarded-Proto https;
+}
+
+# Pages, server actions, RSC payloads with rate limiting
+location / {
+    limit_req zone=sayabot_general burst=100 nodelay;
+    include /etc/nginx/snippets/proxy.conf;
+    proxy_pass http://sayabot_web;
+    proxy_buffering off;
+    proxy_read_timeout 120s;
 }
 ```
 
@@ -244,7 +280,7 @@ handle @oauth {
 2. Add the agent to a room.
 3. Issue an agent API key on Settings, Bots. It is shown once.
 4. Point the bot at `https://<orchestrator-or-web>/v1/...` or register the webhook.
-   Any public HTTPS host works; localhost requires `MESH_ALLOW_PRIVATE_WEBHOOKS=true`.
+   Any public HTTPS host works; localhost requires `SAYABOT_ALLOW_PRIVATE_WEBHOOKS=true` (or legacy `MESH_ALLOW_PRIVATE_WEBHOOKS=true`).
 5. Every delivery attempt is logged. Failures retry five times with exponential backoff.
 6. Rotate a lost secret from Settings, Bots. Rotation invalidates the old secret immediately.
 
@@ -312,7 +348,7 @@ turn planning, turn caps and breakers apply after that.
 
 ## 9. Alerts when no tab is open (optional)
 
-Mesh shows in-app alerts without any setup. To also alert people when the app is closed, for
+Sayabot shows in-app alerts without any setup. To also alert people when the app is closed, for
 approvals and agent requests, add VAPID keys:
 
 ```bash
@@ -326,9 +362,9 @@ worker is disabled in development.
 
 ## 10. Operations & Troubleshooting
 
-- **KEK stability & Connector Decryption:** do not rotate `MESH_KEK` (or `SAYABOT_KEK`) without
+- **KEK stability & Connector Decryption:** do not rotate `SAYABOT_KEK` (or legacy `MESH_KEK`) without
   re-encrypting provider keys, workspace connector credentials (`workspace_connectors`),
-  agent webhook secrets, and MCP headers. If `MESH_KEK` is altered or lost, AES-256-GCM
+  agent webhook secrets, and MCP headers. If `SAYABOT_KEK` is altered or lost, AES-256-GCM
   decryption throws `Unsupported state or unable to authenticate data`, causing connector tools
   to fail. To recover, restore the original KEK or delete and re-link the integration in
   **Workspace Settings → Connectors**.
