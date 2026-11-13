@@ -1,4 +1,4 @@
-import type { DeviceCodeFlow, ModelOption } from "./types"
+import type { DeviceCodeFlow } from "./types"
 
 export const GITHUB_COPILOT_CLIENT_ID = "Iv1.b507a08c87ecfe81" // Official Copilot CLI client ID
 export const GITHUB_DEVICE_CODE_URL = "https://github.com/login/device/code"
@@ -119,61 +119,3 @@ export async function getCopilotInternalToken(githubToken: string): Promise<Copi
   }
 }
 
-export function getCopilotModels(): ModelOption[] {
-  return [
-    {
-      id: "copilot/auto",
-      label: "Auto",
-      provider: "copilot",
-      providerGroup: "GitHub Copilot",
-      route: "Auto",
-      supportsTools: true,
-      supportsEffort: true,
-      multiplier: "1x",
-    },
-    {
-      id: "claude-3.5-sonnet",
-      label: "Claude 3.5 Sonnet",
-      provider: "copilot",
-      providerGroup: "GitHub Copilot",
-      route: "1x",
-      supportsTools: true,
-      supportsEffort: true,
-      multiplier: "1x",
-      contextWindow: 200000,
-    },
-    {
-      id: "gpt-4o",
-      label: "GPT-4o",
-      provider: "copilot",
-      providerGroup: "GitHub Copilot",
-      route: "1x",
-      supportsTools: true,
-      supportsEffort: false,
-      multiplier: "1x",
-      contextWindow: 128000,
-    },
-    {
-      id: "claude-3.5-haiku",
-      label: "Claude 3.5 Haiku",
-      provider: "copilot",
-      providerGroup: "GitHub Copilot",
-      route: "0.33x",
-      supportsTools: true,
-      supportsEffort: false,
-      multiplier: "0.33x",
-      contextWindow: 200000,
-    },
-    {
-      id: "o1-preview",
-      label: "o1-preview Reasoning",
-      provider: "copilot",
-      providerGroup: "GitHub Copilot",
-      route: "3x",
-      supportsTools: true,
-      supportsEffort: true,
-      multiplier: "3x",
-      contextWindow: 128000,
-    },
-  ]
-}

@@ -54,33 +54,6 @@ export interface ConnectorAccount {
   baseUrl?: string | null
 }
 
-export interface ModelOption {
-  id: string
-  label: string
-  provider: ConnectorProvider
-  providerGroup: string // e.g. "OpenAI · Codex", "GitHub Copilot", "OpenRouter · Free Tier", "Anthropic · Claude"
-  route?: string // e.g. "Auto", "Free", "0.33x", "MausBot's model", "Default"
-  isFree?: boolean
-  supportsTools?: boolean
-  supportsEffort?: boolean
-  contextWindow?: number
-  multiplier?: string
-  description?: string
-  custom?: boolean
-  blocked?: boolean
-}
-
-export type ThinkingEffort = "low" | "medium" | "high" | "x-high" | "max"
-
-export interface SelectedModelConfig {
-  instanceId: string // Account ID or "system"
-  modelId: string
-  modelLabel: string
-  provider: ConnectorProvider
-  providerGroup: string
-  thinkingEffort?: ThinkingEffort
-}
-
 export interface DeviceCodeFlow {
   deviceCode: string
   userCode: string

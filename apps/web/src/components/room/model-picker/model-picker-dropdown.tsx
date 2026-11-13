@@ -1,38 +1,98 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
-import { ChevronDown, ChevronsUpDown, Loader2, Plus, Search, SlidersHorizontal, X } from "lucide-react"
-import { ProviderIcon } from "./provider-icons"
-import type { ModelOption, SelectedModelConfig, ThinkingEffort } from "@/lib/connectors/types"
+import Link from "next/link"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
-  DEFAULT_MODEL_CONFIG,
-  getAllGroupedModels,
-  saveStoredModelSelection,
-  saveStoredThinkingEffort,
-} from "@/lib/connectors/registry"
-import type { ProviderGroupData } from "@/lib/connectors/registry"
+  ChevronDown,
+  ChevronsUpDown,
+  Loader2,
+  Monitor,
+  Plus,
+  RefreshCw,
+  Search,
+  SlidersHorizontal,
+  X,
+} from "lucide-react"
+import { EFFORT_LABELS, type EffortLevel } from "@sayabot/llm/models/effort"
+import { ProviderIcon } from "./provider-icons"
+import { SayabotMark } from "@/components/landing/sayabot-mark"
 import { cn } from "@/lib/format"
+import type { PickerGroup, PickerModel } from "@/lib/model-catalog"
+import { AUTO_SELECTION, type ModelSelection } from "@/lib/model-selection"
 
-interface ModelPickerDropdownProps {
-  currentModel?: SelectedModelConfig
-  onSelectModel?: (config: SelectedModelConfig) => void
-  onOpenManageAccounts: () => void
-  onClose: () => void
+interface ModelList {
+  groups: PickerGroup[]
+  canManage: boolean
 }
 
-const THINKING_LEVELS: { id: ThinkingEffort; label: string }[] = [
-  { id: "low", label: "Low" },
-  { id: "medium", label: "Medium" },
-  { id: "high", label: "High" },
-  { id: "x-high", label: "X-High" },
-  { id: "max", label: "Max" },
-]
+/** The last list per workspace, shown at once while a fresh one loads. */
+const lastLists = new Map<string, ModelList>()
 
-/** The first few of each provider are the ones people pick; the rest fold away. */
-const SUGGESTED = 4
+/** When the server has no models of its own, Auto still needs a home in the rail. */
+const AUTO_GROUP: PickerGroup = {
+  keyId: null,
+  provider: "saya",
+  label: "Auto",
+  detail: "Each agent answers with the model it is set to",
+  section: "server",
+  models: [{ id: "", label: "Auto" }],
+  effortLevels: [],
+}
+
+function useModelList(orgSlug: string) {
+  const [list, setList] = useState<ModelList | null>(() => lastLists.get(orgSlug) ?? null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const load = useCallback(
+    async (refresh = false) => {
+      setLoading(true)
+      setError(null)
+      try {
+        const query = new URLSearchParams({ org: orgSlug, ...(refresh ? { refresh: "1" } : {}) })
+        const response = await fetch(`/api/connectors/models?${query}`, { cache: "no-store" })
+        const body = (await response.json().catch(() => null)) as
+          (ModelList & { error?: string }) | null
+        if (!response.ok || !body || !Array.isArray(body.groups)) {
+          throw new Error(body?.error ?? `HTTP ${response.status}`)
+        }
+        const next = { groups: body.groups, canManage: Boolean(body.canManage) }
+        lastLists.set(orgSlug, next)
+        setList(next)
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : "Could not load the model list")
+      } finally {
+        setLoading(false)
+      }
+    },
+    [orgSlug],
+  )
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  return { list, loading, error, reload: load }
+}
+
+export function GroupIcon({ provider, size = 20 }: { provider: string; size?: 16 | 20 }) {
+  const box = size === 16 ? "h-4 w-4" : "h-5 w-5"
+  if (provider === "saya") return <SayabotMark className={box} />
+  if (provider === "computer") return <Monitor className={box} />
+  return <ProviderIcon provider={provider} size={size} />
+}
 
 const railButton =
   "grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted transition-colors hover:bg-raised hover:text-text"
+
+function planLine(group: PickerGroup): string | null {
+  const plan = group.plan
+  if (!plan) return null
+  const tightest = [...plan.windows].sort((a, b) => b.usedPercent - a.usedPercent)[0]
+  const name = plan.plan ? `${plan.plan.charAt(0).toUpperCase()}${plan.plan.slice(1)} plan` : null
+  const used = tightest ? `${tightest.label} ${Math.round(tightest.usedPercent)}% used` : null
+  return [name, used].filter(Boolean).join(" · ") || null
+}
 
 function ModelRow({
   model,
@@ -41,20 +101,31 @@ function ModelRow({
   selected,
   onPick,
 }: {
-  model: ModelOption
+  model: PickerModel
   groupLabel: string
   showGroup: boolean
   selected: boolean
   onPick: () => void
 }) {
+  const blocked = Boolean(model.orgBlocked)
   return (
     <button
       type="button"
       role="menuitemradio"
       aria-checked={selected}
       onClick={onPick}
+      disabled={blocked}
+      title={
+        blocked
+          ? "Your organization does not allow this model"
+          : model.needsCliUpdate
+            ? `Needs version ${model.needsCliUpdate} or newer of the app`
+            : model.releaseDate
+              ? `Released ${model.releaseDate}`
+              : undefined
+      }
       className={cn(
-        "flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left transition-colors",
+        "flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-45",
         selected ? "bg-raised" : "hover:bg-raised/60",
       )}
     >
@@ -69,65 +140,55 @@ function ModelRow({
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-2">
-          <span className={cn("truncate text-[14px]", selected ? "font-medium text-text" : "text-text/90")}>
+          <span
+            className={cn(
+              "truncate text-[14px]",
+              selected ? "font-medium text-text" : "text-text/90",
+            )}
+          >
             {model.label}
           </span>
-          {model.route ? (
-            <span className="shrink-0 rounded-md bg-raised px-1.5 py-px text-[11px] lowercase text-muted">
-              {model.route}
+          {model.listing === "new" ? (
+            <span className="shrink-0 rounded-md bg-ok/15 px-1.5 py-px text-[11px] text-ok">
+              new
+            </span>
+          ) : null}
+          {model.free ? (
+            <span className="shrink-0 rounded-md bg-raised px-1.5 py-px text-[11px] text-muted">
+              free
+            </span>
+          ) : null}
+          {model.needsCliUpdate ? (
+            <span className="shrink-0 rounded-md bg-warn/15 px-1.5 py-px text-[11px] text-warn">
+              update app
             </span>
           ) : null}
         </span>
-        {showGroup ? <span className="block truncate text-[11.5px] text-faint">{groupLabel}</span> : null}
+        {showGroup ? (
+          <span className="block truncate text-[11.5px] text-faint">{groupLabel}</span>
+        ) : null}
       </span>
     </button>
   )
 }
 
 export function ModelPickerDropdown({
-  currentModel = DEFAULT_MODEL_CONFIG,
-  onSelectModel,
-  onOpenManageAccounts,
+  orgSlug,
+  selection,
+  onSelect,
   onClose,
-}: ModelPickerDropdownProps) {
+}: {
+  orgSlug: string
+  selection: ModelSelection
+  onSelect: (selection: ModelSelection) => void
+  onClose: () => void
+}) {
+  const { list, loading, error, reload } = useModelList(orgSlug)
   const [searchQuery, setSearchQuery] = useState("")
-  const [groups, setGroups] = useState<ProviderGroupData[]>([])
-  const [loading, setLoading] = useState(true)
-  const [activeGroupId, setActiveGroupId] = useState<string>(currentModel.instanceId)
+  const [activeKey, setActiveKey] = useState<string | null | undefined>(undefined)
   const [olderOpen, setOlderOpen] = useState(false)
-  const [selected, setSelected] = useState<SelectedModelConfig>(currentModel)
   const dropdownRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    setSelected(currentModel)
-  }, [currentModel])
-
-  useEffect(() => {
-    let cancelled = false
-    async function load() {
-      try {
-        const savedKey =
-          typeof window !== "undefined" ? window.localStorage.getItem("saaya:openrouter-key") : null
-        const res = await fetch("/api/connectors/models", {
-          headers: savedKey ? { "x-openrouter-key": savedKey } : undefined,
-        })
-        if (!res.ok) throw new Error("Failed to fetch")
-        const data = (await res.json()) as { groups: ProviderGroupData[] }
-        if (!cancelled && Array.isArray(data.groups)) setGroups(data.groups)
-      } catch {
-        if (!cancelled) {
-          const fallback = await getAllGroupedModels()
-          setGroups(fallback.groups)
-        }
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-    void load()
-    return () => {
-      cancelled = true
-    }
-  }, [])
+  const base = `/${orgSlug}`
 
   useEffect(() => {
     function handlePointerDown(event: PointerEvent) {
@@ -144,28 +205,51 @@ export function ModelPickerDropdown({
     }
   }, [onClose])
 
-  const activeGroup = groups.find((group) => group.id === activeGroupId) ?? groups[0] ?? null
+  const groups = useMemo(() => {
+    const live = list?.groups ?? []
+    return live.some((group) => group.keyId === null) ? live : [AUTO_GROUP, ...live]
+  }, [list])
 
-  function pick(group: ProviderGroupData, model: ModelOption) {
-    const next: SelectedModelConfig = {
-      instanceId: group.id,
-      modelId: model.id,
-      modelLabel: model.label,
-      provider: model.provider,
-      providerGroup: group.label,
-      thinkingEffort: selected.thinkingEffort,
-    }
-    setSelected(next)
-    saveStoredModelSelection(next)
-    onSelectModel?.(next)
+  // Open on the account of the current pick; fall back to the first one.
+  const activeGroup =
+    groups.find(
+      (group) => group.keyId === (activeKey === undefined ? selection.keyId : activeKey),
+    ) ??
+    groups[0] ??
+    null
+
+  const isSelected = (group: PickerGroup, model: PickerModel) =>
+    selection.keyId === group.keyId && selection.modelId === model.id
+
+  const selectedModel = useMemo(() => {
+    const group = groups.find((g) => g.keyId === selection.keyId)
+    const model = group?.models.find((m) => m.id === selection.modelId)
+    return group && model ? { group, model } : null
+  }, [groups, selection])
+
+  const effortChoices: EffortLevel[] = selectedModel
+    ? (selectedModel.model.effort ?? selectedModel.group.effortLevels)
+    : []
+
+  function pick(group: PickerGroup, model: PickerModel) {
+    const isAuto = group.keyId === null && model.id === ""
+    const effort =
+      selection.effort && (model.effort ?? group.effortLevels).includes(selection.effort)
+        ? selection.effort
+        : undefined
+    onSelect(
+      isAuto
+        ? { ...AUTO_SELECTION, label: group === AUTO_GROUP ? "Auto" : model.label }
+        : {
+            keyId: group.keyId,
+            modelId: model.id,
+            label: model.label,
+            provider: group.provider,
+            groupLabel: group.label,
+            ...(effort ? { effort } : {}),
+          },
+    )
     onClose()
-  }
-
-  function pickEffort(effort?: ThinkingEffort) {
-    const next: SelectedModelConfig = { ...selected, thinkingEffort: effort }
-    setSelected(next)
-    saveStoredThinkingEffort(effort)
-    onSelectModel?.(next)
   }
 
   const needle = searchQuery.trim().toLowerCase()
@@ -183,90 +267,98 @@ export function ModelPickerDropdown({
     )
   }, [groups, needle])
 
-  const isSelected = (group: ProviderGroupData, model: ModelOption) =>
-    selected.modelId === model.id && (selected.instanceId === group.id || !selected.instanceId)
-
-  const suggested = activeGroup?.models.slice(0, SUGGESTED) ?? []
-  const older = activeGroup?.models.slice(SUGGESTED) ?? []
+  const leading = activeGroup?.models.filter((model) => model.listing !== "older") ?? []
+  const older = activeGroup?.models.filter((model) => model.listing === "older") ?? []
+  const subtitle = activeGroup
+    ? [activeGroup.detail, planLine(activeGroup)].filter(Boolean).join(" · ")
+    : ""
 
   return (
     <div
       ref={dropdownRef}
-      className="absolute right-0 top-full z-50 mt-2 flex h-[min(460px,calc(100dvh-80px))] w-[min(500px,calc(100vw-24px))] overflow-hidden rounded-2xl border border-line-strong bg-panel text-text shadow-[0_24px_64px_rgba(0,0,0,0.6)]"
+      className="absolute right-0 top-full z-50 mt-2 flex h-[min(480px,calc(100dvh-80px))] w-[min(520px,calc(100vw-24px))] overflow-hidden rounded-2xl border border-line-strong bg-panel text-text shadow-[0_24px_64px_rgba(0,0,0,0.6)]"
       role="menu"
       aria-label="Choose a model"
     >
-      {/* Providers */}
+      {/* Accounts */}
       <div className="flex w-[60px] shrink-0 flex-col items-center gap-1.5 border-r border-line bg-void/50 py-2.5">
         <div className="flex min-h-0 flex-1 flex-col items-center gap-1.5 overflow-y-auto [scrollbar-width:none]">
           {groups.map((group) => {
-            const active = activeGroup?.id === group.id && !needle
+            const active = activeGroup?.keyId === group.keyId && !needle
             return (
               <button
-                key={group.id}
+                key={group.keyId ?? "server"}
                 type="button"
                 onClick={() => {
-                  setActiveGroupId(group.id)
+                  setActiveKey(group.keyId)
                   setOlderOpen(false)
                   setSearchQuery("")
                 }}
                 aria-pressed={active}
                 aria-label={group.label}
-                title={group.label}
-                className={cn(
-                  railButton,
-                  "relative",
-                  active && "bg-raised text-text ring-1 ring-line-strong",
-                  group.status === "needs_setup" && !active && "opacity-50",
-                )}
+                title={`${group.label}\n${group.detail}`}
+                className={cn(railButton, active && "bg-raised text-text ring-1 ring-line-strong")}
               >
-                <ProviderIcon provider={group.provider} size={20} />
+                <GroupIcon provider={group.provider} />
               </button>
             )
           })}
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            onClose()
-            onOpenManageAccounts()
-          }}
-          aria-label="Manage AI accounts"
-          title="Manage AI accounts"
+        <Link
+          href={`${base}/agents`}
+          onClick={onClose}
+          aria-label="Choose each agent's model"
+          title="Choose each agent's model"
           className={railButton}
         >
           <SlidersHorizontal className="h-[18px] w-[18px]" />
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            onClose()
-            onOpenManageAccounts()
-          }}
-          aria-label="Connect another AI account"
-          title="Connect another AI account"
+        </Link>
+        <Link
+          href={`${base}/settings/keys`}
+          onClick={onClose}
+          aria-label="Add an AI account"
+          title="Add an AI account"
           className={railButton}
         >
           <Plus className="h-[18px] w-[18px]" />
-        </button>
+        </Link>
       </div>
 
       {/* Models */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="shrink-0 px-4 pb-2 pt-3.5">
-          <p className="truncate text-[16px] font-semibold tracking-[-0.01em]">
-            {needle ? "All models" : activeGroup?.label ?? "Models"}
-          </p>
-          <p className="mt-0.5 truncate text-[12.5px] text-faint">
-            {needle
-              ? `${results.length} ${results.length === 1 ? "match" : "matches"}`
-              : activeGroup
-                ? [activeGroup.account, activeGroup.status === "needs_setup" ? "needs setup" : null]
-                    .filter(Boolean)
-                    .join(" · ") || `${activeGroup.totalCount} models`
-                : ""}
-          </p>
+        <div className="flex shrink-0 items-start gap-2 px-4 pb-2 pt-3.5">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[16px] font-semibold tracking-[-0.01em]">
+              {needle ? "All models" : (activeGroup?.label ?? "Models")}
+            </p>
+            <p
+              className="mt-0.5 truncate text-[12.5px] text-faint"
+              title={needle ? undefined : subtitle}
+            >
+              {needle
+                ? `${results.length} ${results.length === 1 ? "match" : "matches"}`
+                : subtitle}
+            </p>
+          </div>
+          {list?.canManage ? (
+            <button
+              type="button"
+              onClick={() => void reload(true)}
+              disabled={loading}
+              aria-label="Check every provider for new models"
+              title="Check every provider for new models"
+              className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-faint transition-colors hover:bg-raised hover:text-text disabled:opacity-50"
+            >
+              <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
+            </button>
+          ) : null}
         </div>
+
+        {!needle && activeGroup?.notice ? (
+          <p className="mx-4 mb-2 rounded-lg bg-warn/10 px-2.5 py-1.5 text-[12px] leading-snug text-warn">
+            {activeGroup.notice}
+          </p>
+        ) : null}
 
         <div className="shrink-0 px-3 pb-2">
           <label className="flex h-10 items-center gap-2 rounded-xl bg-raised px-3">
@@ -293,16 +385,27 @@ export function ModelPickerDropdown({
         </div>
 
         <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-3 pb-2">
-          {loading ? (
+          {!list && loading ? (
             <div className="flex items-center justify-center gap-2 py-8 text-[13px] text-faint">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Loading models…
+              Asking your providers for their models…
+            </div>
+          ) : !list && error ? (
+            <div className="py-8 text-center text-[13px] text-faint">
+              <p>{error}</p>
+              <button
+                type="button"
+                onClick={() => void reload()}
+                className="mt-2 text-text underline"
+              >
+                Try again
+              </button>
             </div>
           ) : needle ? (
             results.length ? (
               results.map(({ group, model }) => (
                 <ModelRow
-                  key={`${group.id}:${model.id}`}
+                  key={`${group.keyId ?? "server"}:${model.id}`}
                   model={model}
                   groupLabel={group.label}
                   showGroup
@@ -311,11 +414,13 @@ export function ModelPickerDropdown({
                 />
               ))
             ) : (
-              <p className="py-8 text-center text-[13px] text-faint">No models match “{searchQuery}”</p>
+              <p className="py-8 text-center text-[13px] text-faint">
+                No models match “{searchQuery}”
+              </p>
             )
           ) : activeGroup ? (
             <>
-              {suggested.map((model) => (
+              {leading.map((model) => (
                 <ModelRow
                   key={model.id}
                   model={model}
@@ -325,6 +430,13 @@ export function ModelPickerDropdown({
                   onPick={() => pick(activeGroup, model)}
                 />
               ))}
+              {!activeGroup.models.length ? (
+                <p className="px-2.5 py-6 text-center text-[13px] text-faint">
+                  {activeGroup.section === "computer"
+                    ? "No apps are signed in on this computer right now."
+                    : "This account listed no models."}
+                </p>
+              ) : null}
               {older.length ? (
                 <>
                   <button
@@ -334,9 +446,14 @@ export function ModelPickerDropdown({
                     className="flex w-full items-center gap-2 rounded-xl bg-raised/60 py-2 pl-[42px] pr-3 text-left text-[14px] text-text/90 transition-colors hover:bg-raised"
                   >
                     <span>Older models</span>
-                    <span className="rounded-full bg-hover px-1.5 text-[11px] text-muted">{older.length}</span>
+                    <span className="rounded-full bg-hover px-1.5 text-[11px] text-muted">
+                      {older.length}
+                    </span>
                     <ChevronDown
-                      className={cn("ml-auto h-4 w-4 text-faint transition-transform", olderOpen && "rotate-180")}
+                      className={cn(
+                        "ml-auto h-4 w-4 text-faint transition-transform",
+                        olderOpen && "rotate-180",
+                      )}
                     />
                   </button>
                   {olderOpen
@@ -354,9 +471,7 @@ export function ModelPickerDropdown({
                 </>
               ) : null}
             </>
-          ) : (
-            <p className="py-8 text-center text-[13px] text-faint">No AI accounts connected yet.</p>
-          )}
+          ) : null}
         </div>
 
         <div className="flex shrink-0 items-center justify-between gap-3 border-t border-line px-4 py-2.5">
@@ -366,16 +481,19 @@ export function ModelPickerDropdown({
           <span className="relative">
             <select
               id="model-picker-effort"
-              value={selected.thinkingEffort ?? ""}
-              onChange={(event) =>
-                pickEffort((event.target.value || undefined) as ThinkingEffort | undefined)
-              }
-              className="h-9 w-[150px] cursor-pointer appearance-none rounded-xl bg-raised pl-3 pr-8 text-[13.5px] text-text outline-none hover:bg-hover"
+              value={selection.effort ?? ""}
+              disabled={!effortChoices.length}
+              onChange={(event) => {
+                const value = event.target.value as EffortLevel | ""
+                const { effort: _previous, ...rest } = selection
+                onSelect(value ? { ...rest, effort: value } : rest)
+              }}
+              className="h-9 w-[150px] cursor-pointer appearance-none rounded-xl bg-raised pl-3 pr-8 text-[13.5px] text-text outline-none hover:bg-hover disabled:cursor-not-allowed disabled:opacity-50"
             >
               <option value="">Default</option>
-              {THINKING_LEVELS.map((level) => (
-                <option key={level.id} value={level.id}>
-                  {level.label}
+              {effortChoices.map((level) => (
+                <option key={level} value={level}>
+                  {EFFORT_LABELS[level]}
                 </option>
               ))}
             </select>

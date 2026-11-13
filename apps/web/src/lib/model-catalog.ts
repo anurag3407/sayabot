@@ -6,18 +6,23 @@ import {
   listProviderModels,
   loadEnginePlanUsage,
   modelCatalog,
+  modelListings,
   modelManifest,
   type EffortLevel,
   type EngineCatalog,
   type ListPrice,
+  type ModelListing,
   type PlanUsage,
   type ProviderModel,
 } from "@sayabot/llm/models"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getKek, sayaAiPublic } from "@/lib/env"
 import { effectiveProvider } from "@/lib/format"
+import { isOrgAdmin } from "@/lib/auth"
+import { detectLocalAgents, localDetectionAllowed } from "@/lib/local-agents"
 import { MODEL_SUGGESTIONS } from "@/lib/model-options"
-import type { ProviderKeyView } from "@/lib/types"
+import { listOrgAgents, listProviderKeys } from "@/lib/queries"
+import type { AgentView, OrgAccess, ProviderKeyView } from "@/lib/types"
 
 /**
  * The model picker's data, built the way OpenMausBot builds it:
@@ -43,6 +48,10 @@ export interface PickerModel {
   orgBlocked?: boolean
   /** The installed CLI is older than this model needs. */
   needsCliUpdate?: string
+  /** `new`: out this week. `older`: a newer model replaces it, so the picker folds it away. */
+  listing?: ModelListing
+  /** `YYYY-MM-DD`, from models.dev. */
+  releaseDate?: string
 }
 
 export type PickerSection = "server" | "subscription" | "key" | "computer"
@@ -329,5 +338,102 @@ export async function buildModelCatalog(
       source: "static",
     })
   }
-  return groups
+  return groups.map((group) =>
+    group.section === "subscription" || group.section === "key"
+      ? { ...group, models: withListings(group, inUse) }
+      : group,
+  )
+}
+
+/**
+ * Marks which models lead the list and which fold under Older models, from models.dev release
+ * dates, so a new model leads on its own the day its provider lists it (see `modelListings`).
+ */
+function withListings(
+  group: PickerGroup,
+  inUse: Array<{ keyId: string | null; model: string | null }>,
+): PickerModel[] {
+  const used = new Set(
+    inUse.flatMap((use) => (use.keyId === group.keyId && use.model ? [use.model] : [])),
+  )
+  const listings = modelListings(group.provider, group.models, { inUse: used })
+  if (!listings.size) return group.models
+  return group.models.map((model) => {
+    const info = listings.get(model.id)
+    return info ? { ...model, ...info } : model
+  })
+}
+
+/** Which provider account and model an agent runs on, in the picker's terms. */
+export function agentModelUse(agent: Pick<AgentView, "params" | "providerKeyId" | "model">): {
+  keyId: string | null
+  model: string | null
+} {
+  return agentRunner(agent) ?? { keyId: agent.providerKeyId, model: agent.model }
+}
+
+/** An agent that runs through an app (on the server or on someone's Mac) instead of a key. */
+export function agentRunner(
+  agent: Pick<AgentView, "params">,
+): { keyId: string; model: string | null } | null {
+  const runner = agent.params?.runner as
+    | { hostId?: string; app?: string; where?: string; model?: string }
+    | undefined
+  if (runner?.where === "server" && runner.app) {
+    return { keyId: `cli:${runner.app}`, model: runner.model ?? "default" }
+  }
+  return runner?.hostId ? { keyId: `host:${runner.hostId}`, model: runner.app ?? null } : null
+}
+
+/**
+ * Everything the model picker can offer this person in this workspace, live: the server's own
+ * models, apps signed in on the server, every saved key's provider list and their own computers.
+ * Shared by the agents page and the title-bar picker so both always show the same list.
+ */
+export async function loadWorkspaceModels(input: {
+  access: OrgAccess
+  /** The request's host, which decides whether apps signed in on this computer count. */
+  host: string | null
+  keys?: ProviderKeyView[]
+  agents?: AgentView[]
+}): Promise<{ groups: PickerGroup[]; serverApps: ServerCliApp[] }> {
+  const { access } = input
+  const [keys, agents, hostRows] = await Promise.all([
+    input.keys ?? listProviderKeys(access.org.id),
+    input.agents ?? listOrgAgents(access.org.id),
+    createAdminClient()
+      .from("desktop_hosts")
+      .select("id, name, settings, local_agents")
+      .eq("user_id", access.user.id)
+      .is("revoked_at", null)
+      .then(({ data }) => data ?? []),
+  ])
+  const hosts: RunnerHost[] = (
+    hostRows as Array<{
+      id: string
+      name: string
+      settings: { runnerEnabled?: boolean } | null
+      local_agents: Array<{ id: string; status: string }> | null
+    }>
+  ).map((row) => ({
+    id: row.id,
+    name: row.name,
+    runnerEnabled: Boolean(row.settings?.runnerEnabled),
+    localAgents: row.local_agents ?? [],
+  }))
+  // Claude Code / Codex signed in on this computer, when the server is the person's own Mac.
+  const serverApps: ServerCliApp[] =
+    isOrgAdmin(access.role) && localDetectionAllowed(input.host)
+      ? (await detectLocalAgents().catch(() => [])).filter(
+          (app) => app.id === "claude-code" || app.id === "codex" || app.id === "cursor",
+        )
+      : []
+  const groups = await buildModelCatalog(
+    access.org.id,
+    keys,
+    agents.map(agentModelUse),
+    hosts,
+    serverApps,
+  )
+  return { groups, serverApps }
 }

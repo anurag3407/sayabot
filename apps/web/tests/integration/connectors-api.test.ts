@@ -240,6 +240,24 @@ const mockCopilotSession = {
   sku: "copilot_for_business",
 }
 
+vi.mock("@/lib/model-catalog", () => ({
+  loadWorkspaceModels: vi.fn(async () => ({
+    groups: [
+      {
+        keyId: "key-1",
+        provider: "anthropic",
+        label: "Anthropic",
+        detail: "anthropic · •••• 1234",
+        section: "key",
+        models: [{ id: "claude-sonnet-5-5", label: "Claude Sonnet 5.5" }],
+        effortLevels: ["low", "medium", "high"],
+        source: "live",
+      },
+    ],
+    serverApps: [],
+  })),
+}))
+
 vi.mock("@/lib/connectors/copilot", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/connectors/copilot")>()
   return {
@@ -298,6 +316,8 @@ vi.mock("@/lib/connectors/chatgpt-plan", async (importOriginal) => {
 
 // Route handlers
 import { GET as getModels } from "../../src/app/api/connectors/models/route"
+
+const MODELS_URL = "http://localhost/api/connectors/models?org=test-org"
 import { GET as getCopilot, POST as postCopilot } from "../../src/app/api/connectors/copilot/route"
 import {
   GET as getOpenRouterOAuth,
@@ -320,7 +340,7 @@ import { decryptSecret, encryptSecret } from "@sayabot/llm"
 import * as copilotConnector from "../../src/lib/connectors/copilot"
 import * as openRouterConnector from "../../src/lib/connectors/openrouter"
 import * as chatGptConnector from "../../src/lib/connectors/chatgpt-plan"
-import * as registryConnector from "../../src/lib/connectors/registry"
+import * as modelCatalog from "../../src/lib/model-catalog"
 
 const realFetch = globalThis.fetch
 
@@ -477,23 +497,23 @@ describe("Web Connectors API & Server Actions Integration Suite", () => {
   // 2. /api/connectors/models API Route
   // =========================================================================
   describe("GET /api/connectors/models", () => {
-    it("returns expected grouped models structure for authenticated request", async () => {
-      const res = await getModels(new Request("http://localhost/api/connectors/models"))
+    it("returns the workspace's live model groups for a member", async () => {
+      const res = await getModels(new Request(MODELS_URL))
       expect(res.status).toBe(200)
 
-      const body = (await res.json()) as { groups: any[]; totalModelsCount: number }
-      expect(body).toHaveProperty("groups")
-      expect(body).toHaveProperty("totalModelsCount")
+      const body = (await res.json()) as { groups: any[]; canManage: boolean }
       expect(Array.isArray(body.groups)).toBe(true)
       expect(body.groups.length).toBeGreaterThan(0)
-      expect(body.totalModelsCount).toBeGreaterThan(0)
+      expect(body.canManage).toBe(true)
 
       const firstGroup = body.groups[0]
-      expect(firstGroup).toHaveProperty("id")
+      expect(firstGroup).toHaveProperty("keyId")
       expect(firstGroup).toHaveProperty("label")
       expect(firstGroup).toHaveProperty("provider")
-      expect(firstGroup).toHaveProperty("models")
       expect(Array.isArray(firstGroup.models)).toBe(true)
+      expect(vi.mocked(modelCatalog.loadWorkspaceModels)).toHaveBeenCalledWith(
+        expect.objectContaining({ access: expect.objectContaining({ org: expect.objectContaining({ slug: "test-org" }) }) }),
+      )
 
       // Ensure secret tokens/keys are never leaked in client payloads
       const payloadStr = JSON.stringify(body)
@@ -503,25 +523,29 @@ describe("Web Connectors API & Server Actions Integration Suite", () => {
       expect(payloadStr).not.toContain("ghp_")
     })
 
-    it("passes custom x-openrouter-key header to model resolver", async () => {
-      const spyRegistry = vi.spyOn(registryConnector, "getAllGroupedModels")
-      const req = new Request("http://localhost/api/connectors/models", {
-        headers: { "x-openrouter-key": "sk-or-custom-client-key-555" },
-      })
-      const res = await getModels(req)
-      expect(res.status).toBe(200)
-      expect(spyRegistry).toHaveBeenCalledWith("sk-or-custom-client-key-555")
+    it("asks which workspace when the org is missing, and hides other workspaces", async () => {
+      const missing = await getModels(new Request("http://localhost/api/connectors/models"))
+      expect(missing.status).toBe(400)
+      const other = await getModels(new Request("http://localhost/api/connectors/models?org=other-org"))
+      expect(other.status).toBe(404)
     })
 
-    it("returns 500 when model retrieval throws", async () => {
-      const spyRegistry = vi
-        .spyOn(registryConnector, "getAllGroupedModels")
-        .mockRejectedValueOnce(new Error("Upstream provider network timeout"))
+    it("tells a member they cannot manage, and ignores refresh from a member", async () => {
+      mockUserRole = "member"
+      const res = await getModels(new Request(`${MODELS_URL}&refresh=1`))
+      expect(res.status).toBe(200)
+      const body = (await res.json()) as { canManage: boolean }
+      expect(body.canManage).toBe(false)
+    })
 
-      const res = await getModels(new Request("http://localhost/api/connectors/models"))
+    it("returns 500 without internals when the model list cannot be built", async () => {
+      vi.mocked(modelCatalog.loadWorkspaceModels).mockRejectedValueOnce(
+        new Error("Upstream provider network timeout"),
+      )
+      const res = await getModels(new Request(MODELS_URL))
       expect(res.status).toBe(500)
       const data = await res.json()
-      expect(data.error).toBe("Upstream provider network timeout")
+      expect(data.error).toBe("Could not load the model list")
     })
   })
 
@@ -1327,7 +1351,7 @@ describe("Web Connectors API & Server Actions Integration Suite", () => {
       expect(testStr).not.toContain(secretToken)
       expect(testStr).not.toContain('"ciphertext"')
 
-      const modelsRes = await getModels(new Request("http://localhost/api/connectors/models"))
+      const modelsRes = await getModels(new Request(MODELS_URL))
       const modelsData = await modelsRes.json()
       const modelsStr = JSON.stringify(modelsData)
       expect(modelsStr).not.toContain(secretToken)

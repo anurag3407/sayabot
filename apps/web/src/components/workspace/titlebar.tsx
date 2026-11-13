@@ -221,7 +221,7 @@ export function Titlebar({
       </nav>
 
       <div className="flex shrink-0 items-center gap-1 [-webkit-app-region:no-drag]">
-        <ModelPickerButton variant="titlebar" />
+        <ModelPickerButton orgSlug={orgSlug} variant="titlebar" />
         {current ? (
           <button
             type="button"

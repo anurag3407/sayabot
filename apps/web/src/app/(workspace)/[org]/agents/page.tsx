@@ -13,10 +13,8 @@ import { AddAgentChooser } from "@/components/agents/add-agent-chooser"
 import { AgentModelPicker } from "@/components/agents/agent-model-picker"
 import { AgentTestButton } from "@/components/agents/agent-test-button"
 import { Mascot } from "@/components/ui/mascot"
-import { createAdminClient } from "@/lib/supabase/admin"
-import { buildModelCatalog } from "@/lib/model-catalog"
+import { agentRunner, loadWorkspaceModels } from "@/lib/model-catalog"
 import { devModelConfigured } from "@/lib/env"
-import { detectLocalAgents, localDetectionAllowed } from "@/lib/local-agents"
 import { formatTokens, formatUsd, relativeTime } from "@/lib/format"
 import { loadUsageRollup, usageByAgent } from "@/lib/usage"
 import { DeleteAgentButton } from "@/components/agents/delete-agent-button"
@@ -44,37 +42,21 @@ export default async function AgentsPage({
   ])
   const addableRooms = rooms.filter((room) => room.kind !== "dm")
   const since = new Date(Date.now() - 30 * 86_400_000).toISOString()
-  const runnerOf = (a: (typeof agents)[number]) => {
-    const r = a.params?.runner as { hostId?: string; app?: string; where?: string; model?: string } | undefined
-    if (r?.where === "server" && r.app) return { keyId: `cli:${r.app}`, model: r.model ?? "default" }
-    return r?.hostId ? { keyId: `host:${r.hostId}`, model: r.app ?? null } : null
-  }
-  const { data: hostRows } = await createAdminClient()
-    .from("desktop_hosts")
-    .select("id, name, settings, local_agents")
-    .eq("user_id", access.user.id)
-    .is("revoked_at", null)
-  const runnerHosts = ((hostRows ?? []) as { id: string; name: string; settings: { runnerEnabled?: boolean } | null; local_agents: Array<{ id: string; status: string }> | null }[]).map(
-    (h) => ({ id: h.id, name: h.name, runnerEnabled: Boolean(h.settings?.runnerEnabled), localAgents: h.local_agents ?? [] }),
-  )
-  // Claude Code / Codex already signed in on this computer (when the server is the person's own Mac).
+  const runnerOf = agentRunner
   const requestHeaders = await headers()
-  const serverApps =
-    canEdit && localDetectionAllowed(requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host"))
-      ? (await detectLocalAgents().catch(() => [])).filter((a) => a.id === "claude-code" || a.id === "codex" || a.id === "cursor")
-      : []
-  const [rollup, catalog] = await Promise.all([
+  const [rollup, models] = await Promise.all([
     loadUsageRollup(access.org.id, since),
     canEdit
-      ? buildModelCatalog(
-          access.org.id,
+      ? loadWorkspaceModels({
+          access,
+          host: requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host"),
           keys,
-          agents.map((a) => runnerOf(a) ?? { keyId: a.providerKeyId, model: a.model }),
-          runnerHosts,
-          serverApps,
-        )
-      : Promise.resolve([]),
+          agents,
+        })
+      : Promise.resolve({ groups: [], serverApps: [] }),
   ])
+  const catalog = models.groups
+  const serverApps = models.serverApps
   const usage = usageByAgent(rollup ?? [])
   const maxTokens = Math.max(1, ...[...usage.values()].map((u) => u.inputTokens + u.outputTokens))
   const totals = [...usage.values()].reduce(

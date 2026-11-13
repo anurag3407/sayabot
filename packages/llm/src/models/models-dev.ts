@@ -27,7 +27,8 @@ export const CATALOG_MAX_AGE_MS = 24 * 60 * 60 * 1000
 export const CATALOG_FETCH_TIMEOUT_MS = 10_000
 export const CATALOG_MAX_BYTES = 20 * 1024 * 1024
 export const CATALOG_DISABLE_ENV = "SAYABOT_DISABLE_MODEL_CATALOG_FETCH"
-export const CATALOG_SCHEMA = "sayabot.models-dev.v1"
+/** v2 keeps `release_date` and `family`; an older cache is dropped and fetched again. */
+export const CATALOG_SCHEMA = "sayabot.models-dev.v2"
 
 /** One model, trimmed to the fields Sayabot uses. Keeps models.dev's names, so trimming twice is a no-op. */
 export interface CatalogModel {
@@ -40,6 +41,10 @@ export interface CatalogModel {
   limit?: { context?: number; output?: number }
   /** US dollars per million tokens. */
   cost?: { input?: number; output?: number; cache_read?: number; cache_write?: number }
+  /** `YYYY-MM-DD`, so the text sorts as the date does. */
+  release_date?: string
+  /** models.dev's family, such as `claude-sonnet`: the newer releases of one line of models. */
+  family?: string
 }
 
 export interface CatalogProvider {
@@ -101,11 +106,17 @@ const text = (value: unknown, max = 200): string | undefined =>
     ? value.trim()
     : undefined
 
+const RELEASE_DATE = /^\d{4}-\d{2}-\d{2}$/
+
 function trimModel(key: string, raw: unknown): CatalogModel | null {
   if (!isRecord(raw) || !ID.test(key)) return null
   const id = typeof raw.id === "string" && ID.test(raw.id) ? raw.id : key
   const model: CatalogModel = { id, name: text(raw.name) ?? id }
   if (raw.reasoning === true) model.reasoning = true
+  if (typeof raw.release_date === "string" && RELEASE_DATE.test(raw.release_date))
+    model.release_date = raw.release_date
+  const family = text(raw.family, 80)
+  if (family && ID.test(family)) model.family = family
   if (raw.tool_call === true) model.tool_call = true
   const effortValues = Array.isArray(raw.effort)
     ? raw.effort
