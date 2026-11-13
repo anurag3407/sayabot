@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./local-apps": "./src/local-apps.ts"
   },
   "scripts": {
     "typecheck": "tsc",

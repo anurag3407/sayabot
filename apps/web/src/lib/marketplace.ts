@@ -8,7 +8,7 @@
  * ever sends an app id and the person's key.
  */
 
-import { LOCAL_APPS } from "@sayabot/llm"
+import { LOCAL_APPS } from "@sayabot/llm/local-apps"
 import { CATALOG_APPS } from "./marketplace-catalog"
 
 export type AppAuth =

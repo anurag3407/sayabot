@@ -35,6 +35,16 @@ const nextConfig: NextConfig = {
     // Monorepo has React 19 in web and React 18 in mobile; typecheck separately
     ignoreBuildErrors: true,
   },
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        child_process: false,
+      }
+    }
+    return config
+  },
   turbopack: {},
   async headers() {
     return [
