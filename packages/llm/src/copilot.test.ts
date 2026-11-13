@@ -15,7 +15,7 @@ afterEach(() => clearCopilotSessions())
 describe("copilot", () => {
   it("swaps a GitHub token for a Copilot token and reuses it until it nearly expires", async () => {
     let now = 1_000_000
-    const fetch = vi.fn(async () =>
+    const fetch = vi.fn(async (_url?: RequestInfo | URL, _init?: RequestInit) =>
       json({ token: "tid=abc", expires_at: (now + 30 * 60_000) / 1000 }),
     )
     const first = await copilotSessionToken("gho_secret", { fetch, now: () => now })
@@ -43,7 +43,7 @@ describe("copilot", () => {
   })
 
   it("signs each API call with the Copilot token and Copilot's client headers", async () => {
-    const base = vi.fn(async (input: string | URL | Request) =>
+    const base = vi.fn(async (input: string | URL | Request, _init?: RequestInit) =>
       String(input).includes("copilot_internal")
         ? json({ token: "tid=xyz", expires_at: Date.now() / 1000 + 1800 })
         : json({ ok: true }),
