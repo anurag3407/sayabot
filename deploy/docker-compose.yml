@@ -103,6 +103,8 @@ services:
     <<: [*hardening, *orchestrator-image]
     profiles: ["tools"]
     restart: "no"
+    healthcheck:
+      disable: true
     env_file: .env.production
     working_dir: /app/packages/db
     command: ["node", "--import", "tsx", "src/migrate.ts"]

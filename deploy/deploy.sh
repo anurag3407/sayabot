@@ -151,6 +151,7 @@ prune_old_images() {
       docker image rm "$prefix/$image:$tag" >/dev/null 2>&1 || true
     done
   done
+  docker container prune -f >/dev/null 2>&1 || true
   docker image prune -f >/dev/null 2>&1 || true
   docker builder prune -f --filter "until=24h" --keep-storage 4GB >/dev/null 2>&1 || true
 }
@@ -256,7 +257,13 @@ build_computer_image() {
 
 run_migrations() {
   log "Running database migrations"
-  compose --profile tools run --rm migrate || die "Migrations failed. Nothing was rolled out; the running release is untouched."
+  local cid
+  cid="sayabot-migrate-$(date +%s)"
+  compose --profile tools run -T --no-deps --name "$cid" migrate || {
+    docker rm -f "$cid" >/dev/null 2>&1 || true
+    die "Migrations failed. Nothing was rolled out; the running release is untouched."
+  }
+  docker rm -f "$cid" >/dev/null 2>&1 || true
 }
 
 roll_out() {
