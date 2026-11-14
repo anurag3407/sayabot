@@ -37,6 +37,12 @@ function startHost(): void {
     host = new DesktopHost({
       getServerUrl: () => loadSession()?.serverUrl ?? loadConfig().serverUrl,
       getSession: () => loadSession(),
+      onSessionUpdate: (updated) => {
+        const cur = loadSession()
+        if (cur) {
+          saveSession({ ...cur, accessToken: updated.accessToken, refreshToken: updated.refreshToken })
+        }
+      },
       detectLocalAgents: async () =>
         (await detectLocalAgents()).map((a) => ({ id: a.id, name: a.name, status: a.status, version: a.version })),
       // The local runner picks up work after each heartbeat (one job at a time).
@@ -146,7 +152,7 @@ function handleDeepLink(urlStr: string): void {
           if (mainWindow.isMinimized()) mainWindow.restore()
           mainWindow.show()
           mainWindow.focus()
-          openWorkspaceInWindow()
+          void openWorkspaceInWindow()
         }
       }
     }
@@ -214,7 +220,9 @@ function buildAppMenu() {
         {
           label: "Open Workspace in Window",
           accelerator: "CmdOrCtrl+W",
-          click: () => openWorkspaceInWindow(),
+          click: () => {
+            void openWorkspaceInWindow()
+          },
         },
         { type: "separator" },
         { role: "hide" },
@@ -291,7 +299,7 @@ function createWindow() {
   const session = loadSession()
   if (session && session.accessToken) {
     console.log("[Sayabot Desktop] Active session found, opening workspace directly...")
-    openWorkspaceInWindow()
+    void openWorkspaceInWindow()
   } else {
     console.log("[Sayabot Desktop] No session found, loading native login card...")
     loadLocalHtml()
@@ -305,8 +313,74 @@ function createWindow() {
   }
 }
 
-function openWorkspaceInWindow() {
+async function refreshSessionIfNeeded(force = false): Promise<AuthSession | null> {
   const session = loadSession()
+  if (!session || !session.refreshToken) return null
+
+  let isNearExpiry = force
+  if (!isNearExpiry && session.accessToken) {
+    try {
+      const parts = session.accessToken.split(".")
+      if (parts.length === 3) {
+        const payload = JSON.parse(Buffer.from(parts[1]!, "base64").toString())
+        if (typeof payload.exp === "number") {
+          const nowSec = Math.floor(Date.now() / 1000)
+          isNearExpiry = payload.exp - nowSec < 600 // Expiring within 10 minutes
+        }
+      }
+    } catch {
+      isNearExpiry = true
+    }
+  }
+
+  if (!isNearExpiry) return session
+
+  console.log("[Sayabot Desktop] Refreshing auth token...")
+  try {
+    const cleanUrl = session.serverUrl.replace(/\/+$/, "")
+    const res = await fetch(`${cleanUrl}/api/desktop/refresh`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ refreshToken: session.refreshToken }),
+    })
+    if (!res.ok) {
+      console.warn(`[Sayabot Desktop] Refresh token request failed (HTTP ${res.status})`)
+      return session
+    }
+    const data = (await res.json()) as {
+      accessToken?: string
+      refreshToken?: string
+      email?: string
+      userId?: string
+    }
+    if (data.accessToken && data.refreshToken) {
+      const updated: AuthSession = {
+        ...session,
+        accessToken: data.accessToken,
+        refreshToken: data.refreshToken,
+        email: data.email || session.email,
+        userId: data.userId || session.userId,
+      }
+      saveSession(updated)
+      if (host) {
+        startHost()
+      }
+      console.log("[Sayabot Desktop] Refreshed and persisted new session tokens.")
+      return updated
+    }
+  } catch (err) {
+    console.error("[Sayabot Desktop] Token refresh error:", err)
+  }
+  return session
+}
+
+// Background session keeper: refresh tokens every 15 minutes so they never expire
+setInterval(() => {
+  void refreshSessionIfNeeded()
+}, 15 * 60 * 1000)
+
+async function openWorkspaceInWindow() {
+  const session = await refreshSessionIfNeeded()
   if (!session || !mainWindow) return
   const cleanUrl = session.serverUrl.replace(/\/+$/, "")
   // Authenticate seamlessly via /auth/complete hash tokens
@@ -321,7 +395,7 @@ ipcMain.handle("auth:get-session", () => {
 
 ipcMain.handle("auth:start-browser-auth", () => {
   const config = loadConfig()
-  const authUrl = `${config.serverUrl.replace(/\/+$/, "")}/login?next=/auth/desktop`
+  const authUrl = `${config.serverUrl.replace(/\/+$/, "")}/login?force=true&next=/auth/desktop`
   console.log("[Sayabot Desktop] Launching browser auth:", authUrl)
   shell.openExternal(authUrl)
 })
@@ -352,8 +426,8 @@ ipcMain.handle("config:set-server-url", (_event, url: string) => {
   return cleanUrl
 })
 
-ipcMain.handle("workspace:open-in-window", () => {
-  openWorkspaceInWindow()
+ipcMain.handle("workspace:open-in-window", async () => {
+  await openWorkspaceInWindow()
 })
 
 ipcMain.handle("workspace:open-in-browser", () => {

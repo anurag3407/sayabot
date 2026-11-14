@@ -156,7 +156,7 @@ export function DesktopHandoffClient({
               You need to sign in to connect your Sayabot Mac application.
             </p>
             <div className="pt-2">
-              <Link href="/login?next=/auth/desktop" className="inline-block w-full">
+              <Link href="/login?force=true&next=/auth/desktop" className="inline-block w-full">
                 <Button variant="primary" size="lg" className="w-full">
                   Sign in with Google or GitHub
                 </Button>

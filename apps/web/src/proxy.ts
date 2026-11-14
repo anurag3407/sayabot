@@ -35,28 +35,40 @@ const PUBLIC_PATHS = [
   "/oauth/callback",
 ]
 
+function redirectWithCookies(url: URL | string, sourceResponse: NextResponse): NextResponse {
+  const redirectRes = NextResponse.redirect(url)
+  for (const cookie of sourceResponse.cookies.getAll()) {
+    redirectRes.cookies.set(cookie.name, cookie.value, cookie)
+  }
+  return redirectRes
+}
+
 export async function proxy(request: NextRequest) {
   const { response, user } = await updateSession(request)
   const pathname = request.nextUrl.pathname
   const isPublic = PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))
+  const isForceAuth =
+    request.nextUrl.searchParams.get("force") === "true" ||
+    request.nextUrl.searchParams.get("reauth") === "true" ||
+    request.nextUrl.searchParams.get("switch") === "true"
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone()
     url.pathname = "/login"
     url.searchParams.set("next", pathname)
-    return NextResponse.redirect(url)
+    return redirectWithCookies(url, response)
   }
-  if (user && (pathname === "/login" || pathname === "/signup")) {
+  if (user && (pathname === "/login" || pathname === "/signup") && !isForceAuth) {
     const rawNext = request.nextUrl.searchParams.get("next")
     const next = safeNextPath(rawNext, "")
     if (next && next !== "/" && next !== "/login" && next !== "/signup") {
       const url = new URL(next, request.url)
-      return NextResponse.redirect(url)
+      return redirectWithCookies(url, response)
     }
     const url = request.nextUrl.clone()
     url.pathname = "/"
     url.search = ""
-    return NextResponse.redirect(url)
+    return redirectWithCookies(url, response)
   }
   return response
 }

@@ -144,7 +144,7 @@ export function MobileHandoffClient({
               Sign in with your Google or GitHub account to sync with your phone.
             </p>
             <div>
-              <Link href="/login?next=/auth/mobile" className="inline-block w-full">
+              <Link href="/login?force=true&next=/auth/mobile" className="inline-block w-full">
                 <Button variant="primary" size="lg" className="w-full">
                   Sign In
                 </Button>

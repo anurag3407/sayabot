@@ -19,6 +19,7 @@ export interface HostAuth {
 export interface HostDeps {
   getServerUrl: () => string
   getSession: () => { accessToken: string; refreshToken: string } | null
+  onSessionUpdate?: (session: { accessToken: string; refreshToken: string }) => void
   detectLocalAgents: () => Promise<Array<{ id: string; name: string; status: string; version: string | null }>>
   onHeartbeat?: (reply: HeartbeatReply) => void
 }
@@ -165,7 +166,14 @@ export class DesktopHost {
         }),
       })
       if (!res.ok) return null
-      const data = (await res.json()) as { hostId: string; hostToken: string }
+      const data = (await res.json()) as {
+        hostId: string
+        hostToken: string
+        session?: { accessToken: string; refreshToken: string }
+      }
+      if (data.session?.accessToken && data.session?.refreshToken) {
+        this.deps.onSessionUpdate?.(data.session)
+      }
       const auth = { hostId: data.hostId, hostToken: data.hostToken, serverUrl }
       saveHostAuth(auth)
       return auth

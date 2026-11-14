@@ -50,11 +50,11 @@ export function CompleteAuth({ next }: { next: string }) {
         // Direct workspace navigation to avoid bouncing on landing page "/"
         try {
           const { data: members } = await supabase
-            .from("organization_members")
-            .select("organization_id, organizations(slug)")
+            .from("org_members")
+            .select("org_id, orgs!inner(slug)")
             .limit(1)
 
-          const slug = (members as any)?.[0]?.organizations?.slug
+          const slug = (members as any)?.[0]?.orgs?.slug
           if (slug) {
             window.location.replace(`/${slug}`)
             return
@@ -83,11 +83,11 @@ export function CompleteAuth({ next }: { next: string }) {
         }
         try {
           const { data: members } = await supabase
-            .from("organization_members")
-            .select("organization_id, organizations(slug)")
+            .from("org_members")
+            .select("org_id, orgs!inner(slug)")
             .limit(1)
 
-          const slug = (members as any)?.[0]?.organizations?.slug
+          const slug = (members as any)?.[0]?.orgs?.slug
           if (slug) {
             window.location.replace(`/${slug}`)
             return

@@ -11,15 +11,21 @@ export default async function DesktopAuthPage() {
   try {
     const supabase = await createSupabaseServerClient()
     const {
-      data: { session },
-    } = await supabase.auth.getSession()
+      data: { user },
+    } = await supabase.auth.getUser()
 
-    if (session) {
-      serverSession = {
-        accessToken: session.access_token,
-        refreshToken: session.refresh_token,
-        email: session.user.email ?? "",
-        userId: session.user.id,
+    if (user) {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+
+      if (session) {
+        serverSession = {
+          accessToken: session.access_token,
+          refreshToken: session.refresh_token,
+          email: session.user.email ?? user.email ?? "",
+          userId: user.id,
+        }
       }
     }
   } catch (err) {

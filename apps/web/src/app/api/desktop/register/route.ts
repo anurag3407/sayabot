@@ -18,13 +18,22 @@ export async function POST(request: Request) {
     // name/platform are optional
   }
   let who = await userFromRequest(request)
+  let refreshedSession: { accessToken: string; refreshToken: string } | null = null
   // The desktop's saved login may have expired; its refresh token can renew it once here.
   if (!who && typeof body.refreshToken === "string" && body.refreshToken.length < 4_000) {
     const anon = createClient<any>(getSupabaseUrl(), getSupabaseAnonKey(), {
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
     })
     const { data } = await anon.auth.refreshSession({ refresh_token: body.refreshToken })
-    if (data?.user) who = { user: data.user, client: anon }
+    if (data?.user) {
+      who = { user: data.user, client: anon }
+      if (data.session) {
+        refreshedSession = {
+          accessToken: data.session.access_token,
+          refreshToken: data.session.refresh_token,
+        }
+      }
+    }
   }
   if (!who) return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   const name = typeof body.name === "string" && body.name.trim() ? body.name.trim().slice(0, 80) : "My computer"
@@ -39,7 +48,11 @@ export async function POST(request: Request) {
       .from("desktop_hosts")
       .update({ name, platform, app_version: version, token_hash: token.hash, last_seen_at: new Date().toISOString() })
       .eq("id", existing.id)
-    return NextResponse.json({ hostId: existing.id, hostToken: token.token })
+    return NextResponse.json({
+      hostId: existing.id,
+      hostToken: token.token,
+      ...(refreshedSession ? { session: refreshedSession } : {}),
+    })
   }
 
   const { data, error } = await admin
@@ -56,5 +69,9 @@ export async function POST(request: Request) {
     .select("id")
     .single()
   if (error || !data) return NextResponse.json({ error: error?.message ?? "could not register" }, { status: 500 })
-  return NextResponse.json({ hostId: data.id, hostToken: token.token })
+  return NextResponse.json({
+    hostId: data.id,
+    hostToken: token.token,
+    ...(refreshedSession ? { session: refreshedSession } : {}),
+  })
 }

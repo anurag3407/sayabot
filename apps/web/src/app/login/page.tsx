@@ -12,11 +12,12 @@ export const dynamic = "force-dynamic"
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string; error?: string }>
+  searchParams: Promise<{ next?: string; error?: string; force?: string; reauth?: string; switch?: string }>
 }) {
   const params = await searchParams
+  const isForce = params.force === "true" || params.reauth === "true" || params.switch === "true"
   const user = await getCurrentUser()
-  if (user) {
+  if (user && !isForce) {
     const next = safeNextPath(params.next, "")
     if (next && next !== "/" && next !== "/login" && next !== "/signup") {
       redirect(next)
