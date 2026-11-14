@@ -7,6 +7,7 @@ const web = process.env.E2E_BASE_URL ?? "http://localhost:3000"
 const orch = process.env.ORCHESTRATOR_URL ?? "http://localhost:4000"
 const computerd = process.env.COMPUTERD_URL ?? "http://localhost:4100"
 const egress = process.env.EGRESS_URL ?? "http://localhost:8081"
+const smokeOnly = process.env.E2E_SMOKE === "1"
 
 test.describe("service health contracts", () => {
   test("web liveness probe", async ({ request }) => {
@@ -17,6 +18,7 @@ test.describe("service health contracts", () => {
   })
 
   test("orchestrator health reports active runs", async ({ request }) => {
+    test.skip(smokeOnly, "orchestrator not running in smoke lane")
     const res = await request.get(orch + "/health")
     expect(res.status()).toBe(200)
     const body = (await res.json()) as { ok: boolean; service: string; activeRuns: number }
@@ -25,6 +27,7 @@ test.describe("service health contracts", () => {
   })
 
   test("computerd health is public, everything else needs the internal secret", async ({ request }) => {
+    test.skip(smokeOnly, "computerd not running in smoke lane")
     const health = await request.get(computerd + "/health")
     expect(health.status()).toBe(200)
     expect(((await health.json()) as { service: string }).service).toBe("computerd")
@@ -33,12 +36,14 @@ test.describe("service health contracts", () => {
   })
 
   test("egress admin health", async ({ request }) => {
+    test.skip(smokeOnly, "egress not running in smoke lane")
     const res = await request.get(egress + "/health")
     expect(res.status()).toBe(200)
     expect(((await res.json()) as { service: string }).service).toBe("egress")
   })
 
   test("internal endpoints reject unauthenticated callers", async ({ request }) => {
+    test.skip(smokeOnly, "orchestrator not running in smoke lane")
     const res = await request.post(orch + "/internal/room-message", { data: {} })
     expect(res.status()).toBe(401)
   })

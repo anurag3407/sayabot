@@ -30,6 +30,15 @@ jobs:
     runs-on: ubuntu-latest
     needs: unit-integration
     if: github.event_name == 'push'
+    env:
+      DATABASE_URL: postgres://u:p@localhost:5432/db
+      SAYABOT_KEK: ci-test-kek
+      MESH_KEK: ci-test-kek
+      SUPABASE_URL: https://ci.supabase.co
+      NEXT_PUBLIC_SUPABASE_URL: https://ci.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-test-anon-key
+      SUPABASE_SERVICE_ROLE_KEY: ci-test-service-role
+      ORCHESTRATOR_INTERNAL_SECRET: ci-test-internal-secret-0123456789
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -41,16 +50,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
-      - name: Start services (smoke lane needs only web + orchestrator health)
-        env:
-          DATABASE_URL: postgres://u:p@localhost:5432/db
-          SAYABOT_KEK: ci-test-kek
-          MESH_KEK: ci-test-kek
-          SUPABASE_URL: https://ci.supabase.co
-          NEXT_PUBLIC_SUPABASE_URL: https://ci.supabase.co
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-test-anon-key
-          SUPABASE_SERVICE_ROLE_KEY: ci-test-service-role
-          ORCHESTRATOR_INTERNAL_SECRET: ci-test-internal-secret-0123456789
+      - name: Start web service (smoke lane tests web routes and API guards)
         run: |
           pnpm --filter @sayabot/web build
           pnpm --filter @sayabot/web start > /tmp/web.log 2>&1 &

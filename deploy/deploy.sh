@@ -152,7 +152,7 @@ prune_old_images() {
     done
   done
   docker image prune -f >/dev/null 2>&1 || true
-  docker builder prune -f --filter "until=168h" >/dev/null 2>&1 || true
+  docker builder prune -f --filter "until=24h" --keep-storage 4GB >/dev/null 2>&1 || true
 }
 
 # ── health ───────────────────────────────────────────────────────────────

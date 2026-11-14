@@ -17,6 +17,7 @@ __pycache__
 *.pyc
 .venv
 .e2e-state.json
+.expo/
 brag-output/
 
 # Production deploy state (secrets, certificates, release history)

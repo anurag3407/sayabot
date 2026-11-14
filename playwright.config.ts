@@ -28,12 +28,16 @@ export default defineConfig({
       reuseExistingServer: true,
       timeout: 180_000,
     },
-    {
-      command: "pnpm --filter @sayabot/orchestrator dev",
-      url: `${orchURL}/health`,
-      reuseExistingServer: true,
-      timeout: 180_000,
-    },
+    ...(smokeOnly
+      ? []
+      : [
+          {
+            command: "pnpm --filter @sayabot/orchestrator dev",
+            url: `${orchURL}/health`,
+            reuseExistingServer: true,
+            timeout: 180_000,
+          },
+        ]),
   ],
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
 })
