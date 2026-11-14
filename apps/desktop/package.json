@@ -52,14 +52,20 @@
     },
     "dmg": {
       "title": "Sayabot macOS Installer",
+      "background": "build/dmg-background.png",
+      "window": {
+        "width": 660,
+        "height": 400
+      },
+      "iconSize": 96,
       "contents": [
         {
-          "x": 130,
-          "y": 220
+          "x": 160,
+          "y": 205
         },
         {
-          "x": 410,
-          "y": 220,
+          "x": 500,
+          "y": 205,
           "type": "link",
           "path": "/Applications"
         }
