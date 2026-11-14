@@ -157,12 +157,25 @@ export function Downloads() {
                   </Link>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2 text-[12px] text-[#15121a]/80">
-                  <span className="inline-flex items-center gap-1.5 rounded-lg bg-black/10 px-2.5 py-1 text-[11px] font-medium">
-                    Direct release install
-                  </span>
-                  <span className="text-[11px] opacity-60">· Android 10+ · Works with Mac account</span>
-                </div>
+                {/* Android Installation Flow Indicator */}
+                {androidDownloaded ? (
+                  <div className="rounded-xl bg-black/10 p-2.5 text-xs text-[#15121a] animate-in fade-in slide-in-from-top-1 duration-300">
+                    <p className="font-medium flex items-center gap-1.5 text-emerald-900">
+                      <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                      <span>Download started! Next step:</span>
+                    </p>
+                    <p className="mt-1 text-[11px] opacity-80 pl-5">
+                      Open <strong>Sayabot.apk</strong> on your device and tap <strong>Install</strong> (enable &ldquo;Install from unknown sources&rdquo; if prompted).
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap items-center gap-2 text-[12px] text-[#15121a]/80">
+                    <span className="inline-flex items-center gap-1.5 rounded-lg bg-black/10 px-2.5 py-1 text-[11px] font-medium">
+                      Direct release install
+                    </span>
+                    <span className="text-[11px] opacity-60">· Android 10+ · Works with Mac account</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>

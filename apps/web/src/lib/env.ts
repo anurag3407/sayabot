@@ -84,6 +84,12 @@ export function githubAuthEnabled(): boolean {
   return process.env.GITHUB_AUTH_ENABLED === "true" || envBool("GITHUB_AUTH_ENABLED") || envBool("NEXT_PUBLIC_GITHUB_AUTH_ENABLED")
 }
 
+/** Desktop guest mode is on unless the operator turns it off (`DESKTOP_GUEST_MODE=false`). */
+export function desktopGuestModeEnabled(): boolean {
+  const raw = (process.env.DESKTOP_GUEST_MODE ?? "").trim().toLowerCase()
+  return raw !== "false" && raw !== "0" && raw !== "off"
+}
+
 export function googleAuthEnabled(): boolean {
   return process.env.GOOGLE_AUTH_ENABLED === "true" || envBool("GOOGLE_AUTH_ENABLED") || envBool("NEXT_PUBLIC_GOOGLE_AUTH_ENABLED")
 }

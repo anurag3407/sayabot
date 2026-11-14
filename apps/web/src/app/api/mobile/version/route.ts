@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { DOWNLOADS } from "@/components/landing/content"
 
 export const dynamic = "force-dynamic"
 
@@ -14,7 +15,7 @@ export async function GET() {
   const versionInfo: MobileVersionInfo = {
     latestVersion: process.env.MOBILE_LATEST_VERSION || "1.0.0",
     minSupportedVersion: process.env.MOBILE_MIN_VERSION || "1.0.0",
-    apkUrl: process.env.MOBILE_APK_URL || "/downloads/sayabot-latest.apk",
+    apkUrl: process.env.MOBILE_APK_URL || DOWNLOADS.androidApk,
     releaseNotes:
       process.env.MOBILE_RELEASE_NOTES ||
       "Performance improvements, updated agent tools, and stability fixes.",

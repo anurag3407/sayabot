@@ -36,6 +36,7 @@ import { IconRail } from "@/components/workspace/icon-rail"
 import { Titlebar } from "@/components/workspace/titlebar"
 import { TitlebarSlotContext } from "@/components/workspace/titlebar-slot"
 import { CloseIcon, MenuIcon, PlusIcon } from "@/components/ui/icons"
+import { GuestBanner } from "@/components/auth/guest-banner"
 import type { ChatListItem, OrgRole, OrgSummary } from "@/lib/types"
 
 type NavIcon = ComponentType<{ className?: string }>
@@ -477,6 +478,7 @@ export function WorkspaceShell({
     email: string | null
     notifications: "all" | "mentions" | "off"
     sound: boolean
+    isGuest?: boolean
   }
   role: OrgRole
   children: React.ReactNode
@@ -585,6 +587,8 @@ export function WorkspaceShell({
             </span>
           ) : null}
         </div>
+
+        {user.isGuest ? <GuestBanner orgSlug={org.slug} /> : null}
 
         <div className="flex min-h-0 flex-1">
           <div className="hidden md:flex">

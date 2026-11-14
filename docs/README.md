@@ -23,6 +23,8 @@ docs/
 ├── deployment.md                  # Production deployment (VPS, Docker, Supabase)
 ├── cloudflare-integration.md      # Cloudflare platform integration & edge architecture
 ├── auto-updates.md                # Multi-platform auto-updates (Web, Mac PWA, Android APK)
+├── desktop-guest-mode.md          # Mac app without sign-in (Supabase anonymous users)
+├── macos-signing-and-notarization.md # Developer ID signing & notarization checklist
 └── testing.md                     # Test suites (unit, integration, e2e Playwright)
 
 Developer & Contributor Manuals:

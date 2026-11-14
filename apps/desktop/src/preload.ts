@@ -6,11 +6,16 @@ export interface AuthSession {
   email: string
   userId: string
   serverUrl: string
+  isGuest?: boolean
 }
 
 export interface DesktopBridge {
   getSession: () => Promise<AuthSession | null>
   startBrowserAuth: () => Promise<void>
+  /** Whether the controller should start a guest session by itself (no session, not declined). */
+  getGuestStatus: () => Promise<{ autoStart: boolean }>
+  /** Opens Sayabot without an account; on success the main process opens the workspace. */
+  startGuest: () => Promise<{ ok: boolean; error?: string }>
   signOut: () => Promise<void>
   getServerUrl: () => Promise<string>
   setServerUrl: (url: string) => Promise<string>
@@ -31,6 +36,8 @@ export interface DesktopBridge {
 const bridge: DesktopBridge = {
   getSession: () => ipcRenderer.invoke("auth:get-session"),
   startBrowserAuth: () => ipcRenderer.invoke("auth:start-browser-auth"),
+  getGuestStatus: () => ipcRenderer.invoke("auth:guest-status"),
+  startGuest: () => ipcRenderer.invoke("auth:start-guest"),
   signOut: () => ipcRenderer.invoke("auth:sign-out"),
   getServerUrl: () => ipcRenderer.invoke("config:get-server-url"),
   setServerUrl: (url: string) => ipcRenderer.invoke("config:set-server-url", url),

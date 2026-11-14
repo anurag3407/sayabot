@@ -17,11 +17,15 @@ interface AuthSession {
   email: string
   userId: string
   serverUrl: string
+  /** Started without an account (Supabase anonymous user); cleared once the account is saved. */
+  isGuest?: boolean
 }
 
 interface DesktopConfig {
   serverUrl: string
   enableLocalRunner: boolean
+  /** Set after an explicit sign-out, so we show the sign-in card instead of a fresh guest. */
+  guestDeclined?: boolean
 }
 
 let mainWindow: BrowserWindow | null = null
@@ -143,7 +147,12 @@ function handleDeepLink(urlStr: string): void {
           email,
           userId,
           serverUrl,
+          isGuest: false,
         }
+        // Switching accounts: this Mac registers again under the new user. Coming from a
+        // guest, the merge already moved this computer into the new account, so keep it.
+        const previous = loadSession()
+        if (previous && previous.userId !== userId && !previous.isGuest) host?.forget()
         saveSession(session)
         startHost()
 
@@ -224,6 +233,11 @@ function buildAppMenu() {
             void openWorkspaceInWindow()
           },
         },
+        {
+          // Guests: sign in (or sign up) in the browser and bring the guest data along.
+          label: "Sign In to Existing Account…",
+          click: () => void signInFromMenu(),
+        },
         { type: "separator" },
         { role: "hide" },
         { role: "hideOthers" },
@@ -301,7 +315,8 @@ function createWindow() {
     console.log("[Sayabot Desktop] Active session found, opening workspace directly...")
     void openWorkspaceInWindow()
   } else {
-    console.log("[Sayabot Desktop] No session found, loading native login card...")
+    // The controller page starts guest mode (or shows the sign-in card) on its own.
+    console.log("[Sayabot Desktop] No session found, loading controller...")
     loadLocalHtml()
   }
 
@@ -350,6 +365,7 @@ async function refreshSessionIfNeeded(force = false): Promise<AuthSession | null
     const data = (await res.json()) as {
       accessToken?: string
       refreshToken?: string
+      isAnonymous?: boolean
       email?: string
       userId?: string
     }
@@ -360,6 +376,7 @@ async function refreshSessionIfNeeded(force = false): Promise<AuthSession | null
         refreshToken: data.refreshToken,
         email: data.email || session.email,
         userId: data.userId || session.userId,
+        isGuest: typeof data.isAnonymous === "boolean" ? data.isAnonymous : session.isGuest,
       }
       saveSession(updated)
       if (host) {
@@ -393,14 +410,129 @@ ipcMain.handle("auth:get-session", () => {
   return loadSession()
 })
 
-ipcMain.handle("auth:start-browser-auth", () => {
+function openBrowserAuth(): void {
   const config = loadConfig()
   const authUrl = `${config.serverUrl.replace(/\/+$/, "")}/login?force=true&next=/auth/desktop`
   console.log("[Sayabot Desktop] Launching browser auth:", authUrl)
-  shell.openExternal(authUrl)
+  void shell.openExternal(authUrl)
+}
+
+ipcMain.handle("auth:start-browser-auth", () => openBrowserAuth())
+
+/**
+ * A guest signing in keeps their data: ask the server for a merge link (authenticated with the
+ * guest's own token) and finish in the browser. The browser hands the new login back via
+ * sayabot://auth/callback once the person confirms.
+ */
+async function signInFromMenu(): Promise<void> {
+  const session = await refreshSessionIfNeeded()
+  if (!session?.isGuest) {
+    openBrowserAuth()
+    return
+  }
+  try {
+    const base = session.serverUrl.replace(/\/+$/, "")
+    const res = await fetch(`${base}/api/account/merge`, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${session.accessToken}` },
+      body: JSON.stringify({ next: "/auth/desktop" }),
+    })
+    const data = (await res.json().catch(() => ({}))) as { url?: string; error?: string }
+    if (!res.ok || !data.url) throw new Error(data.error || `HTTP ${res.status}`)
+    console.log("[Sayabot Desktop] Opening browser to save guest account")
+    void shell.openExternal(data.url)
+  } catch (err) {
+    // Plain sign-in still works; the guest workspace just stays with the guest.
+    console.warn("[Sayabot Desktop] Could not start guest merge, falling back to sign-in:", err)
+    openBrowserAuth()
+  }
+}
+
+// ---------- Guest mode: open the app without signing in ----------
+
+interface GuestConfig {
+  enabled?: boolean
+  supabaseUrl?: string
+  anonKey?: string
+}
+
+/**
+ * Creates an anonymous Supabase user for this Mac. The server only says whether guests are
+ * allowed and where Supabase is; the sign-up goes from this Mac so its own IP is rate limited.
+ */
+async function createGuestSession(serverUrl: string): Promise<AuthSession> {
+  const base = serverUrl.replace(/\/+$/, "")
+  const configRes = await fetch(`${base}/api/desktop/guest`)
+  if (!configRes.ok) throw new Error(`guest mode unavailable (HTTP ${configRes.status})`)
+  const config = (await configRes.json()) as GuestConfig
+  if (!config.enabled || !config.supabaseUrl || !config.anonKey) {
+    throw new Error("guest mode is turned off on this server")
+  }
+
+  const signupRes = await fetch(`${config.supabaseUrl.replace(/\/+$/, "")}/auth/v1/signup`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      apikey: config.anonKey,
+      authorization: `Bearer ${config.anonKey}`,
+    },
+    // No email or password: Supabase creates an anonymous user.
+    body: JSON.stringify({ data: { signup_source: "desktop_guest" } }),
+  })
+  const body = (await signupRes.json().catch(() => ({}))) as {
+    access_token?: string
+    refresh_token?: string
+    user?: { id?: string }
+    msg?: string
+    message?: string
+    error_description?: string
+  }
+  if (!signupRes.ok || !body.access_token || !body.refresh_token || !body.user?.id) {
+    const reason = body.msg || body.message || body.error_description || `HTTP ${signupRes.status}`
+    throw new Error(`could not start guest session: ${reason}`)
+  }
+  return {
+    accessToken: body.access_token,
+    refreshToken: body.refresh_token,
+    email: "",
+    userId: body.user.id,
+    serverUrl: base,
+    isGuest: true,
+  }
+}
+
+let guestInFlight: Promise<{ ok: boolean; error?: string }> | null = null
+
+ipcMain.handle("auth:guest-status", () => ({
+  autoStart: !loadSession() && !loadConfig().guestDeclined,
+}))
+
+ipcMain.handle("auth:start-guest", () => {
+  if (loadSession()) return { ok: true }
+  guestInFlight ??= (async () => {
+    try {
+      const config = loadConfig()
+      const session = await createGuestSession(config.serverUrl)
+      if (config.guestDeclined) saveConfig({ ...config, guestDeclined: false })
+      saveSession(session)
+      startHost()
+      console.log("[Sayabot Desktop] Started guest session.")
+      void openWorkspaceInWindow()
+      return { ok: true }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      console.warn("[Sayabot Desktop] Guest mode failed:", message)
+      return { ok: false, error: message }
+    } finally {
+      guestInFlight = null
+    }
+  })()
+  return guestInFlight
 })
 
 ipcMain.handle("auth:sign-out", async () => {
+  // Don't drop a signed-out person straight into a new guest workspace on next launch.
+  saveConfig({ ...loadConfig(), guestDeclined: true })
   saveSession(null)
   host?.forget()
   if (mainWindow && !mainWindow.isDestroyed()) {

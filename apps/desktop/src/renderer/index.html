@@ -308,8 +308,8 @@
         <span id="gateway-label">sayabot.sayalabs.in</span>
       </div>
 
-      <h1>Sign in to Sayabot</h1>
-      <p class="subtitle">
+      <h1 id="unauth-title">Sign in to Sayabot</h1>
+      <p id="unauth-subtitle" class="subtitle">
         Connect your Mac to your room workspace. All agents sync live with your phone.
       </p>
 
@@ -321,6 +321,11 @@
         </svg>
         Sign in with Google or GitHub
       </button>
+
+      <button id="guest-btn" class="btn btn-secondary">
+        Continue without an account
+      </button>
+      <p id="guest-error" class="subtitle hidden" style="font-size: 12px; margin-top: 4px;"></p>
 
       <span id="change-server-link" class="settings-link">Configure Gateway Server</span>
     </div>
@@ -378,6 +383,31 @@
     const openWorkspaceBtn = document.getElementById("open-workspace-btn");
     const changeServerLink = document.getElementById("change-server-link");
     const localRunnerToggle = document.getElementById("local-runner-toggle");
+    const guestBtn = document.getElementById("guest-btn");
+    const guestError = document.getElementById("guest-error");
+    const unauthTitle = document.getElementById("unauth-title");
+    const unauthSubtitle = document.getElementById("unauth-subtitle");
+
+    function showGuestStarting(starting) {
+      unauthTitle.textContent = starting ? "Setting up Sayabot…" : "Sign in to Sayabot";
+      unauthSubtitle.textContent = starting
+        ? "Getting your workspace ready. No account needed. You can save it later."
+        : "Connect your Mac to your room workspace. All agents sync live with your phone.";
+      signInBtn.classList.toggle("hidden", starting);
+      guestBtn.classList.toggle("hidden", starting);
+      guestBtn.disabled = starting;
+    }
+
+    async function startGuest() {
+      guestError.classList.add("hidden");
+      showGuestStarting(true);
+      const result = await bridge.startGuest();
+      if (result && result.ok) return; // the main process opens the workspace
+      showGuestStarting(false);
+      guestError.textContent = "Couldn't start without an account. Sign in instead, or try again.";
+      guestError.title = (result && result.error) || "";
+      guestError.classList.remove("hidden");
+    }
 
     async function refreshState() {
       const serverUrl = await bridge.getServerUrl();
@@ -397,6 +427,13 @@
       authView.classList.add("hidden");
       unauthView.classList.remove("hidden");
 
+      // First launch: skip the sign-in card and open Sayabot as a guest.
+      const guest = await bridge.getGuestStatus();
+      if (guest && guest.autoStart) {
+        void startGuest();
+        return;
+      }
+
       const status = await bridge.getLocalRunnerStatus();
       localRunnerToggle.checked = status.running;
     }
@@ -414,6 +451,10 @@
           Sign in with Google or GitHub
         `;
       }, 5000);
+    });
+
+    guestBtn.addEventListener("click", () => {
+      void startGuest();
     });
 
     signOutBtn.addEventListener("click", async () => {

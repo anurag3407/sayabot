@@ -19,6 +19,7 @@ const PUBLIC_PATHS = [
   "/api/connectors",
   "/api/mobile",
   "/api/version",
+  "/api/download",
   // MCP connector short URL (/mcp/<agent key>). Authenticated by the key, not a session.
   "/mcp",
   // "Add an agent" links (/bot/<code>): a bot asks to join; a person approves in the Inbox.
@@ -28,6 +29,8 @@ const PUBLIC_PATHS = [
   "/api/remote",
   // Chat attachments: the route checks room access itself (cookie or bearer).
   "/api/files",
+  // Guest → account merge: the desktop calls it with its bearer token; the route checks auth.
+  "/api/account/merge",
   // OAuth 2.1 public endpoints (discovery, dynamic registration, token exchange, callbacks)
   "/.well-known",
   "/oauth/register",

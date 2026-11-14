@@ -73,5 +73,30 @@ describe("desktop token refresh route", () => {
     expect(json.accessToken).toBe("new-access-token")
     expect(json.refreshToken).toBe("new-refresh-token")
     expect(json.userId).toBe("user-123")
+    expect(json.isAnonymous).toBe(false)
+  })
+
+  it("reports a guest (anonymous) user so the desktop keeps guest mode", async () => {
+    mockRefreshSession.mockResolvedValueOnce({
+      data: {
+        session: {
+          access_token: "guest-access",
+          refresh_token: "guest-refresh",
+          user: { id: "guest-1", email: null, is_anonymous: true },
+          expires_at: 1234567890,
+        },
+      },
+      error: null,
+    })
+
+    const req = new Request("http://localhost:3000/api/desktop/refresh", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ refreshToken: "guest-refresh-old" }),
+    })
+    const res = await POST(req)
+    const json = (await res.json()) as any
+    expect(json.isAnonymous).toBe(true)
+    expect(json.email).toBe("")
   })
 })

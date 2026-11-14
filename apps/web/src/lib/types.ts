@@ -31,6 +31,8 @@ export interface OrgAccess {
     avatarUrl: string | null
     notifications: "all" | "mentions" | "off"
     sound: boolean
+    /** Started as a guest (Supabase anonymous user) and has not saved the account yet. */
+    isGuest?: boolean
   }
 }
 

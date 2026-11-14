@@ -48,6 +48,7 @@ export async function getProfile(user: User, client?: SupabaseClient<any>): Prom
     avatarUrl: data?.avatar_url ?? null,
     notifications: preferences.notifications ?? "mentions",
     sound: preferences.sound !== false,
+    isGuest: user.is_anonymous === true,
   }
 }
 

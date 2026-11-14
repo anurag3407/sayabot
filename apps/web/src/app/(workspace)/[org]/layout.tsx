@@ -36,6 +36,7 @@ export default async function OrgLayout({
         displayName: access.user.displayName,
         avatarUrl: access.user.avatarUrl,
         email: access.user.email,
+        isGuest: access.user.isGuest === true,
       }}
       role={access.role}
     >

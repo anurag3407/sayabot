@@ -34,6 +34,8 @@ export async function POST(request: Request) {
       refreshToken: data.session.refresh_token,
       email: data.session.user.email ?? "",
       userId: data.session.user.id,
+      // A guest who saved their account becomes a normal user; the desktop picks that up here.
+      isAnonymous: data.session.user.is_anonymous === true,
       expiresAt: data.session.expires_at,
     })
   } catch (err) {
