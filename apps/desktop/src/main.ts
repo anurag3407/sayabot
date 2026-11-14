@@ -1,10 +1,10 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, MenuItemConstructorOptions, shell } from "electron"
+import { app, BrowserWindow, dialog, ipcMain, Menu, MenuItemConstructorOptions, Notification, shell } from "electron"
 import * as path from "node:path"
 import * as fs from "node:fs"
 import { DesktopHost } from "./host"
 import { detectLocalAgents } from "./local-agents"
 import { LocalMcpHost } from "./local-mcp"
-import { LocalRunner } from "./runner"
+import { LocalRunner, type ApprovalNotice } from "./runner"
 import { VaultRunner } from "./vault-cli"
 
 const DEFAULT_SERVER_URL = "https://sayabot.sayalabs.in"
@@ -57,12 +57,37 @@ function startHost(): void {
         void localMcp?.maybeRun(reply.mcpCalls ?? 0)
       },
     })
-    runner = new LocalRunner(host)
+    runner = new LocalRunner(host, notifyApproval)
     vaults = new VaultRunner(host)
     localMcp = new LocalMcpHost(host)
   }
   void host.start()
 }
+/**
+ * An agent running on this Mac wants to do something that needs a yes. The card with Allow /
+ * Deny is in the chat (on every device); this notification brings the Mac's owner to it.
+ */
+function notifyApproval(notice: ApprovalNotice): void {
+  if (!Notification.isSupported()) return
+  const notification = new Notification({
+    title: `${notice.agentName} needs your OK`,
+    body: `Wants to ${notice.step}. Open the chat to allow or deny.`,
+    silent: false,
+  })
+  notification.on("click", () => {
+    if (!mainWindow || mainWindow.isDestroyed()) createWindow()
+    if (!mainWindow) return
+    if (mainWindow.isMinimized()) mainWindow.restore()
+    mainWindow.show()
+    mainWindow.focus()
+    const session = loadSession()
+    if (notice.roomPath && session?.serverUrl) {
+      void mainWindow.loadURL(`${session.serverUrl.replace(/\/+$/, "")}${notice.roomPath}`)
+    }
+  })
+  notification.show()
+}
+
 let pendingDeepLinkUrl: string | null = null
 let localRunnerRunning = false
 

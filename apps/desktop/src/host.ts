@@ -183,6 +183,19 @@ export class DesktopHost {
     }
   }
 
+  /** Authenticated read from the server as this computer. */
+  async get<T = unknown>(pathname: string): Promise<T | null> {
+    if (!this.auth) return null
+    try {
+      const res = await fetch(`${this.auth.serverUrl}${pathname}`, {
+        headers: { "x-host-id": this.auth.hostId, "x-host-token": this.auth.hostToken },
+      })
+      return res.ok ? ((await res.json()) as T) : null
+    } catch {
+      return null
+    }
+  }
+
   /** Authenticated call to the server as this computer. */
   async post<T = unknown>(pathname: string, body: unknown): Promise<T | null> {
     if (!this.auth) return null

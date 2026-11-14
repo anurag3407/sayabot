@@ -3,6 +3,7 @@
 import { getRoomAccess } from "@/lib/auth"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { macApprovalBlock, readMacMarker, rememberMacAllow } from "@/lib/mac-runner"
 import { insertHumanMessage } from "@/lib/message-send"
 import { queueRoomMessage, stopRunInOrchestrator } from "@/lib/orchestrator"
 import { audit, fail, ok } from "@/lib/actions/shared"
@@ -100,6 +101,8 @@ export async function resolveToolCall(input: {
   orgSlug: string
   toolCallId: string
   decision: "approved" | "rejected"
+  /** Mac runs: also allow this kind of step from now on, without asking. */
+  remember?: boolean
 }): Promise<ActionResult> {
   const supabase = await createSupabaseServerClient()
   const {
@@ -108,14 +111,24 @@ export async function resolveToolCall(input: {
   if (!user) return fail("Your session expired. Sign in again.")
   const { data: toolCall } = await supabase
     .from("tool_calls")
-    .select("id, room_id, status, tool_name")
+    .select("id, room_id, status, tool_name, args")
     .eq("id", input.toolCallId)
     .maybeSingle()
   if (!toolCall) return fail("Tool call not found")
   const access = await getRoomAccess(input.orgSlug, toolCall.room_id)
   if (!access) return fail("Room not found")
-  if (!access.canAdmin) return fail("Only room admins can approve tool calls")
+  // A step on someone's Mac is theirs to allow; anything else needs a room admin.
+  const macBlock = await macApprovalBlock(toolCall.args, user.id)
+  if (macBlock) return fail(macBlock)
+  const isMac = Boolean(readMacMarker(toolCall.args))
+  if (!isMac && !access.canAdmin) return fail("Only room admins can approve tool calls")
   if (toolCall.status !== "pending_approval") return fail("This tool call is no longer pending")
+  let remembered = false
+  if (isMac && input.remember && input.decision === "approved") {
+    const saved = await rememberMacAllow(toolCall.args, toolCall.tool_name)
+    if (!saved.ok) return fail(saved.error)
+    remembered = true
+  }
   const admin = createAdminClient()
   const { error } = await admin
     .from("tool_calls")
@@ -123,6 +136,9 @@ export async function resolveToolCall(input: {
       status: input.decision,
       approved_by: user.id,
       resolved_at: new Date().toISOString(),
+      ...(remembered
+        ? { args: { ...(toolCall.args as Record<string, unknown>), _remembered: true } }
+        : {}),
     })
     .eq("id", input.toolCallId)
     .eq("status", "pending_approval")
@@ -138,5 +154,6 @@ export async function resolveToolCall(input: {
     target: input.toolCallId,
     metadata: { tool: toolCall.tool_name, roomId: toolCall.room_id },
   })
+  if (remembered) return ok("Allowed, and won't ask again for this")
   return ok(input.decision === "approved" ? "Tool approved" : "Tool rejected")
 }

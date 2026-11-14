@@ -1,9 +1,13 @@
 import { hostOnline, redactSecrets } from "@sayabot/core"
-import { agentRuns, desktopHosts, localRunnerJobs, messages, orgMembers } from "@sayabot/db"
-import { and, desc, eq, isNull } from "drizzle-orm"
+import { sealSecret } from "@sayabot/llm"
+import { agentRuns, desktopHosts, localRunnerJobs, messages, orgMembers, toolCalls } from "@sayabot/db"
+import { and, desc, eq, isNull, sql } from "drizzle-orm"
 import { registerRun, unregisterRun } from "../active-runs"
 import { getDb } from "../db"
+import { getEnv } from "../env"
 import { broadcast } from "../realtime"
+import { ROOM_TOOLS_NOTE } from "./cli"
+import { mintMacMcpToken, revokeMcpToken } from "./cli-mcp"
 import {
   buildSystemPrompt,
   buildUserPrompt,
@@ -72,6 +76,33 @@ export async function defaultMacRunner(agent: {
   return null
 }
 
+/** Where a Mac run is, for the app: its own folder, and asking before anything risky. */
+const MAC_NOTE =
+  "You are running on your owner's Mac, in your own folder. Steps that change things outside it, run commands or open the network ask your owner first; if they say no, don't retry the same step, explain what you needed instead."
+
+/** Apps that take Sayabot's room tools over MCP when they run on a Mac. */
+const MAC_MCP_APPS = new Set<string>(["claude-code", "codex"])
+
+/** Approval cards still waiting when a Mac job ends can't be answered any more. */
+async function expireMacApprovals(roomId: string, jobId: string): Promise<void> {
+  const db = getDb()
+  const expired = await db
+    .update(toolCalls)
+    .set({ status: "rejected", resolvedAt: new Date(), error: "The run ended before anyone answered" })
+    .where(
+      and(
+        eq(toolCalls.roomId, roomId),
+        eq(toolCalls.status, "pending_approval"),
+        sql`${toolCalls.args} -> '_mac' ->> 'jobId' = ${jobId}`,
+      ),
+    )
+    .returning({ id: toolCalls.id })
+    .catch(() => [])
+  for (const row of expired) {
+    await broadcast(roomId, { type: "tool.approval_resolved", toolCallId: row.id, status: "rejected" }).catch(() => {})
+  }
+}
+
 const POLL_MS = 1_200
 const MAX_MS = 15 * 60_000
 const START_GRACE_MS = 60_000
@@ -126,7 +157,12 @@ export async function runLocalTurn(args: RunLlmTurnArgs, config: LocalRunnerConf
   if (!message) throw new Error("failed to create agent message")
   await db.update(agentRuns).set({ messageId: message.id }).where(eq(agentRuns.id, run.id))
 
+  // Set once the job is queued: the Mac's one-run tool token and the job itself, cleaned up below.
+  let mcpTokenId: string | null = null
+  let jobId: string | null = null
   const finish = async (content: string, status: "complete" | "error" | "halted", error: string | null) => {
+    await revokeMcpToken(mcpTokenId)
+    if (jobId) await expireMacApprovals(room.id, jobId)
     const safe = redactSecrets(content).text
     await db
       .update(messages)
@@ -151,6 +187,16 @@ export async function runLocalTurn(args: RunLlmTurnArgs, config: LocalRunnerConf
     return finish("", "error", `${host.name} is offline. Open the Sayabot app on it and mention me again.`)
   }
 
+  // Claude Code and Codex get Sayabot's room tools (tasks, canvas, decisions, facts) through a
+  // token for this agent and room only, revoked when the job ends. The others answer in text.
+  const grant = MAC_MCP_APPS.has(config.app)
+    ? await mintMacMcpToken({ agentId: agent.id, roomId: room.id }).catch((error: unknown) => {
+        console.warn("[local-runner] no room tools for this run", error)
+        return null
+      })
+    : null
+  mcpTokenId = grant?.tokenId ?? null
+
   const [job] = await db
     .insert(localRunnerJobs)
     .values({
@@ -159,11 +205,16 @@ export async function runLocalTurn(args: RunLlmTurnArgs, config: LocalRunnerConf
       roomId: room.id,
       messageId: args.trigger.id,
       replyMessageId: message.id,
-      prompt: `${system}\n\n${prompt}`.slice(0, 200_000),
+      runId: run.id,
+      app: config.app,
+      prompt: `${grant ? `${system}\n\n${ROOM_TOOLS_NOTE} ${MAC_NOTE}` : system}\n\n${prompt}`.slice(0, 200_000),
       status: "queued",
+      mcpTokenEnc: grant ? sealSecret(grant.token, getEnv().MESH_KEK) : null,
+      mcpTokenId,
     })
     .returning({ id: localRunnerJobs.id })
   if (!job) return finish("", "error", "Could not queue the job")
+  jobId = job.id
 
   const controller = registerRun(run.id, room.id, { agentId: agent.id, engine: "local" })
   const started = Date.now()

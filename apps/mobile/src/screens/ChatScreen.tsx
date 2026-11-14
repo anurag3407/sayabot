@@ -397,11 +397,11 @@ export function ChatScreen({ route, navigation }: any) {
             <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
               <ShieldAlert size={18} color={theme.warn} />
               <Text variant="subhead" weight="600" style={{ flex: 1 }}>
-                An agent wants to run “{approval.toolName.replace(/_/g, " ")}”
+                {approvalTitle(approval.toolName, approval.args)}
               </Text>
             </View>
             <Text variant="caption" tone="muted" numberOfLines={3}>
-              {JSON.stringify(approval.args).slice(0, 240)}
+              {JSON.stringify(withoutMacMarker(approval.args)).slice(0, 240)}
             </Text>
             <View style={{ flexDirection: "row", gap: 8 }}>
               <Button
@@ -568,4 +568,28 @@ export function ChatScreen({ route, navigation }: any) {
       <TerminalDrawer visible={terminalOpen} logs={terminalLogs} onClose={() => setTerminalOpen(false)} onClear={clearTerminal} />
     </View>
   )
+}
+
+/** Steps from an agent running on someone's Mac carry a hidden marker with the Mac's name. */
+function macHostName(args: unknown): string | null {
+  const mark = args && typeof args === "object" ? (args as Record<string, unknown>)._mac : null
+  const name = mark && typeof mark === "object" ? (mark as Record<string, unknown>).hostName : null
+  return typeof name === "string" ? name : null
+}
+
+function withoutMacMarker(args: unknown): unknown {
+  if (!args || typeof args !== "object" || !("_mac" in args)) return args
+  const { _mac: _hidden, ...rest } = args as Record<string, unknown>
+  return rest
+}
+
+function approvalTitle(toolName: string, args: unknown): string {
+  const host = macHostName(args)
+  if (!host) return `An agent wants to run “${toolName.replace(/_/g, " ")}”`
+  const input = (args ?? {}) as Record<string, unknown>
+  const command = typeof input.command === "string" ? input.command : null
+  const file = typeof input.file_path === "string" ? input.file_path.split("/").pop() : null
+  if (toolName === "Bash" && command) return `Run “${command.slice(0, 80)}” on ${host}?`
+  if (file) return `${toolName === "Write" ? "Write" : "Edit"} ${file} on ${host}?`
+  return `Use ${toolName.replace(/^mcp__\w+__/, "").replace(/_/g, " ")} on ${host}?`
 }

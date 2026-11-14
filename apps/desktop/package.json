@@ -12,16 +12,17 @@
     "package:dmg": "pnpm build && electron-builder --mac dmg",
     "package:arm64": "pnpm build && electron-builder --mac --arm64",
     "package:x64": "pnpm build && electron-builder --mac --x64",
-    "build:usage": "esbuild src/usage/index.ts --bundle --platform=node --target=node20 --format=cjs --outfile=dist/usage.js"
+    "build:usage": "esbuild src/usage/index.ts --bundle --platform=node --target=node20 --format=cjs --outfile=dist/usage.js",
+    "test": "vitest run"
   },
-  "dependencies": {},
   "devDependencies": {
     "@sayabot/core": "workspace:*",
     "@types/node": "^24.0.0",
     "electron": "^34.2.0",
     "electron-builder": "^26.18.0",
     "esbuild": "^0.25.12",
-    "typescript": "^5.9.0"
+    "typescript": "^5.9.0",
+    "vitest": "^5.0.5"
   },
   "build": {
     "appId": "in.sayalabs.sayabot.desktop",

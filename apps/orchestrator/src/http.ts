@@ -11,6 +11,7 @@ import { resolveApprovalWaiter } from "./tools/approvals"
 import { interruptRoom } from "./coordinator/interrupt"
 import { botRoutes } from "./bot/routes"
 import { mcpRoutes } from "./mcp/server"
+import { localJobRoutes } from "./internal/local-jobs"
 import { internalRoutes } from "./internal/routes"
 import { loadCanvas } from "./canvas/server"
 import { restoreCanvasSnapshot } from "./canvas/tools"
@@ -397,6 +398,7 @@ export function createApp() {
   app.route("/", botRoutes)
   app.route("/", mcpRoutes)
   app.route("/", internalRoutes)
+  app.route("/", localJobRoutes)
 
   app.onError((error, c) => {
     console.error("[http] unhandled error", error)

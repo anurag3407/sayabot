@@ -32,6 +32,7 @@ export default async function InboxPage({ params }: { params: Promise<{ org: str
       done={data.done}
       orgAdmin={access.role === "owner" || access.role === "admin"}
       adminRoomIds={adminRoomIds}
+      viewerId={access.user.id}
       joinRequests={joinRequests}
       facts={facts}
       rooms={rooms}

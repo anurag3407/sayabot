@@ -38,7 +38,7 @@ const MAX_RUNTIME_MS = 14 * 60_000
 const BROADCAST_MS = 40
 const PERSIST_MS = 1_000
 
-const ROOM_TOOLS_NOTE = [
+export const ROOM_TOOLS_NOTE = [
   "You are running inside Sayabot through the sayabot MCP tools.",
   "Your final reply is posted to this room for you, so answer directly; do not call post_message for it.",
   "Use the sayabot tools for the room's tasks, canvas, votes, owner facts and to ask the humans for decisions (request_human_decision) before anything high-stakes.",

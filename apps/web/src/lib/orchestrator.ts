@@ -191,3 +191,47 @@ export async function mutateTaskInOrchestrator(input: {
     return { ok: false, error: error instanceof Error ? error.message : String(error) }
   }
 }
+
+/** Like callOrchestrator, but hands back the JSON reply. */
+async function callOrchestratorJson<T>(
+  path: string,
+  body: unknown,
+  timeoutMs = 15_000,
+): Promise<{ ok: true; data: T } | { ok: false; status: number; error: string }> {
+  try {
+    const response = await fetch(`${getOrchestratorUrl()}${path}`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-internal-secret": getInternalSecret() },
+      body: JSON.stringify(body),
+      cache: "no-store",
+      signal: AbortSignal.timeout(timeoutMs),
+    })
+    const data = (await response.json().catch(() => ({}))) as T & { error?: string }
+    if (!response.ok) {
+      return { ok: false, status: response.status, error: data.error ?? response.statusText }
+    }
+    return { ok: true, data }
+  } catch (error) {
+    return { ok: false, status: 0, error: error instanceof Error ? error.message : String(error) }
+  }
+}
+
+/** Tool activity from an agent running on a Mac (Sayabot for Mac), shown as tool cards. */
+export function recordMacToolEvents(jobId: string, hostId: string, events: unknown[]) {
+  return callOrchestratorJson<{ ids: Record<string, string> }>(
+    `/internal/local-jobs/${encodeURIComponent(jobId)}/events`,
+    { hostId, events },
+  )
+}
+
+/** The app on the Mac wants to do something that needs its owner's OK. */
+export function requestMacApproval(
+  jobId: string,
+  hostId: string,
+  input: { key: string; toolName: string; args: Record<string, unknown> },
+) {
+  return callOrchestratorJson<{ toolCallId: string }>(
+    `/internal/local-jobs/${encodeURIComponent(jobId)}/approval`,
+    { hostId, ...input },
+  )
+}

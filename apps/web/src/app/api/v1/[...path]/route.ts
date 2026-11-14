@@ -7,6 +7,7 @@ import {
   getSupabaseUrl,
 } from "@/lib/env"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { macApprovalBlock, readMacMarker } from "@/lib/mac-runner"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 
 export const maxDuration = 300
@@ -42,7 +43,7 @@ async function handleToolApproval(request: Request, toolCallId: string): Promise
   const admin = createAdminClient()
   const { data: toolCall } = await admin
     .from("tool_calls")
-    .select("id, room_id, status, tool_name")
+    .select("id, room_id, status, tool_name, args")
     .eq("id", toolCallId)
     .maybeSingle()
 
@@ -91,7 +92,17 @@ async function handleToolApproval(request: Request, toolCallId: string): Promise
     .eq("user_id", user.id)
     .maybeSingle()
 
+  // A step on someone's Mac is theirs to allow (from the phone too); anything else needs an admin.
+  const macBlock = await macApprovalBlock(toolCall.args, user.id)
+  if (macBlock) {
+    return new Response(JSON.stringify({ error: macBlock }), {
+      status: 403,
+      headers: { "content-type": "application/json" },
+    })
+  }
+  const isMac = Boolean(readMacMarker(toolCall.args))
   const canAdmin =
+    isMac ||
     roomMember?.role === "admin" ||
     orgMember?.role === "owner" ||
     orgMember?.role === "admin"

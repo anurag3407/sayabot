@@ -112,6 +112,7 @@ export function InboxView({
   done,
   orgAdmin,
   adminRoomIds,
+  viewerId,
   joinRequests = [],
   facts = [],
   rooms = [],
@@ -123,6 +124,8 @@ export function InboxView({
   done: InboxDoneView[]
   orgAdmin: boolean
   adminRoomIds: string[]
+  /** The signed-in person; approvals from someone's Mac are only theirs to answer. */
+  viewerId?: string | null
   joinRequests?: BotJoinRequestView[]
   facts?: OwnerFactView[]
   rooms?: { id: string; name: string }[]
@@ -220,6 +223,7 @@ export function InboxView({
                         orgSlug={orgSlug}
                         canApprove={orgAdmin || adminRooms.has(item.toolCall.roomId)}
                         agentName={item.agentName}
+                        viewerId={viewerId}
                         onResolved={refresh}
                       />
                     </li>

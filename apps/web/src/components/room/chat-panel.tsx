@@ -381,7 +381,12 @@ export function ChatPanel({
 
       {orphanCalls.length ? (
         <div className="mx-auto max-h-[40%] w-full max-w-[820px] space-y-2 overflow-y-auto px-4 py-3">
-          <ToolCallsList calls={orphanCalls.slice(-6)} orgSlug={orgSlug} canApprove={canAdmin} />
+          <ToolCallsList
+            calls={orphanCalls.slice(-6)}
+            orgSlug={orgSlug}
+            canApprove={canAdmin}
+            viewerId={user.id}
+          />
         </div>
       ) : null}
 

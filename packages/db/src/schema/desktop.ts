@@ -82,8 +82,16 @@ export const localRunnerJobs = pgTable(
     roomId: uuid("room_id").notNull(),
     messageId: uuid("message_id").notNull(),
     replyMessageId: uuid("reply_message_id"),
+    /** The agent run this job answers for; the Mac's tool cards attach to it. */
+    runId: uuid("run_id"),
+    /** Which app runs it (claude-code, codex…): chosen per agent, or the Mac's default. */
+    app: text("app"),
     status: text("status").notNull().default("queued"),
     prompt: text("prompt").notNull(),
+    /** One-run MCP token for Sayabot's room tools, sealed with MESH_KEK; cleared once claimed. */
+    mcpTokenEnc: text("mcp_token_enc"),
+    /** The oauth_tokens row behind it, revoked when the job ends. */
+    mcpTokenId: uuid("mcp_token_id"),
     output: text("output"),
     error: text("error"),
     claimedAt: timestamp("claimed_at", { withTimezone: true }),

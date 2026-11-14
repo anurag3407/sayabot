@@ -82,3 +82,40 @@ export async function grantCliMcp(args: {
     },
   }
 }
+
+/** A Mac run can wait on approvals, so its token outlives the 15-minute job limit a little. */
+const MAC_TOKEN_TTL_MS = 30 * 60_000
+
+/**
+ * The same one-run grant for an agent that runs on its owner's Mac (Sayabot for Mac). The raw
+ * token travels to the Mac inside the job (sealed until claimed); the caller revokes it with
+ * `revokeMcpToken` when the job ends.
+ */
+export async function mintMacMcpToken(args: {
+  agentId: string
+  roomId: string
+}): Promise<{ token: string; tokenId: string } | null> {
+  const token = `sayabot_at_${randomBytes(32).toString("base64url")}`
+  const [row] = await getDb()
+    .insert(oauthTokens)
+    .values({
+      kind: "access",
+      tokenHash: hashAgentApiKey(token),
+      clientId: "sayabot-mac-runner",
+      agentId: args.agentId,
+      roomIds: [args.roomId],
+      scopes: CLI_RUN_SCOPES,
+      expiresAt: new Date(Date.now() + MAC_TOKEN_TTL_MS),
+    })
+    .returning({ id: oauthTokens.id })
+  return row ? { token, tokenId: row.id } : null
+}
+
+export async function revokeMcpToken(tokenId: string | null | undefined): Promise<void> {
+  if (!tokenId) return
+  await getDb()
+    .update(oauthTokens)
+    .set({ revokedAt: new Date() })
+    .where(eq(oauthTokens.id, tokenId))
+    .catch(() => {})
+}

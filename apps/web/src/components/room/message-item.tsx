@@ -227,6 +227,7 @@ export function MessageItem({
           orgSlug={orgSlug}
           canApprove={canAdmin}
           agentName={isAgent ? message.senderName : null}
+          viewerId={selfId}
         />
 
         {!inThread && onOpenThread && threadReplyCount !== undefined && threadReplyCount > 0 ? (
