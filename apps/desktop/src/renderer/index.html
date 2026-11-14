@@ -547,9 +547,7 @@
       showView(unauthView);
       showGuestStarting(false);
       guestBtn.classList.toggle("hidden", !(guest && guest.guestAllowed));
-      if (result && result.name) {
-        unauthTitle.textContent = `Sign in to ${result.name}`;
-      }
+
     }
 
     chooseCloud.addEventListener("click", async () => {
@@ -621,13 +619,18 @@
         const info = await bridge.getServerInfo();
         gatewayLabel.textContent = info.name;
         gatewayLabel.title = info.url;
+        serverDisplayName = info.isCloud ? "Sayabot" : info.name;
+        if (!unauthTitle.textContent.startsWith("Setting up")) unauthTitle.textContent = `Sign in to ${serverDisplayName}`;
       } catch (e) {
         // keep the last label
       }
     }
 
+    // The connected server's name ("Acme's Sayabot"); Sayabot Cloud reads as just "Sayabot".
+    let serverDisplayName = "Sayabot";
+
     function showGuestStarting(starting) {
-      unauthTitle.textContent = starting ? "Setting up Sayabot…" : "Sign in to Sayabot";
+      unauthTitle.textContent = starting ? `Setting up ${serverDisplayName}…` : `Sign in to ${serverDisplayName}`;
       unauthSubtitle.textContent = starting
         ? "Getting your workspace ready. No account needed. You can save it later."
         : "Connect your Mac to your room workspace. All agents sync live with your phone.";

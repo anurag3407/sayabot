@@ -13,7 +13,7 @@
     "build:apk": "eas build -p android --profile preview",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
-    "test": "tsc --noEmit -p tests/unit/tsconfig.json && node --no-warnings --experimental-strip-types tests/unit/env.test.ts && node --no-warnings --experimental-strip-types tests/unit/workspace-draft.test.ts && node --no-warnings --experimental-strip-types tests/unit/markdown.test.ts && node --no-warnings --experimental-strip-types tests/unit/server-url.test.ts"
+    "test": "tsc --noEmit -p tests/unit/tsconfig.json && node --no-warnings --experimental-strip-types tests/unit/env.test.ts && node --no-warnings --experimental-strip-types tests/unit/workspace-draft.test.ts && node --no-warnings --experimental-strip-types tests/unit/markdown.test.ts && node --no-warnings --experimental-strip-types tests/unit/server-url.test.ts && node --no-warnings --experimental-strip-types tests/unit/server-check.test.ts"
   },
   "dependencies": {
     "@babel/runtime": "^8.1.0",
