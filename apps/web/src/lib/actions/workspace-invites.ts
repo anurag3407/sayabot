@@ -6,6 +6,7 @@ import { requireUser } from "@/lib/auth"
 import { adminOrgAccess, audit, errorMessage, fail, ok, revalidateOrg } from "@/lib/actions/shared"
 import { getAppUrl } from "@/lib/env"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { planGate } from "@/lib/plan-limits"
 import type { ActionResult } from "@/lib/types"
 
 const LINK_TTL_MS = 24 * 60 * 60 * 1000
@@ -173,6 +174,10 @@ export async function acceptInviteAction(code: string): Promise<ActionResult> {
     .maybeSingle()
 
   if (!already) {
+    const seat = await planGate(check.orgId, "members")
+    if (!seat.ok) {
+      return fail(`${check.orgName} is full on its current plan. Ask an admin to upgrade it in Settings → Plan & billing.`)
+    }
     // Claim a use first; the guard keeps a single-use link single-use even if two people race.
     const { data: invite } = await admin
       .from("workspace_invites")

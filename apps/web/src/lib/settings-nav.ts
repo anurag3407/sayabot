@@ -1,3 +1,5 @@
+import { publicEdition } from "@sayabot/core"
+
 /**
  * The one list of settings destinations. The settings sidebar, the overview page, the rail
  * popover and the phone drawer all read from here so they cannot drift apart again.
@@ -15,6 +17,7 @@ export type SettingsIconKey =
   | "connectors"
   | "bots"
   | "pricing"
+  | "billing"
 
 export interface SettingsLink {
   segment: string
@@ -22,6 +25,8 @@ export interface SettingsLink {
   description: string
   icon: SettingsIconKey
   adminOnly: boolean
+  /** Only on Sayabot Cloud (plans and billing). */
+  cloudOnly?: boolean
 }
 
 export interface SettingsGroup {
@@ -81,6 +86,14 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
         adminOnly: false,
       },
       {
+        segment: "billing",
+        label: "Plan & billing",
+        description: "Your plan, what this month has used, and upgrades.",
+        icon: "billing",
+        adminOnly: true,
+        cloudOnly: true,
+      },
+      {
         segment: "pricing",
         label: "Pricing & budgets",
         description: "Per-model token prices used to enforce spend limits.",
@@ -132,8 +145,9 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
 ]
 
 export function visibleSettingsGroups(isAdmin: boolean): SettingsGroup[] {
+  const cloud = publicEdition() === "cloud"
   return SETTINGS_GROUPS.map((group) => ({
     ...group,
-    links: group.links.filter((link) => isAdmin || !link.adminOnly),
+    links: group.links.filter((link) => (isAdmin || !link.adminOnly) && (cloud || !link.cloudOnly)),
   })).filter((group) => group.links.length > 0)
 }

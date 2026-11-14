@@ -19,6 +19,7 @@ import {
 } from "@/lib/actions/shared"
 import { getAppUrl } from "@/lib/env"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { planGate } from "@/lib/plan-limits"
 import type { ActionResult } from "@/lib/types"
 
 export async function createRoomBotKey(
@@ -32,6 +33,8 @@ export async function createRoomBotKey(
 
   const check = await adminRoomAccess(orgSlug, roomId)
   if ("error" in check) return fail(check.error)
+  const agentGate = await planGate(check.access.org.id, "agents")
+  if (!agentGate.ok) return fail(agentGate.message)
 
   const admin = createAdminClient()
 

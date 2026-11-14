@@ -37,6 +37,7 @@ import { Titlebar } from "@/components/workspace/titlebar"
 import { TitlebarSlotContext } from "@/components/workspace/titlebar-slot"
 import { CloseIcon, MenuIcon, PlusIcon } from "@/components/ui/icons"
 import { GuestBanner } from "@/components/auth/guest-banner"
+import { PlanUsageBanner } from "@/components/plan-usage-banner"
 import type { ChatListItem, OrgRole, OrgSummary } from "@/lib/types"
 
 type NavIcon = ComponentType<{ className?: string }>
@@ -464,6 +465,7 @@ export function WorkspaceShell({
   inboxCount: initialInboxCount,
   user,
   role,
+  planUsage = null,
   children,
 }: {
   org: { slug: string; name: string }
@@ -481,6 +483,8 @@ export function WorkspaceShell({
     isGuest?: boolean
   }
   role: OrgRole
+  /** Sayabot Cloud: month's server replies at 80%+ (admins only). */
+  planUsage?: { used: number; limit: number; planName: string } | null
   children: React.ReactNode
 }) {
   const pathname = usePathname()
@@ -589,6 +593,7 @@ export function WorkspaceShell({
         </div>
 
         {user.isGuest ? <GuestBanner orgSlug={org.slug} /> : null}
+        {planUsage ? <PlanUsageBanner orgSlug={org.slug} {...planUsage} /> : null}
 
         <div className="flex min-h-0 flex-1">
           <div className="hidden md:flex">

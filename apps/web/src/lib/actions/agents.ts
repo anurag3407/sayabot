@@ -7,6 +7,7 @@ import { sealSecret } from "@sayabot/llm"
 import { EFFORT_LEVELS } from "@sayabot/llm/models/effort"
 import { randomBytes } from "node:crypto"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { planGate } from "@/lib/plan-limits"
 import { getKek, sayaAi } from "@/lib/env"
 import { headers } from "next/headers"
 import { localDetectionAllowed } from "@/lib/local-agents"
@@ -77,6 +78,8 @@ export async function createAgent(
   const kind = kindParsed.data
   const fields = validateAgentFields(formData, kind)
   if ("error" in fields) return fail(fields.error ?? "Invalid agent fields")
+  const agentGate = await planGate(check.access.org.id, "agents")
+  if (!agentGate.ok) return fail(agentGate.message)
   const admin = createAdminClient()
   if (fields.providerKeyId) {
     const { data: key } = await admin
@@ -285,6 +288,8 @@ export async function createBotFromTemplate(
   }
   if (RESERVED_HANDLES.has(handle)) return fail("That handle is reserved")
   if (!displayName || displayName.length > 60) return fail("Display name must be 1 to 60 characters")
+  const agentGate = await planGate(check.access.org.id, "agents")
+  if (!agentGate.ok) return fail(agentGate.message)
 
   const admin = createAdminClient()
 
@@ -308,6 +313,16 @@ export async function createBotFromTemplate(
     } catch {}
   }
   capabilities = parseCapabilities(capabilities)
+  // On Sayabot Cloud an agent computer needs room in the plan; without it the agent is still
+  // created, just without a computer, and the reply says why.
+  let computerNote: string | null = null
+  if (capabilities.computer) {
+    const computerGate = await planGate(check.access.org.id, "computers")
+    if (!computerGate.ok) {
+      capabilities = { ...capabilities, computer: false }
+      computerNote = computerGate.message
+    }
+  }
 
   const systemPrompt = field(formData, "systemPrompt") || template?.system_prompt || ""
   const selectedModel = model || template?.default_model || "anthropic/claude-3-7-sonnet"
@@ -404,7 +419,8 @@ export async function createBotFromTemplate(
   })
 
   revalidateOrg(orgSlug)
-  return ok(`@${agent.handle} created successfully!`, { agent })
+  const created = ok(`@${agent.handle} created successfully!`, { agent })
+  return computerNote ? { ...created, warning: `Created without its own computer. ${computerNote}` } : created
 }
 
 const EFFORTS = new Set<string>(EFFORT_LEVELS)

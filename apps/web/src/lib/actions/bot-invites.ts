@@ -11,6 +11,7 @@ import { generateBotInviteCode } from "@sayabot/core/server"
 import { adminRoomAccess, audit, errorMessage, fail, ok, revalidateOrg } from "@/lib/actions/shared"
 import { botInviteUrl, inviteState, roomContext, type BotInviteRow } from "@/lib/bot-invites"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { planGate } from "@/lib/plan-limits"
 import type { ActionResult } from "@/lib/types"
 
 export interface BotInviteView {
@@ -151,6 +152,8 @@ export async function decideBotInviteAction(input: {
     return ok("Declined")
   }
 
+  const agentGate = await planGate(row.org_id, "agents")
+  if (!agentGate.ok) return fail(agentGate.message)
   const displayName = row.name || row.request_name || "Bot"
   const handle = await uniqueHandle(row.org_id, displayName)
   const { data: agent, error: agentError } = await admin
