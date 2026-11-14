@@ -23,9 +23,12 @@ export async function POST(request: Request) {
     })
     const { data, error } = await anon.auth.refreshSession({ refresh_token: refreshToken })
     if (error || !data.session) {
+      // 401 tells the Mac app the login is dead and it should sign out locally. Network or
+      // Supabase outages (no status / 5xx) are retryable, so they must not log anyone out.
+      const retryable = error?.name === "AuthRetryableFetchError" || (error?.status ?? 0) >= 500
       return NextResponse.json(
         { error: error?.message || "Could not refresh session" },
-        { status: 401 },
+        { status: retryable ? 502 : 401 },
       )
     }
 

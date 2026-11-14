@@ -1,0 +1,109 @@
+name: Desktop Release
+
+# Builds the Mac app and publishes it as the latest GitHub release, which is where the website's
+# download buttons (releases/latest/download/Sayabot-<arch>.dmg) and the in-app update check
+# (/api/version → latestDesktopVersion) look.
+#
+# Version: <major>.<minor> from apps/desktop/package.json + the workflow run number, so every
+# release is newer than the last and installed apps are told to update.
+#
+# Signing: ad-hoc for now (apps/desktop/build/adhoc-sign.cjs). Once the Apple Developer ID
+# secrets exist, see docs/macos-signing-and-notarization.md to sign and notarize here.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/desktop/**"
+      - ".github/workflows/desktop-release.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: desktop-release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build DMGs and publish release
+    runs-on: macos-14
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Pick version
+        id: version
+        working-directory: apps/desktop
+        run: |
+          base=$(node -p "require('./package.json').version.split('.').slice(0,2).join('.')")
+          version="${base}.${GITHUB_RUN_NUMBER}"
+          pnpm pkg set version="$version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Building Sayabot $version"
+
+      - name: Build app
+        working-directory: apps/desktop
+        run: pnpm build
+
+      - name: Package DMGs (arm64 + x64)
+        working-directory: apps/desktop
+        env:
+          # No Developer ID yet: stop electron-builder hunting the keychain for one.
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: |
+          pnpm exec electron-builder --mac dmg --arm64 --publish never
+          pnpm exec electron-builder --mac dmg --x64 --publish never
+
+      - name: Verify signatures
+        working-directory: apps/desktop/dist/installers
+        run: |
+          for app in mac-arm64/Sayabot.app mac/Sayabot.app; do
+            codesign --verify --deep --strict "$app"
+            echo "$app: signature valid"
+          done
+          ls -la *.dmg
+
+      - name: Publish release
+        run: |
+          version="${{ steps.version.outputs.version }}"
+          tag="v${version}"
+          dir=apps/desktop/dist/installers
+
+          # Android APKs live in the same "latest" release; carry them over so their links work.
+          mkdir -p carry
+          previous=$(gh release view --json tagName -q .tagName 2>/dev/null || true)
+          if [ -n "$previous" ]; then
+            gh release download "$previous" --pattern "*.apk" --dir carry || true
+          fi
+
+          notes="Sayabot for Mac ${version}
+
+          Built from ${GITHUB_SHA::7}.
+
+          First launch: macOS will say it can't verify Sayabot. Open System Settings → Privacy & Security and click Open Anyway (once)."
+
+          shopt -s nullglob
+          files=("$dir/Sayabot-arm64.dmg" "$dir/Sayabot-x64.dmg" carry/*.apk)
+
+          if gh release view "$tag" >/dev/null 2>&1; then
+            # Re-run of the same workflow run: replace the files instead of failing.
+            gh release upload "$tag" "${files[@]}" --clobber
+            gh release edit "$tag" --latest
+          else
+            gh release create "$tag" "${files[@]}" \
+              --title "Sayabot ${version}" \
+              --notes "$notes" \
+              --target "$GITHUB_SHA" \
+              --latest
+          fi

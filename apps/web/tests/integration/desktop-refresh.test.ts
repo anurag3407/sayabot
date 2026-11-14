@@ -49,6 +49,21 @@ describe("desktop token refresh route", () => {
     expect(json.error).toBe("Invalid refresh token")
   })
 
+  it("answers 502 (not 401) when Supabase is unreachable, so the Mac app keeps its login", async () => {
+    mockRefreshSession.mockResolvedValueOnce({
+      data: { session: null },
+      error: { name: "AuthRetryableFetchError", message: "fetch failed", status: 0 },
+    })
+
+    const req = new Request("http://localhost:3000/api/desktop/refresh", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ refreshToken: "valid-token" }),
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(502)
+  })
+
   it("returns fresh tokens on successful refresh", async () => {
     mockRefreshSession.mockResolvedValueOnce({
       data: {

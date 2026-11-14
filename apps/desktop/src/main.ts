@@ -232,6 +232,14 @@ export interface DesktopUpdateResult {
   error?: string
 }
 
+/** The release has one DMG per architecture; send Intel Macs to the Intel one. */
+function dmgForThisMac(url: string): string {
+  return process.arch === "x64" ? url.replace("Sayabot-arm64.dmg", "Sayabot-x64.dmg") : url
+}
+
+/** Automatic checks prompt once per new version per launch, so "Later" isn't nagged again. */
+let promptedUpdateVersion: string | null = null
+
 async function checkDesktopUpdates(manual = false): Promise<DesktopUpdateResult> {
   const currentVersion = app.getVersion()
   const config = loadConfig()
@@ -254,14 +262,17 @@ async function checkDesktopUpdates(manual = false): Promise<DesktopUpdateResult>
 
     const latest = data.latestDesktopVersion || data.version || currentVersion
     const updateAvailable = isNewerVersion(currentVersion, latest)
-    const dmgUrl =
+    const dmgUrl = dmgForThisMac(
       data.dmgUrl ||
-      "https://github.com/anurag3407/sayabot/releases/latest/download/Sayabot-arm64.dmg"
+        "https://github.com/anurag3407/sayabot/releases/latest/download/Sayabot-arm64.dmg",
+    )
     const releaseNotes =
       data.releaseNotes || "A new version of Sayabot for Mac is available."
 
     if (updateAvailable) {
-      if (manual && mainWindow && !mainWindow.isDestroyed()) {
+      const shouldPrompt = manual || promptedUpdateVersion !== latest
+      if (shouldPrompt && mainWindow && !mainWindow.isDestroyed()) {
+        promptedUpdateVersion = latest
         const choice = await dialog.showMessageBox(mainWindow, {
           type: "info",
           title: "Update Available",
@@ -477,6 +488,13 @@ async function refreshSessionIfNeeded(force = false): Promise<AuthSession | null
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ refreshToken: session.refreshToken }),
     })
+    if (res.status === 401) {
+      // The login is gone for good (revoked, expired, or the user was deleted, e.g. a merged
+      // guest). Drop it so the start page can begin guest mode or ask to sign in again.
+      console.warn("[Sayabot Desktop] Saved login is no longer valid; signing out locally")
+      saveSession(null)
+      return null
+    }
     if (!res.ok) {
       console.warn(`[Sayabot Desktop] Refresh token request failed (HTTP ${res.status})`)
       return session
@@ -517,7 +535,11 @@ setInterval(() => {
 
 async function openWorkspaceInWindow() {
   const session = await refreshSessionIfNeeded()
-  if (!session || !mainWindow) return
+  if (!mainWindow) return
+  if (!session) {
+    loadLocalHtml()
+    return
+  }
   const cleanUrl = session.serverUrl.replace(/\/+$/, "")
   // Authenticate seamlessly via /auth/complete hash tokens
   const targetUrl = `${cleanUrl}/auth/complete#access_token=${session.accessToken}&refresh_token=${session.refreshToken}`
@@ -777,6 +799,10 @@ app.whenReady().then(() => {
       createWindow()
     }
   })
+
+  // Look for a newer Mac app shortly after launch, then every 6 hours.
+  setTimeout(() => void checkDesktopUpdates(false), 15_000)
+  setInterval(() => void checkDesktopUpdates(false), 6 * 60 * 60 * 1000)
 })
 
 app.on("before-quit", () => {

@@ -29,6 +29,22 @@ matches the bundle after packaging. [`apps/desktop/build/adhoc-sign.cjs`](../app
 users get the normal "could not verify" warning and can use **Open Anyway**. Once a Developer ID
 signs the app, the hook sees a valid signature and does nothing. You don't need to remove it.
 
+### How releases and updates work today
+
+- **Pushing to `main`** deploys the web app. The Mac app loads the workspace from the server, so
+  web changes reach it on the next reload. Code inside the app (`apps/desktop/**`: guest mode,
+  the start page, the host) does not. It ships only in a new DMG.
+- **[`.github/workflows/desktop-release.yml`](../.github/workflows/desktop-release.yml)** builds
+  both DMGs on every push that touches `apps/desktop/**` (or by hand: Actions → Desktop Release →
+  Run workflow). It publishes them as release `v<major>.<minor>.<run number>` and marks it latest.
+  The Android APKs are copied over from the previous release so their download links keep working.
+- **`/api/version`** reports `latestDesktopVersion` from that latest release tag (cached 10 min;
+  `DESKTOP_LATEST_VERSION` overrides it).
+- **The app** checks 15 s after launch and every 6 h. When a newer version exists, it offers
+  **Download Update**, which opens the DMG for this Mac's architecture. Installing is manual (drag
+  to Applications, replace). Each new ad-hoc build asks for **Open Anyway** again, because macOS
+  ties that approval to the exact build. Self-installing updates need the Developer ID (section 8).
+
 ### Workaround for testers until we're signed
 
 ```bash
