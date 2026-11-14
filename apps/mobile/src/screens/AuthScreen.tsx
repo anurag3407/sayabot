@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react"
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   ScrollView,
   Modal,
@@ -14,7 +15,6 @@ import {
 } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import {
-  Bot,
   ChevronRight,
   Eye,
   EyeOff,
@@ -216,9 +216,11 @@ export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
         >
         <View style={styles.content}>
           {/* Logo Badge */}
-          <View style={styles.logoBadge}>
-            <Bot size={40} color={colors.textInverse} />
-          </View>
+          <Image
+            source={require("../../assets/mark.png")}
+            style={styles.logoMark}
+            accessibilityIgnoresInvertColors
+          />
 
           <Text style={styles.title}>Sayabot Mobile</Text>
           <Text style={styles.subtitle}>
@@ -537,19 +539,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     alignItems: "center",
   },
-  logoBadge: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: colors.primary,
-    alignItems: "center",
-    justifyContent: "center",
+  logoMark: {
+    width: 72,
+    height: 72,
     marginBottom: 18,
-    elevation: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
   },
   title: {
     color: colors.textPrimary,

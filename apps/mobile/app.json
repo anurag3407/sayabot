@@ -11,7 +11,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0b0b0c"
+      "backgroundColor": "#ee4157"
     },
     "ios": {
       "supportsTablet": true,
@@ -25,7 +25,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0b0b0c"
+        "backgroundColor": "#ee4157"
       },
       "package": "in.sayalabs.sayabot",
       "permissions": [
@@ -68,6 +68,7 @@
       [
         "expo-notifications",
         {
+          "icon": "./assets/notification-icon.png",
           "color": "#ff5d6c"
         }
       ],

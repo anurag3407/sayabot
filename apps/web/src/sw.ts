@@ -71,7 +71,7 @@ self.addEventListener("push", (event) => {
   const options: NotificationOptions & { actions?: { action: string; title: string }[] } = {
     body: payload.body ?? "An agent needs your attention.",
     tag: payload.tag,
-    icon: "/icon.svg",
+    icon: "/icon-192.png",
     data: { url: payload.url ?? "/", toolCallId: payload.toolCallId } satisfies NotificationData,
     requireInteraction: approval,
     ...(approval
@@ -124,7 +124,7 @@ self.addEventListener("notificationclick", (event) => {
         if (await decide(data.toolCallId, approved)) {
           return self.registration.showNotification(approved ? "Allowed" : "Not allowed", {
             body: approved ? "The agent is carrying on." : "The agent was told no.",
-            icon: "/icon.svg",
+            icon: "/icon-192.png",
             tag: `decided-${data.toolCallId}`,
           })
         }
