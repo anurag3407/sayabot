@@ -30,6 +30,7 @@ import { loadSavedServer, supabase } from "../core/supabase"
 import { useAuth } from "../hooks/useAuth"
 import { useSettings } from "../hooks/useSettings"
 import { colors } from "../theme"
+import markImage from "../../assets/mark.png"
 
 interface AuthScreenProps {
   onEnterDemo?: () => void
@@ -217,7 +218,7 @@ export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
         <View style={styles.content}>
           {/* Logo Badge */}
           <Image
-            source={require("../../assets/mark.png")}
+            source={markImage}
             style={styles.logoMark}
             accessibilityIgnoresInvertColors
           />
