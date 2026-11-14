@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react"
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
+  ScrollView,
   Modal,
   Platform,
   StatusBar,
@@ -95,6 +96,23 @@ export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
     }
   }, [serverUrlInput, serverModal, settings.webApiUrl])
 
+  /** "Couldn't reach Acme's Sayabot…" instead of a bare "Network request failed". */
+  const friendlyAuthError = (err: unknown, fallback: string): string => {
+    const message = err instanceof Error ? err.message : fallback
+    if (/network request failed|failed to fetch|network error|timed? ?out/i.test(message)) {
+      return `Couldn't reach ${serverName ?? "Sayabot Cloud"}. Check your connection and try again.`
+    }
+    return message
+  }
+
+  // On Sayabot Cloud the field starts empty (nobody types the Cloud address); on your own
+  // server it shows the current address so it's easy to correct.
+  const openServerSheet = () => {
+    setServerUrlInput(serverName ? settings.webApiUrl : "")
+    setServerCheck(null)
+    setServerModal(true)
+  }
+
   const connectServer = async () => {
     setServerBusy(true)
     const result = await checkServer(serverUrlInput)
@@ -118,7 +136,7 @@ export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
     try {
       await signInWithOAuth(provider)
     } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : "OAuth sign-in failed")
+      setErrorMsg(friendlyAuthError(err, "OAuth sign-in failed"))
     } finally {
       setLoading(false)
     }
@@ -157,7 +175,7 @@ export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
         if (error) throw error
       }
     } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : "Authentication failed")
+      setErrorMsg(friendlyAuthError(err, "Authentication failed"))
     } finally {
       setLoading(false)
     }
@@ -189,6 +207,13 @@ export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={styles.keyboardView}
       >
+        {/* Scrolls when the content is taller than the screen (small phones, an error banner,
+            the keyboard), so the server switch at the bottom is always reachable. */}
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
         <View style={styles.content}>
           {/* Logo Badge */}
           <View style={styles.logoBadge}>
@@ -340,7 +365,7 @@ export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
           {/* Server Endpoint Indicator Pill */}
           <TouchableOpacity
             style={styles.serverPill}
-            onPress={() => setServerModal(true)}
+            onPress={openServerSheet}
             activeOpacity={0.8}
           >
             <Server size={12} color={colors.textSecondary} />
@@ -350,6 +375,7 @@ export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
             <ChevronRight size={12} color={colors.textSecondary} />
           </TouchableOpacity>
         </View>
+        </ScrollView>
       </KeyboardAvoidingView>
 
       {/* Server Endpoint Modal */}
@@ -385,7 +411,7 @@ export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
                 style={styles.modalCancelBtn}
                 onPress={() => {
                   setCodeModal(false)
-                  setServerModal(true)
+                  openServerSheet()
                 }}
               >
                 <Text style={styles.modalCancelText}>Change server</Text>
@@ -501,6 +527,11 @@ const styles = StyleSheet.create({
   keyboardView: {
     flex: 1,
     justifyContent: "center",
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: "center",
+    paddingVertical: 24,
   },
   content: {
     paddingHorizontal: 28,
