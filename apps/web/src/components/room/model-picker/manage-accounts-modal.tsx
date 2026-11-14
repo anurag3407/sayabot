@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, useTransition } from "react"
 import { Check, Copy, ExternalLink, Loader2, Terminal, X } from "lucide-react"
 import { GroupIcon, useModelList } from "./model-picker-dropdown"
+import { updateHostSettingsAction } from "@/lib/actions/desktop"
 import { connectAccountAction, deleteProviderKey } from "@/lib/actions/keys"
 import {
   ACCOUNT_PROVIDERS,
@@ -401,16 +402,43 @@ function CopilotSignIn({ orgSlug, onConnected }: { orgSlug: string; onConnected:
 }
 
 /** A plan used through its app on the server: nothing to save here, only to sign in there. */
+/** A computer group (one of the person's Macs) where this app is signed in right now. */
+function signedInOn(group: PickerGroup, appId: string): boolean {
+  return group.models.some((m) => m.id === appId && !/not signed in/i.test(m.label))
+}
+
 function AppPlan({
+  orgSlug,
   provider,
   group,
+  macs,
+  onChanged,
 }: {
+  orgSlug: string
   provider: AccountProvider
+  /** The app signed in on the server itself (self-hosted on your own computer). */
   group: PickerGroup | undefined
+  /** The person's own Macs (Sayabot for Mac) where the app is signed in. */
+  macs: PickerGroup[]
+  onChanged: () => void
 }) {
+  const [pending, startTransition] = useTransition()
+  const [error, setError] = useState<string | null>(null)
   const app = provider.app
   if (!app) return null
   const ready = Boolean(group && !/isn't signed in/i.test(group.detail))
+
+  const turnOnRunner = (mac: PickerGroup) => {
+    const hostId = mac.keyId?.replace(/^host:/, "")
+    if (!hostId) return
+    setError(null)
+    startTransition(async () => {
+      const result = await updateHostSettingsAction({ orgSlug, hostId, runnerEnabled: true })
+      if (!result.ok) setError(result.error ?? result.message ?? "Could not turn it on")
+      else onChanged()
+    })
+  }
+
   return (
     <div className="space-y-3">
       {ready && group ? (
@@ -421,17 +449,55 @@ function AppPlan({
           </span>
         </div>
       ) : null}
-      <div className="space-y-2 rounded-xl bg-raised/60 p-4 text-[13.5px] leading-relaxed text-muted">
-        <p>Works with {app.plan}. Sign in once on the computer that runs Sayabot, in a terminal:</p>
-        <code className="flex items-center gap-2 rounded-lg bg-void px-3 py-2 font-mono text-[13px] text-text">
-          <Terminal className="h-4 w-4 text-faint" />
-          {app.command}
-        </code>
-        <p className="text-[12.5px] text-faint">
-          Sayabot finds it there and lists its models in the picker, read live from the app. When
-          Sayabot runs on a server you do not sign in to yourself, connect an API key instead.
-        </p>
-      </div>
+      {macs.map((mac) =>
+        mac.runnerEnabled ? (
+          <div
+            key={mac.keyId}
+            className="flex items-center gap-3 rounded-xl bg-ok/10 px-3 py-2.5 text-ok"
+          >
+            <Check className="h-4 w-4 shrink-0" />
+            <span className="min-w-0 text-[13.5px]">
+              Ready on {mac.label}: agents set to run there use your {app.plan} plan.
+            </span>
+          </div>
+        ) : (
+          <div key={mac.keyId} className="space-y-2.5 rounded-xl bg-raised/60 p-4">
+            <p className="text-[13.5px] leading-relaxed text-text">
+              Found on {mac.label}: {provider.name.replace(/ plan$/, "")} is signed in there.
+            </p>
+            <p className="text-[12.5px] leading-relaxed text-faint">
+              Let agents run on that Mac to use your plan. Their work happens on the Mac, with the
+              apps signed in there. You can turn this off in Settings → Computers.
+            </p>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => turnOnRunner(mac)}
+              className="inline-flex items-center gap-2 rounded-full bg-text px-4 py-2 text-[13px] font-medium text-void disabled:opacity-60"
+            >
+              {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Use it from {mac.label}
+            </button>
+          </div>
+        ),
+      )}
+      {error ? <p className="text-[12.5px] text-danger">{error}</p> : null}
+      {!ready && !macs.length ? (
+        <div className="space-y-2 rounded-xl bg-raised/60 p-4 text-[13.5px] leading-relaxed text-muted">
+          <p>
+            Works with {app.plan}. Install Sayabot for Mac, then sign in once on that Mac, in a
+            terminal:
+          </p>
+          <code className="flex items-center gap-2 rounded-lg bg-void px-3 py-2 font-mono text-[13px] text-text">
+            <Terminal className="h-4 w-4 text-faint" />
+            {app.command}
+          </code>
+          <p className="text-[12.5px] text-faint">
+            Sayabot for Mac finds it on its own and it shows up here. No key needed: it uses your
+            own subscription.
+          </p>
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -470,10 +536,17 @@ export function ManageAccountsModal({
   const active = ACCOUNT_PROVIDERS.find((p) => p.id === activeId) ?? ACCOUNT_PROVIDERS[0]
   if (!active) return null
 
+  // Plans signed in on the person's own Macs (reported by Sayabot for Mac), not only the server.
+  const macsWith = (provider: AccountProvider) =>
+    provider.kind === "app" && provider.app
+      ? groups.filter((g) => g.section === "computer" && signedInOn(g, provider.app?.id ?? ""))
+      : []
   const connectedOf = (provider: AccountProvider) =>
     provider.kind === "app"
       ? groups.filter((g) => g.keyId === `cli:${provider.app?.id}`)
       : groups.filter((g) => g.section === "key" && g.provider === provider.id)
+  const isConnected = (provider: AccountProvider) =>
+    connectedOf(provider).length > 0 || macsWith(provider).some((mac) => mac.runnerEnabled)
 
   return (
     <div
@@ -496,7 +569,7 @@ export function ManageAccountsModal({
         >
           <p className="px-2.5 pb-1.5 pt-2 text-[12px] font-medium text-faint">AI accounts</p>
           {ACCOUNT_PROVIDERS.map((provider) => {
-            const connected = connectedOf(provider).length > 0
+            const connected = isConnected(provider)
             return (
               <button
                 key={provider.id}
@@ -552,7 +625,13 @@ export function ManageAccountsModal({
             ) : null}
 
             {active.kind === "app" ? (
-              <AppPlan provider={active} group={connectedOf(active)[0]} />
+              <AppPlan
+                orgSlug={orgSlug}
+                provider={active}
+                group={connectedOf(active)[0]}
+                macs={macsWith(active)}
+                onChanged={refresh}
+              />
             ) : (
               <>
                 <ConnectedList

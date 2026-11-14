@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { hostFromRequest } from "@/lib/desktop-hosts"
+import { hostFromRequest, withLocalDefault } from "@/lib/desktop-hosts"
 import { createAdminClient } from "@/lib/supabase/admin"
 
 const PERMISSION_VALUES = new Set(["granted", "denied", "not-determined", "restricted", "unknown"])
@@ -55,10 +55,19 @@ export async function POST(request: Request) {
     }
   }
 
+  // Agents run on this Mac by default once an app (Claude Code, Codex…) is signed in here.
+  const settings = withLocalDefault(host.settings ?? {}, localAgents)
+
   const admin = createAdminClient()
   await admin
     .from("desktop_hosts")
-    .update({ last_seen_at: new Date().toISOString(), permissions, local_agents: localAgents, ...(storage ? { storage } : {}) })
+    .update({
+      last_seen_at: new Date().toISOString(),
+      permissions,
+      local_agents: localAgents,
+      ...(storage ? { storage } : {}),
+      ...(settings ? { settings } : {}),
+    })
     .eq("id", host.id)
 
   // Requests older than two minutes were abandoned by the viewer.
@@ -94,7 +103,7 @@ export async function POST(request: Request) {
     .eq("status", "queued")
 
   return NextResponse.json({
-    settings: host.settings,
+    settings: settings ?? host.settings,
     sessions: (sessions ?? []).map((s) => ({
       id: s.id,
       viewerName: names.get(s.viewer_user_id as string) ?? "Someone",

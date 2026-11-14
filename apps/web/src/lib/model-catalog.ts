@@ -78,6 +78,8 @@ export interface PickerGroup {
   source?: "live" | "cache" | "manifest" | "catalog" | "static"
   /** Set when the live list could not be read. */
   notice?: string
+  /** Computer groups only: whether "Run agents on this computer" is on. */
+  runnerEnabled?: boolean
 }
 
 const RUNNER_APPS: Record<string, string> = {
@@ -344,6 +346,7 @@ export async function buildModelCatalog(
       models,
       effortLevels: [],
       source: "static",
+      runnerEnabled: host.runnerEnabled,
     })
   }
   return groups.map((group) =>

@@ -9,6 +9,12 @@ export interface DesktopHostSettings {
   askOnComputer?: boolean
   /** Let this computer run agents on the apps signed in here (Claude Code, Codex…). */
   runnerEnabled?: boolean
+  /**
+   * Run the owner's agents here by default (agents with no key or computer of their own, in
+   * workspaces where the owner is the only member). Unset: never decided, so Sayabot for Mac
+   * turns it on once it finds a signed-in app. `false`: the owner turned it off.
+   */
+  localDefault?: { app: string } | false
 }
 
 /**

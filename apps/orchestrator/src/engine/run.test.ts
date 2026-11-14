@@ -4,6 +4,7 @@ import type { RunLlmTurnArgs, TurnResult } from "../runner/llm"
 import * as cliRunner from "../runner/cli"
 import * as cliAgent from "../runner/cli-agent"
 import * as llmRunner from "../runner/llm"
+import * as localRunner from "../runner/local"
 import { startAgentTurn } from "./index"
 import * as engineRun from "./run"
 
@@ -11,6 +12,8 @@ describe("Engine Dispatcher (E4)", () => {
   // Keep dispatch independent of whether Claude Code / Codex is signed in on this machine.
   beforeEach(() => {
     vi.stubEnv("SAYABOT_LOCAL_CLI", "0")
+    // No paired Mac set as the default (that path has its own tests in default-mac.test.ts).
+    vi.spyOn(localRunner, "defaultMacRunner").mockResolvedValue(null)
   })
   afterEach(() => {
     vi.unstubAllEnvs()

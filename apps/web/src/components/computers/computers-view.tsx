@@ -138,6 +138,20 @@ function ComputerCard({ orgSlug, computer }: { orgSlug: string; computer: Comput
             </div>
             <Toggle label="Run agents on this computer" checked={Boolean(s.runnerEnabled)} disabled={pending} onChange={(v) => save({ runnerEnabled: v })} />
           </div>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[14px] text-text">Use this computer for my agents</p>
+              <p className="text-[12px] text-faint">
+                Agents with no key or computer of their own run here, in workspaces only you are in. When this computer is offline, the server answers.
+              </p>
+            </div>
+            <Toggle
+              label="Use this computer for my agents"
+              checked={Boolean(s.runnerEnabled && s.localDefault)}
+              disabled={pending}
+              onChange={(v) => save({ localDefault: v })}
+            />
+          </div>
           {computer.localAgents.length ? (
             <p className="text-[12px] text-faint">
               Found here:{" "}

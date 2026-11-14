@@ -1,6 +1,6 @@
 import { hostOnline, redactSecrets } from "@sayabot/core"
-import { agentRuns, desktopHosts, localRunnerJobs, messages } from "@sayabot/db"
-import { eq } from "drizzle-orm"
+import { agentRuns, desktopHosts, localRunnerJobs, messages, orgMembers } from "@sayabot/db"
+import { and, desc, eq, isNull } from "drizzle-orm"
 import { registerRun, unregisterRun } from "../active-runs"
 import { getDb } from "../db"
 import { broadcast } from "../realtime"
@@ -31,6 +31,45 @@ export function localRunnerConfig(params: Record<string, unknown> | null | undef
   if (!runner || typeof runner.hostId !== "string" || !/^[0-9a-f-]{36}$/i.test(runner.hostId)) return null
   const app = ["claude-code", "codex", "gemini", "opencode", "cursor"].includes(String(runner.app)) ? (runner.app as LocalRunnerConfig["app"]) : "claude-code"
   return { hostId: runner.hostId, app }
+}
+
+const RUNNER_APPS = new Set<string>(["claude-code", "codex", "gemini", "opencode", "cursor"])
+
+/**
+ * The owner's Mac as the default for agents that have no key or computer of their own, when
+ * Sayabot for Mac has it turned on (`settings.localDefault`, set by the heartbeat). Only in
+ * workspaces where the Mac's owner is the only member, so nobody else's messages run on their
+ * Mac, and only while it's online. Otherwise the server answers as before.
+ */
+export async function defaultMacRunner(agent: {
+  orgId: string
+  providerKeyId: string | null
+  params: unknown
+}): Promise<LocalRunnerConfig | null> {
+  if (agent.providerKeyId) return null
+  if ((agent.params as Record<string, unknown> | null)?.runner) return null
+  const db = getDb()
+  const members = await db
+    .select({ userId: orgMembers.userId })
+    .from(orgMembers)
+    .where(eq(orgMembers.orgId, agent.orgId))
+    .limit(2)
+  const owner = members.length === 1 ? members[0] : undefined
+  if (!owner) return null
+  const hosts = await db
+    .select({ id: desktopHosts.id, settings: desktopHosts.settings, lastSeenAt: desktopHosts.lastSeenAt })
+    .from(desktopHosts)
+    .where(and(eq(desktopHosts.userId, owner.userId), isNull(desktopHosts.revokedAt)))
+    .orderBy(desc(desktopHosts.lastSeenAt))
+    .limit(5)
+  for (const host of hosts) {
+    const choice = host.settings?.localDefault
+    const app = choice && typeof choice === "object" ? choice.app : null
+    if (host.settings?.runnerEnabled && app && RUNNER_APPS.has(app) && hostOnline(host.lastSeenAt)) {
+      return { hostId: host.id, app: app as LocalRunnerConfig["app"] }
+    }
+  }
+  return null
 }
 
 const POLL_MS = 1_200
