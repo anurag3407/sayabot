@@ -97,6 +97,9 @@ export function Downloads() {
                       Move to Applications to install
                     </span>
                     <span className="text-[11px] opacity-60">· macOS 14+ (M1–M4 & Intel)</span>
+                    <a href="/download#install" className="text-[11px] font-medium underline underline-offset-2">
+                      Install from Terminal
+                    </a>
                   </div>
                 )}
               </div>

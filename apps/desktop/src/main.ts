@@ -1,6 +1,8 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, MenuItemConstructorOptions, Notification, shell } from "electron"
 import * as path from "node:path"
 import * as fs from "node:fs"
+import * as os from "node:os"
+import { downloadFile, runDetached, stageMacUpdate } from "./mac-install"
 import { DesktopHost } from "./host"
 import { detectLocalAgents } from "./local-agents"
 import { LocalMcpHost } from "./local-mcp"
@@ -469,12 +471,12 @@ async function checkDesktopUpdates(manual = false): Promise<DesktopUpdateResult>
           title: "Update Available",
           message: `Sayabot v${latest} is now available!`,
           detail: `${releaseNotes}\n\n(Current version: v${currentVersion})`,
-          buttons: ["Download Update", "Later"],
+          buttons: ["Install Update", "Later"],
           defaultId: 0,
           cancelId: 1,
         })
         if (choice.response === 0) {
-          void shell.openExternal(dmgUrl)
+          void installMacUpdate(dmgUrl)
         }
       }
       return {
@@ -517,6 +519,38 @@ async function checkDesktopUpdates(manual = false): Promise<DesktopUpdateResult>
       isUpdateAvailable: false,
       currentVersion,
       error: msg,
+    }
+  }
+}
+
+/**
+ * Downloads the new DMG itself and swaps /Applications/Sayabot.app after quit.
+ * A browser download is what makes macOS show "Apple could not verify".
+ */
+async function installMacUpdate(dmgUrl: string): Promise<void> {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sayabot-update-"))
+  const dmgPath = path.join(dir, "Sayabot.dmg")
+  try {
+    if (Notification.isSupported()) {
+      new Notification({
+        title: "Installing Sayabot",
+        body: "The update is downloading. Sayabot will reopen when it is ready.",
+      }).show()
+    }
+    await downloadFile(dmgUrl, dmgPath)
+    runDetached(stageMacUpdate(dmgPath))
+    app.exit(0)
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.warn("[Sayabot Desktop] Update install failed:", msg)
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      await dialog.showMessageBox(mainWindow, {
+        type: "warning",
+        title: "Update Failed",
+        message: "Sayabot could not install the update.",
+        detail: msg,
+        buttons: ["OK"],
+      })
     }
   }
 }

@@ -91,7 +91,11 @@ jobs:
 
           Built from ${GITHUB_SHA::7}.
 
-          First launch: macOS will say it can't verify Sayabot. Open System Settings → Privacy & Security and click Open Anyway (once)."
+          Install from Terminal so macOS opens Sayabot directly:
+
+          curl -fsSL https://sayabot.sayalabs.in/install-mac.sh | bash
+
+          A DMG saved in the browser is checked by macOS. Click Done, then System Settings → Privacy & Security → Open Anyway."
 
           shopt -s nullglob
           files=("$dir/Sayabot-arm64.dmg" "$dir/Sayabot-x64.dmg" carry/*.apk)

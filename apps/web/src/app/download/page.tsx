@@ -29,6 +29,7 @@ export default async function DownloadPage() {
   const selfHosted = edition() === "self-hosted"
   const host = server.replace(/^https?:\/\//, "")
   const connectLink = `sayabot://connect?server=${encodeURIComponent(server)}`
+  const installCmd = `curl -fsSL ${server}/install-mac.sh | bash`
 
   return (
     <PublicShell>
@@ -125,7 +126,16 @@ export default async function DownloadPage() {
               </ul>
             </div>
 
-            <div className="mt-8 pt-6 border-t border-white/5 space-y-3">
+            <div id="install" className="mt-8 scroll-mt-28 space-y-3 border-t border-white/5 pt-6">
+              <p className="text-xs leading-relaxed text-neutral-300">
+                Install from Terminal. macOS opens Sayabot directly.
+              </p>
+              <div className="flex min-w-0 items-start gap-2 rounded-xl border border-white/10 bg-black/30 px-3 py-2">
+                <span className="min-w-0 flex-1 break-all font-mono text-[11px] leading-relaxed text-neutral-200">
+                  {installCmd}
+                </span>
+                <CopyButton text={installCmd} label="copy" className="shrink-0 text-neutral-400" />
+              </div>
               <a
                 href={DOWNLOADS.macArm64}
                 download="Sayabot-arm64.dmg"
@@ -141,6 +151,10 @@ export default async function DownloadPage() {
               >
                 <span>Download DMG (Intel Macs)</span>
               </a>
+              <p className="text-[11px] leading-relaxed text-neutral-500">
+                A DMG saved by the browser is checked by macOS. On the warning, click Done, then
+                System Settings → Privacy & Security → Open Anyway.
+              </p>
             </div>
           </div>
 
@@ -210,7 +224,7 @@ export default async function DownloadPage() {
               </span>
               <h4 className="text-sm font-medium text-white">Install Mac App</h4>
               <p className="text-xs text-neutral-400 leading-relaxed">
-                Open the downloaded DMG on your Mac and drag Sayabot into Applications.
+                Paste the Terminal command on the Mac card. macOS opens Sayabot directly.
               </p>
             </div>
 
