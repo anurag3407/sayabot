@@ -20,6 +20,15 @@ App: [`apps/desktop`](../apps/desktop) · Builder: `electron-builder` 26 · Bund
 Note: on macOS 15 (Sequoia) and later, **Control-click → Open no longer bypasses Gatekeeper**.
 Unsigned apps can only be opened through System Settings → Privacy & Security → **Open Anyway**.
 
+### What we do until then: ad-hoc signing
+
+Without any signature fix, a downloaded build shows **"Sayabot is damaged and can't be opened"**,
+and there's no way past it in the UI. That happens because Electron's stock signature no longer
+matches the bundle after packaging. [`apps/desktop/build/adhoc-sign.cjs`](../apps/desktop/build/adhoc-sign.cjs)
+(electron-builder `afterSign`) ad-hoc signs the whole app when no valid signature is present, so
+users get the normal "could not verify" warning and can use **Open Anyway**. Once a Developer ID
+signs the app, the hook sees a valid signature and does nothing. You don't need to remove it.
+
 ### Workaround for testers until we're signed
 
 ```bash

@@ -20,6 +20,13 @@ __pycache__
 .expo/
 brag-output/
 
+# Binaries and large release artifacts
+*.apk
+*.dmg
+*.zip
+apps/web/public/downloads/*
+!apps/web/public/downloads/.gitkeep
+
 # Production deploy state (secrets, certificates, release history)
 deploy/.env.production
 deploy/certbot/
