@@ -1,248 +1,108 @@
-// Builds presentation.html from the SVG masters (embedded as data URIs so ids never collide).
-const fs = require("fs")
-const path = require("path")
-const dir = path.join(__dirname, "svg")
-const uri = (n) =>
-  "data:image/svg+xml;base64," + Buffer.from(fs.readFileSync(path.join(dir, `${n}.svg`))).toString("base64")
-const I = {
-  icon: uri("sayabot-app-icon"),
-  rounded: uri("sayabot-app-icon-rounded"),
-  small: uri("sayabot-app-icon-small"),
-  dark: uri("sayabot-app-icon-dark"),
-  symbol: uri("sayabot-symbol"),
-  handInk: uri("sayabot-hand-ink"),
-  handWhite: uri("sayabot-hand-white"),
-  handRed: uri("sayabot-hand-red"),
-  maskable: uri("sayabot-app-icon-maskable"),
-}
-
-const html = `<title>Saaya Mark</title>
+const fs = require("fs"), path = require("path")
+const u = (n) => "data:image/svg+xml;base64," + fs.readFileSync(path.join(__dirname, "svg", n + ".svg")).toString("base64")
+const I = { r: u("sayabot-icon-rounded"), mac: u("sayabot-icon-macos"), s: u("sayabot-icon-small"), mono: u("sayabot-mono-white"), b: u("alt-cursor-buddy"), c: u("alt-prompt-pal") }
+const ph = (c) => `<i style="background:${c}"></i>`
+const html = `<title>Sayabot Icon</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;800&family=Geist+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: one long sheet; a red hero tile states the mark, then idea → anatomy → sizes → in use → files. */
-:root{
-  --bg:#faf7f6; --surface:#ffffff; --fg:#1b1220; --muted:#6d6270; --line:#ebe3e2;
-  --red:#ff5d6c; --ink:#1b1220; --cream:#fff4ea;
-  --display:"Geist",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-  --mono:"Geist Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
-}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#120d14;--surface:#1c1520;--fg:#f6eeee;--muted:#a698a6;--line:#2c2330;color-scheme:dark}}
-:root[data-theme="dark"]{--bg:#120d14;--surface:#1c1520;--fg:#f6eeee;--muted:#a698a6;--line:#2c2330;color-scheme:dark}
+/* Layout: hero icon + pitch, then the icon in its real homes (dock, home screen), sizes, alternates, files. */
+:root{--bg:#fbf8f8;--surface:#fff;--fg:#1b1220;--muted:#6f6471;--line:#ece4e4;--red:#ff5d6c;
+--sans:"Geist",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--mono:"Geist Mono",ui-monospace,Menlo,monospace}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#130e15;--surface:#1d1620;--fg:#f7efef;--muted:#a99ba9;--line:#2d2431;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#130e15;--surface:#1d1620;--fg:#f7efef;--muted:#a99ba9;--line:#2d2431;color-scheme:dark}
 *{box-sizing:border-box}
-body{background:var(--bg);color:var(--fg);font-family:var(--display);font-size:16px;line-height:1.55;
-  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:40px 80px}
-.wrap{max-width:1040px;margin:0 auto;display:grid;gap:72px}
-h1,h2{text-wrap:balance;margin:0;letter-spacing:-.02em}
-h2{font-size:28px;font-weight:600}
-p{margin:0}
-.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
-.lede{color:var(--muted);max-width:62ch}
-section{display:grid;gap:24px}
-
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:16px;line-height:1.55;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:40px 80px}
+.wrap{max-width:1000px;margin:0 auto;display:grid;gap:64px}
+h1,h2,h3,p{margin:0}h1,h2{text-wrap:balance;letter-spacing:-.02em}h2{font-size:26px;font-weight:600}
+.eb{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.muted{color:var(--muted);max-width:62ch}
+section{display:grid;gap:20px}
 .hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:48px;align-items:center}
-.hero img{width:100%;max-width:440px;border-radius:22.4%;box-shadow:0 30px 60px -30px rgba(255,93,108,.55)}
-.hero h1{font-size:clamp(40px,7vw,72px);font-weight:800;line-height:1}
-.hero .thesis{font-size:20px;max-width:30ch;margin-top:16px}
-.hero .gloss{margin-top:20px;font-family:var(--mono);font-size:13px;color:var(--muted)}
-.hero .gloss b{color:var(--fg);font-weight:500}
-
-.idea{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
-.idea div{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;display:grid;gap:8px;align-content:start}
-.idea h3{margin:0;font-size:17px;font-weight:600}
-.idea p{color:var(--muted);font-size:15px}
-
-.anatomy{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:40px;align-items:center}
-.anat-fig{position:relative;max-width:460px;width:100%}
-.anat-fig img{width:100%;display:block;border-radius:22.4%}
-.anat-fig svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
-.anat-fig .pin{fill:#1b1220}
-
-.anat-fig text{font-family:var(--mono);font-size:30px;fill:var(--ink);font-weight:500}
-.parts{list-style:none;margin:0;padding:0;display:grid;gap:14px}
-.parts li{display:grid;grid-template-columns:32px minmax(0,1fr);gap:12px;align-items:start}
-.parts .n{width:28px;height:28px;border-radius:50%;background:var(--fg);color:var(--bg);display:grid;place-items:center;font-family:var(--mono);font-size:13px}
-.parts b{font-weight:600}
-.parts span{color:var(--muted)}
-
+.hero img{width:100%;max-width:400px;filter:drop-shadow(0 30px 40px rgba(238,65,87,.35))}
+.hero h1{font-size:clamp(40px,6.5vw,64px);font-weight:800;line-height:1.02}
+.hero p{font-size:19px;margin-top:16px;max-width:34ch}
+.why{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.why div{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;display:grid;gap:6px;align-content:start}
+.why h3{font-size:16px;font-weight:600}.why p{color:var(--muted);font-size:15px}
+.desk{border-radius:20px;padding:120px 20px 22px;background:linear-gradient(135deg,#f5b7a8,#c77b9a 45%,#5b4a8b);display:grid;justify-items:center;overflow:hidden}
+.dock{display:flex;gap:10px;padding:10px 12px;border-radius:24px;background:rgba(255,255,255,.28);border:1px solid rgba(255,255,255,.4);backdrop-filter:blur(20px);max-width:100%;overflow-x:auto}
+.dock i,.dock img{flex:0 0 auto;width:64px;height:64px;display:block}
+.dock i{border-radius:22.4%;transform:scale(.805)}
+.dock .on{position:relative}.dock .on::after{content:"";position:absolute;left:50%;bottom:-6px;width:4px;height:4px;border-radius:50%;background:#fff;transform:translateX(-50%)}
+.pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.phone{border-radius:20px;padding:28px 22px;background:linear-gradient(170deg,#2c2140,#140e1a 70%);display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px 10px;justify-items:center}
+.phone div{display:grid;gap:6px;justify-items:center;font-size:12px;color:#fff}
+.phone i,.phone img{width:60px;height:60px;border-radius:22.4%;display:block}
+.notif-wrap{border-radius:20px;padding:22px;background:var(--surface);border:1px solid var(--line);display:grid;gap:14px;align-content:center}
+.notif{background:#f2edf0;color:#1b1220;border-radius:18px;padding:12px 14px;display:grid;grid-template-columns:38px minmax(0,1fr);gap:12px;align-items:center}
+.notif img{width:38px;height:38px}.notif b{font-size:14px;font-weight:600}.notif p{font-size:13px;color:#4f4451}
+.tab{display:flex;align-items:center;gap:8px;background:#ece6e9;color:#1b1220;border-radius:10px 10px 0 0;padding:9px 14px;font-size:13px;width:max-content;max-width:100%}
+.tab img{width:16px;height:16px}
 .sizes{display:flex;flex-wrap:wrap;align-items:flex-end;gap:28px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:28px}
-.sizes figure{margin:0;display:grid;gap:8px;justify-items:center}
-.sizes img{display:block;border-radius:22.4%}
-.sizes figcaption{font-family:var(--mono);font-size:12px;color:var(--muted)}
-.px16 img,.px32 img{image-rendering:auto}
-
-.uses{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
-.use{border-radius:16px;padding:24px;display:grid;gap:16px;align-content:start;min-width:0;border:1px solid var(--line)}
-.use .cap{font-family:var(--mono);font-size:12px;color:var(--muted);letter-spacing:.04em}
-.home{background:linear-gradient(160deg,#3a2a44,#1b1220 60%,#4b1f2c);color:#fff}
-.home .cap{color:#cdbdcf}
-.dock{display:flex;gap:18px;flex-wrap:wrap}
-.app{display:grid;gap:6px;justify-items:center;font-size:12px}
-.app i{display:block;width:64px;height:64px;border-radius:22.4%;background:#ffffff22}
-.app img{width:64px;height:64px;border-radius:22.4%;display:block}
-.lockup-light{background:#ffffff}
-.lockup-light .cap{color:#6d6270}
-.lockup-dark{background:#1b1220}
-.lockup-dark .cap{color:#a698a6}
-.lockup{display:flex;align-items:center;gap:14px}
-.lockup img{width:64px;height:64px}
-.lockup .word{font-family:var(--display);font-weight:800;font-size:44px;letter-spacing:-.04em;line-height:1}
-.lockup-light .word{color:#1b1220}
-.lockup-dark .word{color:#fff4ea}
-.word em{font-style:normal;color:#ff5d6c}
-.tab{background:var(--bg)}
-.chrome{background:var(--surface);border:1px solid var(--line);border-radius:10px 10px 0 0;display:flex;align-items:center;gap:8px;padding:10px 14px;max-width:280px;font-size:13px}
-.chrome img{width:16px;height:16px;border-radius:4px}
-.notif{background:#f2edf0;color:#1b1220;border-radius:18px;padding:12px 14px;display:grid;grid-template-columns:36px minmax(0,1fr);gap:12px;align-items:center;max-width:360px}
-.notif img{width:36px;height:36px;border-radius:9px}
-.notif b{font-weight:600;font-size:14px}
-.notif p{font-size:13px;color:#4b404d}
-.mono-row{display:flex;gap:20px;align-items:center;flex-wrap:wrap}
-.mono-row .chip{width:72px;height:72px;border-radius:18px;display:grid;place-items:center}
-.mono-row .chip img{width:56px;height:56px}
-
-.palette{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
-.sw{border-radius:16px;padding:20px;min-height:140px;display:grid;align-content:end;gap:2px;border:1px solid var(--line)}
-.sw b{font-weight:600}
-.sw code{font-family:var(--mono);font-size:13px;opacity:.8}
-
-.rejected{display:grid;gap:10px;color:var(--muted);font-size:15px;max-width:72ch}
-.rejected b{color:var(--fg);font-weight:600}
+.sizes figure{margin:0;display:grid;gap:8px;justify-items:center}.sizes figcaption{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.alts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.alt{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;display:grid;grid-template-columns:96px minmax(0,1fr);gap:16px;align-items:center}
+.alt img{width:96px;height:96px}.alt h3{font-size:16px;font-weight:600}.alt p{color:var(--muted);font-size:14px}
 .files{font-family:var(--mono);font-size:13px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;overflow-x:auto;white-space:pre;line-height:1.8}
-
-@media (max-width:760px){
-  .hero,.anatomy{grid-template-columns:minmax(0,1fr)}
-  .hero img{max-width:300px}
-  .idea,.uses,.palette{grid-template-columns:minmax(0,1fr)}
-}
+@media (max-width:760px){.hero,.why,.pair,.alts{grid-template-columns:minmax(0,1fr)}.hero img{max-width:280px}}
 </style>
-
 <main class="wrap">
-  <header class="hero">
-    <img src="${I.rounded}" alt="Sayabot app icon: an ink hand-shadow puppet with an open mouth, in a cream pool of light on coral red">
-    <div>
-      <p class="eyebrow">Sayabot · app icon & mark</p>
-      <h1>The shadow<br>you cast.</h1>
-      <p class="thesis">A hand-shadow puppet, mid-sentence, in a pool of light.</p>
-      <p class="gloss"><b>साया · saaya</b> (Hindi/Urdu), noun: shadow; a protective presence that stays with you.</p>
-    </div>
-  </header>
-
-  <section>
-    <p class="eyebrow">The idea</p>
-    <h2>Your hand makes the shape. The shadow does the talking.</h2>
-    <div class="idea">
-      <div><h3>It's literally the name</h3><p>Saaya means shadow. Shadow puppetry is how every child first brings a shape to life with their own hands. Here the human sets the intent and the shadow carries it out.</p></div>
-      <div><h3>It speaks and acts</h3><p>The mouth is open. That's the agent replying in the room, running a turn, using its computer. It's a character, and it's not a robot face.</p></div>
-      <div><h3>It's always held</h3><p>The forearm stays in frame. Every shadow needs a hand behind it, and that's the approval gate: agents do the work, and people stay in charge.</p></div>
-    </div>
-  </section>
-
-  <section class="anatomy">
-    <div class="anat-fig">
-      <img src="${I.icon}" alt="">
-      <svg viewBox="0 0 1024 1024" aria-hidden="true">
-        <g>
-          <circle class="pin" cx="300" cy="190" r="26"/><text x="300" y="201" text-anchor="middle" fill="#fff4ea" style="fill:#fff4ea;font-size:26px">1</text>
-          <circle class="pin" cx="540" cy="200" r="26"/><text x="540" y="211" text-anchor="middle" style="fill:#fff4ea;font-size:26px">2</text>
-          <circle class="pin" cx="900" cy="394" r="26"/><text x="900" y="405" text-anchor="middle" style="fill:#fff4ea;font-size:26px">3</text>
-          <circle class="pin" cx="840" cy="680" r="26"/><text x="840" y="691" text-anchor="middle" style="fill:#fff4ea;font-size:26px">4</text>
-          <circle class="pin" cx="200" cy="820" r="26"/><text x="200" y="831" text-anchor="middle" style="fill:#fff4ea;font-size:26px">5</text>
-        </g>
-      </svg>
-    </div>
-    <ol class="parts">
-      <li><span class="n">1</span><div><b>Pool of light.</b> <span>The room: the shared space where people and agents meet. The shadow only shows up where there's light.</span></div></li>
-      <li><span class="n">2</span><div><b>The eye.</b> <span>A gap between the fingers, so you're looking at light through the shadow. It's the only "face" detail, and it comes from the hand, not from a screen.</span></div></li>
-      <li><span class="n">3</span><div><b>Three fingers, staggered.</b> <span>The fingertips and the light between them are what tell you it's a hand. At small sizes they make a clear notched silhouette.</span></div></li>
-      <li><span class="n">4</span><div><b>Thumb jaw, open.</b> <span>The talking-hand gesture everyone knows. Open means mid-turn.</span></div></li>
-      <li><span class="n">5</span><div><b>The forearm.</b> <span>It runs off the tile, so there's always a person attached. In the dark variant it fades into the dark outside the light.</span></div></li>
-    </ol>
-  </section>
-
-  <section>
-    <p class="eyebrow">Size tests</p>
-    <h2>Holds from home screen to favicon</h2>
-    <p class="lede">At 32 px and below a separate small master drops the finger seams and makes the eye bigger. The silhouette stays the same: a light disc with a notched shape biting into it.</p>
-    <div class="sizes">
-      <figure><img src="${I.rounded}" width="180" height="180" alt=""><figcaption>180</figcaption></figure>
-      <figure><img src="${I.rounded}" width="120" height="120" alt=""><figcaption>120</figcaption></figure>
-      <figure><img src="${I.rounded}" width="64" height="64" alt=""><figcaption>64</figcaption></figure>
-      <figure class="px32"><img src="${I.small}" width="32" height="32" alt="" style="border-radius:7px"><figcaption>32</figcaption></figure>
-      <figure class="px16"><img src="${I.small}" width="16" height="16" alt="" style="border-radius:3px"><figcaption>16</figcaption></figure>
-    </div>
-  </section>
-
-  <section>
-    <p class="eyebrow">In use</p>
-    <h2>Red tile, everywhere it lands</h2>
-    <div class="uses">
-      <div class="use home">
-        <p class="cap">iOS HOME SCREEN</p>
-        <div class="dock">
-          <div class="app"><i></i>Notes</div>
-          <div class="app"><img src="${I.rounded}" alt="">Sayabot</div>
-          <div class="app"><i></i>Maps</div>
-          <div class="app"><i></i>Mail</div>
-        </div>
-      </div>
-      <div class="use tab">
-        <p class="cap">BROWSER TAB · PUSH NOTIFICATION</p>
-        <div class="chrome"><img src="${I.small}" alt="">Design review · Sayabot</div>
-        <div class="notif"><img src="${I.rounded}" alt=""><div><b>Atlas needs your approval</b><p>Wants to open a PR on saaya/web · tap to review</p></div></div>
-      </div>
-      <div class="use lockup-light">
-        <p class="cap">LOCKUP · LIGHT</p>
-        <div class="lockup"><img src="${I.symbol}" alt=""><span class="word">sayabot</span></div>
-      </div>
-      <div class="use lockup-dark">
-        <p class="cap">LOCKUP · DARK · APP ICON (DARK)</p>
-        <div class="lockup"><img src="${I.symbol}" alt=""><span class="word">sayabot</span></div>
-        <div class="mono-row"><img src="${I.dark}" alt="" style="width:72px;height:72px;border-radius:22.4%"></div>
-      </div>
-    </div>
-    <div class="mono-row">
-      <span class="eyebrow">One colour</span>
-      <div class="chip" style="background:#fff4ea"><img src="${I.handInk}" alt=""></div>
-      <div class="chip" style="background:#1b1220"><img src="${I.handWhite}" alt=""></div>
-      <div class="chip" style="background:#fff"><img src="${I.handRed}" alt=""></div>
-      <span class="lede" style="font-size:14px">Silhouette with real cut-outs, for the Android notification icon, stamps and embossing.</span>
-    </div>
-  </section>
-
-  <section>
-    <p class="eyebrow">Colour</p>
-    <h2>Three colours: light, shadow, and the room</h2>
-    <div class="palette">
-      <div class="sw" style="background:#ff5d6c;color:#1b1220"><b>Room red</b><code>#ff5d6c · app primary</code></div>
-      <div class="sw" style="background:#1b1220;color:#fff4ea"><b>Shadow ink</b><code>#1b1220</code></div>
-      <div class="sw" style="background:#fff4ea;color:#1b1220"><b>Lamplight</b><code>#fff4ea</code></div>
-    </div>
-  </section>
-
-  <section>
-    <p class="eyebrow">Explored and dropped</p>
-    <div class="rejected">
-      <p><b>Peeking shadow-pal.</b> A dark blob with eyes behind a speech bubble. It read as a ghost, and in Hindi "kisi ka saaya" can also mean being haunted. That's the wrong meaning for a product people hand work to.</p>
-      <p><b>Shared shade.</b> A dome sheltering a circle (human) and a square (agent). Good story, but at icon size it looked like a mushroom.</p>
-      <p><b>Turn-taking S.</b> Two stacked chat bubbles forming an S. Too close to every chat app, and the S didn't read.</p>
-    </div>
-  </section>
-
-  <section>
-    <p class="eyebrow">Files</p>
-    <div class="files">assets/branding/saaya-mark/
-  build.cjs                         one geometry → every master + export
-  svg/sayabot-app-icon.svg          full-bleed 1024, OS applies the mask
-  svg/sayabot-app-icon-small.svg    ≤32 px master (no seams, bigger eye)
-  svg/sayabot-app-icon-maskable.svg Android adaptive / PWA safe zone
-  svg/sayabot-app-icon-dark.svg     dark-mode icon
-  svg/sayabot-symbol.svg            transparent symbol for UI + lockups
-  svg/sayabot-hand-{ink,white,red}  one-colour silhouettes
-  png/…-1024 / 512 / 192 / 180 / 64 / 32 / 16</div>
-  </section>
+<header class="hero">
+  <img src="${I.r}" alt="Sayabot app icon: a cute white chat bubble with two eyes, rosy cheeks and a golden AI sparkle, on coral red">
+  <div><p class="eb">Sayabot · app icon</p><h1>A chat that woke up.</h1>
+  <p>A speech bubble with a face and a golden AI sparkle for a cowlick. It's an agent you talk to, and it reads that way at a glance.</p></div>
+</header>
+<section class="why">
+  <div><h3>Says "AI agent" instantly</h3><p>The chat bubble means conversation and rooms, the sparkle is the sign everyone now knows means AI, and the eyes make it someone, not a tool.</p></div>
+  <div><h3>Cute, not a robot</h3><p>No antenna, visor or bolts. Soft shapes, rosy cheeks and shiny eyes make it a companion you're happy to hand work to.</p></div>
+  <div><h3>Built for the dock</h3><p>A big white shape on a red gradient, sitting on Apple's macOS grid, so it stands out among blue and green icons and looks right next to them.</p></div>
+</section>
+<section>
+  <p class="eb">macOS dock</p>
+  <div class="desk"><div class="dock">${ph("#3b82f6")}${ph("#22c55e")}${ph("linear-gradient(#a78bfa,#7c3aed)")}<img class="on" src="${I.mac}" alt="Sayabot in the dock">${ph("#f59e0b")}${ph("linear-gradient(#94a3b8,#475569)")}${ph("#0ea5e9")}</div></div>
+</section>
+<section class="pair">
+  <div class="phone">
+    <div><i style="background:#22c55e"></i>Messages</div><div><i style="background:#f59e0b"></i>Notes</div><div><img src="${I.r}" alt="">Sayabot</div><div><i style="background:#3b82f6"></i>Mail</div>
+    <div><i style="background:#ef4444"></i>Music</div><div><i style="background:#64748b"></i>Settings</div><div><i style="background:#0ea5e9"></i>Weather</div><div><i style="background:#a855f7"></i>Podcasts</div>
+  </div>
+  <div class="notif-wrap">
+    <p class="eb">Notification · browser tab</p>
+    <div class="notif"><img src="${I.r}" alt=""><div><b>Atlas needs your approval</b><p>Wants to open a PR on saaya/web · tap to review</p></div></div>
+    <div class="tab"><img src="${I.s}" alt="">Design review · Sayabot</div>
+  </div>
+</section>
+<section>
+  <p class="eb">Size tests</p>
+  <p class="muted">At 32 px and below a simpler version drops the cheeks and small sparkle, and makes the eyes and main sparkle bigger.</p>
+  <div class="sizes">
+    <figure><img src="${I.r}" width="180" height="180" alt=""><figcaption>180</figcaption></figure>
+    <figure><img src="${I.r}" width="96" height="96" alt=""><figcaption>96</figcaption></figure>
+    <figure><img src="${I.r}" width="64" height="64" alt=""><figcaption>64</figcaption></figure>
+    <figure><img src="${I.s}" width="32" height="32" alt=""><figcaption>32</figcaption></figure>
+    <figure><img src="${I.s}" width="16" height="16" alt=""><figcaption>16</figcaption></figure>
+  </div>
+</section>
+<section>
+  <p class="eb">Alternates, same family</p>
+  <div class="alts">
+    <div class="alt"><img src="${I.b}" alt=""><div><h3>Cursor Buddy</h3><p>The pointer that works your computer, with a face. Leans into the agent's own sandbox computer.</p></div></div>
+    <div class="alt"><img src="${I.c}" alt=""><div><h3>Prompt Pal</h3><p>Happy ^ ^ eyes and a blinking-cursor mouth. More playful and more developer-flavoured.</p></div></div>
+  </div>
+</section>
+<section>
+  <p class="eb">Files</p>
+  <div class="files">assets/branding/saaya-mark/
+  build.cjs                       one geometry → every icon below
+  svg/sayabot-icon.svg            iOS / Android / PWA (full-bleed, OS masks)
+  svg/sayabot-icon-macos.svg      desktop dock, Apple grid (.icns source)
+  svg/sayabot-icon-maskable.svg   Android adaptive / PWA safe zone
+  svg/sayabot-icon-small.svg      favicon, ≤32 px
+  svg/sayabot-mono-white.svg      Android notification icon
+  png/  1024 · 512 · 192 · 180 · 64 · 32 · 16 · macOS 1024</div>
+</section>
 </main>
 `
 fs.writeFileSync(path.join(__dirname, "presentation.html"), html)
-console.log("presentation.html", (html.length / 1024).toFixed(0) + "KB")
+console.log("ok")
