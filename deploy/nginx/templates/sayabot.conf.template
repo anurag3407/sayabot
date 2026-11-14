@@ -54,5 +54,7 @@ server {
 
     limit_conn sayabot_conn 100;
 
+    # Bundled Supabase routes (only present with docker-compose.supabase.yml).
+    include /etc/nginx/supabase/*.conf;
     include /etc/nginx/snippets/sayabot-locations.conf;
 }

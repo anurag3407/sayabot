@@ -8,7 +8,10 @@
 #   ./deploy/deploy.sh migrate         run database migrations only
 #   ./deploy/deploy.sh seed            seed starter model prices
 #   ./deploy/deploy.sh reload          apply .env.production edits (e.g. SAYA_AI_* models) without a build
+#   ./deploy/deploy.sh backup          dump the database to deploy/backups (bundled Supabase)
 #   ./deploy/deploy.sh status | logs [service] | restart [service] | down | releases
+#
+# First time? Run ./deploy/install.sh: it asks a few questions and writes .env.production.
 #
 # A release = images tagged with the git short SHA. Rollouts are health-gated: if the
 # new containers are not healthy (or https://SAYABOT_DOMAIN/api/health fails), the
@@ -58,6 +61,10 @@ COMPOSE_ARGS=(-f "$COMPOSE_FILE")
 # microVM computers (KVM hosts): computerd gets /dev/kvm and the host's smolvm install.
 [[ "$(env_value COMPUTER_BACKEND)" == "smolvm" ]] && COMPOSE_ARGS+=(-f "$DEPLOY_DIR/docker-compose.smolvm.yml")
 (( TUNNEL )) && COMPOSE_ARGS+=(-f "$DEPLOY_DIR/docker-compose.tunnel.yml")
+# Fully self-hosted: Supabase (Postgres, sign-in, realtime, storage) runs on this server too.
+BUNDLED=0
+SUPABASE_SERVICES=(supabase-db supabase-auth supabase-rest supabase-realtime supabase-storage)
+[[ "$(env_value SAYABOT_SUPABASE)" == "bundled" ]] && { BUNDLED=1; COMPOSE_ARGS+=(-f "$DEPLOY_DIR/docker-compose.supabase.yml"); }
 compose() {
   local tag="${SAYABOT_TAG:-${MESH_TAG:-latest}}"
   SAYABOT_TAG="$tag" MESH_TAG="$tag" docker compose --env-file "$ENV_FILE" "${COMPOSE_ARGS[@]}" "$@"
@@ -87,7 +94,13 @@ preflight() {
   kek="${SAYABOT_KEK:-${MESH_KEK:-$(env_fallback SAYABOT_KEK MESH_KEK)}}"
   [[ -n "$kek" ]] || missing+=(SAYABOT_KEK)
 
-  ((${#missing[@]} == 0)) || die "Empty required values in $ENV_FILE: ${missing[*]}"
+  if (( BUNDLED )); then
+    for key in POSTGRES_PASSWORD JWT_SECRET ANON_KEY SERVICE_ROLE_KEY SECRET_KEY_BASE REALTIME_DB_ENC_KEY; do
+      [[ -n "$(env_value "$key")" ]] || missing+=("$key")
+    done
+  fi
+
+  ((${#missing[@]} == 0)) || die "Empty required values in $ENV_FILE: ${missing[*]} (deploy/install.sh fills these in)"
 
   [[ "$DOMAIN" != "sayabot.example.com" && "$DOMAIN" != "mesh.example.com" ]] || die "Set SAYABOT_DOMAIN to your real domain."
   [[ "$(env_value DATABASE_URL)" != *":6543/"* ]] || die "DATABASE_URL uses the transaction pooler (6543). Use the session pooler (5432)."
@@ -255,7 +268,28 @@ build_computer_image() {
   fi
 }
 
+# Bundled Supabase must be up (and have created its own schemas) before Sayabot migrates.
+start_supabase() {
+  (( BUNDLED )) || return 0
+  log "Starting Supabase (database, sign-in, realtime, storage)"
+  compose up -d "${SUPABASE_SERVICES[@]}"
+  wait_healthy "${SUPABASE_SERVICES[@]}" || die "Supabase did not become healthy. Check: ./deploy/deploy.sh logs supabase-db supabase-auth"
+}
+
+# Database backup to deploy/backups (bundled Supabase only; hosted Supabase backs itself up).
+cmd_backup() {
+  (( BUNDLED )) || die "Backups here are for bundled Supabase. Your hosted Supabase project has its own backups."
+  local dir="$DEPLOY_DIR/backups" file
+  mkdir -p "$dir"; chmod 700 "$dir"
+  file="$dir/sayabot-$(date -u +%Y%m%dT%H%M%SZ).sql.gz"
+  log "Backing up the database to $file"
+  compose exec -T supabase-db pg_dump -U postgres --no-owner --clean --if-exists postgres | gzip > "$file"
+  chmod 600 "$file"
+  ok "Backup written: $file ($(du -h "$file" | cut -f1)). Keep a copy off this server, with your .env.production."
+}
+
 run_migrations() {
+  start_supabase
   log "Running database migrations"
   local cid
   cid="sayabot-migrate-$(date +%s)"
@@ -344,7 +378,7 @@ cmd_rollback() {
   record_release "$target"
 }
 
-usage() { sed -n '2,16p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,/^set -Eeuo/{/^set -Eeuo/!p;}' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
 
 main() {
   local cmd="${1:-deploy}"
@@ -393,6 +427,7 @@ main() {
     down)
       SAYABOT_TAG="$(current_release)"; MESH_TAG="$SAYABOT_TAG"; export SAYABOT_TAG MESH_TAG; compose down ;;
     releases) [[ -f "$RELEASES_FILE" ]] && cat "$RELEASES_FILE" || echo "No releases yet." ;;
+    backup) cmd_backup ;;
     -h|--help|help) usage ;;
     *) usage; exit 1 ;;
   esac

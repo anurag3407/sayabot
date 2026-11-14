@@ -1,0 +1,6 @@
+The SQL files in db/ come from the Supabase project's self-hosting setup
+(https://github.com/supabase/supabase/tree/master/docker/volumes/db), licensed under the
+Apache License 2.0. Copyright (c) Supabase, Inc. They are used unchanged.
+
+They initialise the bundled Postgres the same way Supabase's own Docker setup does: role
+passwords, the JWT settings, and the schemas the realtime and pooler services expect.

@@ -23,6 +23,8 @@ docs/
 ├── deployment.md                  # Production deployment (VPS, Docker, Supabase)
 ├── cloudflare-integration.md      # Cloudflare platform integration & edge architecture
 ├── auto-updates.md                # Multi-platform auto-updates (Web, Mac PWA, Android APK)
+├── self-hosting-quickstart.md     # Self-host in 10 minutes: install.sh, apps, backups
+├── sayabot-cloud.md               # Sayabot Cloud: plans, limits, Stripe billing (SAYABOT_EDITION=cloud)
 ├── agents-on-your-mac.md          # Agents run on your Mac: tools, live steps, approvals
 ├── desktop-guest-mode.md          # Mac app without sign-in (Supabase anonymous users)
 ├── macos-signing-and-notarization.md # Developer ID signing & notarization checklist

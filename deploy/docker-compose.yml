@@ -45,6 +45,8 @@ services:
         NEXT_PUBLIC_GITHUB_AUTH_ENABLED: ${NEXT_PUBLIC_GITHUB_AUTH_ENABLED:-false}
         NEXT_PUBLIC_GOOGLE_AUTH_ENABLED: ${NEXT_PUBLIC_GOOGLE_AUTH_ENABLED:-false}
         NEXT_PUBLIC_SSO_ENABLED: ${NEXT_PUBLIC_SSO_ENABLED:-false}
+        # Plans and billing only show on Sayabot Cloud (SAYABOT_EDITION=cloud).
+        NEXT_PUBLIC_SAYABOT_EDITION: ${SAYABOT_EDITION:-self-hosted}
         GIT_COMMIT_SHA: ${SAYABOT_TAG:-${MESH_TAG:-unknown}}
     env_file: .env.production
     environment:

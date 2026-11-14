@@ -32,3 +32,6 @@ deploy/.env.production
 deploy/certbot/
 deploy/.releases
 deploy/.deploy.lock
+
+# Database backups (deploy/deploy.sh backup)
+deploy/backups/

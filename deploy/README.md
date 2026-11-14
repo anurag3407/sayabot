@@ -1,6 +1,11 @@
 # Deploying Sayabot to a VPS
 
-One VPS runs everything except the database. Supabase stays hosted (Postgres, Auth, Realtime).
+**Quickest path:** `./deploy/install.sh` asks a few questions, generates every secret and
+starts Sayabot. See [docs/self-hosting-quickstart.md](../docs/self-hosting-quickstart.md).
+
+One VPS runs everything. Supabase (Postgres, Auth, Realtime, Storage) either runs on the same
+server (`SAYABOT_SUPABASE=bundled`, [`docker-compose.supabase.yml`](docker-compose.supabase.yml))
+or stays hosted on supabase.com (`SAYABOT_SUPABASE=hosted`).
 
 ```
 internet ──▶ nginx :80/:443 (TLS, rate limits, HSTS, gzip)
@@ -22,6 +27,10 @@ Containers run as non-root with read-only filesystems, all capabilities dropped,
 | `deploy/docker/orchestrator.Dockerfile` | Orchestrator image (also runs migrations and seeds) |
 | `deploy/docker-compose.yml` | web, orchestrator, nginx, certbot, and a one-off `migrate` |
 | `deploy/docker-compose.tunnel.yml` | Cloudflare Tunnel overlay (added when `CLOUDFLARE_TUNNEL_TOKEN` is set) |
+| `deploy/docker-compose.supabase.yml` | Bundled Supabase overlay (added when `SAYABOT_SUPABASE=bundled`) |
+| `deploy/nginx/supabase-locations.conf` | Supabase's public paths on the same domain (bundled mode) |
+| `deploy/supabase/` | Supabase's database init scripts (Apache-2.0, see `NOTICE`) |
+| `deploy/install.sh` | Interactive setup: answers → `.env.production`, certificate, first deploy |
 | `deploy/nginx/` | `nginx.conf`, the site template, shared proxy and header snippets |
 | `deploy/.env.production.example` | Every setting, documented |
 | `deploy/scripts/setup-vps.sh` | One-time server hardening + Docker install (run as root) |

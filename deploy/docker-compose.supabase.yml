@@ -1,0 +1,240 @@
+# Fully self-hosted mode: Supabase runs on this server too, so nothing depends on Sayabot Cloud
+# or supabase.com. Added by deploy.sh when SAYABOT_SUPABASE=bundled (deploy/install.sh sets it
+# up and generates every secret below).
+#
+#   nginx ──/auth/v1/     ──▶ supabase-auth     (GoTrue: sign-in, guests, OAuth)
+#         ──/rest/v1/     ──▶ supabase-rest     (PostgREST)
+#         ──/realtime/v1/ ──▶ supabase-realtime (live chat, canvas, approvals)
+#         ──/storage/v1/  ──▶ supabase-storage  (file uploads, on local disk)
+#   web, orchestrator, migrate ──▶ supabase-db (Postgres 17 with pgvector)
+#
+# nginx stands in for Supabase's own API gateway (see nginx/supabase-locations.conf); every
+# service still checks the access token itself. Images match Supabase's official self-hosting
+# setup (github.com/supabase/supabase/tree/master/docker); see supabase/NOTICE.
+
+x-supabase-logging: &supabase-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  supabase-db:
+    image: supabase/postgres:17.6.1.136
+    restart: unless-stopped
+    logging: *supabase-logging
+    networks: [sayabot]
+    volumes:
+      - ./supabase/db/realtime.sql:/docker-entrypoint-initdb.d/migrations/99-realtime.sql:ro
+      - ./supabase/db/webhooks.sql:/docker-entrypoint-initdb.d/init-scripts/98-webhooks.sql:ro
+      - ./supabase/db/roles.sql:/docker-entrypoint-initdb.d/init-scripts/99-roles.sql:ro
+      - ./supabase/db/jwt.sql:/docker-entrypoint-initdb.d/init-scripts/99-jwt.sql:ro
+      - ./supabase/db/_supabase.sql:/docker-entrypoint-initdb.d/migrations/97-_supabase.sql:ro
+      - ./supabase/db/logs.sql:/docker-entrypoint-initdb.d/migrations/99-logs.sql:ro
+      - ./supabase/db/pooler.sql:/docker-entrypoint-initdb.d/migrations/99-pooler.sql:ro
+      - supabase-db-data:/var/lib/postgresql/data
+      - supabase-db-config:/etc/postgresql-custom
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    environment:
+      POSTGRES_HOST: /var/run/postgresql
+      PGPORT: 5432
+      POSTGRES_PORT: 5432
+      PGPASSWORD: ${POSTGRES_PASSWORD:?run deploy/install.sh (POSTGRES_PASSWORD)}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: postgres
+      POSTGRES_DB: postgres
+      JWT_EXP: 3600
+    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf", "-c", "log_min_messages=fatal"]
+
+  supabase-auth:
+    image: supabase/gotrue:v2.197.0
+    restart: unless-stopped
+    logging: *supabase-logging
+    networks: [sayabot]
+    depends_on:
+      supabase-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9999/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      API_EXTERNAL_URL: https://${SAYABOT_DOMAIN}/auth/v1
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD}@supabase-db:5432/postgres
+      GOTRUE_SITE_URL: https://${SAYABOT_DOMAIN}
+      # The web app's callbacks and the Mac/phone apps' deep links.
+      GOTRUE_URI_ALLOW_LIST: https://${SAYABOT_DOMAIN}/**,sayabot://**
+      GOTRUE_DISABLE_SIGNUP: ${SUPABASE_DISABLE_SIGNUP:-false}
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_EXP: 3600
+      GOTRUE_JWT_SECRET: ${JWT_SECRET:?run deploy/install.sh (JWT_SECRET)}
+      GOTRUE_JWT_ISSUER: https://${SAYABOT_DOMAIN}/auth/v1
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+      # Guests (the Mac app's "no account needed" start).
+      GOTRUE_EXTERNAL_ANONYMOUS_USERS_ENABLED: ${SUPABASE_ANONYMOUS_USERS:-true}
+      # Without an email server, accounts are confirmed right away.
+      GOTRUE_MAILER_AUTOCONFIRM: ${SUPABASE_EMAIL_AUTOCONFIRM:-true}
+      GOTRUE_SMTP_ADMIN_EMAIL: ${SMTP_ADMIN_EMAIL:-}
+      GOTRUE_SMTP_HOST: ${SMTP_HOST:-}
+      GOTRUE_SMTP_PORT: ${SMTP_PORT:-587}
+      GOTRUE_SMTP_USER: ${SMTP_USER:-}
+      GOTRUE_SMTP_PASS: ${SMTP_PASS:-}
+      GOTRUE_SMTP_SENDER_NAME: ${SMTP_SENDER_NAME:-Sayabot}
+      GOTRUE_MAILER_URLPATHS_INVITE: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_CONFIRMATION: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_RECOVERY: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: /auth/v1/verify
+      GOTRUE_EXTERNAL_PHONE_ENABLED: "false"
+      # "Sign in with Google / GitHub": optional, set the client id/secret to turn on.
+      GOTRUE_EXTERNAL_GOOGLE_ENABLED: ${SUPABASE_GOOGLE_ENABLED:-false}
+      GOTRUE_EXTERNAL_GOOGLE_CLIENT_ID: ${SUPABASE_GOOGLE_CLIENT_ID:-}
+      GOTRUE_EXTERNAL_GOOGLE_SECRET: ${SUPABASE_GOOGLE_SECRET:-}
+      GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI: https://${SAYABOT_DOMAIN}/auth/v1/callback
+      GOTRUE_EXTERNAL_GITHUB_ENABLED: ${SUPABASE_GITHUB_ENABLED:-false}
+      GOTRUE_EXTERNAL_GITHUB_CLIENT_ID: ${SUPABASE_GITHUB_CLIENT_ID:-}
+      GOTRUE_EXTERNAL_GITHUB_SECRET: ${SUPABASE_GITHUB_SECRET:-}
+      GOTRUE_EXTERNAL_GITHUB_REDIRECT_URI: https://${SAYABOT_DOMAIN}/auth/v1/callback
+
+  supabase-rest:
+    image: postgrest/postgrest:v14.18
+    restart: unless-stopped
+    logging: *supabase-logging
+    networks: [sayabot]
+    depends_on:
+      supabase-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "postgrest", "--ready"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    environment:
+      PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD}@supabase-db:5432/postgres
+      PGRST_DB_SCHEMAS: public,storage,graphql_public
+      PGRST_DB_MAX_ROWS: 1000
+      PGRST_DB_EXTRA_SEARCH_PATH: public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_ADMIN_SERVER_PORT: 3001
+      PGRST_ADMIN_SERVER_HOST: localhost
+      PGRST_JWT_SECRET: ${JWT_SECRET}
+      PGRST_DB_USE_LEGACY_GUCS: "false"
+      PGRST_APP_SETTINGS_JWT_EXP: 3600
+    command: ["postgrest"]
+
+  supabase-realtime:
+    image: supabase/realtime:v2.148.3
+    restart: unless-stopped
+    logging: *supabase-logging
+    networks: [sayabot]
+    depends_on:
+      supabase-db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'curl -sSfL --head -o /dev/null -H "Authorization: Bearer $${ANON_KEY}" http://localhost:4000/api/tenants/realtime-dev/health',
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    environment:
+      PORT: 4000
+      ANON_KEY: ${ANON_KEY:?run deploy/install.sh (ANON_KEY)}
+      DB_HOST: supabase-db
+      DB_PORT: 5432
+      DB_USER: supabase_admin
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: postgres
+      DB_AFTER_CONNECT_QUERY: "SET search_path TO _realtime"
+      DB_ENC_KEY: ${REALTIME_DB_ENC_KEY:?run deploy/install.sh (REALTIME_DB_ENC_KEY)}
+      API_JWT_SECRET: ${JWT_SECRET}
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE:?run deploy/install.sh (SECRET_KEY_BASE)}
+      METRICS_JWT_SECRET: ${JWT_SECRET}
+      ERL_AFLAGS: -proto_dist inet_tcp
+      DNS_NODES: "''"
+      RLIMIT_NOFILE: "10000"
+      APP_NAME: realtime
+      # Creates the single "realtime-dev" tenant; nginx sends that tenant's Host header.
+      SEED_SELF_HOST: "true"
+      RUN_JANITOR: "true"
+      DISABLE_HEALTHCHECK_LOGGING: "true"
+
+  supabase-storage:
+    image: supabase/storage-api:v1.89.12
+    restart: unless-stopped
+    logging: *supabase-logging
+    networks: [sayabot]
+    depends_on:
+      supabase-db:
+        condition: service_healthy
+      supabase-rest:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/status"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    environment:
+      ANON_KEY: ${ANON_KEY}
+      SERVICE_KEY: ${SERVICE_ROLE_KEY:?run deploy/install.sh (SERVICE_ROLE_KEY)}
+      POSTGREST_URL: http://supabase-rest:3000
+      AUTH_JWT_SECRET: ${JWT_SECRET}
+      DATABASE_URL: postgres://supabase_storage_admin:${POSTGRES_PASSWORD}@supabase-db:5432/postgres
+      STORAGE_PUBLIC_URL: https://${SAYABOT_DOMAIN}
+      REQUEST_ALLOW_X_FORWARDED_PATH: "true"
+      FILE_SIZE_LIMIT: 52428800
+      STORAGE_BACKEND: file
+      GLOBAL_S3_BUCKET: stub
+      FILE_STORAGE_BACKEND_PATH: /var/lib/storage
+      TENANT_ID: stub
+      REGION: stub
+      ENABLE_IMAGE_TRANSFORMATION: "false"
+    volumes:
+      - supabase-storage:/var/lib/storage
+
+  # Sayabot's migrations need Supabase's own schemas (auth, storage, realtime) in place first.
+  migrate:
+    depends_on:
+      supabase-db:
+        condition: service_healthy
+      supabase-auth:
+        condition: service_healthy
+      supabase-storage:
+        condition: service_healthy
+      supabase-realtime:
+        condition: service_healthy
+
+  web:
+    depends_on:
+      supabase-auth:
+        condition: service_healthy
+      supabase-rest:
+        condition: service_healthy
+
+  orchestrator:
+    depends_on:
+      supabase-db:
+        condition: service_healthy
+
+  nginx:
+    volumes:
+      - ./nginx/supabase-locations.conf:/etc/nginx/supabase/locations.conf:ro
+
+volumes:
+  supabase-db-data:
+  supabase-db-config:
+  supabase-storage:
