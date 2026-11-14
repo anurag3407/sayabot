@@ -17,6 +17,7 @@ import {
   uniqueOrgSlug,
 } from "@/lib/actions/shared"
 import { ssoEnabled } from "@/lib/env"
+import { sendRoomInviteEmail, sendWorkspaceInviteEmail } from "@/lib/email"
 import type { ActionResult } from "@/lib/types"
 
 const orgRoleSchema = z.enum(["owner", "admin", "member"])
@@ -88,20 +89,35 @@ export async function inviteMember(
 
   const existing = await findUserByEmail(email)
   let userId = existing?.id
+  let inviteActionLink: string | null = null
+
+  const headerList = await headers()
+  const origin = (
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    headerList.get("origin") ||
+    `http://${headerList.get("host") ?? "localhost:3000"}`
+  ).replace(/\/+$/, "")
+  const redirectUrl = `${origin}/auth/complete?next=/${orgSlug}`
+
   if (!userId) {
-    const headerList = await headers()
-    const origin = (
-      process.env.NEXT_PUBLIC_SITE_URL ||
-      headerList.get("origin") ||
-      `http://${headerList.get("host") ?? "localhost:3000"}`
-    ).replace(/\/+$/, "")
-    const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
-      redirectTo: `${origin}/auth/complete?next=/${orgSlug}`,
+    const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
+      type: "invite",
+      email,
+      options: { redirectTo: redirectUrl },
     })
-    if (error || !data.user) {
-      return fail(error?.message ?? "Could not invite that address")
+
+    if (linkErr || !linkData?.user) {
+      const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
+        redirectTo: redirectUrl,
+      })
+      if (error || !data.user) {
+        return fail(error?.message ?? "Could not invite that address")
+      }
+      userId = data.user.id
+    } else {
+      userId = linkData.user.id
+      inviteActionLink = linkData.properties.action_link
     }
-    userId = data.user.id
   }
 
   const { data: already } = await admin
@@ -162,6 +178,26 @@ export async function inviteMember(
     target: email,
     metadata: { role },
   })
+
+  try {
+    const { data: inviterProfile } = await admin
+      .from("profiles")
+      .select("display_name")
+      .eq("id", check.access.user.id)
+      .maybeSingle()
+
+    await sendWorkspaceInviteEmail({
+      email,
+      inviterName: inviterProfile?.display_name || check.access.user.email,
+      workspaceName: check.access.org.name,
+      role,
+      joinUrl: inviteActionLink || redirectUrl,
+      isExistingUser: Boolean(existing),
+    })
+  } catch (err) {
+    console.error("[orgs] Failed to send workspace invite email:", err)
+  }
+
   revalidateOrg(orgSlug)
   return ok(existing ? "Member added" : "Invitation sent")
 }
@@ -203,18 +239,32 @@ export async function inviteToRoom(
     return fail("That person isn't in this workspace yet. Ask a workspace admin to invite them.")
   }
 
+  let inviteActionLink: string | null = null
+  const headerList = await headers()
+  const origin = (
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    headerList.get("origin") ||
+    `http://${headerList.get("host") ?? "localhost:3000"}`
+  ).replace(/\/+$/, "")
+  const redirectUrl = `${origin}/auth/complete?next=/${orgSlug}/r/${roomId}`
+
   if (!userId) {
-    const headerList = await headers()
-    const origin = (
-      process.env.NEXT_PUBLIC_SITE_URL ||
-      headerList.get("origin") ||
-      `http://${headerList.get("host") ?? "localhost:3000"}`
-    ).replace(/\/+$/, "")
-    const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
-      redirectTo: `${origin}/auth/complete?next=/${orgSlug}/r/${roomId}`,
+    const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
+      type: "invite",
+      email,
+      options: { redirectTo: redirectUrl },
     })
-    if (error || !data.user) return fail(error?.message ?? "Could not invite that address")
-    userId = data.user.id
+
+    if (linkErr || !linkData?.user) {
+      const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
+        redirectTo: redirectUrl,
+      })
+      if (error || !data.user) return fail(error?.message ?? "Could not invite that address")
+      userId = data.user.id
+    } else {
+      userId = linkData.user.id
+      inviteActionLink = linkData.properties.action_link
+    }
   }
 
   if (!inOrg) {
@@ -258,6 +308,24 @@ export async function inviteToRoom(
     target: roomId,
     metadata: { email, newAccount: !existing, newToWorkspace: !inOrg },
   })
+
+  try {
+    const { data: inviterProfile } = await admin
+      .from("profiles")
+      .select("display_name")
+      .eq("id", check.access.user.id)
+      .maybeSingle()
+
+    await sendRoomInviteEmail({
+      email,
+      inviterName: inviterProfile?.display_name || check.access.user.email,
+      roomName: check.access.room.name,
+      joinUrl: inviteActionLink || redirectUrl,
+    })
+  } catch (err) {
+    console.error("[orgs] Failed to send room invite email:", err)
+  }
+
   revalidateOrg(orgSlug)
   return ok(existing ? "Added to the room" : "Invitation sent")
 }

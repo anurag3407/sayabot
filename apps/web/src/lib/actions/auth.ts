@@ -4,9 +4,15 @@ import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 import { z } from "zod"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { getCurrentUser } from "@/lib/auth"
 import { fail, field, ok } from "@/lib/actions/shared"
 import { safeNextPath } from "@/lib/safe-next"
+import {
+  sendMagicLinkEmail,
+  sendPasswordResetEmail,
+  sendVerificationEmail,
+} from "@/lib/email"
 import type { ActionResult } from "@/lib/types"
 
 const emailSchema = z.string().trim().email()
@@ -47,26 +53,56 @@ export async function signUpAction(
     return fail("Agree to the terms and privacy policy to continue")
   }
 
-  const supabase = await createSupabaseServerClient()
-  const { data, error } = await supabase.auth.signUp({
+  const admin = createAdminClient()
+  const redirectTarget = await callbackUrl(next)
+
+  // 1. Generate user and verification token without relying on Supabase dashboard mailer
+  const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
+    type: "signup",
     email,
     password,
     options: {
       data: { full_name: name },
-      emailRedirectTo: await callbackUrl(next),
+      redirectTo: redirectTarget,
     },
   })
-  if (error) {
-    return fail(
-      error.message.toLowerCase().includes("already")
-        ? "An account with that email already exists. Sign in instead."
-        : error.message,
-    )
+
+  if (linkError) {
+    const msg = linkError.message.toLowerCase()
+    if (msg.includes("already") || msg.includes("unique")) {
+      // Check if the user signed up before but never confirmed
+      const { data: usersData } = await admin.auth.admin.listUsers()
+      const existingUser = usersData?.users?.find((u) => u.email?.toLowerCase() === email)
+      if (existingUser && !existingUser.email_confirmed_at) {
+        const { data: resendData } = await admin.auth.admin.generateLink({
+          type: "magiclink",
+          email,
+          options: { redirectTo: redirectTarget },
+        })
+        if (resendData?.properties) {
+          await sendVerificationEmail({
+            email,
+            code: resendData.properties.email_otp,
+            link: resendData.properties.action_link,
+            name,
+          })
+          return {
+            ok: true,
+            message: "Enter the 6-digit code we sent to your email.",
+            data: { needsVerification: true, email },
+          }
+        }
+      }
+      return fail("An account with that email already exists. Sign in instead.")
+    }
+    return fail(linkError.message)
   }
-  if (data.session) redirect(next)
-  if (data.user && data.user.identities && data.user.identities.length === 0) {
-    return fail("An account with that email already exists. Sign in instead.")
-  }
+
+  // 2. Dispatch branded email via Resend in code
+  const code = linkData?.properties?.email_otp
+  const link = linkData?.properties?.action_link || redirectTarget
+  await sendVerificationEmail({ email, code, link, name })
+
   return {
     ok: true,
     message: "Enter the 6-digit code we sent to your email.",
@@ -113,13 +149,24 @@ export async function resendVerificationAction(
 ): Promise<ActionResult> {
   const email = field(formData, "email").toLowerCase()
   if (!emailSchema.safeParse(email).success) return fail("Enter a valid email address")
-  const supabase = await createSupabaseServerClient()
-  const { error } = await supabase.auth.resend({
-    type: "signup",
+  
+  const admin = createAdminClient()
+  const redirectTarget = await callbackUrl("/onboarding")
+
+  const { data: magicData, error: magicErr } = await admin.auth.admin.generateLink({
+    type: "magiclink",
     email,
-    options: { emailRedirectTo: await callbackUrl("/onboarding") },
+    options: { redirectTo: redirectTarget },
   })
-  if (error) return fail("Could not resend the code. Try again in a moment.")
+
+  if (magicErr || !magicData?.properties) {
+    return fail("Could not resend the code. Try again in a moment.")
+  }
+
+  const code = magicData.properties.email_otp
+  const link = magicData.properties.action_link || redirectTarget
+
+  await sendVerificationEmail({ email, code, link })
   return ok("A new code is on its way.")
 }
 
@@ -155,23 +202,26 @@ export async function sendMagicLinkAction(
   const next = safeNext(field(formData, "next") || "/")
   if (!emailSchema.safeParse(email).success) return fail("Enter a valid email address")
 
-  const supabase = await createSupabaseServerClient()
-  const { error } = await supabase.auth.signInWithOtp({
+  const admin = createAdminClient()
+  const redirectTarget = await callbackUrl(next)
+
+  const { data: linkData, error } = await admin.auth.admin.generateLink({
+    type: "magiclink",
     email,
-    options: {
-      emailRedirectTo: await callbackUrl(next),
-      shouldCreateUser: false,
-    },
+    options: { redirectTo: redirectTarget },
   })
-  if (error) {
-    if (
-      error.message.toLowerCase().includes("signups not allowed") ||
-      error.message.toLowerCase().includes("user not found")
-    ) {
+
+  if (error || !linkData?.properties) {
+    if (error?.message?.toLowerCase().includes("user not found")) {
       return fail("No account found with this email. Create an account first.")
     }
-    return fail(error.message)
+    return fail(error?.message || "Could not generate sign-in code")
   }
+
+  const code = linkData.properties.email_otp
+  const link = linkData.properties.action_link || redirectTarget
+  await sendMagicLinkEmail({ email, code, link })
+
   return {
     ok: true,
     message: "We sent a 6-digit sign-in code and magic link to your email.",
@@ -185,10 +235,23 @@ export async function forgotPasswordAction(
 ): Promise<ActionResult> {
   const email = field(formData, "email").toLowerCase()
   if (!emailSchema.safeParse(email).success) return fail("Enter a valid email address")
-  const supabase = await createSupabaseServerClient()
-  await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: await callbackUrl("/reset-password"),
+
+  const admin = createAdminClient()
+  const redirectTarget = await callbackUrl("/reset-password")
+
+  const { data: linkData } = await admin.auth.admin.generateLink({
+    type: "recovery",
+    email,
+    options: { redirectTo: redirectTarget },
   })
+
+  if (linkData?.properties?.action_link) {
+    await sendPasswordResetEmail({
+      email,
+      link: linkData.properties.action_link,
+    })
+  }
+
   return ok("If that address has an account, a reset link is on its way.")
 }
 

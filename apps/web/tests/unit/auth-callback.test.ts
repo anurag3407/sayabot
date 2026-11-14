@@ -68,7 +68,7 @@ describe("Auth Callback Route (GET /auth/callback)", () => {
       },
     }
 
-    createSupabaseServerClient.mockResolvedValue(mockSupabase as any)
+    vi.mocked(createSupabaseServerClient).mockResolvedValue(mockSupabase as any)
 
     const req = new Request("https://sayabot.sayalabs.in/auth/callback?code=invalid-code")
     const res = await GET(req)
