@@ -28,7 +28,7 @@ permissions:
 jobs:
   build-and-release:
     name: Build DMGs and publish release
-    runs-on: macos-14
+    runs-on: macos-latest
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
