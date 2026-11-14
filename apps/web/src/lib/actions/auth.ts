@@ -27,7 +27,7 @@ async function requestOrigin(): Promise<string> {
 }
 
 async function callbackUrl(next: string): Promise<string> {
-  return `${await requestOrigin()}/auth/complete?next=${encodeURIComponent(safeNext(next))}`
+  return `${await requestOrigin()}/auth/callback?next=${encodeURIComponent(safeNext(next))}`
 }
 
 export async function signUpAction(
@@ -92,7 +92,18 @@ export async function verifyEmailAction(
       break
     }
   }
-  if (!verified) return fail("That code is invalid or expired. Request a new one.")
+  if (!verified) {
+    try {
+      const { createAdminClient } = await import("@/lib/supabase/admin")
+      const admin = createAdminClient()
+      const { data } = await admin.auth.admin.listUsers()
+      const user = data?.users?.find((u) => u.email?.toLowerCase() === email)
+      if (user && user.email_confirmed_at) {
+        return fail("Your email has already been verified! Please sign in with your password.")
+      }
+    } catch {}
+    return fail("That code is invalid or expired. Request a new one.")
+  }
   redirect(next)
 }
 

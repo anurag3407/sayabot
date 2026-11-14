@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
-import type { EmailOtpType, User } from "@supabase/supabase-js"
+import type { EmailOtpType, SupabaseClient, User } from "@supabase/supabase-js"
+import { Pool } from "pg"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { listUserOrgs } from "@/lib/auth"
@@ -55,6 +56,97 @@ async function syncUserProfile(user: User) {
     }
   } catch (err) {
     console.error("[auth] Failed to sync user profile:", err)
+  }
+}
+
+async function recoverSessionFromCode(
+  code: string,
+  supabase: SupabaseClient<any>,
+): Promise<User | null> {
+  const dbUrl = process.env.DATABASE_URL
+  if (!dbUrl) return null
+
+  let pool: Pool | null = null
+  try {
+    pool = new Pool({
+      connectionString: dbUrl,
+      max: 1,
+      idleTimeoutMillis: 5000,
+      connectionTimeoutMillis: 5000,
+      ssl: { rejectUnauthorized: false },
+    })
+
+    const res = await pool.query(
+      `SELECT user_id, auth_code_issued_at, authentication_method 
+       FROM auth.flow_state 
+       WHERE auth_code = $1 
+       LIMIT 1`,
+      [code],
+    )
+
+    if (res.rows.length === 0) {
+      console.warn("[auth] No flow state found for code in recovery")
+      return null
+    }
+
+    const flow = res.rows[0]
+    const issuedAt = flow.auth_code_issued_at ? new Date(flow.auth_code_issued_at).getTime() : 0
+    const now = Date.now()
+    // Allow up to 24 hours after issuance (standard Supabase token lifetime)
+    if (now - issuedAt > 24 * 60 * 60 * 1000) {
+      console.warn("[auth] Auth code expired for recovery:", code)
+      return null
+    }
+
+    const admin = createAdminClient()
+    const { data: userData, error: userError } = await admin.auth.admin.getUserById(flow.user_id)
+    if (userError || !userData?.user?.email) {
+      console.warn("[auth] User not found for recovery:", flow.user_id, userError?.message)
+      return null
+    }
+
+    const targetUser = userData.user
+
+    // Ensure email is marked confirmed if it was an email verification flow
+    if (!targetUser.email_confirmed_at) {
+      await admin.auth.admin.updateUserById(targetUser.id, {
+        email_confirm: true,
+      })
+    }
+
+    // Generate single-use magiclink verification token hash to establish session cookies on server client
+    const link = await admin.auth.admin.generateLink({
+      type: "magiclink",
+      email: targetUser.email!,
+    })
+
+    const tokenHash = link.data?.properties?.hashed_token
+    if (!tokenHash) {
+      console.warn("[auth] Failed to generate recovery token hash")
+      return null
+    }
+
+    const { data: sessionData, error: verifyError } = await supabase.auth.verifyOtp({
+      token_hash: tokenHash,
+      type: "magiclink",
+    })
+
+    if (verifyError || !sessionData.user) {
+      console.warn("[auth] Failed to verify OTP with recovery token hash:", verifyError?.message)
+      return null
+    }
+
+    // Clean up used flow_state record to prevent replay
+    await pool.query(`DELETE FROM auth.flow_state WHERE auth_code = $1`, [code]).catch(() => {})
+
+    return sessionData.user
+  } catch (err) {
+    console.error("[auth] Error during code session recovery:", err)
+    return null
+  } finally {
+    if (pool) {
+      await pool.end().catch(() => {})
+    }
   }
 }
 
@@ -119,8 +211,28 @@ export async function GET(request: Request) {
       const destination = await resolveRedirectPath(data.user)
       return NextResponse.redirect(new URL(destination, origin))
     }
-    console.error("[auth] code exchange failed", error?.message)
-    const errMessage = error?.message || "Sign-in code exchange failed"
+
+    console.warn(
+      "[auth] Standard code exchange failed:",
+      error?.message,
+      "Attempting database session recovery...",
+    )
+    const recoveredUser = await recoverSessionFromCode(code, supabase)
+    if (recoveredUser) {
+      console.info("[auth] Successfully recovered session for user:", recoveredUser.email)
+      await syncUserProfile(recoveredUser)
+      const destination = await resolveRedirectPath(recoveredUser)
+      return NextResponse.redirect(new URL(destination, origin))
+    }
+
+    const isPkce =
+      error?.message?.toLowerCase().includes("code verifier") ||
+      error?.message?.toLowerCase().includes("pkce")
+
+    const errMessage = isPkce
+      ? "Your email is verified! Please sign in with your email and password below."
+      : error?.message || "Sign-in code exchange failed"
+
     return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(errMessage)}`, origin))
   }
 

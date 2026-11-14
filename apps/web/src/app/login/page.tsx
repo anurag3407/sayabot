@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic"
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string; error?: string; force?: string; reauth?: string; switch?: string }>
+  searchParams: Promise<{ next?: string; error?: string; verified?: string; force?: string; reauth?: string; switch?: string; merge?: string }>
 }) {
   const params = await searchParams
   const isForce = params.force === "true" || params.reauth === "true" || params.switch === "true"
@@ -26,6 +26,8 @@ export default async function LoginPage({
     redirect(orgs.length ? `/${orgs[0]!.slug}` : "/onboarding")
   }
   const next = safeNextPath(params.next)
+  // Saving a desktop guest: sign-in and sign-up both continue to the merge confirm step.
+  const merging = params.merge === "1"
 
   return (
     <PublicShell>
@@ -39,20 +41,35 @@ export default async function LoginPage({
             The room keeps its position: the last messages, the canvas, the meeting card and the
             approvals that still need you.
           </p>
-          {params.error ? (
+          {params.verified === "true" ? (
+            <p
+              role="status"
+              className="mt-6 max-w-[42ch] border-l-2 border-emerald-500 pl-3 text-[13px] leading-relaxed text-emerald-400"
+            >
+              Your email has been verified! Sign in with your password to continue to your workspace.
+            </p>
+          ) : params.error ? (
             <p
               role="alert"
               className="mt-6 max-w-[42ch] border-l-2 border-[var(--color-danger)] pl-3 text-[13px] leading-relaxed text-danger"
             >
               {params.error === "auth"
                 ? "Sign-in did not complete. The verification link or session may have expired. Try again."
-                : decodeURIComponent(params.error)}
+                : params.error.toLowerCase().includes("code verifier") || params.error.toLowerCase().includes("pkce")
+                  ? "Your email is verified! Please sign in with your email and password below."
+                  : decodeURIComponent(params.error)}
+            </p>
+          ) : null}
+          {merging ? (
+            <p className="mt-6 max-w-[42ch] border-l-2 border-accent pl-3 text-[13px] leading-relaxed text-muted">
+              Sign in, or create an account, to keep everything from your guest session. Your bots
+              and chats will move into the account you pick.
             </p>
           ) : null}
         </div>
         <AuthPanel
           initialMode="signin"
-          signupNext="/onboarding"
+          signupNext={merging ? next : "/onboarding"}
           signInNext={next}
           googleEnabled={googleAuthEnabled()}
           githubEnabled={githubAuthEnabled()}
