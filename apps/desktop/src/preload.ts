@@ -9,6 +9,15 @@ export interface AuthSession {
   isGuest?: boolean
 }
 
+export interface DesktopUpdateResult {
+  isUpdateAvailable: boolean
+  currentVersion: string
+  latestVersion?: string
+  dmgUrl?: string
+  releaseNotes?: string
+  error?: string
+}
+
 export interface DesktopBridge {
   getSession: () => Promise<AuthSession | null>
   startBrowserAuth: () => Promise<void>
@@ -26,6 +35,7 @@ export interface DesktopBridge {
   toggleLocalRunner: () => Promise<{ running: boolean; port: number }>
   restartApp: () => Promise<void>
   getVersion: () => Promise<string>
+  checkForUpdates: (manual?: boolean) => Promise<DesktopUpdateResult>
   /** Claude / Codex / Antigravity plan limits, read with this Mac's own sign-ins. */
   getPlanLimits: (force?: boolean) => Promise<unknown[]>
   /** Token history from coding-tool logs on this Mac. */
@@ -48,6 +58,7 @@ const bridge: DesktopBridge = {
   toggleLocalRunner: () => ipcRenderer.invoke("runner:toggle"),
   restartApp: () => ipcRenderer.invoke("app:restart"),
   getVersion: () => ipcRenderer.invoke("app:get-version"),
+  checkForUpdates: (manual) => ipcRenderer.invoke("app:check-for-updates", manual),
   getPlanLimits: (force) => ipcRenderer.invoke("usage:plan-limits", force),
   getLocalUsage: (days) => ipcRenderer.invoke("usage:local", days),
   onSessionUpdate: (callback) => {

@@ -10,6 +10,7 @@ export function PwaUpdatePrompt() {
     if (
       typeof window === "undefined" ||
       !("serviceWorker" in navigator) ||
+      Boolean((window as any).sayabotDesktop) ||
       process.env.NODE_ENV === "development"
     ) {
       return
@@ -24,7 +25,16 @@ export function PwaUpdatePrompt() {
         tone: "neutral",
         action: {
           label: "Refresh to Update",
-          onClick: () => window.location.reload(),
+          onClick: () => {
+            if ("serviceWorker" in navigator) {
+              navigator.serviceWorker.getRegistration().then((reg) => {
+                if (reg?.waiting) {
+                  reg.waiting.postMessage({ type: "SKIP_WAITING" })
+                }
+              })
+            }
+            window.location.reload()
+          },
         },
         durationMs: 30_000,
       })

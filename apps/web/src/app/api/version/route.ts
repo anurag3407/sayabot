@@ -19,7 +19,7 @@ export async function GET() {
     gitCommit: (process.env.GIT_COMMIT_SHA || "593567b").slice(0, 7),
     buildTime: process.env.BUILD_TIME || "2026-11-12T00:50:00Z",
     latestDesktopVersion: process.env.DESKTOP_LATEST_VERSION || "1.0.1",
-    latestMobileVersion: process.env.MOBILE_LATEST_VERSION || "1.0.1",
+    latestMobileVersion: process.env.MOBILE_LATEST_VERSION || "1.1.0",
     dmgUrl: "https://github.com/anurag3407/sayabot/releases/latest/download/Sayabot-arm64.dmg",
     apkUrl: "https://github.com/anurag3407/sayabot/releases/latest/download/Sayabot.apk",
     releaseNotes:

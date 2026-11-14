@@ -1,0 +1,112 @@
+{
+  "console": [],
+  "pageerrors": [],
+  "desktop": {
+    "overflow": {
+      "vw": 1440,
+      "scrollW": 1440,
+      "count": 1,
+      "bad": [
+        {
+          "tag": "DIV",
+          "cls": "aurora",
+          "id": "",
+          "right": 1413
+        }
+      ]
+    },
+    "height": 5924,
+    "reveal": {
+      "total": 11,
+      "inn": 11
+    },
+    "topState": {
+      "toastTop": 918,
+      "innerH": 900,
+      "active": null
+    }
+  },
+  "mobile": {
+    "overflow": {
+      "vw": 390,
+      "scrollW": 390,
+      "count": 1,
+      "bad": [
+        {
+          "tag": "DIV",
+          "cls": "aurora",
+          "id": "",
+          "right": 383
+        }
+      ]
+    },
+    "height": 9760,
+    "reveal": {
+      "total": 11,
+      "inn": 11
+    },
+    "navLinksVisible": true,
+    "cardOverflow": {
+      "vw": 390,
+      "scrollW": 390,
+      "count": 1,
+      "bad": [
+        {
+          "tag": "DIV",
+          "cls": "aurora",
+          "id": "",
+          "right": 383
+        }
+      ]
+    }
+  },
+  "interactions": [
+    {
+      "step": "lockup+paper+ember",
+      "changed": true,
+      "hasWordmark": true,
+      "pressed": "true"
+    },
+    {
+      "step": "grid on",
+      "gridOn": true
+    },
+    {
+      "step": "size 384",
+      "output": "384px",
+      "pngLabel": "PNG · 384px",
+      "previewW": "384px"
+    },
+    {
+      "step": "download svg",
+      "file": "sayabot-shadow-s-ember.svg",
+      "bytes": 527
+    },
+    {
+      "step": "copy svg",
+      "clipStartsSvg": true,
+      "clipLen": 525,
+      "toast": "SVG copied to clipboard"
+    },
+    {
+      "step": "download png",
+      "file": "sayabot-shadow-s-ember.png",
+      "bytes": 8908
+    },
+    {
+      "step": "swatch copy",
+      "clip": "#ff5d6c"
+    },
+    {
+      "step": "theme",
+      "theme": "light",
+      "label": "Dark"
+    },
+    {
+      "step": "nav anchor + spy",
+      "active": "#system",
+      "sectionTop": 80,
+      "navBottom": 65
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Menu, MenuItemConstructorOptions, shell } from "electron"
+import { app, BrowserWindow, dialog, ipcMain, Menu, MenuItemConstructorOptions, shell } from "electron"
 import * as path from "node:path"
 import * as fs from "node:fs"
 import { DesktopHost } from "./host"
@@ -206,12 +206,131 @@ app.on("open-url", (event, urlStr) => {
   }
 })
 
+function parseSemver(v: string): [number, number, number] {
+  const parts = v
+    .replace(/^v/, "")
+    .split(".")
+    .map((x) => parseInt(x, 10) || 0)
+  return [parts[0] ?? 0, parts[1] ?? 0, parts[2] ?? 0]
+}
+
+function isNewerVersion(current: string, latest: string): boolean {
+  const [cMaj, cMin, cPat] = parseSemver(current)
+  const [lMaj, lMin, lPat] = parseSemver(latest)
+  if (lMaj > cMaj) return true
+  if (lMaj === cMaj && lMin > cMin) return true
+  if (lMaj === cMaj && lMin === cMin && lPat > cPat) return true
+  return false
+}
+
+export interface DesktopUpdateResult {
+  isUpdateAvailable: boolean
+  currentVersion: string
+  latestVersion?: string
+  dmgUrl?: string
+  releaseNotes?: string
+  error?: string
+}
+
+async function checkDesktopUpdates(manual = false): Promise<DesktopUpdateResult> {
+  const currentVersion = app.getVersion()
+  const config = loadConfig()
+  const session = loadSession()
+  const base = (session?.serverUrl || config.serverUrl || DEFAULT_SERVER_URL).replace(/\/+$/, "")
+
+  try {
+    const res = await fetch(`${base}/api/version`, {
+      headers: { Accept: "application/json" },
+    })
+    if (!res.ok) {
+      throw new Error(`Server returned HTTP ${res.status}`)
+    }
+    const data = (await res.json()) as {
+      version?: string
+      latestDesktopVersion?: string
+      dmgUrl?: string
+      releaseNotes?: string
+    }
+
+    const latest = data.latestDesktopVersion || data.version || currentVersion
+    const updateAvailable = isNewerVersion(currentVersion, latest)
+    const dmgUrl =
+      data.dmgUrl ||
+      "https://github.com/anurag3407/sayabot/releases/latest/download/Sayabot-arm64.dmg"
+    const releaseNotes =
+      data.releaseNotes || "A new version of Sayabot for Mac is available."
+
+    if (updateAvailable) {
+      if (manual && mainWindow && !mainWindow.isDestroyed()) {
+        const choice = await dialog.showMessageBox(mainWindow, {
+          type: "info",
+          title: "Update Available",
+          message: `Sayabot v${latest} is now available!`,
+          detail: `${releaseNotes}\n\n(Current version: v${currentVersion})`,
+          buttons: ["Download Update", "Later"],
+          defaultId: 0,
+          cancelId: 1,
+        })
+        if (choice.response === 0) {
+          void shell.openExternal(dmgUrl)
+        }
+      }
+      return {
+        isUpdateAvailable: true,
+        currentVersion,
+        latestVersion: latest,
+        dmgUrl,
+        releaseNotes,
+      }
+    }
+
+    if (manual && mainWindow && !mainWindow.isDestroyed()) {
+      await dialog.showMessageBox(mainWindow, {
+        type: "info",
+        title: "You're Up to Date",
+        message: "You're running the latest version of Sayabot for Mac.",
+        detail: `Version: v${currentVersion}`,
+        buttons: ["OK"],
+      })
+    }
+
+    return {
+      isUpdateAvailable: false,
+      currentVersion,
+      latestVersion: latest,
+    }
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.warn("[Sayabot Desktop] Update check failed:", msg)
+    if (manual && mainWindow && !mainWindow.isDestroyed()) {
+      await dialog.showMessageBox(mainWindow, {
+        type: "warning",
+        title: "Update Check Failed",
+        message: "Could not check for updates.",
+        detail: msg,
+        buttons: ["OK"],
+      })
+    }
+    return {
+      isUpdateAvailable: false,
+      currentVersion,
+      error: msg,
+    }
+  }
+}
+
 function buildAppMenu() {
   const template: MenuItemConstructorOptions[] = [
     {
       label: "Sayabot",
       submenu: [
         { label: "About Sayabot", role: "about" },
+        {
+          label: "Check for Updates…",
+          click: () => {
+            void checkDesktopUpdates(true)
+          },
+        },
         {
           label: "Restart to Apply Update",
           accelerator: "CmdOrCtrl+R",
@@ -596,6 +715,10 @@ ipcMain.handle("app:restart", () => {
 
 ipcMain.handle("app:get-version", () => {
   return app.getVersion()
+})
+
+ipcMain.handle("app:check-for-updates", async (_event, manual?: boolean) => {
+  return await checkDesktopUpdates(manual ?? true)
 })
 
 // ---------- Usage: plan limits and coding-tool token history read on this Mac ----------

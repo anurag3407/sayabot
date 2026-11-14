@@ -1,0 +1,108 @@
+{
+  "console": [],
+  "pageerrors": [],
+  "desktop": {
+    "overflow": {
+      "vw": 1440,
+      "scrollW": 1440,
+      "count": 1,
+      "bad": [
+        {
+          "tag": "DIV",
+          "cls": "aurora",
+          "id": "",
+          "right": 1553
+        }
+      ]
+    },
+    "reveal": {
+      "total": 11,
+      "inn": 11
+    },
+    "markPaths": 1
+  },
+  "mobile": {
+    "overflow": {
+      "vw": 390,
+      "scrollW": 390,
+      "count": 1,
+      "bad": [
+        {
+          "tag": "DIV",
+          "cls": "aurora",
+          "id": "",
+          "right": 421
+        }
+      ]
+    },
+    "reveal": {
+      "total": 11,
+      "inn": 11
+    },
+    "navVisible": true,
+    "panelVisible": true,
+    "sliderWorks": true
+  },
+  "steps": [
+    {
+      "step": "taper 100",
+      "changed": true,
+      "out": "100%"
+    },
+    {
+      "step": "echoes 4",
+      "circles": 6,
+      "out": "4"
+    },
+    {
+      "step": "paper+ink",
+      "stageBg": "paper",
+      "fill": "#171219"
+    },
+    {
+      "step": "grid",
+      "on": true
+    },
+    {
+      "step": "spin off stable",
+      "stable": true
+    },
+    {
+      "step": "spin on moves",
+      "moves": true
+    },
+    {
+      "step": "preset classic",
+      "taperOut": "0%",
+      "echoesOut": "0"
+    },
+    {
+      "step": "randomize+reset",
+      "randGap": "54",
+      "resetGap": "64"
+    },
+    {
+      "step": "download svg",
+      "file": "sayabot-turn-ring-agentic.svg",
+      "bytes": 4561
+    },
+    {
+      "step": "copy svg",
+      "toast": "SVG copied to clipboard"
+    },
+    {
+      "step": "download png",
+      "file": "sayabot-turn-ring-agentic.png",
+      "bytes": 21142
+    },
+    {
+      "step": "theme",
+      "theme": "light"
+    },
+    {
+      "step": "nav anchor",
+      "active": "#variants",
+      "top": 80
+    }
+  ]
+}

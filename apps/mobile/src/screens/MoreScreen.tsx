@@ -2,7 +2,8 @@ import React from "react"
 import { ScrollView, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import * as LocalAuthentication from "expo-local-authentication"
-import { BarChart3, Bot, CalendarClock, Fingerprint, Laptop, LogOut, Moon, Settings2, Smartphone, Store, Vibrate } from "lucide-react-native"
+import { BarChart3, Bot, CalendarClock, DownloadCloud, Fingerprint, Laptop, LogOut, Moon, Settings2, Smartphone, Store, Vibrate } from "lucide-react-native"
+import { useAppUpdates } from "../hooks/useAppUpdates"
 import { useAuth } from "../hooks/useAuth"
 import { compactNumber, useHome } from "../hooks/useHome"
 import { useSettings } from "../hooks/useSettings"
@@ -21,6 +22,7 @@ export function MoreScreen({ navigation }: any) {
   const { data } = useHome()
   const { settings, updateSettings } = useSettings()
   const { signOut } = useAuth()
+  const { isChecking, isUpdateAvailable, latestVersion, currentVersion, checkForUpdates } = useAppUpdates()
   const page = (path: string, title: string) => navigation.navigate("WebPage", { path: `/${data?.org.slug ?? settings.orgSlug}${path}`, title })
   const totals = (data?.agents ?? []).reduce(
     (acc, a) => ({ tokens: acc.tokens + (a.usage?.tokens ?? 0), cost: acc.cost + (a.usage?.costUsd ?? 0) }),
@@ -91,6 +93,19 @@ export function MoreScreen({ navigation }: any) {
           }}
         />
         <ToggleRow icon={<Fingerprint {...ICON} />} iconBg="#7fce95" title="App lock" subtitle="Face ID or fingerprint to open Sayabot" value={settings.appLock} onChange={(v) => void toggleLock(v)} />
+        <Row
+          icon={<DownloadCloud {...ICON} />}
+          iconBg="#34d399"
+          title="Check for updates"
+          subtitle={
+            isChecking
+              ? "Checking for updates…"
+              : isUpdateAvailable
+                ? `Update available (v${latestVersion})`
+                : `Sayabot v${currentVersion} (Latest)`
+          }
+          onPress={() => void checkForUpdates(true)}
+        />
         <Row icon={<Smartphone {...ICON} />} iconBg="#ee5fb8" title="Phones signed in" onPress={() => page("/settings/phones", "Phones")} />
         <Row icon={<Settings2 {...ICON} />} iconBg="#85858d" title="Advanced" subtitle="Server address, notifications, diagnostics" onPress={() => navigation.navigate("AdvancedSettings")} />
       </Group>

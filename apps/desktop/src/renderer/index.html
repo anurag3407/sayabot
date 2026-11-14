@@ -327,7 +327,11 @@
       </button>
       <p id="guest-error" class="subtitle hidden" style="font-size: 12px; margin-top: 4px;"></p>
 
-      <span id="change-server-link" class="settings-link">Configure Gateway Server</span>
+      <div style="display: flex; gap: 14px; justify-content: center; align-items: center; margin-top: 14px;">
+        <span id="change-server-link" class="settings-link" style="margin-top: 0;">Configure Gateway Server</span>
+        <span style="color: var(--text-faint); font-size: 11px;">·</span>
+        <span id="unauth-check-updates-link" class="settings-link" style="margin-top: 0;">Check for Updates</span>
+      </div>
     </div>
 
     <!-- Authenticated View: Native controller & Direct workspace launcher -->
@@ -362,6 +366,16 @@
         </label>
       </div>
 
+      <div class="toggle-row" style="margin: 14px 0;">
+        <div>
+          <div class="toggle-title" id="desktop-version-title">Sayabot for Mac</div>
+          <div class="toggle-sub" id="desktop-version-subtitle">Checking version…</div>
+        </div>
+        <button id="auth-check-updates-btn" class="btn btn-secondary" style="width: auto; padding: 6px 14px; font-size: 12px; margin-top: 0;">
+          Check for Updates
+        </button>
+      </div>
+
       <button id="open-workspace-btn" class="btn">
         Open Workspace Window
       </button>
@@ -387,6 +401,10 @@
     const guestError = document.getElementById("guest-error");
     const unauthTitle = document.getElementById("unauth-title");
     const unauthSubtitle = document.getElementById("unauth-subtitle");
+    const unauthCheckUpdatesLink = document.getElementById("unauth-check-updates-link");
+    const authCheckUpdatesBtn = document.getElementById("auth-check-updates-btn");
+    const desktopVersionTitle = document.getElementById("desktop-version-title");
+    const desktopVersionSubtitle = document.getElementById("desktop-version-subtitle");
 
     function showGuestStarting(starting) {
       unauthTitle.textContent = starting ? "Setting up Sayabot…" : "Sign in to Sayabot";
@@ -479,14 +497,62 @@
       await bridge.toggleLocalRunner();
     });
 
+    async function updateVersionDisplay() {
+      if (!bridge.getVersion) return;
+      try {
+        const v = await bridge.getVersion();
+        if (desktopVersionTitle) desktopVersionTitle.textContent = `Sayabot for Mac v${v}`;
+        if (desktopVersionSubtitle) desktopVersionSubtitle.textContent = "Latest release installed";
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    async function triggerUpdateCheck(sourceBtn) {
+      const origText = sourceBtn?.textContent;
+      if (sourceBtn) {
+        sourceBtn.textContent = "Checking…";
+        sourceBtn.style.opacity = "0.7";
+        sourceBtn.style.pointerEvents = "none";
+      }
+      try {
+        const res = await bridge.checkForUpdates(true);
+        if (res && res.isUpdateAvailable) {
+          if (desktopVersionSubtitle) {
+            desktopVersionSubtitle.textContent = `Update available: v${res.latestVersion}`;
+            desktopVersionSubtitle.style.color = "var(--accent)";
+          }
+        } else if (res && !res.error) {
+          if (desktopVersionSubtitle) {
+            desktopVersionSubtitle.textContent = "Up to date";
+          }
+        }
+      } finally {
+        if (sourceBtn) {
+          sourceBtn.textContent = origText;
+          sourceBtn.style.opacity = "1";
+          sourceBtn.style.pointerEvents = "auto";
+        }
+      }
+    }
+
+    if (unauthCheckUpdatesLink) {
+      unauthCheckUpdatesLink.addEventListener("click", () => triggerUpdateCheck(unauthCheckUpdatesLink));
+    }
+    if (authCheckUpdatesBtn) {
+      authCheckUpdatesBtn.addEventListener("click", () => triggerUpdateCheck(authCheckUpdatesBtn));
+    }
+
     bridge.onSessionUpdate((newSession) => {
       refreshState();
+      void updateVersionDisplay();
       if (newSession && newSession.accessToken) {
         bridge.openWorkspaceInWindow();
       }
     });
 
     refreshState();
+    void updateVersionDisplay();
   </script>
 </body>
 </html>

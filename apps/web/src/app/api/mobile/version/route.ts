@@ -13,7 +13,7 @@ export interface MobileVersionInfo {
 
 export async function GET() {
   const versionInfo: MobileVersionInfo = {
-    latestVersion: process.env.MOBILE_LATEST_VERSION || "1.0.0",
+    latestVersion: process.env.MOBILE_LATEST_VERSION || "1.1.0",
     minSupportedVersion: process.env.MOBILE_MIN_VERSION || "1.0.0",
     apkUrl: process.env.MOBILE_APK_URL || DOWNLOADS.androidApk,
     releaseNotes:

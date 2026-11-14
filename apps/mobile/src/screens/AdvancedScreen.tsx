@@ -1,7 +1,8 @@
 import React, { useState } from "react"
 import { Alert, ScrollView, TextInput, View } from "react-native"
-import { BellRing, Server, Wifi } from "lucide-react-native"
+import { BellRing, DownloadCloud, Server, Wifi } from "lucide-react-native"
 import { disablePush, enablePush } from "../core/push"
+import { useAppUpdates } from "../hooks/useAppUpdates"
 import { useSettings } from "../hooks/useSettings"
 import { Button, Group, Row, ToggleRow } from "../ui/controls"
 import { Text } from "../ui/Text"
@@ -11,6 +12,7 @@ import { radius, space, useTheme } from "../ui/theme"
 export function AdvancedScreen() {
   const theme = useTheme()
   const { settings, updateSettings, runDiagnostics, gatewayPing, databasePing, testingConnection, resetAll } = useSettings()
+  const { isChecking, isUpdateAvailable, latestVersion, currentVersion, checkForUpdates } = useAppUpdates()
   const [server, setServer] = useState(settings.webApiUrl)
   const [pushBusy, setPushBusy] = useState(false)
   const [pushNote, setPushNote] = useState<string | null>(null)
@@ -71,6 +73,21 @@ export function AdvancedScreen() {
             </Text>
           ) : null}
         </View>
+      </Group>
+
+      <Group title="App Updates" footer={`Installed version: v${currentVersion}`}>
+        <Row
+          icon={<DownloadCloud size={16} color={theme.text} />}
+          title="Check for updates"
+          subtitle={
+            isChecking
+              ? "Checking for updates…"
+              : isUpdateAvailable
+                ? `Update available (v${latestVersion})`
+                : "You are on the latest version"
+          }
+          onPress={() => void checkForUpdates(true)}
+        />
       </Group>
 
       <Group>

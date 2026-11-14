@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sayabot — Identity Directions</title>
+<meta name="description" content="Three sleek logo directions for Sayabot: Shadow S, Turn Ring, Gateway. No bots, no sparkles.">
+<meta name="theme-color" content="#0e0b12">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20256%20256%22%20width%3D%22256%22%20height%3D%22256%22%3E%3Ctitle%3ESayabot%20shadow-s%3C%2Ftitle%3E%3Cg%20transform%3D%22translate%28-29.44%20-29.44%29%20scale%281.23%29%22%3E%0A%20%20%3Ctitle%20id%3D%22t%22%3ESayabot%20%E2%80%94%20Shadow%20S%3C%2Ftitle%3E%0A%20%20%3Cg%20transform%3D%22translate%28128%20128%29%20scale%280.8%29%20translate%28-128%20-128%29%22%3E%0A%20%20%3Cpath%20fill%3D%22%23ff5d6c%22%20d%3D%22M179.6%2024.4%20A73%2073%200%201%200%2099.9%20143.4%20L137.9%20105.4%20A31%2031%200%201%201%20149.9%2054.1%20L179.6%2024.4%20Z%22%2F%3E%0A%20%20%3Cpath%20fill%3D%22%23c63e4f%22%20d%3D%22M156.1%20112.6%20A73%2073%200%201%201%2076.4%20231.6%20L106.1%20201.9%20A31%2031%200%201%200%20118.1%20150.6%20L156.1%20112.6%20Z%22%2F%3E%0A%20%20%3C%2Fg%3E%0A%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anybody:wght@400;600;800&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ember:#ff5d6c; --ember-deep:#c63e4f; --lamp:#ffd08a; --void:#171219; --paper:#f7efe3; --cream:#fff4ea;
+  --bg:#0e0b12; --bg2:#171219; --surface:#1c1622; --line:rgba(255,93,108,.16);
+  --ink:#f7efe3; --ink-dim:rgba(247,239,227,.62); --ink-faint:rgba(247,239,227,.38);
+  --stage-void:#171219; --stage-paper:#f7efe3; --stage-ember:#ff5d6c;
+  --display:"Anybody",system-ui,sans-serif; --body:"Space Grotesk",system-ui,sans-serif;
+  --r:20px; --maxw:1180px;
+}
+html[data-theme="light"]{
+  --bg:#f7efe3; --bg2:#fff4ea; --surface:#fffaf2; --line:rgba(198,62,79,.18);
+  --ink:#171219; --ink-dim:rgba(23,18,25,.66); --ink-faint:rgba(23,18,25,.42);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--bg); color:var(--ink); font-family:var(--body);
+  font-size:16px; line-height:1.6; -webkit-font-smoothing:antialiased; overflow-x:hidden;
+  transition:background .5s ease,color .5s ease;
+}
+/* ---- scrollbar in the brand's own language ---- */
+*{scrollbar-width:thin; scrollbar-color:var(--ember-deep) var(--bg2);}
+::-webkit-scrollbar{width:11px;height:11px}
+::-webkit-scrollbar-track{background:var(--bg2)}
+::-webkit-scrollbar-thumb{background:linear-gradient(var(--ember),var(--ember-deep));border-radius:20px;border:3px solid var(--bg2)}
+::-webkit-scrollbar-thumb:hover{background:var(--ember)}
+/* ---- layered ambient background ---- */
+.aurora{position:fixed;inset:0;z-index:-2;pointer-events:none;
+  background:
+   radial-gradient(60% 50% at 12% 8%, rgba(255,93,108,.16), transparent 60%),
+   radial-gradient(50% 45% at 88% 92%, rgba(255,208,138,.12), transparent 60%),
+   radial-gradient(40% 40% at 70% 20%, rgba(198,62,79,.10), transparent 60%);
+  animation:drift 26s ease-in-out infinite alternate;}
+html[data-theme="light"] .aurora{opacity:.55}
+@keyframes drift{from{transform:translate3d(-2%,-1%,0) scale(1)}to{transform:translate3d(2%,2%,0) scale(1.06)}}
+.grain{position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.05;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+/* ---- nav ---- */
+.nav{position:sticky;top:0;z-index:50;backdrop-filter:blur(14px);
+  background:color-mix(in srgb,var(--bg) 78%,transparent);border-bottom:1px solid var(--line)}
+.nav .wrap{display:flex;align-items:center;gap:20px;height:64px}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight:800;letter-spacing:.04em;font-size:1.05rem}
+.brand svg{width:26px;height:26px;display:block}
+.brand small{font-family:var(--body);font-weight:400;color:var(--ink-faint);letter-spacing:0}
+.nav nav{display:flex;gap:22px;margin-left:auto}
+.nav nav a{color:var(--ink-dim);text-decoration:none;font-size:.92rem;position:relative;padding:4px 0}
+.nav nav a:hover{color:var(--ink)}
+.nav nav a::after{content:"";position:absolute;left:0;bottom:0;height:2px;width:0;background:var(--ember);transition:width .25s}
+.nav nav a:hover::after{width:100%}
+.nav nav a.active{color:var(--ink)}
+.nav nav a.active::after{width:100%}
+.theme-btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);
+  color:var(--ink);border-radius:999px;padding:7px 14px;font-family:var(--body);font-size:.85rem;cursor:pointer;transition:.2s}
+.theme-btn:hover{border-color:var(--ember);transform:translateY(-1px)}
+/* ---- hero ---- */
+.hero{padding:88px 0 40px;position:relative}
+.eyebrow{font-size:.8rem;letter-spacing:.22em;text-transform:uppercase;color:var(--ember);font-weight:700;margin:0 0 18px}
+.hero h1{font-family:var(--display);font-weight:800;font-size:clamp(2.6rem,6.4vw,5.2rem);line-height:1.02;margin:0 0 22px;letter-spacing:-.01em}
+.hero h1 em{font-style:normal;color:var(--ember);position:relative}
+.lede{max-width:620px;color:var(--ink-dim);font-size:1.12rem;margin:0 0 40px}
+.lede b{color:var(--ink);font-weight:500}
+.hero-stage{position:relative;display:grid;place-items:center;padding:30px;border:1px solid var(--line);
+  border-radius:28px;background:
+   radial-gradient(120% 120% at 50% 0%, var(--surface), var(--bg2));min-height:380px;overflow:hidden}
+.hero-mark{width:min(300px,60vw);height:min(300px,60vw);position:relative;animation:float 7s ease-in-out infinite}
+.hero-mark svg{width:100%;height:100%;display:block;filter:drop-shadow(0 24px 50px rgba(255,93,108,.28))}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+.hero-cap{position:absolute;left:24px;bottom:18px;font-size:.8rem;color:var(--ink-faint)}
+.hero-tools{position:absolute;right:20px;top:18px;display:flex;gap:8px}
+.scrollcue{margin:26px 0 0;color:var(--ink-faint);font-size:.85rem;display:flex;align-items:center;gap:10px}
+.scrollcue span{display:inline-block;width:34px;height:1px;background:var(--ember)}
+/* ---- sections ---- */
+section{padding:64px 0;scroll-margin-top:80px}
+.section-head{margin-bottom:36px;max-width:680px}
+.section-head h2{font-family:var(--display);font-weight:800;font-size:clamp(1.8rem,3.6vw,2.6rem);margin:0 0 10px}
+.section-head p{color:var(--ink-dim);margin:0}
+.kicker{font-size:.78rem;letter-spacing:.2em;text-transform:uppercase;color:var(--ember);font-weight:700;margin:0 0 12px}
+/* ---- concept card ---- */
+.concept{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);
+  padding:26px;margin-bottom:30px;box-shadow:0 30px 60px -40px rgba(0,0,0,.6)}
+.concept-grid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:30px}
+.stage-wrap{display:flex;flex-direction:column;gap:16px;min-width:0}
+.stage{position:relative;aspect-ratio:1/1;border-radius:16px;display:grid;place-items:center;overflow:hidden;
+  transition:background .45s ease;border:1px solid var(--line)}
+.stage[data-bg="void"]{background:var(--stage-void)}
+.stage[data-bg="paper"]{background:var(--stage-paper)}
+.stage[data-bg="ember"]{background:var(--stage-ember)}
+.preview{position:relative;display:grid;place-items:center;transition:width .2s,height .2s}
+.preview svg{width:100%;height:100%;display:block}
+.preview.lockup{width:92%!important;height:auto!important}
+.preview.lockup svg{height:auto}
+.grid-ov{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .25s}
+.grid-ov.on{opacity:1}
+.grid-ov svg{width:100%;height:100%}
+/* controls */
+.controls{display:flex;flex-direction:column;gap:12px}
+.ctl-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ctl-label{font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);min-width:64px}
+.seg{display:inline-flex;background:var(--bg2);border:1px solid var(--line);border-radius:999px;padding:3px;gap:2px}
+.seg button{border:0;background:transparent;color:var(--ink-dim);font-family:var(--body);font-size:.82rem;
+  padding:6px 13px;border-radius:999px;cursor:pointer;transition:.18s;white-space:nowrap}
+.seg button:hover{color:var(--ink)}
+.seg button[aria-pressed="true"]{background:var(--ember);color:#1a0d10;font-weight:700}
+.switch{display:inline-flex;align-items:center;gap:9px;cursor:pointer;font-size:.85rem;color:var(--ink-dim);user-select:none}
+.switch input{appearance:none;width:38px;height:22px;border-radius:999px;background:var(--bg2);border:1px solid var(--line);position:relative;cursor:pointer;transition:.2s;margin:0}
+.switch input::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--ink-faint);transition:.2s}
+.switch input:checked{background:var(--ember-deep);border-color:var(--ember)}
+.switch input:checked::after{left:18px;background:var(--cream)}
+.range{display:flex;align-items:center;gap:12px;flex:1;min-width:180px}
+.range input{flex:1;appearance:none;height:5px;border-radius:999px;background:linear-gradient(90deg,var(--ember),var(--ember-deep));outline:none}
+.range input::-webkit-slider-thumb{appearance:none;width:18px;height:18px;border-radius:50%;background:var(--cream);border:3px solid var(--ember);cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+.range input::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--cream);border:3px solid var(--ember);cursor:pointer}
+.range output{font-size:.82rem;color:var(--ink);min-width:52px;text-align:right;font-variant-numeric:tabular-nums}
+/* info column */
+.info{display:flex;flex-direction:column;gap:16px;min-width:0}
+.tag{display:flex;align-items:center;gap:10px;font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint)}
+.rec{background:var(--lamp);color:#3a2a10;font-weight:700;padding:3px 9px;border-radius:999px;letter-spacing:.06em}
+.info h3{font-family:var(--display);font-weight:800;font-size:1.9rem;margin:0}
+.idea{color:var(--ink);font-size:1.05rem;margin:0}
+.why{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
+.why li{position:relative;padding-left:22px;color:var(--ink-dim);font-size:.94rem}
+.why li::before{content:"";position:absolute;left:0;top:.55em;width:9px;height:9px;border-radius:2px;background:var(--ember);transform:rotate(45deg)}
+.ladder{display:flex;align-items:flex-end;gap:18px;padding:16px;border:1px dashed var(--line);border-radius:12px;background:var(--bg2);flex-wrap:wrap}
+.ladder .rung{display:flex;flex-direction:column;align-items:center;gap:7px}
+.ladder .rung .box{display:grid;place-items:center;border-radius:6px;overflow:hidden}
+.ladder .rung .box svg{width:100%;height:100%;display:block}
+.ladder .rung small{font-size:.68rem;color:var(--ink-faint)}
+.actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.btn{display:inline-flex;align-items:center;gap:8px;border-radius:12px;padding:11px 18px;font-family:var(--body);
+  font-size:.9rem;font-weight:500;cursor:pointer;transition:.18s;border:1px solid transparent}
+.btn.primary{background:var(--ember);color:#1a0d10;font-weight:700}
+.btn.primary:hover{background:var(--lamp);transform:translateY(-2px);box-shadow:0 10px 24px -10px rgba(255,93,108,.7)}
+.btn.ghost{background:transparent;border-color:var(--line);color:var(--ink)}
+.btn.ghost:hover{border-color:var(--ember);color:var(--ember);transform:translateY(-2px)}
+.btn:active{transform:translateY(0) scale(.98)}
+.btn svg{width:16px;height:16px}
+/* ---- system ---- */
+.sys-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px}
+.panel{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);padding:24px}
+.panel h4{font-family:var(--display);font-weight:600;font-size:1.15rem;margin:0 0 16px}
+.swatches{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:12px}
+.swatch{border:1px solid var(--line);border-radius:12px;overflow:hidden;cursor:pointer;background:var(--bg2);transition:.18s;text-align:left;padding:0}
+.swatch:hover{transform:translateY(-3px);border-color:var(--ember)}
+.swatch .chip{height:64px}
+.swatch .meta{padding:9px 11px}
+.swatch .nm{font-size:.8rem;font-weight:700;color:var(--ink)}
+.swatch .hx{font-size:.72rem;color:var(--ink-faint);font-variant-numeric:tabular-nums}
+.wordmark-big{padding:18px;border-radius:12px;background:var(--bg2);border:1px solid var(--line)}
+.wordmark-big svg{width:100%;height:auto;display:block}
+.note{color:var(--ink-dim);font-size:.92rem;margin:14px 0 0}
+.note code{background:var(--bg2);padding:2px 6px;border-radius:5px;font-size:.85em;color:var(--lamp)}
+/* ---- compare ---- */
+.compare-row{display:flex;gap:26px;flex-wrap:wrap;align-items:center;margin-bottom:26px}
+.tile{display:flex;flex-direction:column;align-items:center;gap:10px}
+.tile .app{width:96px;height:96px;border-radius:22px;overflow:hidden;box-shadow:0 14px 30px -14px rgba(0,0,0,.7)}
+.tile .app svg{width:100%;height:100%;display:block}
+.tile small{color:var(--ink-faint);font-size:.78rem}
+.tabmock{display:flex;align-items:center;gap:8px;background:var(--bg2);border:1px solid var(--line);border-radius:10px 10px 0 0;padding:8px 14px}
+.tabmock .fav{width:16px;height:16px}
+.tabmock .fav svg{width:100%;height:100%;display:block}
+.tabmock span{font-size:.8rem;color:var(--ink-dim)}
+.mono-strip{display:flex;gap:20px;flex-wrap:wrap}
+.mono-cell{width:120px;height:120px;border-radius:14px;display:grid;place-items:center;border:1px solid var(--line)}
+.mono-cell svg{width:64px;height:64px}
+.mono-cell.dark{background:var(--stage-void)}
+.mono-cell.light{background:var(--stage-paper)}
+/* ---- footer ---- */
+footer{border-top:1px solid var(--line);padding:48px 0 70px;margin-top:30px}
+footer .rec-box{border:1px solid var(--line);border-left:4px solid var(--ember);border-radius:14px;background:var(--surface);padding:24px;max-width:760px}
+footer h4{font-family:var(--display);margin:0 0 10px;font-size:1.3rem}
+footer p{color:var(--ink-dim);margin:0 0 10px}
+footer .fine{font-size:.82rem;color:var(--ink-faint)}
+/* ---- toast ---- */
+#toast{position:fixed;left:50%;bottom:30px;transform:translate(-50%,calc(100% + 48px));background:var(--ember);color:#1a0d10;
+  font-weight:700;padding:12px 22px;border-radius:999px;z-index:100;transition:transform .35s cubic-bezier(.2,.9,.3,1.2),opacity .25s ease;box-shadow:0 16px 40px -12px rgba(255,93,108,.7);font-size:.9rem;opacity:0;pointer-events:none}
+#toast.show{transform:translate(-50%,0);opacity:1;pointer-events:auto}
+/* ---- reveal ---- */
+.reveal{opacity:0;transform:translateY(26px);transition:opacity .7s ease,transform .7s ease}
+.reveal.in{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){
+  *{animation:none!important;transition:none!important}
+  .reveal{opacity:1;transform:none}
+}
+@media (max-width:860px){
+  .concept-grid{grid-template-columns:1fr}
+  .nav .wrap{gap:12px}
+  .brand small{display:none}
+  .nav nav{gap:14px;margin-left:auto}
+  .nav nav a{font-size:.8rem}
+  .theme-btn{padding:7px 10px}
+  .theme-btn #themeLabel{display:none}
+  .hero{padding:56px 0 24px}
+  section{padding:44px 0}
+}
+</style>
+</head>
+<body>
+<div class="aurora"></div><div class="grain"></div>
+<header class="nav"><div class="wrap">
+  <div class="brand" id="navBrand"><small>/ identity directions</small></div>
+  <nav>
+    <a href="#directions">Directions</a>
+    <a href="#system">System</a>
+    <a href="#compare">Compare</a>
+  </nav>
+  <button class="theme-btn" id="themeToggle" aria-label="Toggle light and dark theme"><span id="themeIcon">◐</span><span id="themeLabel">Light</span></button>
+</div></header>
+
+<main class="wrap">
+  <section class="hero" id="top">
+    <p class="eyebrow">Sayabot · open-source agent workspace · 2026</p>
+    <h1>One shadow.<br><em>Three ways to wear it.</em></h1>
+    <p class="lede"><b>saaya</b> (साया) means <b>shadow</b> — the companion that moves when you move and keeps working after you stop. These three marks take that idea seriously: no robot faces, no sparkles, no chat bubbles. Just geometry, one warm light, and the brand's own line — <b>one lamp lit, one voice at a time.</b></p>
+    <div class="hero-stage">
+      <div class="hero-tools">
+        <label class="switch"><input type="checkbox" id="heroGrid"><span>Construction grid</span></label>
+      </div>
+      <div class="hero-mark" id="heroMark"></div>
+      <div class="grid-ov" id="heroGridOv"></div>
+      <div class="hero-cap">A · Shadow S — recommended · 256-unit grid, 45° seam</div>
+    </div>
+    <p class="scrollcue"><span></span> Scroll to compare the directions</p>
+  </section>
+
+  <section id="directions">
+    <div class="section-head reveal">
+      <p class="kicker">The directions</p>
+      <h2>Three marks, one idea</h2>
+      <p>Each is built on a 256-unit grid from exact arcs and 45° cuts, drawn as filled paths — no live text, no filters. Switch the surface, the colourway and the view; every download returns exactly what you see.</p>
+    </div>
+    <div id="concepts"></div>
+  </section>
+
+  <section id="system">
+    <div class="section-head reveal">
+      <p class="kicker">The system</p>
+      <h2>Colour, type, construction</h2>
+      <p>The palette is already the product's: ember is the brand, lamp means "it's your turn", void and paper are the two surfaces. Click a swatch to copy its hex.</p>
+    </div>
+    <div class="sys-grid">
+      <div class="panel reveal">
+        <h4>Palette</h4>
+        <div class="swatches" id="swatches"></div>
+        <p class="note">Ember carries the largest fields; lamp is reserved for the turn token. One-colour and reversed cuts are provided for every mark.</p>
+      </div>
+      <div class="panel reveal">
+        <h4>Wordmark</h4>
+        <div class="wordmark-big" id="wordmarkBig"></div>
+        <p class="note">SAYABOT is drawn as custom geometric monoline caps — outlined paths, not a font. Display face <code>Anybody</code>, body <code>Space Grotesk</code>. The symbol leads; the type stays quiet.</p>
+      </div>
+      <div class="panel reveal">
+        <h4>Construction</h4>
+        <div class="wordmark-big" id="constructBox" style="display:grid;place-items:center;aspect-ratio:1/1"></div>
+        <p class="note">Symbols live on a <code>256×256</code> grid, 8-unit module. Circular geometry uses true arcs; every diagonal is an exact 45°. Toggle the grid on any mark above to inspect it.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="compare">
+    <div class="section-head reveal">
+      <p class="kicker">Shelf test</p>
+      <h2>Small, reversed, in the wild</h2>
+      <p>App tiles, 16-pixel favicons and one-colour cuts — the places a logo actually lives. Gateway holds the strongest silhouette at 16px; Shadow S keeps its signature seam.</p>
+    </div>
+    <div class="panel reveal">
+      <h4>App icons</h4>
+      <div class="compare-row" id="appRow"></div>
+      <h4 style="margin-top:26px">In a browser tab</h4>
+      <div class="compare-row" id="tabRow"></div>
+      <h4 style="margin-top:26px">One colour, both surfaces</h4>
+      <div class="mono-strip" id="monoRow"></div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="rec-box reveal">
+      <h4>Recommendation</h4>
+      <p><b style="color:var(--ink)">A · Shadow S</b> is the most ownable: it turns the name itself into a mark, and the 45° seam is a signature nobody else in the category has. It scales from a favicon to a wall and reads in one colour. <b style="color:var(--ink)">C · Gateway</b> is the safest at tiny sizes and the most distinctive solid silhouette — a strong pick if the favicon matters most. <b style="color:var(--ink)">B · Turn Ring</b> tells the product story best on the dark theme, though its lamp dot is quiet on white.</p>
+      <p class="fine">Masters, lockups and black / white / mono / favicon / app-icon variants are in <code>assets/branding/sleek/final</code>. Letterforms are constructed paths (no font licence needed for the logo). Run a professional trademark + reverse-image search before launch. Pick a direction and the full kit — guidelines, presentation mockups, complete PWA icon set — follows.</p>
+    </div>
+  </footer>
+</main>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+const DATA = {"wordmark": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 710 256\" width=\"710\" height=\"256\" role=\"img\" aria-labelledby=\"t\">\n  <title id=\"t\">SAYABOT</title>\n  <path fill=\"#ff5d6c\" d=\"M37 141 A37 37 0 1 1 63.2 77.8 A13 13 0 0 1 44.8 96.2 A11 11 0 1 0 37 115 A13 13 0 0 1 37 141 Z\"/>\n  <path fill=\"#ff5d6c\" d=\"M37 115 A37 37 0 1 1 10.8 178.2 A13 13 0 0 1 29.2 159.8 A11 11 0 1 0 37 141 A13 13 0 0 1 37 115 Z\"/>\n  <path fill=\"#ff5d6c\" fill-rule=\"evenodd\" d=\"M125 68 L155 68 L186 188 L160 188 L153.8 164 L126.2 164 L120 188 L94 188 Z M140 110.6 L149.2 146 L130.8 146 Z\"/>\n  <path fill=\"#ff5d6c\" d=\"M204 68 L232 68 L248 93.8 L264 68 L292 68 L261 118 L261 188 L235 188 L235 118 Z\"/>\n  <path fill=\"#ff5d6c\" fill-rule=\"evenodd\" d=\"M341 68 L371 68 L402 188 L376 188 L369.8 164 L342.2 164 L336 188 L310 188 Z M356 110.6 L365.1 146 L346.9 146 Z\"/>\n  <path fill=\"#ff5d6c\" d=\"M422 68 L448 68 L448 188 L422 188 Z M440.6 65.3 A39 31 0 1 1 440.6 126.7 L443.6 104.9 A17 9 0 1 0 443.6 87.1 L440.6 65.3 Z M440.3 124.3 A41 32 0 1 1 440.3 187.7 L443.4 165.9 A19 10 0 1 0 443.4 146.1 L440.3 124.3 Z\"/>\n  <path fill=\"#ff5d6c\" fill-rule=\"evenodd\" d=\"M508 128 A50 61 0 1 1 608 128 A50 61 0 1 1 508 128 Z M519 128 A39 50 0 1 0 597 128 A39 50 0 1 0 519 128 Z\"/>\n  <path fill=\"#ff5d6c\" d=\"M626 68 L710 68 L710 92 L626 92 Z M655 68 L681 68 L681 188 L655 188 Z\"/>\n</svg>", "marks": {"shadow-s": {"colorDark": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 256 256\" width=\"256\" height=\"256\" role=\"img\" aria-labelledby=\"t\">\n  <title id=\"t\">Sayabot \u2014 Shadow S</title>\n  <g transform=\"translate(128 128) scale(0.8) translate(-128 -128)\">\n  <path fill=\"#ff5d6c\" d=\"M179.6 24.4 A73 73 0 1 0 99.9 143.4 L137.9 105.4 A31 31 0 1 1 149.9 54.1 L179.6 24.4 Z\"/>\n  <path fill=\"#c63e4f\" d=\"M156.1 112.6 A73 73 0 1 1 76.4 231.6 L106.1 201.9 A31 31 0 1 0 118.1 150.6 L156.1 112.6 Z\"/>\n  </g>\n</svg>", "colorLight": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 256 256\" width=\"256\" height=\"256\" role=\"img\" aria-labelledby=\"t\">\n  <title id=\"t\">Sayabot \u2014 Shadow S</title>\n  <g transform=\"translate(128 128) scale(0.8) translate(-128 -128)\">\n  <path fill=\"#ff5d6c\" d=\"M179.6 24.4 A73 73 0 1 0 99.9 143.4 L137.9 105.4 A31 31 0 1 1 149.9 54.1 L179.6 24.4 Z\"/>\n  <path fill=\"#c63e4f\" d=\"M156.1 112.6 A73 73 0 1 1 76.4 231.6 L106.1 201.9 A31 31 0 1 0 118.1 150.6 L156.1 112.6 Z\"/>\n  </g>\n</svg>", "mono": "<svg fill=\"#ff5d6c\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 256 256\" width=\"256\" height=\"256\" role=\"img\" aria-labelledby=\"t\"><title>Sayabot shadow-s</title>\n  <title id=\"t\">Sayabot \u2014 Shadow S</title>\n  <g transform=\"translate(128 128) scale(0.8) translate(-128 -128)\">\n  <path fill=\"#ff5d6c\" d=\"M179.6 24.4 A73 73 0 1 0 99.9 143.4 L137.9 105.4 A31 31 0 1 1 149.9 54.1 L179.6 24.4 Z\"/>\n  <path fill=\"#ff5d6c\" d=\"M156.1 112.6 A73 73 0 1 1 76.4 231.6 L106.1 201.9 A31 31 0 1 0 118.1 150.6 L156.1 112.6 Z\"/>\n  </g>\n</svg>", "black": "<svg fill=\"#000000\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 256 256\" width=\"256\" height=\"256\" role=\"img\" aria-labelledby=\"t\"><title>Sayabot shadow-s</title>\n  <title id=\"t\">Sayabot \u2014 Shadow S</title>\n  <g transform=\"translate(128 128) scale(0.8) translate(-128 -128)\">\n  <path fill=\"#000000\" d=\"M179.6 24.4 A73 73 0 1 0 99.9 143.4 L137.9 105.4 A31 31 0 1 1 149.9 54.1 L179.6 24.4 Z\"/>\n  <path fill=\"#000000\" d=\"M156.1 112.6 A73 73 0 1 1 76.4 231.6 L106.1 201.9 A31 31 0 1 0 118.1 150.6 L156.1 112.6 Z\"/>\n  </g>\n</svg>", "white": "<svg fill=\"#ffffff\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 256 256\" width=\"256\" height=\"256\" role=\"img\" aria-labelledby=\"t\"><title>Sayabot shadow-s</title>\n  <title id=\"t\">Sayabot \u2014 Shadow S</title>\n  <g transform=\"translate(128 128) scale(0.8) translate(-128 -128)\">\n  <path fill=\"#ffffff\" d=\"M179.6 24.4 A73 73 0 1 0 99.9 143.4 L137.9 105.4 A31 31 0 1 1 149.9 54.1 L179.6 24.4 Z\"/>\n  <path fill=\"#ffffff\" d=\"M156.1 112.6 A73 73 0 1 1 76.4 231.6 L106.1 201.9 A31 31 0 1 0 118.1 150.6 L156.1 112.6 Z\"/>\n  </g>\n</svg>", "lockupLight": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1054 256\" width=\"1054\" height=\"256\" role=\"img\" aria-labelledby=\"t\">\n  <title id=\"t\">Sayabot</title>\n  <g id=\"symbol\">\n  <g transform=\"translate(128 128) scale(0.8) translate(-128 -128)\">\n  <path fill=\"#ff5d6c\" d=\"M179.6 24.4 A73 73 0 1 0 99.9 143.4 L137.9 105.4 A31 31 0 1 1 149.9 54.1 L179.6 24.4 Z\"/>\n  <path fill=\"#c63e4f\" d=\"M156.1 112.6 A73 73 0 1 1 76.4 231.6 L106.1 201.9 A31 31 0 1 0 118.1 150.6 L156.1 112.6 Z\"/>\n  </g>\n  </g>\n  <g id=\"wordmark\" transform=\"translate(237.3 -19.2) scale(1.15)\">\n  <path fill=\"#171219\" d=\"M37 141 A37 37 0 1 1 63.2 77.8 A13 13 0 0 1 44.8 96.2 A11 11 0 1 0 37 115 A13 13 0 0 1 37 141 Z\"/>\n  <path fill=\"#171219\" d=\"M37 115 A37 37 0 1 1 10.8 178.2 A13 13 0 0 1 29.2 159.8 A11 11 0 1 0 37 141 A13 13 0 0 1 37 115 Z\"/>\n  <path fill=\"#171219\" fill-rule=\"evenodd\" d=\"M125 68 L155 68 L186 188 L160 188 L153.8 164 L126.2 164 L120 188 L94 188 Z M140 110.6 L149.2 146 L130.8 146 Z\"/>\n  <path fill=\"#171219\" d=\"M204 68 L232 68 L248 93.8 L264 68 L292 68 L261 118 L261 188 L235 188 L235 118 Z\"/>\n  <path fill=\"#171219\" fill-rule=\"evenodd\" d=\"M341 68 L371 68 L402 188 L376 188 L369.8 164 L342.2 164 L336 188 L310 188 Z M356 110.6 L365.1 146 L346.9 146 Z\"/>\n  <path fill=\"#171219\" d=\"M422 68 L448 68 L448 188 L422 188 Z M440.6 65.3 A39 31 0 1 1 440.6 126.7 L443.6 104.9 A17 9 0 1 0 443.6 87.1 L440.6 65.3 Z M440.3 124.3 A41 32 0 1 1 440.3 187.7 L443.4 165.9 A19 10 0 1 0 443.4 146.1 L440.3 124.3 Z\"/>\n  <path fill=\"#171219\" fill-rule=\"evenodd\" d=\"M508 128 A50 61 0 1 1 608 128 A50 61 0 1 1 508 128 Z M519 128 A39 50 0 1 0 597 128 A39 50 0 1 0 519 128 Z\"/>\n  <path fill=\"#171219\" d=\"M626 68 L710 68 L710 92 L626 92 Z M655 68 L681 68 L681 188 L655 188 Z\"/>\n  </g>\n</svg>", "lockupDark": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1054 256\" width=\"1054\" height=\"256\" role=\"img\" aria-labelledby=\"t\">\n  <title id=\"t\">Sayabot</title>\n  <g id=\"symbol\">\n  <g transform=\"translate(128 128) scale(0.8) translate(-128 -128)\">\n  <path fill=\"#ff5d6c\" d=\"M179.6 24.4 A73 73 0 1 0 99.9 143.4 L137.9 105.4 A31 31 0 1 1 149.9 54.1 L179.6 24.4 Z\"/>\n  <path fill=\"#c63e4f\" d=\"M156.1 112.6 A73 73 0 1 1 76.4 231.6 L106.1 201.9 A31 31 0 1 0 118.1 150.6 L156.1 112.6 Z\"/>\n  </g>\n  </g>\n  <g id=\"wordmark\" transform=\"translate(237.3 -19.2) scale(1.15)\">\n  <path fill=\"#f7efe3\" d=\"M37 141 A37 37 0 1 1 63.2 77.8 A13 13 0 0 1 44.8 96.2 A11 11 0 1 0 37 115 A13 13 0 0 1 37 141 Z\"/>\n  <path fill=\"#f7efe3\" d=\"M37 115 A37 37 0 1 1 10.8 178.2 A13 13 0 0 1 29.2 159.8 A11 11 0 1 0 37 141 A13 13 0 0 1 37 115 Z\"/>\n  <path fill=\"#f7efe3\" fill-rule=\"evenodd\" d=\"M125 68 L155 68 L186 188 L160 188 L153.8 164 L126.2 164 L120 188 L94 188 Z M140 110.6 L149.2 146 L130.8 146 Z\"/>\n  <path fill=\"#f7efe3\" d=\"M204 68 L232 68 L248 93.8 L264 68 L292 68 L261 118 L261 188 L235 188 L235 118 Z\"/>\n  <path fill=\"#f7efe3\" fill-rule=\"evenodd\" d=\"M341 68 L371 68 L402 188 L376 188 L369.8 164 L342.2 164 L336 188 L310 188 Z M356 110.6 L365.1 146 L346.9 146 Z\"/>\n  <path fill=\"#f7efe3\" d=\"M422 68 L448 68 L448 188 L422 188 Z M440.6 65.3 A39 31 0 1 1 440.6 126.7 L443.6 104.9 A17 9 0 1 0 443.6 87.1 L440.6 65.3 Z M440.3 124.3 A41 32 0 1 1 440.3 187.7 L443.4 165.9 A19 10 0 1 0 443.4 146.1 L440.3 124.3 Z\"/>\n  <path fill=\"#f7efe3\" fill-rule=\"evenodd\" d=\"M508 128 A50 61 0 1 1 608 128 A50 61 0 1 1 508 128 Z M519 128 A39 50 0 1 0 597 128 A39 50 0 1 0 519 128 Z\"/>\n  <path fill=\"#f7efe3\" d=\"M626 68 L710 68 L710 92 L626 92 Z M655 68 L681 68 L681 188 L655 188 Z\"/>\n  </g>\n</svg>", "lockupMono": "<svg fill=\"#ff5d6c\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1054 256\" width=\"1054\" height=\"256\" role=\"img\" aria-labelledby=\"t\">\n  <title id=\"t\">Sayabot</title>\n  <g id=\"symbol\">\n  <g transform=\"translate(128 128) scale(0.8) translate(-128 -128)\">\n  <path fill=\"#ff5d6c\" d=\"M179.6 24.4 A73 73 0 1 0 99.9 143.4 L137.9 105.4 A31 31 0 1 1 149.9 54.1 L179.6 24.4 Z\"/>\n  <path fill=\"#ff5d6c\" d=\"M156.1 112.6 A73 73 0 1 1 76.4 231.6 L106.1 201.9 A31 31 0 1 0 118.1 150.6 L156.1 112.6 Z\"/>\n  </g>\n  </g>\n  <g id=\"wordmark\" transform=\"translate(237.3 -19.2) scale(1.15)\">\n  <path fill=\"#ff5d6c\" d=\"M37 141 A37 37 0 1 1 63.2 77.8 A13 13 0 0 1 44.8 96.2 A11 11 0 1 0 37 115 A13 13 0 0 1 37 141 Z\"/>\n  <path fill=\"#ff5d6c\" d=\"M37 115 A37 37 0 1 1 10.8 178.2 A13 13 0 0 1 29.2 159.8 A11 11 0 1 0 37 141 A13 13 0 0 1 37 115 Z\"/>\n  <path fill=\"#ff5d6c\" fill-rule=\"evenodd\" d=\"M125 68 L155 68 L186 188 L160 188 L153.8 164 L126.2 164 L120 188 L94 188 Z M140 110.6 L149.2 146 L130.8 146 Z\"/>\n  <path fill=\"#ff5d6c\" d=\"M204 68 L232 68 L248 93.8 L264 68 L292 68 L261 118 L261 188 L235 188 L235 118 Z\"/>\n  <path fill=\"#ff5d6c\" fill-rule=\"evenodd\" d=\"M341 68 L371 68 L402 188 L376 188 L369.8 164 L342.2 164 L336 188 L310 188 Z M356 110.6 L365.1 146 L346.9 146 Z\"/>\n  <path fill=\"#ff5d6c\" d=\"M422 68 L448 68 L448 188 L422 188 Z M440.6 65.3 A39 31 0 1 1 440.6 126.7 L443.6 104.9 A17 9 0 1 0 443.6 87.1 L440.6 65.3 Z M440.3 124.3 A41 32 0 1 1 440.3 187.7 L443.4 165.9 A19 10 0 1 0 443.4 146.1 L440.3 124.3 Z\"/>\n  <path fill=\"#ff5d6c\" fill-rule=\"evenodd\" d=\"M508 128 A50 61 0 1 1 608 128 A50 61 0 1 1 508 128 Z M519 128 A39 50 0 1 0 597 128 A39 50 0 1 0 519 128 Z\"/>\n  <path fill=\"#ff5d6c\" d=\"M626 68 L710 68 L710 92 L626 92 Z M655 68 L681 68 L681 188 L655 188 Z\"/>\n  </g>\n</svg>", "lockupBlack": "<svg fill=\"#000000\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1054 256\" width=\"1054\" height=\"256\" role=\"img\" aria-labelledby=\"t\">\n  <title id=\"t\">Sayabot</title>\n  <g id=\"symbol\">\n  <g transform=\"translate(128 128) scale(0.8) translate(-128 -128)\">\n  <path fill=\"#000000\" d=\"M179.6 24.4 A73 73 0 1 0 99.9 143.4 L137.9 105.4 A31 31 0 1 1 149.9 54.1 L179.6 24.4 Z\"/>\n  <path fill=\"#000000\" d=\"M156.1 112.6 A73 73 0 1 1 76.4 231.6 L106.1 201.9 A31 31 0 1 0 118.1 150.6 L156.1 112.6 Z\"/>\n  </g>\n  </g>\n  <g id=\"wordmark\" transform=\"translate(237.3 -19.2) scale(1.15)\">\n  <path fill=\"#000000\" d=\"M37 141 A37 37 0 1 1 63.2 77.8 A13 13 0 0 1 44.8 96.2 A11 11 0 1 0 37 115 A13 13 0 0 1 37 141 Z\"/>\n  <path fill=\"#000000\" d=\"M37 115 A37 37 0 1 1 10.8 178.2 A13 13 0 0 1 29.2 159.8 A11 11 0 1 0 37 141 A13 13 0 0 1 37 115 Z\"/>\n  <path fill=\"#000000\" fill-rule=\"evenodd\" d=\"M125 68 L155 68 L186 188 L160 188 L153.8 164 L126.2 164 L120 188 L94 188 Z M140 110.6 L149.2 146 L130.8 146 Z\"/>\n  <path fill=\"#000000\" d=\"M204 68 L232 68 L248 93.8 L264 68 L292 68 L261 118 L261 188 L235 188 L235 118 Z\"/>\n  <path fill=\"#000000\" fill-rule=\"evenodd\" d=\"M341 68 L371 68 L402 188 L376 188 L369.8 164 L342.2 164 L336 188 L310 188 Z M356 110.6 L365.1 146 L346.9 146 Z\"/>\n  <path fill=\"#000000\" d=\"M422 68 L448 68 L448 188 L422 188 Z M440.6 65.3 A39 31 0 1 1 440.6 126.7 L443.6 104.9 A17 9 0 1 0 443.6 87.1 L440.6 65.3 Z M440.3 124.3 A41 32 0 1 1 440.3 187.7 L443.4 165.9 A19 10 0 1 0 443.4 146.1 L440.3 124.3 Z\"/>\n  <path fill=\"#000000\" fill-rule=\"evenodd\" d=\"M508 128 A50 61 0 1 1 608 128 A50 61 0 1 1 508 128 Z M519 128 A39 50 0 1 0 597 128 A39 50 0 1 0 519 128 Z\"/>\n  <path fill=\"#000000\" d=\"M626 68 L710 68 L710 92 L626 92 Z M655 68 L681 68 L681 188 L655 188 Z\"/>\n  </g>\n</svg>", "lockupWhite": "<svg fill=\"#ffffff\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1054 256\" width=\"1054\" height=\"256\" role=\"img\" aria-labelledby=\"t\">\n  <title id=\"t\">Sayabot</title>\n  <g id=\"symbol\">\n  <g transform=\"translate(128 128) scale(0.8) translate(-128 -128)\">\n  <path fill=\"#ffffff\" d=\"M179.6 24.4 A73 73 0 1 0 99.9 143.4 L137.9 105.4 A31 31 0 1 1 149.9 54.1 L179.6 24.4 Z\"/>\n  <path fill=\"#ffffff\" d=\"M156.1 112.6 A73 73 0 1 1 76.4 231.6 L106.1 201.9 A31 31 0 1 0 118.1 150.6 L156.1 112.6 Z\"/>\n  </g>\n  </g>\n  <g id=\"wordmark\" transform=\"translate(237.3 -19.2) scale(1.15)\">\n  <path fill=\"#ffffff\" d=\"M37 141 A37 37 0 1 1 63.2 77.8 A13 13 0 0 1 44.8 96.2 A11 11 0 1 0 37 115 A13 13 0 0 1 37 141 Z\"/>\n  <path fill=\"#ffffff\" d=\"M37 115 A37 37 0 1 1 10.8 178.2 A13 13 0 0 1 29.2 159.8 A11 11 0 1 0 37 141 A13 13 0 0 1 37 115 Z\"/>\n  <path fill=\"#ffffff\" fill-rule=\"evenodd\" d=\"M125 68 L155 68 L186 188 L160 188 L153.8 164 L126.2 164 L120 188 L94 188 Z M140 110.6 L149.2 146 L130.8 146 Z\"/>\n  <path fill=\"#ffffff\" d=\"M204 68 L232 68 L248 93.8 L264 68 L292 68 L261 118 L261 188 L235 188 L235 118 Z\"/>\n  <path fill=\"#ffffff\" fill-rule=\"evenodd\" d=\"M341 68 L371 68 L402 188 L376 188 L369.8 164 L342.2 164 L336 188 L310 188 Z M356 110.6 L365.1 146 L346.9 146 Z\"/>\n  <path fill=\"#ffffff\" d=\"M422 68 L448 68 L448 188 L422 188 Z M440.6 65.3 A39 31 0 1 1 440.6 126.7 L443.6 104.9 A17 9 0 1 0 443.6 87.1 L440.6 65.3 Z M440.3 124.3 A41 32 0 1 1 440.3 187.7 L443.4 165.9 A19 10 0 1 0 443.4 146.1 L440.3 124.3 Z\"/>\n  <path fill=\"#ffffff\" fill-rule=\"evenodd\" d=\"M508 128 A50 61 0 1 1 608 128 A50 61 0 1 1 508 128 Z M519 128 A39 50 0 1 0 597 128 A39 50 0 1 0 519 128 Z\"/>\n  <path fill=\"#ffffff\" d=\"M626 68 L710 68 L710 92 L626 92 Z M655 68 L681 68 L681 188 L655 188 Z\"/>\n  </g>\n</svg>", "appIcon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 256 256\" width=\"256\" height=\"256\"><title>Sayabot shadow-s</title><rect width=\"256\" height=\"256\" rx=\"57.6\" fill=\"#171219\"/><g transform=\"translate(26.37 26.37) scale(0.794)\" fill=\"#ff5d6c\">\n  <title id=\"t\">Sayabot \u2014 Shadow S</title>\n  <g transform=\"translate(128 128) scale(0.8) translate(-128 -128)\">\n  <path fill=\"#ff5d6c\" d=\"M179.6 24.4 A73 73 0 1 0 99.9 143.4 L137.9 105.4 A31 31 0 1 1 149.9 54.1 L179.6 24.4 Z\"/>\n  <path fill=\"#ff5d6c\" d=\"M156.1 112.6 A73 73 0 1 1 76.4 231.6 L106.1 201.9 A31 31 0 1 0 118.1 150.6 L156.1 112.6 Z\"/>\n  </g>\n</g></svg>", "favicon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 256 256\" width=\"256\" height=\"256\"><title>Sayabot shadow-s</title><g transform=\"translate(-29.44 -29.44) scale(1.23)\">\n  <title id=\"t\">Sayabot \u2014 Shadow S</title>\n  <g transform=\"translate(128 128) scale(0.8) translate(-128 -128)\">\n  <path fill=\"#ff5d6c\" d=\"M179.6 24.4 A73 73 0 1 0 99.9 143.4 L137.9 105.4 A31 31 0 1 1 149.9 54.1 L179.6 24.4 Z\"/>\n  <path fill=\"#c63e4f\" d=\"M156.1 112.6 A73 73 0 1 1 76.4 231.6 L106.1 201.9 A31 31 0 1 0 118.1 150.6 L156.1 112.6 Z\"/>\n  </g>\n</g></svg>"}, "turn-ring": {"colorDark": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 256 256\" width=\"256\" height=\"256\" role=\"img\" aria-labelledby=\"t\">\n  <title id=\"t\">Sayabot \u2014 Turn Ring</title>\n  <path fill=\"#ff5d6c\" d=\"M230.3 104.4 A105 105 0 1 1 151.6 25.7 A17 17 0 0 1 144 58.8 A71 71 0 1 0 197.2 112 A17 17 0 0 1 230.3 104.4 Z\"/>\n  <path fill=\"#ffd08a\" d=\"M169.2 65.8 A21 21 0 1 1 211.2 65.8 A21 21 0 1 1 169.2 65.8 Z\"/>\n</svg>", "colorLight": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 256 256\" width=\"256\" height=\"256\" role=\"img\" aria-labelledby=\"t\">\n  <title id=\"t\">Sayabot \u2014 Turn Ring</title>\n  <path fill=\"#ff5d6c\" d=\"M230.3 104.4 A105 105 0 1 1 151.6 25.7 A17 17 0 0 1 144 58.8 A71 71 0 1 0 197.2 112 A17 17 0 0 1 230.3 104.4 Z\"/>\n  <path fill=\"#c63e4f\" d=\"M169.2 65.8 A21 21 0 1 1 211.2 65.8 A21 21 0 1 1 169.2 65.8 Z\"/>\n</svg>", "mono": "<svg fill=\"#ff5d6c\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 256 256\" width=\"256\" height=\"256\" role=\"img\" aria-labelledby=\"t\"><title>Sayabot turn-ring</title>\n  <title id=\"t\">Sayabot \u2014 Turn Ring</title>\n  <path fill=\"#ff5d6c\" d=\"M230.3 104.4 A105 105 0 1 1 151.6 25.7 A17 17 0 0 1 144 58.8 A71 71 0 1 0 197.2 112 A17 17 0 0 1 230.3 104.4 Z\"/>\n  <path fill=\"#ff5d6c\" d=\"M169.2 65.8 A21 21 0 1 1 211.2 65.8 A21 21 0 1 1 169.2 65.8 Z\"/>\n</svg>", "black": "<svg fill=\"#000000\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 256 256\" width=\"256\" height=\"256\" role=\"img\" aria-labelledby=\"t\"><title>Sayabot turn-ring</title>\n  <title id=\"t\">Sayabot \u2014 Turn Ring</title>\n  <path fill=\"#000000\" d=\"M230.3 104.4 A105 105 0 1 1 151.6 25.7 A17 17 0 0 1 144 58.8 A71 71 0 1 0 197.2 112 A17 17 0 0 1 230.3 104.4 Z\"/>\n  <path fill=\"#000000\" d=\"M169.2 65.8 A21 21 0 1 1 211.2 65.8 A21 21 0 1 1 169.2 65.8 Z\"/>\n</svg>", "white": "<svg fill=\"#ffffff\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 256 256\" width=\"256\" height=\"256\" role=\"img\" aria-labelledby=\"t\"><title>Sayabot turn-ring</title>\n  <title id=\"t\">Sayabot \u2014 Turn Ring</title>\n  <path fill=\"#ffffff\" d=\"M230.3 104.4 A105 105 0 1 1 151.6 25.7 A17 17 0 0 1 144 58.8 A71 71 0 1 0 197.2 112 A17 17 0 0 1 230.3 104.4 Z\"/>\n  <path fill=\"#ffffff\" d=\"M169.2 65.8 A21 21 0 1 1 211.2 65.8 A21 21 0 1 1 169.2 65.8 Z\"/>\n</svg>", "lockupLight": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1098 256\" width=\"1098\" height=\"256\" role=\"img\" aria-labelledby=\"t\">\n  <title id=\"t\">Sayabot</title>\n  <g id=\"symbol\">\n  <path fill=\"#ff5d6c\" d=\"M230.3 104.4 A105 105 0 1 1 151.6 25.7 A17 17 0 0 1 144 58.8 A71 71 0 1 0 197.2 112 A17 17 0 0 1 230.3 104.4 Z\"/>\n  <path fill=\"#c63e4f\" d=\"M169.2 65.8 A21 21 0 1 1 211.2 65.8 A21 21 0 1 1 169.2 65.8 Z\"/>\n  </g>\n  <g id=\"wordmark\" transform=\"translate(281.0 -19.2) scale(1.15)\">\n  <path fill=\"#171219\" d=\"M37 141 A37 37 0 1 1 63.2 77.8 A13 13 0 0 1 44.8 96.2 A11 11 0 1 0 37 115 A13 13 0 0 1 37 141 Z\"/>\n  <path fill=\"#171219\" d=\"M37 115 A37 37 0 1 1 10.8 178.2 A13 13 0 0 1 29.2 159.8 A11 11 0 1 0 37 141 A13 13 0 0 1 37 115 Z\"/>\n  <path fill=\"#171219\" fill-rule=\"evenodd\" d=\"M125 68 L155 68 L186 188 L160 188 L153.8 164 L126.2 164 L120 188 L94 188 Z M140 110.6 L149.2 146 L130.8 146 Z\"/>\n  <path fill=\"#171219\" d=\"M204 68 L232 68 L248 93.8 L264 68 L292 68 L261 118 L261 188 L235 188 L235 118 Z\"/>\n  <path fill=\"#171219\" fill-rule=\"evenodd\" d=\"M341 68 L371 68 L402 188 L376 188 L369.8 164 L342.2 164 L336 188 L310 188 Z M356 110.6 L365.1 146 L346.9 146 Z\"/>\n  <path fill=\"#171219\" d=\"M422 68 L448 68 L448 188 L422 188 Z M440.6 65.3 A39 31 0 1 1 440.6 126.7 L443.6 104.9 A17 9 0 1 0 443.6 87.1 L440.6 65.3 Z M440.3 124.3 A41 32 0 1 1 440.3 187.7 L443.4 165.9 A19 10 0 1 0 443.4 146.1 L440.3 124.3 Z\"/>\n  <path fill=\"#171219\" fill-rule=\"evenodd\" d=\"M508 128 A50 61 0 1 1 608 128 A50 61 0 1 1 508 128 Z M519 128 A39 50 0 1 0 597 128 A39 50 0 1 0 519 128 Z\"/>\n  <path fill=\"#171219\" d=\"M626 68 L710 68 L710 92 L626 92 Z M655 68 L681 68 L681 188 L655 188 Z\"/>\n  </g>\n</svg>", "lockupDark": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1098 256\" width=\"1098\" height=\"256\" role=\"img\" aria-labelledby=\"t\">\n  <title id=\"t\">Sayabot</title>\n  <g id=\"symbol\">\n  <path fill=\"#ff5d6c\" d=\"M230.3 104.4 A105 105 0 1 1 151.6 25.7 A17 17 0 0 1 144 58.8 A71 71 0 1 0 197.2 112 A17 17 0 0 1 230.3 104.4 Z\"/>\n  <path fill=\"#ffd08a\" d=\"M169.2 65.8 A21 21 0 1 1 211.2 65.8 A21 21 0 1 1 169.2 65.8 Z\"/>\n  </g>\n  <g id=\"wordmark\" transform=\"translate(281.0 -19.2) scale(1.15)\">\n  <path fill=\"#f7efe3\" d=\"M37 141 A37 37 0 1 1 63.2 77.8 A13 13 0 0 1 44.8 96.2 A11 11 0 1 0 37 115 A13 13 0 0 1 37 141 Z\"/>\n  <path fill=\"#f7efe3\" d=\"M37 115 A37 37 0 1 1 10.8 178.2 A13 13 0 0 1 29.2 159.8 A11 11 0 1 0 37 141 A13 13 0 0 1 37 115 Z\"/>\n  <path fill=\"#f7efe3\" fill-rule=\"evenodd\" d=\"M125 68 L155 68 L186 188 L160 188 L153.8 164 L126.2 164 L120 188 L94 188 Z M140 110.6 L149.2 146 L130.8 146 Z\"/>\n  <path fill=\"#f7efe3\" d=\"M204 68 L232 68 L248 93.8 L264 68 L292 68 L261 118 L261 188 L235 188 L235 118 Z\"/>\n  <path fill=\"#f7efe3\" fill-rule=\"evenodd\" d=\"M341 68 L371 68 L402 188 L376 188 L369.8 164 L342.2 164 L336 188 L310 188 Z M356 110.6 L365.1 146 L346.9 146 Z\"/>\n  <path fill=\"#f7efe3\" d=\"M422 68 L448 68 L448 188 L422 188 Z M440.6 65.3 A39 31 0 1 1 440.6 126.7 L443.6 104.9 A17 9 0 1 0 443.6 87.1 L440.6 65.3 Z M440.3 124.3 A41 32 0 1 1 440.3 187.7 L443.4 165.9 A19 10 0 1 0 443.4 146.1 L440.3 124.3 Z\"/>\n  <path fill=\"#f7efe3\" fill-rule=\"evenodd\" d=\"M508 128 A50 61 0 1 1 608 128 A50 61 0 1 1 508 128 Z M519 128 A39 50 0 1 0 597 128 A39 50 0 1 0 519 128 Z\"/>\n  <path fill=\"#f7efe3\" d=\"M626 68 L710 68 L710 92 L626 92 Z M655 68 L681 68 L681 188 L655 188 Z\"/>\n  </g>\n</svg>", "lockupMono": "<svg fill=\"#ff5d6c\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1098 256\" width=\"1098\" height=\"256\" role=\"img\" aria-labelledby=\"t\">\n  <title id=\"t\">Sayabot</title>\n  <g id=\"symbol\">\n  <path fill=\"#ff5d6c\" d=\"M230.3 104.4 A105 105 0 1 1 151.6 25.7 A17 17 0 0 1 144 58.8 A71 71 0 1 0 197.2 112 A17 17 0 0 1 230.3 104.4 Z\"/>\n  <path fill=\"#ff5d6c\" d=\"M169.2 65.8 A21 21 0 1 1 211.2 65.8 A21 21 0 1 1 169.2 65.8 Z\"/>\n  </g>\n  <g id=\"wordmark\" transform=\"translate(281.0 -19.2) scale(1.15)\">\n  <path fill=\"#ff5d6c\" d=\"M37 141 A37 37 0 1 1 63.2 77.8 A13 13 0 0 1 44.8 96.2 A11 11 0 1 0 37 115 A13 13 0 0 1 37 141 Z\"/>\n  <path fill=\"#ff5d6c\" d=\"M37 115 A37 37 0 1 1 10.8 178.2 A13 13 0 0 1 29.2 159.8 A11 11 0 1 0 37 141 A13 13 0 0 1 37 115 Z\"/>\n  <path fill=\"#ff5d6c\" fill-rule=\"evenodd\" d=\"M125 68 L155 68 L186 188 L160 188 L153.8 164 L126.2 164 L120 188 L94 188 Z M140 110.6 L149.2 146 L130.8 146 Z\"/>\n  <path fill=\"#ff5d6c\" d=\"M204 68 L232 68 L248 93.8 L264 68 L292 68 L261 118 L261 188 L235 188 L235 118 Z\"/>\n  <path fill=\"#ff5d6c\" fill-rule=\"evenodd\" d=\"M341 68 L371 68 L402 188 L376 188 L369.8 164 L342.2 164 L336 188 L310 188 Z M356 110.6 L365.1 146 L346.9 146 Z\"/>\n  <path fill=\"#ff5d6c\" d=\"M422 68 L448 68 L448 188 L422 188 Z M440.6 65.3 A39 31 0 1 1 440.6 126.7 L443.6 104.9 A17 9 0 1 0 443.6 87.1 L440.6 65.3 Z M440.3 124.3 A41 32 0 1 1 440.3 187.7 L443.4 165.9 A19 10 0 1 0 443.4 146.1 L440.3 124.3 Z\"/>\n  <path fill=\"#ff5d6c\" fill-rule=\"evenodd\" d=\"M508 128 A50 61 0 1 1 608 128 A50 61 0 1 1 508 128 Z M519 128 A39 50 0 1 0 597 128 A39 50 0 1 0 519 128 Z\"/>\n  <path fill=\"#ff5d6c\" d=\"M626 68 L710 68 L710 92 L626 92 Z M655 68 L681 68 L681 188 L655 188 Z\"/>\n  </g>\n</svg>", "lockupBlack": "<svg fill=\"#000000\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1098 256\" width=\"1098\" height=\"256\" role=\"img\" aria-labelledby=\"t\">\n  <title id=\"t\">Sayabot</title>\n  <g id=\"symbol\">\n  <path fill=\"#000000\" d=\"M230.3 104.4 A105 105 0 1 1 151.6 25.7 A17 17 0 0 1 144 58.8 A71 71 0 1 0 197.2 112 A17 17 0 0 1 230.3 104.4 Z\"/>\n  <path fill=\"#000000\" d=\"M169.2 65.8 A21 21 0 1 1 211.2 65.8 A21 21 0 1 1 169.2 65.8 Z\"/>\n  </g>\n  <g id=\"wordmark\" transform=\"translate(281.0 -19.2) scale(1.15)\">\n  <path fill=\"#000000\" d=\"M37 141 A37 37 0 1 1 63.2 77.8 A13 13 0 0 1 44.8 96.2 A11 11 0 1 0 37 115 A13 13 0 0 1 37 141 Z\"/>\n  <path fill=\"#000000\" d=\"M37 115 A37 37 0 1 1 10.8 178.2 A13 13 0 0 1 29.2 159.8 A11 11 0 1 0 37 141 A13 13 0 0 1 37 115 Z\"/>\n  <path fill=\"#000000\" fill-rule=\"evenodd\" d=\"M125 68 L155 68 L186 188 L160 188 L153.8 164 L126.2 164 L120 188 L94 188 Z M140 110.6 L149.2 146 L130.8 146 Z\"/>\n  <path fill=\"#000000\" d=\"M204 68 L232 68 L248 93.8 L264 68 L292 68 L261 118 L261 188 L235 188 L235 118 Z\"/>\n  <path fill=\"#000000\" fill-rule=\"evenodd\" d=\"M341 68 L371 68 L402 188 L376 188 L369.8 164 L342.2 164 L336 188 L310 188 Z M356 110.6 L365.1 146 L346.9 146 Z\"/>\n  <path fill=\"#000000\" d=\"M422 68 L448 68 L448 188 L422 188 Z M440.6 65.3 A39 31 0 1 1 440.6 126.7 L443.6 104.9 A17 9 0 1 0 443.6 87.1 L440.6 65.3 Z M440.3 124.3 A41 32 0 1 1 440.3 187.7 L443.4 165.9 A19 10 0 1 0 443.4 146.1 L440.3 124.3 Z\"/>\n  <path fill=\"#000000\" fill-rule=\"evenodd\" d=\"M508 128 A50 61 0 1 1 608 128 A50 61 0 1 1 508 128 Z M519 128 A39 50 0 1 0 597 128 A39 50 0 1 0 519 128 Z\"/>\n  <path fill=\"#000000\" d=\"M626 68 L710 68 L710 92 L626 92 Z M655 68 L681 68 L681 188 L655 188 Z\"/>\n  </g>\n</svg>", "lockupWhite": "<svg fill=\"#ffffff\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1098 256\" width=\"1098\" height=\"256\" role=\"img\" aria-labelledby=\"t\">\n  <title id=\"t\">Sayabot</title>\n  <g id=\"symbol\">\n  <path fill=\"#ffffff\" d=\"M230.3 104.4 A105 105 0 1 1 151.6 25.7 A17 17 0 0 1 144 58.8 A71 71 0 1 0 197.2 112 A17 17 0 0 1 230.3 104.4 Z\"/>\n  <path fill=\"#ffffff\" d=\"M169.2 65.8 A21 21 0 1 1 211.2 65.8 A21 21 0 1 1 169.2 65.8 Z\"/>\n  </g>\n  <g id=\"wordmark\" transform=\"translate(281.0 -19.2) scale(1.15)\">\n  <path fill=\"#ffffff\" d=\"M37 141 A37 37 0 1 1 63.2 77.8 A13 13 0 0 1 44.8 96.2 A11 11 0 1 0 37 115 A13 13 0 0 1 37 141 Z\"/>\n  <path fill=\"#ffffff\" d=\"M37 115 A37 37 0 1 1 10.8 178.2 A13 13 0 0 1 29.2 159.8 A11 11 0 1 0 37 141 A13 13 0 0 1 37 115 Z\"/>\n  <path fill=\"#ffffff\" fill-rule=\"evenodd\" d=\"M125 68 L155 68 L186 188 L160 188 L153.8 164 L126.2 164 L120 188 L94 188 Z M140 110.6 L149.2 146 L130.8 146 Z\"/>\n  <path fill=\"#ffffff\" d=\"M204 68 L232 68 L248 93.8 L264 68 L292 68 L261 118 L261 188 L235 188 L235 118 Z\"/>\n  <path fill=\"#ffffff\" fill-rule=\"evenodd\" d=\"M341 68 L371 68 L402 188 L376 188 L369.8 164 L342.2 164 L336 188 L310 188 Z M356 110.6 L365.1 146 L346.9 146 Z\"/>\n  <path fill=\"#ffffff\" d=\"M422 68 L448 68 L448 188 L422 188 Z M440.6 65.3 A39 31 0 1 1 440.6 126.7 L443.6 104.9 A17 9 0 1 0 443.6 87.1 L440.6 65.3 Z M440.3 124.3 A41 32 0 1 1 440.3 187.7 L443.4 165.9 A19 10 0 1 0 443.4 146.1 L440.3 124.3 Z\"/>\n  <path fill=\"#ffffff\" fill-rule=\"evenodd\" d=\"M508 128 A50 61 0 1 1 608 128 A50 61 0 1 1 508 128 Z M519 128 A39 50 0 1 0 597 128 A39 50 0 1 0 519 128 Z\"/>\n  <path fill=\"#ffffff\" d=\"M626 68 L710 68 L710 92 L626 92 Z M655 68 L681 68 L681 188 L655 188 Z\"/>\n  </g>\n</svg>", "appIcon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 256 256\" width=\"256\" height=\"256\"><title>Sayabot turn-ring</title><rect width=\"256\" height=\"256\" rx=\"57.6\" fill=\"#171219\"/><g transform=\"translate(31 31.21) scale(0.757)\" fill=\"#ff5d6c\">\n  <title id=\"t\">Sayabot \u2014 Turn Ring</title>\n  <path fill=\"#ff5d6c\" d=\"M230.3 104.4 A105 105 0 1 1 151.6 25.7 A17 17 0 0 1 144 58.8 A71 71 0 1 0 197.2 112 A17 17 0 0 1 230.3 104.4 Z\"/>\n  <path fill=\"#ff5d6c\" d=\"M169.2 65.8 A21 21 0 1 1 211.2 65.8 A21 21 0 1 1 169.2 65.8 Z\"/>\n</g></svg>", "favicon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 256 256\" width=\"256\" height=\"256\"><title>Sayabot turn-ring</title><g transform=\"translate(-22.17 -21.86) scale(1.172)\">\n  <title id=\"t\">Sayabot \u2014 Turn Ring</title>\n  <path fill=\"#ff5d6c\" d=\"M230.3 104.4 A105 105 0 1 1 151.6 25.7 A17 17 0 0 1 144 58.8 A71 71 0 1 0 197.2 112 A17 17 0 0 1 230.3 104.4 Z\"/>\n  <path fill=\"#ffd08a\" d=\"M169.2 65.8 A21 21 0 1 1 211.2 65.8 A21 21 0 1 1 169.2 65.8 Z\"/>\n</g></svg>"}, "gateway": {"colorDark": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 256 256\" width=\"256\" height=\"256\" role=\"img\" aria-labelledby=\"t\">\n  <title id=\"t\">Sayabot \u2014 Gateway</title>\n  <path fill=\"#f7efe3\" fill-rule=\"evenodd\" d=\"M48 216 L48 120 A80 80 0 0 1 208 120 L208 216 Z M80 216 L80 120 A48 48 0 0 1 176 120 L176 216 Z\"/>\n  <path fill=\"#ff5d6c\" d=\"M110 150 A18 18 0 1 1 146 150 A18 18 0 1 1 110 150 Z\"/>\n</svg>", "colorLight": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 256 256\" width=\"256\" height=\"256\" role=\"img\" aria-labelledby=\"t\">\n  <title id=\"t\">Sayabot \u2014 Gateway</title>\n  <path fill=\"#171219\" fill-rule=\"evenodd\" d=\"M48 216 L48 120 A80 80 0 0 1 208 120 L208 216 Z M80 216 L80 120 A48 48 0 0 1 176 120 L176 216 Z\"/>\n  <path fill=\"#ff5d6c\" d=\"M110 150 A18 18 0 1 1 146 150 A18 18 0 1 1 110 150 Z\"/>\n</svg>", "mono": "<svg fill=\"#ff5d6c\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 256 256\" width=\"256\" height=\"256\" role=\"img\" aria-labelledby=\"t\"><title>Sayabot gateway</title>\n  <title id=\"t\">Sayabot \u2014 Gateway</title>\n  <path fill=\"#ff5d6c\" fill-rule=\"evenodd\" d=\"M48 216 L48 120 A80 80 0 0 1 208 120 L208 216 Z M80 216 L80 120 A48 48 0 0 1 176 120 L176 216 Z\"/>\n  <path fill=\"#ff5d6c\" d=\"M110 150 A18 18 0 1 1 146 150 A18 18 0 1 1 110 150 Z\"/>\n</svg>", "black": "<svg fill=\"#000000\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 256 256\" width=\"256\" height=\"256\" role=\"img\" aria-labelledby=\"t\"><title>Sayabot gateway</title>\n  <title id=\"t\">Sayabot \u2014 Gateway</title>\n  <path fill=\"#000000\" fill-rule=\"evenodd\" d=\"M48 216 L48 120 A80 80 0 0 1 208 120 L208 216 Z M80 216 L80 120 A48 48 0 0 1 176 120 L176 216 Z\"/>\n  <path fill=\"#000000\" d=\"M110 150 A18 18 0 1 1 146 150 A18 18 0 1 1 110 150 Z\"/>\n</svg>", "white": "<svg fill=\"#ffffff\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 256 256\" width=\"256\" height=\"256\" role=\"img\" aria-labelledby=\"t\"><title>Sayabot gateway</title>\n  <title id=\"t\">Sayabot \u2014 Gateway</title>\n  <path fill=\"#ffffff\" fill-rule=\"evenodd\" d=\"M48 216 L48 120 A80 80 0 0 1 208 120 L208 216 Z M80 216 L80 120 A48 48 0 0 1 176 120 L176 216 Z\"/>\n  <path fill=\"#ffffff\" d=\"M110 150 A18 18 0 1 1 146 150 A18 18 0 1 1 110 150 Z\"/>\n</svg>", "lockupLight": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1073 256\" width=\"1073\" height=\"256\" role=\"img\" aria-labelledby=\"t\">\n  <title id=\"t\">Sayabot</title>\n  <g id=\"symbol\">\n  <path fill=\"#171219\" fill-rule=\"evenodd\" d=\"M48 216 L48 120 A80 80 0 0 1 208 120 L208 216 Z M80 216 L80 120 A48 48 0 0 1 176 120 L176 216 Z\"/>\n  <path fill=\"#ff5d6c\" d=\"M110 150 A18 18 0 1 1 146 150 A18 18 0 1 1 110 150 Z\"/>\n  </g>\n  <g id=\"wordmark\" transform=\"translate(256.0 -19.2) scale(1.15)\">\n  <path fill=\"#171219\" d=\"M37 141 A37 37 0 1 1 63.2 77.8 A13 13 0 0 1 44.8 96.2 A11 11 0 1 0 37 115 A13 13 0 0 1 37 141 Z\"/>\n  <path fill=\"#171219\" d=\"M37 115 A37 37 0 1 1 10.8 178.2 A13 13 0 0 1 29.2 159.8 A11 11 0 1 0 37 141 A13 13 0 0 1 37 115 Z\"/>\n  <path fill=\"#171219\" fill-rule=\"evenodd\" d=\"M125 68 L155 68 L186 188 L160 188 L153.8 164 L126.2 164 L120 188 L94 188 Z M140 110.6 L149.2 146 L130.8 146 Z\"/>\n  <path fill=\"#171219\" d=\"M204 68 L232 68 L248 93.8 L264 68 L292 68 L261 118 L261 188 L235 188 L235 118 Z\"/>\n  <path fill=\"#171219\" fill-rule=\"evenodd\" d=\"M341 68 L371 68 L402 188 L376 188 L369.8 164 L342.2 164 L336 188 L310 188 Z M356 110.6 L365.1 146 L346.9 146 Z\"/>\n  <path fill=\"#171219\" d=\"M422 68 L448 68 L448 188 L422 188 Z M440.6 65.3 A39 31 0 1 1 440.6 126.7 L443.6 104.9 A17 9 0 1 0 443.6 87.1 L440.6 65.3 Z M440.3 124.3 A41 32 0 1 1 440.3 187.7 L443.4 165.9 A19 10 0 1 0 443.4 146.1 L440.3 124.3 Z\"/>\n  <path fill=\"#171219\" fill-rule=\"evenodd\" d=\"M508 128 A50 61 0 1 1 608 128 A50 61 0 1 1 508 128 Z M519 128 A39 50 0 1 0 597 128 A39 50 0 1 0 519 128 Z\"/>\n  <path fill=\"#171219\" d=\"M626 68 L710 68 L710 92 L626 92 Z M655 68 L681 68 L681 188 L655 188 Z\"/>\n  </g>\n</svg>", "lockupDark": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1073 256\" width=\"1073\" height=\"256\" role=\"img\" aria-labelledby=\"t\">\n  <title id=\"t\">Sayabot</title>\n  <g id=\"symbol\">\n  <path fill=\"#f7efe3\" fill-rule=\"evenodd\" d=\"M48 216 L48 120 A80 80 0 0 1 208 120 L208 216 Z M80 216 L80 120 A48 48 0 0 1 176 120 L176 216 Z\"/>\n  <path fill=\"#ff5d6c\" d=\"M110 150 A18 18 0 1 1 146 150 A18 18 0 1 1 110 150 Z\"/>\n  </g>\n  <g id=\"wordmark\" transform=\"translate(256.0 -19.2) scale(1.15)\">\n  <path fill=\"#f7efe3\" d=\"M37 141 A37 37 0 1 1 63.2 77.8 A13 13 0 0 1 44.8 96.2 A11 11 0 1 0 37 115 A13 13 0 0 1 37 141 Z\"/>\n  <path fill=\"#f7efe3\" d=\"M37 115 A37 37 0 1 1 10.8 178.2 A13 13 0 0 1 29.2 159.8 A11 11 0 1 0 37 141 A13 13 0 0 1 37 115 Z\"/>\n  <path fill=\"#f7efe3\" fill-rule=\"evenodd\" d=\"M125 68 L155 68 L186 188 L160 188 L153.8 164 L126.2 164 L120 188 L94 188 Z M140 110.6 L149.2 146 L130.8 146 Z\"/>\n  <path fill=\"#f7efe3\" d=\"M204 68 L232 68 L248 93.8 L264 68 L292 68 L261 118 L261 188 L235 188 L235 118 Z\"/>\n  <path fill=\"#f7efe3\" fill-rule=\"evenodd\" d=\"M341 68 L371 68 L402 188 L376 188 L369.8 164 L342.2 164 L336 188 L310 188 Z M356 110.6 L365.1 146 L346.9 146 Z\"/>\n  <path fill=\"#f7efe3\" d=\"M422 68 L448 68 L448 188 L422 188 Z M440.6 65.3 A39 31 0 1 1 440.6 126.7 L443.6 104.9 A17 9 0 1 0 443.6 87.1 L440.6 65.3 Z M440.3 124.3 A41 32 0 1 1 440.3 187.7 L443.4 165.9 A19 10 0 1 0 443.4 146.1 L440.3 124.3 Z\"/>\n  <path fill=\"#f7efe3\" fill-rule=\"evenodd\" d=\"M508 128 A50 61 0 1 1 608 128 A50 61 0 1 1 508 128 Z M519 128 A39 50 0 1 0 597 128 A39 50 0 1 0 519 128 Z\"/>\n  <path fill=\"#f7efe3\" d=\"M626 68 L710 68 L710 92 L626 92 Z M655 68 L681 68 L681 188 L655 188 Z\"/>\n  </g>\n</svg>", "lockupMono": "<svg fill=\"#ff5d6c\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1073 256\" width=\"1073\" height=\"256\" role=\"img\" aria-labelledby=\"t\">\n  <title id=\"t\">Sayabot</title>\n  <g id=\"symbol\">\n  <path fill=\"#ff5d6c\" fill-rule=\"evenodd\" d=\"M48 216 L48 120 A80 80 0 0 1 208 120 L208 216 Z M80 216 L80 120 A48 48 0 0 1 176 120 L176 216 Z\"/>\n  <path fill=\"#ff5d6c\" d=\"M110 150 A18 18 0 1 1 146 150 A18 18 0 1 1 110 150 Z\"/>\n  </g>\n  <g id=\"wordmark\" transform=\"translate(256.0 -19.2) scale(1.15)\">\n  <path fill=\"#ff5d6c\" d=\"M37 141 A37 37 0 1 1 63.2 77.8 A13 13 0 0 1 44.8 96.2 A11 11 0 1 0 37 115 A13 13 0 0 1 37 141 Z\"/>\n  <path fill=\"#ff5d6c\" d=\"M37 115 A37 37 0 1 1 10.8 178.2 A13 13 0 0 1 29.2 159.8 A11 11 0 1 0 37 141 A13 13 0 0 1 37 115 Z\"/>\n  <path fill=\"#ff5d6c\" fill-rule=\"evenodd\" d=\"M125 68 L155 68 L186 188 L160 188 L153.8 164 L126.2 164 L120 188 L94 188 Z M140 110.6 L149.2 146 L130.8 146 Z\"/>\n  <path fill=\"#ff5d6c\" d=\"M204 68 L232 68 L248 93.8 L264 68 L292 68 L261 118 L261 188 L235 188 L235 118 Z\"/>\n  <path fill=\"#ff5d6c\" fill-rule=\"evenodd\" d=\"M341 68 L371 68 L402 188 L376 188 L369.8 164 L342.2 164 L336 188 L310 188 Z M356 110.6 L365.1 146 L346.9 146 Z\"/>\n  <path fill=\"#ff5d6c\" d=\"M422 68 L448 68 L448 188 L422 188 Z M440.6 65.3 A39 31 0 1 1 440.6 126.7 L443.6 104.9 A17 9 0 1 0 443.6 87.1 L440.6 65.3 Z M440.3 124.3 A41 32 0 1 1 440.3 187.7 L443.4 165.9 A19 10 0 1 0 443.4 146.1 L440.3 124.3 Z\"/>\n  <path fill=\"#ff5d6c\" fill-rule=\"evenodd\" d=\"M508 128 A50 61 0 1 1 608 128 A50 61 0 1 1 508 128 Z M519 128 A39 50 0 1 0 597 128 A39 50 0 1 0 519 128 Z\"/>\n  <path fill=\"#ff5d6c\" d=\"M626 68 L710 68 L710 92 L626 92 Z M655 68 L681 68 L681 188 L655 188 Z\"/>\n  </g>\n</svg>", "lockupBlack": "<svg fill=\"#000000\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1073 256\" width=\"1073\" height=\"256\" role=\"img\" aria-labelledby=\"t\">\n  <title id=\"t\">Sayabot</title>\n  <g id=\"symbol\">\n  <path fill=\"#000000\" fill-rule=\"evenodd\" d=\"M48 216 L48 120 A80 80 0 0 1 208 120 L208 216 Z M80 216 L80 120 A48 48 0 0 1 176 120 L176 216 Z\"/>\n  <path fill=\"#000000\" d=\"M110 150 A18 18 0 1 1 146 150 A18 18 0 1 1 110 150 Z\"/>\n  </g>\n  <g id=\"wordmark\" transform=\"translate(256.0 -19.2) scale(1.15)\">\n  <path fill=\"#000000\" d=\"M37 141 A37 37 0 1 1 63.2 77.8 A13 13 0 0 1 44.8 96.2 A11 11 0 1 0 37 115 A13 13 0 0 1 37 141 Z\"/>\n  <path fill=\"#000000\" d=\"M37 115 A37 37 0 1 1 10.8 178.2 A13 13 0 0 1 29.2 159.8 A11 11 0 1 0 37 141 A13 13 0 0 1 37 115 Z\"/>\n  <path fill=\"#000000\" fill-rule=\"evenodd\" d=\"M125 68 L155 68 L186 188 L160 188 L153.8 164 L126.2 164 L120 188 L94 188 Z M140 110.6 L149.2 146 L130.8 146 Z\"/>\n  <path fill=\"#000000\" d=\"M204 68 L232 68 L248 93.8 L264 68 L292 68 L261 118 L261 188 L235 188 L235 118 Z\"/>\n  <path fill=\"#000000\" fill-rule=\"evenodd\" d=\"M341 68 L371 68 L402 188 L376 188 L369.8 164 L342.2 164 L336 188 L310 188 Z M356 110.6 L365.1 146 L346.9 146 Z\"/>\n  <path fill=\"#000000\" d=\"M422 68 L448 68 L448 188 L422 188 Z M440.6 65.3 A39 31 0 1 1 440.6 126.7 L443.6 104.9 A17 9 0 1 0 443.6 87.1 L440.6 65.3 Z M440.3 124.3 A41 32 0 1 1 440.3 187.7 L443.4 165.9 A19 10 0 1 0 443.4 146.1 L440.3 124.3 Z\"/>\n  <path fill=\"#000000\" fill-rule=\"evenodd\" d=\"M508 128 A50 61 0 1 1 608 128 A50 61 0 1 1 508 128 Z M519 128 A39 50 0 1 0 597 128 A39 50 0 1 0 519 128 Z\"/>\n  <path fill=\"#000000\" d=\"M626 68 L710 68 L710 92 L626 92 Z M655 68 L681 68 L681 188 L655 188 Z\"/>\n  </g>\n</svg>", "lockupWhite": "<svg fill=\"#ffffff\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1073 256\" width=\"1073\" height=\"256\" role=\"img\" aria-labelledby=\"t\">\n  <title id=\"t\">Sayabot</title>\n  <g id=\"symbol\">\n  <path fill=\"#ffffff\" fill-rule=\"evenodd\" d=\"M48 216 L48 120 A80 80 0 0 1 208 120 L208 216 Z M80 216 L80 120 A48 48 0 0 1 176 120 L176 216 Z\"/>\n  <path fill=\"#ffffff\" d=\"M110 150 A18 18 0 1 1 146 150 A18 18 0 1 1 110 150 Z\"/>\n  </g>\n  <g id=\"wordmark\" transform=\"translate(256.0 -19.2) scale(1.15)\">\n  <path fill=\"#ffffff\" d=\"M37 141 A37 37 0 1 1 63.2 77.8 A13 13 0 0 1 44.8 96.2 A11 11 0 1 0 37 115 A13 13 0 0 1 37 141 Z\"/>\n  <path fill=\"#ffffff\" d=\"M37 115 A37 37 0 1 1 10.8 178.2 A13 13 0 0 1 29.2 159.8 A11 11 0 1 0 37 141 A13 13 0 0 1 37 115 Z\"/>\n  <path fill=\"#ffffff\" fill-rule=\"evenodd\" d=\"M125 68 L155 68 L186 188 L160 188 L153.8 164 L126.2 164 L120 188 L94 188 Z M140 110.6 L149.2 146 L130.8 146 Z\"/>\n  <path fill=\"#ffffff\" d=\"M204 68 L232 68 L248 93.8 L264 68 L292 68 L261 118 L261 188 L235 188 L235 118 Z\"/>\n  <path fill=\"#ffffff\" fill-rule=\"evenodd\" d=\"M341 68 L371 68 L402 188 L376 188 L369.8 164 L342.2 164 L336 188 L310 188 Z M356 110.6 L365.1 146 L346.9 146 Z\"/>\n  <path fill=\"#ffffff\" d=\"M422 68 L448 68 L448 188 L422 188 Z M440.6 65.3 A39 31 0 1 1 440.6 126.7 L443.6 104.9 A17 9 0 1 0 443.6 87.1 L440.6 65.3 Z M440.3 124.3 A41 32 0 1 1 440.3 187.7 L443.4 165.9 A19 10 0 1 0 443.4 146.1 L440.3 124.3 Z\"/>\n  <path fill=\"#ffffff\" fill-rule=\"evenodd\" d=\"M508 128 A50 61 0 1 1 608 128 A50 61 0 1 1 508 128 Z M519 128 A39 50 0 1 0 597 128 A39 50 0 1 0 519 128 Z\"/>\n  <path fill=\"#ffffff\" d=\"M626 68 L710 68 L710 92 L626 92 Z M655 68 L681 68 L681 188 L655 188 Z\"/>\n  </g>\n</svg>", "appIcon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 256 256\" width=\"256\" height=\"256\"><title>Sayabot gateway</title><rect width=\"256\" height=\"256\" rx=\"57.6\" fill=\"#171219\"/><g transform=\"translate(12.54 12.54) scale(0.902)\" fill=\"#ff5d6c\">\n  <title id=\"t\">Sayabot \u2014 Gateway</title>\n  <path fill=\"#ff5d6c\" fill-rule=\"evenodd\" d=\"M48 216 L48 120 A80 80 0 0 1 208 120 L208 216 Z M80 216 L80 120 A48 48 0 0 1 176 120 L176 216 Z\"/>\n  <path fill=\"#ff5d6c\" d=\"M110 150 A18 18 0 1 1 146 150 A18 18 0 1 1 110 150 Z\"/>\n</g></svg>", "favicon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 256 256\" width=\"256\" height=\"256\"><title>Sayabot gateway</title><g transform=\"translate(-50.69 -50.69) scale(1.396)\">\n  <title id=\"t\">Sayabot \u2014 Gateway</title>\n  <path fill=\"#171219\" fill-rule=\"evenodd\" d=\"M48 216 L48 120 A80 80 0 0 1 208 120 L208 216 Z M80 216 L80 120 A48 48 0 0 1 176 120 L176 216 Z\"/>\n  <path fill=\"#ff5d6c\" d=\"M110 150 A18 18 0 1 1 146 150 A18 18 0 1 1 110 150 Z\"/>\n</g></svg>"}}};
+const $ = (s,r=document)=>r.querySelector(s);
+const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
+const ICON_DL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>';
+const ICON_COPY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
+
+function gridSVG(){
+  let l='';
+  for(let i=0;i<=256;i+=8){const maj=i%64===0;const c=maj?'rgba(255,93,108,.45)':'rgba(255,93,108,.16)';const w=maj?1.2:.6;
+    l+=`<line x1="${i}" y1="0" x2="${i}" y2="256" stroke="${c}" stroke-width="${w}"/>`;
+    l+=`<line x1="0" y1="${i}" x2="256" y2="${i}" stroke="${c}" stroke-width="${w}"/>`;}
+  l+='<line x1="0" y1="256" x2="256" y2="0" stroke="rgba(255,208,138,.5)" stroke-width="1"/>';
+  l+='<line x1="128" y1="0" x2="128" y2="256" stroke="rgba(255,208,138,.4)" stroke-width="1"/>';
+  l+='<line x1="0" y1="128" x2="256" y2="128" stroke="rgba(255,208,138,.4)" stroke-width="1"/>';
+  return `<svg viewBox="0 0 256 256" preserveAspectRatio="none">${l}</svg>`;
+}
+function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),1900);}
+function downloadBlob(blob,name){const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1500);}
+function downloadSVG(str,name){downloadBlob(new Blob([str],{type:'image/svg+xml'}),name);}
+function copyText(str){
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(str).then(()=>toast('SVG copied to clipboard')).catch(()=>fallbackCopy(str));}
+  else fallbackCopy(str);
+}
+function fallbackCopy(str){const ta=document.createElement('textarea');ta.value=str;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');toast('SVG copied to clipboard');}catch(e){toast('Copy failed — select manually');}ta.remove();}
+function svgToPNG(str,size,name){
+  const m=str.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/);let vw=256,vh=256;if(m){vw=+m[1];vh=+m[2];}
+  const scale=size/Math.max(vw,vh);const w=Math.round(vw*scale),h=Math.round(vh*scale);
+  const url=URL.createObjectURL(new Blob([str],{type:'image/svg+xml'}));const img=new Image();
+  img.onload=()=>{const c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d');ctx.drawImage(img,0,0,w,h);URL.revokeObjectURL(url);c.toBlob(b=>{downloadBlob(b,name);toast('PNG downloaded · '+w+'×'+h);},'image/png');};
+  img.onerror=()=>{URL.revokeObjectURL(url);toast('PNG render failed');};
+  img.src=url;
+}
+
+/* ---- nav brand + hero ---- */
+$('#navBrand').insertAdjacentHTML('afterbegin', DATA.marks['shadow-s'].colorDark);
+$('#heroMark').innerHTML = DATA.marks['shadow-s'].colorDark;
+$('#heroGridOv').innerHTML = gridSVG();
+$('#heroGrid').addEventListener('change',e=>$('#heroGridOv').classList.toggle('on',e.target.checked));
+$('#wordmarkBig').innerHTML = DATA.wordmark;
+$('#constructBox').innerHTML = DATA.marks['shadow-s'].colorDark + '<div class="grid-ov on" style="position:absolute;inset:0">'+gridSVG()+'</div>';
+$('#constructBox').style.position='relative';
+
+/* ---- concept cards ---- */
+const META = {
+ 'shadow-s':{letter:'A',type:'letterform',name:'Shadow S',rec:true,
+   idea:'The name as a mark: an S split by a 45° seam into a lit face and its shadow.',
+   why:['Ownable signature — the diagonal seam is unique in the category.','Reads as S at every size; works as a lettermark and a favicon.','Warm two-tone ember keeps the brand’s warmth in one glyph.']},
+ 'turn-ring':{letter:'B',type:'abstract · line',name:'Turn Ring',rec:false,
+   idea:'One lamp lit, one voice at a time: the turn token seated in the open ring.',
+   why:['Literally the product’s deterministic turn-taking.','The lamp dot is the brand’s “it’s your turn” colour.','Open ring = the room; the gap = the seat now speaking.']},
+ 'gateway':{letter:'C',type:'pictorial · solid',name:'Gateway',rec:false,
+   idea:'A lit doorway: shelter (saaya) and the MCP gateway, an ember presence inside.',
+   why:['Strongest, calmest silhouette at 16 px — solid and mono-proof.','Arch = shelter and the open gateway any bot can join.','The dot is the constant presence; the structure adapts to the surface.']}
+};
+const state={};
+function currentSVG(key){
+  const s=state[key],m=DATA.marks[key];
+  if(s.view==='lockup'){
+    if(s.variant==='brand')return s.bg==='void'?m.lockupDark:m.lockupLight;
+    if(s.variant==='ember')return m.lockupMono;
+    if(s.variant==='ink')return m.lockupBlack;
+    return m.lockupWhite;
+  }
+  if(s.variant==='brand')return s.bg==='void'?m.colorDark:m.colorLight;
+  if(s.variant==='ember')return m.mono;
+  if(s.variant==='ink')return m.black;
+  return m.white;
+}
+function renderCard(key){
+  const s=state[key],m=DATA.marks[key],card=$(`.concept[data-key="${key}"]`);
+  const stage=$('.stage',card);stage.dataset.bg=s.bg;
+  const pv=$('.preview',card);
+  pv.classList.toggle('lockup',s.view==='lockup');
+  if(s.view==='lockup'){pv.style.width='';pv.style.height='';}
+  else{pv.style.width=s.size+'px';pv.style.height=s.size+'px';}
+  pv.innerHTML=currentSVG(key)+(s.view==='symbol'?`<div class="grid-ov ${s.grid?'on':''}">${gridSVG()}</div>`:'');
+  // ladder
+  const lad=$('.ladder',card);lad.innerHTML='';
+  const ladSVG = s.variant==='brand'?(s.bg==='void'?m.colorDark:m.colorLight):s.variant==='ember'?m.mono:s.variant==='ink'?m.black:m.white;
+  [16,24,32,64,128].forEach(px=>{
+    const bg = s.bg==='ember'?'var(--stage-ember)':s.bg==='paper'?'var(--stage-paper)':'var(--stage-void)';
+    lad.insertAdjacentHTML('beforeend',`<div class="rung"><div class="box" style="width:${px}px;height:${px}px;background:${bg}">${ladSVG}</div><small>${px}px</small></div>`);
+  });
+  $$('.seg',card).forEach(seg=>{const role=seg.dataset.role;$$('button',seg).forEach(b=>b.setAttribute('aria-pressed', b.dataset.val===s[role]?'true':'false'));});
+  $('.range output',card).textContent=s.size+'px';
+  $('.png-size',card).textContent='PNG · '+s.size+'px';
+}
+function buildCard(key){
+  const mt=META[key];state[key]={view:'symbol',bg:'void',variant:'brand',grid:false,size:256};
+  const el=document.createElement('article');el.className='concept reveal';el.dataset.key=key;
+  el.innerHTML=`<div class="concept-grid">
+    <div class="stage-wrap">
+      <div class="stage" data-bg="void"><div class="preview"></div></div>
+      <div class="controls">
+        <div class="ctl-row"><span class="ctl-label">View</span><div class="seg" data-role="view"><button data-val="symbol">Symbol</button><button data-val="lockup">Lockup</button></div></div>
+        <div class="ctl-row"><span class="ctl-label">Surface</span><div class="seg" data-role="bg"><button data-val="void">Void</button><button data-val="paper">Paper</button><button data-val="ember">Ember</button></div></div>
+        <div class="ctl-row"><span class="ctl-label">Colour</span><div class="seg" data-role="variant"><button data-val="brand">Brand</button><button data-val="ember">Ember</button><button data-val="ink">Ink</button><button data-val="paper">Paper</button></div></div>
+        <div class="ctl-row"><label class="switch"><input type="checkbox" data-role="grid"><span>Construction grid</span></label>
+          <div class="range"><span class="ctl-label">Size</span><input type="range" min="64" max="512" step="16" value="256" data-role="size"><output>256px</output></div></div>
+      </div>
+    </div>
+    <div class="info">
+      <div class="tag">${mt.letter} · ${mt.type} ${mt.rec?'<span class="rec">recommended</span>':''}</div>
+      <h3>${mt.name}</h3>
+      <p class="idea">${mt.idea}</p>
+      <ul class="why">${mt.why.map(w=>`<li>${w}</li>`).join('')}</ul>
+      <div class="ladder"></div>
+      <div class="actions">
+        <button class="btn primary" data-act="svg">${ICON_DL} Download SVG</button>
+        <button class="btn ghost" data-act="copy">${ICON_COPY} Copy SVG</button>
+        <button class="btn ghost" data-act="png">${ICON_DL} <span class="png-size">PNG · 512px</span></button>
+      </div>
+    </div></div>`;
+  $('#concepts').appendChild(el);
+  $$('.seg',el).forEach(seg=>seg.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;state[key][seg.dataset.role]=b.dataset.val;renderCard(key);}));
+  $('[data-role="grid"]',el).addEventListener('change',e=>{state[key].grid=e.target.checked;renderCard(key);});
+  $('[data-role="size"]',el).addEventListener('input',e=>{state[key].size=+e.target.value;renderCard(key);});
+  $('.actions',el).addEventListener('click',e=>{
+    const b=e.target.closest('button');if(!b)return;const s=state[key];
+    const base='sayabot-'+key+(s.view==='lockup'?'-lockup':'')+'-'+s.variant;
+    if(b.dataset.act==='svg'){downloadSVG(currentSVG(key),base+'.svg');toast('SVG downloaded');}
+    if(b.dataset.act==='copy'){copyText(currentSVG(key));}
+    if(b.dataset.act==='png'){svgToPNG(currentSVG(key),s.size,base+'.png');}
+  });
+  renderCard(key);
+}
+['shadow-s','turn-ring','gateway'].forEach(buildCard);
+
+/* ---- palette ---- */
+const PAL=[['Ember','#ff5d6c','brand'],['Ember Deep','#c63e4f','shadow'],['Lamp','#ffd08a','your turn'],['Void','#171219','dark surface'],['Paper','#f7efe3','light surface']];
+$('#swatches').innerHTML=PAL.map(([nm,hx,role])=>`<button class="swatch" data-hx="${hx}"><div class="chip" style="background:${hx}"></div><div class="meta"><div class="nm">${nm}</div><div class="hx">${hx} · ${role}</div></div></button>`).join('');
+$('#swatches').addEventListener('click',e=>{const b=e.target.closest('.swatch');if(b)copyText(b.dataset.hx);});
+
+/* ---- compare ---- */
+$('#appRow').innerHTML=['shadow-s','turn-ring','gateway'].map(k=>`<div class="tile"><div class="app">${DATA.marks[k].appIcon}</div><small>${META[k].name}</small></div>`).join('');
+$('#tabRow').innerHTML=['shadow-s','turn-ring','gateway'].map(k=>`<div class="tabmock"><div class="fav">${DATA.marks[k].favicon}</div><span>Sayabot — ${META[k].name}</span></div>`).join('');
+$('#monoRow').innerHTML=['shadow-s','turn-ring','gateway'].map(k=>`<div class="mono-cell light">${DATA.marks[k].mono}</div><div class="mono-cell dark">${DATA.marks[k].white}</div>`).join('');
+
+/* ---- theme ---- */
+const root=document.documentElement;
+function setTheme(t){root.dataset.theme=t;$('#themeLabel').textContent=t==='dark'?'Light':'Dark';$('#themeIcon').textContent=t==='dark'?'◐':'◑';try{localStorage.setItem('sayabot-theme',t);}catch(e){}}
+$('#themeToggle').addEventListener('click',()=>setTheme(root.dataset.theme==='dark'?'light':'dark'));
+try{const saved=localStorage.getItem('sayabot-theme');if(saved)setTheme(saved);}catch(e){}
+
+/* ---- current section in nav ---- */
+const spy=new IntersectionObserver(es=>es.forEach(en=>{if(en.isIntersecting){const id=en.target.id;$$('.nav nav a').forEach(a=>{const on=id!=='top'&&a.getAttribute('href')==='#'+id;a.classList.toggle('active',on);if(on)a.setAttribute('aria-current','true');else a.removeAttribute('aria-current');});}}),{rootMargin:'-40% 0px -55% 0px'});
+['top','directions','system','compare'].forEach(id=>{const el=document.getElementById(id);if(el)spy.observe(el);});
+
+/* ---- reveal on scroll ---- */
+const io=new IntersectionObserver(es=>es.forEach(en=>{if(en.isIntersecting){en.target.classList.add('in');io.unobserve(en.target);}}),{threshold:.12});
+$$('.reveal').forEach(el=>io.observe(el));
+</script>
+</body>
+</html>
