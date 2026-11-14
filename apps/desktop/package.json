@@ -72,6 +72,7 @@
       ]
     },
     "afterSign": "build/adhoc-sign.cjs",
+    "publish": null,
     "artifactName": "Sayabot-${arch}.${ext}",
     "directories": {
       "output": "dist/installers"
