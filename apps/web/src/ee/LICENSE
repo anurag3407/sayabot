@@ -1,0 +1,19 @@
+Sayabot Commercial License
+
+Copyright (c) 2026 Anurag Mishra. All rights reserved.
+
+The software in this directory and its subdirectories ("Commercial Software") is NOT covered by
+the GNU Affero General Public License that applies to the rest of the Sayabot repository.
+
+You may read, modify and test the Commercial Software for development, evaluation and
+contributing back to the project. You may not use the Commercial Software in production, or
+offer it to third parties as a hosted service, without a valid commercial agreement with the
+copyright holder.
+
+Self-hosted Sayabot does not need the Commercial Software: it stays disabled unless the server
+runs with SAYABOT_EDITION=cloud.
+
+THE COMMERCIAL SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE
+AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY ARISING FROM, OUT OF OR IN CONNECTION WITH THE COMMERCIAL SOFTWARE.

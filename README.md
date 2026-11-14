@@ -6,7 +6,7 @@
 
 ### The Autonomous Remote Agent Workspace & Multiplayer Collaboration Engine
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
+[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg?style=for-the-badge)](LICENSING.md)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Next.js 16](https://img.shields.io/badge/Next.js-16.0-black?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-24-339933?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
@@ -350,4 +350,4 @@ Contributions to Sayabot are welcome! Whether you are adding a new builtin tool,
 
 ## 📄 License
 
-Sayabot is open-source software licensed under the **[MIT License](LICENSE)**.
+Sayabot is open core: the core is licensed under the **[AGPL-3.0](LICENSE)** and is free to self-host; the paid Sayabot Cloud parts in `ee/` folders use a commercial license. See **[LICENSING.md](LICENSING.md)**.
