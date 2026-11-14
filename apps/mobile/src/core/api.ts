@@ -1,6 +1,6 @@
 import { manipulateAsync, SaveFormat } from "expo-image-manipulator"
 import { currentWebApiUrl } from "./settings"
-import { supabase } from "./supabase"
+import { onSupabaseClient, supabase } from "./supabase"
 
 /**
  * Talking to the Sayabot web API as the signed-in person, plus a cached access token for things
@@ -8,8 +8,10 @@ import { supabase } from "./supabase"
  */
 
 let cachedToken: string | null = null
-void supabase.auth.getSession().then(({ data }) => (cachedToken = data.session?.access_token ?? null))
-supabase.auth.onAuthStateChange((_event, session) => (cachedToken = session?.access_token ?? null))
+onSupabaseClient(() => {
+  void supabase.auth.getSession().then(({ data }) => (cachedToken = data.session?.access_token ?? null))
+  supabase.auth.onAuthStateChange((_event, session) => (cachedToken = session?.access_token ?? null))
+})
 
 export function accessTokenNow(): string | null {
   return cachedToken

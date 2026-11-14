@@ -1,5 +1,12 @@
 import "server-only"
-import { publicSayaAi, readSayaAiConfig, type SayaAiConfig, type SayaAiPublic } from "@sayabot/core"
+import {
+  publicSayaAi,
+  readEdition,
+  readSayaAiConfig,
+  type Edition,
+  type SayaAiConfig,
+  type SayaAiPublic,
+} from "@sayabot/core"
 
 export function requireEnv(name: string): string {
   const value = process.env[name]
@@ -92,4 +99,14 @@ export function desktopGuestModeEnabled(): boolean {
 
 export function googleAuthEnabled(): boolean {
   return process.env.GOOGLE_AUTH_ENABLED === "true" || envBool("GOOGLE_AUTH_ENABLED") || envBool("NEXT_PUBLIC_GOOGLE_AUTH_ENABLED")
+}
+
+/** self-hosted (default) or cloud: plans, limits and billing only exist on Sayabot Cloud. */
+export function edition(): Edition {
+  return readEdition(process.env)
+}
+
+/** The name this server shows in the apps ("Acme's Sayabot"); Sayabot Cloud is just "Sayabot". */
+export function instanceName(): string {
+  return process.env.SAYABOT_INSTANCE_NAME?.trim().slice(0, 60) || "Sayabot"
 }

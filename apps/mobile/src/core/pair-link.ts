@@ -23,9 +23,9 @@ export function cleanPairCode(input: string): string {
 /** True when the server signs people in on a different Supabase project than this app build. */
 export function supabaseMismatch(appSupabaseUrl: string, serverSupabaseUrl: string | null | undefined): boolean {
   if (!serverSupabaseUrl) return false
-  try {
-    return new URL(appSupabaseUrl).host !== new URL(serverSupabaseUrl).host
-  } catch {
-    return false
-  }
+  // No `URL`: React Native's doesn't implement host.
+  const host = (url: string) => /^https?:\/\/([^/?#]+)/i.exec(url.trim())?.[1]?.toLowerCase() ?? null
+  const app = host(appSupabaseUrl)
+  const server = host(serverSupabaseUrl)
+  return Boolean(app && server && app !== server)
 }

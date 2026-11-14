@@ -283,6 +283,38 @@
     .settings-link:hover {
       color: var(--text-muted);
     }
+
+    /* Start screen: where do you want to use Sayabot? */
+    .choice-list { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+    .choice {
+      display: flex; align-items: flex-start; gap: 14px; text-align: left; width: 100%;
+      padding: 16px; border-radius: 16px; cursor: pointer;
+      background: rgba(255, 255, 255, 0.02); border: 1px solid var(--card-border);
+      color: var(--text); transition: border-color 0.15s, background 0.15s;
+    }
+    .choice:hover, .choice:focus-visible { border-color: var(--accent); background: rgba(16, 185, 129, 0.05); outline: none; }
+    .choice-icon {
+      flex-shrink: 0; width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center;
+      background: rgba(255, 255, 255, 0.04); color: var(--accent);
+    }
+    .choice-title { font-size: 14.5px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+    .choice-badge {
+      font-size: 10.5px; font-weight: 600; color: var(--accent); background: var(--accent-glow);
+      padding: 2px 7px; border-radius: 99px; letter-spacing: 0.02em;
+    }
+    .choice-sub { font-size: 12.5px; color: var(--text-muted); line-height: 1.45; margin-top: 3px; }
+    .server-form { text-align: left; margin: 4px 0 16px; }
+    .server-form label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+    .server-input {
+      width: 100%; padding: 12px 14px; border-radius: 12px; font-size: 14px; user-select: text;
+      background: rgba(255, 255, 255, 0.03); border: 1px solid var(--card-border); color: var(--text);
+    }
+    .server-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+    .server-status { font-size: 12.5px; min-height: 18px; margin: 8px 2px 0; line-height: 1.45; }
+    .server-status.ok { color: var(--accent); }
+    .server-status.error { color: #f87171; }
+    .server-hint { font-size: 11.5px; color: var(--text-faint); margin-top: 10px; line-height: 1.5; }
+    .back-link { display: inline-block; margin-top: 14px; }
   </style>
 </head>
 <body>
@@ -291,8 +323,61 @@
   </div>
 
   <div class="main-content">
+    <!-- First launch: where do you want to use Sayabot? -->
+    <div id="welcome-view" class="card hidden">
+      <div class="logo-container">
+        <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="11" width="18" height="10" rx="2"></rect>
+          <circle cx="12" cy="5" r="2"></circle>
+          <path d="M12 7v4"></path>
+          <line x1="8" y1="16" x2="8" y2="16"></line>
+          <line x1="16" y1="16" x2="16" y2="16"></line>
+        </svg>
+      </div>
+
+      <div id="choice-step">
+        <h1>Welcome to Sayabot</h1>
+        <p class="subtitle">Agents that work with you, on your Mac. Where would you like to use it?</p>
+        <div class="choice-list">
+          <button id="choose-cloud" class="choice" type="button">
+            <span class="choice-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"></path></svg>
+            </span>
+            <span>
+              <span class="choice-title">Sayabot Cloud <span class="choice-badge">Recommended</span></span>
+              <span class="choice-sub">Start in seconds, no account needed. Your agents run on this Mac with the apps you already use; save your account whenever you like.</span>
+            </span>
+          </button>
+          <button id="choose-own" class="choice" type="button">
+            <span class="choice-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="7" rx="2"></rect><rect x="2" y="14" width="20" height="7" rx="2"></rect><line x1="6" y1="6.5" x2="6.01" y2="6.5"></line><line x1="6" y1="17.5" x2="6.01" y2="17.5"></line></svg>
+            </span>
+            <span>
+              <span class="choice-title">My own server</span>
+              <span class="choice-sub">Use a Sayabot that you or your team host. Your data stays on your server.</span>
+            </span>
+          </button>
+        </div>
+        <p id="choice-error" class="server-status error hidden"></p>
+      </div>
+
+      <form id="server-step" class="hidden" autocomplete="off">
+        <h1>Connect to your server</h1>
+        <p class="subtitle">Enter the address you open Sayabot at in your browser.</p>
+        <div class="server-form">
+          <label for="server-input">Server address</label>
+          <input id="server-input" class="server-input" type="text" inputmode="url" spellcheck="false"
+            placeholder="sayabot.yourcompany.com" aria-describedby="server-status">
+          <p id="server-status" class="server-status" role="status" aria-live="polite"></p>
+        </div>
+        <button id="server-connect" class="btn" type="submit">Connect</button>
+        <p class="server-hint">Self-hosting? Your server's Download page has a one-click "Open in Sayabot" link.</p>
+        <span id="server-back" class="settings-link back-link" role="button" tabindex="0">Back</span>
+      </form>
+    </div>
+
     <!-- Unauthenticated View: Instant local login card -->
-    <div id="unauth-view" class="card">
+    <div id="unauth-view" class="card hidden">
       <div class="logo-container">
         <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <rect x="3" y="11" width="18" height="10" rx="2"></rect>
@@ -328,7 +413,7 @@
       <p id="guest-error" class="subtitle hidden" style="font-size: 12px; margin-top: 4px;"></p>
 
       <div style="display: flex; gap: 14px; justify-content: center; align-items: center; margin-top: 14px;">
-        <span id="change-server-link" class="settings-link" style="margin-top: 0;">Configure Gateway Server</span>
+        <span id="change-server-link" class="settings-link" style="margin-top: 0;">Change server</span>
         <span style="color: var(--text-faint); font-size: 11px;">·</span>
         <span id="unauth-check-updates-link" class="settings-link" style="margin-top: 0;">Check for Updates</span>
       </div>
@@ -405,6 +490,141 @@
     const authCheckUpdatesBtn = document.getElementById("auth-check-updates-btn");
     const desktopVersionTitle = document.getElementById("desktop-version-title");
     const desktopVersionSubtitle = document.getElementById("desktop-version-subtitle");
+    const welcomeView = document.getElementById("welcome-view");
+    const choiceStep = document.getElementById("choice-step");
+    const serverStep = document.getElementById("server-step");
+    const chooseCloud = document.getElementById("choose-cloud");
+    const chooseOwn = document.getElementById("choose-own");
+    const choiceError = document.getElementById("choice-error");
+    const serverInput = document.getElementById("server-input");
+    const serverStatus = document.getElementById("server-status");
+    const serverConnect = document.getElementById("server-connect");
+    const serverBack = document.getElementById("server-back");
+    let serverCanGoBack = true;
+
+    function showView(view) {
+      for (const el of [welcomeView, unauthView, authView]) el.classList.toggle("hidden", el !== view);
+    }
+
+    function showServerStep(prefill, canGoBack = true) {
+      serverCanGoBack = canGoBack;
+      showView(welcomeView);
+      choiceStep.classList.add("hidden");
+      serverStep.classList.remove("hidden");
+      serverBack.classList.toggle("hidden", !canGoBack);
+      serverInput.value = prefill || "";
+      setServerStatus("", "");
+      setTimeout(() => serverInput.focus(), 50);
+    }
+
+    function showChoiceStep() {
+      showView(welcomeView);
+      serverStep.classList.add("hidden");
+      choiceStep.classList.remove("hidden");
+      choiceError.classList.add("hidden");
+    }
+
+    function setServerStatus(text, tone) {
+      serverStatus.textContent = text;
+      serverStatus.className = `server-status${tone ? ` ${tone}` : ""}`;
+    }
+
+    function setBusy(button, busy, label) {
+      button.disabled = busy;
+      button.style.opacity = busy ? "0.7" : "1";
+      if (label) button.textContent = label;
+    }
+
+    // After a server is picked: start right away when it allows it, else show sign-in.
+    async function afterServerChosen(result) {
+      const guest = await bridge.getGuestStatus();
+      await refreshServerLabel();
+      if (guest && guest.autoStart) {
+        showView(unauthView);
+        void startGuest();
+        return;
+      }
+      showView(unauthView);
+      showGuestStarting(false);
+      guestBtn.classList.toggle("hidden", !(guest && guest.guestAllowed));
+      if (result && result.name) {
+        unauthTitle.textContent = `Sign in to ${result.name}`;
+      }
+    }
+
+    chooseCloud.addEventListener("click", async () => {
+      choiceError.classList.add("hidden");
+      chooseCloud.disabled = true;
+      chooseOwn.disabled = true;
+      const result = await bridge.chooseServer(null);
+      chooseCloud.disabled = false;
+      chooseOwn.disabled = false;
+      if (!result.ok) {
+        choiceError.textContent = result.error;
+        choiceError.classList.remove("hidden");
+        return;
+      }
+      await afterServerChosen(result);
+    });
+
+    chooseOwn.addEventListener("click", () => showServerStep(""));
+
+    serverBack.addEventListener("click", () => {
+      if (serverCanGoBack) showChoiceStep();
+    });
+    serverBack.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") showChoiceStep();
+    });
+
+    // Check the address as soon as the person stops typing, so mistakes show early.
+    let checkTimer = null;
+    let checkSeq = 0;
+    serverInput.addEventListener("input", () => {
+      clearTimeout(checkTimer);
+      const value = serverInput.value.trim();
+      if (!value) return setServerStatus("", "");
+      setServerStatus("Checking…", "");
+      const seq = ++checkSeq;
+      checkTimer = setTimeout(async () => {
+        const result = await bridge.checkServer(value);
+        if (seq !== checkSeq) return;
+        if (result.ok) setServerStatus(`✓ Found ${result.name}`, "ok");
+        else setServerStatus(result.error, "error");
+      }, 600);
+    });
+
+    serverStep.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const value = serverInput.value.trim();
+      if (!value) {
+        setServerStatus("Enter your server's address.", "error");
+        serverInput.focus();
+        return;
+      }
+      clearTimeout(checkTimer);
+      checkSeq++;
+      setBusy(serverConnect, true, "Connecting…");
+      setServerStatus("Checking…", "");
+      const result = await bridge.chooseServer(value);
+      setBusy(serverConnect, false, "Connect");
+      if (!result.ok) {
+        setServerStatus(result.error, "error");
+        serverInput.focus();
+        return;
+      }
+      setServerStatus(`✓ Connected to ${result.name}`, "ok");
+      await afterServerChosen(result);
+    });
+
+    async function refreshServerLabel() {
+      try {
+        const info = await bridge.getServerInfo();
+        gatewayLabel.textContent = info.name;
+        gatewayLabel.title = info.url;
+      } catch (e) {
+        // keep the last label
+      }
+    }
 
     function showGuestStarting(starting) {
       unauthTitle.textContent = starting ? "Setting up Sayabot…" : "Sign in to Sayabot";
@@ -412,7 +632,7 @@
         ? "Getting your workspace ready. No account needed. You can save it later."
         : "Connect your Mac to your room workspace. All agents sync live with your phone.";
       signInBtn.classList.toggle("hidden", starting);
-      guestBtn.classList.toggle("hidden", starting);
+      if (starting) guestBtn.classList.add("hidden");
       guestBtn.disabled = starting;
     }
 
@@ -422,19 +642,14 @@
       const result = await bridge.startGuest();
       if (result && result.ok) return; // the main process opens the workspace
       showGuestStarting(false);
+      guestBtn.classList.remove("hidden");
       guestError.textContent = "Couldn't start without an account. Sign in instead, or try again.";
       guestError.title = (result && result.error) || "";
       guestError.classList.remove("hidden");
     }
 
     async function refreshState() {
-      const serverUrl = await bridge.getServerUrl();
-      try {
-        const u = new URL(serverUrl);
-        gatewayLabel.textContent = u.hostname;
-      } catch (e) {
-        gatewayLabel.textContent = serverUrl;
-      }
+      await refreshServerLabel();
 
       const session = await bridge.getSession();
       if (session && session.accessToken) {
@@ -442,11 +657,17 @@
         bridge.openWorkspaceInWindow();
         return;
       }
-      authView.classList.add("hidden");
-      unauthView.classList.remove("hidden");
 
-      // First launch: skip the sign-in card and open Sayabot as a guest.
       const guest = await bridge.getGuestStatus();
+      // First launch: ask where to use Sayabot before anything else.
+      if (guest && guest.needsServerChoice) {
+        showChoiceStep();
+        return;
+      }
+      showView(unauthView);
+      guestBtn.classList.toggle("hidden", !(guest && guest.guestAllowed));
+
+      // Then skip the sign-in card and open Sayabot as a guest.
       if (guest && guest.autoStart) {
         void startGuest();
         return;
@@ -484,13 +705,8 @@
       bridge.openWorkspaceInWindow();
     });
 
-    changeServerLink.addEventListener("click", async () => {
-      const current = await bridge.getServerUrl();
-      const updated = prompt("Enter Sayabot Server Gateway URL:", current);
-      if (updated && updated.trim()) {
-        await bridge.setServerUrl(updated.trim());
-        refreshState();
-      }
+    changeServerLink.addEventListener("click", () => {
+      showChoiceStep();
     });
 
     localRunnerToggle.addEventListener("change", async () => {

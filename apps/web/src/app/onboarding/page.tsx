@@ -3,6 +3,7 @@ import { redirect } from "next/navigation"
 import { getCurrentUser, getProfile, listUserOrgs, requireUser } from "@/lib/auth"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { devModelConfigured } from "@/lib/env"
+import { macDefaultApp } from "@/lib/desktop-hosts"
 import { OnboardingWizard } from "@/components/onboarding/wizard"
 
 export const metadata: Metadata = { title: "Set up your workspace" }
@@ -53,16 +54,19 @@ export default async function OnboardingPage() {
   const current = await getCurrentUser()
   if (!current) redirect("/login")
   const profile = await getProfile(current)
+  // "member" is the placeholder for accounts without a name yet (every guest starts that way).
+  const firstName =
+    profile.displayName === "member" ? "" : (profile.displayName.split(" ")[0] ?? "")
+  const macApp = await macDefaultApp(user.id)
 
   return (
     <OnboardingWizard
-      userName={profile.displayName.split(" ")[0] ?? ""}
+      userName={firstName}
+      macApp={macApp}
       defaultTimeZone="UTC"
       timeZones={timeZones()}
       hasServerModel={devModelConfigured()}
-      initialWorkspace={
-        inProgress ? { slug: inProgress.orgSlug, roomId: inProgress.roomId } : null
-      }
+      initialWorkspace={inProgress ? { slug: inProgress.orgSlug, roomId: inProgress.roomId } : null}
     />
   )
 }

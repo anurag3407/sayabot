@@ -81,3 +81,34 @@ export function withLocalDefault(
   const stillReady = localAgents.some((a) => a.id === current && a.status === "ready")
   return stillReady || current === best ? null : { ...settings, localDefault: { app: best } }
 }
+
+const APP_NAMES: Record<string, string> = {
+  "claude-code": "Claude Code",
+  codex: "Codex",
+  gemini: "Gemini CLI",
+  opencode: "OpenCode",
+  cursor: "Cursor",
+}
+
+/**
+ * The app this person's agents will run with on their Mac, if Sayabot for Mac found one signed
+ * in and they haven't turned "use this computer for my agents" off. For onboarding's
+ * "no key needed" option.
+ */
+export async function macDefaultApp(
+  userId: string,
+): Promise<{ hostName: string; appName: string } | null> {
+  const { data } = await createAdminClient()
+    .from("desktop_hosts")
+    .select("name, settings, local_agents, last_seen_at")
+    .eq("user_id", userId)
+    .is("revoked_at", null)
+    .order("last_seen_at", { ascending: false })
+    .limit(5)
+  for (const host of (data ?? []) as Array<Pick<HostRow, "name" | "settings" | "local_agents">>) {
+    if (host.settings?.localDefault === false) continue
+    const app = pickDefaultApp(host.local_agents ?? [])
+    if (app) return { hostName: host.name, appName: APP_NAMES[app] ?? app }
+  }
+  return null
+}

@@ -13,7 +13,11 @@ import { handleFromName } from "@/lib/agent-handle"
 import { cn, PROVIDER_LABELS } from "@/lib/format"
 import { defaultModel, MODEL_SUGGESTIONS } from "@/lib/model-options"
 
-const STEP_TITLES = ["Name your workspace", "Connect an AI model", "Create your first agent"] as const
+const STEP_TITLES = [
+  "Name your workspace",
+  "Connect an AI model",
+  "Create your first agent",
+] as const
 
 const TEMPLATES = [
   {
@@ -82,12 +86,15 @@ export function OnboardingWizard({
   defaultTimeZone,
   timeZones,
   hasServerModel,
+  macApp = null,
   initialWorkspace = null,
 }: {
   userName: string
   defaultTimeZone: string
   timeZones: string[]
   hasServerModel: boolean
+  /** An app signed in on the person's Mac (Sayabot for Mac): agents can run there, no key. */
+  macApp?: { hostName: string; appName: string } | null
   initialWorkspace?: { slug: string; roomId: string } | null
 }) {
   const router = useRouter()
@@ -103,6 +110,8 @@ export function OnboardingWizard({
   const [model, setModel] = useState(defaultModel("openai"))
   const [connectedKeyId, setConnectedKeyId] = useState<string | null>(null)
   const [useServerModel, setUseServerModel] = useState(false)
+  // With Claude Code (or Codex…) signed in on their Mac, no key is needed: agents run there.
+  const [useMac, setUseMac] = useState(Boolean(macApp))
 
   const [template, setTemplate] = useState<(typeof TEMPLATES)[number]["key"]>("assistant")
   const [agentName, setAgentName] = useState<string>(TEMPLATES[0].name)
@@ -255,13 +264,14 @@ export function OnboardingWizard({
       : step === 1
         ? Boolean(connectedKeyId) ||
           useServerModel ||
+          useMac ||
           (apiKey.trim().length >= 8 && model.trim().length > 0)
         : agentName.trim().length >= 1 && handle.length >= 1
 
   function next() {
     if (step === 0) createWorkspace()
     else if (step === 1) {
-      if (useServerModel) {
+      if (useServerModel || useMac) {
         setError(null)
         setStep(2)
       } else connectModel()
@@ -366,11 +376,60 @@ export function OnboardingWizard({
                 </InlineAlert>
               ) : (
                 <div className="space-y-5">
-                  <p className="max-w-[52ch] text-[13px] leading-relaxed text-muted">
-                    Agents need an AI model to reply. Paste an API key from your provider. It is
-                    encrypted, and we test it before moving on.
-                  </p>
-                  {hasServerModel ? (
+                  {macApp ? (
+                    <div className="space-y-2">
+                      <button
+                        type="button"
+                        aria-pressed={useMac}
+                        onClick={() => setUseMac(true)}
+                        className={cn(
+                          "flex w-full items-start gap-3 rounded-sm border p-3.5 text-left transition-colors",
+                          useMac
+                            ? "border-accent bg-accent/10"
+                            : "border-line bg-panel hover:border-line-strong",
+                        )}
+                      >
+                        <span
+                          aria-hidden
+                          className={cn(
+                            "mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full border",
+                            useMac ? "border-accent" : "border-line-strong",
+                          )}
+                        >
+                          {useMac ? <span className="h-2 w-2 rounded-full bg-accent" /> : null}
+                        </span>
+                        <span>
+                          <span className="block text-[13.5px] font-medium text-text">
+                            Use {macApp.appName} on {macApp.hostName}
+                            <span className="ml-2 font-mono text-[11px] text-accent">
+                              no key needed
+                            </span>
+                          </span>
+                          <span className="mt-0.5 block text-[12.5px] leading-relaxed text-muted">
+                            Your agents run on your Mac with the {macApp.appName} you&apos;re
+                            already signed in to, on your own subscription.
+                          </span>
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        aria-pressed={!useMac}
+                        onClick={() => setUseMac(false)}
+                        className="font-mono text-[12px] text-faint underline-offset-2 hover:text-text hover:underline"
+                      >
+                        {useMac
+                          ? "Use an API key instead"
+                          : `Selected: an API key. Back to ${macApp.appName}`}
+                      </button>
+                    </div>
+                  ) : null}
+                  {useMac ? null : (
+                    <p className="max-w-[52ch] text-[13px] leading-relaxed text-muted">
+                      Agents need an AI model to reply. Paste an API key from your provider. It is
+                      encrypted, and we test it before moving on.
+                    </p>
+                  )}
+                  {hasServerModel && !useMac ? (
                     <label className="flex items-start gap-2.5 rounded-sm border border-line bg-panel p-3 text-[13px] leading-relaxed text-text">
                       <input
                         type="checkbox"
@@ -381,7 +440,7 @@ export function OnboardingWizard({
                       <span>Use this server&apos;s shared model instead of my own key</span>
                     </label>
                   ) : null}
-                  {useServerModel ? null : (
+                  {useServerModel || useMac ? null : (
                     <>
                       <div className="grid gap-3 sm:grid-cols-2">
                         <Field label="provider" htmlFor="onboarding-provider">
@@ -538,7 +597,7 @@ export function OnboardingWizard({
                 : step === 0
                   ? "Continue"
                   : step === 1
-                    ? connectedKeyId || useServerModel
+                    ? connectedKeyId || useServerModel || useMac
                       ? "Continue"
                       : "Connect and continue"
                     : "Create agent and open room"}

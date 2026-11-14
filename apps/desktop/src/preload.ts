@@ -18,11 +18,18 @@ export interface DesktopUpdateResult {
   error?: string
 }
 
+export type ServerCheck =
+  | { ok: true; url: string; name: string; guestMode: boolean; edition?: "self-hosted" | "cloud" }
+  | { ok: false; error: string }
+
 export interface DesktopBridge {
   getSession: () => Promise<AuthSession | null>
   startBrowserAuth: () => Promise<void>
   /** Whether the controller should start a guest session by itself (no session, not declined). */
-  getGuestStatus: () => Promise<{ autoStart: boolean }>
+  getGuestStatus: () => Promise<{ autoStart: boolean; needsServerChoice: boolean; guestAllowed: boolean }>
+  getServerInfo: () => Promise<{ url: string; name: string; isCloud: boolean; chosen: boolean }>
+  checkServer: (input: string) => Promise<ServerCheck>
+  chooseServer: (input: string | null) => Promise<ServerCheck>
   /** Opens Sayabot without an account; on success the main process opens the workspace. */
   startGuest: () => Promise<{ ok: boolean; error?: string }>
   signOut: () => Promise<void>
@@ -47,6 +54,9 @@ const bridge: DesktopBridge = {
   getSession: () => ipcRenderer.invoke("auth:get-session"),
   startBrowserAuth: () => ipcRenderer.invoke("auth:start-browser-auth"),
   getGuestStatus: () => ipcRenderer.invoke("auth:guest-status"),
+  getServerInfo: () => ipcRenderer.invoke("config:server-info"),
+  checkServer: (input) => ipcRenderer.invoke("config:check-server", input),
+  chooseServer: (input) => ipcRenderer.invoke("config:choose-server", input),
   startGuest: () => ipcRenderer.invoke("auth:start-guest"),
   signOut: () => ipcRenderer.invoke("auth:sign-out"),
   getServerUrl: () => ipcRenderer.invoke("config:get-server-url"),

@@ -24,7 +24,8 @@ import {
   X,
 } from "lucide-react-native"
 import { setDemoMode } from "../core/session-mode"
-import { supabase } from "../core/supabase"
+import { checkServer, useCloud, useServer } from "../core/server"
+import { loadSavedServer, supabase } from "../core/supabase"
 import { useAuth } from "../hooks/useAuth"
 import { useSettings } from "../hooks/useSettings"
 import { colors } from "../theme"
@@ -65,6 +66,46 @@ export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
   // Server gateway config modal
   const [serverModal, setServerModal] = useState(false)
   const [serverUrlInput, setServerUrlInput] = useState(settings.webApiUrl)
+  // "Choose your server": the address is checked as it's typed, then the app restarts into it.
+  const [serverName, setServerName] = useState<string | null>(null)
+  const [serverCheck, setServerCheck] = useState<{ tone: "ok" | "error" | "busy"; text: string } | null>(null)
+  const [serverBusy, setServerBusy] = useState(false)
+
+  useEffect(() => {
+    void loadSavedServer().then((saved) => setServerName(saved?.name ?? null))
+  }, [])
+
+  useEffect(() => {
+    if (!serverModal) return
+    const value = serverUrlInput.trim()
+    if (!value || value.replace(/\/+$/, "") === settings.webApiUrl) {
+      setServerCheck(null)
+      return
+    }
+    setServerCheck({ tone: "busy", text: "Checking…" })
+    let cancelled = false
+    const timer = setTimeout(async () => {
+      const result = await checkServer(value)
+      if (cancelled) return
+      setServerCheck(result.ok ? { tone: "ok", text: `✓ Found ${result.server.name}` } : { tone: "error", text: result.error })
+    }, 600)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [serverUrlInput, serverModal, settings.webApiUrl])
+
+  const connectServer = async () => {
+    setServerBusy(true)
+    const result = await checkServer(serverUrlInput)
+    if (!result.ok) {
+      setServerBusy(false)
+      setServerCheck({ tone: "error", text: result.error })
+      return
+    }
+    setServerCheck({ tone: "ok", text: `Connecting to ${result.server.name}…` })
+    await useServer(result.server)
+  }
 
   useEffect(() => {
     setServerUrlInput(settings.webApiUrl)
@@ -304,7 +345,7 @@ export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
           >
             <Server size={12} color={colors.textSecondary} />
             <Text style={styles.serverPillText} numberOfLines={1}>
-              Gateway: {settings.webApiUrl.replace(/^https?:\/\//, "")}
+              Server: {serverName ?? (settings.webApiUrl === "https://sayabot.sayalabs.in" ? "Sayabot Cloud" : settings.webApiUrl.replace(/^https?:\/\//, ""))}
             </Text>
             <ChevronRight size={12} color={colors.textSecondary} />
           </TouchableOpacity>
@@ -357,56 +398,66 @@ export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
         </KeyboardAvoidingView>
       </Modal>
 
-      <Modal visible={serverModal} animationType="fade" transparent>
-        <View style={styles.modalBackdrop}>
+      <Modal visible={serverModal} animationType="fade" transparent onRequestClose={() => setServerModal(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Configure API Gateway</Text>
-              <TouchableOpacity onPress={() => setServerModal(false)}>
+              <Text style={styles.modalTitle}>Choose your server</Text>
+              <TouchableOpacity onPress={() => setServerModal(false)} accessibilityLabel="Close">
                 <X size={20} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
 
             <Text style={styles.modalDesc}>
-              Change the VPS endpoint address if you are hosting Sayabot on a private server or
-              local network.
+              Now using {serverName ?? "Sayabot Cloud"}. To use a Sayabot that you or your team
+              host, enter its address. You sign in on that server, and your data stays there.
             </Text>
 
             <TextInput
               style={styles.modalInput}
               value={serverUrlInput}
               onChangeText={setServerUrlInput}
-              placeholder="https://your-domain.com"
+              placeholder="sayabot.yourcompany.com"
               placeholderTextColor={colors.textPlaceholder}
               autoCapitalize="none"
               autoCorrect={false}
+              keyboardType="url"
+              returnKeyType="go"
+              onSubmitEditing={connectServer}
+              accessibilityLabel="Server address"
             />
+            {serverCheck ? (
+              <Text
+                style={[
+                  styles.serverCheckText,
+                  serverCheck.tone === "ok" ? styles.serverCheckOk : serverCheck.tone === "error" ? styles.errorText : null,
+                ]}
+                accessibilityLiveRegion="polite"
+              >
+                {serverCheck.text}
+              </Text>
+            ) : null}
 
             <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={styles.modalCancelBtn}
-                onPress={() => setServerModal(false)}
-              >
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.modalSaveBtn}
-                onPress={async () => {
-                  const next = serverUrlInput.trim().replace(/\/+$/, "")
-                  if (!/^https?:\/\//i.test(next)) {
-                    setErrorMsg("The gateway address needs to start with http:// or https://")
-                    setServerModal(false)
-                    return
-                  }
-                  await updateSettings({ webApiUrl: next })
-                  setServerModal(false)
-                }}
-              >
-                <Text style={styles.modalSaveText}>Save Endpoint</Text>
+              {serverName ? (
+                <TouchableOpacity style={styles.modalCancelBtn} onPress={() => void useCloud()} disabled={serverBusy}>
+                  <Text style={styles.modalCancelText}>Use Sayabot Cloud</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setServerModal(false)}>
+                  <Text style={styles.modalCancelText}>Cancel</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity style={styles.modalSaveBtn} onPress={connectServer} disabled={serverBusy}>
+                {serverBusy ? (
+                  <ActivityIndicator size="small" color={colors.textInverse} />
+                ) : (
+                  <Text style={styles.modalSaveText}>Connect</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   )
@@ -492,6 +543,14 @@ const styles = StyleSheet.create({
     width: "100%",
     borderWidth: 1,
     borderColor: "rgba(241, 92, 109, 0.3)",
+  },
+  serverCheckText: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginTop: 8,
+  },
+  serverCheckOk: {
+    color: colors.accentCyan,
   },
   errorText: {
     color: colors.accentDanger,

@@ -1,9 +1,9 @@
 import { Platform } from "react-native"
-import { ENV } from "../config/env"
 import { cleanPairCode, supabaseMismatch } from "./pair-link"
 import { applySettings } from "../hooks/useSettings"
 import { currentWebApiUrl, loadSettings } from "./settings"
-import { supabase } from "./supabase"
+import { checkServer, restartApp } from "./server"
+import { currentSupabaseUrl, makeClient, saveServer, supabase } from "./supabase"
 
 function deviceLabel(): string {
   const constants = Platform.constants as { Model?: string; Brand?: string; Manufacturer?: string } | undefined
@@ -48,8 +48,25 @@ async function pairOnce(code: string, serverUrl?: string | null): Promise<void> 
     supabase_url?: string
   }
   if (!res.ok || !data.token_hash) throw new Error(data.error || `Could not sign in (HTTP ${res.status})`)
-  if (supabaseMismatch(ENV.SUPABASE_URL, data.supabase_url)) {
-    throw new Error("This copy of the app is set up for a different Sayabot server. Install the app from that server's download page.")
+  if (supabaseMismatch(currentSupabaseUrl(), data.supabase_url)) {
+    // The code came from another Sayabot server (e.g. a self-hosted one): sign in against its own
+    // Supabase, switch this phone to that server, and restart into it already signed in.
+    const check = await checkServer(server)
+    if (!check.ok) throw new Error(check.error)
+    const { error } = await makeClient(check.server.supabaseUrl, check.server.supabaseAnonKey).auth.verifyOtp({
+      token_hash: data.token_hash,
+      type: "magiclink",
+    })
+    if (error) throw new Error(error.message)
+    await applySettings({
+      webApiUrl: check.server.webApiUrl,
+      ...(data.org_slug ? { orgSlug: data.org_slug } : {}),
+      deviceId: data.device_id ?? "",
+      deviceToken: data.device_token ?? "",
+    })
+    await saveServer(check.server)
+    await restartApp()
+    return
   }
   const { error } = await supabase.auth.verifyOtp({ token_hash: data.token_hash, type: "magiclink" })
   if (error) throw new Error(error.message)

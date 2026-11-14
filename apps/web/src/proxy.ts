@@ -19,6 +19,10 @@ const PUBLIC_PATHS = [
   "/api/connectors",
   "/api/mobile",
   "/api/version",
+  // "Is this a Sayabot server?" for the Mac and phone apps' server picker.
+  "/api/instance",
+  // Stripe webhooks (Sayabot Cloud): verified by their signature, not a session.
+  "/api/billing/webhook",
   "/api/download",
   // MCP connector short URL (/mcp/<agent key>). Authenticated by the key, not a session.
   "/mcp",

@@ -5,6 +5,7 @@ import { DesktopHost } from "./host"
 import { detectLocalAgents } from "./local-agents"
 import { LocalMcpHost } from "./local-mcp"
 import { LocalRunner, type ApprovalNotice } from "./runner"
+import { normalizeServerUrl } from "./server-url"
 import { VaultRunner } from "./vault-cli"
 
 const DEFAULT_SERVER_URL = "https://sayabot.sayalabs.in"
@@ -26,6 +27,104 @@ interface DesktopConfig {
   enableLocalRunner: boolean
   /** Set after an explicit sign-out, so we show the sign-in card instead of a fresh guest. */
   guestDeclined?: boolean
+  /** The person picked where to use Sayabot (Sayabot Cloud or their own server). */
+  serverChosen?: boolean
+  /** That server's name and whether it allows starting without an account (from /api/instance). */
+  serverName?: string
+  serverGuestMode?: boolean
+}
+
+/** What a Sayabot server says about itself (GET /api/instance). */
+interface ServerInfo {
+  ok: true
+  url: string
+  name: string
+  edition: "self-hosted" | "cloud"
+  guestMode: boolean
+}
+
+/** Asks a server whether it's Sayabot; plain-language errors for the start screen. */
+async function checkServer(input: string): Promise<ServerInfo | { ok: false; error: string }> {
+  const url = normalizeServerUrl(input)
+  if (!url) return { ok: false, error: "That doesn't look like a web address." }
+  try {
+    // Ask the new and the older endpoints at once, so a check takes one round trip.
+    const legacyCheck = checkLegacyServer(url)
+    const res = await fetch(`${url}/api/instance`, {
+      headers: { accept: "application/json" },
+      redirect: "manual",
+      signal: AbortSignal.timeout(8_000),
+    })
+    const data = res.ok ? ((await res.json().catch(() => null)) as Record<string, unknown> | null) : null
+    if (!data || data.sayabot !== true) {
+      // Servers on an older Sayabot have no /api/instance yet, but they do answer these two.
+      const legacy = await legacyCheck
+      if (legacy) return legacy
+      if (res.status >= 500) return { ok: false, error: `The server answered with an error (${res.status}).` }
+      return { ok: false, error: "That server answered, but it isn't running Sayabot." }
+    }
+    return {
+      ok: true,
+      url,
+      name: typeof data.name === "string" && data.name ? data.name : new URL(url).host,
+      edition: data.edition === "cloud" ? "cloud" : "self-hosted",
+      guestMode: data.guestMode === true,
+    }
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    if (/timeout|aborted/i.test(msg)) return { ok: false, error: "The server didn't answer in time. Is it running?" }
+    if (/ENOTFOUND|getaddrinfo/i.test(msg)) return { ok: false, error: "Couldn't find that address. Check the spelling." }
+    if (/certificate|SSL|TLS/i.test(msg)) return { ok: false, error: "The server's HTTPS certificate isn't valid." }
+    return { ok: false, error: "Couldn't reach that server. Check the address and your connection." }
+  }
+}
+
+async function checkLegacyServer(url: string): Promise<ServerInfo | null> {
+  try {
+    const [version, guest] = await Promise.all([
+      fetch(`${url}/api/version`, { redirect: "manual", signal: AbortSignal.timeout(6_000) }),
+      fetch(`${url}/api/desktop/guest`, { redirect: "manual", signal: AbortSignal.timeout(6_000) })
+        .then((r) => (r.ok ? (r.json() as Promise<{ enabled?: boolean }>) : null))
+        .catch(() => null),
+    ])
+    const info = version.ok ? ((await version.json().catch(() => null)) as Record<string, unknown> | null) : null
+    if (!info || typeof info.latestDesktopVersion !== "string") return null
+    return {
+      ok: true,
+      url,
+      name: url === DEFAULT_SERVER_URL ? "Sayabot Cloud" : new URL(url).host,
+      edition: url === DEFAULT_SERVER_URL ? "cloud" : "self-hosted",
+      guestMode: guest?.enabled === true,
+    }
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Point this Mac at another Sayabot server. Signing in belongs to one server, so switching signs
+ * out here and this computer registers again with the new server.
+ */
+function useServer(info: ServerInfo): void {
+  const config = loadConfig()
+  const switching = normalizeServerUrl(config.serverUrl) !== info.url
+  saveConfig({
+    ...config,
+    serverUrl: info.url,
+    serverChosen: true,
+    serverName: info.name,
+    serverGuestMode: info.guestMode,
+    ...(switching ? { guestDeclined: false } : {}),
+  })
+  if (switching) {
+    saveSession(null)
+    runner?.stop()
+    host?.stop()
+    host = null
+    runner = null
+    vaults = null
+    localMcp = null
+  }
 }
 
 let mainWindow: BrowserWindow | null = null
@@ -151,11 +250,78 @@ function loadLocalHtml() {
   mainWindow.loadFile(targetHtml)
 }
 
+/** Back to the start screen's "Sayabot Cloud or my own server" choice. */
+async function changeServerFromMenu(): Promise<void> {
+  const config = loadConfig()
+  if (loadSession()) {
+    const where = config.serverName || normalizeServerUrl(config.serverUrl) || "this server"
+    const choice = await dialog.showMessageBox({
+      type: "question",
+      message: "Change server?",
+      detail: `You'll be signed out of ${where} on this Mac. Your data stays on that server, and you can come back any time.`,
+      buttons: ["Change Server", "Cancel"],
+      defaultId: 0,
+      cancelId: 1,
+    })
+    if (choice.response !== 0) return
+  }
+  saveSession(null)
+  runner?.stop()
+  host?.stop()
+  host = null
+  runner = null
+  vaults = null
+  localMcp = null
+  saveConfig({ ...config, serverChosen: false })
+  if (!mainWindow || mainWindow.isDestroyed()) createWindow()
+  else loadLocalHtml()
+  mainWindow?.show()
+}
+
+async function connectFromLink(server: string): Promise<void> {
+  const info = await checkServer(server)
+  if (!info.ok) {
+    await dialog.showMessageBox({
+      type: "warning",
+      message: "Couldn't connect to that Sayabot server",
+      detail: info.error,
+      buttons: ["OK"],
+    })
+    return
+  }
+  const current = normalizeServerUrl(loadConfig().serverUrl)
+  if (current === info.url && loadSession()) {
+    mainWindow?.show()
+    return
+  }
+  const signedIn = Boolean(loadSession())
+  const choice = await dialog.showMessageBox({
+    type: "question",
+    message: `Connect Sayabot to ${info.name}?`,
+    detail: `${info.url}\n\nOnly connect to servers you trust.${signedIn ? " You'll be signed out of the server you use now." : ""}`,
+    buttons: ["Connect", "Cancel"],
+    defaultId: 0,
+    cancelId: 1,
+  })
+  if (choice.response !== 0) return
+  useServer(info)
+  if (!mainWindow || mainWindow.isDestroyed()) createWindow()
+  else loadLocalHtml()
+  mainWindow?.show()
+}
+
 function handleDeepLink(urlStr: string): void {
   console.log("[Sayabot Desktop] Received deep link:", urlStr)
   try {
     const parsed = new URL(urlStr)
     if (parsed.protocol !== "sayabot:") return
+
+    // sayabot://connect?server=https://sayabot.acme.com — shown by a self-hosted server's
+    // download page. Always confirmed: a link must never move someone's app to a stranger's server.
+    if (parsed.host === "connect") {
+      void connectFromLink(parsed.searchParams.get("server") ?? "")
+      return
+    }
 
     if (parsed.host === "auth" || parsed.pathname.includes("callback")) {
       const params = parsed.searchParams
@@ -392,6 +558,10 @@ function buildAppMenu() {
           // Guests: sign in (or sign up) in the browser and bring the guest data along.
           label: "Sign In to Existing Account…",
           click: () => void signInFromMenu(),
+        },
+        {
+          label: "Change Server…",
+          click: () => void changeServerFromMenu(),
         },
         { type: "separator" },
         { role: "hide" },
@@ -669,9 +839,45 @@ async function createGuestSession(serverUrl: string): Promise<AuthSession> {
 
 let guestInFlight: Promise<{ ok: boolean; error?: string }> | null = null
 
-ipcMain.handle("auth:guest-status", () => ({
-  autoStart: !loadSession() && !loadConfig().guestDeclined,
-}))
+ipcMain.handle("auth:guest-status", () => {
+  const config = loadConfig()
+  const signedIn = Boolean(loadSession())
+  // Sayabot Cloud always allows starting without an account; a self-hosted server says so itself.
+  const guestAllowed = config.serverGuestMode !== false
+  return {
+    needsServerChoice: !signedIn && !config.serverChosen,
+    autoStart: !signedIn && Boolean(config.serverChosen) && !config.guestDeclined && guestAllowed,
+    guestAllowed,
+  }
+})
+
+ipcMain.handle("config:server-info", () => {
+  const config = loadConfig()
+  const url = normalizeServerUrl(config.serverUrl) ?? DEFAULT_SERVER_URL
+  return {
+    url,
+    name: config.serverName || (url === DEFAULT_SERVER_URL ? "Sayabot Cloud" : new URL(url).host),
+    isCloud: url === DEFAULT_SERVER_URL,
+    chosen: Boolean(config.serverChosen),
+  }
+})
+
+ipcMain.handle("config:check-server", (_event, input: string) => checkServer(input))
+
+/** The start screen's choice: Sayabot Cloud, or a server the person typed (checked first). */
+ipcMain.handle("config:choose-server", async (_event, input: string | null) => {
+  const info = await checkServer(input || DEFAULT_SERVER_URL)
+  if (!info.ok) {
+    // Sayabot Cloud being briefly unreachable shouldn't block choosing it.
+    if (!input) {
+      useServer({ ok: true, url: DEFAULT_SERVER_URL, name: "Sayabot Cloud", edition: "cloud", guestMode: true })
+      return { ok: true, url: DEFAULT_SERVER_URL, name: "Sayabot Cloud", guestMode: true }
+    }
+    return info
+  }
+  useServer(input ? info : { ...info, name: "Sayabot Cloud" })
+  return { ok: true, url: info.url, name: input ? info.name : "Sayabot Cloud", guestMode: info.guestMode }
+})
 
 ipcMain.handle("auth:start-guest", () => {
   if (loadSession()) return { ok: true }
@@ -717,9 +923,10 @@ ipcMain.handle("config:get-server-url", () => {
 })
 
 ipcMain.handle("config:set-server-url", (_event, url: string) => {
-  const cleanUrl = (url || DEFAULT_SERVER_URL).trim().replace(/\/+$/, "")
+  const cleanUrl = normalizeServerUrl(url) ?? DEFAULT_SERVER_URL
   const config = loadConfig()
   config.serverUrl = cleanUrl
+  config.serverChosen = true
   saveConfig(config)
   return cleanUrl
 })
