@@ -89,6 +89,11 @@ body {
   outline-offset: 2px;
 }
 
+/* A menu opened with the mouse keeps focus on its <summary>; no keyboard ring for that. */
+summary[data-pointer]:focus-visible {
+  outline: none;
+}
+
 button,
 a,
 input,

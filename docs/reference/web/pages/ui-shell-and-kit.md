@@ -110,6 +110,9 @@ A custom-event bus (`mesh:toast`): any code can `showToast({ message, tone?, act
 ### `details-menu.tsx` — `DetailsMenu`
 A `<details>` dropdown that closes on outside pointerdown and Escape (returning focus to the summary) and when a menu item, link or button inside is chosen (typing in a field does not close it). Its document listeners exist only while it is open, and its children render only while open: the sidebar has one per chat, and permanently attached listeners made every click and key press fan out across the list. Keyboard: ArrowDown on the summary opens it and focuses the first item; ArrowUp/ArrowDown/Home/End move between items; the summary carries `aria-haspopup="menu"`. Powers the sidebar popovers, workspace switcher, account menu, per-row menus and the composer's "+" and execution-mode menus.
 
+### `summary-focus-guard.tsx` — `SummaryFocusGuard`
+Mounted once in the root layout. Chromium paints the keyboard focus ring on a `<summary>` even after a mouse click, which left a thick accent ring around every dropdown and disclosure. The guard marks a summary pressed with a pointer (`data-pointer`, capture-phase `pointerdown`) and clears the mark on any key press or when the summary loses focus; `globals.css` hides the ring for `summary[data-pointer]:focus-visible`, so keyboard users still see it.
+
 ### Surfaces and palette (`app/globals.css`)
 The app runs on a cool graphite scale (`--color-void #09090b` → `--color-hover #27272d`) with an **iris** accent (`--color-accent #9d8cff`, `-strong #b6a9ff`, `-soft #1d1a33`), chosen for contrast (faint text stays ≥ 4.5:1 on panels). The marketing page (`.l-page` in `landing.css`) keeps its ember accent. `.surface-pop` is the one look for popovers and menus (translucent panel, strong hairline, deep shadow, backdrop blur) and `.pop-in` / `.fade-in` are their entrance animations.
 
