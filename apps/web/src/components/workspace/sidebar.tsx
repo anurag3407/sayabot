@@ -512,6 +512,19 @@ export function AppSidebar({
     return () => window.removeEventListener("keydown", onKeyDown)
   }, [])
 
+  // ⌘N / Ctrl+N: new bot.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key.toLowerCase() !== "n" || !(event.metaKey || event.ctrlKey) || event.shiftKey || event.altKey) return
+      // The sidebar is mounted twice (desktop and phone drawer); only the visible one answers.
+      if (!searchInput.current?.offsetParent) return
+      event.preventDefault()
+      router.push(`${base}/agents/new`)
+    }
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [router, base])
+
   const needle = query.trim().toLowerCase()
   const matches = useCallback(
     (item: ChatListItem) =>
@@ -591,15 +604,24 @@ export function AppSidebar({
         <div className="min-w-0 flex-1 [-webkit-app-region:no-drag]">
           <WorkspaceSwitcher org={org} orgs={orgs} role={role} />
         </div>
-        <Link
-          href={`${base}/chats/new`}
-          onClick={onNavigate}
-          aria-label="New chat"
-          title="New chat"
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-muted transition-colors hover:bg-white/5 hover:text-text [-webkit-app-region:no-drag]"
+        <DetailsMenu
+          className="relative shrink-0 [-webkit-app-region:no-drag]"
+          summaryLabel="New bot or group chat"
+          summaryClassName="grid h-9 w-9 cursor-pointer list-none place-items-center rounded-xl text-muted transition-colors hover:bg-white/5 hover:text-text"
+          summary={<Plus className="h-[18px] w-[18px]" />}
         >
-          <Plus className="h-[18px] w-[18px]" />
-        </Link>
+          <div className={cn(popover, "right-0 top-full mt-1 w-56")}>
+            <Link href={`${base}/agents/new`} onClick={onNavigate} className={popoverItem}>
+              <Bot className="h-4 w-4 text-faint" />
+              <span className="flex-1">New bot</span>
+              <kbd className="rounded-md border border-line-strong px-1.5 font-sans text-[10.5px] text-faint">⌘N</kbd>
+            </Link>
+            <Link href={`${base}/chats/new`} onClick={onNavigate} className={popoverItem}>
+              <Users className="h-4 w-4 text-faint" />
+              New group chat
+            </Link>
+          </div>
+        </DetailsMenu>
       </div>
 
       <div className="relative shrink-0 px-2.5">
@@ -675,9 +697,19 @@ export function AppSidebar({
           </Section>
         ) : null}
 
-        {groupChats.length ? (
+        {groupChats.length || !needle ? (
           <Section id="groups" label="Group chats" action={sectionAction(`${base}/chats/new`, "New group chat")}>
             <ul className="space-y-0.5">{groupChats.map(row)}</ul>
+            {!groupChats.length && !needle ? (
+              <Link
+                href={`${base}/chats/new`}
+                onClick={onNavigate}
+                className="mx-2 mt-1 flex items-center gap-2 rounded-xl border border-dashed border-line-strong px-3 py-2.5 text-[13px] text-muted hover:border-faint hover:text-text"
+              >
+                <Plus className="h-4 w-4" />
+                Start a group chat and invite bots
+              </Link>
+            ) : null}
           </Section>
         ) : null}
 

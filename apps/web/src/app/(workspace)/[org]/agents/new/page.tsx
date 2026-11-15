@@ -2,10 +2,9 @@ import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import { requireOrgAccess } from "@/lib/auth"
 import { createAdminClient } from "@/lib/supabase/admin"
-import { listProviderKeys, listRooms } from "@/lib/queries"
-import { BotWizard, type TemplateSummary } from "@/components/agents/bot-wizard/wizard"
+import { NewBotForm, type BotTemplate } from "@/components/agents/new-bot-form"
 
-export const metadata: Metadata = { title: "New Bot" }
+export const metadata: Metadata = { title: "New bot" }
 
 export default async function NewBotPage({
   params,
@@ -15,57 +14,43 @@ export default async function NewBotPage({
   searchParams: Promise<{ template?: string; room?: string }>
 }) {
   const { org: orgSlug } = await params
-  const { template: initialTemplateSlug, room: initialRoomId } = await searchParams
+  const { template: templateParam, room: roomParam } = await searchParams
   const access = await requireOrgAccess(orgSlug)
   if (!access) notFound()
 
   const admin = createAdminClient()
-
-  // 1. Fetch templates (both curated where org_id IS NULL and custom for this org)
-  const { data: rawTemplates } = await admin
-    .from("agent_templates")
-    .select("*")
-    .or(`org_id.is.null,org_id.eq.${access.org.id}`)
-    .order("created_at", { ascending: true })
-
-  const templates: TemplateSummary[] = (rawTemplates ?? []).map((t) => ({
-    id: t.id,
-    slug: t.slug,
-    name: t.name,
-    description: t.description,
-    category: t.category,
-    defaultCapabilities: t.default_capabilities,
-    defaultModel: t.default_model,
-    systemPrompt: t.system_prompt,
-    secretSlots: t.secret_slots ?? [],
-    starterTasks: t.starter_tasks ?? [],
-  }))
-
-  // 2. Fetch provider keys and rooms
-  const [providerKeys, rooms] = await Promise.all([
-    listProviderKeys(access.org.id),
-    listRooms(access.org.id),
+  const [{ data: rawTemplates }, { data: room }] = await Promise.all([
+    admin
+      .from("agent_templates")
+      .select("id, slug, name, description, system_prompt, default_capabilities")
+      .or(`org_id.is.null,org_id.eq.${access.org.id}`)
+      .order("created_at", { ascending: true }),
+    roomParam
+      ? admin.from("rooms").select("id, name, org_id, kind").eq("id", roomParam).maybeSingle()
+      : Promise.resolve({ data: null }),
   ])
 
-  // 3. Fetch org vault secrets
-  const { data: rawSecrets } = await admin
-    .from("vault_secrets")
-    .select("id, label, kind, last4")
-    .eq("org_id", access.org.id)
-    .order("created_at", { ascending: false })
-
-  const vaultSecrets = rawSecrets ?? []
+  const templates: BotTemplate[] = (rawTemplates ?? []).map((t) => ({
+    id: t.id,
+    name: t.name,
+    description: t.description ?? "",
+    systemPrompt: t.system_prompt ?? "",
+    defaultCapabilities: t.default_capabilities ?? null,
+  }))
+  // From the Marketplace: start from that template.
+  const preselected = templateParam
+    ? (rawTemplates ?? []).find((t) => t.slug === templateParam || t.id === templateParam)
+    : undefined
+  const inRoom = room && room.org_id === access.org.id && room.kind !== "dm" ? room : null
 
   return (
-    <div className="h-full overflow-y-auto bg-background">
-      <BotWizard
+    <div className="h-full overflow-y-auto">
+      <NewBotForm
         orgSlug={orgSlug}
         templates={templates}
-        providerKeys={providerKeys.map((k) => ({ id: k.id, provider: k.provider, label: k.label }))}
-        rooms={rooms.filter((r) => r.kind !== "dm").map((r) => ({ id: r.id, name: r.name }))}
-        vaultSecrets={vaultSecrets}
-        initialTemplateSlug={initialTemplateSlug}
-        initialRoomId={initialRoomId}
+        initialTemplateId={preselected?.id}
+        roomId={inRoom?.id}
+        roomName={inRoom?.name}
       />
     </div>
   )

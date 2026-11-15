@@ -1,11 +1,18 @@
 "use server"
 
 import { z } from "zod"
-import { DEFAULT_CAPABILITIES, isWorksOn, parseCapabilities, redactSecrets, type WorksOn } from "@sayabot/core"
+import {
+  DEFAULT_CAPABILITIES,
+  isWorksOn,
+  parseCapabilities,
+  redactSecrets,
+  type AgentCapabilities,
+  type WorksOn,
+} from "@sayabot/core"
 import { generateWebhookSecret } from "@sayabot/core/server"
 import { sealSecret } from "@sayabot/llm"
-import { randomBytes } from "node:crypto"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { ensureBotDmRoom } from "@/lib/bot-dm"
 import { planGate } from "@/lib/plan-limits"
 import { getKek } from "@/lib/env"
 import { headers } from "next/headers"
@@ -266,161 +273,168 @@ export async function testAgent(orgSlug: string, agentId: string): Promise<Actio
   })
 }
 
-export async function createBotFromTemplate(
-  _prev: ActionResult | null,
-  formData: FormData,
-): Promise<ActionResult> {
-  const orgSlug = field(formData, "orgSlug")
-  const check = await adminOrgAccess(orgSlug)
+/** "Research Buddy!" → "research-buddy". Always a valid handle, even for names with no letters. */
+function handleFromName(name: string): string {
+  const slug = name
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 32)
+    .replace(/-+$/, "")
+  const base = /^[a-z]/.test(slug) ? slug : `bot-${slug}`.replace(/-+$/, "")
+  return RESERVED_HANDLES.has(base) ? `${base}-bot` : base
+}
+
+/**
+ * New bot, in one step: a name, what it should do, and the AI it runs on (a provider account
+ * from the picker, Saya AI, or an app on your Mac). The bot is not put in any group chat; its
+ * own chat with you opens straight away. From a group chat's "Add bot", it joins that chat too.
+ */
+export async function createBotAction(input: {
+  orgSlug: string
+  name: string
+  instructions?: string
+  /** Picker account: a provider key id, null for Saya AI, `host:…` for a Mac app. */
+  keyId: string | null
+  model: string | null
+  templateId?: string | null
+  capabilities?: Partial<AgentCapabilities>
+  /** Optional: also add the bot to this group chat. */
+  roomId?: string | null
+}): Promise<ActionResult> {
+  const check = await adminOrgAccess(input.orgSlug)
   if ("error" in check) return fail(check.error)
+  const orgId = check.access.org.id
 
-  const templateId = field(formData, "templateId")
-  const handle = field(formData, "handle").toLowerCase().trim()
-  const displayName = field(formData, "displayName").trim()
-  const providerKeyId = optionalField(formData, "providerKeyId")
-  const model = optionalField(formData, "model")
-  const roomId = optionalField(formData, "roomId")
-  const rawRoomIds = formData.getAll("roomIds").filter((r): r is string => typeof r === "string" && r.length > 0)
-  const roomIds = roomId ? Array.from(new Set([roomId, ...rawRoomIds])) : rawRoomIds
-
-  if (!handleSchema.safeParse(handle).success) {
-    return fail("Handle must be lowercase letters, numbers and hyphens, starting with a letter")
-  }
-  if (RESERVED_HANDLES.has(handle)) return fail("That handle is reserved")
-  if (!displayName || displayName.length > 60) return fail("Display name must be 1 to 60 characters")
-  const agentGate = await planGate(check.access.org.id, "agents")
+  const displayName = input.name.trim()
+  if (!displayName || displayName.length > 60) return fail("Give your bot a name (up to 60 characters)")
+  const agentGate = await planGate(orgId, "agents")
   if (!agentGate.ok) return fail(agentGate.message)
 
   const admin = createAdminClient()
 
-  // 1. Fetch template
-  let template: any = null
-  if (templateId) {
+  let template: { id: string; slug: string; system_prompt: string | null; default_capabilities: unknown } | null = null
+  if (input.templateId) {
     const { data } = await admin
       .from("agent_templates")
-      .select("*")
-      .or(`id.eq.${templateId},slug.eq.${templateId}`)
+      .select("id, slug, org_id, system_prompt, default_capabilities")
+      .eq("id", input.templateId)
       .maybeSingle()
-    template = data
+    if (data && (data.org_id === null || data.org_id === orgId)) template = data
   }
 
-  // 2. Parse capabilities
-  const rawCaps = field(formData, "capabilities")
-  let capabilities = template?.default_capabilities ? { ...template.default_capabilities } : { ...DEFAULT_CAPABILITIES }
-  if (rawCaps) {
-    try {
-      capabilities = { ...capabilities, ...JSON.parse(rawCaps) }
-    } catch {}
-  }
-  capabilities = parseCapabilities(capabilities)
-  // On Sayabot Cloud an agent computer needs room in the plan; without it the agent is still
-  // created, just without a computer, and the reply says why.
+  const requestHeaders = await headers()
+  const resolved = await resolveModelChoice({
+    orgId,
+    userId: check.access.user.id,
+    requestHost: requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host"),
+    keyId: input.keyId,
+    model: input.model,
+  })
+  if (!resolved.ok) return fail(resolved.error)
+  const choice = resolved.choice
+
+  let capabilities = parseCapabilities({
+    ...DEFAULT_CAPABILITIES,
+    ...((template?.default_capabilities as Partial<AgentCapabilities> | null) ?? {}),
+    ...(input.capabilities ?? {}),
+  })
+  // On Sayabot Cloud a computer needs room in the plan; without it the bot is still made.
   let computerNote: string | null = null
   if (capabilities.computer) {
-    const computerGate = await planGate(check.access.org.id, "computers")
+    const computerGate = await planGate(orgId, "computers")
     if (!computerGate.ok) {
       capabilities = { ...capabilities, computer: false }
       computerNote = computerGate.message
     }
   }
 
-  const systemPrompt = field(formData, "systemPrompt") || template?.system_prompt || ""
-  const selectedModel = model || template?.default_model || "anthropic/claude-3-7-sonnet"
+  const params: Record<string, unknown> = {}
+  if (choice.runner) params.runner = choice.runner
+  if (choice.effort) params.effort = choice.effort
+  const systemPrompt = (input.instructions ?? "").trim() || template?.system_prompt || ""
 
-  // 3. Insert agent
+  // The handle is made from the name; a clash gets a number (research-buddy-2).
+  const base = handleFromName(displayName)
+  const { data: taken } = await admin
+    .from("agents")
+    .select("handle")
+    .eq("org_id", orgId)
+    .like("handle", `${base}%`)
+  const takenSet = new Set((taken ?? []).map((row) => row.handle as string))
+  let handle = base
+  for (let n = 2; takenSet.has(handle); n++) handle = `${base.slice(0, 34)}-${n}`
+
   const { data: agent, error: agentError } = await admin
     .from("agents")
     .insert({
-      org_id: check.access.org.id,
+      org_id: orgId,
       handle,
       display_name: displayName,
       kind: "llm",
       system_prompt: systemPrompt,
-      model: selectedModel,
-      provider_key_id: providerKeyId || null,
+      provider_key_id: choice.providerKeyId,
+      model: choice.agentModel,
+      params,
       capabilities,
-      template_id: template?.id || null,
-      owner_user_id: check.access.user.id,
-      visibility: "team",
-      room_ids: roomIds,
+      template_id: template?.id ?? null,
+      owner_user_id: choice.macOwnerUserId ?? check.access.user.id,
     })
-    .select()
+    .select("id, handle, display_name")
     .single()
-
   if (agentError || !agent) {
-    return fail(errorMessage(agentError) || "Failed to create agent")
+    return fail(agentError?.code === "23505" ? "A bot with that name was just made. Try again." : errorMessage(agentError))
   }
 
-  // 4. Link rooms
-  for (const rid of roomIds) {
-    await admin.from("room_agents").insert({
-      room_id: rid,
-      agent_id: agent.id,
-    })
-  }
-
-  // 5. Initialize computer if computer capability is enabled
   if (capabilities.computer) {
     await admin.from("agent_computers").insert({
       agent_id: agent.id,
-      org_id: check.access.org.id,
-      profile: capabilities.browser ? "browser" : "standard",
+      org_id: orgId,
+      profile: capabilities.computer.profile,
       status: "none",
       volume: `saaya-bot-${agent.id}`,
     })
   }
 
-  // 6. Bind secret slots if provided
-  const rawSecretBindings = field(formData, "secretBindings")
-  if (rawSecretBindings && template?.secret_slots) {
-    try {
-      const bindings = JSON.parse(rawSecretBindings) as Record<string, string>
-      for (const slot of template.secret_slots) {
-        const secretId = bindings[slot.name]
-        if (secretId) {
-          const placeholder = `saaya_ph_${randomBytes(16).toString("hex")}`
-          await admin.from("agent_secret_grants").insert({
-            org_id: check.access.org.id,
-            agent_id: agent.id,
-            secret_id: secretId,
-            env_name: slot.name,
-            placeholder,
-            allowed_hosts: slot.allowedHosts ?? [],
-            inject: slot.inject ?? { mode: "header" },
-            requires_approval: false,
-          })
-        }
-      }
-    } catch (e) {
-      console.warn("[createBotFromTemplate] failed to bind secrets", e)
+  // From a group chat's "Add bot": join that chat as well.
+  let path: string | null = null
+  if (input.roomId) {
+    const { data: room } = await admin.from("rooms").select("id, org_id, kind").eq("id", input.roomId).maybeSingle()
+    if (room && room.org_id === orgId && room.kind !== "dm") {
+      const { data: last } = await admin
+        .from("room_agents")
+        .select("position")
+        .eq("room_id", room.id)
+        .order("position", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      await admin
+        .from("room_agents")
+        .insert({ room_id: room.id, agent_id: agent.id, position: (last?.position ?? -1) + 1 })
+      path = `/${input.orgSlug}/r/${room.id}`
     }
   }
-
-  // 7. Starter task if provided
-  const starterTitle = field(formData, "starterTaskTitle").trim()
-  const starterDesc = field(formData, "starterTaskDescription").trim()
-  if (starterTitle && roomIds[0]) {
-    await admin.from("tasks").insert({
-      room_id: roomIds[0],
-      title: starterTitle,
-      description: starterDesc || null,
-      status: "open",
-      assignee_agent_id: agent.id,
-      lead_agent_id: agent.id,
+  if (!path) {
+    const dmId = await ensureBotDmRoom({
+      orgId,
+      userId: check.access.user.id,
+      agentId: agent.id,
+      agentName: agent.display_name,
     })
+    path = `/${input.orgSlug}/r/${dmId}`
   }
 
   await audit({
-    orgId: check.access.org.id,
+    orgId,
     actorId: check.access.user.id,
-    action: "agent.created_from_template",
+    action: "agent.created",
     target: agent.handle,
-    metadata: { templateSlug: template?.slug, agentId: agent.id },
+    metadata: { agentId: agent.id, templateSlug: template?.slug ?? null, model: choice.label },
   })
-
-  revalidateOrg(orgSlug)
-  const created = ok(`@${agent.handle} created successfully!`, { agent })
-  return computerNote ? { ...created, warning: `Created without its own computer. ${computerNote}` } : created
+  revalidateOrg(input.orgSlug)
+  const created = ok(`${agent.display_name} is ready`, { agentId: agent.id, handle: agent.handle, path })
+  return computerNote ? { ...created, warning: `Made without its own computer. ${computerNote}` } : created
 }
 
 /**
