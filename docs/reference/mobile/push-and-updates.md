@@ -17,7 +17,7 @@ Source files: `src/core/push.ts`, `src/hooks/useAppUpdates.ts`
 `configureNotifications()` (called once from `SignedInEffects` after sign-in, see [Overview](overview.md)) sets up:
 
 - **Android channels** (`push.ts:27-39`):
-  - `"agents"` — "Questions and approvals", `AndroidImportance.HIGH`, light color `#ff5d6c` (matching the app's notification accent from `app.json`), vibration pattern `[0, 180, 120, 180]`.
+  - `"agents"` — "Questions and approvals", `AndroidImportance.HIGH`, light color `#9d8cff` (matching the app's notification accent from `app.json`), vibration pattern `[0, 180, 120, 180]`.
   - `"status"` — "Agent activity", `AndroidImportance.LOW`, `showBadge: false` (hosts the working-status notification).
 - **iOS/Android interaction categories** (`push.ts:40-52`):
   - `"question"` — an **"Answer"** button with an inline text input (`submitButtonTitle: "Send"`, placeholder "Your answer") and an **"Open"** button; both `opensAppToForeground: true`.
@@ -75,7 +75,7 @@ Android-only: an ongoing, sticky, low-priority notification (identifier `"agent-
 
 - **Android `POST_NOTIFICATIONS`** is declared in `app.json` (`app.json:34`), required on Android 13+ before any channel or notification works; `configureNotifications()` only creates the channels and categories, while runtime permission is requested by `enablePush` (or pre-granted by the OS install-time default on older versions).
 - **iOS Face ID permission string** ("Sayabot uses Face ID to keep your chats private when App lock is on.") comes from the `expo-local-authentication` plugin, unrelated to push but configured alongside it in `app.json:62-66`.
-- The notification icon and accent color for Android notifications come from the `expo-notifications` plugin config (`./assets/notification-icon.png`, color `#ff5d6c`) — the same coral used for the `"agents"` channel light color (`app.json:69-74`).
+- The notification icon and accent color for Android notifications come from the `expo-notifications` plugin config (`./assets/notification-icon.png`, color `#9d8cff`) — the same iris used for the `"agents"` channel light color (`app.json:69-74`).
 - `SignedInEffects` also registers the cold-start response listener once per sign-in and removes it on unmount, so a stale listener cannot double-handle taps after a server switch restart (`RootNavigator.tsx:38-43`).
 
 ---

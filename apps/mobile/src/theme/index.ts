@@ -2,36 +2,36 @@ import { Platform } from "react-native"
 
 /**
  * Legacy palette for the older screens (Tasks, Settings, Computers). Same keys as before,
- * now in Sayabot's own brand (warm ink + coral) so every screen matches the new design system
+ * now in Sayabot's own palette (cool graphite + iris) so every screen matches the new design system
  * in src/ui. New screens use useTheme() from src/ui/theme instead.
  */
 export const colors = {
-  background: "#0b0b0c",
-  backgroundSecondary: "#111113",
-  surface: "#161618",
-  surfaceLight: "#1c1c1f",
-  surfaceElevated: "#232326",
+  background: "#09090b",
+  backgroundSecondary: "#111114",
+  surface: "#17171b",
+  surfaceLight: "#1c1c21",
+  surfaceElevated: "#1f1f24",
 
-  border: "#2a2a2e",
-  borderSubtle: "#212124",
-  borderLight: "#3a3a40",
+  border: "#2a2a31",
+  borderSubtle: "#232329",
+  borderLight: "#34343c",
 
-  primary: "#ff5d6c",
-  primaryBright: "#ff7a86",
-  primaryDark: "#c63e4f",
-  primaryMuted: "rgba(255, 93, 108, 0.14)",
-  primaryGlow: "rgba(255, 93, 108, 0.25)",
+  primary: "#9d8cff",
+  primaryBright: "#b6a9ff",
+  primaryDark: "#6d5ce8",
+  primaryMuted: "rgba(157, 140, 255, 0.14)",
+  primaryGlow: "rgba(157, 140, 255, 0.25)",
 
-  bubbleHuman: "#3a1b20",
-  bubbleHumanBorder: "#5a2a31",
-  bubbleAgent: "#1c1c1f",
-  bubbleAgentBorder: "#2a2a2e",
+  bubbleHuman: "#241f45",
+  bubbleHumanBorder: "#3a3270",
+  bubbleAgent: "#1c1c21",
+  bubbleAgentBorder: "#2a2a31",
   bubbleSystem: "#141416",
 
-  textPrimary: "#f4f3f1",
-  textSecondary: "#a9a9b0",
-  textMuted: "#85858d",
-  textInverse: "#0b0b0c",
+  textPrimary: "#ededf0",
+  textSecondary: "#a3a3ad",
+  textMuted: "#8b8b96",
+  textInverse: "#09090b",
   textPlaceholder: "#6d6d75",
 
   accentCyan: "#5b9df5",

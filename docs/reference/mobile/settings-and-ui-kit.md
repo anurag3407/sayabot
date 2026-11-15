@@ -66,13 +66,13 @@ Note the split: "Reset this app" clears only `@sayabot/settings_v1`; the paired 
 
 ### Active design system (`src/ui/theme.ts`)
 
-`Theme` is a 24-token interface (`dark`, `bg`, `surface`, `card`, `raised`, `line`, `lineStrong`, `text`, `muted`, `faint`, `accent`, `accentPressed`, `accentSoft`, `onAccent`, `ok`/`warn`/`danger` + soft variants, `overlay`, `bubbleMine`/`bubbleMineText`/`bubbleTheirs`) with two palettes: `darkTheme` (ink `#0b0b0c`, coral accent `#ff5d6c`) and `lightTheme` (warm paper `#f6f5f3`, accent `#e5485a`) (`theme.ts:9-88`).
+`Theme` is a 24-token interface (`dark`, `bg`, `surface`, `card`, `raised`, `line`, `lineStrong`, `text`, `muted`, `faint`, `accent`, `accentPressed`, `accentSoft`, `onAccent`, `ok`/`warn`/`danger` + soft variants, `overlay`, `bubbleMine`/`bubbleMineText`/`bubbleTheirs`) with two palettes: `darkTheme` (graphite `#09090b`, iris accent `#9d8cff`) and `lightTheme` (cool paper `#f5f5f7`, accent `#6d5ce8`), matching the web app's palette (`theme.ts:9-88`).
 
 `useTheme()` resolves the palette from `settings.themeMode` and the OS `useColorScheme()`: `"light"` forces light, `"system"` follows the OS, `"oled"` returns dark with pure-black `bg`/`surface`/`card`, and anything else (including `"emerald"`) falls back to dark (`theme.ts:90-98`). Screens never hardcode hex — they read tokens here (`theme.ts:6`). Shared layout tokens: `space` (`xs 4 … xxl 28`) and `radius` (`sm 10 … pill 999`), plus `IDENTITY` — eight pastel hex values reserved for agent identity (never status) and `hashString()` (FNV-1a) for deterministic color selection (`theme.ts:100-113`).
 
 ### Legacy static palette (`src/theme/index.ts`)
 
-A fixed dark `colors` object (coral brand) with the same keys the remaining legacy-screen imports were built against — `AuthScreen` and `TerminalDrawer` (plus `usePalette`) still import `src/theme`, everything else uses `src/ui/theme` — plus `paletteFor(mode)` that derives OLED (pure black) and emerald (deep green) variants and `fonts.mono` / `spacing` / `radius` constants (`index.ts:4-7`, `51-100`). `paletteFor`'s `ThemeMode` type includes `"emerald"`, which `useTheme()` does not implement — emerald only exists in the legacy system.
+A fixed dark `colors` object (graphite + iris, same values as the active theme) with the same keys the remaining legacy-screen imports were built against — `AuthScreen` and `TerminalDrawer` (plus `usePalette`) still import `src/theme`, everything else uses `src/ui/theme` — plus `paletteFor(mode)` that derives OLED (pure black) and emerald (deep green) variants and `fonts.mono` / `spacing` / `radius` constants (`index.ts:4-7`, `51-100`). `paletteFor`'s `ThemeMode` type includes `"emerald"`, which `useTheme()` does not implement — emerald only exists in the legacy system.
 
 ### Legacy `usePalette` hook (`src/hooks/usePalette.ts`)
 
@@ -82,12 +82,12 @@ Returns `paletteFor(settings.themeMode)` — the static legacy palette — inste
 
 | Token | Dark (`darkTheme`) | Light (`lightTheme`) |
 | :-- | :-- | :-- |
-| `bg` / `surface` / `card` | `#0b0b0c` / `#121214` / `#18181b` | `#f6f5f3` / `#ffffff` / `#ffffff` |
-| `raised` / `line` / `lineStrong` | `#222225` / `#26262a` / `#36363c` | `#efeeeb` / `#e7e5e1` / `#d6d3ce` |
-| `text` / `muted` / `faint` | `#f4f3f1` / `#a9a9b0` / `#7c7c85` | `#18181b` / `#5e5e66` / `#8b8b93` |
-| `accent` / `onAccent` | `#ff5d6c` / `#0b0b0c` | `#e5485a` / `#ffffff` |
-| `bubbleMine` / `bubbleMineText` / `bubbleTheirs` | `#ff5d6c` / `#160a0c` / `#1c1c1f` | `#e5485a` / `#ffffff` / `#ffffff` |
-| `ok` / `warn` / `danger` | `#7fce95` / `#e6bc6a` / `#f0776f` | `#2e9a59` / `#b07619` / `#d64545` |
+| `bg` / `surface` / `card` | `#09090b` / `#111114` / `#17171b` | `#f5f5f7` / `#ffffff` / `#ffffff` |
+| `raised` / `line` / `lineStrong` | `#1f1f24` / `#232329` / `#34343c` | `#ededf1` / `#e4e4ea` / `#d2d2db` |
+| `text` / `muted` / `faint` | `#ededf0` / `#a3a3ad` / `#8b8b96` | `#18181b` / `#5c5c66` / `#7a7a85` |
+| `accent` / `onAccent` | `#9d8cff` / `#09090b` | `#6d5ce8` / `#ffffff` |
+| `bubbleMine` / `bubbleMineText` / `bubbleTheirs` | `#9d8cff` / `#0f0b24` / `#1c1c21` | `#6d5ce8` / `#ffffff` / `#ffffff` |
+| `ok` / `warn` / `danger` | `#6fd39a` / `#e8c06a` / `#f2756e` | `#2e9a59` / `#a06a12` / `#d64545` |
 | `overlay` | `rgba(0, 0, 0, 0.6)` | `rgba(20, 20, 24, 0.35)` |
 
 The OLED override only darkens three tokens: `bg: "#000000"`, `surface: "#050505"`, `card: "#0d0d0f"`; everything else stays dark-theme (`theme.ts:96`).

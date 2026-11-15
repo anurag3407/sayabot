@@ -28,7 +28,7 @@ export async function configureNotifications(): Promise<void> {
     await Notifications.setNotificationChannelAsync("agents", {
       name: "Questions and approvals",
       importance: Notifications.AndroidImportance.HIGH,
-      lightColor: "#ff5d6c",
+      lightColor: "#9d8cff",
       vibrationPattern: [0, 180, 120, 180],
     })
     await Notifications.setNotificationChannelAsync("status", {

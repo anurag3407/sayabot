@@ -38,7 +38,7 @@ Source files: `apps/desktop/src/main.ts`, `src/preload.ts`, `src/remote-preload.
 
 Two content modes share this window:
 
-- **Controller page** — `loadLocalHtml` (`src/main.ts:290`) loads `dist/renderer/index.html`, falling back to `src/renderer/index.html` when running from source. The page is the start screen: server choice, guest start, sign-in card, and runner status (it calls the `sayabotDesktop` bridge).
+- **Controller page** — `loadLocalHtml` (`src/main.ts:290`) loads `dist/renderer/index.html`, falling back to `src/renderer/index.html` when running from source. The page is the start screen: server choice, guest start, sign-in card, and runner status (it calls the `sayabotDesktop` bridge). It uses the app's graphite + iris palette and shows the live mascot trio (`renderer/mascots/{pip,nova,moss}-live.svg`, exported by `pnpm --filter @sayabot/web brand:mascots`) in place of a static logo; the trio hops while a guest workspace is being set up or browser sign-in is pending. The text links are real `<button>`s and errors are `role="alert"`.
 - **Workspace** — `openWorkspaceInWindow` (`src/main.ts:761`) refreshes the session and loads `<serverUrl>/auth/complete#access_token=…&refresh_token=…`, so the web app picks up the login from the URL hash with no password entry. On launch, an existing session opens the workspace directly (`src/main.ts:668-676`).
 
 Menu items "Return to Controller" (⌘H) and "Open Workspace in Window" (⌘W) flip between the two; `changeServerFromMenu` (`src/main.ts:299`) signs out, tears down host/runner/vault/MCP singletons, resets `serverChosen`, and reloads the controller. `app:restart` IPC does **not** relaunch the app — it reloads the workspace page ignoring cache (`src/main.ts:996-998`).

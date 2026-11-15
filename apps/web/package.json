@@ -9,6 +9,7 @@
     "start": "dotenv -e ../../.env -- next start -p 3000",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
+    "brand:mascots": "tsx --tsconfig scripts/tsconfig.json scripts/export-mascots.ts",
     "test": "vitest run"
   },
   "dependencies": {

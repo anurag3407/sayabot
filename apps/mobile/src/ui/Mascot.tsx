@@ -5,7 +5,7 @@ import { hashString, IDENTITY, useTheme } from "./theme"
 
 /**
  * Each agent's face: a soft shape in its own colour with two eyes, seeded from its handle so
- * it never changes. A coral ring pulses while it works; a dot shows it's waiting on you.
+ * it never changes. An accent ring pulses while it works; a dot shows it's waiting on you.
  */
 export function Mascot({
   seed,

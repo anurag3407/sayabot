@@ -6,50 +6,58 @@
   <title>Sayabot for Mac</title>
   <style>
     :root {
-      --bg: #070907;
-      --card-bg: #0f130f;
-      --card-border: rgba(255, 255, 255, 0.08);
-      --accent: #10b981;
-      --accent-glow: rgba(16, 185, 129, 0.2);
-      --text: #f3f4f6;
-      --text-muted: #9ca3af;
-      --text-faint: #6b7280;
+      color-scheme: dark;
+      --bg: #09090b;
+      --card-bg: #111114;
+      --raised: #17171b;
+      --card-border: rgba(255, 255, 255, 0.07);
+      --line-strong: rgba(255, 255, 255, 0.12);
+      --accent: #9d8cff;
+      --accent-strong: #b6a9ff;
+      --accent-glow: rgba(157, 140, 255, 0.16);
+      --ok: #6fd39a;
+      --danger: #f2756e;
+      --text: #ededf0;
+      --text-muted: #a3a3ad;
+      --text-faint: #8b8b96;
     }
 
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-family: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       user-select: none;
     }
 
     body {
-      background-color: var(--bg);
+      background:
+        radial-gradient(60% 45% at 50% 0%, rgba(157, 140, 255, 0.10), transparent 70%),
+        var(--bg);
       color: var(--text);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       overflow: hidden;
+      -webkit-font-smoothing: antialiased;
     }
 
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    /* The window has no title bar: this strip is what you drag. */
     .titlebar {
-      height: 48px;
+      height: 40px;
+      flex-shrink: 0;
       -webkit-app-region: drag;
       display: flex;
       align-items: center;
       justify-content: center;
-      border-bottom: 1px solid var(--card-border);
-      background: rgba(15, 19, 15, 0.85);
-      backdrop-filter: blur(12px);
     }
 
     .titlebar-title {
-      font-size: 12.5px;
-      font-weight: 600;
-      letter-spacing: 0.04em;
-      color: var(--text-muted);
-      text-transform: uppercase;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-faint);
     }
 
     .main-content {
@@ -58,41 +66,55 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 32px;
+      padding: 12px 32px 40px;
       overflow-y: auto;
     }
 
     .card {
       background: var(--card-bg);
       border: 1px solid var(--card-border);
-      border-radius: 24px;
-      padding: 38px;
+      border-radius: 22px;
+      padding: 34px 36px 30px;
       width: 100%;
-      max-width: 500px;
-      box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.6);
+      max-width: 460px;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 30px 70px -24px rgba(0, 0, 0, 0.8);
       text-align: center;
-      animation: fadeIn 0.25s ease-out;
+      animation: fadeIn 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
     }
 
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(6px); }
-      to { opacity: 1; transform: translateY(0); }
+      from { opacity: 0; transform: translateY(8px) scale(0.99); }
+      to { opacity: 1; transform: none; }
     }
 
-    .logo-container {
-      width: 72px;
-      height: 72px;
-      margin: 0 auto 18px;
+    /* Three Sayas; the rare one in the middle. The lamp passes along while something loads. */
+    .crew {
+      position: relative;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 6px;
+      height: 92px;
+      margin: 0 auto 20px;
     }
-
-    .logo-container img {
-      width: 72px;
-      height: 72px;
-      display: block;
+    .crew::before {
+      content: "";
+      position: absolute;
+      left: 50%; top: 55%;
+      width: 240px; height: 110px;
+      transform: translate(-50%, -50%);
+      background: radial-gradient(closest-side, rgba(157, 140, 255, 0.22), transparent);
+      pointer-events: none;
     }
+    .crew img { position: relative; display: block; width: 58px; height: auto; }
+    .crew img.lead { width: 84px; }
+    .crew.busy img { animation: crew-hop 0.9s cubic-bezier(0.3, 0.7, 0.4, 1) infinite; }
+    .crew.busy img:nth-child(2) { animation-delay: 0.3s; }
+    .crew.busy img:nth-child(3) { animation-delay: 0.6s; }
+    @keyframes crew-hop { 0%, 60%, 100% { transform: translateY(0); } 25% { transform: translateY(-8px); } }
 
     h1 {
-      font-size: 23px;
+      font-size: 22px;
       font-weight: 600;
       letter-spacing: -0.02em;
       margin-bottom: 6px;
@@ -101,7 +123,7 @@
     p.subtitle {
       font-size: 13.5px;
       color: var(--text-muted);
-      line-height: 1.5;
+      line-height: 1.55;
       margin-bottom: 22px;
     }
 
@@ -111,7 +133,7 @@
       justify-content: center;
       gap: 10px;
       background: #ffffff;
-      color: #000000;
+      color: #09090b;
       border: none;
       padding: 12px 22px;
       border-radius: 12px;
@@ -119,52 +141,43 @@
       font-weight: 600;
       cursor: pointer;
       width: 100%;
-      transition: all 0.15s ease;
-      box-shadow: 0 4px 14px rgba(255, 255, 255, 0.08);
+      transition: background 0.15s ease, transform 0.15s ease;
     }
 
-    .btn:hover {
-      background: #e5e7eb;
-      transform: translateY(-1px);
-    }
-
-    .btn:active {
-      transform: translateY(0);
-    }
+    .btn:hover { background: #e9e9ee; }
+    .btn:active { transform: scale(0.99); }
+    .btn:disabled { cursor: default; }
 
     .btn-secondary {
-      background: rgba(255, 255, 255, 0.05);
+      background: transparent;
       color: var(--text);
-      border: 1px solid var(--card-border);
-      box-shadow: none;
+      border: 1px solid var(--line-strong);
       margin-top: 10px;
       font-weight: 500;
     }
 
-    .btn-secondary:hover {
-      background: rgba(255, 255, 255, 0.09);
-    }
+    .btn-secondary:hover { background: rgba(255, 255, 255, 0.05); }
 
     .server-pill {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 7px;
       font-size: 11.5px;
-      color: var(--accent);
-      background: var(--accent-glow);
-      border: 1px solid rgba(16, 185, 129, 0.25);
-      padding: 4px 12px;
+      color: var(--text-muted);
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--card-border);
+      padding: 4px 12px 4px 10px;
       border-radius: 100px;
-      margin-bottom: 18px;
-      font-family: ui-monospace, monospace;
+      margin-bottom: 16px;
+      font-family: "Geist Mono", ui-monospace, monospace;
     }
 
     .status-dot {
       width: 6px;
       height: 6px;
       border-radius: 50%;
-      background: var(--accent);
-      box-shadow: 0 0 8px var(--accent);
+      background: var(--ok);
+      box-shadow: 0 0 8px rgba(111, 211, 154, 0.7);
     }
 
     .info-grid {
@@ -176,16 +189,14 @@
     }
 
     .info-box {
-      background: rgba(255, 255, 255, 0.02);
+      background: var(--raised);
       border: 1px solid var(--card-border);
       border-radius: 12px;
       padding: 12px 14px;
     }
 
     .info-label {
-      font-size: 10.5px;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
+      font-size: 11px;
       color: var(--text-faint);
       margin-bottom: 3px;
     }
@@ -200,7 +211,8 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      background: rgba(255, 255, 255, 0.025);
+      gap: 12px;
+      background: var(--raised);
       border: 1px solid var(--card-border);
       border-radius: 12px;
       padding: 12px 16px;
@@ -208,39 +220,19 @@
       text-align: left;
     }
 
-    .toggle-title {
-      font-size: 12.5px;
-      font-weight: 500;
-    }
+    .toggle-title { font-size: 12.5px; font-weight: 500; }
+    .toggle-sub { font-size: 11.5px; color: var(--text-muted); margin-top: 1px; }
 
-    .toggle-sub {
-      font-size: 11px;
-      color: var(--text-muted);
-      margin-top: 1px;
-    }
-
-    .switch {
-      position: relative;
-      display: inline-block;
-      width: 40px;
-      height: 22px;
-    }
-
-    .switch input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-
+    .switch { position: relative; display: inline-block; flex-shrink: 0; width: 40px; height: 22px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
     .slider {
       position: absolute;
       cursor: pointer;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background-color: rgba(255, 255, 255, 0.1);
-      transition: .2s;
+      inset: 0;
+      background-color: rgba(255, 255, 255, 0.12);
+      transition: 0.2s;
       border-radius: 24px;
     }
-
     .slider:before {
       position: absolute;
       content: "";
@@ -249,78 +241,82 @@
       left: 3px;
       bottom: 3px;
       background-color: white;
-      transition: .2s;
+      transition: 0.2s;
       border-radius: 50%;
     }
+    input:checked + .slider { background-color: var(--accent); }
+    input:checked + .slider:before { transform: translateX(18px); }
+    input:focus-visible + .slider { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-    input:checked + .slider {
-      background-color: var(--accent);
-    }
+    .hidden { display: none !important; }
 
-    input:checked + .slider:before {
-      transform: translateX(18px);
-    }
-
-    .hidden {
-      display: none !important;
-    }
-
+    .links { display: flex; gap: 6px; justify-content: center; align-items: center; margin-top: 16px; }
+    .link-dot { color: var(--text-faint); font-size: 11px; }
     .settings-link {
-      font-size: 11.5px;
+      font: inherit;
+      font-size: 12px;
       color: var(--text-faint);
+      background: none;
+      border: none;
+      border-radius: 6px;
+      padding: 2px 4px;
       cursor: pointer;
-      margin-top: 14px;
       display: inline-block;
-      text-decoration: underline;
     }
-
-    .settings-link:hover {
-      color: var(--text-muted);
-    }
+    .settings-link:hover { color: var(--text); }
 
     /* Start screen: where do you want to use Sayabot? */
     .choice-list { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
     .choice {
       display: flex; align-items: flex-start; gap: 14px; text-align: left; width: 100%;
-      padding: 16px; border-radius: 16px; cursor: pointer;
-      background: rgba(255, 255, 255, 0.02); border: 1px solid var(--card-border);
-      color: var(--text); transition: border-color 0.15s, background 0.15s;
+      padding: 15px 16px; border-radius: 16px; cursor: pointer; font: inherit;
+      background: var(--raised); border: 1px solid var(--card-border);
+      color: var(--text); transition: border-color 0.15s, background 0.15s, transform 0.15s;
     }
-    .choice:hover, .choice:focus-visible { border-color: var(--accent); background: rgba(16, 185, 129, 0.05); outline: none; }
+    .choice:hover { border-color: rgba(157, 140, 255, 0.5); background: rgba(157, 140, 255, 0.06); }
+    .choice:active { transform: scale(0.995); }
+    .choice:disabled { opacity: 0.6; cursor: default; }
     .choice-icon {
       flex-shrink: 0; width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center;
-      background: rgba(255, 255, 255, 0.04); color: var(--accent);
+      background: var(--accent-glow); color: var(--accent);
     }
     .choice-title { font-size: 14.5px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
     .choice-badge {
-      font-size: 10.5px; font-weight: 600; color: var(--accent); background: var(--accent-glow);
-      padding: 2px 7px; border-radius: 99px; letter-spacing: 0.02em;
+      font-size: 10.5px; font-weight: 500; color: var(--accent-strong); background: var(--accent-glow);
+      padding: 2px 8px; border-radius: 99px;
     }
-    .choice-sub { font-size: 12.5px; color: var(--text-muted); line-height: 1.45; margin-top: 3px; }
+    .choice-sub { display: block; font-size: 12.5px; color: var(--text-muted); line-height: 1.45; margin-top: 3px; }
     .server-form { text-align: left; margin: 4px 0 16px; }
     .server-form label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
     .server-input {
       width: 100%; padding: 12px 14px; border-radius: 12px; font-size: 14px; user-select: text;
-      background: rgba(255, 255, 255, 0.03); border: 1px solid var(--card-border); color: var(--text);
+      background: var(--raised); border: 1px solid var(--line-strong); color: var(--text);
     }
+    .server-input::placeholder { color: var(--text-faint); }
     .server-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
-    .server-status { font-size: 12.5px; min-height: 18px; margin: 8px 2px 0; line-height: 1.45; }
-    .server-status.ok { color: var(--accent); }
-    .server-status.error { color: #f87171; }
-    .server-hint { font-size: 11.5px; color: var(--text-faint); margin-top: 10px; line-height: 1.5; }
-    .back-link { display: inline-block; margin-top: 14px; }
+    .server-status { font-size: 12.5px; min-height: 18px; margin: 8px 2px 0; line-height: 1.45; color: var(--text-muted); }
+    .server-status.ok { color: var(--ok); }
+    .server-status.error { color: var(--danger); }
+    .server-hint { font-size: 12px; color: var(--text-faint); margin-top: 12px; line-height: 1.5; }
+    .back-link { margin-top: 12px; }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
   </style>
 </head>
 <body>
   <div class="titlebar">
-    <div class="titlebar-title">SAYABOT DESKTOP</div>
+    <div class="titlebar-title">Sayabot</div>
   </div>
 
   <div class="main-content">
     <!-- First launch: where do you want to use Sayabot? -->
     <div id="welcome-view" class="card hidden">
-      <div class="logo-container">
-        <img src="mark.svg" width="72" height="72" alt="">
+      <div class="crew" aria-hidden="true">
+        <img src="mascots/pip-live.svg" alt="">
+        <img class="lead" src="mascots/nova-live.svg" alt="">
+        <img src="mascots/moss-live.svg" alt="">
       </div>
 
       <div id="choice-step">
@@ -346,7 +342,7 @@
             </span>
           </button>
         </div>
-        <p id="choice-error" class="server-status error hidden"></p>
+        <p id="choice-error" class="server-status error hidden" role="alert"></p>
       </div>
 
       <form id="server-step" class="hidden" autocomplete="off">
@@ -360,14 +356,16 @@
         </div>
         <button id="server-connect" class="btn" type="submit">Connect</button>
         <p class="server-hint">Self-hosting? Your server's Download page has a one-click "Open in Sayabot" link.</p>
-        <span id="server-back" class="settings-link back-link" role="button" tabindex="0">Back</span>
+        <button id="server-back" class="settings-link back-link" type="button">Back</button>
       </form>
     </div>
 
     <!-- Unauthenticated View: Instant local login card -->
     <div id="unauth-view" class="card hidden">
-      <div class="logo-container">
-        <img src="mark.svg" width="72" height="72" alt="">
+      <div class="crew" id="unauth-crew" aria-hidden="true">
+        <img src="mascots/pip-live.svg" alt="">
+        <img class="lead" src="mascots/nova-live.svg" alt="">
+        <img src="mascots/moss-live.svg" alt="">
       </div>
 
       <div class="server-pill">
@@ -380,8 +378,8 @@
         Connect your Mac to your room workspace. All agents sync live with your phone.
       </p>
 
-      <button id="sign-in-btn" class="btn">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <button id="sign-in-btn" class="btn" type="button">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
           <polyline points="10 17 15 12 10 7"></polyline>
           <line x1="15" y1="12" x2="3" y2="12"></line>
@@ -389,15 +387,15 @@
         Sign in with Google or GitHub
       </button>
 
-      <button id="guest-btn" class="btn btn-secondary">
+      <button id="guest-btn" class="btn btn-secondary" type="button">
         Continue without an account
       </button>
-      <p id="guest-error" class="subtitle hidden" style="font-size: 12px; margin-top: 4px;"></p>
+      <p id="guest-error" class="server-status error hidden" role="alert"></p>
 
-      <div style="display: flex; gap: 14px; justify-content: center; align-items: center; margin-top: 14px;">
-        <span id="change-server-link" class="settings-link" style="margin-top: 0;">Change server</span>
-        <span style="color: var(--text-faint); font-size: 11px;">·</span>
-        <span id="unauth-check-updates-link" class="settings-link" style="margin-top: 0;">Check for Updates</span>
+      <div class="links">
+        <button id="change-server-link" class="settings-link" type="button">Change server</button>
+        <span class="link-dot" aria-hidden="true">·</span>
+        <button id="unauth-check-updates-link" class="settings-link" type="button">Check for updates</button>
       </div>
     </div>
 
@@ -405,7 +403,7 @@
     <div id="auth-view" class="card hidden">
       <div class="server-pill">
         <span class="status-dot"></span>
-        <span>Authenticated & Synced</span>
+        <span>Signed in and synced</span>
       </div>
 
       <h1 id="user-display">Sayabot Mac Controller</h1>
@@ -418,7 +416,7 @@
         </div>
         <div class="info-box">
           <div class="info-label">Android Companion</div>
-          <div class="info-val" style="color: var(--accent);">Ready for Approvals</div>
+          <div class="info-val" style="color: var(--ok);">Ready for approvals</div>
         </div>
       </div>
 
@@ -428,7 +426,7 @@
           <div class="toggle-sub">Execute bash & code directly on this Mac</div>
         </div>
         <label class="switch">
-          <input type="checkbox" id="local-runner-toggle" checked>
+          <input type="checkbox" id="local-runner-toggle" checked aria-label="Run bash and code on this Mac">
           <span class="slider"></span>
         </label>
       </div>
@@ -438,17 +436,17 @@
           <div class="toggle-title" id="desktop-version-title">Sayabot for Mac</div>
           <div class="toggle-sub" id="desktop-version-subtitle">Checking version…</div>
         </div>
-        <button id="auth-check-updates-btn" class="btn btn-secondary" style="width: auto; padding: 6px 14px; font-size: 12px; margin-top: 0;">
-          Check for Updates
+        <button id="auth-check-updates-btn" class="btn btn-secondary" type="button" style="width: auto; padding: 6px 14px; font-size: 12px; margin-top: 0;">
+          Check for updates
         </button>
       </div>
 
-      <button id="open-workspace-btn" class="btn">
-        Open Workspace Window
+      <button id="open-workspace-btn" class="btn" type="button">
+        Open workspace
       </button>
 
-      <button id="sign-out-btn" class="btn btn-secondary">
-        Sign Out
+      <button id="sign-out-btn" class="btn btn-secondary" type="button">
+        Sign out
       </button>
     </div>
   </div>
@@ -473,6 +471,7 @@
     const desktopVersionTitle = document.getElementById("desktop-version-title");
     const desktopVersionSubtitle = document.getElementById("desktop-version-subtitle");
     const welcomeView = document.getElementById("welcome-view");
+    const unauthCrew = document.getElementById("unauth-crew");
     const choiceStep = document.getElementById("choice-step");
     const serverStep = document.getElementById("server-step");
     const chooseCloud = document.getElementById("choose-cloud");
@@ -552,9 +551,6 @@
     serverBack.addEventListener("click", () => {
       if (serverCanGoBack) showChoiceStep();
     });
-    serverBack.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") showChoiceStep();
-    });
 
     // Check the address as soon as the person stops typing, so mistakes show early.
     let checkTimer = null;
@@ -617,6 +613,7 @@
         ? "Getting your workspace ready. No account needed. You can save it later."
         : "Connect your Mac to your room workspace. All agents sync live with your phone.";
       signInBtn.classList.toggle("hidden", starting);
+      unauthCrew.classList.toggle("busy", starting);
       if (starting) guestBtn.classList.add("hidden");
       guestBtn.disabled = starting;
     }
@@ -663,11 +660,13 @@
     }
 
     signInBtn.addEventListener("click", async () => {
-      signInBtn.textContent = "Waiting for browser auth…";
+      signInBtn.textContent = "Finish signing in in your browser…";
+      unauthCrew.classList.add("busy");
       await bridge.startBrowserAuth();
       setTimeout(() => {
+        unauthCrew.classList.remove("busy");
         signInBtn.innerHTML = `
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
             <polyline points="10 17 15 12 10 7"></polyline>
             <line x1="15" y1="12" x2="3" y2="12"></line>
