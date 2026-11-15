@@ -3,7 +3,8 @@ import * as path from "node:path"
 import * as fs from "node:fs"
 import * as os from "node:os"
 import { downloadFile, runDetached, stageMacUpdate } from "./mac-install"
-import { DesktopHost } from "./host"
+import { fetchWorkspaceSnapshot, leaveCloudHome, type LocalWorkspaceSnapshot } from "./cloud-handoff"
+import { DesktopHost, loadHostAuth } from "./host"
 import { detectLocalAgents } from "./local-agents"
 import { LocalMcpHost } from "./local-mcp"
 import { LocalRunner, type ApprovalNotice } from "./runner"
@@ -107,9 +108,44 @@ async function checkLegacyServer(url: string): Promise<ServerInfo | null> {
  * Point this Mac at another Sayabot server. Signing in belongs to one server, so switching signs
  * out here and this computer registers again with the new server.
  */
-function useServer(info: ServerInfo): void {
+async function useServer(info: ServerInfo): Promise<void> {
   const config = loadConfig()
   const switching = normalizeServerUrl(config.serverUrl) !== info.url
+  if (switching && info.edition !== "cloud") {
+    const auth = loadHostAuth(config.serverUrl)
+    const file = path.join(app.getPath("userData"), "cloud-home.json")
+    if (auth) {
+      let saved: LocalWorkspaceSnapshot = { bots: [], chats: [], routines: [], keys: [] }
+      try {
+        saved = JSON.parse(fs.readFileSync(file, "utf8")) as LocalWorkspaceSnapshot
+      } catch {
+        // The server still holds the copy when this Mac has no file yet.
+      }
+      const back = await leaveCloudHome({
+        nextEdition: info.edition,
+        serverUrl: auth.serverUrl,
+        hostId: auth.hostId,
+        hostToken: auth.hostToken,
+        snapshot: saved,
+        writeSnapshot: (next) => fs.writeFileSync(file, JSON.stringify(next, null, 2)),
+      }).catch(() => false)
+      if (back) {
+        fs.writeFileSync(
+          path.join(app.getPath("userData"), "cloud-home-return.json"),
+          JSON.stringify({ cloudUrl: config.serverUrl }),
+        )
+      }
+    }
+  }
+  if (switching && info.edition === "cloud") {
+    const auth = loadHostAuth(config.serverUrl)
+    if (auth) {
+      const snapshot = await fetchWorkspaceSnapshot(auth.serverUrl, auth.hostId, auth.hostToken).catch(() => null)
+      if (snapshot) {
+        fs.writeFileSync(path.join(app.getPath("userData"), "cloud-home.json"), JSON.stringify(snapshot, null, 2))
+      }
+    }
+  }
   saveConfig({
     ...config,
     serverUrl: info.url,
@@ -306,7 +342,7 @@ async function connectFromLink(server: string): Promise<void> {
     cancelId: 1,
   })
   if (choice.response !== 0) return
-  useServer(info)
+  await useServer(info)
   if (!mainWindow || mainWindow.isDestroyed()) createWindow()
   else loadLocalHtml()
   mainWindow?.show()
@@ -904,12 +940,12 @@ ipcMain.handle("config:choose-server", async (_event, input: string | null) => {
   if (!info.ok) {
     // Sayabot Cloud being briefly unreachable shouldn't block choosing it.
     if (!input) {
-      useServer({ ok: true, url: DEFAULT_SERVER_URL, name: "Sayabot Cloud", edition: "cloud", guestMode: true })
+      await useServer({ ok: true, url: DEFAULT_SERVER_URL, name: "Sayabot Cloud", edition: "cloud", guestMode: true })
       return { ok: true, url: DEFAULT_SERVER_URL, name: "Sayabot Cloud", guestMode: true }
     }
     return info
   }
-  useServer(input ? info : { ...info, name: "Sayabot Cloud" })
+  await useServer(input ? info : { ...info, name: "Sayabot Cloud" })
   return { ok: true, url: info.url, name: input ? info.name : "Sayabot Cloud", guestMode: info.guestMode }
 })
 

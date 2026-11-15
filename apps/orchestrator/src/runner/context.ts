@@ -1,4 +1,4 @@
-import { debateRoleInstruction, parseCapabilities, type TurnRole } from "@sayabot/core"
+import { debateRoleInstruction, desktopGuidance, desktopHome, parseCapabilities, worksOnFromParams, type TurnRole } from "@sayabot/core"
 import {
   agents,
   canvases,
@@ -336,13 +336,16 @@ export function buildSystemPrompt(args: {
   ]
 
   if (caps.computer) {
+    const worksOn = worksOnFromParams(args.agent.params as Record<string, unknown> | null)
+    const home = desktopHome(worksOn)
     parts.push(
       `Your persistent computer environment:\n` +
-        `- Files stored in /home/bot persist between your turns.\n` +
+        `- Files stored in ${home} persist between your turns.\n` +
         `- Use computer_shell to run bash commands, inspect code, run tests, and manage files.\n` +
         `- Granted secrets appear in your environment as placeholders (e.g. $GITHUB_TOKEN="saaya_ph_..."). You can use them directly in commands (curl, git, SDKs); the Secret Broker automatically swaps real credentials in flight for allowlisted hosts.\n` +
         `- Egress network access is HTTPS only (no SSH, no raw TCP/UDP database connections).\n` +
         `- When you finish a major deliverable (document, design, script), publish it to the room using computer_publish.`,
+      desktopGuidance(worksOn),
     )
   }
 

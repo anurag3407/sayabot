@@ -2,6 +2,14 @@ import { app, BrowserWindow, desktopCapturer, dialog, ipcMain, screen, systemPre
 import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
+import {
+  fetchWorkspaceSnapshot,
+  importWorkspaceSnapshot,
+  computersFromRecord,
+  snapshotHasRecords,
+  syncCloudHandoff,
+  type LocalWorkspaceSnapshot,
+} from "./cloud-handoff"
 import { Injector, KEY_CODES } from "./injector"
 import { measureLocalStorage, type LocalStorageReport } from "./storage"
 
@@ -101,6 +109,38 @@ function parseInput(raw: string): Record<string, unknown> | null {
   }
 }
 
+function rows(value: unknown): Array<{ id: string }> {
+  if (!Array.isArray(value)) return []
+  return value.filter((row): row is { id: string } => Boolean(row) && typeof row === "object" && typeof (row as { id?: unknown }).id === "string")
+}
+
+/** This Mac's copy. A saved file wins; otherwise the bots found on this computer are the snapshot. */
+function readCloudSnapshot(
+  file: string,
+  agents: Array<{ id: string; name: string }>,
+): LocalWorkspaceSnapshot {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(file, "utf8")) as Record<string, unknown>
+    if (parsed && typeof parsed === "object") {
+      return {
+        bots: rows(parsed.bots),
+        chats: rows(parsed.chats),
+        routines: rows(parsed.routines),
+        keys: rows(parsed.keys),
+        computers: computersFromRecord(parsed.computers),
+      }
+    }
+  } catch {
+    // First launch has no file yet.
+  }
+  return {
+    bots: agents.map((agent) => ({ id: agent.id, name: agent.name })),
+    chats: [],
+    routines: [],
+    keys: [],
+  }
+}
+
 export class DesktopHost {
   private auth: HostAuth | null = null
   private timer: NodeJS.Timeout | null = null
@@ -113,6 +153,7 @@ export class DesktopHost {
   private agents: Array<{ id: string; name: string; status: string; version: string | null }> = []
   private storage: LocalStorageReport | null = null
   private lastStorageScan = 0
+  private lastHandoff = 0
   lastReply: HeartbeatReply | null = null
 
   constructor(private deps: HostDeps) {
@@ -216,6 +257,53 @@ export class DesktopHost {
     }
   }
 
+  /** After the plan ends, the copy is imported into the server this Mac uses now, once that server is not Cloud. */
+  private async importReturnedHome(snapshotFile: string, flagFile: string): Promise<void> {
+    if (!this.auth) return
+    let pending: { cloudUrl?: string } | null = null
+    try {
+      pending = JSON.parse(fs.readFileSync(flagFile, "utf8")) as { cloudUrl?: string }
+    } catch {
+      return
+    }
+    if (!pending?.cloudUrl || pending.cloudUrl === this.auth.serverUrl) return
+    const snapshot = readCloudSnapshot(snapshotFile, this.agents)
+    if (!snapshotHasRecords(snapshot)) return
+    const ok = await importWorkspaceSnapshot({
+      serverUrl: this.auth.serverUrl,
+      hostId: this.auth.hostId,
+      hostToken: this.auth.hostToken,
+      snapshot,
+    }).catch(() => false)
+    if (ok) fs.rmSync(flagFile, { force: true })
+  }
+
+  /** Copies this Mac's bots, chats, routines, and keys once when Cloud is ready, and writes them back when the plan ends. */
+  private async maybeCloudHandoff(): Promise<void> {
+    if (!this.auth || Date.now() - this.lastHandoff < 10 * 60_000) return
+    this.lastHandoff = Date.now()
+    const file = path.join(app.getPath("userData"), "cloud-home.json")
+    try {
+      let snapshot = readCloudSnapshot(file, this.agents)
+      if (!snapshot.bots.some((row) => "handle" in row) && !snapshot.chats.some((row) => "name" in row)) {
+        const live = await fetchWorkspaceSnapshot(this.auth.serverUrl, this.auth.hostId, this.auth.hostToken)
+        if (live) snapshot = live
+      }
+      const flag = path.join(app.getPath("userData"), "cloud-home-return.json")
+      await syncCloudHandoff({
+        serverUrl: this.auth.serverUrl,
+        hostId: this.auth.hostId,
+        hostToken: this.auth.hostToken,
+        snapshot,
+        writeSnapshot: (next) => fs.writeFileSync(file, JSON.stringify(next, null, 2)),
+        onCopiedBack: () => fs.writeFileSync(flag, JSON.stringify({ cloudUrl: this.auth?.serverUrl ?? "" })),
+      })
+      await this.importReturnedHome(file, flag)
+    } catch (error) {
+      console.warn("[desktop] cloud copy skipped", error)
+    }
+  }
+
   private async heartbeat(): Promise<void> {
     if (this.beating) return
     this.beating = true
@@ -238,6 +326,7 @@ export class DesktopHost {
       if (!reply) return
       this.lastReply = reply
       this.deps.onHeartbeat?.(reply)
+      void this.maybeCloudHandoff()
       for (const session of reply.sessions) {
         if (this.handled.has(session.id)) continue
         this.handled.add(session.id)

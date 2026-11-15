@@ -1,6 +1,7 @@
 import { getNextCronRun, isValidCron } from "@sayabot/core"
 import { agents, messages, routineRuns, routines, rooms, workspaceConnectors } from "@sayabot/db"
-import { and, eq, lte } from "drizzle-orm"
+import { and, eq, isNull, lte } from "drizzle-orm"
+import { sleepIdleBoats } from "../computers/sleep"
 import { getDb, getPool } from "../db"
 import { enqueueRoomMessage } from "../jobs"
 
@@ -186,7 +187,7 @@ async function scanRoutinesOnce(): Promise<void> {
       timezone: routines.timezone,
     })
     .from(routines)
-    .where(and(eq(routines.enabled, true), eq(routines.lastStatus, "idle")))
+    .where(and(eq(routines.enabled, true), eq(routines.lastStatus, "idle"), isNull(routines.nextRunAt)))
     .limit(20)
 
   for (const item of uninitialized) {
@@ -196,7 +197,7 @@ async function scanRoutinesOnce(): Promise<void> {
         await db
           .update(routines)
           .set({ nextRunAt: nextRun, updatedAt: now })
-          .where(and(eq(routines.id, item.id), eq(routines.lastStatus, "idle")))
+          .where(and(eq(routines.id, item.id), eq(routines.lastStatus, "idle"), isNull(routines.nextRunAt)))
       }
     }
   }
@@ -221,6 +222,12 @@ async function scanRoutinesOnce(): Promise<void> {
     void runRoutineNow(routine.id).catch((err) =>
       console.error(`[routines] routine run failed for ${routine.id}`, err),
     )
+  }
+
+  try {
+    await sleepIdleBoats(now.getTime())
+  } catch (error) {
+    console.warn("[computers] boat sleep scan skipped", error)
   }
 }
 

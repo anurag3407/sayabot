@@ -1,7 +1,7 @@
 "use server"
 
 import { z } from "zod"
-import { DEFAULT_CAPABILITIES, isSayaModel, parseCapabilities, redactSecrets, sayaModelLabel, sayaModelValue } from "@sayabot/core"
+import { DEFAULT_CAPABILITIES, isSayaModel, isWorksOn, parseCapabilities, redactSecrets, sayaModelLabel, sayaModelValue, type WorksOn } from "@sayabot/core"
 import { generateWebhookSecret } from "@sayabot/core/server"
 import { sealSecret } from "@sayabot/llm"
 import { EFFORT_LEVELS } from "@sayabot/llm/models/effort"
@@ -571,4 +571,44 @@ export async function setAgentModelAction(input: {
   const saya = !input.providerKeyId ? sayaAi() : null
   if (saya) return ok(`@${agent.handle} now uses ${sayaModelLabel(saya, storedModel)}`)
   return ok(model ? `@${agent.handle} now uses ${model}` : `@${agent.handle} uses the default model`)
+}
+
+const WORKS_ON_LABEL: Record<WorksOn, string> = {
+  off: "Off",
+  auto: "Auto",
+  this_computer: "This computer",
+  local_vm: "Local VM",
+  boat: "Boat",
+  vps: "Your own VPS",
+}
+
+/** Where this bot's desktop lives. Auto never creates or wakes a Boat; the bot calls select_computer. */
+export async function setAgentWorksOnAction(input: {
+  orgSlug: string
+  agentId: string
+  worksOn: string
+  thisComputer?: boolean
+}): Promise<ActionResult> {
+  const check = await adminOrgAccess(input.orgSlug)
+  if ("error" in check) return fail(check.error)
+  if (!isWorksOn(input.worksOn)) return fail("Pick where this bot works")
+  const admin = createAdminClient()
+  const { data: agent } = await admin.from("agents").select("id, org_id, params").eq("id", input.agentId).maybeSingle()
+  if (!agent || agent.org_id !== check.access.org.id) return fail("Agent not found")
+  const params = { ...((agent.params as Record<string, unknown>) ?? {}) }
+  params.worksOn = input.worksOn
+  const computer = { ...((params.computer as Record<string, unknown>) ?? {}) }
+  if (typeof input.thisComputer === "boolean") computer.thisComputer = input.thisComputer
+  params.computer = computer
+  const { error } = await admin.from("agents").update({ params }).eq("id", agent.id)
+  if (error) return fail(errorMessage(error))
+  await audit({
+    orgId: check.access.org.id,
+    actorId: check.access.user.id,
+    action: "agent.works_on",
+    target: agent.id,
+    metadata: { worksOn: input.worksOn, thisComputer: computer.thisComputer === true },
+  })
+  revalidateOrg(input.orgSlug)
+  return ok(`Works on ${WORKS_ON_LABEL[input.worksOn]}`)
 }

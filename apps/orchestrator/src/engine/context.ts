@@ -1,4 +1,4 @@
-import { debateRoleInstruction, parseCapabilities, type TurnRole } from "@sayabot/core"
+import { debateRoleInstruction, desktopGuidance, desktopHome, parseCapabilities, worksOnFromParams, type TurnRole } from "@sayabot/core"
 import { getProviderCapabilities } from "@sayabot/llm"
 import type { ModelMessage, SystemModelMessage, UserModelMessage } from "ai"
 import type { AgentRow, ContextMessage, RoomRow } from "../runner/context"
@@ -149,9 +149,11 @@ export function buildEngineContext(args: BuildEngineContextArgs): EngineContextR
   }
 
   if (agentCaps.computer) {
+    const worksOn = worksOnFromParams(args.agent.params as Record<string, unknown> | null)
+    const home = desktopHome(worksOn)
     system1Parts.push(
       "Persistent Computer Environment:\n" +
-        "- /home/bot is your persistent workspace across turns.\n" +
+        `- ${home} is your persistent workspace across turns.\n` +
         "- Start with workspace_detect to inspect actual project tooling. Prefer code_outline, code_definition, code_references and code_diagnostics for TypeScript/JavaScript; use fs_read ranges only when source is needed. Other languages still require their own tools.\n" +
         "- Read before editing. Keep file hashes for guarded edits; never overwrite a truncated read. Use fs_edit for narrow, unambiguous changes.\n" +
         "- For bugs, reproduce with a targeted failing test, fix the cause, then run that test and relevant regressions. After the last edit, run verify_workspace with actual repository test/lint/typecheck commands. A successful command is evidence for that check only, not proof of every requirement.\n" +
@@ -159,6 +161,7 @@ export function buildEngineContext(args: BuildEngineContextArgs): EngineContextR
         "- Before finishing code work, inspect git_diff for unintended edits and secrets. If checks cannot run, state that the result is unverified and why.\n" +
         "- Granted secrets are available via environment placeholders ($GITHUB_TOKEN, etc.).\n" +
         "- Egress network is HTTPS only through Secret Broker.",
+      desktopGuidance(worksOn),
     )
   }
 

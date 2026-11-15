@@ -55,7 +55,7 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
       {
         segment: "computers",
         label: "Computers",
-        description: "Remote desktop into your Mac, and run agents on the apps signed in there.",
+        description: "The Boat key for this app, your VPS, and this Mac's screen.",
         icon: "computers",
         adminOnly: false,
       },

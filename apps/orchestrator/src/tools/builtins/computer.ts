@@ -1,8 +1,10 @@
 import { readFileSync } from "node:fs"
-import { isDestructiveCommand, redactSecrets } from "@sayabot/core"
+import { isDestructiveCommand, redactSecrets, resolveComputer, type ComputerAvailability, type WorksOn } from "@sayabot/core"
 import { canvases, canvasVersions } from "@sayabot/db"
 import { z } from "zod"
 import { getComputerClient, type CodeIntelligenceArgs, type EditFileArgs, type ReadFileArgs } from "../../computer/client"
+import { boatCatCommand, boatClickCommand, boatListCommand, boatReadCommand, boatWriteCommand, captureBoatScreen, numberBoatLines, planBoatEdit, runBoatShell } from "../../computers/boat-shell"
+import { runVpsShell } from "../../computers/vps"
 import { getDb } from "../../db"
 import { broadcast } from "../../realtime"
 import type { ToolSpec } from "../audited"
@@ -12,6 +14,11 @@ export interface ComputerToolsArgs {
   orgId: string
   roomId: string
   profile: "standard" | "browser"
+  worksOn: WorksOn
+  available: ComputerAvailability
+  params: Record<string, unknown> | null
+  /** SSH config name from Settings → Computers. Empty when no VPS is saved. */
+  vpsSshAlias?: string | null
 }
 
 /** Single-quotes a value for POSIX sh. */
@@ -48,22 +55,104 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
   const client = getComputerClient()
   const { agentId, orgId, roomId, profile } = args
 
+  /** The SSH name when this turn is already on the person's VPS. Auto does not start it. */
+  function readyVps(): string | null {
+    const decision = resolveComputer(args.worksOn, args.available)
+    return decision.surface === "vps" && decision.action === "use" ? args.vpsSshAlias || null : null
+  }
+
+  /** Opens the local VM only when one is already ready. Auto does not create one. */
+  async function useLocalVm(): Promise<{ ok: false; error: string } | null> {
+    const decision = resolveComputer(args.worksOn, args.available)
+    if (decision.surface === "local_vm" && decision.action === "use") {
+      await client.ensure(agentId, orgId, profile)
+      return null
+    }
+    if (decision.surface === "this_computer") {
+      return { ok: false, error: "This bot uses the Mac's screen and apps, not a container." }
+    }
+    if (decision.surface === "boat") {
+      if (decision.action === "use") {
+        return { ok: false, error: "This tool uses the local VM. On a Boat, use computer_shell, fs_read, fs_write, or fs_edit." }
+      }
+      return { ok: false, error: decision.reason || "This bot's files are on its Boat. Call select_computer with boat. Auto does not wake one." }
+    }
+    if (decision.surface === "vps") {
+      if (decision.action === "use") {
+        return {
+          ok: false,
+          error: "This tool uses the local VM. On your VPS, use computer_shell, fs_read, fs_write, or fs_edit. Sayabot does not turn that server off.",
+        }
+      }
+      return { ok: false, error: "This bot's desktop is your VPS. Call select_computer with vps. Sayabot does not turn that server off." }
+    }
+    return {
+      ok: false,
+      error: decision.reason || "No local VM is ready. Call select_computer to create one. Auto does not create a desktop.",
+    }
+  }
+
   const shellTool: ToolSpec = {
     name: "computer_shell",
     description:
-      "Execute a foreground command in your persistent container shell. Working directory defaults to /home/bot. Returns stdout, stderr and a verified exit code. Background jobs are not supported.",
+      "Execute a command on this bot's desktop. A local VM uses /home/bot. A Boat runs the same command on its Linux desktop; background: true keeps that Boat awake for up to two hours. The agent process stays where it already runs.",
     schema: z.object({
       command: z.string().min(1).max(20_000),
       cwd: z.string().optional(),
       timeoutSeconds: z.number().int().min(1).max(300).default(60),
+      background: z.boolean().default(false),
     }),
     dangerous: (input) => isDestructiveCommand((input as { command: string }).command),
     execute: async (
-      input: { command: string; cwd?: string; timeoutSeconds?: number },
+      input: { command: string; cwd?: string; timeoutSeconds?: number; background?: boolean },
       signal,
       ctx,
     ) => {
-      await client.ensure(agentId, orgId, profile)
+      const decision = resolveComputer(args.worksOn, args.available)
+      if (decision.surface === "boat") {
+        if (decision.action !== "use") {
+          return {
+            ok: false,
+            error: decision.reason || "Call select_computer with boat. Auto does not create or wake one.",
+          }
+        }
+        return runBoatShell({
+          orgId,
+          agentId,
+          params: args.params,
+          command: input.cwd ? `cd ${shellQuote(input.cwd)} && ${input.command}` : input.command,
+          detached: input.background === true,
+        })
+      }
+      if (input.background) {
+        return {
+          ok: false,
+          error: "A background command runs on a Boat that is already awake. Call select_computer with boat.",
+        }
+      }
+      if (decision.surface === "this_computer") {
+        return { ok: false, error: "This bot uses the Mac's screen and apps, not a container." }
+      }
+      if (decision.surface === "vps") {
+        if (decision.action !== "use") {
+          return {
+            ok: false,
+            error: "This bot's desktop is your VPS. Call select_computer with vps. Sayabot does not turn that server off.",
+          }
+        }
+        if (!args.vpsSshAlias) return { ok: false, error: "No VPS is set in Settings → Computers." }
+        const command = input.cwd ? `cd ${shellQuote(input.cwd)} && ${input.command}` : input.command
+        const ran = await runVpsShell(args.vpsSshAlias, command, (input.timeoutSeconds || 60) * 1000)
+        return { ok: ran.ok, output: ran.output }
+      }
+      if (decision.surface !== "local_vm" || decision.action !== "use") {
+        return {
+          ok: false,
+          error: decision.reason || "No local VM is ready. Call select_computer to create one. Auto does not create a desktop.",
+        }
+      }
+      const blocked = await useLocalVm()
+      if (blocked) return blocked
       let seq = 0
       const effectiveToolCallId = ctx?.toolCallId ?? agentId
 
@@ -110,7 +199,35 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
     schema: readSchema,
     dangerous: false,
     execute: async (input: ReadFileArgs) => {
-      await client.ensure(agentId, orgId, profile)
+      const decision = resolveComputer(args.worksOn, args.available)
+      if (decision.surface === "boat" && decision.action === "use") {
+        const command = boatReadCommand(input.path, input.startLine, input.endLine)
+        if (!command) return { ok: false, error: "That path cannot be read on the Boat." }
+        const result = await runBoatShell({
+          orgId,
+          agentId,
+          params: args.params,
+          command,
+          detached: false,
+        })
+        if (result.ok === false) return result
+        const text = typeof result.output === "string" ? result.output : ""
+        return {
+          path: input.path,
+          content: numberBoatLines(text, input.startLine ?? 1),
+          encoding: "utf8",
+        }
+      }
+      const vps = readyVps()
+      if (vps) {
+        const command = boatReadCommand(input.path, input.startLine, input.endLine)
+        if (!command) return { ok: false, error: "That path cannot be read on the VPS." }
+        const ran = await runVpsShell(vps, command)
+        if (!ran.ok) return { ok: false, error: ran.output || "The VPS did not read that file." }
+        return { path: input.path, content: numberBoatLines(ran.output, input.startLine ?? 1), encoding: "utf8" }
+      }
+      const blocked = await useLocalVm()
+      if (blocked) return blocked
       const file = await client.readFile(agentId, input)
       if (file.encoding !== "utf8" || file.linesReturned === undefined || file.startLine === undefined) throw new Error("Invalid text page response")
       return { ...file, content: file.linesReturned ? file.content.split("\n").map((line, idx) => `${file.startLine! + idx} | ${line}`).join("\n") : "" }
@@ -130,7 +247,33 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
     }),
     dangerous: false,
     execute: async (input: EditFileArgs) => {
-      await client.ensure(agentId, orgId, profile)
+      const decision = resolveComputer(args.worksOn, args.available)
+      if (decision.surface === "boat" && decision.action === "use") {
+        const readCommand = boatCatCommand(input.path)
+        if (!readCommand) return { ok: false, error: "That path cannot be read on the Boat." }
+        const read = await runBoatShell({ orgId, agentId, params: args.params, command: readCommand, detached: false })
+        if (read.ok === false) return read
+        const content = typeof read.output === "string" ? read.output : ""
+        const planned = planBoatEdit(input.path, content, input)
+        if ("error" in planned) return { ok: false, error: planned.error }
+        const wrote = await runBoatShell({ orgId, agentId, params: args.params, command: planned.command, detached: false })
+        if (wrote.ok === false) return wrote
+        return { ok: true, path: input.path, replacements: planned.replacements, hash: planned.hash, matchMode: "exact" }
+      }
+      const vps = readyVps()
+      if (vps) {
+        const readCommand = boatCatCommand(input.path)
+        if (!readCommand) return { ok: false, error: "That path cannot be read on the VPS." }
+        const read = await runVpsShell(vps, readCommand)
+        if (!read.ok) return { ok: false, error: read.output || "The VPS did not read that file." }
+        const planned = planBoatEdit(input.path, read.output, input)
+        if ("error" in planned) return { ok: false, error: planned.error }
+        const wrote = await runVpsShell(vps, planned.command)
+        if (!wrote.ok) return { ok: false, error: wrote.output || "The VPS did not write that file." }
+        return { ok: true, path: input.path, replacements: planned.replacements, hash: planned.hash, matchMode: "exact" }
+      }
+      const blocked = await useLocalVm()
+      if (blocked) return blocked
       return client.editFile(agentId, input)
     },
   }
@@ -146,7 +289,8 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
     }),
     dangerous: false,
     execute: async (input: { patchText: string }) => {
-      await client.ensure(agentId, orgId, profile)
+      const blocked = await useLocalVm()
+      if (blocked) return blocked
       return client.applyPatch(agentId, input)
     },
   }
@@ -163,7 +307,8 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
     schema,
     dangerous: false,
     execute: async (input: Omit<CodeIntelligenceArgs, "action">) => {
-      await client.ensure(agentId, orgId, profile)
+      const blocked = await useLocalVm()
+      if (blocked) return blocked
       return client.codeIntelligence(agentId, { ...input, action })
     },
   })
@@ -186,7 +331,21 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
     }),
     dangerous: false,
     execute: async (input: { path: string; content: string; allowOverwriteLarge?: boolean }) => {
-      await client.ensure(agentId, orgId, profile)
+      const decision = resolveComputer(args.worksOn, args.available)
+      if (decision.surface === "boat" && decision.action === "use") {
+        const command = boatWriteCommand(input.path, input.content)
+        if (!command) return { ok: false, error: "That path cannot be written on the Boat." }
+        return runBoatShell({ orgId, agentId, params: args.params, command, detached: false })
+      }
+      const vps = readyVps()
+      if (vps) {
+        const command = boatWriteCommand(input.path, input.content)
+        if (!command) return { ok: false, error: "That path cannot be written on the VPS." }
+        const ran = await runVpsShell(vps, command)
+        return ran.ok ? { ok: true, path: input.path } : { ok: false, error: ran.output || "The VPS did not write that file." }
+      }
+      const blocked = await useLocalVm()
+      if (blocked) return blocked
       const result = await client.writeFile(agentId, { path: input.path, content: input.content, allowOverwriteLarge: input.allowOverwriteLarge })
       return { ok: true, path: input.path, ...result }
     },
@@ -205,7 +364,8 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
     }),
     dangerous: false,
     execute: async (input: { pattern: string; path?: string }) => {
-      await client.ensure(agentId, orgId, profile)
+      const blocked = await useLocalVm()
+      if (blocked) return blocked
       const base = input.path || "/home/bot"
       const res = await client.exec(agentId, {
         cmd: `find ${shellQuote(base)} ${input.pattern.includes("/") ? "-path" : "-name"} ${shellQuote(input.pattern)} -type f -not -path '*/node_modules/*' -not -path '*/.git/*' -printf "%T@ %p\\n" 2>/dev/null | sort -nr | head -n 100 | cut -d' ' -f2-`,
@@ -234,7 +394,8 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
     }),
     dangerous: false,
     execute: async (input: { query: string; path?: string; fileType?: string }) => {
-      await client.ensure(agentId, orgId, profile)
+      const blocked = await useLocalVm()
+      if (blocked) return blocked
       const base = input.path || "/home/bot"
       const typeFilter = input.fileType ? `-t ${shellQuote(input.fileType)}` : ""
       const res = await client.exec(agentId, {
@@ -261,7 +422,8 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
     }),
     dangerous: false,
     execute: async (input: { cwd?: string }) => {
-      await client.ensure(agentId, orgId, profile)
+      const blocked = await useLocalVm()
+      if (blocked) return blocked
       const res = await client.exec(agentId, {
         cmd: "git --no-optional-locks status -s",
         cwd: input.cwd,
@@ -279,7 +441,8 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
     }),
     dangerous: false,
     execute: async (input: { cwd?: string; staged?: boolean }) => {
-      await client.ensure(agentId, orgId, profile)
+      const blocked = await useLocalVm()
+      if (blocked) return blocked
       const flag = input.staged ? "--staged" : ""
       const res = await client.exec(agentId, {
         cmd: `git --no-optional-locks diff ${flag}`,
@@ -299,7 +462,8 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
     }),
     dangerous: true,
     execute: async (input: { message: string; cwd?: string; all?: boolean }) => {
-      await client.ensure(agentId, orgId, profile)
+      const blocked = await useLocalVm()
+      if (blocked) return blocked
       const flag = input.all ? "-a" : ""
       const res = await client.exec(agentId, {
         cmd: `git commit ${flag} -m ${shellQuote(input.message)}`,
@@ -320,7 +484,8 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
     }),
     dangerous: true,
     execute: async (input: { cwd?: string; remote?: string; branch?: string }) => {
-      await client.ensure(agentId, orgId, profile)
+      const blocked = await useLocalVm()
+      if (blocked) return blocked
       const branch = input.branch ? ` ${shellQuote(input.branch)}` : ""
       const res = await client.exec(agentId, {
         cmd: `git push -- ${shellQuote(input.remote || "origin")}${branch}`,
@@ -337,7 +502,24 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
     schema: readSchema,
     dangerous: false,
     execute: async (input: ReadFileArgs) => {
-      await client.ensure(agentId, orgId, profile)
+      const decision = resolveComputer(args.worksOn, args.available)
+      if (decision.surface === "boat" && decision.action === "use") {
+        const command = boatReadCommand(input.path, input.startLine, input.endLine)
+        if (!command) return { ok: false, error: "That path cannot be read on the Boat." }
+        const result = await runBoatShell({ orgId, agentId, params: args.params, command, detached: false })
+        if (result.ok === false) return result
+        return { path: input.path, content: typeof result.output === "string" ? result.output : "", encoding: "utf8" }
+      }
+      const vps = readyVps()
+      if (vps) {
+        const command = boatReadCommand(input.path, input.startLine, input.endLine)
+        if (!command) return { ok: false, error: "That path cannot be read on the VPS." }
+        const ran = await runVpsShell(vps, command)
+        if (!ran.ok) return { ok: false, error: ran.output || "The VPS did not read that file." }
+        return { path: input.path, content: ran.output, encoding: "utf8" }
+      }
+      const blocked = await useLocalVm()
+      if (blocked) return blocked
       return client.readFile(agentId, input)
     },
   }
@@ -353,7 +535,21 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
     }),
     dangerous: false,
     execute: async (input: { path: string; content: string; allowOverwriteLarge?: boolean }) => {
-      await client.ensure(agentId, orgId, profile)
+      const decision = resolveComputer(args.worksOn, args.available)
+      if (decision.surface === "boat" && decision.action === "use") {
+        const command = boatWriteCommand(input.path, input.content)
+        if (!command) return { ok: false, error: "That path cannot be written on the Boat." }
+        return runBoatShell({ orgId, agentId, params: args.params, command, detached: false })
+      }
+      const vps = readyVps()
+      if (vps) {
+        const command = boatWriteCommand(input.path, input.content)
+        if (!command) return { ok: false, error: "That path cannot be written on the VPS." }
+        const ran = await runVpsShell(vps, command)
+        return ran.ok ? { ok: true, path: input.path } : { ok: false, error: ran.output || "The VPS did not write that file." }
+      }
+      const blocked = await useLocalVm()
+      if (blocked) return blocked
       return client.writeFile(agentId, { path: input.path, content: input.content, allowOverwriteLarge: input.allowOverwriteLarge })
     },
   }
@@ -362,12 +558,26 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
     name: "computer_list",
     description: "List directory contents in your persistent container filesystem.",
     schema: z.object({
-      path: z.string().optional().default("/home/bot"),
+      path: z.string().optional(),
       depth: z.number().int().min(1).max(3).default(1),
     }),
     dangerous: false,
     execute: async (input: { path?: string; depth?: number }) => {
-      await client.ensure(agentId, orgId, profile)
+      const home = resolveComputer(args.worksOn, args.available).surface === "boat" ? "/home/user" : "/home/bot"
+      const command = boatListCommand(input.path || home, input.depth ?? 1)
+      const decision = resolveComputer(args.worksOn, args.available)
+      if (decision.surface === "boat" && decision.action === "use") {
+        if (!command) return { ok: false, error: "That path cannot be listed on the Boat." }
+        return runBoatShell({ orgId, agentId, params: args.params, command, detached: false })
+      }
+      const vps = readyVps()
+      if (vps) {
+        if (!command) return { ok: false, error: "That path cannot be listed on the VPS." }
+        const ran = await runVpsShell(vps, command)
+        return ran.ok ? { ok: true, output: ran.output } : { ok: false, error: ran.output || "The VPS did not list that directory." }
+      }
+      const blocked = await useLocalVm()
+      if (blocked) return blocked
       return client.listFiles(agentId, { path: input.path, depth: input.depth })
     },
   }
@@ -382,7 +592,8 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
     }),
     dangerous: false,
     execute: async (input: { path: string; as: "canvas" | "file"; title?: string }) => {
-      await client.ensure(agentId, orgId, profile)
+      const blocked = await useLocalVm()
+      if (blocked) return blocked
       const file = await client.readFile(agentId, { path: input.path })
       if (file.truncated) throw new Error("Cannot publish a truncated file; publish a smaller file")
 
@@ -425,8 +636,45 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
     },
   }
 
+  const seeTool: ToolSpec = {
+    name: "computer_screenshot",
+    description: "See the Boat desktop. The picture is the screen the agent can click. A sleeping Boat is not woken.",
+    schema: z.object({}),
+    dangerous: false,
+    execute: async () => {
+      const decision = resolveComputer(args.worksOn, args.available)
+      if (decision.surface !== "boat" || decision.action !== "use") {
+        return { ok: false, error: "A Boat screenshot needs a Boat that is already awake. Call select_computer with boat. Auto does not wake one." }
+      }
+      return captureBoatScreen({ orgId, agentId, params: args.params })
+    },
+  }
+
+  const clickTool: ToolSpec = {
+    name: "computer_click",
+    description: "Click a point on the Boat desktop. x and y are pixels. A sleeping Boat is not woken.",
+    schema: z.object({
+      x: z.number().int().min(0).max(32767),
+      y: z.number().int().min(0).max(32767),
+      button: z.enum(["left", "middle", "right"]).default("left"),
+      count: z.number().int().min(1).max(3).default(1),
+    }),
+    dangerous: false,
+    execute: async (input: { x: number; y: number; button?: "left" | "middle" | "right"; count?: number }) => {
+      const decision = resolveComputer(args.worksOn, args.available)
+      if (decision.surface !== "boat" || decision.action !== "use") {
+        return { ok: false, error: "A Boat click needs a Boat that is already awake. Call select_computer with boat. Auto does not wake one." }
+      }
+      const command = boatClickCommand(input.x, input.y, input.button ?? "left", input.count ?? 1)
+      if (!command) return { ok: false, error: "That point is not on the Boat screen." }
+      return runBoatShell({ orgId, agentId, params: args.params, command, detached: false })
+    },
+  }
+
   const standardTools: ToolSpec[] = [
     shellTool,
+    seeTool,
+    clickTool,
     fsReadTool,
     fsEditTool,
     fsPatchTool,
@@ -457,7 +705,8 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
     }),
     dangerous: false,
     execute: async (input: { url: string }) => {
-      await client.ensure(agentId, orgId, profile)
+      const blocked = await useLocalVm()
+      if (blocked) return blocked
       return client.browser(agentId, "open", input)
     },
   }
@@ -468,7 +717,8 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
     schema: z.object({}),
     dangerous: false,
     execute: async () => {
-      await client.ensure(agentId, orgId, profile)
+      const blocked = await useLocalVm()
+      if (blocked) return blocked
       return client.browser(agentId, "snapshot", {})
     },
   }
@@ -482,7 +732,8 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
     }),
     dangerous: false,
     execute: async (input: { ref?: string | number; selector?: string }) => {
-      await client.ensure(agentId, orgId, profile)
+      const blocked = await useLocalVm()
+      if (blocked) return blocked
       return client.browser(agentId, "click", input)
     },
   }
@@ -503,7 +754,8 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
       text: string
       submit?: boolean
     }) => {
-      await client.ensure(agentId, orgId, profile)
+      const blocked = await useLocalVm()
+      if (blocked) return blocked
       return client.browser(agentId, "type", input)
     },
   }
@@ -522,7 +774,8 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
       format?: "text" | "markdown" | "html"
       maxChars?: number
     }) => {
-      await client.ensure(agentId, orgId, profile)
+      const blocked = await useLocalVm()
+      if (blocked) return blocked
       return client.browser(agentId, "extract", input)
     },
   }
@@ -536,7 +789,8 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
     }),
     dangerous: false,
     execute: async (input: { fullPage?: boolean }) => {
-      await client.ensure(agentId, orgId, profile)
+      const blocked = await useLocalVm()
+      if (blocked) return blocked
       return client.browser(agentId, "screenshot", input)
     },
   }
@@ -552,7 +806,8 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
     }),
     dangerous: false,
     execute: async (input: { code: string; language?: "python" | "javascript"; timeoutSeconds?: number }) => {
-      await client.ensure(agentId, orgId, profile)
+      const blocked = await useLocalVm()
+      if (blocked) return blocked
       return client.browser(agentId, "exec", input)
     },
   }
@@ -567,7 +822,8 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
     }),
     dangerous: false,
     execute: async (input: { method: string; params?: Record<string, unknown> }) => {
-      await client.ensure(agentId, orgId, profile)
+      const blocked = await useLocalVm()
+      if (blocked) return blocked
       return client.browser(agentId, "cdp", input)
     },
   }
@@ -582,7 +838,8 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
     }),
     dangerous: false,
     execute: async (input: { action: "accept" | "dismiss"; promptText?: string }) => {
-      await client.ensure(agentId, orgId, profile)
+      const blocked = await useLocalVm()
+      if (blocked) return blocked
       return client.browser(agentId, "dialog", input)
     },
   }
@@ -598,7 +855,8 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
     }),
     dangerous: false,
     execute: async (input: { secretName: string; selector: string; submit?: boolean }) => {
-      await client.ensure(agentId, orgId, profile)
+      const blocked = await useLocalVm()
+      if (blocked) return blocked
       return client.browser(agentId, "vault", {
         secretName: input.secretName,
         selector: input.selector,

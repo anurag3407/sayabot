@@ -60,7 +60,21 @@ describe("builtin tool specs (no network, schema + danger surface)", () => {
   })
 
   it("computerTools: standard profile has no browser tools, browser profile does", () => {
-    const args = { agentId: "a", orgId: "o", roomId: "r" }
+    const args = {
+      agentId: "a",
+      orgId: "o",
+      roomId: "r",
+      worksOn: "auto" as const,
+      available: {
+        thisComputer: false,
+        localVmReady: true,
+        boatConfigured: false,
+        boatState: "absent" as const,
+        vpsReady: false,
+        startVpsAutomatically: false,
+      },
+      params: null,
+    }
     const std = computerTools({ ...args, profile: "standard" }).map((t) => t.name)
     const br = computerTools({ ...args, profile: "browser" }).map((t) => t.name)
     expect(std).toContain("computer_shell")

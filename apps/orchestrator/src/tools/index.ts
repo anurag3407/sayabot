@@ -1,5 +1,5 @@
-import { parseCapabilities } from "@sayabot/core"
-import { agentConnectorGrants, agents, mcpServers, workspaceConnectors } from "@sayabot/db"
+import { availabilityFromParams, parseCapabilities, worksOnFromParams } from "@sayabot/core"
+import { agentConnectorGrants, agents, mcpServers, orgComputerSettings, workspaceConnectors } from "@sayabot/db"
 import {
   connectMcpServers,
   findLocalApp,
@@ -15,8 +15,11 @@ import type { ToolSet } from "ai"
 import { and, eq, isNull, or } from "drizzle-orm"
 import { z } from "zod"
 import { canvasPatchTool, canvasReadTool, canvasWriteTool } from "../canvas/tools"
+import { openSelectedBoat } from "../computers/open-boat"
+import { runVpsDesktop } from "../computers/vps"
 import { desktopOnline, runMcpOnDesktop } from "../connectors/desktop-bridge"
 import type { ConnectorSource } from "../connectors/types"
+import { getComputerClient } from "../computer/client"
 import { getDb } from "../db"
 import { getEnv } from "../env"
 import { RunEvidence, type VerificationEvidence } from "../engine/evidence"
@@ -27,6 +30,7 @@ import { partitionToolsForSearch } from "../engine/tool-search"
 import { memoryTools } from "../memory/tools"
 import { toAuditedTools, type ToolRuntime, type ToolSpec } from "./audited"
 import { computerTools } from "./builtins/computer"
+import { selectComputerTool } from "./builtins/select-computer"
 import { connectorTools } from "./builtins/connectors"
 import { cronjobTool } from "./builtins/cronjob"
 import { githubTool } from "./builtins/github"
@@ -255,7 +259,74 @@ export async function buildTools(args: BuildToolsArgs): Promise<BuiltTools> {
     }
   }
 
+  const stored = availabilityFromParams(args.agent.params)
+  let available = stored
+  let vpsSshAlias: string | null = null
+  try {
+    const [settings] = await getDb()
+      .select({
+        boat: orgComputerSettings.boatCiphertext,
+        startVps: orgComputerSettings.vpsStartAutomatically,
+        alias: orgComputerSettings.vpsSshAlias,
+      })
+      .from(orgComputerSettings)
+      .where(eq(orgComputerSettings.orgId, args.orgId))
+      .limit(1)
+    const ownBoat = Boolean(settings?.boat)
+    const includedBoat = Boolean(process.env.SAYABOT_BOAT_TOKEN)
+    available = {
+      ...stored,
+      boatConfigured: stored.boatConfigured || ownBoat || includedBoat,
+      startVpsAutomatically: stored.startVpsAutomatically || settings?.startVps === true,
+    }
+    vpsSshAlias = settings?.alias ?? null
+  } catch {
+    // The placement table is optional until migration 0034 is applied.
+  }
+
+  const placementParams = (args.agent.params as Record<string, unknown> | null) ?? {}
   const specs: ToolSpec[] = [
+    selectComputerTool({
+      worksOn: worksOnFromParams(args.agent.params),
+      available,
+      params: placementParams,
+      apply: async (decision) => {
+        if (decision.surface === "local_vm") {
+          const volume = `saaya-bot-${args.agent.id}`
+          if (decision.action === "provision") {
+            try {
+              await getComputerClient().ensure(args.agent.id, args.orgId, "standard")
+            } catch (error) {
+              return { ok: false, error: error instanceof Error ? error.message : "The local VM did not start" }
+            }
+          }
+          const params = (args.agent.params as Record<string, unknown> | null) ?? {}
+          const computer =
+            params.computer && typeof params.computer === "object" ? (params.computer as Record<string, unknown>) : {}
+          await getDb()
+            .update(agents)
+            .set({ params: { ...params, computer: { ...computer, localVmReady: true, volume } } })
+            .where(eq(agents.id, args.agent.id))
+          return { ok: true, volume }
+        }
+        if (decision.surface === "vps") {
+          const [settings] = await getDb()
+            .select({ alias: orgComputerSettings.vpsSshAlias })
+            .from(orgComputerSettings)
+            .where(eq(orgComputerSettings.orgId, args.orgId))
+            .limit(1)
+          if (!settings?.alias) return { ok: false, error: "No VPS is set in Settings → Computers." }
+          const ran = await runVpsDesktop(settings.alias, decision)
+          return { ok: ran.ok, output: ran.output }
+        }
+        return openSelectedBoat({
+          orgId: args.orgId,
+          agentId: args.agent.id,
+          params: (args.agent.params as Record<string, unknown> | null) ?? null,
+          decision,
+        })
+      },
+    }),
     ...connectorSpecs,
     ...(caps.canvas
       ? [
@@ -295,6 +366,10 @@ export async function buildTools(args: BuildToolsArgs): Promise<BuiltTools> {
           orgId: args.orgId,
           roomId: args.roomId,
           profile: caps.computer.profile,
+          worksOn: worksOnFromParams(args.agent.params),
+          available,
+          params: placementParams,
+          vpsSshAlias,
         })
       : []),
     ...(caps.computer && isV2

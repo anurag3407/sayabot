@@ -43,6 +43,16 @@ describe("computerTools fs_patch and fs_edit", () => {
       orgId: "org-1",
       roomId: "room-1",
       profile: "standard",
+      worksOn: "local_vm",
+      available: {
+        thisComputer: false,
+        localVmReady: true,
+        boatConfigured: false,
+        boatState: "absent",
+        vpsReady: false,
+        startVpsAutomatically: false,
+      },
+      params: null,
     })
     const patchTool = tools.find((t) => t.name === "fs_patch")
     expect(patchTool).toBeDefined()
@@ -61,6 +71,16 @@ describe("computerTools fs_patch and fs_edit", () => {
       orgId: "org-1",
       roomId: "room-1",
       profile: "standard",
+      worksOn: "local_vm",
+      available: {
+        thisComputer: false,
+        localVmReady: true,
+        boatConfigured: false,
+        boatState: "absent",
+        vpsReady: false,
+        startVpsAutomatically: false,
+      },
+      params: null,
     })
     const editTool = tools.find((t) => t.name === "fs_edit")
     expect(editTool).toBeDefined()
@@ -91,6 +111,16 @@ describe("computerTools fs_patch and fs_edit", () => {
       orgId: "org-test",
       roomId: "room-test",
       profile: "standard",
+      worksOn: "local_vm",
+      available: {
+        thisComputer: false,
+        localVmReady: true,
+        boatConfigured: false,
+        boatState: "absent",
+        vpsReady: false,
+        startVpsAutomatically: false,
+      },
+      params: null,
     })
     const patchTool = tools.find((t) => t.name === "fs_patch")
     expect(patchTool).toBeDefined()
@@ -113,6 +143,16 @@ describe("computerTools fs_patch and fs_edit", () => {
       orgId: "org-test",
       roomId: "room-test",
       profile: "standard",
+      worksOn: "local_vm",
+      available: {
+        thisComputer: false,
+        localVmReady: true,
+        boatConfigured: false,
+        boatState: "absent",
+        vpsReady: false,
+        startVpsAutomatically: false,
+      },
+      params: null,
     })
     const writeTool = tools.find((t) => t.name === "fs_write")
     expect(writeTool).toBeDefined()
@@ -139,6 +179,16 @@ describe("computerTools fs_patch and fs_edit", () => {
       orgId: "org-browser",
       roomId: "room-browser",
       profile: "browser",
+      worksOn: "local_vm",
+      available: {
+        thisComputer: false,
+        localVmReady: true,
+        boatConfigured: false,
+        boatState: "absent",
+        vpsReady: false,
+        startVpsAutomatically: false,
+      },
+      params: null,
     })
 
     const execTool = tools.find((t) => t.name === "browser_exec")
@@ -179,5 +229,69 @@ describe("computerTools fs_patch and fs_edit", () => {
       submit: true,
       orgId: "org-browser",
     })
+  })
+})
+
+const idleDesktop = {
+  thisComputer: false,
+  localVmReady: false,
+  boatConfigured: true,
+  boatState: "sleeping" as const,
+  vpsReady: false,
+  startVpsAutomatically: false,
+}
+
+describe("computer_shell placement", () => {
+  it("does not create a desktop when Auto has nothing ready", async () => {
+    const ensure = vi.fn()
+    vi.spyOn(clientModule, "getComputerClient").mockReturnValue({ ensure } as never)
+    const shell = computerTools({
+      agentId: "agent-1",
+      orgId: "org-1",
+      roomId: "room-1",
+      profile: "standard",
+      worksOn: "auto",
+      available: idleDesktop,
+      params: null,
+    }).find((tool) => tool.name === "computer_shell")
+    const result = (await shell?.execute({ command: "ls" }, undefined, undefined)) as { ok: boolean; error: string }
+    expect(result.ok).toBe(false)
+    expect(result.error).toContain("select_computer")
+    expect(ensure).not.toHaveBeenCalled()
+  })
+
+  it("does not create a local VM when Auto reads a file and none is ready", async () => {
+    const ensure = vi.fn()
+    vi.spyOn(clientModule, "getComputerClient").mockReturnValue({ ensure, readFile: vi.fn() } as never)
+    const read = computerTools({
+      agentId: "agent-1",
+      orgId: "org-1",
+      roomId: "room-1",
+      profile: "standard",
+      worksOn: "auto",
+      available: idleDesktop,
+      params: null,
+    }).find((tool) => tool.name === "fs_read")
+    const result = (await read?.execute({ path: "/home/bot/a.txt" }, undefined, undefined)) as { ok: boolean }
+    expect(result.ok).toBe(false)
+    expect(ensure).not.toHaveBeenCalled()
+  })
+
+  it("uses the local VM that is already ready and keeps its volume", async () => {
+    const ensure = vi.fn().mockResolvedValue({ status: "running" })
+    const exec = vi.fn().mockResolvedValue({ stdout: "ok", stderr: "", exitCode: 0, durationMs: 1, truncated: false })
+    vi.spyOn(clientModule, "getComputerClient").mockReturnValue({ ensure, exec } as never)
+    const shell = computerTools({
+      agentId: "agent-1",
+      orgId: "org-1",
+      roomId: "room-1",
+      profile: "standard",
+      worksOn: "auto",
+      available: { ...idleDesktop, localVmReady: true },
+      params: null,
+    }).find((tool) => tool.name === "computer_shell")
+    const result = (await shell?.execute({ command: "ls" }, undefined, undefined)) as { stdout: string }
+    expect(result.stdout).toBe("ok")
+    expect(ensure).toHaveBeenCalledWith("agent-1", "org-1", "standard")
   })
 })

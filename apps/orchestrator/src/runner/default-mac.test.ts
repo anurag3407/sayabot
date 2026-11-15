@@ -15,7 +15,8 @@ vi.mock("../active-runs", () => ({ registerRun: vi.fn(), unregisterRun: vi.fn() 
 
 const { defaultMacRunner } = await import("./local")
 
-const agent = { orgId: "org-1", providerKeyId: null, params: {} }
+const agent = { orgId: "org-1", providerKeyId: null, params: { computer: { thisComputer: true } } }
+const screenOff = { orgId: "org-1", providerKeyId: null, params: {} }
 const online = new Date()
 const host = (settings: Record<string, unknown>, lastSeenAt: Date | null = online) => ({
   id: "11111111-1111-1111-1111-111111111111",
@@ -37,6 +38,10 @@ describe("defaultMacRunner", () => {
       hostId: "11111111-1111-1111-1111-111111111111",
       app: "codex",
     })
+  })
+
+  it("stays off until this bot is allowed to use the Mac screen", async () => {
+    expect(await defaultMacRunner(screenOff)).toBeNull()
   })
 
   it("never runs other people's messages on someone's Mac (shared workspace)", async () => {

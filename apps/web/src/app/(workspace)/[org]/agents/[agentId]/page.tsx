@@ -9,6 +9,7 @@ import { ActionForm } from "@/components/ui/action-form"
 import { ComputerPanel, type ComputerInfo } from "@/components/room/computer-panel"
 import { listAgentConnectorGrants, listWorkspaceConnectors } from "@/lib/queries"
 import { AgentConnectorScopeManager } from "@/components/agents/agent-connector-scope"
+import { WorksOnForm } from "@/components/agents/works-on-form"
 
 export const metadata: Metadata = { title: "Agent Profile" }
 
@@ -123,6 +124,13 @@ export default async function AgentProfilePage({
               <span>Max Steps: {(agent.params as any)?.maxSteps ?? 6}</span>
               <span>Temp: {(agent.params as any)?.temperature ?? "default"}</span>
             </div>
+            <WorksOnForm
+              orgSlug={orgSlug}
+              agentId={agent.id}
+              worksOn={typeof (agent.params as { worksOn?: unknown } | null)?.worksOn === "string" ? ((agent.params as { worksOn: string }).worksOn) : "auto"}
+              thisComputer={(agent.params as { computer?: { thisComputer?: boolean } } | null)?.computer?.thisComputer === true}
+              canEdit={canEdit}
+            />
             {agent.system_prompt && (
               <div className="mt-2 text-xs text-muted-foreground bg-muted/40 p-2.5 rounded-lg line-clamp-4 font-mono">
                 {agent.system_prompt}

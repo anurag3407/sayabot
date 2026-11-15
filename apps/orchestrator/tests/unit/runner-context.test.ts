@@ -37,6 +37,13 @@ describe("buildSystemPrompt / buildUserPrompt", () => {
   it("adds the computer block when the computer capability is on", () => {
     const p = buildSystemPrompt({ room, agent: { ...agent, capabilities: { computer: { profile: "standard" } } } as unknown as AgentRow, role: "responder" })
     expect(p).toContain("/home/bot")
+    expect(p).toContain("select_computer")
+    const boat = buildSystemPrompt({
+      room,
+      agent: { ...agent, capabilities: { computer: { profile: "standard" } }, params: { worksOn: "boat" } } as unknown as AgentRow,
+      role: "responder",
+    })
+    expect(boat).toContain("Files stored in /home/user persist")
   })
 
   it("user prompt includes canvases/tasks and ends naming the agent", () => {
