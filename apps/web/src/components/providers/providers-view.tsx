@@ -1,10 +1,11 @@
 "use client"
 
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { ChevronRight, Laptop } from "lucide-react"
 import { saveProviderKey } from "@/lib/actions/keys"
-import { LOCAL_STATUS_LABEL, type LocalAgentReport } from "@/lib/local-agents-shared"
+import { LOCAL_STATUS_LABEL, type LocalAgentReport, type LocalAgentsResponse } from "@/lib/local-agents-shared"
 import { InviteBotDialog } from "@/components/room/invite-bot-dialog"
 import { ManageAccountsModal } from "@/components/room/model-picker"
 import { ProviderIcon } from "@/components/room/model-picker/provider-icons"
@@ -58,7 +59,7 @@ function Tile({ icon }: { icon: string }) {
 }
 
 function LocalAgents({ orgSlug, rooms }: { orgSlug: string; rooms: { id: string; name: string }[] }) {
-  const [state, setState] = useState<{ available: boolean; agents: LocalAgentReport[] } | null>(null)
+  const [state, setState] = useState<LocalAgentsResponse | null>(null)
   const [inviting, setInviting] = useState<LocalAgentReport | null>(null)
   const [roomId, setRoomId] = useState(rooms[0]?.id ?? "")
   const room = rooms.find((r) => r.id === roomId)
@@ -66,7 +67,7 @@ function LocalAgents({ orgSlug, rooms }: { orgSlug: string; rooms: { id: string;
   useEffect(() => {
     let cancelled = false
     fetch("/api/providers/local", { cache: "no-store" })
-      .then((res) => (res.ok ? res.json() : { available: false, agents: [] }))
+      .then((res) => (res.ok ? (res.json() as Promise<LocalAgentsResponse>) : { available: false, agents: [] }))
       .then((data) => !cancelled && setState(data))
       .catch(() => !cancelled && setState({ available: false, agents: [] }))
     return () => {
@@ -82,17 +83,47 @@ function LocalAgents({ orgSlug, rooms }: { orgSlug: string; rooms: { id: string;
       <div className="flex items-start gap-3 rounded-xl border border-line bg-panel p-4">
         <Laptop className="mt-0.5 h-5 w-5 shrink-0 text-muted" />
         <p className="text-[13px] leading-relaxed text-muted">
-          Running Sayabot on your own computer? Apps like Claude Code, Codex and Gemini CLI that are already signed in show up
-          here and join rooms on their own subscription, with no API key. From anywhere else, you can still bring them in with{" "}
-          <span className="text-text">Add agent</span> in a room.
+          Get the{" "}
+          <Link href="/download" className="text-text underline-offset-2 hover:underline">
+            Sayabot Mac app
+          </Link>{" "}
+          and sign in. Apps already signed in on your Mac, like Claude Code, Codex and Gemini CLI, show up here by
+          themselves and answer on your own subscription, with no API key.
         </p>
       </div>
+    )
+  }
+
+  const macHeader =
+    state.source === "mac" ? (
+      <p className="mb-2 flex flex-wrap items-center gap-x-1.5 text-[12px] text-faint">
+        <Laptop className="h-3.5 w-3.5" />
+        <span>
+          Found by Sayabot on <span className="text-muted">{state.hostName}</span>
+          {state.lastSeenAt ? ` · checked ${seenAgo(state.lastSeenAt)}` : ""}
+        </span>
+        {isStale(state.lastSeenAt) ? (
+          <span className="text-warn">· open the Mac app to refresh this list</span>
+        ) : null}
+      </p>
+    ) : null
+
+  if (!state.agents.length) {
+    return (
+      <>
+        {macHeader}
+        <p className="rounded-xl border border-line bg-panel p-4 text-[13px] leading-relaxed text-muted">
+          No signed-in agent apps found{state.source === "mac" ? ` on ${state.hostName}` : ""}. Open Claude Code, Codex or
+          Gemini CLI in a terminal once and sign in; it shows up here within a minute.
+        </p>
+      </>
     )
   }
 
   const sorted = [...state.agents].sort((a, b) => order(a.status) - order(b.status))
   return (
     <>
+      {macHeader}
       <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-panel">
         {sorted.map((agent) => (
           <li key={agent.id} className="flex items-center gap-3 px-4 py-3">
@@ -101,7 +132,14 @@ function LocalAgents({ orgSlug, rooms }: { orgSlug: string; rooms: { id: string;
               <p className="text-[14px] font-medium text-text">{agent.name}</p>
               <p className="text-[12px] text-faint">
                 {agent.status === "ready"
-                  ? `Signed in${agent.version ? ` · ${agent.version}` : ""} · uses your own subscription`
+                  ? [
+                      agent.account ? agent.account : "Signed in",
+                      agent.version,
+                      agent.models?.length ? `${agent.models.length} models` : null,
+                      "your own subscription",
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")
                   : agent.status === "signed_out"
                     ? `Installed${agent.version ? ` · ${agent.version}` : ""}. Open it once and sign in.`
                     : agent.status === "installed"
@@ -147,6 +185,20 @@ function LocalAgents({ orgSlug, rooms }: { orgSlug: string; rooms: { id: string;
       ) : null}
     </>
   )
+}
+
+function seenAgo(iso: string): string {
+  const minutes = Math.round((Date.now() - Date.parse(iso)) / 60_000)
+  if (!Number.isFinite(minutes) || minutes < 1) return "just now"
+  if (minutes < 60) return `${minutes} min ago`
+  const hours = Math.round(minutes / 60)
+  return hours < 48 ? `${hours}h ago` : `${Math.round(hours / 24)} days ago`
+}
+
+/** The Mac app checks in every few seconds; ten quiet minutes means it isn't running. */
+function isStale(iso: string | null | undefined): boolean {
+  if (!iso) return true
+  return Date.now() - Date.parse(iso) > 10 * 60_000
 }
 
 function order(status: string): number {
