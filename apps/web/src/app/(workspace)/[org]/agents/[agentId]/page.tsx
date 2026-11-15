@@ -12,6 +12,7 @@ import { AgentConnectorScopeManager } from "@/components/agents/agent-connector-
 import { MacOffForm } from "@/components/agents/mac-off-form"
 import { runsOnLabel } from "@/lib/runs-on"
 import { WorksOnForm } from "@/components/agents/works-on-form"
+import { BotBasicsForm } from "@/components/agents/bot-basics-form"
 
 export const metadata: Metadata = { title: "Agent Profile" }
 
@@ -112,6 +113,14 @@ export default async function AgentProfilePage({
           </div>
         </div>
 
+        <BotBasicsForm
+          orgSlug={orgSlug}
+          agentId={agent.id}
+          name={agent.display_name}
+          systemPrompt={agent.system_prompt ?? ""}
+          canEdit={canEdit}
+        />
+
         {/* Model & Config */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="p-4 rounded-xl border border-border bg-card space-y-2">
@@ -141,11 +150,6 @@ export default async function AgentProfilePage({
                 canEdit={canEdit}
               />
             ) : null}
-            {agent.system_prompt && (
-              <div className="mt-2 text-xs text-muted-foreground bg-muted/40 p-2.5 rounded-lg line-clamp-4 font-mono">
-                {agent.system_prompt}
-              </div>
-            )}
           </div>
 
           <div className="p-4 rounded-xl border border-border bg-card space-y-2">

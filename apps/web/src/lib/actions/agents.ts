@@ -287,17 +287,20 @@ function handleFromName(name: string): string {
 }
 
 /**
- * New bot, in one step: a name, what it should do, and the AI it runs on (a provider account
- * from the picker, Saya AI, or an app on your Mac). The bot is not put in any group chat; its
- * own chat with you opens straight away. From a group chat's "Add bot", it joins that chat too.
+ * New bot, in one step: a name and a system prompt. The AI it runs on is optional here and is
+ * normally picked later from its chat. The bot is not put in any group chat; its own chat with
+ * you opens straight away. From a group chat's "Add bot", it joins that chat too.
  */
 export async function createBotAction(input: {
   orgSlug: string
   name: string
   instructions?: string
-  /** Picker account: a provider key id, null for Saya AI, `host:…` for a Mac app. */
-  keyId: string | null
-  model: string | null
+  /**
+   * Optional, usually set later from the chat: a provider key id, `host:…` for a Mac app, or
+   * left out for the server's default model.
+   */
+  keyId?: string | null
+  model?: string | null
   templateId?: string | null
   capabilities?: Partial<AgentCapabilities>
   /** Optional: also add the bot to this group chat. */
@@ -329,8 +332,8 @@ export async function createBotAction(input: {
     orgId,
     userId: check.access.user.id,
     requestHost: requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host"),
-    keyId: input.keyId,
-    model: input.model,
+    keyId: input.keyId ?? null,
+    model: input.model ?? null,
   })
   if (!resolved.ok) return fail(resolved.error)
   const choice = resolved.choice
@@ -435,6 +438,43 @@ export async function createBotAction(input: {
   revalidateOrg(input.orgSlug)
   const created = ok(`${agent.display_name} is ready`, { agentId: agent.id, handle: agent.handle, path })
   return computerNote ? { ...created, warning: `Made without its own computer. ${computerNote}` } : created
+}
+
+/** The bot's page: change its name and system prompt. The handle stays, so @mentions keep working. */
+export async function updateBotBasicsAction(input: {
+  orgSlug: string
+  agentId: string
+  name: string
+  systemPrompt: string
+}): Promise<ActionResult> {
+  const check = await adminOrgAccess(input.orgSlug)
+  if ("error" in check) return fail(check.error)
+  const displayName = input.name.trim()
+  if (!displayName || displayName.length > 60) return fail("The name must be 1 to 60 characters")
+  const systemPrompt = input.systemPrompt.trim().slice(0, 20_000)
+  const admin = createAdminClient()
+  const { data: agent } = await admin
+    .from("agents")
+    .select("id, org_id, handle")
+    .eq("id", input.agentId)
+    .maybeSingle()
+  if (!agent || agent.org_id !== check.access.org.id) return fail("Bot not found")
+  const { error } = await admin
+    .from("agents")
+    .update({ display_name: displayName, system_prompt: systemPrompt, updated_at: new Date().toISOString() })
+    .eq("id", agent.id)
+  if (error) return fail(errorMessage(error))
+  // The bot's own chat is named after it.
+  await admin.from("rooms").update({ name: displayName }).eq("agent_dm_agent_id", agent.id).eq("kind", "dm")
+  await audit({
+    orgId: check.access.org.id,
+    actorId: check.access.user.id,
+    action: "agent.updated",
+    target: agent.handle,
+    metadata: { fields: ["display_name", "system_prompt"] },
+  })
+  revalidateOrg(input.orgSlug)
+  return ok("Saved")
 }
 
 /**
