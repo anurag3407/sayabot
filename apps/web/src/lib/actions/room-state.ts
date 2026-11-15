@@ -127,23 +127,30 @@ export async function openBotDmAction(orgSlug: string, agentId: string): Promise
   }
 }
 
+const MODE_MESSAGES = {
+  review_all: "Bots will ask before every step here",
+  ask_risky: "Bots will ask before risky steps",
+  auto: "Bots on your Mac run read-only commands without asking",
+  turbo: "Bots on your Mac run every command without asking",
+} as const
+
 /**
- * How bots in this chat ask before acting, picked from the composer. Either mode keeps risky
- * steps behind a person's OK; "review_all" also holds reading and searching for approval.
- * Anyone in the chat (or a workspace admin) may change it.
+ * How bots in this chat ask before acting, picked from the composer. Anyone in the chat (or a
+ * workspace admin) may change it; who did is recorded, because a Mac only honours "auto" and
+ * "turbo" when its own owner picked them. Server tools marked dangerous ask in every mode.
  */
 export async function setRoomExecutionModeAction(input: {
   orgSlug: string
   roomId: string
-  mode: "ask_risky" | "review_all"
+  mode: "review_all" | "ask_risky" | "auto" | "turbo"
 }): Promise<ActionResult> {
-  if (input.mode !== "ask_risky" && input.mode !== "review_all") return fail("Unknown mode")
+  if (!["review_all", "ask_risky", "auto", "turbo"].includes(input.mode)) return fail("Unknown mode")
   const access = await getRoomAccess(input.orgSlug, input.roomId)
   if (!access) return fail("Room not found")
   if (access.roomRole === null && !access.canAdmin) return fail("Only people in this chat can change this")
   const { error } = await createAdminClient()
     .from("rooms")
-    .update({ execution_mode: input.mode })
+    .update({ execution_mode: input.mode, execution_mode_set_by: access.user.id })
     .eq("id", input.roomId)
     .eq("org_id", access.org.id)
   if (error) return fail(errorMessage(error))
@@ -154,5 +161,5 @@ export async function setRoomExecutionModeAction(input: {
     target: input.roomId,
     metadata: { mode: input.mode },
   })
-  return ok(input.mode === "review_all" ? "Bots will ask before every step here" : "Bots will ask before risky steps")
+  return ok(MODE_MESSAGES[input.mode])
 }

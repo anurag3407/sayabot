@@ -2,7 +2,7 @@ import { openSecret } from "@sayabot/llm"
 import { NextResponse } from "next/server"
 import { hostFromRequest } from "@/lib/desktop-hosts"
 import { getKek } from "@/lib/env"
-import { macAllowRules } from "@/lib/mac-runner"
+import { macAllowRules, macPermissions } from "@/lib/mac-runner"
 import { getPublicOrigin } from "@/lib/public-origin"
 import { createAdminClient } from "@/lib/supabase/admin"
 
@@ -35,14 +35,26 @@ export async function POST(request: Request) {
     .maybeSingle()
   if (!job) return NextResponse.json({ job: null })
 
-  const [{ data: agent }, { data: room }] = await Promise.all([
+  const [{ data: agent }, { data: room }, { data: mode }] = await Promise.all([
     admin
       .from("agents")
       .select("handle, display_name, params")
       .eq("id", job.agent_id)
       .maybeSingle(),
     admin.from("rooms").select("id, name, orgs(slug)").eq("id", job.room_id).maybeSingle(),
+    // Read on its own: a server ahead of its migration still hands out jobs (as "ask").
+    admin
+      .from("rooms")
+      .select("execution_mode, execution_mode_set_by")
+      .eq("id", job.room_id)
+      .maybeSingle(),
   ])
+  const modeRow = mode as { execution_mode?: string; execution_mode_set_by?: string | null } | null
+  const permissions = macPermissions(
+    modeRow?.execution_mode,
+    modeRow?.execution_mode_set_by,
+    (host as { user_id?: string | null }).user_id,
+  )
   const params = (agent?.params as Record<string, unknown> | null) ?? {}
   const runner = (params.runner ?? {}) as Record<string, unknown>
   const app = job.app ?? (typeof runner.app === "string" ? runner.app : "claude-code")
@@ -71,7 +83,10 @@ export async function POST(request: Request) {
       agentHandle: agent?.handle ?? "agent",
       agentName: agent?.display_name ?? agent?.handle ?? "Agent",
       mcp,
-      allow: macAllowRules(params),
+      // "Request review" asks about every step, so saved "always allow" rules don't apply.
+      allow: permissions === "review" ? [] : macAllowRules(params),
+      // review | ask | auto | turbo: how the Mac answers the app's permission requests.
+      permissions,
       room: room
         ? { id: room.id, name: room.name, path: orgSlug ? `/${orgSlug}/r/${room.id}` : null }
         : null,

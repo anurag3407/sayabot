@@ -2,7 +2,7 @@
 
 This catalog documents every database migration in `packages/db`: the four Drizzle-generated migrations in `packages/db/migrations/` (the declarative schema snapshot pipeline) and the 35 hand-written SQL scripts in `packages/db/sql/` (functions, triggers, RLS, realtime, and RPCs that Drizzle cannot express). `src/migrate.ts` runs both phases in order — Drizzle first, then every `sql/*.sql` file in sorted filename order — and the SQL phase re-applies on every run, so each script is written to be idempotent.
 
-Source files: `packages/db/migrations/0000_conscious_natasha_romanoff.sql` through `0003_gigantic_the_call.sql`, `packages/db/sql/0001_functions.sql` through `0036_room_execution_mode.sql`, `packages/db/src/migrate.ts`
+Source files: `packages/db/migrations/0000_conscious_natasha_romanoff.sql` through `0003_gigantic_the_call.sql`, `packages/db/sql/0001_functions.sql` through `0037_execution_mode_mac.sql`, `packages/db/src/migrate.ts`
 
 ---
 
@@ -264,6 +264,10 @@ Creates `agent_reads` (PK `(agent_id, room_id)`, `last_read_at`, `updated_at`) w
 ### `0036_room_execution_mode.sql` — execution mode per chat
 
 - `rooms.execution_mode text not null default 'ask_risky'` plus the idempotent `rooms_execution_mode_check` constraint (`'ask_risky'`, `'review_all'`). `review_all` makes the orchestrator's audited tool wrapper ask before every tool call; there is no value that skips approval for risky tools.
+
+### `0037_execution_mode_mac.sql` — four permission modes
+
+- `rooms.execution_mode_set_by uuid` (FK `profiles`, `on delete set null`) and `rooms_execution_mode_check` widened to `'review_all', 'ask_risky', 'auto', 'turbo'`. `auto`/`turbo` loosen only the Mac of the person who set them (the job claim checks `execution_mode_set_by` against the host owner); server tools marked dangerous keep asking in every mode.
 
 ---
 

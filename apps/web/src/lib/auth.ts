@@ -3,7 +3,15 @@ import { notFound, redirect } from "next/navigation"
 import { cache } from "react"
 import type { SupabaseClient, User } from "@supabase/supabase-js"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
-import type { OrgAccess, OrgRole, OrgSummary, RoomAccess, RoomRole, RoomView } from "@/lib/types"
+import type {
+  OrgAccess,
+  OrgRole,
+  OrgSummary,
+  RoomAccess,
+  RoomExecutionMode,
+  RoomRole,
+  RoomView,
+} from "@/lib/types"
 
 /**
  * The signed-in user, asked of Supabase once per request. Layouts, pages and actions all call
@@ -140,6 +148,12 @@ export async function requireOrgAdmin(slug: string): Promise<OrgAccess> {
   return access
 }
 
+const EXECUTION_MODES: RoomExecutionMode[] = ["review_all", "ask_risky", "auto", "turbo"]
+
+function readExecutionMode(value: string | undefined): RoomExecutionMode {
+  return EXECUTION_MODES.find((mode) => mode === value) ?? "ask_risky"
+}
+
 export async function getRoomAccess(
   slug: string,
   roomId: string,
@@ -178,7 +192,7 @@ export async function getRoomAccess(
     timezone: room.timezone ?? "UTC",
     agentDmUserId: room.agent_dm_user_id ?? null,
     agentDmAgentId: room.agent_dm_agent_id ?? null,
-    executionMode: (mode as { execution_mode?: string } | null)?.execution_mode === "review_all" ? "review_all" : "ask_risky",
+    executionMode: readExecutionMode((mode as { execution_mode?: string } | null)?.execution_mode),
     createdAt: room.created_at,
   }
   return {

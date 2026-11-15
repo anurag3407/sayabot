@@ -60,6 +60,7 @@ const mockRoom: RoomRow = {
   debateOrder: [],
   timezone: "UTC",
   executionMode: "ask_risky",
+  executionModeSetBy: null,
   agentDmUserId: null,
   createdAt: new Date("2026-01-01"),
   updatedAt: new Date("2026-01-01"),

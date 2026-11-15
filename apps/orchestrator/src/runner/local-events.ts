@@ -109,10 +109,29 @@ function cleanKey(key: unknown): string {
   return value
 }
 
-function cleanToolName(name: unknown): string {
-  const value = typeof name === "string" ? name.trim() : ""
-  if (!/^[\w.:-]{1,120}$/.test(value)) throw new LocalJobError("invalid tool name")
+/**
+ * Apps name their steps freely: ACP apps (Copilot, Cursor…) send the step's title, such as
+ * "pmset -g batt". Rejecting anything outside [\w.:-] made every such approval fail, and the Mac
+ * then denied the step at once ("Operation cancelled by user"). Normalise instead; only an
+ * empty name is an error.
+ */
+export function cleanToolName(name: unknown): string {
+  const value = (typeof name === "string" ? name : "")
+    .trim()
+    .replace(/[^\w.:-]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 120)
+  if (!value) throw new LocalJobError("invalid tool name")
   return value
+}
+
+/** A step card's name, never failing: a nameless step still shows as a card. */
+function stepName(name: unknown): string {
+  try {
+    return cleanToolName(name)
+  } catch {
+    return "step"
+  }
 }
 
 async function findByKey(roomId: string, jobId: string, key: string) {
@@ -180,7 +199,13 @@ export async function recordMacToolEvents(
   const job = await runningJob(jobId, hostId)
   const ids: Record<string, string> = {}
   for (const event of events.slice(0, 50)) {
-    const key = cleanKey(event.key)
+    // One malformed step must not drop the rest of the batch (it used to, so no cards showed).
+    let key: string
+    try {
+      key = cleanKey(event.key)
+    } catch {
+      continue
+    }
     const existing = await findByKey(job.roomId, job.id, key)
     if (event.type === "started") {
       if (existing) {
@@ -190,7 +215,7 @@ export async function recordMacToolEvents(
       const card = await insertCard(
         job,
         key,
-        cleanToolName(event.toolName),
+        stepName(event.toolName),
         event.args ?? {},
         "running",
       )

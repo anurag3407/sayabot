@@ -67,13 +67,14 @@ Claude's `approve-mcp.js` sidecar connects to a per-run Unix socket (`approve.so
 
 ### The decision (`decide`, `src/runner.ts:480`)
 
-1. **Session rules first** — `allowedByRules(toolName, input, sessionRules)` short-circuits steps already allowed for good earlier in this run.
+0. **Permissions** — `job.permissions` (from the claim; absent on older servers = `ask`): `turbo` allows every step at once; `auto` allows steps `isReadOnlyStep` (`src/mac-stream.ts`) calls look-only (Read/Glob/Grep/LS/WebSearch/WebFetch/Think, or a single known status command such as `pmset -g batt`, `ls`, `git status`, `defaults read`, with no chaining, pipes, redirects, substitutions or write flags); `review` skips step 1, so every step asks. The server only sends `auto`/`turbo` when this Mac's owner picked them.
+1. **Session rules first** — `allowedByRules(toolName, input, sessionRules)` short-circuits steps already allowed for good earlier in this run (not in `review`).
 2. **Flush pending step events** so the step's tool card exists in the room before it becomes an approval.
 3. **Create the card** — `POST /api/desktop/jobs/<id>/approvals` with `{ key: tool_use_id, toolName, args }`; the reply carries `toolCallId`. If the server is unreachable the step is **denied** ("Couldn't reach Sayabot to ask the owner…"), never silently allowed.
 4. **Notify** — `notifyApproval` in `main.ts` (`src/main.ts:214`) posts a macOS notification ("`<agent>` needs your OK — wants to `<step>`"); clicking restores the window and loads the room path (`job.room.path`).
 5. **Poll** — every 1.5 s (`APPROVAL_POLL_MS`) for up to 5 m 30 s (`APPROVAL_WAIT_MS`, longer than the server's five-minute window): `GET /api/desktop/jobs/<id>/approvals/<toolCallId>` returns `{ status, remembered?, message? }`. `approved` → allow; `approved` with `remembered: true` → `allowRuleFor` computes a rule appended to `sessionRules`; anything else → deny with the server's message. Timeout denies with "Nobody answered in time".
 
-ACP apps share this exact path: `runAcp` maps `session/request_permission` requests onto `decide` and converts the answer via `permissionOutcome` (`src/runner.ts:572-592`).
+ACP apps share this exact path: `runAcp` maps `session/request_permission` requests onto `decide` and converts the answer via `permissionOutcome` (`src/runner.ts:572-592`). The step's tool name comes from `toolName()` in `acp.ts`, which names ACP steps by **kind** like Claude Code's tools (`execute` → `Bash`, `edit` → `Edit`, `read` → `Read`, `search` → `Grep`, `fetch` → `WebFetch`, …) and only falls back to a name-safe title. ACP apps title shell steps with the command itself ("pmset -g batt"); sending that as the name made the server refuse every approval, so the step was denied at once and Copilot replied "Operation cancelled by user".
 
 ---
 

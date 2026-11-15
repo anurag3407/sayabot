@@ -51,12 +51,12 @@ export interface RoomView {
   timezone: string
   agentDmUserId: string | null
   agentDmAgentId: string | null
-  /** How bots here ask before acting: risky steps only (default) or every step. */
+  /** How bots here ask before acting: every step, risky steps (default), auto or turbo. */
   executionMode: RoomExecutionMode
   createdAt: string
 }
 
-export type RoomExecutionMode = "ask_risky" | "review_all"
+export type RoomExecutionMode = "review_all" | "ask_risky" | "auto" | "turbo"
 
 export interface RoomAccess {
   org: OrgAccess["org"]

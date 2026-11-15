@@ -31,7 +31,13 @@ export interface RoomModelOverride {
   runner: Record<string, unknown> | null
 }
 
-export type RoomExecutionMode = "ask_risky" | "review_all"
+/**
+ * Execution mode, picked in the composer. "review_all": every step asks. "ask_risky" (default):
+ * risky steps ask. "auto": on the person's own Mac, read-only commands run without asking.
+ * "turbo": on the person's own Mac, every command runs without asking. Auto and turbo only apply
+ * to a Mac whose owner set them, and never to server tools marked dangerous.
+ */
+export type RoomExecutionMode = "review_all" | "ask_risky" | "auto" | "turbo"
 
 export const rooms = pgTable(
   "rooms",
@@ -52,12 +58,12 @@ export const rooms = pgTable(
     }),
     debateOrder: uuid("debate_order").array().notNull().default([]),
     timezone: text("timezone").notNull().default("UTC"),
-    /**
-     * How bots in this chat ask before acting. "ask_risky" (default): risky tools wait for a
-     * person's OK. "review_all": every tool waits, even reading and searching. There is
-     * deliberately no mode that skips approval for risky tools.
-     */
+    /** How bots in this chat ask before acting (see RoomExecutionMode). */
     executionMode: text("execution_mode").$type<RoomExecutionMode>().notNull().default("ask_risky"),
+    /** Who picked the mode. A Mac honours auto/turbo only when its owner picked them. */
+    executionModeSetBy: uuid("execution_mode_set_by").references(() => profiles.id, {
+      onDelete: "set null",
+    }),
     agentDmUserId: uuid("agent_dm_user_id").references(() => profiles.id, { onDelete: "set null" }),
     agentDmAgentId: uuid("agent_dm_agent_id").references(() => agents.id, { onDelete: "set null" }),
     createdBy: uuid("created_by").references(() => profiles.id, { onDelete: "set null" }),
@@ -68,7 +74,7 @@ export const rooms = pgTable(
     index("rooms_org_idx").on(t.orgId),
     uniqueIndex("rooms_agent_dm_idx").on(t.agentDmUserId, t.agentDmAgentId),
     check("rooms_turn_cap_check", sql`${t.turnCap} between 1 and 10`),
-    check("rooms_execution_mode_check", sql`${t.executionMode} in ('ask_risky', 'review_all')`),
+    check("rooms_execution_mode_check", sql`${t.executionMode} in ('review_all', 'ask_risky', 'auto', 'turbo')`),
   ],
 )
 

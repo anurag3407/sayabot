@@ -62,3 +62,21 @@ export async function rememberMacAllow(
   const { error } = await admin.from("agents").update({ params }).eq("id", agent.id)
   return error ? { ok: false, error: error.message } : { ok: true, rule }
 }
+
+/** What a Mac run may do without asking, sent with each job. */
+export type MacPermissions = "review" | "ask" | "auto" | "turbo"
+
+/**
+ * The chat's execution mode as this Mac should apply it. "auto" and "turbo" loosen a computer,
+ * so they only count when the Mac's owner picked them; a mode set by anyone else (another member
+ * of a group chat) falls back to "ask". An unknown or missing mode is "ask".
+ */
+export function macPermissions(
+  mode: string | null | undefined,
+  setBy: string | null | undefined,
+  hostOwnerId: string | null | undefined,
+): MacPermissions {
+  if (mode === "review_all") return "review"
+  if ((mode === "auto" || mode === "turbo") && setBy && hostOwnerId && setBy === hostOwnerId) return mode
+  return "ask"
+}

@@ -33,7 +33,7 @@ const notifyHumansNeeded = vi.fn()
 vi.mock("../push", () => ({ notifyHumansNeeded }))
 vi.mock("../tools/approvals", () => ({ waitForApproval: () => new Promise(() => {}) }))
 
-const { recordMacToolEvents, requestMacApproval, storedArgs } = await import("./local-events")
+const { cleanToolName, recordMacToolEvents, requestMacApproval, storedArgs } = await import("./local-events")
 
 const HOST = "11111111-1111-1111-1111-111111111111"
 const job = {
@@ -115,6 +115,22 @@ describe("Mac tool activity", () => {
     await expect(
       requestMacApproval("job-1", HOST, { key: "bad key with spaces", toolName: "Bash", args: {} }),
     ).rejects.toThrow("invalid tool key")
+  })
+})
+
+describe("cleanToolName", () => {
+  it("keeps ordinary names", () => {
+    expect(cleanToolName("Bash")).toBe("Bash")
+    expect(cleanToolName("mcp__sayabot__send_message")).toBe("mcp__sayabot__send_message")
+  })
+
+  it("normalises an ACP step title instead of refusing it", () => {
+    // Copilot titles its shell steps with the command; this used to fail every approval.
+    expect(cleanToolName("pmset -g batt")).toBe("pmset_-g_batt")
+  })
+
+  it("refuses an empty name", () => {
+    expect(() => cleanToolName("   ")).toThrow("invalid tool name")
   })
 })
 

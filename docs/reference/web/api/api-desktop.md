@@ -99,12 +99,13 @@ Response job payload (`jobs/claim/route.ts:63`):
   "agentHandle": "…",
   "agentName": "…",
   "mcp": { "url": "<origin>/api/v1/mcp", "token": "…" } | null,
-  "allow": [ …macAllowRules(agent.params) ],
+  "allow": [ …macAllowRules(agent.params) ] | [],
+  "permissions": "review" | "ask" | "auto" | "turbo",
   "room": { "id", "name", "path": "/<orgSlug>/r/<roomId>" | null } | null
 }
 ```
 
-`app` comes from the job row or the agent's `params.runner.app` (default `claude-code`); `model`/`effort` are null to keep the app's own defaults; `mcp` is present only when the sealed token could be opened with `getKek()`, and `allow` carries the agent's pre-approved step rules.
+`app` comes from the job row or the agent's `params.runner.app` (default `claude-code`); `model`/`effort` are null to keep the app's own defaults; `mcp` is present only when the sealed token could be opened with `getKek()`, and `allow` carries the agent's pre-approved step rules (empty under `review`). `permissions` is the room's execution mode as this Mac applies it, from `macPermissions(mode, setBy, host.user_id)` in `lib/mac-runner.ts`: `review_all` → `review`; `auto`/`turbo` only when `rooms.execution_mode_set_by` is this host's owner, otherwise `ask`; anything else `ask`. The mode is read in its own query so a server ahead of its migration still hands out jobs.
 
 ### Progress and completion — `POST /api/desktop/jobs/[id]` (`jobs/[id]/route.ts:11`)
 

@@ -103,7 +103,7 @@ sequenceDiagram
     Note over A,DB: on throw: status = error, error = redacted message, model sees { ok: false, error }
 ```
 
-**Execution mode.** Before recording a call, the wrapper asks `roomReviewsEveryStep(runtime.roomId)` (`audited.ts`), which reads `rooms.execution_mode`. In a `review_all` room every tool, including `safe` ones, takes the `pending_approval` path above; in `ask_risky` (the default) only `dangerous` calls do. The mode is read per call, so a switch from the composer applies mid-run, and a failed lookup falls back to the default: it can only add approval gates, never remove one. Mac runs' native Claude Code tools are governed by Claude Code's own permission mode, which always allows reads.
+**Execution mode.** Before recording a call, the wrapper asks `roomReviewsEveryStep(runtime.roomId)` (`audited.ts`), which reads `rooms.execution_mode`. In a `review_all` room every tool, including `safe` ones, takes the `pending_approval` path above; in `ask_risky` (the default), `auto` and `turbo` only `dangerous` calls do: auto/turbo loosen the owner's own Mac runs (see the desktop runner), never server tools marked dangerous. The mode is read per call, so a switch from the composer applies mid-run, and a failed lookup falls back to the default: it can only add approval gates, never remove one. Mac runs' native Claude Code tools are governed by Claude Code's own permission mode, which always allows reads.
 
 Key mechanics:
 

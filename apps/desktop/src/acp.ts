@@ -243,10 +243,29 @@ function finished(key: string, update: Json): Activity {
 }
 
 /** A short tool name for the room's card: the app's own title, else the ACP kind. */
+/** ACP step kinds, named like Claude Code's tools so approvals and "always allow" rules line up. */
+const KIND_NAMES: Record<string, string> = {
+  execute: "Bash",
+  edit: "Edit",
+  read: "Read",
+  delete: "Delete",
+  move: "Move",
+  search: "Grep",
+  fetch: "WebFetch",
+  think: "Think",
+}
+
+/**
+ * The step's tool name. ACP apps title a shell step with the command itself ("pmset -g batt");
+ * that is not a name, and the server used to refuse it. The kind decides the name; the title is
+ * only a fallback, made name-safe.
+ */
 export function toolName(update: Json): string {
-  const title = nonempty(update.title) ?? nonempty(record(update.toolCall)?.title)
   const kind = nonempty(update.kind) ?? nonempty(record(update.toolCall)?.kind)
-  return (title ?? kind ?? "tool").slice(0, 80)
+  if (kind && KIND_NAMES[kind]) return KIND_NAMES[kind]
+  const title = nonempty(update.title) ?? nonempty(record(update.toolCall)?.title)
+  const safe = (title ?? kind ?? "tool").replace(/[^\w.:-]+/g, "_").replace(/^_+|_+$/g, "")
+  return (safe || "tool").slice(0, 80)
 }
 
 // ---------- permissions ----------

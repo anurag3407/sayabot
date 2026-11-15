@@ -7,6 +7,7 @@ import {
   modelLabel,
   modelRequest,
   permissionOutcome,
+  toolName,
 } from "./acp"
 import { AGENT_SPECS } from "./local-agents"
 import { cursorRowsToModels, piRowsToModels } from "./local-models"
@@ -93,6 +94,13 @@ describe("acpUpdate", () => {
     ).toEqual({ activity: [] })
   })
 
+  it("names steps by kind, so a titled shell step is still Bash", () => {
+    // Copilot titles shell steps with the command; the server refused that as a tool name.
+    expect(toolName({ title: "pmset -g batt", kind: "execute" })).toBe("Bash")
+    expect(toolName({ title: "Fetch docs", kind: "fetch" })).toBe("WebFetch")
+    expect(toolName({ title: "Do a thing!" })).toBe("Do_a_thing")
+  })
+
   it("turns tool calls into live steps", () => {
     expect(
       acpUpdate({
@@ -106,7 +114,7 @@ describe("acpUpdate", () => {
         },
       }),
     ).toEqual({
-      activity: [{ type: "started", key: "t1", toolName: "Run ls", args: { command: "ls" } }],
+      activity: [{ type: "started", key: "t1", toolName: "Bash", args: { command: "ls" } }],
     })
     expect(
       acpUpdate({

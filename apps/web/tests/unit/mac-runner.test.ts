@@ -21,7 +21,7 @@ vi.mock("@/lib/supabase/admin", () => ({
   }),
 }))
 
-const { macAllowRules, macApprovalBlock, rememberMacAllow } = await import("@/lib/mac-runner")
+const { macAllowRules, macApprovalBlock, macPermissions, rememberMacAllow } = await import("@/lib/mac-runner")
 const { describeMacStep, macAllowLabel, readMacMarker, withoutMacMarker } =
   await import("@/lib/mac-runner-shared")
 
@@ -111,5 +111,30 @@ describe("who can answer a Mac approval", () => {
       ok: false,
       error: "This step can only be allowed once",
     })
+  })
+})
+
+describe("macPermissions", () => {
+  const OWNER = "11111111-1111-1111-1111-111111111111"
+  const OTHER = "22222222-2222-2222-2222-222222222222"
+
+  it("asks by default", () => {
+    expect(macPermissions(null, null, OWNER)).toBe("ask")
+    expect(macPermissions("ask_risky", OWNER, OWNER)).toBe("ask")
+    expect(macPermissions("something-new", OWNER, OWNER)).toBe("ask")
+  })
+
+  it("reviews everything whoever picked it (it only tightens)", () => {
+    expect(macPermissions("review_all", OTHER, OWNER)).toBe("review")
+  })
+
+  it("loosens the Mac only when its owner picked auto or turbo", () => {
+    expect(macPermissions("auto", OWNER, OWNER)).toBe("auto")
+    expect(macPermissions("turbo", OWNER, OWNER)).toBe("turbo")
+  })
+
+  it("ignores auto or turbo picked by someone else", () => {
+    expect(macPermissions("turbo", OTHER, OWNER)).toBe("ask")
+    expect(macPermissions("auto", null, OWNER)).toBe("ask")
   })
 })

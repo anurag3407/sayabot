@@ -22,9 +22,12 @@ import {
   ChevronDown,
   Eye,
   FileText,
+  Lock,
   ListTodo,
   Paperclip,
   Plus,
+  Shield,
+  ShieldAlert,
   ShieldCheck,
   Video,
 } from "lucide-react"
@@ -34,29 +37,45 @@ import type { MemberView, RoomAgentView, RoomExecutionMode } from "@/lib/types"
 const MODES: {
   id: RoomExecutionMode
   label: string
-  short: string
   detail: string
   icon: typeof ShieldCheck
+  tone: string
 }[] = [
   {
     id: "review_all",
-    label: "Review every step",
-    short: "Review all",
-    detail: "Every action waits for your OK, even reading and searching.",
+    label: "Request review",
+    detail: "Every step waits for your OK, even reading and searching.",
     icon: Eye,
+    tone: "text-accent",
   },
   {
     id: "ask_risky",
-    label: "Ask first",
-    short: "Ask first",
-    detail: "Sending, changing files, running commands and spending wait for your OK. Reading just happens.",
-    icon: ShieldCheck,
+    label: "Default",
+    detail: "Asks before sensitive steps: running commands, changing files, sending, spending.",
+    icon: Lock,
+    tone: "text-ok",
+  },
+  {
+    id: "auto",
+    label: "Auto",
+    detail: "On your Mac, read-only commands run on their own; anything that changes things asks.",
+    icon: Shield,
+    tone: "text-ok",
+  },
+  {
+    id: "turbo",
+    label: "Turbo",
+    detail: "On your Mac, every command runs without asking. Only for bots you trust.",
+    icon: ShieldAlert,
+    tone: "text-warn",
   },
 ]
 
 /**
- * Execution mode, right in the composer. Both modes keep risky steps (sending, deleting, running
- * commands, spending) behind a person's OK; there is deliberately no "skip approval" mode.
+ * Execution mode, right in the composer, like a local coding agent's permissions. Auto and Turbo
+ * loosen what bots may do on the Mac of whoever picks them (another member's pick never loosens
+ * your Mac); server tools that reach other people or services (sending, posting, spending) ask
+ * in every mode.
  */
 function ExecutionModeMenu({
   orgSlug,
@@ -89,25 +108,25 @@ function ExecutionModeMenu({
   return (
     <DetailsMenu
       className="relative"
-      summaryLabel={`Execution mode: ${current.label}`}
+      summaryLabel={`Permissions: ${current.label}`}
       summaryClassName={cn(
         "flex h-8 cursor-pointer list-none items-center gap-1.5 rounded-full px-2.5 text-[12.5px] text-muted transition-colors hover:bg-white/[0.06] hover:text-text",
         pending && "opacity-70",
       )}
       summary={
         <>
-          <Icon className={cn("h-4 w-4", mode === "review_all" ? "text-accent" : "text-ok")} aria-hidden="true" />
-          <span className="hidden sm:inline">{current.short}</span>
+          <Icon className={cn("h-4 w-4", current.tone)} aria-hidden="true" />
+          <span className="hidden sm:inline">{current.label}</span>
           <ChevronDown className="h-3.5 w-3.5 text-faint" aria-hidden="true" />
         </>
       }
     >
       <div
         role="menu"
-        aria-label="Execution mode"
+        aria-label="Permissions"
         className="surface-pop pop-in absolute bottom-full right-0 z-30 mb-2 w-[min(340px,86vw)] rounded-2xl p-1.5"
       >
-        <p className="px-2.5 pb-1 pt-1.5 text-[12px] font-medium text-faint">Execution mode</p>
+        <p className="px-2.5 pb-1 pt-1.5 text-[12px] font-medium text-faint">Permissions</p>
         {MODES.map((item) => {
           const ItemIcon = item.icon
           const active = item.id === mode
@@ -123,15 +142,10 @@ function ExecutionModeMenu({
                 active && "bg-white/[0.04]",
               )}
             >
-              <ItemIcon className="mt-0.5 h-[18px] w-[18px] shrink-0 text-muted" aria-hidden="true" />
+              <ItemIcon className={cn("mt-0.5 h-[18px] w-[18px] shrink-0", active ? item.tone : "text-muted")} aria-hidden="true" />
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-2 text-[13.5px] font-medium text-text">
                   {item.label}
-                  {item.id === "ask_risky" ? (
-                    <span className="rounded-md bg-white/[0.07] px-1.5 py-px text-[10.5px] font-normal text-muted">
-                      Default
-                    </span>
-                  ) : null}
                 </span>
                 <span className="mt-0.5 block text-[12.5px] leading-snug text-faint">{item.detail}</span>
               </span>
@@ -140,7 +154,8 @@ function ExecutionModeMenu({
           )
         })}
         <div className="mt-1 border-t border-line px-2.5 pb-1.5 pt-2 text-[11.5px] leading-relaxed text-faint">
-          Risky steps always wait for your OK. Bots on your Mac read files on their own in either mode.{" "}
+          Auto and Turbo apply to bots on your own Mac, and only when you pick them. Sending messages,
+          posting and spending always ask.{" "}
           <Link href={`/${orgSlug}/inbox`} className="text-accent hover:underline">
             See what&apos;s waiting
           </Link>

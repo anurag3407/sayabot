@@ -262,3 +262,47 @@ export function allowedByRules(
   }
   return false
 }
+
+/** Tools that only look: run without asking in "auto". */
+const READ_ONLY_TOOLS = new Set(["Read", "Glob", "Grep", "LS", "WebSearch", "WebFetch", "Think", "TodoWrite"])
+
+/** Commands that only report (status, files, system info). Their write flags are refused below. */
+const READ_ONLY_COMMANDS = new Set([
+  "cat", "head", "tail", "less", "wc", "ls", "pwd", "whoami", "id", "date", "cal", "uptime",
+  "uname", "sw_vers", "hostname", "df", "du", "which", "type", "file", "stat", "echo", "printf",
+  "grep", "rg", "egrep", "fgrep", "find", "tree", "basename", "dirname", "realpath", "sort",
+  "uniq", "cut", "diff", "cmp", "md5", "shasum", "ps", "top", "vm_stat", "iostat", "lsof",
+  "pmset", "system_profiler", "sysctl", "ioreg", "networksetup", "ipconfig", "ifconfig",
+  "scutil", "mdfind", "mdls", "defaults", "git", "node", "python3", "npm", "pnpm",
+])
+
+/** Sub-commands / flags that make an otherwise read-only command change something. */
+const GIT_READ = new Set(["status", "log", "diff", "show", "branch", "remote", "rev-parse", "blame", "ls-files", "describe", "tag"])
+const VERSION_ONLY = new Set(["node", "python3", "npm", "pnpm"])
+
+/**
+ * "Auto" mode: whether a step only looks, so it may run without asking on the owner's own Mac.
+ * Deliberately narrow: one known command, no chaining, pipes, redirects or substitutions, and
+ * none of the write flags those commands have. Anything unsure asks.
+ */
+export function isReadOnlyStep(toolName: string, input: Record<string, unknown>): boolean {
+  if (READ_ONLY_TOOLS.has(toolName)) return true
+  if (toolName !== "Bash") return false
+  const command = typeof input.command === "string" ? input.command.trim() : ""
+  if (!command || command.length > 300 || /[;&|`\n]|\$\(|>|</.test(command)) return false
+  const words = command.split(/\s+/)
+  const [bin, sub] = words
+  if (!bin || !READ_ONLY_COMMANDS.has(bin)) return false
+  if (bin === "git") return Boolean(sub && GIT_READ.has(sub)) && !words.includes("-D") && !words.includes("--delete")
+  if (VERSION_ONLY.has(bin)) return words.length === 2 && (sub === "--version" || sub === "-v")
+  if (bin === "find") return !words.some((w) => ["-delete", "-exec", "-execdir", "-ok", "-fprint"].includes(w))
+  if (bin === "defaults") return sub === "read" || sub === "domains"
+  if (bin === "pmset") return sub === "-g"
+  if (bin === "networksetup") return Boolean(sub?.startsWith("-get") || sub?.startsWith("-list"))
+  if (bin === "scutil") return sub === "--get" || sub === "--dns" || sub === "--proxy"
+  if (bin === "sysctl") return !words.includes("-w") && !words.some((w) => w.includes("="))
+  if (bin === "ipconfig") return sub === "getifaddr" || sub === "getpacket"
+  if (bin === "ifconfig") return words.length <= 2
+  if (bin === "top") return words.includes("-l")
+  return true
+}

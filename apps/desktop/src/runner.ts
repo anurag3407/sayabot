@@ -21,6 +21,7 @@ import { localServerUrl } from "./local-models"
 import {
   allowedByRules,
   allowRuleFor,
+  isReadOnlyStep,
   parseClaudeLine,
   parseCodexLine,
   type Activity,
@@ -57,6 +58,12 @@ interface Job {
   mcp?: { url: string; token: string } | null
   /** Steps the owner chose "always allow" for, in Claude Code's --allowedTools syntax. */
   allow?: string[]
+  /**
+   * The chat's permissions as this Mac applies them (the server already checked that auto/turbo
+   * were picked by this Mac's owner): review = ask about every step, ask = ask about risky steps,
+   * auto = read-only steps run on their own, turbo = everything runs. Absent on older servers = ask.
+   */
+  permissions?: "review" | "ask" | "auto" | "turbo"
   room?: { id: string; name: string; path: string | null } | null
 }
 
@@ -493,8 +500,15 @@ export class LocalRunner {
     | { behavior: "deny"; message: string }
   > {
     const input = request.input ?? {}
-    // Allowed for good earlier in this run (Claude only learns rules at start).
-    if (allowedByRules(request.tool_name, input, sessionRules))
+    const permissions = job.permissions ?? "ask"
+    // Turbo: the owner picked "run everything" for this chat on this Mac.
+    if (permissions === "turbo") return { behavior: "allow", updatedInput: input }
+    // Auto: steps that only look run on their own; anything that changes things still asks.
+    if (permissions === "auto" && isReadOnlyStep(request.tool_name, input))
+      return { behavior: "allow", updatedInput: input }
+    // Allowed for good earlier in this run (Claude only learns rules at start). Request review
+    // asks about every step, so remembered rules don't apply there.
+    if (permissions !== "review" && allowedByRules(request.tool_name, input, sessionRules))
       return { behavior: "allow", updatedInput: input }
 
     // The step's card must exist before it turns into an approval.
