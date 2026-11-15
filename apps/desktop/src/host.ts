@@ -10,6 +10,7 @@ import {
   syncCloudHandoff,
   type LocalWorkspaceSnapshot,
 } from "./cloud-handoff"
+import { hostAuthPlan } from "./host-auth"
 import { Injector, KEY_CODES } from "./injector"
 import { measureLocalStorage, type LocalStorageReport } from "./storage"
 import type { ReportedModel } from "./local-models"
@@ -23,6 +24,8 @@ export interface HostAuth {
   hostId: string
   hostToken: string
   serverUrl: string
+  /** The account that registered this computer; its heartbeats land on that account. */
+  userId?: string
 }
 
 /** One app on this Mac as the server sees it (see LocalAgent). */
@@ -37,7 +40,7 @@ export interface ReportedAgent {
 
 export interface HostDeps {
   getServerUrl: () => string
-  getSession: () => { accessToken: string; refreshToken: string } | null
+  getSession: () => { accessToken: string; refreshToken: string; userId?: string } | null
   onSessionUpdate?: (session: { accessToken: string; refreshToken: string }) => void
   detectLocalAgents: () => Promise<ReportedAgent[]>
   onHeartbeat?: (reply: HeartbeatReply) => void
@@ -155,6 +158,7 @@ function readCloudSnapshot(
 export class DesktopHost {
   private auth: HostAuth | null = null
   private timer: NodeJS.Timeout | null = null
+  private starting: Promise<void> | null = null
   private captureWindow: BrowserWindow | null = null
   private handled = new Set<string>()
   private active = new Map<string, { control: boolean }>()
@@ -180,11 +184,39 @@ export class DesktopHost {
     return this.auth
   }
 
-  async start(): Promise<void> {
-    if (this.timer) return
+  /**
+   * Starts reporting as this computer, under the account signed in now. Called again whenever the
+   * login changes; a registration made by another account is replaced, not reused.
+   */
+  start(): Promise<void> {
+    this.starting ??= this.connect().finally(() => {
+      this.starting = null
+    })
+    return this.starting
+  }
+
+  private async connect(): Promise<void> {
     const serverUrl = this.deps.getServerUrl().replace(/\/+$/, "")
-    this.auth = loadHostAuth(serverUrl) ?? (await this.register(serverUrl))
-    if (!this.auth) return
+    const userId = this.deps.getSession()?.userId
+    const saved = this.auth ?? loadHostAuth(serverUrl)
+    const plan = hostAuthPlan(saved, serverUrl, userId)
+    let next: HostAuth | null = saved
+    if (plan !== "reuse") {
+      // Offline: a legacy registration still works; another account's must not be used.
+      next = (await this.register(serverUrl, saved)) ?? (plan === "verify" ? saved : null)
+    }
+    if (next?.hostId !== this.auth?.hostId) {
+      // A different computer row: send the apps and storage right away, not in a minute.
+      this.lastAgentsScan = 0
+      this.lastStorageScan = 0
+    }
+    this.auth = next
+    if (!this.auth) {
+      if (this.timer) clearInterval(this.timer)
+      this.timer = null
+      return
+    }
+    if (this.timer) return
     this.timer = setInterval(() => void this.heartbeat(), HEARTBEAT_MS)
     void this.heartbeat()
   }
@@ -203,13 +235,22 @@ export class DesktopHost {
     this.auth = null
   }
 
-  private async register(serverUrl: string): Promise<HostAuth | null> {
+  /** Registers under the signed-in account; with `previous`, the server keeps that row if it is this account's. */
+  private async register(serverUrl: string, previous: HostAuth | null): Promise<HostAuth | null> {
     const session = this.deps.getSession()
     if (!session) return null
+    const known: Record<string, string> =
+      previous && previous.serverUrl === serverUrl
+        ? { "x-host-id": previous.hostId, "x-host-token": previous.hostToken }
+        : {}
     try {
       const res = await fetch(`${serverUrl}/api/desktop/register`, {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: `Bearer ${session.accessToken}` },
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${session.accessToken}`,
+          ...known,
+        },
         body: JSON.stringify({
           name: os.hostname().replace(/\.local$/, ""),
           platform: process.platform,
@@ -226,7 +267,12 @@ export class DesktopHost {
       if (data.session?.accessToken && data.session?.refreshToken) {
         this.deps.onSessionUpdate?.(data.session)
       }
-      const auth = { hostId: data.hostId, hostToken: data.hostToken, serverUrl }
+      const auth: HostAuth = {
+        hostId: data.hostId,
+        hostToken: data.hostToken,
+        serverUrl,
+        ...(session.userId ? { userId: session.userId } : {}),
+      }
       saveHostAuth(auth)
       return auth
     } catch (err) {
