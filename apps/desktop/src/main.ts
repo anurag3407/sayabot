@@ -1109,9 +1109,18 @@ app.whenReady().then(() => {
     }
   })
 
-  // Look for a newer Mac app shortly after launch, then every 6 hours.
-  setTimeout(() => void checkDesktopUpdates(false), 15_000)
-  setInterval(() => void checkDesktopUpdates(false), 6 * 60 * 60 * 1000)
+  // Look for a newer Mac app shortly after launch, every hour, and when you come back to the app
+  // (at most every 10 minutes). Each new version still prompts only once per launch.
+  let lastUpdateCheck = Date.now()
+  const checkSoon = () => {
+    lastUpdateCheck = Date.now()
+    void checkDesktopUpdates(false)
+  }
+  setTimeout(checkSoon, 15_000)
+  setInterval(checkSoon, 60 * 60 * 1000)
+  app.on("browser-window-focus", () => {
+    if (Date.now() - lastUpdateCheck > 10 * 60 * 1000) checkSoon()
+  })
 })
 
 app.on("before-quit", () => {

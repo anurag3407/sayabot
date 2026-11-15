@@ -6,6 +6,8 @@ import { Check, ChevronDown, ChevronRight, Cpu, Monitor, Plus, RefreshCw, Search
 import { EFFORT_LABELS, type EffortLevel } from "@sayabot/llm/models/effort"
 import { ProviderIcon } from "@/components/room/model-picker/provider-icons"
 import { SayabotMark } from "@/components/landing/sayabot-mark"
+import { usePlanLimits } from "@/components/usage/plan-rings"
+import { withMacPlans } from "@/lib/mac-plans"
 import { cn } from "@/lib/format"
 import type { PickerGroup, PickerModel, PickerSection } from "@/lib/model-catalog"
 
@@ -144,7 +146,7 @@ function Radio({ on }: { on: boolean }) {
 
 export function ModelPickerPanel({
   orgSlug,
-  groups,
+  groups: serverGroups,
   value,
   onPick,
   pending = false,
@@ -167,6 +169,9 @@ export function ModelPickerPanel({
   refreshing?: boolean
   className?: string
 }) {
+  // In the Mac app, this computer's Claude / Codex plan limits show on their groups.
+  const { limits } = usePlanLimits()
+  const groups = useMemo(() => withMacPlans(serverGroups, limits), [serverGroups, limits])
   const firstKey = value && groups.some((g) => g.keyId === value.keyId) ? value.keyId : (groups[0]?.keyId ?? null)
   const [railKey, setRailKey] = useState<string | null>(firstKey)
   const [query, setQuery] = useState("")

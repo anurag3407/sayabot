@@ -160,25 +160,6 @@ export function SidebarPlanRings({ usageHref, onNavigate }: { usageHref: string;
   )
 }
 
-/** The same rings stacked in the icon rail: no words, just the gauges. */
-export function RailPlanRings({ usageHref }: { usageHref: string }) {
-  const { supported, limits } = usePlanLimits()
-  const shown = (limits ?? []).filter((item) => item.windows.length > 0)
-  if (!supported || !shown.length) return null
-  return (
-    <Link
-      href={usageHref}
-      aria-label={`Plan limits. ${shown.map(describeLimits).join(". ")}`}
-      title={shown.map(describeLimits).join("\n")}
-      className="flex flex-col items-center gap-2.5 rounded-2xl py-1.5 transition-opacity hover:opacity-80"
-    >
-      {shown.map((item) => (
-        <PlanRing key={item.provider} limits={item} size={38} />
-      ))}
-    </Link>
-  )
-}
-
 function minutesAgo(iso: string): string {
   const minutes = Math.round((Date.now() - Date.parse(iso)) / 60_000)
   if (!Number.isFinite(minutes) || minutes < 1) return "just now"
