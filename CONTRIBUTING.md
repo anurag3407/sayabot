@@ -256,10 +256,13 @@ All contributors must respect the core security rules outlined in [AGENTS.md](AG
 
 ---
 
+## 📚 Documentation Standards
+
+Every feature has a dedicated reference document under `docs/reference/`, written against the actual code. Per the mandatory rule in [`AGENTS.md` §9](AGENTS.md#9-documentation-maintenance-mandatory): **any PR that adds, changes, renames, or removes a feature MUST update the matching reference doc(s) — and `docs/README.md` when docs are added/removed — in the same change.** Document what the code actually does (real names, schemas, defaults); no placeholder or "TODO" sections.
+
 ## 🧪 Testing Standards
 
 Sayabot maintains high test coverage across all packages using **Vitest** and **Playwright**:
-
 ### Running Tests
 
 ```bash

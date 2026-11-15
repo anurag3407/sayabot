@@ -2,7 +2,9 @@
 
 > **High-Priority Operational Guide for AI Coding Agents**  
 > _Target audience: Claude, Cursor, Copilot, Antigravity, Codex, Hermes, Windsurf, OpenClaw, and automated CI agents._  
-> _Read this document completely before proposing, generating, modifying, or refactoring code in this repository._
+> _Read this document completely before proposing, generating, modifying, or refactoring code in this repository._  
+> _**Documentation rule:** any code change MUST update the matching docs under `docs/reference/` in the same change — see §9 Documentation Maintenance._  
+> _**Reading rule:** read only what matters — `docs/reference/` first, then targeted search and narrow file ranges. Never bulk-read the repo. See §10 Token-Efficient Reading Protocol._
 
 ---
 
@@ -43,7 +45,7 @@ sayabot/
 │   ├── cloudflare/              # Cloudflare Tunnel config and edge rules
 │   ├── docker-compose.yml       # Production & self-hosting multi-container compose definition
 │   └── deploy.sh                # Zero-downtime rolling update script with preflight checks and migrations
-├── docs/                        # Complete user, developer, and operational documentation hub
+├── docs/                        # Documentation hub: task guides (docs/*.md) + per-feature reference (docs/reference/) — see §9
 ├── tests/                       # Integration test suites and runner scripts
 ├── e2e/                         # Playwright end-to-end browser test suites
 ├── turbo.json                   # Turborepo task pipeline and cache dependency topology
@@ -573,3 +575,78 @@ Before creating a commit, pull request, or handing off to another agent, verify:
 - [ ] `pnpm typecheck` runs cleanly without TypeScript errors.
 - [ ] `pnpm test` passes without failing test suites.
 - [ ] `pnpm lint` and `pnpm format` pass without formatting regressions.
+- [ ] **Reference documentation updated** for every feature added, changed, moved, or removed (see §9 Documentation Maintenance — this is a hard requirement, not optional).
+
+---
+
+## 9. Documentation Maintenance (Mandatory)
+
+> **Docs are code.** Every feature in Sayabot has a dedicated reference document under `docs/reference/`. When an agent (or human) **adds, changes, renames, or removes** any behavior, tool, schema, route, event, or environment variable, the matching reference doc(s) **MUST be updated in the same change**. A PR that changes code but not its documentation is incomplete and fails review.
+
+### 9.1 Why
+
+The `docs/reference/` tree is generated from a full read of the codebase and describes **actual behavior** (real function names, tool schemas, env vars, table columns, events). Stale reference docs are worse than no docs: downstream agents and developers trust them to make changes.
+
+### 9.2 Documentation Map — where each kind of change must be documented
+
+| Code you changed | Reference docs to update |
+| :--- | :--- |
+| `packages/core/src/*` | `docs/reference/core/*.md` |
+| `packages/db/src/schema/*` or `packages/db/sql/*` | `docs/reference/database/*.md` (schema doc + `migrations-catalog.md`) |
+| `packages/llm/src/*` | `docs/reference/llm/*.md` |
+| `apps/orchestrator/src/engine/*`, `coordinator/*`, `runner/*` | `docs/reference/orchestrator/engine/*.md` |
+| `apps/orchestrator/src/tools/*` (new/changed tool) | `docs/reference/orchestrator/tools/*.md` (+ the tool inventory table in `tool-system.md`) |
+| `apps/orchestrator/src/connectors/*`, `bot/*`, `mcp/*`, `canvas/*`, `collab/*`, `internal/*`, `jobs/*`, `scheduler/*`, `memory/*`, `computers/*` | `docs/reference/orchestrator/{platform,memory,computers}/*.md` |
+| `apps/web` pages/components | `docs/reference/web/pages/*.md` |
+| `apps/web` server actions / API routes | `docs/reference/web/{actions,api}/*.md` |
+| `apps/computerd/*` | `docs/reference/computerd/*.md` |
+| `apps/egress/*` | `docs/reference/egress/*.md` |
+| `apps/mobile/*` | `docs/reference/mobile/*.md` |
+| `apps/desktop/*` | `docs/reference/desktop/*.md` |
+| Cross-cutting architecture (turn flow, realtime, auth, security, config) | `docs/reference/architecture/*.md` |
+| `deploy/*`, `tests/*`, `e2e/*` | `docs/reference/{operations,testing}/*.md` |
+
+The authoritative index of every reference doc is `docs/README.md` — when you add or remove a doc file, update that index in the same change.
+
+### 9.3 Workflow for a code change
+
+1. **Locate the doc(s)** for the feature using the map in §9.2 (one feature ≈ one file; grep `docs/reference/` for the tool/table/route name if unsure).
+2. **Update the doc to match the new behavior**: signatures, schemas, flows, defaults, env vars, events, DB columns. Never leave contradictory text behind.
+3. **New feature → new doc**: follow the existing format (H1 title, 2-4 sentence intro, `Source files:` line, `##` sections, `Related docs` links) and add it to `docs/README.md`.
+4. **Removed feature → remove or rewrite its doc section**; do not leave dead references.
+5. If a change spans areas (e.g. a new tool also adds a table and a realtime event), update **all** affected docs.
+6. Task-oriented top-level guides (`docs/*.md` such as `tools-and-sandboxes.md`, `connectors.md`) must also stay consistent when the change alters user-visible behavior they describe.
+
+### 9.4 Rules of thumb
+
+- Document what the code **actually** does, not what it should do. If you find a doc contradicting the code while working, fix the doc in the same PR.
+- Keep doc examples copy-pasteable and truthful (real parameter names, real defaults).
+- No "TODO" or placeholder sections in reference docs — incomplete docs fail the checklist.
+
+---
+
+## 10. Token-Efficient Reading Protocol (Mandatory)
+
+Context is a budget. This repo is large (~800 source files); most tasks touch a handful of them. Agents MUST read selectively — never bulk-read directories or whole file trees "to understand the code".
+
+### 10.1 Docs first, code second
+
+1. Before opening any source file, check `docs/README.md` and the `docs/reference/` doc for the feature (map in §9.2). The reference docs already summarize each module with real function names, schemas, env vars, and `path:line` citations — reading one 200-line doc is far cheaper than exploring twenty source files.
+2. Only open source files when the doc is insufficient (writing code, verifying a claim) — and then only the files listed in the doc's `Source files:` line.
+3. Never re-derive what a doc already states; cite the doc and spot-check the cited `path:line` instead.
+
+### 10.2 Search before you read
+
+1. Use targeted grep (tool name, table name, route path, env var, event string) to locate the exact file and line range before reading anything.
+2. When a file is big, read only the relevant range (offset/limit around the grep hit) — not the whole file.
+3. Do not run broad `find`/`ls` dumps of `apps/` or `packages/`; do not open `node_modules/`, `.next/`, `dist/`, `.turbo/`, or `pnpm-lock.yaml`.
+
+### 10.3 Read-once discipline
+
+- Read each file (or range) once per session; keep track and don't re-read.
+- Don't paste whole files into reports, commits, or agent handoffs — cite `path:line` and quote only the lines that matter.
+- Keep final reports terse: what changed, what was verified, discrepancies. No file dumps.
+
+### 10.4 The exception
+
+When the task IS to change code, you still must read enough of the real code to make a correct change (§10.1 step 2) — docs are a map, not a substitute for the lines you're editing. The rule is *read only what matters*, not *don't read code*.

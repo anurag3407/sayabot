@@ -1,0 +1,145 @@
+# Workspace Shell & UI Kit
+
+The authenticated chrome of the app — `WorkspaceShell` (mobile top bar, desktop sidebar, command palette, banners), `AppSidebar` (workspace switcher, chats, bots, tools, account), the `ChatList` component, the ⌘K `CommandPalette`, and the `PlanUsageBanner` — plus the small design-system kit under `components/ui/` (Button, Avatar, Field, Icons, Mascot, Status, Empty, Skeleton, Toast, DetailsMenu, ActionForm, ConfirmButton, CopyButton) and the formatting/identity helpers in `lib/` those components lean on.
+
+Source files: `apps/web/src/components/workspace-shell.tsx`, `apps/web/src/components/workspace/sidebar.tsx`, `apps/web/src/components/workspace/chat-list.tsx`, `apps/web/src/components/command-palette.tsx`, `apps/web/src/components/plan-usage-banner.tsx`, `apps/web/src/components/ui/*`, `apps/web/src/components/copy-button.tsx`, `apps/web/src/lib/format.ts`, `apps/web/src/lib/datetime.ts`, `apps/web/src/lib/human-handle.ts`, `apps/web/src/lib/agent-handle.ts`, `apps/web/src/lib/image-avatar.ts`, `apps/web/src/lib/brand-logos.ts`
+
+---
+
+## 🖼️ Workspace Shell (`components/workspace-shell.tsx`)
+
+The client-side wrapper every `/[org]/*` page renders inside (fed by the `[org]` layout — see [App overview](./app-overview.md)). Behaviour:
+
+- **Live activity** — `useWorkspaceActivity({...})` receives the initial chat list, inbox count, notification/sound prefs and the current room id (regex `/\/r\/([^/]+)/` over the pathname). The chat on screen is force-zeroed to `unreadCount: 0, mentionCount: 0` so the sidebar never shows unread for what you are reading (`workspace-shell.tsx:128-134`).
+- **`attentionUnread`** sums `unreadCount` skipping archived chats and chats muted until a future time (`workspace-shell.tsx:43-53`).
+- **Command palette** — global `Cmd/Ctrl+K` toggles `<CommandPalette>`; `ALL_PAGES` (`workspace-shell.tsx:31-41`) feeds it: Chats, Inbox, To-dos, Routines, Files, Meetings, Agents, Find more agents, Search.
+- **Responsive layout** — desktop: fixed `284px` sidebar beside a rounded `main` pane on `bg-ink`. Mobile: a hamburger top bar (with `SayabotMark`, org name and a combined `inbox + unread` badge capped at `99+`) opens the same `AppSidebar` inside a native `<dialog>` via `showModal()`, closed automatically on navigation.
+- **Mac app integration** — `useDesktopApp()` detects `window.sayabotDesktop`; when present the flex row gets `[-webkit-app-region:drag]` and the main pane `no-drag`, because the Mac app hides its title bar and the dark gutters become the drag region.
+- **Banners** — `<GuestBanner>` for guest accounts, then `<PlanUsageBanner>` when the layout's `planUsageNotice` returned data.
+
+## 🧭 App Sidebar (`components/workspace/sidebar.tsx`)
+
+One column, top to bottom:
+
+- **WorkspaceSwitcher** — a `DetailsMenu` pill with a happy Mascot seeded by the org name, a ♛ marker for owners, and a popover listing the user's orgs (`/<slug>` links) plus "New workspace" (`/new-workspace`).
+- **"+" menu** — New bot (`${base}/agents/new`, with a ⌘N kbd hint) and New group chat (`${base}/chats/new`). A global keydown also binds plain `⌘/Ctrl+N` (no shift/alt) to new-bot; only the *visible* sidebar instance answers, checked via `searchInput.current?.offsetParent` (`sidebar.tsx:516-526`).
+- **Search** — a filter input (`/` focuses it, Escape clears) that falls through to full-message search on Enter (`${base}/search?q=…`) with a "Nothing matches. Press Enter to search every message." empty state; a ⌘K chip opens the palette.
+- **Inbox row** — always-visible Inbox link with a `99+`-capped accent badge.
+- **Foldable sections** — `Section` wraps each list with `useFolded` (fold state persisted in `localStorage` under `sayabot:sidebar:<id>`); a hover-revealed "+" links to the create page.
+  - **Pinned** chats (no header, rendered above sections).
+  - **Bots**: bot DMs (`ThreadRow` with a Mascot face) then `NewBotRow` for bots without a DM yet — tapping calls `openBotDmAction(orgSlug, bot.id)` and pushes the returned `data.path`. A dashed "Make your first bot" call-to-action shows when empty.
+  - **Group chats**: non-DM chats with `#` or initial faces (plus a mini Mascot badge when an agent is in the chat).
+  - **Archived** chats behind a count toggle.
+- **ThreadRow** — name, pinned pin, relative `shortTime`, last message preview ("Say hello" for untouched bot DMs), and badges: accent mention count pill, unread dot (not for muted), or a muted BellOff. Its `DetailsMenu` offers: Edit bot (bot DMs) or Chat settings (`<room>/settings`), Copy link (clipboard + toast), Pin/Unpin, Mark as unread, Mute for 8 hours / Mute until I unmute (or Unmute), Archive/Move back.
+- **Row actions** go through `setChatPreferenceAction({ orgSlug, roomId, action, duration })` in a transition; failure toasts, success `router.refresh()`s, and archiving shows a toast with an **Undo** action (`sidebar.tsx:549-561`).
+- **Tools** drawer (bottom, above the account row): Routines, To-dos, Files, Team (`/agents`), Bot store (`/marketplace`).
+- **SidebarPlanRings** (`usage/plan-rings.tsx`, Mac app only) links to `/analytics`.
+- **AccountRow** — avatar with a green "update ready" dot when `useAppUpdate().updateReady`; popover shows name/email, an update install button (label switches between "Install Sayabot <version>" for desktop state `available` and "Reload for the new version"), links to Settings, Meetings, Usage, Get the apps (with `appVersion`), Check for updates, Help, and a `signOutAction` form.
+- The top of the sidebar has a soft radial color wash, and in the desktop app the 14px header area is drag-enabled with `pl-[84px]` clear of the traffic lights.
+
+### `ChatList` (`components/workspace/chat-list.tsx`)
+
+A second, roomier list component (used by mobile/home surfaces) with two modes: `newChatHref` selects the **flat desktop column** (search always visible with a new-chat button, one flat list, filter chips only while focused/searching); otherwise **grouped mode** with `Group` headers (Pinned / Your agents with "See all" / Group chats). It has richer filters than the sidebar — All / Unread / Mentions / Agents / Archived with live counts — the same per-row action menu (pin, mark unread, mute 8h/1w/always, archive) implemented with its own button+overlay instead of `DetailsMenu`, the same `setChatPreferenceAction` flow with archive-Undo toast, and `BotRow` ("Tap to say hi") like the sidebar's `NewBotRow`. Both this file and `sidebar.tsx` export a `BotLink` interface (`id, handle, displayName, kind: "llm" | "external"`); `command-palette.tsx` imports it from `chat-list`.
+
+## ⌘K Command Palette (`components/command-palette.tsx`)
+
+A native `<dialog>` (`mt-[12vh]`, `max-w 640px`) with a combobox input and a grouped `role="listbox"`. Commands are built from five groups (`GROUP_ORDER`):
+
+| Group | Contents |
+| :--- | :--- |
+| Actions | New chat, Create an agent, Search messages and files |
+| Chats | every non-archived chat (`#name` or DM name), hint = unread count or first two agent names, keywords from agent names |
+| Agents | every bot, hint `@handle`, keyword `external` for MCP bots |
+| Go to | the passed `pages` (ALL_PAGES) plus a hard-coded Usage entry |
+| Settings | every link from `visibleSettingsGroups(isAdmin)` (`lib/settings-nav.ts`), keywords from their descriptions |
+
+Scoring (`score()`, `command-palette.tsx:35-51`): prefix match 100, substring 80 minus position (with a +15 word-boundary bonus), subsequence 20 — "so 'gen' finds '#general' before 'agents'"; keyword/hint matches are weighted 0.6/0.7. Empty query limits each of Chats/Agents to 5 and hides Settings; a query caps results at 30. Keyboard: ↑/↓ wrap, Enter runs, mouse hover moves the selection; scrolling keeps the active item in view. Zero results offers "Search messages for it instead" → `${base}/search?q=<query>`.
+
+## 📣 Plan Usage Banner (`components/plan-usage-banner.tsx`)
+
+Sayabot Cloud only (fed by `planUsageNotice` in the org layout — admins only, shown at ≥80% of the month's `serverTurnsPerMonth`). Dismissible for the session with a ✕ button. Copy: "N of M server replies used this month." or, at/over limit, "This month's M server replies are used up." plus "Agents on your Mac keep working on <planName>." — with a red dot when out, amber otherwise, and a "Upgrade" / "See plans" button to `/${orgSlug}/settings/billing`.
+
+## 🧰 UI Kit (`components/ui/`)
+
+### `button.tsx` — `Button`
+CVA variants: `primary` (accent bg), `secondary` (raised + border, the default), `outline`, `ghost`, `danger`, `quiet`; sizes `sm`/`md`/`lg`/`icon`/`icon-sm` (mobile-first heights, smaller at `md:`). Defaults `type="button"`. Also exports `buttonVariants` for non-button elements.
+
+### `avatar.tsx` — `Avatar`, `AvatarStack`, `PresenceLine`
+`Avatar({ name, kind, size, src })`: `kind="system"` renders a bordered `*` glyph; `kind="agent"` renders the seeded `Mascot`; humans render initials (`initials()` from `lib/format.ts`) or the uploaded `src` image in a circle. Sizes sm/md/lg (24/28/40px). `AvatarStack` shows up to `max` (default 5) overlapping avatars with typing-highlight rings and a `+N` overflow. `PresenceLine` renders "X is typing" / "N people are typing" / "just you" / "N others here".
+
+### `field.tsx` — `Label`, `Input`, `Textarea`, `Select`, `Field`, `HelpText`
+Shared `controlClass` (panel bg, control border, accent focus). `Label` is mono with an optional right-aligned `hint`. `Field({ label, htmlFor, hint, error })` wraps a control with label + `role="alert"` error paragraph.
+
+### `icons.tsx`
+~18 hand-drawn 20×20 stroke icons at 18px default: Send, Plus, Close, ChevronDown/Up, Check, Stop, Reply, History, Canvas, Rooms, Agents, Analytics, Shield, Sliders, Menu, Copy, Key, Bot, Tools, Logout, Search, Trace — all `aria-hidden` with currentColor stroke.
+
+### `mascot.tsx` — the Saya family
+The brand identity generator: `Mascot({ seed, shape, color, mood, antenna, lit, figure, shadow, blink, label, svgRef, children })`.
+
+- A seed string is FNV-1a hashed to pick a **shape** (squircle, pentagon, pill, triangle, dome, cloud), **color** (six brand pastels), **antenna** (orb, twin, loop, sprout) and **eyes** (pill, round, wide) — so an agent keeps the same look everywhere.
+- A **named cast** overrides generation: Saya, Claude Code, Codex, Hermes, Cursor, Pip, Moss, Juno, Tofu, Nori, Bean, Olive, Miso each have art-directed shape/color/antenna (`CAST`, `mascot.tsx:24-38`).
+- Shared anatomy: gradient shell, dark visor, two lit eyes, antenna lamp. `mood` is `idle | happy | sleep | busy | alert` (happy/sleep draw eye arcs; busy draws squint slits; alert widens the eyes; the mouth flips between smile/O). `lit` turns the antenna lamp on — "across the brand … exactly one thing: it is this agent's turn". Eyes steer via `--lx`/`--ly` CSS vars (set by the landing's `LiveMascot`). `blink` wraps eyes in a `mascot-eyes` animation class. `figure` extends the viewBox to 100×146 adding a torso, belly lamp and floating hands; `shadow` draws the hover pool.
+- Gradients/IDs are namespaced by `useId`; without a label the SVG is `aria-hidden`.
+
+### `status.tsx` — `StatusBadge`, `Kbd`
+`StatusBadge({ status, label })` is a mono chip whose color comes from `statusTone()` (`lib/format.ts`): ok for `complete/done/approved`, warn for `streaming/running/pending_approval`, danger for `error/rejected`, accent for `halted`, muted otherwise; underscores become spaces. `Kbd` is a small styled `<kbd>`.
+
+### `empty.tsx` — `EmptyState`, `InlineAlert`
+`EmptyState({ title, body, action })` is a left-bordered text block (used by search, files, inbox). `InlineAlert({ tone })` renders neutral/success/warning/danger notices (`danger` gets `role="alert"`).
+
+### `skeleton.tsx` — `Skeleton`, `PageSkeleton`, `RoomSkeleton`
+Pulsing placeholders; the two composites (`role="status"`) back the `(workspace)/[org]` `loading.tsx` and room `loading.tsx` states.
+
+### `toast.tsx` — `showToast`, `Toaster`
+A custom-event bus (`mesh:toast`): any code can `showToast({ message, tone?, action?, durationMs? })` without context. `Toaster` (mounted once in the root layout) listens, keeps at most 4 visible, auto-dismisses after 5 s (or per `durationMs`), renders top-right cards with tone borders and an optional action link/button, and is `aria-live="polite"`. Actions carry `{ label, href? , onClick? }` — used for the archive **Undo**.
+
+### `details-menu.tsx` — `DetailsMenu`
+A `<details>` dropdown that also closes on outside pointerdown and Escape (returning focus to the summary), and closes when any child is clicked. Powers the sidebar popovers, workspace switcher, account menu and per-row menus.
+
+### `action-form.tsx` — `ActionForm`
+Standard wrapper for form-action server actions with the `(_prev, formData) => ActionResult` signature: `useActionState` wiring, error/warning `InlineAlert`s, success toast (`state.message`) with optional `resetOnSuccess`, an optional `confirmLabel`/`confirmWarning` that swaps the submit button for a `ConfirmButton`, plus `footer` and `submitVariant` props.
+
+### `confirm-button.tsx` — `ConfirmButton`
+Two-step destructive button: first click swaps to warning text + danger confirm ("autoFocus") + Cancel; the confirm state auto-resets after `RESET_AFTER_MS = 8_000` unless pending. With `submit: true` it renders a form submit button instead of calling `onConfirm` (used inside forms).
+
+### `copy-button.tsx` — `CopyButton`
+Clipboard write with `idle/copied/failed` states ("copied" for 1.5 s, "copy failed" for 2 s), mono styling, `aria-live="polite"`.
+
+## 🪛 Formatting & Identity Helpers
+
+### `lib/format.ts`
+- `cn()` — clsx + tailwind-merge.
+- `initials(name)` — first+last initial letters (or first two chars), uppercase; "?" when empty.
+- `relativeTime(iso)` — "now" → "Nm ago" → "Nh ago" → "Nd ago" → short date.
+- `clockTime(iso)` / `fullTime(iso)` — localized time / date-time strings.
+- `formatUsd` ($0.00 / 6-decimals under a cent / 2 decimals), `formatNumber`, `formatTokens` (K/M/B/T with adaptive precision), `formatPercent` ("<0.1%"-aware), `formatMs` ("820 ms" / "1.3 s"), `formatBytes` ("1.5 KB", "1.4 GB").
+- `pretty(value)` — safe 2-space JSON; `truncate(value, max)` with ellipsis.
+- Label maps: `PROVIDER_LABELS` (incl. `copilot` → "GitHub Copilot", `openai-compatible`), `ROOM_KIND_LABELS`, `TURN_MODE_LABELS` / `TURN_MODE_SHORT` (mentions / debate / moderated).
+- `statusTone(status)` — the color mapping used by `StatusBadge`.
+- `effectiveProvider(provider, baseUrl)` — recovers the real provider behind "openai-compatible" keys (OpenRouter, Copilot) via `providerForBaseUrl` from `lib/ai-accounts.ts`.
+
+### `lib/datetime.ts`
+`toDateTimeLocalValue(date)` and `dateTimeLocalToIso(value)` — round-tripping for `datetime-local` inputs (schedule forms) in the browser's own time zone.
+
+### `lib/human-handle.ts`
+`humanHandle(name)` — NFKD-normalized, diacritic-stripped, slugified (max 38 chars) mention handle for people; `humanMention(name)` prefixes `@`.
+
+### `lib/agent-handle.ts`
+`handleFromName(name)` — agent-handle suggestion: slugify, strip leading non-letters, cap at 39 chars ("Suggests a valid agent @handle from its display name"). Unit-tested in `tests/unit/handles.test.ts`.
+
+### `lib/image-avatar.ts`
+`readAvatarFile(file)` — client-side avatar upload pipeline: accept PNG/JPEG/WebP only, decode via `createImageBitmap` (falling back to `Image`), center-crop to 256×256 on a canvas, encode WebP at 0.82 quality, and reject data URLs above `MAX_DATA_URL = 300_000` chars. Returns the data URL for the profile form.
+
+### `lib/brand-logos.ts`
+`BrandLogoSpec` map (`name`, `color`, SVG `path`) of official Simple Icons glyphs — GitHub, Slack, Google Drive (alias `google_drive`), Notion, Linear, Atlassian, Stripe, Sentry, Discord, Cloudflare, Canva, Telegram, WhatsApp — with `brandLogo(id)` lookup. Consumed by `components/connectors/brand-logo.tsx` (marketplace tiles) and connector settings.
+
+## Related docs
+
+- [App overview](./app-overview.md) — the server layout that feeds `WorkspaceShell` its props, and update plumbing
+- [Room chat UI](./room-chat-ui.md) — the room view the shell wraps
+- [Settings UI](./settings-ui.md) — the settings nav entries surfaced in the palette's Settings group
+- [Analytics / Usage UI](./analytics-usage-ui.md) — `SidebarPlanRings` and the Usage page they link to
+- [Marketplace](./marketplace.md) — the "Bot store" tool link and brand logos in action
+- [Landing page](./landing-page.md) — the `SayabotMark` and `Mascot` components shared with marketing
+- [lib-reference](./lib-reference.md) — `format.ts` consumers and the rest of `lib/`
+- ../../architecture/realtime-and-events.md — the feed `useWorkspaceActivity` consumes
