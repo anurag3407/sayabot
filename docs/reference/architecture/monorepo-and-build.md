@@ -159,7 +159,7 @@ Key traits:
 | `test.yml` | push to `main`, all PRs | **unit-integration** job: pnpm 10.33 / Node 24, `pnpm install --frozen-lockfile`, then `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm test:integration`, `pnpm typecheck:e2e`. **e2e-smoke** job (push only): builds web, starts it, waits for `/api/health`, runs the Playwright smoke lane with dummy env (`ci-test-kek`, `ci-test-internal-secret-0123456789`, …) |
 | `deploy.yml` | release tags | builds/pushes images and deploys per the repo's configured host |
 | `desktop-release.yml` | desktop tags | macOS DMG packaging (signing/notarization per `docs/macos-signing-and-notarization.md`) |
-| `mobile-updates.yml` | mobile release | Expo OTA update publishing |
+| `mobile-updates.yml` | mobile release | Expo OTA update publishing; builds and attaches `Sayabot-<version>.apk` to the latest GitHub release when `app.json` version has no APK yet |
 
 The smoke CI env is worth copying when debugging: it shows the minimal env set the orchestrator's Zod schema demands (`DATABASE_URL`, `SAYABOT_KEK`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ORCHESTRATOR_INTERNAL_SECRET` ≥ 16 chars).
 

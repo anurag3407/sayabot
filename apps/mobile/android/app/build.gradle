@@ -4,6 +4,13 @@ apply plugin: "com.facebook.react"
 
 def projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()
 
+// app.json's "version" is the single source of truth: it sets versionName, a versionCode that
+// always grows with it (1.2.3 -> 10203, so each new APK installs over the last), and the
+// expo-updates runtime version (the "appVersion" policy), so OTA updates match this binary.
+def appVersion = new groovy.json.JsonSlurper().parse(new File(projectRoot, "app.json")).expo.version
+def appVersionParts = appVersion.tokenize(".").collect { it.replaceAll(/[^0-9]/, "") ?: "0" }*.toInteger()
+def appVersionCode = appVersionParts[0] * 10000 + (appVersionParts[1] ?: 0) * 100 + (appVersionParts[2] ?: 0)
+
 /**
  * This is the configuration block to customize your React Native Android app.
  * By default you don't need to apply any configuration, just uncomment the lines you need.
@@ -91,8 +98,9 @@ android {
         applicationId 'in.sayalabs.sayabot'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.1.0"
+        versionCode appVersionCode
+        versionName appVersion
+        resValue "string", "expo_runtime_version", appVersion
     }
     signingConfigs {
         debug {
@@ -101,15 +109,24 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        // Release key from the environment (CI decodes it from repo secrets). Every APK must be
+        // signed with the same key, or Android refuses to install it over the previous one.
+        if (System.getenv("SAYABOT_RELEASE_STORE_FILE")) {
+            release {
+                storeFile file(System.getenv("SAYABOT_RELEASE_STORE_FILE"))
+                storePassword System.getenv("SAYABOT_RELEASE_STORE_PASSWORD")
+                keyAlias System.getenv("SAYABOT_RELEASE_KEY_ALIAS")
+                keyPassword System.getenv("SAYABOT_RELEASE_KEY_PASSWORD")
+            }
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            // Falls back to the repo's debug key when no release key is provided (local builds).
+            signingConfig System.getenv("SAYABOT_RELEASE_STORE_FILE") ? signingConfigs.release : signingConfigs.debug
             shrinkResources (findProperty('android.enableShrinkResourcesInReleaseBuilds')?.toBoolean() ?: false)
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"

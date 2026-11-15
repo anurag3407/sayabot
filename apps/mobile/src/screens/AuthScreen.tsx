@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import {
   ActivityIndicator,
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   ScrollView,
   Modal,
@@ -14,16 +15,7 @@ import {
   View,
 } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
-import {
-  ChevronRight,
-  Eye,
-  EyeOff,
-  Lock,
-  Mail,
-  Server,
-  Sparkles,
-  X,
-} from "lucide-react-native"
+import { ChevronRight, Eye, EyeOff, KeyRound, Lock, Mail, Server, X } from "lucide-react-native"
 import { setDemoMode } from "../core/session-mode"
 import { checkServer, useCloud, useServer } from "../core/server"
 import { loadSavedServer, supabase } from "../core/supabase"
@@ -61,6 +53,18 @@ export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [isSignUp, setIsSignUp] = useState(false)
+  const [showEmail, setShowEmail] = useState(false)
+  const passwordRef = useRef<TextInput>(null)
+  // The footer would sit on top of the keyboard and cover the password field, so hide it.
+  const [keyboardOpen, setKeyboardOpen] = useState(false)
+  useEffect(() => {
+    const show = Keyboard.addListener("keyboardDidShow", () => setKeyboardOpen(true))
+    const hide = Keyboard.addListener("keyboardDidHide", () => setKeyboardOpen(false))
+    return () => {
+      show.remove()
+      hide.remove()
+    }
+  }, [])
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -70,7 +74,10 @@ export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
   const [serverUrlInput, setServerUrlInput] = useState(settings.webApiUrl)
   // "Choose your server": the address is checked as it's typed, then the app restarts into it.
   const [serverName, setServerName] = useState<string | null>(null)
-  const [serverCheck, setServerCheck] = useState<{ tone: "ok" | "error" | "busy"; text: string } | null>(null)
+  const [serverCheck, setServerCheck] = useState<{
+    tone: "ok" | "error" | "busy"
+    text: string
+  } | null>(null)
   const [serverBusy, setServerBusy] = useState(false)
 
   useEffect(() => {
@@ -89,7 +96,11 @@ export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
     const timer = setTimeout(async () => {
       const result = await checkServer(value)
       if (cancelled) return
-      setServerCheck(result.ok ? { tone: "ok", text: `✓ Found ${result.server.name}` } : { tone: "error", text: result.error })
+      setServerCheck(
+        result.ok
+          ? { tone: "ok", text: `✓ Found ${result.server.name}` }
+          : { tone: "error", text: result.error },
+      )
     }, 600)
     return () => {
       cancelled = true
@@ -182,6 +193,12 @@ export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
     }
   }
 
+  const serverLabel =
+    serverName ??
+    (settings.webApiUrl === "https://sayabot.sayalabs.in"
+      ? "Sayabot Cloud"
+      : settings.webApiUrl.replace(/^https?:\/\//, ""))
+
   const handleDemoSignIn = async () => {
     setLoading(true)
     setErrorMsg(null)
@@ -215,175 +232,194 @@ export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-        <View style={styles.content}>
-          {/* Logo Badge */}
-          <Image
-            source={markImage}
-            style={styles.logoMark}
-            accessibilityIgnoresInvertColors
-          />
-
-          <Text style={styles.title}>Sayabot Mobile</Text>
-          <Text style={styles.subtitle}>
-            Autonomous AI agents collaborating in real-time rooms with persistent Linux sandboxes.
-          </Text>
-
-          {(errorMsg || pairError) && (
-            <View style={styles.errorBox}>
-              <Text style={styles.errorText}>{errorMsg || pairError}</Text>
+          <View style={styles.content}>
+            <View style={styles.hero}>
+              <Image source={markImage} style={styles.logoMark} accessibilityIgnoresInvertColors />
+              <Text style={styles.title}>Sayabot</Text>
+              <Text style={styles.subtitle}>Your agents, on your phone.</Text>
             </View>
-          )}
-          {notice && (
-            <View style={styles.noticeBox}>
-              <Text style={styles.noticeText}>{notice}</Text>
-            </View>
-          )}
 
-          {/* Form */}
-          <View style={styles.form}>
-            {/* Fastest path: a one-time code from "Add a phone" on a computer that's signed in. */}
-            <TouchableOpacity
-              style={styles.codeBtn}
-              onPress={() => {
-                setCodeError(null)
-                setCodeModal(true)
-              }}
-              disabled={loading}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.codeBtnText}>Sign in with a code</Text>
-              <Text style={styles.codeBtnHint}>From Settings → Phones on your computer</Text>
-            </TouchableOpacity>
+            {(errorMsg || pairError) && (
+              <View style={styles.errorBox}>
+                <Text style={styles.errorText}>{errorMsg || pairError}</Text>
+              </View>
+            )}
+            {notice && (
+              <View style={styles.noticeBox}>
+                <Text style={styles.noticeText}>{notice}</Text>
+              </View>
+            )}
 
-            {/* OAuth Buttons */}
-            <View style={styles.oauthContainer}>
+            <View style={styles.form}>
+              {/* Fastest path: a one-time code from "Add a phone" on a computer that's signed in. */}
               <TouchableOpacity
-                style={styles.oauthBtnGoogle}
-                onPress={() => handleOAuth("google")}
+                style={styles.codeBtn}
+                onPress={() => {
+                  setCodeError(null)
+                  setCodeModal(true)
+                }}
                 disabled={loading}
                 activeOpacity={0.85}
               >
-                <Text style={styles.oauthBtnGoogleText}>Continue with Google</Text>
+                <KeyRound size={18} color={colors.textInverse} />
+                <Text style={styles.codeBtnText}>Sign in with a code</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.oauthBtnGithub}
-                onPress={() => handleOAuth("github")}
-                disabled={loading}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.oauthBtnGithubText}>Continue with GitHub</Text>
-              </TouchableOpacity>
-            </View>
+              <Text style={styles.codeHint}>Get a code on your computer: Settings → Phones</Text>
 
-            <View style={styles.dividerRow}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or continue with email</Text>
-              <View style={styles.dividerLine} />
-            </View>
+              <View style={styles.dividerRow}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>or</Text>
+                <View style={styles.dividerLine} />
+              </View>
 
-            <View style={styles.inputContainer}>
-              <Mail size={18} color={colors.textSecondary} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Enter email address"
-                placeholderTextColor={colors.textPlaceholder}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-                textContentType="emailAddress"
-                value={email}
-                onChangeText={setEmail}
-              />
-            </View>
+              <View style={styles.oauthRow}>
+                <TouchableOpacity
+                  style={styles.oauthBtn}
+                  onPress={() => handleOAuth("google")}
+                  disabled={loading}
+                  activeOpacity={0.85}
+                  accessibilityLabel="Continue with Google"
+                >
+                  <Text style={styles.oauthBtnText}>Google</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.oauthBtn}
+                  onPress={() => handleOAuth("github")}
+                  disabled={loading}
+                  activeOpacity={0.85}
+                  accessibilityLabel="Continue with GitHub"
+                >
+                  <Text style={styles.oauthBtnText}>GitHub</Text>
+                </TouchableOpacity>
+              </View>
 
-            <View style={styles.inputContainer}>
-              <Lock size={18} color={colors.textSecondary} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Enter password"
-                placeholderTextColor={colors.textPlaceholder}
-                secureTextEntry={!showPassword}
-                autoComplete={isSignUp ? "password-new" : "password"}
-                textContentType={isSignUp ? "newPassword" : "password"}
-                value={password}
-                onChangeText={setPassword}
-              />
-              <TouchableOpacity
-                onPress={() => setShowPassword(!showPassword)}
-                style={styles.eyeBtn}
-                accessibilityLabel={showPassword ? "Hide password" : "Show password"}
-              >
-                {showPassword ? (
-                  <EyeOff size={18} color={colors.textSecondary} />
-                ) : (
-                  <Eye size={18} color={colors.textSecondary} />
-                )}
-              </TouchableOpacity>
-            </View>
+              {/* Email stays folded away until asked for, so the first screen has three choices. */}
+              {showEmail ? (
+                <View style={styles.emailForm}>
+                  <View style={styles.inputContainer}>
+                    <Mail size={18} color={colors.textSecondary} style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Email"
+                      placeholderTextColor={colors.textPlaceholder}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      autoComplete="email"
+                      textContentType="emailAddress"
+                      autoFocus
+                      value={email}
+                      onChangeText={setEmail}
+                      returnKeyType="next"
+                      blurOnSubmit={false}
+                      onSubmitEditing={() => passwordRef.current?.focus()}
+                    />
+                  </View>
 
-            <TouchableOpacity
-              style={styles.submitBtn}
-              onPress={handleSubmit}
-              disabled={loading}
-              activeOpacity={0.85}
-            >
-              {loading ? (
-                <ActivityIndicator size="small" color={colors.textInverse} />
+                  <View style={styles.inputContainer}>
+                    <Lock size={18} color={colors.textSecondary} style={styles.inputIcon} />
+                    <TextInput
+                      ref={passwordRef}
+                      style={styles.input}
+                      placeholder="Password"
+                      placeholderTextColor={colors.textPlaceholder}
+                      secureTextEntry={!showPassword}
+                      autoComplete={isSignUp ? "password-new" : "password"}
+                      textContentType={isSignUp ? "newPassword" : "password"}
+                      value={password}
+                      onChangeText={setPassword}
+                      returnKeyType="go"
+                      onSubmitEditing={handleSubmit}
+                    />
+                    <TouchableOpacity
+                      onPress={() => setShowPassword(!showPassword)}
+                      style={styles.eyeBtn}
+                      accessibilityLabel={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? (
+                        <EyeOff size={18} color={colors.textSecondary} />
+                      ) : (
+                        <Eye size={18} color={colors.textSecondary} />
+                      )}
+                    </TouchableOpacity>
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.submitBtn}
+                    onPress={handleSubmit}
+                    disabled={loading}
+                    activeOpacity={0.85}
+                  >
+                    {loading ? (
+                      <ActivityIndicator size="small" color={colors.textPrimary} />
+                    ) : (
+                      <Text style={styles.submitBtnText}>
+                        {isSignUp ? "Create account" : "Sign in"}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={() => {
+                      setIsSignUp(!isSignUp)
+                      setErrorMsg(null)
+                      setNotice(null)
+                    }}
+                    style={styles.linkBtn}
+                  >
+                    <Text style={styles.linkText}>
+                      {isSignUp ? "Have an account? Sign in" : "New here? Create an account"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               ) : (
-                <Text style={styles.submitBtnText}>
-                  {isSignUp ? "Agree & Continue" : "Sign In to Workspace"}
-                </Text>
+                <TouchableOpacity onPress={() => setShowEmail(true)} style={styles.linkBtn}>
+                  <Text style={styles.linkText}>Use email instead</Text>
+                </TouchableOpacity>
               )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => {
-                setIsSignUp(!isSignUp)
-                setErrorMsg(null)
-                setNotice(null)
-              }}
-              style={styles.toggleBtn}
-            >
-              <Text style={styles.toggleText}>
-                {isSignUp
-                  ? "Already have an account? Sign In"
-                  : "New to workspace? Register account"}
-              </Text>
-            </TouchableOpacity>
-
-            {/* Demo / Guest Access Button */}
-            <TouchableOpacity
-              style={styles.demoBtn}
-              onPress={handleDemoSignIn}
-              activeOpacity={0.8}
-            >
-              <Sparkles size={14} color={colors.primaryBright} />
-              <Text style={styles.demoBtnText}>Look around without an account</Text>
-            </TouchableOpacity>
-            <Text style={styles.demoHint}>
-              Preview only. Rooms, tasks, and messages stay unavailable until you sign in.
-            </Text>
+            </View>
           </View>
-
-          {/* Server Endpoint Indicator Pill */}
-          <TouchableOpacity
-            style={styles.serverPill}
-            onPress={openServerSheet}
-            activeOpacity={0.8}
-          >
-            <Server size={12} color={colors.textSecondary} />
-            <Text style={styles.serverPillText} numberOfLines={1}>
-              Server: {serverName ?? (settings.webApiUrl === "https://sayabot.sayalabs.in" ? "Sayabot Cloud" : settings.webApiUrl.replace(/^https?:\/\//, ""))}
-            </Text>
-            <ChevronRight size={12} color={colors.textSecondary} />
-          </TouchableOpacity>
-        </View>
         </ScrollView>
+
+        {/* Quiet footer: where you're signing in, and a way to peek without an account. */}
+        {keyboardOpen ? null : (
+          <View style={styles.footer}>
+            <TouchableOpacity
+              style={styles.footerBtn}
+              onPress={openServerSheet}
+              activeOpacity={0.7}
+              accessibilityLabel="Change server"
+            >
+              <Server size={12} color={colors.textSecondary} />
+              <Text style={styles.footerText} numberOfLines={1}>
+                {serverLabel}
+              </Text>
+              <ChevronRight size={12} color={colors.textSecondary} />
+            </TouchableOpacity>
+            <Text style={styles.footerDot}>·</Text>
+            <TouchableOpacity
+              style={styles.footerBtn}
+              onPress={handleDemoSignIn}
+              disabled={loading}
+              activeOpacity={0.7}
+              accessibilityHint="Preview only. Rooms, tasks and messages need an account."
+            >
+              <Text style={styles.footerText}>Just looking</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </KeyboardAvoidingView>
 
-      {/* Server Endpoint Modal */}
-      <Modal visible={codeModal} animationType="slide" transparent onRequestClose={() => setCodeModal(false)}>
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.modalBackdrop}>
+      {/* One-time code modal */}
+      <Modal
+        visible={codeModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setCodeModal(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={styles.modalBackdrop}
+        >
           <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Sign in with a code</Text>
@@ -392,7 +428,8 @@ export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
               </TouchableOpacity>
             </View>
             <Text style={styles.modalDesc}>
-              On your computer, open Sayabot → Settings → Phones → Add phone → Yes, sign in. Type the code it shows.
+              On your computer, open Sayabot → Settings → Phones → Add phone → Yes, sign in. Type
+              the code it shows.
             </Text>
             <TextInput
               style={[styles.modalInput, styles.codeInput]}
@@ -419,16 +456,32 @@ export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
               >
                 <Text style={styles.modalCancelText}>Change server</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.modalSaveBtn} onPress={submitCode} disabled={codeBusy}>
-                {codeBusy ? <ActivityIndicator color={colors.textInverse} /> : <Text style={styles.modalSaveText}>Sign in</Text>}
+              <TouchableOpacity
+                style={styles.modalSaveBtn}
+                onPress={submitCode}
+                disabled={codeBusy}
+              >
+                {codeBusy ? (
+                  <ActivityIndicator color={colors.textInverse} />
+                ) : (
+                  <Text style={styles.modalSaveText}>Sign in</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
         </KeyboardAvoidingView>
       </Modal>
 
-      <Modal visible={serverModal} animationType="fade" transparent onRequestClose={() => setServerModal(false)}>
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.modalBackdrop}>
+      <Modal
+        visible={serverModal}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setServerModal(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={styles.modalBackdrop}
+        >
           <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Choose your server</Text>
@@ -459,7 +512,11 @@ export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
               <Text
                 style={[
                   styles.serverCheckText,
-                  serverCheck.tone === "ok" ? styles.serverCheckOk : serverCheck.tone === "error" ? styles.errorText : null,
+                  serverCheck.tone === "ok"
+                    ? styles.serverCheckOk
+                    : serverCheck.tone === "error"
+                      ? styles.errorText
+                      : null,
                 ]}
                 accessibilityLiveRegion="polite"
               >
@@ -469,15 +526,26 @@ export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
 
             <View style={styles.modalActions}>
               {serverName ? (
-                <TouchableOpacity style={styles.modalCancelBtn} onPress={() => void useCloud()} disabled={serverBusy}>
+                <TouchableOpacity
+                  style={styles.modalCancelBtn}
+                  onPress={() => void useCloud()}
+                  disabled={serverBusy}
+                >
                   <Text style={styles.modalCancelText}>Use Sayabot Cloud</Text>
                 </TouchableOpacity>
               ) : (
-                <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setServerModal(false)}>
+                <TouchableOpacity
+                  style={styles.modalCancelBtn}
+                  onPress={() => setServerModal(false)}
+                >
                   <Text style={styles.modalCancelText}>Cancel</Text>
                 </TouchableOpacity>
               )}
-              <TouchableOpacity style={styles.modalSaveBtn} onPress={connectServer} disabled={serverBusy}>
+              <TouchableOpacity
+                style={styles.modalSaveBtn}
+                onPress={connectServer}
+                disabled={serverBusy}
+              >
                 {serverBusy ? (
                   <ActivityIndicator size="small" color={colors.textInverse} />
                 ) : (
@@ -493,24 +561,104 @@ export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
 }
 
 const styles = StyleSheet.create({
-  codeBtn: {
-    backgroundColor: colors.primary,
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: "center",
+    paddingVertical: 32,
+  },
+  content: {
+    paddingHorizontal: 28,
     alignItems: "center",
-    marginBottom: 14,
+    width: "100%",
+    maxWidth: 420,
+    alignSelf: "center",
+  },
+  hero: {
+    alignItems: "center",
+    marginBottom: 36,
+  },
+  logoMark: {
+    width: 64,
+    height: 64,
+    marginBottom: 16,
+  },
+  title: {
+    color: colors.textPrimary,
+    fontSize: 28,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  subtitle: {
+    color: colors.textSecondary,
+    fontSize: 15,
+    textAlign: "center",
+    marginTop: 6,
+  },
+  errorBox: {
+    backgroundColor: colors.accentDangerBg,
+    padding: 10,
+    borderRadius: 10,
+    marginBottom: 16,
+    width: "100%",
+    borderWidth: 1,
+    borderColor: "rgba(241, 92, 109, 0.3)",
+  },
+  errorText: {
+    color: colors.accentDanger,
+    fontSize: 13,
+    textAlign: "center",
+  },
+  noticeBox: {
+    backgroundColor: "rgba(83, 189, 235, 0.12)",
+    padding: 10,
+    borderRadius: 10,
+    marginBottom: 16,
+    width: "100%",
+    borderWidth: 1,
+    borderColor: "rgba(83, 189, 235, 0.35)",
+  },
+  noticeText: {
+    color: colors.accentCyan,
+    fontSize: 13,
+    textAlign: "center",
+  },
+  serverCheckText: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginTop: 8,
+  },
+  serverCheckOk: {
+    color: colors.accentCyan,
+  },
+  form: {
+    width: "100%",
+  },
+  codeBtn: {
+    flexDirection: "row",
+    gap: 10,
+    height: 54,
+    backgroundColor: colors.primary,
+    borderRadius: 27,
+    alignItems: "center",
+    justifyContent: "center",
   },
   codeBtnText: {
     color: colors.textInverse,
     fontSize: 16,
     fontWeight: "700",
   },
-  codeBtnHint: {
-    color: colors.textInverse,
-    opacity: 0.75,
-    fontSize: 12,
-    marginTop: 2,
+  codeHint: {
+    color: colors.textSecondary,
+    fontSize: 12.5,
+    textAlign: "center",
+    marginTop: 10,
   },
   codeInput: {
     fontSize: 26,
@@ -523,129 +671,43 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 8,
   },
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  keyboardView: {
-    flex: 1,
-    justifyContent: "center",
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: "center",
-    paddingVertical: 24,
-  },
-  content: {
-    paddingHorizontal: 28,
-    alignItems: "center",
-  },
-  logoMark: {
-    width: 72,
-    height: 72,
-    marginBottom: 18,
-  },
-  title: {
-    color: colors.textPrimary,
-    fontSize: 24,
-    fontWeight: "700",
-    textAlign: "center",
-  },
-  subtitle: {
-    color: colors.textSecondary,
-    fontSize: 13.5,
-    textAlign: "center",
-    marginTop: 8,
-    marginBottom: 24,
-    lineHeight: 19,
-    maxWidth: 310,
-  },
-  errorBox: {
-    backgroundColor: colors.accentDangerBg,
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 16,
-    width: "100%",
-    borderWidth: 1,
-    borderColor: "rgba(241, 92, 109, 0.3)",
-  },
-  serverCheckText: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    marginTop: 8,
-  },
-  serverCheckOk: {
-    color: colors.accentCyan,
-  },
-  errorText: {
-    color: colors.accentDanger,
-    fontSize: 13,
-    textAlign: "center",
-  },
-  noticeBox: {
-    backgroundColor: "rgba(83, 189, 235, 0.12)",
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 16,
-    width: "100%",
-    borderWidth: 1,
-    borderColor: "rgba(83, 189, 235, 0.35)",
-  },
-  noticeText: {
-    color: colors.accentCyan,
-    fontSize: 13,
-    textAlign: "center",
-  },
-  form: {
-    width: "100%",
-    gap: 12,
-  },
-  oauthContainer: {
-    gap: 10,
-    marginBottom: 6,
-  },
-  oauthBtnGoogle: {
-    backgroundColor: "#ffffff",
-    height: 48,
-    borderRadius: 24,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  oauthBtnGoogleText: {
-    color: "#000000",
-    fontSize: 14.5,
-    fontWeight: "700",
-  },
-  oauthBtnGithub: {
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
-    height: 48,
-    borderRadius: 24,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  oauthBtnGithubText: {
-    color: colors.textPrimary,
-    fontSize: 14.5,
-    fontWeight: "600",
-  },
   dividerRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    marginVertical: 4,
+    gap: 12,
+    marginVertical: 24,
   },
   dividerLine: {
     flex: 1,
-    height: 1,
-    backgroundColor: colors.borderSubtle,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.border,
   },
   dividerText: {
     color: colors.textSecondary,
-    fontSize: 11,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
+    fontSize: 12,
+  },
+  oauthRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  oauthBtn: {
+    flex: 1,
+    height: 48,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  oauthBtnText: {
+    color: colors.textPrimary,
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  emailForm: {
+    gap: 12,
+    marginTop: 16,
   },
   inputContainer: {
     flexDirection: "row",
@@ -669,67 +731,51 @@ const styles = StyleSheet.create({
     padding: 6,
   },
   submitBtn: {
-    marginTop: 6,
     height: 50,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.surfaceLight,
     borderRadius: 25,
     alignItems: "center",
     justifyContent: "center",
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   submitBtnText: {
-    color: colors.textInverse,
+    color: colors.textPrimary,
     fontSize: 15,
     fontWeight: "700",
   },
-  toggleBtn: {
-    paddingVertical: 10,
+  linkBtn: {
+    paddingVertical: 14,
     alignItems: "center",
   },
-  toggleText: {
+  linkText: {
     color: colors.accentCyan,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "600",
   },
-  demoBtn: {
+  footer: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    backgroundColor: colors.surfaceLight,
-    paddingVertical: 12,
-    borderRadius: 25,
-    borderWidth: 1,
-    borderColor: colors.borderSubtle,
-    marginTop: 4,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
   },
-  demoBtnText: {
-    color: colors.primaryBright,
-    fontSize: 13.5,
-    fontWeight: "600",
-  },
-  demoHint: {
-    color: colors.textSecondary,
-    fontSize: 12,
-    textAlign: "center",
-    lineHeight: 17,
-  },
-  serverPill: {
+  footerBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    backgroundColor: colors.surface,
-    paddingHorizontal: 12,
+    gap: 5,
     paddingVertical: 6,
-    borderRadius: 16,
-    marginTop: 24,
-    borderWidth: 1,
-    borderColor: colors.borderSubtle,
+    paddingHorizontal: 6,
   },
-  serverPillText: {
+  footerText: {
     color: colors.textSecondary,
-    fontSize: 11.5,
-    maxWidth: 220,
+    fontSize: 12.5,
+    maxWidth: 190,
+  },
+  footerDot: {
+    color: colors.textSecondary,
+    fontSize: 12.5,
+    marginHorizontal: 4,
   },
 
   // Modal

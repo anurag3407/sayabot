@@ -56,23 +56,35 @@ Because mobile applications are compiled native binaries, updates are split into
   - [`.github/workflows/mobile-updates.yml`](../.github/workflows/mobile-updates.yml) automatically publishes an OTA update whenever changes are pushed to `apps/mobile/**`.
   - *Prerequisite*: Add `EXPO_TOKEN` to your GitHub repository secrets.
 
-### B. In-App Version Checker & Self-Hosted APK Downloads
-- **When it applies**: Changes to native dependencies, Android permissions, or major releases.
-- **Backend Endpoint**: [`GET /api/mobile/version`](../apps/web/src/app/api/mobile/version/route.ts).
-  - Can be controlled on your server via environment variables:
+### B. New APKs (native changes) — automatic
+- **When it applies**: Changes to native dependencies, Android permissions, or anything outside the JS bundle.
+- **How to release**: bump `"version"` in `apps/mobile/app.json` (e.g. `1.2.0` → `1.3.0`) and push to `main`. The `release-apk` job in [`.github/workflows/mobile-updates.yml`](../.github/workflows/mobile-updates.yml) builds the APK with Gradle and attaches `Sayabot-<version>.apk` (plus `Sayabot.apk`) to the latest GitHub release. No secret is needed. `versionName`, `versionCode` and the OTA runtime version are all derived from that one field.
+- **How phones pick it up**: [`GET /api/mobile/version`](../apps/web/src/app/api/mobile/version/route.ts) reports the newest `Sayabot-x.y.z.apk` on GitHub Releases. Within 30 minutes of opening the app, a card offers **Install**. Sayabot then downloads the APK in-app and opens Android's installer (Android always asks for a final confirmation for sideloaded apps).
+- **Pinning by hand** (optional): set these on your server to override the GitHub lookup:
     ```bash
-    MOBILE_LATEST_VERSION="1.0.1"
-    MOBILE_MIN_VERSION="1.0.0"
-    MOBILE_APK_URL="/downloads/sayabot-latest.apk"
+    MOBILE_LATEST_VERSION="1.3.0"
+    MOBILE_APK_URL="https://example.com/Sayabot-1.3.0.apk"
     MOBILE_RELEASE_NOTES="New tools, improved responsiveness, and fixes."
+    MOBILE_RELEASES_REPO="owner/repo"   # follow a fork's releases instead
     ```
-- **In-App Settings UI**:
-  - Inside **Settings $\to$ About**, users see their current app version and an **Update / Check** button.
-  - Tapping **Check** checks both OTA and self-hosted server releases, and prompts the user to install or download immediately.
+- **Manual check**: **More → Check for updates** runs the same OTA and APK checks immediately.
 
-### C. Building New APKs
-- To build a new standalone `.apk` using EAS Cloud Build:
-  ```bash
-  pnpm mobile:build:apk
-  ```
-- Or trigger the **Build Standalone APK** workflow dispatch directly from the GitHub Actions web interface.
+### C. Signing key: set this up before the first automatic release
+Android only installs an update signed with the same key as the app already on the phone. Add these repo secrets so every CI-built APK is signed with one private key:
+
+| Secret | Value |
+| :-- | :-- |
+| `ANDROID_KEYSTORE_BASE64` | `base64 -i release.keystore` |
+| `ANDROID_KEYSTORE_PASSWORD` | keystore password |
+| `ANDROID_KEY_ALIAS` | key alias |
+| `ANDROID_KEY_PASSWORD` | key password |
+
+Without them, CI signs with the repo's public `debug.keystore` and prints a warning. The published 1.1.0 APK was signed with a different key (SHA-256 `06be1fdb…`). If that is your EAS-managed key, download it with `eas credentials` (Android → Keystore → Download) and use it here, so 1.2.0 installs over 1.1.0 in place.
+
+### D. One-time step for phones on APK 1.1.0 or older
+Those builds shipped without an Expo update URL, and were built without `EXPO_PUBLIC_SUPABASE_URL`, so code sign-in failed with "This copy of the app is set up for a different Sayabot server". Install 1.2.0 once by hand from the download page. If it was signed with a different key, uninstall 1.1.0 first. From then on, updates arrive automatically.
+
+### E. Building an APK by hand
+- Locally: `cd apps/mobile/android && ./gradlew assembleRelease`. Output: `app/build/outputs/apk/release/app-release.apk`.
+- From GitHub: run **Mobile Updates & Release** with action `build-apk`, which always rebuilds.
+- With EAS Cloud Build: `pnpm mobile:build:apk` (needs `EXPO_TOKEN`).

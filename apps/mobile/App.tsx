@@ -5,6 +5,7 @@ import { ShareIntentProvider } from "expo-share-intent"
 import { RootNavigator } from "./src/navigation/RootNavigator"
 import { useTheme } from "./src/ui/theme"
 import { restoreServerClient } from "./src/core/supabase"
+import { UpdateBanner } from "./src/components/UpdateBanner"
 
 function ThemedStatusBar() {
   const theme = useTheme()
@@ -24,6 +25,7 @@ export default function App() {
       <SafeAreaProvider>
         <ThemedStatusBar />
         <RootNavigator />
+        <UpdateBanner />
       </SafeAreaProvider>
     </ShareIntentProvider>
   )

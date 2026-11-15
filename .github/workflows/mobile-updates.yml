@@ -70,35 +70,91 @@ jobs:
           npx --yes eas-cli update --auto --branch production --non-interactive
           echo "==> OTA update published successfully! Installed APKs will receive updates automatically."
 
-  build-apk:
-    name: Build Standalone APK
+  release-apk:
+    # Phones update themselves from the newest `Sayabot-<version>.apk` on GitHub Releases
+    # (see /api/mobile/version). Bumping "version" in apps/mobile/app.json is all it takes:
+    # this job sees no APK for that version yet, builds one, and attaches it.
+    name: Build & publish APK for a new app version
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' && inputs.action == 'build-apk'
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.action == 'build-apk')
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Is there already an APK for this version?
+        id: version
+        shell: bash
+        run: |
+          version=$(node -p "require('./apps/mobile/app.json').expo.version")
+          tag=$(gh release view --json tagName -q .tagName 2>/dev/null || true)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          if [ "${{ github.event_name }}" != "workflow_dispatch" ] && [ -n "$tag" ] \
+            && gh release view "$tag" --json assets -q '.assets[].name' | grep -qx "Sayabot-$version.apk"; then
+            echo "Sayabot-$version.apk is already published; nothing to build."
+            echo "build=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "build=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Setup Node.js 20
+        if: steps.version.outputs.build == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
       - name: Install pnpm
+        if: steps.version.outputs.build == 'true'
         uses: pnpm/action-setup@v4
         with:
           run_install: false
 
+      - name: Setup Java 17
+        if: steps.version.outputs.build == 'true'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
       - name: Install dependencies
+        if: steps.version.outputs.build == 'true'
         run: pnpm install --frozen-lockfile=false
 
-      - name: Build Android APK via EAS
-        working-directory: apps/mobile
+      - name: Build release APK
+        if: steps.version.outputs.build == 'true'
+        working-directory: apps/mobile/android
+        # Signed with the release key from repo secrets so every APK installs over the last one.
+        # Without the secrets it falls back to the repo's public debug key (with a warning).
         env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          SAYABOT_RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          SAYABOT_RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          SAYABOT_RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          if [ -z "$EXPO_TOKEN" ]; then
-            echo "::error::EXPO_TOKEN secret is required to build APK via EAS Cloud Build!"
-            exit 1
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.keystore"
+            export SAYABOT_RELEASE_STORE_FILE="$RUNNER_TEMP/release.keystore"
+          else
+            echo "::warning::ANDROID_KEYSTORE_BASE64 is not set; signing with the repo's public debug key."
           fi
-          echo "==> Triggering cloud build for Android APK..."
-          npx --yes eas-cli build -p android --profile preview --non-interactive
+          ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,armeabi-v7a
+
+      - name: Attach APK to the latest release
+        if: steps.version.outputs.build == 'true'
+        shell: bash
+        run: |
+          version="${{ steps.version.outputs.version }}"
+          tag="${{ steps.version.outputs.tag }}"
+          mkdir -p out
+          cp apps/mobile/android/app/build/outputs/apk/release/app-release.apk "out/Sayabot-$version.apk"
+          cp "out/Sayabot-$version.apk" out/Sayabot.apk
+          if [ -z "$tag" ]; then
+            tag="mobile-v$version"
+            gh release create "$tag" --title "Sayabot for Android $version" --notes "Android app $version."
+          fi
+          gh release upload "$tag" "out/Sayabot-$version.apk" out/Sayabot.apk --clobber
+          echo "==> Published Sayabot-$version.apk to $tag"

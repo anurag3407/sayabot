@@ -157,17 +157,19 @@ Errors: `401 { error: "unauthorized" }`, `404 { error: "workspace not found" }`.
 
 **Auth:** none; CORS `*` for `GET, OPTIONS` and CDN caching (`s-maxage=60, stale-while-revalidate=300`) so app stores and phones can poll it cheaply (`version/route.ts:14`).
 
-Environment-driven update check (`version/route.ts:6`):
+Update check. Env vars pin a release by hand. Otherwise the route follows the newest APK on GitHub Releases: `fetchLatestApk(repo)` from `apps/web/src/lib/mobile-release.ts` calls `GET https://api.github.com/repos/<repo>/releases/latest` (5 s timeout, Next-cached for 10 minutes). `pickLatestApk` then picks the highest `Sayabot-<x.y.z>.apk` asset. The repo is `$MOBILE_RELEASES_REPO`, or comes from the landing page's `GITHUB_URL` via `repoFromGithubUrl`. Any failure falls back to the defaults below.
 
 ```json
 {
-  "latestVersion": "$MOBILE_LATEST_VERSION || \"1.1.0\"",
+  "latestVersion": "$MOBILE_LATEST_VERSION || <newest Sayabot-x.y.z.apk on GitHub> || \"1.1.0\"",
   "minSupportedVersion": "$MOBILE_MIN_VERSION || \"1.0.0\"",
-  "apkUrl": "$MOBILE_APK_URL || <landing page Android APK URL>",
+  "apkUrl": "$MOBILE_APK_URL || <that asset's download URL> || <landing page Android APK URL>",
   "releaseNotes": "$MOBILE_RELEASE_NOTES || \"Performance improvements, …\"",
   "publishedAt": "$MOBILE_RELEASE_DATE || now"
 }
 ```
+
+Setting `MOBILE_LATEST_VERSION` skips the GitHub lookup entirely.
 
 `OPTIONS` answers the same CORS headers with `204`.
 

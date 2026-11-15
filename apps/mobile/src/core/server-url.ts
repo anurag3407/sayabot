@@ -24,6 +24,11 @@ export function normalizeServerUrl(input: string): string | null {
 }
 
 /** A Sayabot server as the phone remembers it (same shape as SavedServer in supabase.ts). */
+/** True for the template value an unconfigured build ships with (or no value at all). */
+export function isPlaceholderSupabaseUrl(url: string | undefined | null): boolean {
+  return !url || /your-project\.supabase\.co/i.test(url) || !/^https?:\/\//i.test(url)
+}
+
 export interface CheckedServer {
   webApiUrl: string
   name: string

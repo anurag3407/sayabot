@@ -1,8 +1,8 @@
 # Push Notifications & App Updates
 
-Two independent update channels keep the phone current: Expo push notifications deliver agent questions (with an inline "Answer" text field) and danger-tool approvals (Allow / Don't allow) whose actions post straight back to the web API without opening the app; `expo-updates` handles over-the-air JS updates on load, with a fallback version check against the self-hosted server's `/api/mobile/version` that offers an APK download. This page documents the notification handler, channels and categories, token registration lifecycle, tap/interaction routing, and both update paths.
+Two independent update channels keep the phone current: Expo push notifications deliver agent questions (with an inline "Answer" text field) and danger-tool approvals (Allow / Don't allow) whose actions post straight back to the web API without opening the app; `expo-updates` handles over-the-air JS updates, and a version check against the server's `/api/mobile/version` finds new APKs, which the app downloads and hands to Android's installer. A root-mounted banner runs both checks automatically. This page documents the notification handler, channels and categories, token registration lifecycle, tap/interaction routing, and both update paths.
 
-Source files: `src/core/push.ts`, `src/hooks/useAppUpdates.ts`
+Source files: `src/core/push.ts`, `src/hooks/useAppUpdates.ts`, `src/components/UpdateBanner.tsx`, `src/core/app-version.ts`, `src/core/apk-install.ts`, `android/app/build.gradle`, `.github/workflows/mobile-updates.yml`
 
 ---
 
@@ -80,44 +80,59 @@ Android-only: an ongoing, sticky, low-priority notification (identifier `"agent-
 
 ---
 
-## 🔄 App updates (`src/hooks/useAppUpdates.ts`)
+## 🔄 App updates (`src/hooks/useAppUpdates.ts`, `src/components/UpdateBanner.tsx`)
 
-`useAppUpdates()` returns `{ isChecking, isUpdateAvailable, isDownloading, isDownloaded, updateType, latestVersion, apkUrl, releaseNotes, errorMessage, currentVersion, checkForUpdates, applyUpdate }` (`useAppUpdates.ts:186-192`). `CURRENT_APP_VERSION` is `Constants.expoConfig?.version ?? "1.1.0"` — the Expo config version (`app.json` has `1.1.0`). Version comparison is a hand-rolled semver triple (`parseSemver` strips a leading `v`, tolerates non-numeric parts as 0; `isNewerVersion` compares major/minor/patch) (`useAppUpdates.ts:22-37`).
+Updates come two ways. **Over-the-air (OTA)** JS updates download silently and apply on restart. **New APKs**, needed for native changes, download inside the app and open Android's installer. Android always asks the person to confirm the install, because a sideloaded app can't update itself silently. iOS skips the APK path.
 
-### Status flags
+### Shared state
 
-| Flag | Set when |
+`useAppUpdates()` reads one module-level store through `useSyncExternalStore`, so the root banner, More and Advanced all see the same update. It returns `{ isChecking, isUpdateAvailable, isDownloading, isDownloaded, downloadProgress, updateType, latestVersion, apkUrl, releaseNotes, errorMessage, dismissed, lastCheckedAt, currentVersion, checkForUpdates, applyUpdate, dismiss }`. `CURRENT_APP_VERSION` is `Constants.expoConfig?.version`, from `app.json` (currently `1.2.0`). Concurrent checks share one in-flight promise. A quiet check that finds one already running just waits for it.
+
+Pure helpers live in `src/core/app-version.ts` and are unit-tested in `tests/unit/app-version.test.ts`:
+
+- `parseSemver` strips a leading `v` and treats missing or non-numeric parts as 0. `isNewerVersion(current, latest)` compares numerically, so `1.10.0` is newer than `1.2.0`.
+- `resolveApkUrl(base, apkUrl)` keeps absolute links and joins relative ones onto the server.
+- `shouldQuietCheck(lastCheckedAt, now)` allows a foreground check at most every `QUIET_CHECK_INTERVAL_MS` (30 minutes).
+
+| Field | Meaning |
 | :-- | :-- |
-| `isChecking` | A check is running (cleared at every exit path) |
-| `isDownloading` | An OTA update was found and `fetchUpdateAsync()` is in flight |
-| `isDownloaded` | The OTA bundle is fetched and ready for `reloadAsync()` |
-| `updateType` | `"ota"` (OTA found, short-circuits the rest of the check) or `"apk"` (server `latestVersion` is newer) or `null` |
-| `latestVersion` / `apkUrl` / `releaseNotes` | Copied from the `/api/mobile/version` response when `updateType` is `"apk"` |
-| `errorMessage` | Reset to `undefined` at the start of every check; fetch failures surface only through manual-check alerts, not this field |
+| `updateType` | `"ota"` (an OTA bundle was found), `"apk"` (the server's `latestVersion` is newer) or `null` |
+| `isDownloading` / `downloadProgress` | An OTA fetch or APK download is running. `downloadProgress` runs from 0 to 1 for APKs and is `null` otherwise |
+| `isDownloaded` | The OTA bundle is ready for `Updates.reloadAsync()` |
+| `dismissed` | The banner was closed. It stays hidden until the next launch, since the store lives in memory |
+| `lastCheckedAt` | When the last check started, used for throttling |
 
-### `checkForUpdates(manual)` — two-stage check
+### `checkForUpdates(manual)`
 
-**Stage 1: Expo OTA** (`useAppUpdates.ts:53-90`), only when `Updates.isEnabled` (true in release builds per `app.json` `updates.enabled`):
+1. **OTA**, only when `Updates.isEnabled`: `checkForUpdateAsync()`. If an update exists, `fetchUpdateAsync()` runs silently and sets `updateType: "ota"` and `isDownloaded`. A manual check also alerts "Update ready" with **Later** / **Restart**. Failures are logged and the check moves on to the APK step.
+2. **APK** (Android only): `GET {settings.webApiUrl || ENV.WEB_API_URL}/api/mobile/version`. When `latestVersion` is newer and an `apkUrl` is present, it sets `updateType: "apk"`. A manual check alerts "Sayabot <v> is available" with **Later** / **Install**. The client ignores `minSupportedVersion`.
+3. Otherwise the update state is cleared. A manual check alerts "You're up to date" or "Couldn't check for updates".
 
-- `Updates.checkForUpdateAsync()` — when an update is available it immediately `fetchUpdateAsync()`s, flags `updateType: "ota"` + `isDownloaded`, and prompts: "Update Ready — A new update has been downloaded. Restart Sayabot now to apply changes?" with **Later** / **Restart Now** (`Updates.reloadAsync()`). The check returns after this; the server check is skipped.
-- OTA failures are warned and swallowed, falling through to stage 2.
+### Installing an APK (`src/core/apk-install.ts`)
 
-**Stage 2: self-hosted APK releases** (`useAppUpdates.ts:92-140`):
+`downloadAndInstallApk(url, version, onProgress)` first deletes any `Sayabot-*.apk` left in the cache from earlier updates, then downloads into `FileSystem.cacheDirectory` as `Sayabot-<version>.apk` (`expo-file-system`, which follows GitHub's redirect), gets a `content://` URI and starts `android.intent.action.VIEW` with type `application/vnd.android.package-archive` and `FLAG_GRANT_READ_URI_PERMISSION` (`expo-intent-launcher`). The manifest declares `REQUEST_INSTALL_PACKAGES`, so Android shows "Allow from this source" the first time. If any step fails, the link opens in the browser instead. `applyUpdate()` calls `Updates.reloadAsync()` for a downloaded OTA bundle, or this installer for an APK.
 
-- `GET {settings.webApiUrl || ENV.WEB_API_URL}/api/mobile/version` (unauthenticated; the endpoint serves env-driven `{ latestVersion, minSupportedVersion, apkUrl, releaseNotes, publishedAt }` — see [Mobile App API](../web/api/api-mobile.md)).
-- When `latestVersion` is newer than the installed version, the status switches to `updateType: "apk"` with `apkUrl` and `releaseNotes`; a **manual** check additionally alerts "Version <v> Available" with **Later** / **Download APK**, where the APK URL is opened as-is when absolute or joined onto the server base when relative (`Linking.openURL`) (`useAppUpdates.ts:114-131`).
-- A failed fetch sets `fetchFailed`; a manual check then alerts either "Update Check Failed — Could not connect to update server at <base>…" or "Up to Date — Sayabot is currently at the latest version (<current>)" (`useAppUpdates.ts:142-161`). Note `minSupportedVersion` is ignored by the client — only `isNewerVersion(current, latestVersion)` gates the prompt.
+### Automatic checks (`UpdateBanner`)
 
-### Automatic check and `applyUpdate`
+`UpdateBanner` is mounted once in `App.tsx`. It runs a quiet check 3 seconds after launch and again whenever the app returns to the foreground, throttled by `shouldQuietCheck`. When an update is ready, it shows a floating card below the status bar:
 
-- A quiet `checkForUpdates(false)` runs 2 seconds after mount, on every screen that mounts the hook (`useAppUpdates.ts:178-184`). In practice `AdvancedScreen` mounts it (see [Computers & share](computers-and-share.md)); Expo also auto-checks OTA `ON_LOAD` per the native config.
-- `applyUpdate()` re-applies the pending update: OTA — `Updates.reloadAsync()` when downloaded; APK — `Linking.openURL` of the absolute/relative-resolved `apkUrl` (`useAppUpdates.ts:166-176`).
-- `restartApp()` in `src/core/server.ts` reuses the same `Updates.reloadAsync()` (with a `DevSettings.reload()` fallback) when switching servers (see [Pairing & onboarding](pairing-and-onboarding.md)).
+- "Update ready" with **Restart** for OTA.
+- "Sayabot <v> is available" with **Install** for an APK. While the APK downloads, the card shows "Downloading N%" and a progress bar. Once the download completes it shows "Opening the installer…" until Android's installer returns.
+
+An × button dismisses the card. More and Advanced keep their manual "Check for updates" rows, which share the same store. `restartApp()` in `src/core/server.ts` uses the same `Updates.reloadAsync()` (falling back to `DevSettings.reload()`) when switching servers.
 
 ### Build/release plumbing
 
-- EAS profiles (`eas.json`): `preview` and `production` both build Android APKs on the `production` EAS Update channel; `pnpm --filter @sayabot/mobile update:ota` publishes JS updates (`eas update --auto --branch production`), exposed at the repo root as `pnpm mobile:update` / `pnpm mobile:build:apk`.
-- `runtimeVersion` policy is `appVersion`, so OTA updates only apply to the same `app.json` version — a native change requires a new APK (`app.json:42-44`).
+- **One version source.** `android/app/build.gradle` reads `expo.version` from `app.json`. It sets `versionName`, sets `versionCode = major*10000 + minor*100 + patch` (1.2.0 becomes 10200, so each APK installs over the last) and generates the `expo_runtime_version` string resource. Bumping `app.json` `version` is the only edit needed for a native release.
+- **OTA wiring.** `app.json` `updates.url` and the manifest's `expo.modules.updates.EXPO_UPDATE_URL` both point at `https://u.expo.dev/<projectId>`. APKs built before 1.2.0 have no update URL, so they never receive OTA updates and need to be updated once by hand. `runtimeVersion` uses the `appVersion` policy, so an OTA bundle only reaches binaries built from the same `app.json` version.
+- **CI** (`.github/workflows/mobile-updates.yml`):
+  - `ota-update` publishes `eas update --branch production` on every push touching `apps/mobile/**`. It needs the `EXPO_TOKEN` repo secret and skips with a warning without it.
+  - `release-apk` checks whether the latest GitHub release already has `Sayabot-<version>.apk`. If not, it runs `./gradlew assembleRelease` for arm64-v8a and armeabi-v7a, and uploads `Sayabot-<version>.apk` and `Sayabot.apk` with `--clobber`. If no release exists yet, it creates `mobile-v<version>`. Running it via `workflow_dispatch` with `build-apk` always rebuilds.
+  - **Signing.** Android only installs an update signed with the same key as the installed app. The release build type uses `signingConfigs.release` when `SAYABOT_RELEASE_STORE_FILE` (plus `SAYABOT_RELEASE_STORE_PASSWORD`, `SAYABOT_RELEASE_KEY_ALIAS` and `SAYABOT_RELEASE_KEY_PASSWORD`) is set. Otherwise it falls back to the committed public `debug.keystore`. In CI, `release-apk` decodes the `ANDROID_KEYSTORE_BASE64` secret into that variable, using the `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD` secrets, and warns when they are missing. The published 1.1.0 APK was signed with a different key (certificate SHA-256 `06be1fdb…35edd`) than `debug.keystore` (`fac61745…33b9c`). To let 1.2.0 install over 1.1.0, set the secrets to that original keystore. Otherwise phones must uninstall 1.1.0 once.
+- **Cleartext.** The main manifest sets `android:usesCleartextTraffic="true"`, so release builds can reach a self-hosted server on the LAN over `http://` (for example `http://192.168.1.20:3000`, which `normalizeServerUrl` produces for private addresses). Before this, only the debug manifest allowed cleartext, so release APKs failed with "Couldn't reach that server".
+- **Memory.** `gradle.properties` gives Gradle `-Xmx4096m` (raised from 2 GB, which ran D8 out of heap while dexing `expo-updates`).
+- `desktop-release.yml` carries the `*.apk` assets forward into each new Mac release.
+- EAS profiles (`eas.json`) still exist for manual cloud builds (`pnpm mobile:build:apk`). `pnpm mobile:update` publishes OTA updates by hand.
 
 ---
 

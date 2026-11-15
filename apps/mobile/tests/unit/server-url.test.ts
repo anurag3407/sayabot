@@ -11,7 +11,8 @@ function test(name, fn) {
   }
 }
 
-const { normalizeServerUrl } = await import("../../src/core/server-url.ts")
+const { normalizeServerUrl, isPlaceholderSupabaseUrl } =
+  await import("../../src/core/server-url.ts")
 
 test("a bare domain gets https://", () => {
   assert.equal(normalizeServerUrl("sayabot.acme.com"), "https://sayabot.acme.com")
@@ -27,6 +28,13 @@ test("non-web addresses and plain text are refused", () => {
   assert.equal(normalizeServerUrl("ftp://acme.com"), null)
   assert.equal(normalizeServerUrl("my server"), null)
   assert.equal(normalizeServerUrl(""), null)
+})
+
+test("an unconfigured build's Supabase URL counts as missing", () => {
+  assert.equal(isPlaceholderSupabaseUrl("https://your-project.supabase.co"), true)
+  assert.equal(isPlaceholderSupabaseUrl(""), true)
+  assert.equal(isPlaceholderSupabaseUrl(undefined), true)
+  assert.equal(isPlaceholderSupabaseUrl("https://ltmabtgpuafqodgqphen.supabase.co"), false)
 })
 
 if (failures) process.exit(1)

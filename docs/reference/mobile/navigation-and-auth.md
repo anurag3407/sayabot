@@ -50,9 +50,14 @@ The whole container is wrapped in `<AppLockGate>` (`RootNavigator.tsx:123`). `Si
 The phone can sign in against Sayabot Cloud or a self-hosted server, so the Supabase client is swappable:
 
 - `makeClient(url, anonKey)` creates a client persisting sessions in AsyncStorage with `autoRefreshToken: true`, `persistSession: true`, `detectSessionInUrl: false` (`supabase.ts:19-28`).
-- The module-level default client points at `ENV.SUPABASE_URL` / `ENV.SUPABASE_ANON_KEY` (`supabase.ts:30-31`).
-- The exported `supabase` is a **Proxy** that forwards every property access to the current client and binds functions to it, so `supabase.from(...)` keeps working after a switch (`supabase.ts:52-59`).
-- `restoreServerClient()` runs once at startup from `App.tsx` before anything renders: it loads `SavedServer` from AsyncStorage key `@sayabot/server_v1`, and if the saved server's Supabase URL differs from the build default, replaces the current client and re-runs every registered `onSupabaseClient(setup)` callback (`supabase.ts:74-82`, `43-46`).
+- The module-level default client starts on the build's `ENV.SUPABASE_URL` / `ENV.SUPABASE_ANON_KEY` (from `EXPO_PUBLIC_*` at build time; unset builds get the placeholder `https://your-project.supabase.co`).
+- The exported `supabase` is a **Proxy**. It forwards every property access to the current client and binds functions to it, so `supabase.from(...)` keeps working after a switch.
+- `restoreServerClient()` runs once at startup from `App.tsx`, before anything renders. `switchClient(url, key)` replaces the client (only when the URL differs) and re-runs every registered `onSupabaseClient(setup)` callback. The order of preference:
+  1. **Saved self-hosted server.** The `SavedServer` in AsyncStorage key `@sayabot/server_v1` supplies the Supabase project.
+  2. **Sayabot Cloud, cached.** `@sayabot/cloud_v1` holds Cloud's own `/api/instance` answer, used only when its `webApiUrl` equals `ENV.WEB_API_URL`. The app switches to it immediately and refreshes the cache in the background. A changed project takes effect on the next launch, never mid-session.
+  3. **Sayabot Cloud, first launch.** When the built-in URL is a placeholder (`isPlaceholderSupabaseUrl` in `src/core/server-url.ts`), startup waits for `checkServer(ENV.WEB_API_URL)` (8 s timeout) and switches to Cloud's project. Otherwise it keeps the built-in values and fetches Cloud's answer in the background.
+
+  So Cloud's Supabase project always comes from Cloud itself, the same way a self-hosted server's does. A build made without `EXPO_PUBLIC_SUPABASE_URL` can still sign in. Before this change, such builds (APK 1.1.0) compared the placeholder URL with Cloud's and rejected every code with "This copy of the app is set up for a different Sayabot server".
 - `saveServer(server | null)` persists or clears the record `{ webApiUrl, name, supabaseUrl, supabaseAnonKey }` (`supabase.ts:85-88`, `12-17`).
 
 ---
@@ -85,19 +90,18 @@ A tiny module-level store — no Supabase session involved:
 
 - `isDemoMode()` / `setDemoMode(next)` flip a boolean and notify subscribers (`session-mode.ts:6-20`); `subscribeDemoMode(listener)` returns an unsubscribe function (`session-mode.ts:22-27`).
 - `RootNavigator` holds `demoMode` state synced via `subscribeDemoMode` (`RootNavigator.tsx:88, 103`) so the auth check `session || demoMode` reacts instantly.
-- Entry: the Auth screen's "Look around without an account" button sets settings `displayName: "Guest"`, `role: "Preview"`, then either calls the passed `onEnterDemo` or `setDemoMode(true)` (`AuthScreen.tsx:185-202`). Exit: `signOut()` resets it (`useAuth.ts:134`).
+- Entry: the Auth screen footer's "Just looking" link sets settings `displayName: "Guest"`, `role: "Preview"`, then either calls the passed `onEnterDemo` or `setDemoMode(true)` (`handleDemoSignIn` in `AuthScreen.tsx`). Exit: `signOut()` resets it (`useAuth.ts:134`).
 
 ---
 
 ## 🖥️ Auth screen (`src/screens/AuthScreen.tsx`)
 
-`AuthScreen` is a self-styled `SafeAreaView` using the static `colors` palette from `src/theme` (not the dynamic theme hook). Its sign-in options, top to bottom (`AuthScreen.tsx:243-366`):
+`AuthScreen` is a self-styled `SafeAreaView` using the static `colors` palette from `src/theme` (not the dynamic theme hook). It is laid out for a first-time visitor: a small hero (logo, "Sayabot", "Your agents, on your phone."), then three sign-in choices, with everything else folded away or moved to a quiet footer. Top to bottom:
 
-1. **"Sign in with a code"** (primary) — opens a modal with an 8-character code input (auto-uppercased, `maxLength: 12`, placeholder `ABCD-2345`) and a "Change server" shortcut into the server sheet; submit calls `signInWithCode` (`AuthScreen.tsx:47-59`, `385-428`). The modal shows the current `settings.webApiUrl` as the target server (`AuthScreen.tsx:411`).
-2. **OAuth** — "Continue with Google" and "Continue with GitHub" buttons calling `signInWithOAuth` (`AuthScreen.tsx:259-276`).
-3. **Email + password** — sign-in and sign-up toggle; sign-up uses `supabase.auth.signUp` and, when no session returns, shows "Check your email to confirm this account…" (`AuthScreen.tsx:146-183`). Errors and the hook's `pairError` render in a shared error box; network-flavored failures become "Couldn't reach <server name>…" (`AuthScreen.tsx:101-107`, `231-235`).
-4. **Guest** — "Look around without an account" (demo mode, above).
-5. **Server pill** — bottom indicator showing "Server: <name>" ("Sayabot Cloud" when on the default URL) opening the **Choose your server** modal (`AuthScreen.tsx:368-379`, `430-490`).
+1. **"Sign in with a code"** (primary, key icon) with a one-line hint underneath, "Get a code on your computer: Settings → Phones". It opens a modal with an 8-character code input (auto-uppercased, `maxLength: 12`, placeholder `ABCD-2345`) and a "Change server" shortcut into the server sheet; submit calls `signInWithCode`. The modal shows the current `settings.webApiUrl` as the target server.
+2. **OAuth**: an "or" divider, then a row of two equal buttons, **Google** and **GitHub** (accessibility labels "Continue with Google/GitHub"), each calling `signInWithOAuth`.
+3. **Email + password**: collapsed behind a "Use email instead" link (`showEmail` state). Expanded, it shows Email and Password fields (the email field's Next key moves to the password field, whose Go key submits), a "Sign in" / "Create account" button and a "New here? Create an account" / "Have an account? Sign in" toggle. Sign-up uses `supabase.auth.signUp` and, when no session returns, shows "Check your email to confirm this account…". Errors and the hook's `pairError` render in a shared error box above the choices; network-flavored failures become "Couldn't reach <server name>…".
+4. **Footer** (outside the scroll view; hidden while the keyboard is open, tracked through `Keyboard` `keyboardDidShow`/`keyboardDidHide`, so it never covers the password field): a server link showing `serverLabel` (the saved server's name, "Sayabot Cloud" on the default URL, else the bare host) that opens the **Choose your server** modal, and a "Just looking" link that enters guest/demo mode (above). Its accessibility hint says preview only.
 
 The server modal debounces 600 ms as you type, runs `checkServer(value)` from `src/core/server-url.ts`, shows `✓ Found <name>` or the error, and its Connect button runs `checkServer` then `useServer(result.server)` (sign out → persist → restart). When a server is already saved, a "Use Sayabot Cloud" action calls `useCloud()` (`AuthScreen.tsx:80-98`, `117-127`, `471-479`). Server URL normalization and the `/api/instance` probe are documented in [Pairing & onboarding](pairing-and-onboarding.md).
 

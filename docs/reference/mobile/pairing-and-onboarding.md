@@ -24,7 +24,7 @@ Turns loose input into a base URL without using `URL` (`server-url.ts:5-24`):
 
 - Trims; rejects empty or whitespace-containing input.
 - If a scheme is present it must be `http://` or `https://` (any other scheme rejected).
-- Schemeless input gets `http://` only for local addresses — `localhost`, `127.*`, `10.*`, `192.168.*`, `172.16-31.*`, `*.local` — otherwise `https://` (`server-url.ts:11-14`). So `"192.168.1.20:3000/"` becomes an HTTP LAN URL while `"sayabot.acme.com"` becomes HTTPS.
+- Schemeless input gets `http://` only for local addresses — `localhost`, `127.*`, `10.*`, `192.168.*`, `172.16-31.*`, `*.local` — otherwise `https://` (`server-url.ts:11-14`). So `"192.168.1.20:3000/"` becomes an HTTP LAN URL while `"sayabot.acme.com"` becomes HTTPS. Release APKs allow these `http://` addresses because the main manifest sets `usesCleartextTraffic`.
 - Hostname must be alphanumeric/dots/dashes (or bracketed IPv6) and contain a dot unless it is exactly `localhost`.
 - Returns `scheme://host[:port]` plus any path, trailing slashes stripped.
 

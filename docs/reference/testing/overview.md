@@ -41,7 +41,7 @@ Each workspace's `test` script and colocated test count (found with `find … -n
 | `apps/computerd` | `vitest run` | 16 |
 | `apps/desktop` | `vitest run` | 9 |
 | `packages/llm` | `vitest run` | 10 |
-| `apps/mobile` | plain `node --experimental-strip-types` on five named files in `tests/unit/` (env, workspace-draft, markdown, server-url, server-check), plus `tsc --noEmit` on a dedicated tsconfig first | 5 |
+| `apps/mobile` | plain `node --experimental-strip-types` on six named files in `tests/unit/` (env, workspace-draft, markdown, server-url, server-check, app-version), plus `tsc --noEmit` on a dedicated tsconfig first | 6 |
 | `apps/egress` | `vitest run` | 4 |
 | `packages/db` | none (tests exist under `tests/unit`/`tests/integration` but the package has no test script) | 2 |
 
@@ -111,7 +111,7 @@ Beyond colocated files, several packages keep `tests/` directories that Vitest's
 - **`apps/web`** (47 files): components, server actions, rooms UI logic, push, providers.
 - **`apps/computerd`** (16 files): backends (docker/smolvm/e2b selection), lifecycle, capacity, transport, agentd RPC.
 - **`apps/egress`** (4 files): proxy behavior, secret placeholder swapping, scrubbing.
-- **`apps/mobile`** (5 files) and **`apps/desktop`** (9 files): env/server-url validation, workspace drafts, markdown rendering, Electron main-process units.
+- **`apps/mobile`** (6 files) and **`apps/desktop`** (9 files): env/server-url validation, workspace drafts, markdown rendering, app-update version helpers, Electron main-process units.
 
 Details and walkthroughs: [unit-testing.md](unit-testing.md), [integration-testing.md](integration-testing.md), [e2e-testing.md](e2e-testing.md).
 
