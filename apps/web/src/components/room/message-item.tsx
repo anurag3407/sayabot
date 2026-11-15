@@ -9,6 +9,7 @@ import { FailureActions, PokeBotButton } from "@/components/room/message-actions
 import { ToolCallsList } from "@/components/room/tool-call-card"
 import { InspectTraceButton } from "@/components/trace/inspect-trace-button"
 import { clockTime, cn, fullTime } from "@/lib/format"
+import { replySourceLabel } from "@/lib/runs-on"
 import type { MessageView, ToolCallView } from "@/lib/types"
 
 export function MessageItem({
@@ -182,7 +183,10 @@ export function MessageItem({
             <Markdown content={message.content} streaming={streaming} />
             {streaming ? <span className="streaming-caret" aria-hidden="true" /> : null}
           </div>
-        ) : streaming ? (
+        ) : null}
+        {isAgent && !streaming && message.content && replySourceLabel(message.metadata) ? (
+          <p className="mt-1 pl-1 text-[11px] text-faint">{replySourceLabel(message.metadata)}</p>
+        ) : streaming && !message.content ? (
           <p className="mt-1 inline-flex items-center gap-1.5 rounded-[22px] rounded-tl-md bg-panel px-4 py-3 text-[14px] text-faint" aria-label="Thinking">
             <span className="thinking-dot" />
             <span className="thinking-dot [animation-delay:150ms]" />
@@ -204,6 +208,7 @@ export function MessageItem({
               reason={null}
               canAdmin={canAdmin}
               showRetry={showRetry}
+              kind={typeof message.metadata.errorKind === "string" ? message.metadata.errorKind : null}
             />
           </div>
         ) : null}

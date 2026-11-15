@@ -50,7 +50,8 @@ import {
   systemReminder,
   type StepLike,
 } from "./loop-control"
-import { classifyEngineError } from "./recovery"
+import { classifyEngineError, scrubProviderIds, userFacingError } from "./recovery"
+import { LEAN_HISTORY, leanLimitTokens, leanParams, leanToolNames, modelLimitKey } from "./lean"
 import { getAvailableSkills } from "./skills"
 import { buildSelfVerificationPrompt, getVerifyMode, runCriticVerification } from "./verify"
 
@@ -79,14 +80,18 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
   const db = getDb()
   const { room, agent } = args
   const resolved = await resolveAgentModel(agent)
+  // A provider that refused a request as too large (see startAgentTurn) gets a lean turn.
+  const limitKey = modelLimitKey(resolved.provider, resolved.modelName)
+  const lean = leanLimitTokens(agent.params, limitKey)
 
   const conversation: ContextMessage[] = await loadConversation({
     roomId: room.id,
     threadRootId: args.threadRootId,
+    ...(lean ? { limit: LEAN_HISTORY } : {}),
   })
 
   const [canvasContext, taskContext, taskBrief] = await Promise.all([
-    loadCanvasContext(room.id),
+    lean ? Promise.resolve("") : loadCanvasContext(room.id),
     loadTaskContext(room.id),
     args.taskId ? loadTaskBriefContext(args.taskId) : Promise.resolve(""),
   ])
@@ -127,6 +132,9 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
         agentHandle: agent.handle,
         role: args.role,
         engine: "v2",
+        // Shown under the reply: which model wrote it.
+        model: resolved.modelName,
+        provider: resolved.provider,
       },
     })
     .returning()
@@ -201,6 +209,8 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
   let ttftMs: number | null = null
   let latencyMs = 0
   let error: string | null = null
+  let errorKind: string | null = null
+  let errorLimitTokens: number | null = null
   let aborted = false
   let finishReason: string | null = null
   let stepsCompleted = 0
@@ -217,6 +227,7 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
     const metadata = {
       ...(message.metadata as Record<string, unknown>),
       ...(safeError ? { error: safeError } : {}),
+      ...(errorKind ? { errorKind } : {}),
       ...(aborted ? { stopped: true } : {}),
       ...(safeWarnings.length ? { warnings: safeWarnings } : {}),
       harness: redactValue({ cache: cacheMetrics.snapshot(), verification: verification(), compactions, peakEstimatedInputTokens }, runScrubber),
@@ -343,7 +354,7 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
       })
       tools = built.tools
       toolSpecs = built.specs
-      activeToolNames = built.activeToolNames
+      activeToolNames = lean ? leanToolNames(built.activeToolNames, built.specs) : built.activeToolNames
       verification = built.verification
       closeTools = built.close
       warnings.push(...built.warnings)
@@ -439,7 +450,7 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
       skillsIndex = await getAvailableSkills(room.orgId)
     } catch {}
 
-    const params = (agent.params ?? {}) as Record<string, unknown>
+    const params = leanParams((agent.params ?? {}) as Record<string, unknown>, lean)
     const verifyMode = getVerifyMode(params)
     const modelBudget = resolveContextBudget(resolved.provider, params)
 
@@ -887,7 +898,11 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
     } else {
       const raw = err instanceof Error ? err.message : String(err)
       const classified = classifyEngineError(err)
-      error = classified.category === "unknown" ? raw : `${classified.message} (${raw})`
+      // People see plain words; the provider's own text stays in the server log.
+      error = userFacingError(classified, raw, resolved.modelName)
+      errorKind = classified.category
+      if (classified.limitTokens) errorLimitTokens = classified.limitTokens
+      if (classified.category !== "unknown") console.warn(`[engine] ${classified.category}: ${scrubProviderIds(raw).slice(0, 400)}`)
     }
     latencyMs = Date.now() - startedAt
   } finally {
@@ -903,6 +918,9 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
     content: finalContent,
     error,
     aborted,
+    ...(errorKind ? { errorKind } : {}),
+    ...(errorLimitTokens ? { errorLimitTokens } : {}),
+    ...(errorKind ? { modelKey: limitKey, leanLimit: lean } : {}),
   }
 }
 

@@ -9,6 +9,8 @@ import { ActionForm } from "@/components/ui/action-form"
 import { ComputerPanel, type ComputerInfo } from "@/components/room/computer-panel"
 import { listAgentConnectorGrants, listWorkspaceConnectors } from "@/lib/queries"
 import { AgentConnectorScopeManager } from "@/components/agents/agent-connector-scope"
+import { MacOffForm } from "@/components/agents/mac-off-form"
+import { runsOnLabel } from "@/lib/runs-on"
 import { WorksOnForm } from "@/components/agents/works-on-form"
 
 export const metadata: Metadata = { title: "Agent Profile" }
@@ -115,9 +117,9 @@ export default async function AgentProfilePage({
           <div className="p-4 rounded-xl border border-border bg-card space-y-2">
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Model & Runtime</h3>
             <div className="flex items-center justify-between text-sm font-medium">
-              <span>{agent.model || "Default Model"}</span>
+              <span>{runsOnLabel(agent)}</span>
               <span className="font-mono text-xs text-muted-foreground">
-                Engine: {(agent.params as any)?.engine || "v1"}
+                Engine: {(agent.params as any)?.engine || "v2"}
               </span>
             </div>
             <div className="flex items-center justify-between text-xs font-mono text-muted-foreground">
@@ -131,6 +133,14 @@ export default async function AgentProfilePage({
               thisComputer={(agent.params as { computer?: { thisComputer?: boolean } } | null)?.computer?.thisComputer === true}
               canEdit={canEdit}
             />
+            {(agent.params as { runner?: { hostId?: unknown } } | null)?.runner?.hostId ? (
+              <MacOffForm
+                orgSlug={orgSlug}
+                agentId={agent.id}
+                value={typeof (agent.params as { whenMacOff?: unknown }).whenMacOff === "string" ? (agent.params as { whenMacOff: string }).whenMacOff : "auto"}
+                canEdit={canEdit}
+              />
+            ) : null}
             {agent.system_prompt && (
               <div className="mt-2 text-xs text-muted-foreground bg-muted/40 p-2.5 rounded-lg line-clamp-4 font-mono">
                 {agent.system_prompt}

@@ -42,6 +42,13 @@ export interface TurnResult {
   content: string
   error: string | null
   aborted: boolean
+  /** Why it failed, when known (see classifyEngineError): lets the caller retry smarter. */
+  errorKind?: string
+  /** request_too_large: the token limit the provider reported. */
+  errorLimitTokens?: number
+  /** Which provider/model answered (engine turns), and the lean limit it ran under, if any. */
+  modelKey?: string
+  leanLimit?: number | null
 }
 
 export interface ResolvedModel {
@@ -194,7 +201,7 @@ export async function resolveAgentModel(agent: AgentRow): Promise<ResolvedModel>
   const dev = devModelConfig()
   if (!dev) {
     throw new Error(
-      `@${agent.handle} has no model yet. Sign in to Claude Code or Codex on the computer running Sayabot (no key needed), or add an API key in Settings and choose it on the Agents page.`,
+      `@${agent.handle} has no model yet. Pick one with "Switch model": your Mac's Claude Code or Codex through Sayabot for Mac (no key needed), or an API key.`,
     )
   }
   const modelName = agent.model ?? dev.model
@@ -463,4 +470,22 @@ export async function runLlmTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
     error: error ? redactSecrets(error).text : null,
     aborted,
   }
+}
+
+/**
+ * Whether the server itself can answer for this bot when its Mac is off: through the bot's key,
+ * the server's own model (Saya AI), or an app signed in on the server.
+ */
+export async function serverCanAnswer(agent: AgentRow): Promise<boolean> {
+  if (agent.providerKeyId) return true
+  if (isSayaModel(agent.model)) return Boolean(sayaModelConfig(agent.model))
+  if (devModelConfig()) return true
+  return Boolean(await agentCliRunner({ ...agent, params: withoutRunner(agent.params) }).catch(() => null))
+}
+
+/** The bot's params without its Mac: what it answers with on the server. */
+export function withoutRunner(params: unknown): Record<string, unknown> {
+  const next = { ...((params as Record<string, unknown> | null) ?? {}) }
+  delete next.runner
+  return next
 }

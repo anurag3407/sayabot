@@ -76,6 +76,11 @@ export const roomEventSchema = z.discriminatedUnion("type", [
     messageId: z.string(),
     status: z.enum(MESSAGE_STATUSES),
   }),
+  /** A reply attempt that was replaced (a failed try the server retried); drop it from view. */
+  z.object({
+    type: z.literal("message.removed"),
+    messageId: z.string(),
+  }),
   z.object({
     type: z.literal("turn.state"),
     sessionId: z.string(),

@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { headers } from "next/headers"
 import { ArrowDownToLine, CheckCircle2, Terminal, ArrowRight, Server } from "lucide-react"
 import { CopyButton } from "@/components/copy-button"
+import { MacDownload } from "@/components/public/mac-download"
 import { PublicShell } from "@/components/public/public-shell"
 import { Mascot } from "@/components/ui/mascot"
 import { AppleIcon, AndroidIcon } from "@/components/landing/brand-icons"
@@ -43,8 +44,8 @@ export default async function DownloadPage() {
             Take your agents anywhere.
           </h1>
           <p className="mt-4 text-base leading-relaxed text-neutral-400">
-            Run autonomous turns on your Mac or VPS, and monitor, chat, or approve actions directly
-            from your Android phone with unified Google or GitHub sign-in.
+            Your bots run on your Mac or on Sayabot. Chat with them and approve what they do from
+            your Mac or your phone.
           </p>
         </div>
 
@@ -106,55 +107,28 @@ export default async function DownloadPage() {
 
               <h2 className="mt-6 text-2xl font-medium text-white">Sayabot for Mac</h2>
               <p className="mt-2 text-sm text-neutral-400 leading-relaxed">
-                Native macOS workspace with built-in agent runner, terminal sandboxes, and deep-link
-                OAuth integration.
+                Your bots work with the Claude Code or Codex you already use on your Mac. No API key
+                needed, and they ask before doing anything risky.
               </p>
 
               <ul className="mt-6 space-y-2.5 text-xs text-neutral-300">
                 <li className="flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
-                  <span>1-click Google or GitHub sign-in (sayabot://)</span>
+                  <span>Sign in with Google or GitHub in one click</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
-                  <span>Local terminal & computer use via computerd</span>
+                  <span>Uses your own Claude or ChatGPT subscription</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
-                  <span>Real-time sync with {host}</span>
+                  <span>Same chats and bots as on {host}</span>
                 </li>
               </ul>
             </div>
 
-            <div id="install" className="mt-8 scroll-mt-28 space-y-3 border-t border-white/5 pt-6">
-              <p className="text-xs leading-relaxed text-neutral-300">
-                Install from Terminal. macOS opens Sayabot directly.
-              </p>
-              <div className="flex min-w-0 items-start gap-2 rounded-xl border border-white/10 bg-black/30 px-3 py-2">
-                <span className="min-w-0 flex-1 break-all font-mono text-[11px] leading-relaxed text-neutral-200">
-                  {installCmd}
-                </span>
-                <CopyButton text={installCmd} label="copy" className="shrink-0 text-neutral-400" />
-              </div>
-              <a
-                href={DOWNLOADS.macArm64}
-                download="Sayabot-arm64.dmg"
-                className="flex items-center justify-center gap-2 w-full rounded-xl bg-white px-5 py-3 text-sm font-medium text-black hover:bg-neutral-200 transition-colors shadow-sm"
-              >
-                <ArrowDownToLine className="h-4 w-4" />
-                <span>Download DMG (Apple Silicon M1-M4)</span>
-              </a>
-              <a
-                href={DOWNLOADS.macIntel}
-                download="Sayabot-x64.dmg"
-                className="flex items-center justify-center gap-2 w-full rounded-xl bg-white/5 px-5 py-2.5 text-xs font-medium text-neutral-300 hover:bg-white/10 border border-white/10 transition-colors"
-              >
-                <span>Download DMG (Intel Macs)</span>
-              </a>
-              <p className="text-[11px] leading-relaxed text-neutral-500">
-                A DMG saved by the browser is checked by macOS. On the warning, click Done, then
-                System Settings → Privacy & Security → Open Anyway.
-              </p>
+            <div id="install" className="mt-8 scroll-mt-28 border-t border-white/5 pt-6">
+              <MacDownload armUrl={DOWNLOADS.macArm64} intelUrl={DOWNLOADS.macIntel} installCmd={installCmd} />
             </div>
           </div>
 
@@ -174,8 +148,7 @@ export default async function DownloadPage() {
 
               <h2 className="mt-6 text-2xl font-medium text-white">Sayabot for Android</h2>
               <p className="mt-2 text-sm text-neutral-400 leading-relaxed">
-                Pocket control center to review agent proposals, approve bash executions, and chat
-                from your phone.
+                Chat with your bots and say yes or no to what they want to do, from your phone.
               </p>
 
               <ul className="mt-6 space-y-2.5 text-xs text-neutral-300">
@@ -185,11 +158,11 @@ export default async function DownloadPage() {
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
-                  <span>1-tap tool and shell approvals on the go</span>
+                  <span>Approve your bots&apos; actions with one tap</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
-                  <span>Works with both Mac-hosted & VPS-hosted agents</span>
+                  <span>Works with bots on your Mac or on Sayabot</span>
                 </li>
               </ul>
             </div>

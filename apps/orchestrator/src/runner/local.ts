@@ -18,7 +18,7 @@ import {
   loadTaskContext,
   renderTranscript,
 } from "./context"
-import type { RunLlmTurnArgs, TurnResult } from "./llm"
+import { serverCanAnswer, withoutRunner, type RunLlmTurnArgs, type TurnResult } from "./llm"
 
 /**
  * An agent that answers through an app signed in on the owner's own computer (Claude Code,
@@ -98,6 +98,39 @@ export async function defaultMacRunner(agent: {
   return null
 }
 
+/**
+ * What a bot pinned to a Mac does when that Mac can't take the turn (asleep, closed, the app not
+ * running): answer from the server, wait for the Mac (up to 15 minutes), or fail with a note.
+ * "auto" (the default) answers from the server when the server can, and waits otherwise.
+ */
+export const WHEN_MAC_OFF = ["auto", "server", "wait", "fail"] as const
+export type WhenMacOff = (typeof WHEN_MAC_OFF)[number]
+
+export function whenMacOff(params: unknown): WhenMacOff {
+  const value = (params as Record<string, unknown> | null)?.whenMacOff
+  return (WHEN_MAC_OFF as readonly string[]).includes(String(value)) ? (value as WhenMacOff) : "auto"
+}
+
+/** "local": the Mac takes it now. "wait": queue it for the Mac. "server": answer from the server. */
+export async function macPlan(
+  agent: RunLlmTurnArgs["agent"],
+  config: LocalRunnerConfig,
+): Promise<"local" | "wait" | "server"> {
+  const [host] = await getDb()
+    .select({ userId: desktopHosts.userId, revokedAt: desktopHosts.revokedAt, settings: desktopHosts.settings, lastSeenAt: desktopHosts.lastSeenAt })
+    .from(desktopHosts)
+    .where(eq(desktopHosts.id, config.hostId))
+    .limit(1)
+  const usable = host && !host.revokedAt && host.userId === agent.ownerUserId && host.settings?.runnerEnabled
+  if (usable && hostOnline(host.lastSeenAt)) return "local"
+  const choice = whenMacOff(agent.params)
+  // A Mac that's gone or switched off for bots won't come back on its own: waiting can't help.
+  if (choice === "fail") return "local"
+  const server = choice !== "wait" && (await serverCanAnswer({ ...agent, params: withoutRunner(agent.params) }))
+  if (server) return "server"
+  return usable && choice !== "server" ? "wait" : "local"
+}
+
 /** Where a Mac run is, for the app: its own folder, and asking before anything risky. */
 const MAC_NOTE =
   "You are running on your owner's Mac, in your own folder. Steps that change things outside it, run commands or open the network ask your owner first; if they say no, don't retry the same step, explain what you needed instead."
@@ -129,7 +162,11 @@ const POLL_MS = 1_200
 const MAX_MS = 15 * 60_000
 const START_GRACE_MS = 60_000
 
-export async function runLocalTurn(args: RunLlmTurnArgs, config: LocalRunnerConfig): Promise<TurnResult> {
+export async function runLocalTurn(
+  args: RunLlmTurnArgs,
+  config: LocalRunnerConfig,
+  options: { wait?: boolean } = {},
+): Promise<TurnResult> {
   const db = getDb()
   const { room, agent } = args
 
@@ -178,6 +215,7 @@ export async function runLocalTurn(args: RunLlmTurnArgs, config: LocalRunnerConf
         agentHandle: agent.handle,
         role: args.role,
         runsOn: config.app,
+        where: "mac",
         ...(config.model ? { model: config.model } : {}),
       },
     })
@@ -188,13 +226,26 @@ export async function runLocalTurn(args: RunLlmTurnArgs, config: LocalRunnerConf
   // Set once the job is queued: the Mac's one-run tool token and the job itself, cleaned up below.
   let mcpTokenId: string | null = null
   let jobId: string | null = null
-  const finish = async (content: string, status: "complete" | "error" | "halted", error: string | null) => {
+  const finish = async (
+    content: string,
+    status: "complete" | "error" | "halted",
+    error: string | null,
+    errorKind: "mac_offline" | "mac_removed" | "runner_off" | null = null,
+  ) => {
     await revokeMcpToken(mcpTokenId)
     if (jobId) await expireMacApprovals(room.id, jobId)
     const safe = redactSecrets(content).text
     await db
       .update(messages)
-      .set({ content: safe, status, metadata: { ...(message.metadata as Record<string, unknown>), ...(error ? { error } : {}) } })
+      .set({
+        content: safe,
+        status,
+        metadata: {
+          ...(message.metadata as Record<string, unknown>),
+          ...(error ? { error } : {}),
+          ...(errorKind ? { errorKind } : {}),
+        },
+      })
       .where(eq(messages.id, message.id))
     await db
       .update(agentRuns)
@@ -206,13 +257,20 @@ export async function runLocalTurn(args: RunLlmTurnArgs, config: LocalRunnerConf
 
   const [host] = await db.select().from(desktopHosts).where(eq(desktopHosts.id, config.hostId)).limit(1)
   if (!host || host.revokedAt || host.userId !== agent.ownerUserId) {
-    return finish("", "error", "The computer this agent runs on was removed. Pick another one in the agent's settings.")
+    return finish("", "error", "The computer this bot ran on was removed. Pick another model with \"Switch model\".", "mac_removed")
   }
   if (!host.settings?.runnerEnabled) {
-    return finish("", "error", `"Run agents on this computer" is off for ${host.name}. Turn it on in Settings → Computers.`)
+    return finish("", "error", `"Run agents on this computer" is off for ${host.name}. Turn it on in Settings → Computers.`, "runner_off")
   }
-  if (!hostOnline(host.lastSeenAt)) {
-    return finish("", "error", `${host.name} is offline. Open the Sayabot app on it and mention me again.`)
+  const waiting = options.wait === true && !hostOnline(host.lastSeenAt)
+  if (!hostOnline(host.lastSeenAt) && !waiting) {
+    return finish("", "error", `${host.name} is offline. Open Sayabot for Mac there and retry, or pick another model with "Switch model".`, "mac_offline")
+  }
+  // Waiting: the reply says so until the Mac answers (the answer then replaces it).
+  const waitingNote = waiting ? `_Waiting for ${host.name}. Open Sayabot for Mac there and I'll answer._` : ""
+  if (waitingNote) {
+    await db.update(messages).set({ content: waitingNote }).where(eq(messages.id, message.id))
+    await broadcast(room.id, { type: "message.delta", messageId: message.id, seq: 0, delta: waitingNote }).catch(() => {})
   }
 
   // Claude Code and Codex get Sayabot's room tools (tasks, canvas, decisions, facts) through a
@@ -248,13 +306,13 @@ export async function runLocalTurn(args: RunLlmTurnArgs, config: LocalRunnerConf
 
   const controller = registerRun(run.id, room.id, { agentId: agent.id, engine: "local" })
   const started = Date.now()
-  let sent = ""
-  let seq = 0
+  let sent = waitingNote
+  let seq = waitingNote ? 1 : 0
   try {
     while (Date.now() - started < MAX_MS) {
       if (controller.signal.aborted) {
         await db.update(localRunnerJobs).set({ status: "cancelled", finishedAt: new Date() }).where(eq(localRunnerJobs.id, job.id))
-        return finish(sent, "halted", null)
+        return finish(sent === waitingNote ? "" : sent, "halted", null)
       }
       await new Promise((r) => setTimeout(r, POLL_MS))
       const [state] = await db
@@ -273,15 +331,17 @@ export async function runLocalTurn(args: RunLlmTurnArgs, config: LocalRunnerConf
         sent = output
         await db.update(messages).set({ content: sent }).where(eq(messages.id, message.id))
       }
-      if (state.status === "done") return finish(sent, "complete", null)
-      if (state.status === "failed") return finish(sent, "error", state.error ?? "It failed on the computer")
-      if (state.status === "queued" && Date.now() - started > START_GRACE_MS) {
+      if (state.status === "done") return finish(sent === waitingNote ? "" : sent, "complete", null)
+      if (state.status === "failed") return finish(sent === waitingNote ? "" : sent, "error", state.error ?? "It failed on the computer")
+      if (state.status === "queued" && !waiting && Date.now() - started > START_GRACE_MS) {
         await db.update(localRunnerJobs).set({ status: "cancelled", finishedAt: new Date() }).where(eq(localRunnerJobs.id, job.id))
-        return finish("", "error", `${host.name} didn't pick this up. Is the Sayabot app open and signed in?`)
+        return finish("", "error", `${host.name} didn't pick this up. Open Sayabot for Mac there and retry, or pick another model with "Switch model".`, "mac_offline")
       }
     }
     await db.update(localRunnerJobs).set({ status: "cancelled", finishedAt: new Date() }).where(eq(localRunnerJobs.id, job.id))
-    return finish(sent, "error", "Took longer than 15 minutes, so it was stopped.")
+    return waiting && sent === waitingNote
+      ? finish("", "error", `${host.name} stayed offline for 15 minutes. Open Sayabot for Mac there and retry, or pick another model with "Switch model".`, "mac_offline")
+      : finish(sent, "error", "Took longer than 15 minutes, so it was stopped.")
   } finally {
     unregisterRun(run.id)
   }

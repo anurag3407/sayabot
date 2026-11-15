@@ -6,6 +6,7 @@ import { setRoomAgentModelAction } from "@/lib/actions/agents"
 import { showToast } from "@/components/ui/toast"
 import { choiceLabel, ModelPickerPanel, RailIcon, type ModelValue } from "@/components/agents/model-picker-panel"
 import { cn } from "@/lib/format"
+import { MODEL_PICKER_EVENT } from "@/lib/recovery-hint"
 import type { PickerGroup } from "@/lib/model-catalog"
 import type { RoomBotModel } from "@/app/api/connectors/models/room/route"
 
@@ -77,6 +78,13 @@ export function RoomModelPicker({ orgSlug, roomId }: { orgSlug: string; roomId: 
   const [pending, startTransition] = useTransition()
   const ref = useRef<HTMLDivElement>(null)
 
+  // "Switch model" on a failed reply opens this picker.
+  useEffect(() => {
+    const openPicker = () => setOpen(true)
+    window.addEventListener(MODEL_PICKER_EVENT, openPicker)
+    return () => window.removeEventListener(MODEL_PICKER_EVENT, openPicker)
+  }, [])
+
   useEffect(() => {
     if (!open) return
     void reload()
@@ -100,7 +108,10 @@ export function RoomModelPicker({ orgSlug, roomId }: { orgSlug: string; roomId: 
   const groups = lists?.groups ?? []
   const effective: ModelValue | null = bot ? (bot.chat ?? bot.bot) : null
   const effectiveGroup = effective ? groups.find((g) => g.keyId === effective.keyId) : undefined
-  const buttonLabel = effective && groups.length ? choiceLabel(groups, effective).split(" · ")[0] : "Model"
+  // The model, and "· Mac" when it runs on the person's own computer.
+  const onMac = effectiveGroup?.section === "mac" || effectiveGroup?.section === "local"
+  const buttonLabel =
+    effective && groups.length ? `${choiceLabel(groups, effective).split(" · ")[0]}${onMac ? " · Mac" : ""}` : "Model"
 
   function save(next: ModelValue | null) {
     if (!bot) return

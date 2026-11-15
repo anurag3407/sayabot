@@ -637,3 +637,26 @@ export async function setAgentWorksOnAction(input: {
   revalidateOrg(input.orgSlug)
   return ok(`Works on ${WORKS_ON_LABEL[input.worksOn]}`)
 }
+
+const WHEN_MAC_OFF = new Set(["auto", "server", "wait", "fail"])
+
+/** What a bot that runs on someone's Mac does with a message while that Mac is off. */
+export async function setAgentWhenMacOffAction(input: {
+  orgSlug: string
+  agentId: string
+  whenMacOff: string
+}): Promise<ActionResult> {
+  const check = await adminOrgAccess(input.orgSlug)
+  if ("error" in check) return fail(check.error)
+  if (!WHEN_MAC_OFF.has(input.whenMacOff)) return fail("Pick what happens when your Mac is off")
+  const admin = createAdminClient()
+  const { data: agent } = await admin.from("agents").select("id, org_id, handle, params").eq("id", input.agentId).maybeSingle()
+  if (!agent || agent.org_id !== check.access.org.id) return fail("Agent not found")
+  const params = { ...((agent.params as Record<string, unknown>) ?? {}) }
+  if (input.whenMacOff === "auto") delete params.whenMacOff
+  else params.whenMacOff = input.whenMacOff
+  const { error } = await admin.from("agents").update({ params }).eq("id", agent.id)
+  if (error) return fail(errorMessage(error))
+  revalidateOrg(input.orgSlug)
+  return ok("Saved")
+}

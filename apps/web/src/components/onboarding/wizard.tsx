@@ -15,8 +15,8 @@ import { defaultModel, MODEL_SUGGESTIONS } from "@/lib/model-options"
 
 const STEP_TITLES = [
   "Name your workspace",
-  "Connect an AI model",
-  "Create your first agent",
+  "Choose how your bots think",
+  "Create your first bot",
 ] as const
 
 const TEMPLATES = [
@@ -100,7 +100,7 @@ export function OnboardingWizard({
   const router = useRouter()
   const [step, setStep] = useState(initialWorkspace ? 1 : 0)
   const [workspace, setWorkspace] = useState(initialWorkspace)
-  const [workspaceName, setWorkspaceName] = useState("")
+  const [workspaceName, setWorkspaceName] = useState(userName ? `${userName}'s workspace` : "My workspace")
   const [roomName, setRoomName] = useState("General")
   const [timezone, setTimezone] = useState(defaultTimeZone)
 
@@ -109,7 +109,9 @@ export function OnboardingWizard({
   const [baseUrl, setBaseUrl] = useState("")
   const [model, setModel] = useState(defaultModel("openai"))
   const [connectedKeyId, setConnectedKeyId] = useState<string | null>(null)
-  const [useServerModel, setUseServerModel] = useState(false)
+  // The easiest way that works right away: your Mac's Claude Code / Codex when it's set up,
+  // else this server's own model; your own API key is the third choice.
+  const [useServerModel, setUseServerModel] = useState(!macApp && hasServerModel)
   // With Claude Code (or Codex…) signed in on their Mac, no key is needed: agents run there.
   const [useMac, setUseMac] = useState(Boolean(macApp))
 
@@ -126,6 +128,14 @@ export function OnboardingWizard({
 
   const suggestions = useMemo(() => MODEL_SUGGESTIONS[provider] ?? [], [provider])
   const handle = handleFromName(agentName)
+
+  // "I've installed it, check again": once the Mac shows up, pick it.
+  const macFound = Boolean(macApp)
+  useEffect(() => {
+    if (!macFound) return
+    setUseMac(true)
+    setUseServerModel(false)
+  }, [macFound])
 
   useEffect(() => {
     if (timezoneTouched.current) return
@@ -330,7 +340,7 @@ export function OnboardingWizard({
                     autoFocus
                   />
                 </Field>
-                <Field label="first room" htmlFor="room-name" hint="where you and your agents talk">
+                <Field label="first chat" htmlFor="room-name" hint="where you talk with your bots">
                   <Input
                     id="room-name"
                     value={roomName}
@@ -376,70 +386,68 @@ export function OnboardingWizard({
                 </InlineAlert>
               ) : (
                 <div className="space-y-5">
-                  {macApp ? (
-                    <div className="space-y-2">
-                      <button
-                        type="button"
-                        aria-pressed={useMac}
-                        onClick={() => setUseMac(true)}
-                        className={cn(
-                          "flex w-full items-start gap-3 rounded-sm border p-3.5 text-left transition-colors",
-                          useMac
-                            ? "border-accent bg-accent/10"
-                            : "border-line bg-panel hover:border-line-strong",
-                        )}
-                      >
-                        <span
-                          aria-hidden
-                          className={cn(
-                            "mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full border",
-                            useMac ? "border-accent" : "border-line-strong",
-                          )}
-                        >
-                          {useMac ? <span className="h-2 w-2 rounded-full bg-accent" /> : null}
-                        </span>
-                        <span>
-                          <span className="block text-[13.5px] font-medium text-text">
-                            Use {macApp.appName} on {macApp.hostName}
-                            <span className="ml-2 font-mono text-[11px] text-accent">
-                              no key needed
-                            </span>
-                          </span>
-                          <span className="mt-0.5 block text-[12.5px] leading-relaxed text-muted">
-                            Your agents run on your Mac with the {macApp.appName} you&apos;re
-                            already signed in to, on your own subscription.
-                          </span>
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        aria-pressed={!useMac}
-                        onClick={() => setUseMac(false)}
-                        className="font-mono text-[12px] text-faint underline-offset-2 hover:text-text hover:underline"
-                      >
-                        {useMac
-                          ? "Use an API key instead"
-                          : `Selected: an API key. Back to ${macApp.appName}`}
-                      </button>
-                    </div>
-                  ) : null}
-                  {useMac ? null : (
-                    <p className="max-w-[52ch] text-[13px] leading-relaxed text-muted">
-                      Agents need an AI model to reply. Paste an API key from your provider. It is
-                      encrypted, and we test it before moving on.
-                    </p>
-                  )}
-                  {hasServerModel && !useMac ? (
-                    <label className="flex items-start gap-2.5 rounded-sm border border-line bg-panel p-3 text-[13px] leading-relaxed text-text">
-                      <input
-                        type="checkbox"
-                        checked={useServerModel}
-                        onChange={(event) => setUseServerModel(event.target.checked)}
-                        className="mt-1 h-3.5 w-3.5 shrink-0 accent-[var(--color-accent)]"
+                  <div className="space-y-2" role="radiogroup" aria-label="How your bots think">
+                    {macApp ? (
+                      <ChoiceCard
+                        on={useMac}
+                        onPick={() => {
+                          setUseMac(true)
+                          setUseServerModel(false)
+                        }}
+                        title={`Use ${macApp.appName} on ${macApp.hostName}`}
+                        badge="no key needed"
+                        body={`Your bots run on your Mac with the ${macApp.appName} you're already signed in to, on your own subscription.`}
                       />
-                      <span>Use this server&apos;s shared model instead of my own key</span>
-                    </label>
-                  ) : null}
+                    ) : (
+                      <div className="rounded-sm border border-dashed border-line bg-panel/50 p-3.5">
+                        <p className="text-[13.5px] font-medium text-text">
+                          Use Claude Code or Codex on your Mac
+                          <span className="ml-2 font-mono text-[11px] text-accent">no key needed</span>
+                        </p>
+                        <p className="mt-0.5 text-[12.5px] leading-relaxed text-muted">
+                          Install Sayabot for Mac and sign in there. Your bots then use the subscription you already pay for.
+                        </p>
+                        <div className="mt-2 flex flex-wrap items-center gap-3">
+                          <a
+                            href="/download"
+                            target="_blank"
+                            rel="noreferrer"
+                            className="font-mono text-[12px] text-accent underline underline-offset-4"
+                          >
+                            Get Sayabot for Mac
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() => router.refresh()}
+                            className="font-mono text-[12px] text-faint underline-offset-2 hover:text-text hover:underline"
+                          >
+                            I&apos;ve installed it, check again
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {hasServerModel ? (
+                      <ChoiceCard
+                        on={useServerModel && !useMac}
+                        onPick={() => {
+                          setUseServerModel(true)
+                          setUseMac(false)
+                        }}
+                        title="Use Sayabot's model"
+                        badge="ready now"
+                        body="Start talking right away. You can switch any bot to your Mac or your own key later."
+                      />
+                    ) : null}
+                    <ChoiceCard
+                      on={!useMac && !useServerModel}
+                      onPick={() => {
+                        setUseMac(false)
+                        setUseServerModel(false)
+                      }}
+                      title="Use my own API key"
+                      body="OpenAI, Anthropic, Google, Groq, OpenRouter and more. It is encrypted, and we test it before moving on."
+                    />
+                  </div>
                   {useServerModel || useMac ? null : (
                     <>
                       <div className="grid gap-3 sm:grid-cols-2">
@@ -606,5 +614,49 @@ export function OnboardingWizard({
         </div>
       </main>
     </div>
+  )
+}
+
+function ChoiceCard({
+  on,
+  onPick,
+  title,
+  body,
+  badge,
+}: {
+  on: boolean
+  onPick: () => void
+  title: string
+  body: string
+  badge?: string
+}) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={on}
+      onClick={onPick}
+      className={cn(
+        "flex w-full items-start gap-3 rounded-sm border p-3.5 text-left transition-colors",
+        on ? "border-accent bg-accent/10" : "border-line bg-panel hover:border-line-strong",
+      )}
+    >
+      <span
+        aria-hidden
+        className={cn(
+          "mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full border",
+          on ? "border-accent" : "border-line-strong",
+        )}
+      >
+        {on ? <span className="h-2 w-2 rounded-full bg-accent" /> : null}
+      </span>
+      <span>
+        <span className="block text-[13.5px] font-medium text-text">
+          {title}
+          {badge ? <span className="ml-2 font-mono text-[11px] text-accent">{badge}</span> : null}
+        </span>
+        <span className="mt-0.5 block text-[12.5px] leading-relaxed text-muted">{body}</span>
+      </span>
+    </button>
   )
 }

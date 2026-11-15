@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useState, useTransition } from "react"
 import { retryMessageAction, sendMessage } from "@/lib/actions/messages"
 import { Button } from "@/components/ui/button"
-import { recoveryHint } from "@/lib/recovery-hint"
+import { MODEL_PICKER_EVENT, recoveryHint, retryHelps } from "@/lib/recovery-hint"
 import { InspectTraceButton } from "@/components/trace/inspect-trace-button"
 
 /** The way forward from a failed agent turn: send it again, or go to where it can be fixed. */
@@ -16,7 +16,8 @@ export function FailureActions({
   text,
   reason,
   canAdmin,
-  showRetry,
+  showRetry: retryOffered,
+  kind = null,
 }: {
   orgSlug: string
   roomId: string
@@ -26,10 +27,14 @@ export function FailureActions({
   reason: string | null
   canAdmin: boolean
   showRetry: boolean
+  /** Why the reply failed (metadata.errorKind), which decides the way forward. */
+  kind?: string | null
 }) {
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
-  const hint = canAdmin ? recoveryHint({ text, reason, orgSlug, roomId }) : null
+  const hint = canAdmin ? recoveryHint({ text, reason, orgSlug, roomId, kind }) : null
+  // Retrying a reply that is too big or has a rejected key fails the same way again.
+  const showRetry = retryOffered && retryHelps(kind)
   if (!showRetry && !hint) return null
 
   return (
@@ -38,7 +43,7 @@ export function FailureActions({
         orgSlug={orgSlug}
         runId={runId}
         messageId={messageId}
-        label="Inspect Failure"
+        label="Details"
         variant="danger"
         size="xs"
       />
@@ -58,7 +63,15 @@ export function FailureActions({
           {pending ? "Retrying…" : "Retry"}
         </Button>
       ) : null}
-      {hint ? (
+      {hint?.action === "switch_model" ? (
+        <Button
+          size="sm"
+          variant={showRetry ? "ghost" : "outline"}
+          onClick={() => window.dispatchEvent(new CustomEvent(MODEL_PICKER_EVENT))}
+        >
+          {hint.label}
+        </Button>
+      ) : hint?.href ? (
         <Link
           href={hint.href}
           className="font-mono text-[12px] text-accent underline underline-offset-4"

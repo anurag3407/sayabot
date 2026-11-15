@@ -11,6 +11,7 @@ import { useRoomRealtime } from "@/components/room/use-room-realtime"
 import { EnableAlerts, RoomActivity } from "@/components/room/room-activity"
 import { RoomMeetingBar } from "@/components/room/room-meeting-bar"
 import { InviteBotDialog } from "@/components/room/invite-bot-dialog"
+import { RoomModelPicker } from "@/components/room/model-picker/room-model-picker"
 import { InvitePeople, RoomInviteNudge } from "@/components/room/invite-people"
 import { PresenceLine } from "@/components/ui/avatar"
 import { Mascot } from "@/components/ui/mascot"
@@ -197,6 +198,8 @@ export function RoomWorkspace({
 
   const actions = (
     <>
+      {/* The title bar has the model picker on wide screens; narrow ones get it here. */}
+      {inTitlebar ? null : <RoomModelPicker orgSlug={data.org.slug} roomId={data.room.id} />}
       <div className="hidden md:block">
         <EnableAlerts enabled={data.user.notifications !== "off"} />
       </div>

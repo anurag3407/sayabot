@@ -6,6 +6,8 @@ export type EngineErrorCategory =
   | "quota_exhausted"
   | "auth_error"
   | "refusal"
+  | "request_too_large"
+  | "no_model"
   | "unknown"
 
 export interface EngineErrorClassification {
@@ -14,6 +16,8 @@ export interface EngineErrorClassification {
   retryAfterMs?: number
   resetTime?: Date
   message: string
+  /** request_too_large: the provider's per-request or per-minute token limit, when it says. */
+  limitTokens?: number
 }
 
 /**
@@ -28,6 +32,28 @@ export interface EngineErrorClassification {
 export function classifyEngineError(error: unknown): EngineErrorClassification {
   const msg = error instanceof Error ? error.message : String(error)
   const lower = msg.toLowerCase()
+
+  // A bot with nothing to answer with: the message already says what to do.
+  if (lower.includes("has no model yet") || lower.includes("has no model configured") || lower.includes("no saya ai model set up")) {
+    return { category: "no_model", retryable: false, message: msg }
+  }
+
+  // 0. One request bigger than the plan allows (Groq's free tier: "Request too large … tokens per
+  // minute (TPM): Limit 8000, Requested 12345"). Not worth retrying as is; a smaller one may fit.
+  if (
+    lower.includes("request too large") ||
+    lower.includes("reduce your message size") ||
+    lower.includes("request entity too large") ||
+    (lower.includes("tokens per minute") && lower.includes("requested"))
+  ) {
+    const limit = /limit\D{0,4}(\d{3,9})/i.exec(msg)?.[1]
+    return {
+      category: "request_too_large",
+      retryable: false,
+      message: "Request is larger than this model's plan allows",
+      ...(limit ? { limitTokens: Number(limit) } : {}),
+    }
+  }
 
   // 1. Context Overflow
   if (
@@ -182,5 +208,41 @@ export async function executeWithRecovery<T>(
 
       await sleep(delayMs)
     }
+  }
+}
+
+/** Provider account ids in error text ("org_01k38e…") mean nothing to people and stay private. */
+export function scrubProviderIds(text: string): string {
+  return text
+    .replace(/\b(?:org|organization|proj|project|user|acct)[_-][A-Za-z0-9]{8,}\b/g, "[account]")
+    .replace(/`\[account\]`/g, "[account]")
+}
+
+/** What a person sees when a reply fails, in plain words with what to do next. */
+export function userFacingError(classified: EngineErrorClassification, raw: string, modelName?: string): string {
+  const model = modelName ? `\`${modelName}\`` : "this model"
+  switch (classified.category) {
+    case "request_too_large":
+      return `This chat is too big for ${model} on its current plan${
+        classified.limitTokens ? ` (${classified.limitTokens.toLocaleString("en-US")} tokens at a time)` : ""
+      }, even shortened. Switch this bot to a bigger model, or start a new chat.`
+    case "context_overflow":
+      return `This chat is longer than ${model} can read. Start a new chat, or switch to a model with a bigger context.`
+    case "auth_error":
+      return "The API key for this bot was rejected. Update it in Settings → API keys, or switch model."
+    case "quota_exhausted":
+      return "This provider account is out of credit. Add credit with the provider, or switch model."
+    case "rate_limit":
+      return "The provider limited this key for a moment. Try again in a minute, or switch model."
+    case "server_error":
+      return "The model provider had a problem on their side. Try again in a moment."
+    case "network":
+      return "Couldn't reach the model provider. Try again in a moment."
+    case "refusal":
+      return "The model declined this request."
+    case "no_model":
+      return scrubProviderIds(raw).slice(0, 600)
+    default:
+      return scrubProviderIds(raw).slice(0, 600)
   }
 }

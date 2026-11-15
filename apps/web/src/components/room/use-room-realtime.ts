@@ -326,6 +326,11 @@ export function useRoomRealtime(args: {
         })
         void refreshMessage(event.messageId)
       })
+      .on("broadcast", { event: "message.removed" }, ({ payload }) => {
+        // A failed attempt the server retried; the retry arrives as its own message.
+        const event = eventPayload<{ messageId: string }>(payload)
+        setMessages((prev) => prev.filter((message) => message.id !== event.messageId))
+      })
       .on("broadcast", { event: "run.step" }, ({ payload }) => {
         const event = eventPayload<{ runId: string; step: number; kind: string; label: string }>(payload)
         setRunActivity((prev) => ({

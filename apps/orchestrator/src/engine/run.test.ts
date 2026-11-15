@@ -182,9 +182,27 @@ describe("Engine Dispatcher (E4)", () => {
       providerKeyId: null,
       params: { runner: { hostId, app: "claude-code", model: "claude-opus-5-5" } },
     }))
+    vi.spyOn(localRunner, "macPlan").mockResolvedValueOnce("local")
     const spy = vi.spyOn(localRunner, "runLocalTurn").mockResolvedValueOnce(result)
     expect(await startAgentTurn(dummyArgs)).toEqual(result)
-    expect(spy).toHaveBeenCalledWith(expect.anything(), { hostId, app: "claude-code", model: "claude-opus-5-5" })
+    expect(spy).toHaveBeenCalledWith(expect.anything(), { hostId, app: "claude-code", model: "claude-opus-5-5" }, { wait: false })
     spy.mockRestore()
+  })
+
+  it("answers from the server when the bot's Mac is off and the server can", async () => {
+    const result: TurnResult = { messageId: "m-srv", runId: "r-srv", content: "hi", error: null, aborted: false }
+    const hostId = "11111111-1111-1111-1111-111111111111"
+    vi.spyOn(roomModel, "applyRoomModel").mockImplementation(async (_roomId, agent) => ({
+      ...agent,
+      params: { engine: "v2", runner: { hostId, app: "claude-code" } },
+    }))
+    vi.spyOn(localRunner, "macPlan").mockResolvedValueOnce("server")
+    const local = vi.spyOn(localRunner, "runLocalTurn")
+    const engine = vi.spyOn(engineRun, "runEngineTurn").mockResolvedValueOnce(result)
+    expect(await startAgentTurn(dummyArgs)).toEqual(result)
+    expect(local).not.toHaveBeenCalled()
+    expect((engine.mock.calls[0]?.[0].agent.params as Record<string, unknown>).runner).toBeUndefined()
+    engine.mockRestore()
+    local.mockRestore()
   })
 })
