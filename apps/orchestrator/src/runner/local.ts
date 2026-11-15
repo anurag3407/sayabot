@@ -1,4 +1,4 @@
-import { hostOnline, macScreenAllowed, redactSecrets } from "@sayabot/core"
+import { hostOnline, redactSecrets } from "@sayabot/core"
 import { sealSecret } from "@sayabot/llm"
 import { agentRuns, desktopHosts, localRunnerJobs, messages, orgMembers, toolCalls } from "@sayabot/db"
 import { and, desc, eq, isNull, sql } from "drizzle-orm"
@@ -51,9 +51,9 @@ export async function defaultMacRunner(agent: {
   params: unknown
 }): Promise<LocalRunnerConfig | null> {
   if (agent.providerKeyId) return null
-  const params = agent.params as Record<string, unknown> | null
-  if (params?.runner) return null
-  if (!macScreenAllowed(params)) return null
+  // Where the bot runs, not what it can click: the Mac's screen stays gated separately
+  // (resolveComputer in the computer tools), so a bot with the screen off still runs here.
+  if ((agent.params as Record<string, unknown> | null)?.runner) return null
   const db = getDb()
   const members = await db
     .select({ userId: orgMembers.userId })
@@ -112,9 +112,6 @@ const START_GRACE_MS = 60_000
 export async function runLocalTurn(args: RunLlmTurnArgs, config: LocalRunnerConfig): Promise<TurnResult> {
   const db = getDb()
   const { room, agent } = args
-  if (!macScreenAllowed(agent.params as Record<string, unknown> | null)) {
-    throw new Error("This computer is off for this bot until it is turned on.")
-  }
 
   const conversation = await loadConversation({ roomId: room.id, threadRootId: args.threadRootId })
   const [canvasContext, taskContext, taskBrief] = await Promise.all([

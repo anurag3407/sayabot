@@ -40,8 +40,12 @@ describe("defaultMacRunner", () => {
     })
   })
 
-  it("stays off until this bot is allowed to use the Mac screen", async () => {
-    expect(await defaultMacRunner(screenOff)).toBeNull()
+  it("runs on the Mac even when this bot may not use the Mac screen", async () => {
+    results.push([{ userId: "u1" }], [host({ runnerEnabled: true, localDefault: { app: "claude-code" } })])
+    expect(await defaultMacRunner(screenOff)).toEqual({
+      hostId: "11111111-1111-1111-1111-111111111111",
+      app: "claude-code",
+    })
   })
 
   it("never runs other people's messages on someone's Mac (shared workspace)", async () => {
