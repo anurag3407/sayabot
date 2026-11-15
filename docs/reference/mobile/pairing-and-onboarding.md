@@ -123,3 +123,16 @@ Note the wizard is intentionally short — it does not create an org or workspac
 ---
 
 Related docs: [Navigation & auth](navigation-and-auth.md), [Overview](overview.md), [Settings & UI kit](settings-and-ui-kit.md), [Mobile App API](../web/api/api-mobile.md), [Self-hosted flow](../../self-hosted-flow.md)
+
+## 🏠 Self-hosted and Mac setups
+
+Phone pairing is free on every server, with no plan check in `/api/mobile/pair`. How a phone reaches each setup:
+
+| Setup | What the phone uses | Reach |
+| :-- | :-- | :-- |
+| Sayabot Cloud (the Mac app's default) | `https://sayabot.sayalabs.in` | anywhere |
+| Self-hosted with a domain (`deploy/docker-compose.yml` + nginx) | the domain | anywhere |
+| Sayabot running on a Mac (`pnpm dev` / local) | `http://<Mac's Wi-Fi IP>:<port>`, put into the QR by `createPhonePairingAction` | same Wi-Fi |
+| Same Mac + `cloudflared tunnel --url http://localhost:3000` | `https://<random>.trycloudflare.com` (open the web app there first, so the QR carries it) | anywhere, until the tunnel restarts |
+
+A typed code is sent to the phone's current server. If the phone is still on Sayabot Cloud and Cloud answers 410 for a code made by another server, `pairOnce` appends "If your computer runs its own Sayabot, tap Change server and enter the address shown under the code." Scanning the QR avoids this, because the link carries `server=`.

@@ -110,7 +110,12 @@ Desktop guest mode creates anonymous Supabase users; merging promotes them to re
 
 Phone devices pair to a person via one-time codes in `device_pairings`:
 
-- `createPhonePairingAction(input)` (`phones.ts:21`) — workspace-member action. Deletes the person's previous `waiting` pairing ("one live code per person"), generates a code (`generatePairingCode`), stores only its `hashAgentApiKey` hash with a 10-minute expiry (`PAIRING_TTL_MINUTES`, `phones.ts:28`), and returns the formatted code, `pairingDeepLink(code, server)`, the server URL and `expiresAt`.
+- `createPhonePairingAction(input)` (`phones.ts:21`) — workspace-member action. Deletes the person's previous `waiting` pairing ("one live code per person"), generates a code (`generatePairingCode`), stores only its `hashAgentApiKey` hash with a 10-minute expiry (`PAIRING_TTL_MINUTES`, `phones.ts:28`), and returns the formatted code, `pairingDeepLink(code, server)`, the server URL, `reach` and `expiresAt`. The server URL is the address a phone can actually open, from `phoneServerUrl(getAppUrl(), requestOrigin, lanIPv4())` in `src/lib/phone-reachable.ts`. `requestOrigin` comes from the `x-forwarded-host`/`host` and `x-forwarded-proto` headers. Order of preference:
+  1. The browser's own address, if it isn't loopback (a domain, a Cloudflare tunnel, a LAN IP).
+  2. The configured `NEXT_PUBLIC_APP_URL`, if it isn't loopback.
+  3. That URL with this machine's Wi-Fi IPv4 (192.168.x preferred) in place of `localhost`, keeping the port.
+
+  `reach` is `"anywhere"` (a public host), `"same-wifi"` (a private address) or `"this-computer"` (nothing reachable). So a Mac running Sayabot itself hands out `http://192.168.x.x:3000` instead of `http://localhost:3000`.
 - `phonePairingStatusAction(input)` (`phones.ts:52`) — polls the pairing (own only) and reports `status` (an expired `waiting` reads as `expired`), `deviceName`, `platform`.
 - `revokePhoneAction(input)` (`phones.ts:69`) — own phones only; sets `status: "revoked"`, `revoked_at`, clears `device_token_hash`; audit `phone.revoked`.
 

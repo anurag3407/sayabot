@@ -6,6 +6,7 @@ import {
   getSupabaseUrl,
   instanceName,
 } from "@/lib/env"
+import { supabaseUrlForClient } from "@/lib/phone-reachable"
 import { getPublicOrigin } from "@/lib/public-origin"
 
 export const dynamic = "force-dynamic"
@@ -16,16 +17,22 @@ export const dynamic = "force-dynamic"
  * secret (the Supabase anon key is meant for browsers).
  */
 export function GET(request: Request) {
+  const origin = getPublicOrigin(request)
+  const requestHost = /^https?:\/\/(\[[^\]]+\]|[^/:]+)/i.exec(origin)?.[1] ?? null
   return NextResponse.json(
     {
       sayabot: true,
       name: instanceName(),
       edition: edition(),
-      url: getPublicOrigin(request),
+      url: origin,
       guestMode: desktopGuestModeEnabled(),
       // Public values (every browser gets them): the phone app signs in against this server's
-      // own Supabase, so a self-hosted server never touches Sayabot Cloud.
-      supabase: { url: getSupabaseUrl(), anonKey: getSupabaseAnonKey() },
+      // own Supabase, so a self-hosted server never touches Sayabot Cloud. A local Supabase
+      // (127.0.0.1) is handed out on the LAN address the phone used to get here.
+      supabase: {
+        url: supabaseUrlForClient(getSupabaseUrl(), requestHost),
+        anonKey: getSupabaseAnonKey(),
+      },
       version: process.env.APP_VERSION || process.env.NEXT_PUBLIC_APP_VERSION || null,
     },
     {

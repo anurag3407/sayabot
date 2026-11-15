@@ -1,3 +1,4 @@
+import { ENV } from "../config/env"
 import { Platform } from "react-native"
 import { cleanPairCode, supabaseMismatch } from "./pair-link"
 import { applySettings } from "../hooks/useSettings"
@@ -6,7 +7,8 @@ import { checkServer, restartApp } from "./server"
 import { currentSupabaseUrl, makeClient, saveServer, supabase } from "./supabase"
 
 function deviceLabel(): string {
-  const constants = Platform.constants as { Model?: string; Brand?: string; Manufacturer?: string } | undefined
+  const constants = Platform.constants as
+    { Model?: string; Brand?: string; Manufacturer?: string } | undefined
   if (Platform.OS === "android") {
     const brand = constants?.Brand || constants?.Manufacturer || ""
     const model = constants?.Model || "Android phone"
@@ -32,12 +34,17 @@ export function pairWithCode(rawCode: string, serverUrl?: string | null): Promis
 }
 
 async function pairOnce(code: string, serverUrl?: string | null): Promise<void> {
-  if (code.length !== 8) throw new Error("Codes have 8 letters and numbers. Check the one on your computer.")
+  if (code.length !== 8)
+    throw new Error("Codes have 8 letters and numbers. Check the one on your computer.")
   const server = (serverUrl || currentWebApiUrl()).replace(/\/+$/, "")
   const res = await fetch(`${server}/api/mobile/pair`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ code, deviceName: deviceLabel(), platform: Platform.OS === "ios" ? "iOS" : "Android" }),
+    body: JSON.stringify({
+      code,
+      deviceName: deviceLabel(),
+      platform: Platform.OS === "ios" ? "iOS" : "Android",
+    }),
   })
   const data = (await res.json().catch(() => ({}))) as {
     error?: string
@@ -47,13 +54,25 @@ async function pairOnce(code: string, serverUrl?: string | null): Promise<void> 
     device_token?: string
     supabase_url?: string
   }
-  if (!res.ok || !data.token_hash) throw new Error(data.error || `Could not sign in (HTTP ${res.status})`)
+  if (!res.ok || !data.token_hash) {
+    const message = data.error || `Could not sign in (HTTP ${res.status})`
+    // Sayabot Cloud doesn't know codes made by someone's own server (e.g. Sayabot on their Mac).
+    if (res.status === 410 && server === ENV.WEB_API_URL.replace(/\/+$/, "")) {
+      throw new Error(
+        `${message} If your computer runs its own Sayabot, tap Change server and enter the address shown under the code.`,
+      )
+    }
+    throw new Error(message)
+  }
   if (supabaseMismatch(currentSupabaseUrl(), data.supabase_url)) {
     // The code came from another Sayabot server (e.g. a self-hosted one): sign in against its own
     // Supabase, switch this phone to that server, and restart into it already signed in.
     const check = await checkServer(server)
     if (!check.ok) throw new Error(check.error)
-    const { error } = await makeClient(check.server.supabaseUrl, check.server.supabaseAnonKey).auth.verifyOtp({
+    const { error } = await makeClient(
+      check.server.supabaseUrl,
+      check.server.supabaseAnonKey,
+    ).auth.verifyOtp({
       token_hash: data.token_hash,
       type: "magiclink",
     })
@@ -68,7 +87,10 @@ async function pairOnce(code: string, serverUrl?: string | null): Promise<void> 
     await restartApp()
     return
   }
-  const { error } = await supabase.auth.verifyOtp({ token_hash: data.token_hash, type: "magiclink" })
+  const { error } = await supabase.auth.verifyOtp({
+    token_hash: data.token_hash,
+    type: "magiclink",
+  })
   if (error) throw new Error(error.message)
   await applySettings({
     webApiUrl: server,

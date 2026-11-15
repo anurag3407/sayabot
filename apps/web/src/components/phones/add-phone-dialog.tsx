@@ -14,6 +14,8 @@ interface Pairing {
   code: string
   deepLink: string
   server: string
+  /** How far the server address reaches: see lib/phone-reachable. */
+  reach?: "anywhere" | "same-wifi" | "this-computer"
   expiresAt: string
 }
 
@@ -208,8 +210,29 @@ export function AddPhoneDialog({
               Waiting for the phone…
             </div>
             <p className="mt-3 text-[12px] text-faint">
-              If the app asks for a server, use <span className="text-muted">{pairing.server}</span>.
+              If the app asks for a server, use <span className="select-all text-muted">{pairing.server}</span>.
             </p>
+            {pairing.reach === "same-wifi" || pairing.reach === "this-computer" ? (
+              <div className="mt-3 rounded-lg border border-line bg-ink px-3 py-2.5 text-[12px] leading-relaxed text-muted">
+                {pairing.reach === "same-wifi" ? (
+                  <p>
+                    Sayabot is running on this computer, so the phone has to be on the{" "}
+                    <span className="text-text">same Wi-Fi</span>.
+                  </p>
+                ) : (
+                  <p>
+                    This computer has no address a phone can open. Connect it to Wi-Fi, or use a tunnel.
+                  </p>
+                )}
+                <p className="mt-1.5">
+                  To use the phone from anywhere, free: run{" "}
+                  <code className="select-all rounded bg-panel px-1 py-0.5 font-mono text-[11px] text-text">
+                    cloudflared tunnel --url {pairing.server.replace(/^https?:\/\/[^/:]+/, "http://localhost")}
+                  </code>{" "}
+                  then open Sayabot at the https address it prints and add the phone from there.
+                </p>
+              </div>
+            ) : null}
           </div>
         ) : null}
 

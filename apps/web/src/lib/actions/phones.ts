@@ -3,9 +3,11 @@
 import { formatPairingCode, PAIRING_TTL_MINUTES, pairingDeepLink } from "@sayabot/core"
 import { generatePairingCode, hashAgentApiKey } from "@sayabot/core/server"
 import { revalidatePath } from "next/cache"
+import { headers } from "next/headers"
 import { getOrgAccess } from "@/lib/auth"
 import { audit, errorMessage, fail, ok } from "@/lib/actions/shared"
 import { getAppUrl } from "@/lib/env"
+import { lanIPv4, phoneServerUrl } from "@/lib/phone-reachable"
 import { createAdminClient } from "@/lib/supabase/admin"
 import type { ActionResult } from "@/lib/types"
 
@@ -38,18 +40,28 @@ export async function createPhonePairingAction(input: { orgSlug: string }): Prom
     .select("id")
     .single()
   if (error || !data) return fail(errorMessage(error) || "Could not make a code")
-  const server = getAppUrl().replace(/\/+$/, "")
+  // An address the phone can open: on a Mac running Sayabot itself, localhost becomes the
+  // Mac's Wi-Fi address (or the tunnel/domain the browser is using).
+  const h = await headers()
+  const host = h.get("x-forwarded-host") ?? h.get("host")
+  const proto = (h.get("x-forwarded-proto") ?? "http").split(",")[0]?.trim() || "http"
+  const requestOrigin = host ? `${proto}://${host}` : null
+  const { url: server, reach } = phoneServerUrl(getAppUrl(), requestOrigin, lanIPv4())
   return ok(undefined, {
     pairingId: data.id,
     code: formatPairingCode(code),
     deepLink: pairingDeepLink(code, server),
     server,
+    reach,
     expiresAt,
   })
 }
 
 /** Polled by the modal so it flips to "connected" when the phone uses the code. */
-export async function phonePairingStatusAction(input: { orgSlug: string; pairingId: string }): Promise<ActionResult> {
+export async function phonePairingStatusAction(input: {
+  orgSlug: string
+  pairingId: string
+}): Promise<ActionResult> {
   const access = await getOrgAccess(input.orgSlug)
   if (!access) return fail("Workspace not found")
   const { data } = await createAdminClient()
@@ -66,7 +78,10 @@ export async function phonePairingStatusAction(input: { orgSlug: string; pairing
   })
 }
 
-export async function revokePhoneAction(input: { orgSlug: string; phoneId: string }): Promise<ActionResult> {
+export async function revokePhoneAction(input: {
+  orgSlug: string
+  phoneId: string
+}): Promise<ActionResult> {
   const access = await getOrgAccess(input.orgSlug)
   if (!access) return fail("Workspace not found")
   const admin = createAdminClient()
