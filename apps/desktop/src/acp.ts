@@ -37,6 +37,16 @@ export interface AcpModelList {
   models: ReportedModel[]
   current: string | null
   setter: ModelSetter
+  /** The session's thinking-effort option (OpenCode `effort`, Copilot `reasoning_effort`…), if any. */
+  effort: { configId: string; values: string[]; current: string | null } | null
+}
+
+const EFFORT_WORD = /^[a-z]{1,10}$/
+
+/** "fireworks-ai/DeepSeek Flash" → "fireworks-ai · DeepSeek Flash", as OpenMausBot shows them. */
+export function modelLabel(name: string): string {
+  const match = /^([\w.-]+)\/(.+)$/.exec(name.trim())
+  return (match ? `${match[1]} · ${match[2]}` : name.trim()).slice(0, 120)
 }
 
 /** Values of a select option, flattening grouped options ({ name, options: [...] }). */
@@ -61,6 +71,27 @@ export function acpModels(result: unknown): AcpModelList {
   const options = Array.isArray(root?.configOptions)
     ? root.configOptions.map(record).filter(Boolean)
     : []
+  const effortOption = options.find(
+    (entry) =>
+      entry?.type === "select" &&
+      nonempty(entry.id) &&
+      (["effort", "reasoning_effort", "thought_level", "effortLevel"].includes(String(entry.id)) ||
+        entry.category === "thought_level"),
+  )
+  const effortValues = effortOption
+    ? selectValues(effortOption.options)
+        .map((row) => row.id)
+        .filter((id) => id !== "default" && EFFORT_WORD.test(id))
+    : []
+  const effortCurrent = nonempty(effortOption?.currentValue)
+  const effort =
+    effortOption && effortValues.length
+      ? {
+          configId: String(effortOption.id),
+          values: effortValues,
+          current: effortCurrent && effortCurrent !== "default" ? effortCurrent : null,
+        }
+      : null
   const option =
     options.find((entry) => entry?.type === "select" && entry.id === "model") ??
     options.find(
@@ -93,13 +124,18 @@ export function acpModels(result: unknown): AcpModelList {
     ...valid.filter((row) => row.id !== current),
   ].slice(0, MAX_MODELS)
   return {
+    // Effort levels belong to the session's current model (each model has its own), so only that
+    // model says which it takes; the runner reads them again after switching models.
     models: usable.map((row) => ({
       id: row.id,
-      label: row.label.slice(0, 120),
+      label: modelLabel(row.label),
+      ...(effort && row.id === current ? { effort: effort.values } : {}),
+      ...(effort?.current && row.id === current ? { defaultEffort: effort.current } : {}),
       ...(row.id === current ? { isDefault: true } : {}),
     })),
     current,
     setter: usable.length ? setter : null,
+    effort,
   }
 }
 
@@ -117,6 +153,19 @@ export function modelRequest(
     }
   }
   return { method: "session/set_model", params: { sessionId, modelId: model } }
+}
+
+/** The request that sets the session's thinking effort, when the app offers that level. */
+export function effortRequest(
+  effort: AcpModelList["effort"],
+  sessionId: string,
+  level: string | null,
+): { method: string; params: Json } | null {
+  if (!effort || !level || !effort.values.includes(level)) return null
+  return {
+    method: "session/set_config_option",
+    params: { sessionId, configId: effort.configId, value: level },
+  }
 }
 
 // ---------- the reply and its steps ----------

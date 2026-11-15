@@ -9,6 +9,7 @@ import { cn } from "@/lib/format"
 import { MODEL_PICKER_EVENT } from "@/lib/recovery-hint"
 import type { PickerGroup } from "@/lib/model-catalog"
 import type { RoomBotModel } from "@/app/api/connectors/models/room/route"
+import { useReloadAfterRescan } from "./model-list"
 
 type Scope = "chat" | "default"
 
@@ -62,7 +63,8 @@ function useRoomModels(orgSlug: string, roomId: string) {
     void load()
   }, [load])
 
-  return { lists, loading, error, reload: load }
+  const reload = useReloadAfterRescan(load)
+  return { lists, loading, error, reload }
 }
 
 /**

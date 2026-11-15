@@ -19,6 +19,8 @@ export interface HostRow {
     runnerEnabled?: boolean
     /** Run the owner's agents here by default (see packages/db DesktopHostSettings). */
     localDefault?: { app: string } | false
+    /** Someone asked for fresh app model lists; the Mac rescans when this changes. */
+    agentsRescanAt?: string
   }
   last_seen_at: string | null
   revoked_at: string | null

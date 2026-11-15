@@ -275,12 +275,19 @@ export function ModelPickerPanel({
                   {active.account ? <p className="truncate text-[11px] text-faint">{active.detail}</p> : null}
                 </div>
                 <div className="flex shrink-0 items-center gap-1.5">
-                  {onRefresh && active.source && active.source !== "static" ? (
+                  {onRefresh &&
+                  ((active.source && active.source !== "static") ||
+                    active.section === "mac" ||
+                    active.section === "local") ? (
                     <button
                       type="button"
                       onClick={onRefresh}
                       disabled={refreshing}
-                      title="Read the model lists again"
+                      title={
+                        active.hostName
+                          ? `Ask ${active.hostName} to read its apps' models again`
+                          : "Read the model lists again"
+                      }
                       aria-label="Refresh model lists"
                       className="grid h-7 w-7 place-items-center rounded-lg text-muted hover:bg-raised hover:text-text disabled:opacity-60"
                     >

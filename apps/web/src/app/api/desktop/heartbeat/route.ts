@@ -50,7 +50,8 @@ export async function POST(request: Request) {
   const localAgents = Array.isArray(body.localAgents)
     ? (body.localAgents as unknown[])
         .filter((a): a is Record<string, unknown> => Boolean(a) && typeof a === "object")
-        .slice(0, 20)
+        // Every agent app Sayabot knows (MAC_CLI_APPS) plus local model servers, with room to grow.
+        .slice(0, 40)
         .map((a) => ({
           id: String(a.id ?? "").slice(0, 40),
           name: String(a.name ?? "").slice(0, 60),

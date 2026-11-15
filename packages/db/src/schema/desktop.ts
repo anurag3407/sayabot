@@ -9,6 +9,8 @@ export interface DesktopHostSettings {
   askOnComputer?: boolean
   /** Let this computer run agents on the apps signed in here (Claude Code, Codex…). */
   runnerEnabled?: boolean
+  /** When someone last pressed refresh in the model picker: the Mac reads its apps' models again. */
+  agentsRescanAt?: string
   /**
    * Run the owner's agents here by default (agents with no key or computer of their own, in
    * workspaces where the owner is the only member). Unset: never decided, so Sayabot for Mac

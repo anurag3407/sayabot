@@ -92,7 +92,8 @@ export const MAC_CLI_APPS: readonly MacAppInfo[] = [
     name: "Gemini CLI",
     provider: "google",
     label: "Gemini",
-    access: "account_or_key",
+    // Google ended personal Gemini CLI logins (moved to Antigravity): an API key or Vertex only.
+    access: "key",
     signIn: "gemini",
     keyEnv: ["GEMINI_API_KEY", "GOOGLE_API_KEY"],
     install: "npm install -g @google/gemini-cli",

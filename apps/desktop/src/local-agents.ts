@@ -1,8 +1,8 @@
 import { execFile } from "node:child_process"
-import { readdirSync } from "node:fs"
-import { access, constants, readdir, readFile, stat } from "node:fs/promises"
+import { readdir, readFile, stat } from "node:fs/promises"
 import { homedir } from "node:os"
-import { delimiter, dirname, join } from "node:path"
+import { join } from "node:path"
+import { findBinary, toolPath } from "./bin-path"
 import {
   appModels,
   claudeAccount,
@@ -116,7 +116,7 @@ export const AGENT_SPECS: readonly AgentSpec[] = [
     id: "cursor",
     name: "Cursor",
     bin: "cursor-agent",
-    run: { kind: "plain" },
+    run: { kind: "acp", args: ["acp"] },
     keyEnv: ["CURSOR_API_KEY", "CURSOR_AUTH_TOKEN"],
     signedIn: (home) =>
       someTrue([
@@ -128,15 +128,21 @@ export const AGENT_SPECS: readonly AgentSpec[] = [
     id: "gemini",
     name: "Gemini CLI",
     bin: "gemini",
-    run: { kind: "plain" },
+    run: { kind: "acp", args: ["--acp"] },
     keyEnv: ["GEMINI_API_KEY", "GOOGLE_API_KEY"],
-    signedIn: (home) => exists(join(home, ".gemini/oauth_creds.json")),
+    // Google ended personal Gemini CLI logins (it answers "migrate to Antigravity"), so only a key
+    // or a Vertex setup counts; the env keys are checked before this.
+    signedIn: (home) =>
+      someTrue([
+        () => fileHas(join(home, ".gemini/.env"), /^(?:export )?(?:GEMINI|GOOGLE)_API_KEY\s*=\s*\S/m),
+        () => fileHas(join(home, ".gemini/settings.json"), /"selectedType"\s*:\s*"(?:gemini-api-key|vertex-ai)"/),
+      ]),
   },
   {
     id: "opencode",
     name: "OpenCode",
     bin: "opencode",
-    run: { kind: "plain" },
+    run: { kind: "acp", args: ["acp"] },
     keyEnv: ["OPENCODE_API_KEY"],
     // OpenCode also runs on its own free models and on providers set up in opencode.json.
     signedIn: (home) =>
@@ -274,47 +280,13 @@ export function agentSpec(id: string): AgentSpec | undefined {
   return AGENT_SPECS.find((spec) => spec.id === id)
 }
 
-const BIN_DIRS = [
-  "/opt/homebrew/bin",
-  "/usr/local/bin",
-  "/usr/bin",
-  join(homedir(), ".local/bin"),
-  join(homedir(), ".bun/bin"),
-  join(homedir(), ".npm-global/bin"),
-  join(homedir(), ".claude/local"),
-]
-
-/** Apps launched from the Dock get a bare PATH, so also look where nvm/volta/fnm install CLIs. */
-function versionManagerBins(): string[] {
-  const out: string[] = [join(homedir(), ".volta/bin"), join(homedir(), ".fnm/aliases/default/bin")]
-  try {
-    const base = join(homedir(), ".nvm/versions/node")
-    for (const v of readdirSync(base).sort().reverse()) out.push(join(base, v, "bin"))
-  } catch {
-    // no nvm
-  }
-  return out
-}
-
 const exists = (p: string) => stat(p).then(() => true, () => false)
 
-export async function findBinary(name: string): Promise<string | null> {
-  const dirs = [...new Set([...(process.env.PATH ?? "").split(delimiter).filter(Boolean), ...BIN_DIRS, ...versionManagerBins()])]
-  for (const dir of dirs) {
-    const candidate = join(dir, name)
-    try {
-      await access(candidate, constants.X_OK)
-      return candidate
-    } catch {
-      // keep looking
-    }
-  }
-  return null
-}
+export { findBinary } from "./bin-path"
 
 function run(file: string, args: string[], timeoutMs = 2_500): Promise<string> {
   return new Promise((resolve) => {
-    const env = { ...process.env, PATH: [dirname(file), process.env.PATH ?? ""].join(delimiter) }
+    const env = { ...process.env, PATH: toolPath(file) }
     execFile(file, args, { timeout: timeoutMs, env }, (error, stdout) => resolve(error ? "" : String(stdout)))
   })
 }
@@ -324,7 +296,8 @@ async function keychainHas(service: string): Promise<boolean> {
   return new Promise((resolve) => execFile("/usr/bin/security", ["find-generic-password", "-s", service], (err) => resolve(!err)))
 }
 
-export async function detectLocalAgents(): Promise<LocalAgent[]> {
+/** `fresh` re-reads every model list now instead of using the six-hour cache (the picker's refresh). */
+export async function detectLocalAgents(opts: { fresh?: boolean } = {}): Promise<LocalAgent[]> {
   const home = homedir()
   const accounts: Partial<Record<string, () => Promise<string | null>>> = {
     "claude-code": () => claudeAccount(home),
@@ -341,7 +314,7 @@ export async function detectLocalAgents(): Promise<LocalAgent[]> {
           status === "ready"
             ? await Promise.all([
                 accounts[spec.id]?.().catch(() => null) ?? Promise.resolve(null),
-                appModels(spec, binary, version).catch(() => null),
+                appModels(spec, binary, version, Date.now(), opts.fresh === true).catch(() => null),
               ])
             : [null, null]
         return {

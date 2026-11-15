@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { Monitor } from "lucide-react"
 import { ProviderIcon } from "./provider-icons"
 import { SayabotMark } from "@/components/landing/sayabot-mark"
@@ -13,6 +13,32 @@ interface ModelList {
 
 /** The last list per workspace, shown at once while a fresh one loads. */
 const lastLists = new Map<string, ModelList>()
+
+/** After a refresh the Mac reads its apps' model lists again (up to ~45 s for slow apps). */
+const MAC_RESCAN_RELOADS_MS = [15_000, 45_000]
+
+/**
+ * Wraps a list loader so a refresh also reloads quietly once the Mac has had time to report its
+ * fresh model lists. Pending reloads stop when the picker closes.
+ */
+export function useReloadAfterRescan(load: (refresh?: boolean) => Promise<void>) {
+  const timers = useRef<number[]>([])
+  useEffect(
+    () => () => {
+      for (const timer of timers.current) window.clearTimeout(timer)
+    },
+    [],
+  )
+  return useCallback(
+    async (refresh = false) => {
+      await load(refresh)
+      if (!refresh) return
+      for (const timer of timers.current) window.clearTimeout(timer)
+      timers.current = MAC_RESCAN_RELOADS_MS.map((ms) => window.setTimeout(() => void load(false), ms))
+    },
+    [load],
+  )
+}
 
 /** The workspace's model list (see /api/connectors/models), for Manage AI accounts. */
 export function useModelList(orgSlug: string) {
@@ -47,7 +73,8 @@ export function useModelList(orgSlug: string) {
     void load()
   }, [load])
 
-  return { list, loading, error, reload: load }
+  const reload = useReloadAfterRescan(load)
+  return { list, loading, error, reload }
 }
 
 export function GroupIcon({ provider, size = 20 }: { provider: string; size?: 16 | 20 }) {

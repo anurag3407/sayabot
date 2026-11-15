@@ -174,7 +174,13 @@ function macAppModels(
     id: "default",
     label: defaultModel ? `${spec?.label ?? app} default · ${defaultModel.label}` : `${spec?.label ?? app} default`,
   }
-  if (fromApp.length) return { models: [defaultRow, ...fromApp], effortLevels: engineLevels, source: "live" }
+  if (fromApp.length) {
+    // Apps Sayabot has no effort list for (OpenCode, Copilot…) say which levels their models take.
+    const reportedLevels = engineLevels.length
+      ? engineLevels
+      : effortList([...new Set(fromApp.flatMap((m) => m.effort ?? []))])
+    return { models: [defaultRow, ...fromApp], effortLevels: reportedLevels, source: "live" }
+  }
   if (spec?.engine) {
     const listed = engineCatalogFromManifest(spec.engine, version)
     return {

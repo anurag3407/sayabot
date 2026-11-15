@@ -42,12 +42,19 @@ export interface HostDeps {
   getServerUrl: () => string
   getSession: () => { accessToken: string; refreshToken: string; userId?: string } | null
   onSessionUpdate?: (session: { accessToken: string; refreshToken: string }) => void
-  detectLocalAgents: () => Promise<ReportedAgent[]>
+  /** `fresh` skips the cached model lists (someone pressed refresh in the picker). */
+  detectLocalAgents: (opts?: { fresh?: boolean }) => Promise<ReportedAgent[]>
   onHeartbeat?: (reply: HeartbeatReply) => void
 }
 
 export interface HeartbeatReply {
-  settings: { whoCanControl?: string; askOnComputer?: boolean; runnerEnabled?: boolean }
+  settings: {
+    whoCanControl?: string
+    askOnComputer?: boolean
+    runnerEnabled?: boolean
+    /** Set when someone asks for fresh model lists; a new value means scan again now. */
+    agentsRescanAt?: string
+  }
   sessions: Array<{ id: string; viewerName: string; isOwner: boolean; control: boolean; offer: string | null }>
   queuedJobs: number
   secretJobs?: number
@@ -166,6 +173,11 @@ export class DesktopHost {
   private beating = false
   private lastAgentsScan = 0
   private agents: ReportedAgent[] = []
+  /** A scan runs beside the heartbeat: reading model lists can take half a minute. */
+  private scanning: Promise<void> | null = null
+  private scanned: ReportedAgent[] | null = null
+  private rescanSeen: string | null = null
+  private forceScan = false
   private storage: LocalStorageReport | null = null
   private lastStorageScan = 0
   private lastHandoff = 0
@@ -366,12 +378,25 @@ export class DesktopHost {
     this.beating = true
     try {
       // Apps and their model lists go up once a minute; the server keeps the last list between.
-      let localAgents: ReportedAgent[] | undefined
-      if (Date.now() - this.lastAgentsScan > 60_000) {
+      // The scan runs on its own so a slow app never holds up the heartbeat (and the Mac never
+      // looks offline while models are read); its result goes up with the next heartbeat.
+      if (!this.scanning && (this.forceScan || Date.now() - this.lastAgentsScan > 60_000)) {
+        const fresh = this.forceScan
+        this.forceScan = false
         this.lastAgentsScan = Date.now()
-        this.agents = await this.deps.detectLocalAgents().catch(() => this.agents)
-        localAgents = this.agents
+        this.scanning = this.deps
+          .detectLocalAgents({ fresh })
+          .then((agents) => {
+            this.agents = agents
+            this.scanned = agents
+          })
+          .catch(() => undefined)
+          .finally(() => {
+            this.scanning = null
+          })
       }
+      const localAgents = this.scanned ?? undefined
+      this.scanned = null
       let storage: LocalStorageReport | undefined
       if (Date.now() - this.lastStorageScan > 10 * 60_000) {
         this.lastStorageScan = Date.now()
@@ -383,8 +408,18 @@ export class DesktopHost {
         ...(localAgents ? { localAgents } : {}),
         ...(storage ? { storage } : {}),
       })
-      if (!reply) return
+      if (!reply) {
+        // Not delivered: send this list again with the next heartbeat.
+        if (localAgents && !this.scanned) this.scanned = localAgents
+        return
+      }
       this.lastReply = reply
+      const rescan = reply.settings.agentsRescanAt ?? null
+      if (rescan && rescan !== this.rescanSeen) {
+        // The first value seen is history; a new one is someone pressing refresh.
+        if (this.rescanSeen !== null) this.forceScan = true
+        this.rescanSeen = rescan
+      }
       this.deps.onHeartbeat?.(reply)
       void this.maybeCloudHandoff()
       for (const session of reply.sessions) {

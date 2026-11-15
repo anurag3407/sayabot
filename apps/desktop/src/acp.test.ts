@@ -1,8 +1,15 @@
 import { describe, expect, it } from "vitest"
 import { MAC_CLI_APPS } from "../../../packages/core/src/mac-apps"
-import { acpModels, acpUpdate, modelRequest, permissionOutcome } from "./acp"
+import {
+  acpModels,
+  acpUpdate,
+  effortRequest,
+  modelLabel,
+  modelRequest,
+  permissionOutcome,
+} from "./acp"
 import { AGENT_SPECS } from "./local-agents"
-import { piRowsToModels } from "./local-models"
+import { cursorRowsToModels, piRowsToModels } from "./local-models"
 
 describe("acpModels", () => {
   it("reads a grouped `model` config option and puts the current model first", () => {
@@ -171,5 +178,95 @@ describe("agent apps", () => {
         spec.keyEnv.every((name) => shared?.keyEnv.includes(name) || name === "CURSOR_AUTH_TOKEN"),
       ).toBe(true)
     }
+  })
+})
+
+describe("OpenCode-style sessions", () => {
+  // The shape `opencode acp` 2.3.0 answers session/new with (trimmed).
+  const session = {
+    sessionId: "s9",
+    configOptions: [
+      {
+        id: "model",
+        category: "model",
+        type: "select",
+        currentValue: "opencode-zen/space-bunny-free",
+        options: [
+          {
+            value: "fireworks-ai/accounts/fireworks/models/deepseek-v4p1-flash",
+            name: "fireworks-ai/DeepSeek V4.1 Flash",
+          },
+          {
+            value: "opencode-zen/space-bunny-free",
+            name: "opencode-zen/Space Bunny Free (1M Context)",
+          },
+        ],
+      },
+      {
+        id: "effort",
+        category: "thought_level",
+        type: "select",
+        currentValue: "default",
+        options: [
+          { value: "low", name: "Low" },
+          { value: "medium", name: "Medium" },
+          { value: "high", name: "High" },
+          { value: "default", name: "Default" },
+        ],
+      },
+    ],
+  }
+
+  it("lists every model with readable names, and the current model's effort levels", () => {
+    const list = acpModels(session)
+    expect(list.models).toEqual([
+      {
+        id: "opencode-zen/space-bunny-free",
+        label: "opencode-zen · Space Bunny Free (1M Context)",
+        effort: ["low", "medium", "high"],
+        isDefault: true,
+      },
+      {
+        id: "fireworks-ai/accounts/fireworks/models/deepseek-v4p1-flash",
+        label: "fireworks-ai · DeepSeek V4.1 Flash",
+      },
+    ])
+    expect(list.effort).toEqual({
+      configId: "effort",
+      values: ["low", "medium", "high"],
+      current: null,
+    })
+  })
+
+  it("sets an effort the app offers and skips one it doesn't", () => {
+    const { effort } = acpModels(session)
+    expect(effortRequest(effort, "s9", "high")).toEqual({
+      method: "session/set_config_option",
+      params: { sessionId: "s9", configId: "effort", value: "high" },
+    })
+    expect(effortRequest(effort, "s9", "max")).toBeNull()
+    expect(effortRequest(effort, "s9", null)).toBeNull()
+  })
+
+  it("keeps plain names as they are", () => {
+    expect(modelLabel("Claude Sonnet 5.5")).toBe("Claude Sonnet 5.5")
+    expect(modelLabel("Space Bunny / Free")).toBe("Space Bunny / Free")
+  })
+})
+
+describe("cursorRowsToModels", () => {
+  it("reads `cursor-agent models` lines", () => {
+    const out = [
+      "Available models",
+      "",
+      "auto - Auto (current)",
+      "gpt-5.5 - GPT-5.5",
+      "sonnet-5-5-thinking - Claude Sonnet 5.5 Thinking",
+    ].join("\n")
+    expect(cursorRowsToModels(out)).toEqual([
+      { id: "auto", label: "Auto", isDefault: true },
+      { id: "gpt-5.5", label: "GPT-5.5" },
+      { id: "sonnet-5-5-thinking", label: "Claude Sonnet 5.5 Thinking" },
+    ])
   })
 })

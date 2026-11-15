@@ -184,8 +184,8 @@ function startHost(): void {
           saveSession({ ...cur, accessToken: updated.accessToken, refreshToken: updated.refreshToken })
         }
       },
-      detectLocalAgents: async () =>
-        (await detectLocalAgents()).map((a) => ({
+      detectLocalAgents: async (opts) =>
+        (await detectLocalAgents(opts)).map((a) => ({
           id: a.id,
           name: a.name,
           status: a.status,

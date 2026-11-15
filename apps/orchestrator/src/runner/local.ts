@@ -53,7 +53,9 @@ export function localRunnerConfig(params: Record<string, unknown> | null | undef
     typeof runner.model === "string" && runner.model !== "default" && MAC_MODEL_ID.test(runner.model)
       ? runner.model
       : null
-  const effort = clampEffort(params?.effort as string | undefined, ENGINE_EFFORT_LEVELS[app] ?? []) ?? null
+  // Apps with no fixed list (Copilot, OpenCode…) keep the pick; the Mac sets it only if the app offers it.
+  const known = ENGINE_EFFORT_LEVELS[app] ?? (app === "ollama" || app === "lmstudio" ? [] : undefined)
+  const effort = clampEffort(params?.effort as string | undefined, known) ?? null
   return { hostId: runner.hostId, app, ...(model ? { model } : {}), ...(effort ? { effort } : {}) }
 }
 

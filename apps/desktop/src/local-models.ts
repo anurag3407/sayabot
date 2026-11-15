@@ -1,8 +1,9 @@
 import { spawn } from "node:child_process"
 import { mkdir, readFile } from "node:fs/promises"
 import { homedir, tmpdir } from "node:os"
-import { delimiter, dirname, join } from "node:path"
+import { join } from "node:path"
 import { discoverAcpModels } from "./acp"
+import { toolPath } from "./bin-path"
 
 /**
  * What each app on this Mac can run, so Sayabot's model picker can offer it: the models an app
@@ -59,7 +60,9 @@ export async function claudeAccount(home = homedir()): Promise<string | null> {
 /** The active Google account Gemini CLI uses (its account list, not its tokens). */
 export async function geminiAccount(home = homedir()): Promise<string | null> {
   try {
-    const parsed = JSON.parse(await readFile(join(home, ".gemini/google_accounts.json"), "utf8")) as {
+    const parsed = JSON.parse(
+      await readFile(join(home, ".gemini/google_accounts.json"), "utf8"),
+    ) as {
       active?: unknown
     }
     return text(parsed.active)
@@ -103,7 +106,7 @@ export function fetchClaudeModels(binary: string): Promise<ReportedModel[] | nul
     let settled = false
     let buffer = ""
     const requestId = `sayabot-models-${Date.now()}`
-    const env = { ...process.env, PATH: [dirname(binary), process.env.PATH ?? ""].join(delimiter) }
+    const env = { ...process.env, PATH: toolPath(binary) }
     const child = spawn(
       binary,
       [
@@ -143,16 +146,22 @@ export function fetchClaudeModels(binary: string): Promise<ReportedModel[] | nul
         const line = buffer.slice(0, newline)
         buffer = buffer.slice(newline + 1)
         if (!line.trim()) continue
-        let message: { type?: unknown; response?: { subtype?: unknown; request_id?: unknown; response?: { models?: unknown } } }
+        let message: {
+          type?: unknown
+          response?: { subtype?: unknown; request_id?: unknown; response?: { models?: unknown } }
+        }
         try {
           message = JSON.parse(line)
         } catch {
           continue
         }
-        if (message.type !== "control_response" || message.response?.request_id !== requestId) continue
+        if (message.type !== "control_response" || message.response?.request_id !== requestId)
+          continue
         const models = message.response?.response?.models
         return finish(
-          message.response?.subtype === "success" && Array.isArray(models) ? claudeRowsToModels(models) : null,
+          message.response?.subtype === "success" && Array.isArray(models)
+            ? claudeRowsToModels(models)
+            : null,
         )
       }
     })
@@ -207,25 +216,45 @@ export function piRowsToModels(output: string): ReportedModel[] {
   return out
 }
 
-function piModels(binary: string): Promise<ReportedModel[] | null> {
+async function piModels(binary: string): Promise<ReportedModel[] | null> {
+  const models = piRowsToModels(await cliText(binary, ["--list-models"]))
+  return models.length ? models : null
+}
+
+/** `cursor-agent models` prints `slug - Label` lines (it has no JSON output yet). */
+export function cursorRowsToModels(output: string): ReportedModel[] {
+  const out: ReportedModel[] = []
+  for (const line of output.split("\n")) {
+    const match = /^\s*([\w.:/@+-]+)\s+-\s+(.+?)\s*(\((?:current|default)[^)]*\))?\s*$/i.exec(line)
+    const id = match?.[1]
+    if (!match || !id || !MODEL_ID.test(id) || out.some((row) => row.id === id)) continue
+    out.push({ id, label: match[2]?.trim() || id, ...(match[3] ? { isDefault: true } : {}) })
+    if (out.length >= MAX_MODELS) break
+  }
+  return out
+}
+
+function cliText(binary: string, args: string[]): Promise<string> {
   return new Promise((resolve) => {
-    const env = { ...process.env, PATH: [dirname(binary), process.env.PATH ?? ""].join(delimiter) }
-    const child = spawn(binary, ["--list-models"], { env, cwd: tmpdir(), stdio: ["ignore", "pipe", "ignore"] })
+    const env = { ...process.env, PATH: toolPath(binary), NO_COLOR: "1" }
+    const child = spawn(binary, args, { env, cwd: tmpdir(), stdio: ["ignore", "pipe", "ignore"] })
     let output = ""
     const timer = setTimeout(() => child.kill("SIGTERM"), CLI_TIMEOUT_MS)
     child.stdout?.on("data", (chunk: Buffer) => {
       if (output.length < 2 * 1024 * 1024) output += chunk.toString("utf8")
     })
-    child.on("error", () => resolve(null))
+    child.on("error", () => resolve(""))
     child.on("close", () => {
       clearTimeout(timer)
-      const models = piRowsToModels(output)
-      resolve(models.length ? models : null)
+      resolve(output)
     })
   })
 }
 
-const listCache = new Map<string, { at: number; version: string | null; models: ReportedModel[] | null }>()
+const listCache = new Map<
+  string,
+  { at: number; version: string | null; models: ReportedModel[] | null }
+>()
 
 /** An app's models, read at most every 6 hours, and again when its version changes. */
 export async function appModels(
@@ -233,11 +262,20 @@ export async function appModels(
   binary: string | null,
   version: string | null,
   now = Date.now(),
+  fresh = false,
 ): Promise<ReportedModel[] | null> {
   if (!binary) return null
   const id = app.id
   const cached = listCache.get(id)
-  if (cached && cached.version === version && now - cached.at < LIST_FRESH_MS && cached.models) return cached.models
+  if (
+    !fresh &&
+    cached &&
+    cached.version === version &&
+    now - cached.at < LIST_FRESH_MS &&
+    cached.models
+  ) {
+    return cached.models
+  }
   let models: ReportedModel[] | null = null
   if (id === "claude-code") models = await fetchClaudeModels(binary)
   else if (id === "codex") models = await codexModels()
@@ -245,8 +283,13 @@ export async function appModels(
   else if (app.run.kind === "acp") {
     const folder = join(tmpdir(), "sayabot-models")
     await mkdir(folder, { recursive: true }).catch(() => undefined)
-    const env = { ...process.env, PATH: [dirname(binary), process.env.PATH ?? ""].join(delimiter), NO_COLOR: "1" }
+    const env = { ...process.env, PATH: toolPath(binary), NO_COLOR: "1" }
     models = await discoverAcpModels(binary, app.run.args ?? [], { cwd: folder, env })
+    // Cursor's own list when its ACP session doesn't offer one (OpenMausBot does the same).
+    if (!models && id === "cursor") {
+      const listed = cursorRowsToModels(await cliText(binary, ["models"]))
+      models = listed.length ? listed : null
+    }
   }
   // Keep the last good list when a read fails; the server falls back to its own list otherwise.
   if (!models && cached?.version === version) models = cached.models
@@ -263,7 +306,12 @@ export interface LocalModelServer {
   models: ReportedModel[]
 }
 
-const LOCAL_SERVERS: Array<{ id: LocalModelServer["id"]; name: string; baseUrl: string; list: string }> = [
+const LOCAL_SERVERS: Array<{
+  id: LocalModelServer["id"]
+  name: string
+  baseUrl: string
+  list: string
+}> = [
   { id: "ollama", name: "Ollama", baseUrl: "http://127.0.0.1:11434", list: "/api/tags" },
   { id: "lmstudio", name: "LM Studio", baseUrl: "http://127.0.0.1:1234", list: "/v1/models" },
 ]
@@ -272,7 +320,11 @@ const LOCAL_SERVERS: Array<{ id: LocalModelServer["id"]; name: string; baseUrl: 
 export function localServerModels(body: unknown): ReportedModel[] {
   if (!body || typeof body !== "object") return []
   const record = body as { models?: unknown; data?: unknown }
-  const rows = Array.isArray(record.models) ? record.models : Array.isArray(record.data) ? record.data : []
+  const rows = Array.isArray(record.models)
+    ? record.models
+    : Array.isArray(record.data)
+      ? record.data
+      : []
   const out: ReportedModel[] = []
   for (const raw of rows) {
     if (!raw || typeof raw !== "object") continue
@@ -293,9 +345,16 @@ export async function detectLocalModelServers(
   const found = await Promise.all(
     LOCAL_SERVERS.map(async (server) => {
       try {
-        const res = await fetchImpl(`${server.baseUrl}${server.list}`, { signal: AbortSignal.timeout(1_500) })
+        const res = await fetchImpl(`${server.baseUrl}${server.list}`, {
+          signal: AbortSignal.timeout(1_500),
+        })
         if (!res.ok) return null
-        return { id: server.id, name: server.name, baseUrl: server.baseUrl, models: localServerModels(await res.json()) }
+        return {
+          id: server.id,
+          name: server.name,
+          baseUrl: server.baseUrl,
+          models: localServerModels(await res.json()),
+        }
       } catch {
         return null
       }

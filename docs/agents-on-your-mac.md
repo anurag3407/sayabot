@@ -37,7 +37,7 @@ their install command. The model picker shows each ready app with the models it 
 | GitHub Copilot | `copilot` | `copilot login` | `COPILOT_GITHUB_TOKEN` / `GH_TOKEN` |
 | Command Code | `command-code` | `command-code login` | `COMMAND_CODE_API_KEY` |
 | Cursor | `cursor-agent` | `cursor-agent login` | `CURSOR_API_KEY` |
-| Gemini CLI | `gemini` | its own login | `GEMINI_API_KEY` |
+| Gemini CLI | `gemini` | **needs a key**: Google ended personal Gemini CLI logins (use Antigravity for those) | `GEMINI_API_KEY` / `GOOGLE_API_KEY` |
 | OpenCode | `opencode` | `opencode auth login`, or its free models | `OPENCODE_API_KEY` |
 | Mistral (Vibe) | `vibe-acp` | `vibe` | `MISTRAL_API_KEY` |
 | Grok | `grok` | `grok login` | none (subscription only) |
@@ -51,6 +51,15 @@ their install command. The model picker shows each ready app with the models it 
 | OMP (Oh My Pi) | `omp` | providers set up in OMP | — |
 | pi | `pi` | **needs a provider key** saved in pi | `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`… |
 | DeepSeek Harness | `dsh` | **needs a key** | `DEEPSEEK_API_KEY` |
+
+**Model lists are live.** Each app reports the models it offers you: Claude Code and Codex from
+their own lists, pi from `pi --list-models`, Cursor from its session or `cursor-agent models`, and
+every ACP app (OpenCode, Copilot, Command Code, Hermes, OMP…) from a session that is opened and
+closed without a prompt. Lists are kept six hours (or until the app updates) and read in the
+background, so a slow app never makes the Mac look offline. The **refresh** button in the model
+picker asks your Macs to read them again now; the picker reloads by itself when they answer
+(usually within a minute). Apps that offer a thinking effort (OpenCode, Copilot…) get an Effort
+choice too.
 
 An "API key instead" only counts when Sayabot for Mac can see it: saved in the app itself, or in
 the environment the Mac app was started with (apps opened from the Dock don't read your shell
@@ -70,20 +79,19 @@ profile). Keys you add to Sayabot's own Providers page are used by the server, n
 
 ## What they can do
 
-|                                                             | Claude Code   | Codex                            | ACP apps¹     | Gemini / OpenCode / Cursor / pi |
-| ----------------------------------------------------------- | ------------- | -------------------------------- | ------------- | ------------------------------- |
-| Reply in the room                                           | ✓             | ✓                                | ✓             | ✓                               |
-| Sayabot tools: tasks, canvas, decisions, votes, owner facts | ✓             | ✓                                | —             | —                               |
-| Live tool cards in the room                                 | ✓             | ✓                                | ✓             | —                               |
-| Pick a model in the picker                                  | ✓             | ✓                                | ✓             | ✓                               |
-| Commands, edits, web pages                                  | ask you first | inside its folder only (sandbox) | ask you first | app defaults                    |
+|                                                             | Claude Code   | Codex                            | ACP apps¹     | pi           |
+| ----------------------------------------------------------- | ------------- | -------------------------------- | ------------- | ------------ |
+| Reply in the room                                           | ✓             | ✓                                | ✓             | ✓            |
+| Sayabot tools: tasks, canvas, decisions, votes, owner facts | ✓             | ✓                                | —             | —            |
+| Live tool cards in the room                                 | ✓             | ✓                                | ✓             | —            |
+| Pick a model (and effort) in the picker                     | ✓             | ✓                                | ✓             | ✓            |
+| Commands, edits, web pages                                  | ask you first | inside its folder only (sandbox) | ask you first | app defaults |
 
-¹ Copilot, Command Code, Mistral Vibe, Grok, Kimi, Kiro, Droid, Devin, Cline, Qwen, Hermes, OMP and
-DeepSeek Harness speak the [Agent Client Protocol](https://agentclientprotocol.com). Sayabot for Mac
+¹ OpenCode, Copilot, Command Code, Cursor, Gemini CLI, Mistral Vibe, Grok, Kimi, Kiro, Droid,
+Devin, Cline, Qwen, Hermes, OMP and DeepSeek Harness speak the [Agent Client Protocol](https://agentclientprotocol.com). Sayabot for Mac
 starts them with no file or terminal access of its own (`apps/desktop/src/acp.ts`), streams their
 reply, and turns every permission they ask for into an approval card; a yes allows that one step.
-Their model list comes from a session that is opened and closed without a prompt, at most every
-six hours.
+The model and effort you pick are set on the session before the prompt.
 
 Each agent works in its own folder: `~/Sayabot/agents/<handle>`.
 
@@ -122,6 +130,8 @@ the agent's settings (`params.localAllow`).
 - [`apps/desktop/src/runner.ts`](../apps/desktop/src/runner.ts): runs the apps, reports steps, answers approvals
 - [`apps/desktop/src/acp.ts`](../apps/desktop/src/acp.ts): the Agent Client Protocol client (sessions, models, steps, permissions)
 - [`apps/desktop/src/local-agents.ts`](../apps/desktop/src/local-agents.ts): finds each app and its sign-in, and how to start it
+- [`apps/desktop/src/local-models.ts`](../apps/desktop/src/local-models.ts): each app's live model list (cached six hours)
+- [`apps/desktop/src/bin-path.ts`](../apps/desktop/src/bin-path.ts): finds the apps and the `node` they need, even when opened from the Dock
 - [`packages/core/src/mac-apps.ts`](../packages/core/src/mac-apps.ts): the app list the web and the server share, and whether each needs an API key
 - [`apps/desktop/src/approve-mcp.ts`](../apps/desktop/src/approve-mcp.ts): Claude Code's permission prompt (stdio MCP)
 - [`apps/desktop/src/mac-stream.ts`](../apps/desktop/src/mac-stream.ts): reads Claude / Codex output, always-allow rules
