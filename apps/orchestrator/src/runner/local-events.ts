@@ -14,7 +14,8 @@ import { waitForApproval } from "../tools/approvals"
  * Mac itself.
  */
 
-export const MAC_APPROVAL_TIMEOUT_MS = 5 * 60_000
+/** Matches MAC_APPROVAL_WINDOW_MS (web) and APPROVAL_WAIT_MS (Mac app). */
+export const MAC_APPROVAL_TIMEOUT_MS = 30 * 60_000
 const MAX_TEXT = 4_000
 const MAX_ARG_TEXT = 2_000
 
@@ -250,7 +251,7 @@ export async function recordMacToolEvents(
 
 /**
  * The app on the Mac wants to do something that needs a person (run a command, edit a file).
- * The tool card turns into an approval; the Mac polls its status. Unanswered after five
+ * The tool card turns into an approval; the Mac polls its status. Unanswered after 30
  * minutes, it's refused.
  */
 export async function requestMacApproval(

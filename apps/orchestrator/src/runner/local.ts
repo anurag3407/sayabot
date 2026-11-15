@@ -162,8 +162,16 @@ async function expireMacApprovals(roomId: string, jobId: string): Promise<void> 
 }
 
 const POLL_MS = 1_200
-const MAX_MS = 15 * 60_000
+/** How long a job may wait in the queue for an offline Mac to come back ("wait for my Mac"). */
+const MAX_WAIT_MS = 15 * 60_000
 const START_GRACE_MS = 60_000
+/**
+ * A run on the owner's Mac has no time limit: it uses their computer and their own app
+ * subscription, so it costs the server nothing but this light poll. It ends when the app
+ * finishes, someone presses stop, or the Mac stops checking in for this long.
+ */
+const MAC_GONE_MS = 2 * 60_000
+const HOST_CHECK_MS = 20_000
 
 export async function runLocalTurn(
   args: RunLlmTurnArgs,
@@ -309,10 +317,12 @@ export async function runLocalTurn(
 
   const controller = registerRun(run.id, room.id, { agentId: agent.id, engine: "local" })
   const started = Date.now()
+  let lastAlive = Date.now()
+  let hostCheckedAt = 0
   let sent = waitingNote
   let seq = waitingNote ? 1 : 0
   try {
-    while (Date.now() - started < MAX_MS) {
+    for (;;) {
       if (controller.signal.aborted) {
         await db.update(localRunnerJobs).set({ status: "cancelled", finishedAt: new Date() }).where(eq(localRunnerJobs.id, job.id))
         return finish(sent === waitingNote ? "" : sent, "halted", null)
@@ -340,11 +350,25 @@ export async function runLocalTurn(
         await db.update(localRunnerJobs).set({ status: "cancelled", finishedAt: new Date() }).where(eq(localRunnerJobs.id, job.id))
         return finish("", "error", `${host.name} didn't pick this up. Open Sayabot for Mac there and retry, or pick another model with "Switch model".`, "mac_offline")
       }
+      if (state.status === "queued" && Date.now() - started > MAX_WAIT_MS) {
+        await db.update(localRunnerJobs).set({ status: "cancelled", finishedAt: new Date() }).where(eq(localRunnerJobs.id, job.id))
+        return finish("", "error", `${host.name} stayed offline for 15 minutes. Open Sayabot for Mac there and retry, or pick another model with "Switch model".`, "mac_offline")
+      }
+      // Running: no time limit, but notice a Mac that quit, slept or lost the network mid-run.
+      if (state.status === "running" && Date.now() - hostCheckedAt > HOST_CHECK_MS) {
+        hostCheckedAt = Date.now()
+        const [seen] = await db
+          .select({ lastSeenAt: desktopHosts.lastSeenAt })
+          .from(desktopHosts)
+          .where(eq(desktopHosts.id, host.id))
+          .limit(1)
+        if (seen && hostOnline(seen.lastSeenAt)) lastAlive = Date.now()
+        else if (Date.now() - lastAlive > MAC_GONE_MS) {
+          await db.update(localRunnerJobs).set({ status: "cancelled", finishedAt: new Date() }).where(eq(localRunnerJobs.id, job.id))
+          return finish(sent === waitingNote ? "" : sent, "error", `Lost contact with ${host.name} mid-run (it quit, slept or went offline). Open Sayabot for Mac and retry.`, "mac_offline")
+        }
+      }
     }
-    await db.update(localRunnerJobs).set({ status: "cancelled", finishedAt: new Date() }).where(eq(localRunnerJobs.id, job.id))
-    return waiting && sent === waitingNote
-      ? finish("", "error", `${host.name} stayed offline for 15 minutes. Open Sayabot for Mac there and retry, or pick another model with "Switch model".`, "mac_offline")
-      : finish(sent, "error", "Took longer than 15 minutes, so it was stopped.")
   } finally {
     unregisterRun(run.id)
   }

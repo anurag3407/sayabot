@@ -39,9 +39,15 @@ export function describeToolCall(args: {
 }
 
 export const APPROVAL_WINDOW_MS = 5 * 60_000
+/**
+ * A step on the owner's own Mac waits longer for an answer: the run has no time limit and costs
+ * the server nothing, so stepping away for a while shouldn't refuse it. Matches
+ * MAC_APPROVAL_TIMEOUT_MS in the orchestrator and APPROVAL_WAIT_MS in the Mac app.
+ */
+export const MAC_APPROVAL_WINDOW_MS = 30 * 60_000
 
-export function approvalMsLeft(createdAt: string, now: number): number {
-  return new Date(createdAt).getTime() + APPROVAL_WINDOW_MS - now
+export function approvalMsLeft(createdAt: string, now: number, windowMs = APPROVAL_WINDOW_MS): number {
+  return new Date(createdAt).getTime() + windowMs - now
 }
 
 export function formatCountdown(ms: number): string {

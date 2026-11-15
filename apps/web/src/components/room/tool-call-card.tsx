@@ -13,12 +13,18 @@ import {
   readMacMarker,
   withoutMacMarker,
 } from "@/lib/mac-runner-shared"
-import { approvalMsLeft, describeToolCall, formatCountdown } from "@/lib/tool-summary"
+import {
+  APPROVAL_WINDOW_MS,
+  approvalMsLeft,
+  describeToolCall,
+  formatCountdown,
+  MAC_APPROVAL_WINDOW_MS,
+} from "@/lib/tool-summary"
 import type { ToolCallView } from "@/lib/types"
 
 const URGENT_MS = 60_000
 
-function useCountdown(createdAt: string, active: boolean): number | null {
+function useCountdown(createdAt: string, active: boolean, windowMs: number): number | null {
   const [now, setNow] = useState<number | null>(null)
   useEffect(() => {
     if (!active) return
@@ -26,7 +32,7 @@ function useCountdown(createdAt: string, active: boolean): number | null {
     const timer = window.setInterval(() => setNow(Date.now()), 1_000)
     return () => window.clearInterval(timer)
   }, [active])
-  return active && now !== null ? approvalMsLeft(createdAt, now) : null
+  return active && now !== null ? approvalMsLeft(createdAt, now, windowMs) : null
 }
 
 export function ApprovalCard({
@@ -48,7 +54,11 @@ export function ApprovalCard({
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const isPending = call.status === "pending_approval"
-  const msLeft = useCountdown(call.createdAt, isPending)
+  const msLeft = useCountdown(
+    call.createdAt,
+    isPending,
+    readMacMarker(call.args) ? MAC_APPROVAL_WINDOW_MS : APPROVAL_WINDOW_MS,
+  )
   const expired = msLeft !== null && msLeft <= 0
   const mac = readMacMarker(call.args)
   const shownArgs = withoutMacMarker(call.args)

@@ -73,11 +73,16 @@ export interface ApprovalNotice {
   roomPath: string | null
 }
 
-const MAX_RUNTIME_MS = 14 * 60_000
+/*
+ * No time limit on runs: they use this Mac and the person's own app subscription, like running
+ * the app in a terminal. A run ends when the app finishes, someone presses stop in the room, or
+ * the Mac app quits (the server notices a Mac that stops checking in).
+ */
 const PROGRESS_MS = 1_500
 const EVENTS_MS = 700
 const APPROVAL_POLL_MS = 1_500
-const APPROVAL_WAIT_MS = 5 * 60_000 + 30_000
+// A little longer than the server's 30-minute window, so the server decides first.
+const APPROVAL_WAIT_MS = 30 * 60_000 + 30_000
 
 /** Sayabot room tools an app must not call in its own turn (its reply is posted for it). */
 const BLOCKED_ROOM_TOOLS = ["post_message", "wait_for_activity", "use_secret"]
@@ -415,14 +420,12 @@ export class LocalRunner {
           child.kill("SIGTERM")
         }
       }, PROGRESS_MS)
-      const deadline = setTimeout(() => child.kill("SIGTERM"), MAX_RUNTIME_MS)
 
       const code: number | null = await new Promise((resolve) => {
         child.on("close", (c) => resolve(c))
         child.on("error", () => resolve(-1))
       })
       clearInterval(progress)
-      clearTimeout(deadline)
       this.child = null
       await flush()
       if (cancelled) return
@@ -632,7 +635,6 @@ export class LocalRunner {
         stop()
       }
     }, PROGRESS_MS)
-    const deadline = setTimeout(stop, MAX_RUNTIME_MS)
     try {
       await connection.request("initialize", initializeParams(), 60_000)
       const session = await connection.request("session/new", { cwd, mcpServers: [] }, 120_000)
@@ -698,7 +700,6 @@ export class LocalRunner {
     } finally {
       clearInterval(eventsTimer)
       clearInterval(progress)
-      clearTimeout(deadline)
       connection.close()
       this.child = null
     }
@@ -754,14 +755,12 @@ export class LocalRunner {
         child.kill("SIGTERM")
       }
     }, PROGRESS_MS)
-    const deadline = setTimeout(() => child.kill("SIGTERM"), MAX_RUNTIME_MS)
 
     const code: number | null = await new Promise((resolve) => {
       child.on("close", (c) => resolve(c))
       child.on("error", () => resolve(-1))
     })
     clearInterval(progress)
-    clearTimeout(deadline)
     this.child = null
     if (cancelled) return
 
@@ -803,7 +802,6 @@ export class LocalRunner {
     }
     const controller = new AbortController()
     this.abortLocal = () => controller.abort()
-    const deadline = setTimeout(() => controller.abort(), MAX_RUNTIME_MS)
     let output = ""
     let lastSent = ""
     let cancelled = false
@@ -863,7 +861,6 @@ export class LocalRunner {
       await this.finish(job, { output: output.trim(), status: "failed", error: hint })
     } finally {
       clearInterval(progress)
-      clearTimeout(deadline)
       this.abortLocal = null
     }
   }
