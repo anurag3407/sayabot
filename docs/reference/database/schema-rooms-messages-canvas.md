@@ -28,6 +28,7 @@ Defined at `packages/db/src/schema/rooms.ts:34`. One row per conversation — a 
 | `timezone` | `text` | NOT NULL, default `"UTC"` | IANA timezone used to interpret schedules in this room. |
 | `agent_dm_user_id` | `uuid` | nullable, FK → `profiles.id`, `ON DELETE SET NULL` | Human side of a `dm` room. |
 | `agent_dm_agent_id` | `uuid` | nullable, FK → `agents.id`, `ON DELETE SET NULL` | Bot side of a `dm` room. |
+| `execution_mode` | `text` | not null, default `'ask_risky'`, check `rooms_execution_mode_check` (`ask_risky`, `review_all`), typed `RoomExecutionMode` | How bots here ask before acting: risky tools only, or every tool (added by `packages/db/sql/0036_room_execution_mode.sql`). |
 | `created_by` | `uuid` | nullable, FK → `profiles.id`, `ON DELETE SET NULL` | Creator. |
 | `created_at` / `updated_at` | `timestamptz` | NOT NULL, default `now()` | Timestamps (`updated_at` maintained by trigger, `0001_functions.sql:13-25`). |
 

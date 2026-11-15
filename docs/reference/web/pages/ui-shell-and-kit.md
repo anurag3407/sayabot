@@ -2,7 +2,7 @@
 
 The authenticated chrome of the app — `WorkspaceShell` (mobile top bar, desktop sidebar, command palette, banners), `AppSidebar` (workspace switcher, chats, bots, tools, account), the `ChatList` component, the ⌘K `CommandPalette`, and the `PlanUsageBanner` — plus the small design-system kit under `components/ui/` (Button, Avatar, Field, Icons, Mascot, Status, Empty, Skeleton, Toast, DetailsMenu, ActionForm, ConfirmButton, CopyButton) and the formatting/identity helpers in `lib/` those components lean on.
 
-Source files: `apps/web/src/components/workspace-shell.tsx`, `apps/web/src/components/workspace/sidebar.tsx`, `apps/web/src/components/workspace/chat-list.tsx`, `apps/web/src/components/command-palette.tsx`, `apps/web/src/components/plan-usage-banner.tsx`, `apps/web/src/components/ui/*`, `apps/web/src/components/copy-button.tsx`, `apps/web/src/lib/format.ts`, `apps/web/src/lib/datetime.ts`, `apps/web/src/lib/human-handle.ts`, `apps/web/src/lib/agent-handle.ts`, `apps/web/src/lib/image-avatar.ts`, `apps/web/src/lib/brand-logos.ts`
+Source files: `apps/web/src/app/globals.css`, `apps/web/src/components/ui/live-mascot.tsx`, `apps/web/src/components/ui/mascot-loader.tsx`, `apps/web/src/components/workspace-shell.tsx`, `apps/web/src/components/workspace/sidebar.tsx`, `apps/web/src/components/workspace/chat-list.tsx`, `apps/web/src/components/command-palette.tsx`, `apps/web/src/components/plan-usage-banner.tsx`, `apps/web/src/components/ui/*`, `apps/web/src/components/copy-button.tsx`, `apps/web/src/lib/format.ts`, `apps/web/src/lib/datetime.ts`, `apps/web/src/lib/human-handle.ts`, `apps/web/src/lib/agent-handle.ts`, `apps/web/src/lib/image-avatar.ts`, `apps/web/src/lib/brand-logos.ts`
 
 ---
 
@@ -15,7 +15,9 @@ The client-side wrapper every `/[org]/*` page renders inside (fed by the `[org]`
 - **Command palette** — global `Cmd/Ctrl+K` toggles `<CommandPalette>`; `ALL_PAGES` (`workspace-shell.tsx:31-41`) feeds it: Chats, Inbox, To-dos, Routines, Files, Meetings, Agents, Find more agents, Search.
 - **Responsive layout** — desktop: fixed `284px` sidebar beside a rounded `main` pane on `bg-ink`. Mobile: a hamburger top bar (with `SayabotMark`, org name and a combined `inbox + unread` badge capped at `99+`) opens the same `AppSidebar` inside a native `<dialog>` via `showModal()`, closed automatically on navigation.
 - **Mac app integration** — `useDesktopApp()` detects `window.sayabotDesktop`; when present the flex row gets `[-webkit-app-region:drag]` and the main pane `no-drag`, because the Mac app hides its title bar and the dark gutters become the drag region.
-- **Banners** — `<GuestBanner>` for guest accounts, then `<PlanUsageBanner>` when the layout's `planUsageNotice` returned data.
+- **Top bar** (desktop) — a 44px row above the main pane: `BackButton` on the left and `TopBarPlanRings` (see [Analytics / Usage UI](./analytics-usage-ui.md)) on the right; in the Mac app it is part of the window's drag region. `BackButton` counts in-window navigations and calls `router.back()` when there is history, otherwise pushes the workspace home; it is hidden on the home itself and also appears in the mobile top bar. `⌘[` goes back too (ignored while typing in a field).
+- **Main pane** — `rounded-[18px]` with a faint `white/6%` border and soft shadow, so the sidebar and pane read as one surface.
+- **Banners** — only `<PlanUsageBanner>` when the layout's `planUsageNotice` returned data. Guests get a quiet "Save your account" row in the sidebar instead of a banner.
 
 ## 🧭 App Sidebar (`components/workspace/sidebar.tsx`)
 
@@ -33,9 +35,9 @@ One column, top to bottom:
 - **ThreadRow** — name, pinned pin, relative `shortTime`, last message preview ("Say hello" for untouched bot DMs), and badges: accent mention count pill, unread dot (not for muted), or a muted BellOff. Its `DetailsMenu` offers: Edit bot (bot DMs) or Chat settings (`<room>/settings`), Copy link (clipboard + toast), Pin/Unpin, Mark as unread, Mute for 8 hours / Mute until I unmute (or Unmute), Archive/Move back.
 - **Row actions** go through `setChatPreferenceAction({ orgSlug, roomId, action, duration })` in a transition; failure toasts, success `router.refresh()`s, and archiving shows a toast with an **Undo** action (`sidebar.tsx:549-561`).
 - **Tools** drawer (bottom, above the account row): Routines, To-dos, Files, Team (`/agents`), Bot store (`/marketplace`).
-- **SidebarPlanRings** (`usage/plan-rings.tsx`, Mac app only) links to `/analytics`.
+- **Save your account** — for `user.isGuest`, a bordered row above the account row linking to `/auth/save-account?next=/<org>` (replaces the old top-of-window guest banner and its "Save account" button).
 - **AccountRow** — avatar with a green "update ready" dot when `useAppUpdate().updateReady`; popover shows name/email, an update install button (label switches between "Install Sayabot <version>" for desktop state `available` and "Reload for the new version"), links to Settings, Meetings, Usage, Get the apps (with `appVersion`), Check for updates, Help, and a `signOutAction` form.
-- The top of the sidebar has a soft radial color wash, and in the desktop app the 14px header area is drag-enabled with `pl-[84px]` clear of the traffic lights.
+- The top of the sidebar has a soft iris radial color wash, and in the desktop app the 14px header area is drag-enabled with `pl-[84px]` clear of the traffic lights.
 
 ### `ChatList` (`components/workspace/chat-list.tsx`)
 
@@ -74,12 +76,21 @@ Shared `controlClass` (panel bg, control border, accent focus). `Label` is mono 
 ~18 hand-drawn 20×20 stroke icons at 18px default: Send, Plus, Close, ChevronDown/Up, Check, Stop, Reply, History, Canvas, Rooms, Agents, Analytics, Shield, Sliders, Menu, Copy, Key, Bot, Tools, Logout, Search, Trace — all `aria-hidden` with currentColor stroke.
 
 ### `mascot.tsx` — the Saya family
-The brand identity generator: `Mascot({ seed, shape, color, mood, antenna, lit, figure, shadow, blink, label, svgRef, children })`.
+The brand identity generator: `Mascot({ seed, shape, color, mood, antenna, lit, figure, shadow, blink, live, rare, label, svgRef, children })`.
 
 - A seed string is FNV-1a hashed to pick a **shape** (squircle, pentagon, pill, triangle, dome, cloud), **color** (six brand pastels), **antenna** (orb, twin, loop, sprout) and **eyes** (pill, round, wide) — so an agent keeps the same look everywhere.
 - A **named cast** overrides generation: Saya, Claude Code, Codex, Hermes, Cursor, Pip, Moss, Juno, Tofu, Nori, Bean, Olive, Miso each have art-directed shape/color/antenna (`CAST`, `mascot.tsx:24-38`).
 - Shared anatomy: gradient shell, dark visor, two lit eyes, antenna lamp. `mood` is `idle | happy | sleep | busy | alert` (happy/sleep draw eye arcs; busy draws squint slits; alert widens the eyes; the mouth flips between smile/O). `lit` turns the antenna lamp on — "across the brand … exactly one thing: it is this agent's turn". Eyes steer via `--lx`/`--ly` CSS vars (set by the landing's `LiveMascot`). `blink` wraps eyes in a `mascot-eyes` animation class. `figure` extends the viewBox to 100×146 adding a torso, belly lamp and floating hands; `shadow` draws the hover pool.
 - Gradients/IDs are namespaced by `useId`; without a label the SVG is `aria-hidden`.
+- **`live`** makes a Saya alive: the svg gets `saya-live` and `data-mood`, so it hovers (`saya-bob`), sways its antenna (`.saya-antenna` wrapper), drifts its hands, pulses its shadow and blinks; `busy` tilts its head and `happy` hops. **`lit`** halos also pulse.
+- **The rare Saya** — `RARE_MASCOT = "Nova"`, reserved for the orchestrator: a cast member with `rare: true` (or any Saya with `rare`) gets an iridescent pink→lilac→blue→mint shell that slowly shifts hue (`saya-prism`), a gold `crown` antenna with gems and the turn lamp at its peak, and four twinkling sparkles (`saya-spark`). The base colour token is `--color-m-prism`.
+- All Saya CSS (lamp, halo, motion) lives in `app/globals.css`, so the workspace and the public site share it; every animation stops under `prefers-reduced-motion`.
+
+### `live-mascot.tsx` — `LiveMascot`, `useInView`
+`LiveMascot` wraps `Mascot` so its eyes follow the pointer (one rAF-throttled `pointermove` listener shared by every instance, only with a fine pointer) and it smiles on hover; pass `live` for the idle motion, while the landing page uses `float`. `useInView` is an `IntersectionObserver` boolean. The home empty state (`ia/chats-view.tsx`) shows your first two bots flanking Nova as live mascots.
+
+### `mascot-loader.tsx` — `MascotLoader`
+The Sayabot loader (`role="status"`, `aria-live="polite"`): Pip, Nova and Moss stand on glow pools and pass the lit lamp down the line every 720 ms (the one holding it hops), while a step line ("Waking up your bots…") rotates every 2.2 s above a sweeping accent bar (`loader-sweep`). `compact` shrinks it. Backs `/auth/complete` ("Opening your workspace") and the `(workspace)/[org]` `loading.tsx`; static under reduced motion.
 
 ### `status.tsx` — `StatusBadge`, `Kbd`
 `StatusBadge({ status, label })` is a mono chip whose color comes from `statusTone()` (`lib/format.ts`): ok for `complete/done/approved`, warn for `streaming/running/pending_approval`, danger for `error/rejected`, accent for `halted`, muted otherwise; underscores become spaces. `Kbd` is a small styled `<kbd>`.
@@ -88,13 +99,16 @@ The brand identity generator: `Mascot({ seed, shape, color, mood, antenna, lit, 
 `EmptyState({ title, body, action })` is a left-bordered text block (used by search, files, inbox). `InlineAlert({ tone })` renders neutral/success/warning/danger notices (`danger` gets `role="alert"`).
 
 ### `skeleton.tsx` — `Skeleton`, `PageSkeleton`, `RoomSkeleton`
-Pulsing placeholders; the two composites (`role="status"`) back the `(workspace)/[org]` `loading.tsx` and room `loading.tsx` states.
+Pulsing placeholders; `RoomSkeleton` (`role="status"`) backs the room `loading.tsx`. `PageSkeleton` remains available; the `(workspace)/[org]` `loading.tsx` now shows a compact `MascotLoader`.
 
 ### `toast.tsx` — `showToast`, `Toaster`
 A custom-event bus (`mesh:toast`): any code can `showToast({ message, tone?, action?, durationMs? })` without context. `Toaster` (mounted once in the root layout) listens, keeps at most 4 visible, auto-dismisses after 5 s (or per `durationMs`), renders top-right cards with tone borders and an optional action link/button, and is `aria-live="polite"`. Actions carry `{ label, href? , onClick? }` — used for the archive **Undo**.
 
 ### `details-menu.tsx` — `DetailsMenu`
-A `<details>` dropdown that also closes on outside pointerdown and Escape (returning focus to the summary), and closes when any child is clicked. Powers the sidebar popovers, workspace switcher, account menu and per-row menus.
+A `<details>` dropdown that closes on outside pointerdown and Escape (returning focus to the summary) and when a menu item, link or button inside is chosen (typing in a field does not close it). Its document listeners exist only while it is open, and its children render only while open: the sidebar has one per chat, and permanently attached listeners made every click and key press fan out across the list. Keyboard: ArrowDown on the summary opens it and focuses the first item; ArrowUp/ArrowDown/Home/End move between items; the summary carries `aria-haspopup="menu"`. Powers the sidebar popovers, workspace switcher, account menu, per-row menus and the composer's "+" and execution-mode menus.
+
+### Surfaces and palette (`app/globals.css`)
+The app runs on a cool graphite scale (`--color-void #09090b` → `--color-hover #27272d`) with an **iris** accent (`--color-accent #9d8cff`, `-strong #b6a9ff`, `-soft #1d1a33`), chosen for contrast (faint text stays ≥ 4.5:1 on panels). The marketing page (`.l-page` in `landing.css`) keeps its ember accent. `.surface-pop` is the one look for popovers and menus (translucent panel, strong hairline, deep shadow, backdrop blur) and `.pop-in` / `.fade-in` are their entrance animations.
 
 ### `action-form.tsx` — `ActionForm`
 Standard wrapper for form-action server actions with the `(_prev, formData) => ActionResult` signature: `useActionState` wiring, error/warning `InlineAlert`s, success toast (`state.message`) with optional `resetOnSuccess`, an optional `confirmLabel`/`confirmWarning` that swaps the submit button for a `ConfirmButton`, plus `footer` and `submitVariant` props.
@@ -138,7 +152,7 @@ Clipboard write with `idle/copied/failed` states ("copied" for 1.5 s, "copy fail
 - [App overview](./app-overview.md) — the server layout that feeds `WorkspaceShell` its props, and update plumbing
 - [Room chat UI](./room-chat-ui.md) — the room view the shell wraps
 - [Settings UI](./settings-ui.md) — the settings nav entries surfaced in the palette's Settings group
-- [Analytics / Usage UI](./analytics-usage-ui.md) — `SidebarPlanRings` and the Usage page they link to
+- [Analytics / Usage UI](./analytics-usage-ui.md) — `TopBarPlanRings` and the Usage page they link to
 - [Marketplace](./marketplace.md) — the "Bot store" tool link and brand logos in action
 - [Landing page](./landing-page.md) — the `SayabotMark` and `Mascot` components shared with marketing
 - [lib-reference](./lib-reference.md) — `format.ts` consumers and the rest of `lib/`

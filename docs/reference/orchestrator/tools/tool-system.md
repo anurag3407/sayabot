@@ -103,6 +103,8 @@ sequenceDiagram
     Note over A,DB: on throw: status = error, error = redacted message, model sees { ok: false, error }
 ```
 
+**Execution mode.** Before recording a call, the wrapper asks `roomReviewsEveryStep(runtime.roomId)` (`audited.ts`), which reads `rooms.execution_mode`. In a `review_all` room every tool, including `safe` ones, takes the `pending_approval` path above; in `ask_risky` (the default) only `dangerous` calls do. The mode is read per call, so a switch from the composer applies mid-run, and a failed lookup falls back to the default: it can only add approval gates, never remove one. Mac runs' native Claude Code tools are governed by Claude Code's own permission mode, which always allows reads.
+
 Key mechanics:
 
 - **Persist before execute**: the row is inserted *before* running the tool, so a crashed tool still leaves an auditable record with status `running`. Non-UUID `runId`/`messageId` (e.g. subagent pseudo-ids) are sanitized to `null` via `toSafeUuid` (`audited.ts:71-77`).

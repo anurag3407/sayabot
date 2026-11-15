@@ -128,7 +128,7 @@ Note `isGuest: access.user.isGuest === true` — guest accounts (see the auth pa
 - **Unread badge** — `attentionUnread(chats)` sums `unreadCount` while skipping muted (`mutedUntil` in the future) and archived chats; shown in the mobile top bar as `99+`-capped.
 - **Responsive layout** — desktop renders a fixed `284px` `<AppSidebar>` beside a rounded main pane. Mobile renders a hamburger top bar and puts `<AppSidebar>` inside a native `<dialog>` that is opened with `showModal()` and closed on navigation.
 - **Desktop app integration** — `useDesktopApp()` detects the Electron wrapper via `window.sayabotDesktop`. In the Mac app the sidebar drag region is enabled (`[-webkit-app-region:drag]`) and the main pane is excluded from dragging, because the app hides its title bar.
-- **Banners** — `<GuestBanner>` for guest accounts and `<PlanUsageBanner>` for cloud plan usage, both above the flex row.
+- **Top bar and banners** — a desktop top bar with a back button and the plan-limit rings (see [UI shell](./ui-shell-and-kit.md)); `<PlanUsageBanner>` for cloud plan usage sits above the flex row. Guests save their account from a sidebar row, not a banner.
 
 ---
 

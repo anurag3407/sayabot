@@ -1,5 +1,5 @@
 import { redactSecrets } from "@sayabot/core"
-import { toolCalls } from "@sayabot/db"
+import { rooms, toolCalls } from "@sayabot/db"
 import { tool, type ToolSet } from "ai"
 import { eq } from "drizzle-orm"
 import { z } from "zod"
@@ -68,6 +68,24 @@ function isDangerous(spec: ToolSpec, args: Record<string, unknown>): boolean {
   return typeof spec.dangerous === "function" ? spec.dangerous(args) : spec.dangerous
 }
 
+/**
+ * "Review every step" (rooms.execution_mode = 'review_all') sends every tool through the
+ * approval gate, not just dangerous ones. Read per call so a switch mid-run applies at once.
+ * A failed lookup keeps the default (risky tools still ask), never anything looser.
+ */
+export async function roomReviewsEveryStep(roomId: string): Promise<boolean> {
+  try {
+    const [row] = await getDb()
+      .select({ mode: rooms.executionMode })
+      .from(rooms)
+      .where(eq(rooms.id, roomId))
+      .limit(1)
+    return row?.mode === "review_all"
+  } catch {
+    return false
+  }
+}
+
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 function toSafeUuid(val?: string | null): string | null {
   if (typeof val === "string" && UUID_REGEX.test(val.trim())) {
@@ -90,7 +108,7 @@ export function toAuditedTools(specs: ToolSpec[], runtime: ToolRuntime): ToolSet
       execute: async (args: unknown, options) => {
         const input = (args ?? {}) as Record<string, unknown>
         if (options.abortSignal?.aborted) return { ok: false, error: "Run stopped before tool execution" }
-        const dangerous = isDangerous(spec, input)
+        const dangerous = isDangerous(spec, input) || (await roomReviewsEveryStep(runtime.roomId))
         const storedArgs = forStorage(input, runtime.scrub)
         const [row] = await getDb()
           .insert(toolCalls)

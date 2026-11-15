@@ -60,9 +60,9 @@ Server actions are reachable by any authenticated (or even anonymous) browser, s
 
 The resolution chain in `apps/web/src/lib/auth.ts`:
 
-1. `getCurrentUser()` (`auth.ts:7`) — Supabase session user from the cookie-bound server client.
+1. `getCurrentUser()` (`auth.ts`) — Supabase session user from the cookie-bound server client, memoised per request with React `cache()`.
 2. `requireUser(nextPath?)` (`auth.ts:15`) — redirects to `/login` (with a `next` param) when there is no session.
-3. `getOrgAccess(slug)` (`auth.ts:75`) — joins `org_members` with `orgs` on the caller's user id; returns `null` for non-members. The result carries the org, the caller's `OrgRole`, and the profile.
+3. `getOrgAccess(slug)` (`auth.ts`) — joins `org_members` with `orgs` on the caller's user id; returns `null` for non-members. Without `options` the lookup is shared per request (`cache()`). The result carries the org, the caller's `OrgRole`, and the profile.
 4. `getRoomAccess(slug, roomId)` (`auth.ts:125`) — resolves the room within the org plus the caller's `room_members` row; `canAdmin` is true for room admins and org admins.
 
 Actions then pick their gate:

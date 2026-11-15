@@ -86,8 +86,13 @@ async function claudeCredentials(): Promise<ClaudeCredentials | null> {
   }
 }
 
+/** Claude's usage endpoint rate-limits hard; after a 429 we stay quiet for a while. */
+const CLAUDE_BACKOFF_MS = 5 * 60_000
+let claudeQuietUntil = 0
+
 export async function readClaudeLimits(): Promise<PlanLimits> {
   const label = "Claude"
+  if (Date.now() < claudeQuietUntil) return unavailable("claude", label, "Claude is busy. Showing the last reading.")
   const credentials = await claudeCredentials()
   if (!credentials) return unavailable("claude", label, "Sign in to Claude Code on this Mac to see its limits.")
   if (credentials.expiresAt !== null && credentials.expiresAt < Date.now() + 60_000) {
@@ -104,6 +109,11 @@ export async function readClaudeLimits(): Promise<PlanLimits> {
     })
     if (response.status === 401 || response.status === 403) {
       return unavailable("claude", label, "Claude Code's sign-in needs a refresh. Run Claude Code once, then check again.")
+    }
+    if (response.status === 429) {
+      const retryAfter = Number(response.headers.get("retry-after"))
+      claudeQuietUntil = Date.now() + (Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : CLAUDE_BACKOFF_MS)
+      return unavailable("claude", label, "Claude is busy. Showing the last reading.")
     }
     if (!response.ok) return unavailable("claude", label, `Claude didn't answer (error ${response.status}).`)
     const windows = parseClaudeUsage(await response.json())
@@ -251,11 +261,26 @@ export async function readAntigravityLimits(): Promise<PlanLimits> {
 // ---------- Entry points the app exposes ----------
 
 let limitsCache: { at: number; value: PlanLimits[] } | null = null
+/** The last reading with numbers, per provider: a passing failure shows it instead of nothing. */
+const lastGood = new Map<PlanLimits["provider"], PlanLimits>()
+const LAST_GOOD_MS = 12 * 60 * 60_000
 
-/** All three, each failing on its own. Cached for a minute so the sidebar can poll cheaply. */
+/** A failed read (rate limit, sign-in refresh, network) falls back to the last good one. */
+export function withLastGood(reading: PlanLimits, now = Date.now()): PlanLimits {
+  if (reading.windows.length) {
+    lastGood.set(reading.provider, reading)
+    return reading
+  }
+  const kept = lastGood.get(reading.provider)
+  if (kept && now - Date.parse(kept.observedAt) < LAST_GOOD_MS) return kept
+  return reading
+}
+
+/** All three, each failing on its own. Cached for a minute so the top bar can poll cheaply. */
 export async function readPlanLimits(force = false): Promise<PlanLimits[]> {
   if (!force && limitsCache && Date.now() - limitsCache.at < CACHE_MS) return limitsCache.value
-  const value = await Promise.all([readClaudeLimits(), readCodexLimits(), readAntigravityLimits()])
+  const read = await Promise.all([readClaudeLimits(), readCodexLimits(), readAntigravityLimits()])
+  const value = read.map((reading) => withLastGood(reading))
   limitsCache = { at: Date.now(), value }
   return value
 }

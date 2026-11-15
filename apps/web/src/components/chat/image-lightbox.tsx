@@ -85,6 +85,7 @@ export function ImageWithLightbox({ src, alt, className, ...props }: ImageProps)
                 onClick={() => setZoom((prev) => Math.max(prev - 25, 50))}
                 className="grid h-8 w-8 place-items-center rounded-md bg-raised text-muted hover:bg-hover hover:text-text disabled:opacity-30"
                 title="Zoom out"
+                aria-label="Zoom out"
                 disabled={zoom <= 50}
               >
                 <ZoomOut className="h-4 w-4" />
@@ -102,6 +103,7 @@ export function ImageWithLightbox({ src, alt, className, ...props }: ImageProps)
                 onClick={() => setZoom((prev) => Math.min(prev + 25, 300))}
                 className="grid h-8 w-8 place-items-center rounded-md bg-raised text-muted hover:bg-hover hover:text-text disabled:opacity-30"
                 title="Zoom in"
+                aria-label="Zoom in"
                 disabled={zoom >= 300}
               >
                 <ZoomIn className="h-4 w-4" />
@@ -112,6 +114,7 @@ export function ImageWithLightbox({ src, alt, className, ...props }: ImageProps)
                 download={alt || "image"}
                 className="grid h-8 w-8 place-items-center rounded-md bg-raised text-muted hover:bg-hover hover:text-text"
                 title="Download image"
+                aria-label="Download image"
               >
                 <Download className="h-4 w-4" />
               </a>

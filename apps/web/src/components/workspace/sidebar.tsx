@@ -38,7 +38,6 @@ import { Avatar } from "@/components/ui/avatar"
 import { DetailsMenu } from "@/components/ui/details-menu"
 import { Mascot } from "@/components/ui/mascot"
 import { showToast } from "@/components/ui/toast"
-import { SidebarPlanRings } from "@/components/usage/plan-rings"
 import { cn } from "@/lib/format"
 import type { ChatListItem, OrgRole, OrgSummary } from "@/lib/types"
 
@@ -55,10 +54,11 @@ interface SidebarUser {
   displayName: string
   avatarUrl: string | null
   email: string | null
+  isGuest?: boolean
 }
 
 const popover =
-  "absolute z-50 overflow-hidden rounded-2xl border border-line-strong bg-panel p-1.5 shadow-[0_18px_48px_rgba(0,0,0,0.55)]"
+  "surface-pop pop-in absolute z-50 overflow-hidden rounded-2xl p-1.5"
 
 const popoverItem =
   "flex w-full items-center gap-2.5 truncate rounded-xl px-2.5 py-2 text-left text-[13.5px] text-muted transition-colors hover:bg-raised hover:text-text disabled:opacity-50"
@@ -591,7 +591,7 @@ export function AppSidebar({
       {/* A soft wash of colour at the top, so the sidebar feels like a place, not a table. */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 h-56 bg-[radial-gradient(120%_80%_at_0%_0%,rgba(255,93,108,0.16),transparent_60%),radial-gradient(90%_70%_at_100%_0%,rgba(183,156,240,0.14),transparent_65%)]"
+        className="pointer-events-none absolute inset-x-0 top-0 h-56 bg-[radial-gradient(120%_80%_at_0%_0%,rgba(157,140,255,0.10),transparent_60%),radial-gradient(90%_70%_at_100%_0%,rgba(110,180,255,0.06),transparent_65%)]"
       />
 
       <div
@@ -646,6 +646,7 @@ export function AppSidebar({
             type="button"
             onClick={onOpenPalette}
             title="Go anywhere"
+            aria-label="Open the command palette"
             className="hidden shrink-0 rounded-md border border-line-strong px-1.5 py-px font-sans text-[10.5px] text-faint hover:text-text md:block"
           >
             ⌘K
@@ -759,8 +760,23 @@ export function AppSidebar({
             })}
           </nav>
         </Section>
-        <SidebarPlanRings usageHref={`${base}/analytics`} onNavigate={onNavigate} />
       </div>
+
+      {user.isGuest ? (
+        <div className="relative shrink-0 px-2.5 pt-1">
+          <Link
+            href={`/auth/save-account?next=${encodeURIComponent(base)}`}
+            onClick={onNavigate}
+            className="flex items-center gap-2.5 rounded-xl border border-line px-3 py-2 text-[12.5px] leading-snug text-muted transition-colors hover:border-line-strong hover:text-text"
+          >
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" aria-hidden="true" />
+            <span className="min-w-0 flex-1">
+              <span className="block text-text">Save your account</span>
+              Keep your bots on your phone and the web
+            </span>
+          </Link>
+        </div>
+      ) : null}
 
       <div className="relative flex shrink-0 items-center gap-1 px-2.5 pb-3 pt-1">
         <AccountRow base={base} user={user} role={role} />

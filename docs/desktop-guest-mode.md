@@ -108,6 +108,6 @@ where is_anonymous and last_sign_in_at < now() - interval '30 days';
 
 - [`apps/web/src/app/api/desktop/guest/route.ts`](../apps/web/src/app/api/desktop/guest/route.ts): guest config
 - [`apps/web/src/app/auth/save-account/page.tsx`](../apps/web/src/app/auth/save-account/page.tsx) + [`save-account-form.tsx`](../apps/web/src/components/auth/save-account-form.tsx): "Save account" entry
-- [`apps/web/src/components/auth/guest-banner.tsx`](../apps/web/src/components/auth/guest-banner.tsx): workspace banner
+- [`apps/web/src/components/workspace/sidebar.tsx`](../apps/web/src/components/workspace/sidebar.tsx): "Save your account" row for guests
 - [`apps/desktop/src/main.ts`](../apps/desktop/src/main.ts): `createGuestSession`, `auth:start-guest`
 - [`apps/desktop/src/renderer/index.html`](../apps/desktop/src/renderer/index.html): auto-start + fallback card

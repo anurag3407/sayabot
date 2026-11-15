@@ -62,6 +62,10 @@ Room-member action over the same `room_reads` row (`room-state.ts:35`):
 
 Revalidates the workspace layout; audit-free (per-user state is not audited).
 
+### `setRoomExecutionModeAction(input: { orgSlug, roomId, mode })`
+
+Sets `rooms.execution_mode` to `"ask_risky"` or `"review_all"` (anything else fails with "Unknown mode"). Allowed for room members and workspace admins (`roomRole !== null || canAdmin`); writes with the admin client scoped to the org, audits `room.execution_mode_set` with `{ mode }`, and returns "Bots will ask before every step here" / "Bots will ask before risky steps". It does not revalidate: the composer holds the value optimistically. See [tool system](../../orchestrator/tools/tool-system.md) for how the orchestrator applies it.
+
 ### `openBotDmAction(orgSlug, agentId)`
 
 Authenticated action that resolves the agent in the org, ensures the 1:1 room via `ensureBotDmRoom` (see the agents/bots reference), audits `bot_dm.opened`, and returns `data.path = "/<orgSlug>/r/<roomId>"` (`room-state.ts:98`).

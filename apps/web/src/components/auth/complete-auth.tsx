@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
 import { createSupabaseBrowserClient } from "@/lib/supabase/client"
-import { Mascot } from "@/components/ui/mascot"
+import { MascotLoader } from "@/components/ui/mascot-loader"
 
 export function CompleteAuth({ next }: { next: string }) {
   const [error, setError] = useState<string | null>(null)
@@ -107,30 +107,13 @@ export function CompleteAuth({ next }: { next: string }) {
 
   if (!error) {
     return (
-      <div className="flex flex-col items-center justify-center text-center space-y-4 animate-in fade-in duration-300">
-        <div className="relative flex h-20 w-20 items-center justify-center rounded-2xl bg-white/5 border border-white/10 shadow-2xl">
-          <Mascot seed="Pip" blink lit mood="alert" className="h-12 w-12" />
-          <span className="absolute -top-1 -right-1 flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
-          </span>
-        </div>
-
-        <div className="space-y-1.5">
-          <h1 className="text-xl font-semibold tracking-tight text-white">Opening Sayabot Workspace</h1>
-          <p className="text-sm text-neutral-400">Syncing rooms, canvas, and active agents…</p>
-        </div>
-
-        <div className="w-56 h-1 bg-white/10 rounded-full overflow-hidden mt-2">
-          <div className="h-full bg-emerald-500 animate-pulse rounded-full w-2/3" />
-        </div>
-      </div>
+      <MascotLoader title="Opening your workspace" steps={["Waking up your bots", "Syncing your chats", "Getting the canvas ready"]} />
     )
   }
 
   return (
-    <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-[#0f130f] p-6 shadow-2xl text-center space-y-4">
-      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400">
+    <div className="w-full max-w-sm rounded-2xl border border-line bg-panel p-6 shadow-2xl text-center space-y-4">
+      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-danger/10 border border-danger/20 text-danger">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <circle cx="12" cy="12" r="10" />
           <line x1="12" y1="8" x2="12" y2="12" />

@@ -71,6 +71,7 @@ Changes only `display_name` (1–60 chars) and `system_prompt` (trimmed, capped 
   - `scope: "default"` (without `clear`) delegates to `setAgentModelAction`, then clears `room_agents.model_override` so the chat follows the bot everywhere.
   - `clear` just removes the override and keeps the bot's default.
   - `scope: "chat"` writes a `model_override` object `{ keyId, model, effort, providerKeyId, agentModel, runner }` onto `room_agents` after checking that a Mac pick belongs to the bot's owner (`agents.ts:627`). Audit `room.agent_model_set`.
+  - Neither the chat nor the clear path revalidates: chat models are read only by the picker's own API (`/api/connectors/models/room`), and re-rendering the whole workspace layout on every pick made model changes lag. `setAgentModelAction` revalidates only `/<org>/agents` (layout), where a bot's default model is shown.
 
 ### Desktop placement (`setAgentWorksOnAction`, `setAgentWhenMacOffAction`)
 

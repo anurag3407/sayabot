@@ -14,9 +14,9 @@ Source files: `apps/web/src/lib/auth.ts`, `apps/web/src/proxy.ts`, `apps/web/src
 
 | Helper | Behaviour |
 | :--- | :--- |
-| `getCurrentUser()` | `supabase.auth.getUser()` from the cookie-bound server client; `null` when signed out |
+| `getCurrentUser()` | `supabase.auth.getUser()` from the cookie-bound server client; `null` when signed out. Wrapped in React `cache()`, so it runs once per request |
 | `requireUser(nextPath?)` | redirects to `/login` when signed out |
-| `getOrgAccess(slug)` | looks up `org_members` joined with `orgs`; returns `{ org, role, user }` or `null`; `requireOrgAccess` 404s when missing |
+| `getOrgAccess(slug)` | looks up `org_members` joined with `orgs`; returns `{ org, role, user }` or `null`; `requireOrgAccess` 404s when missing. Calls without `options` share one per-request lookup (`cache()`), so the layout and page do not repeat it |
 | `isOrgAdmin(role)` | `role === "owner" \|\| role === "admin"` |
 | `requireOrgAdmin(slug)` | non-admins are redirected to `/{slug}/settings`; each settings page calls it itself because layouts are not guaranteed to re-run (`auth.ts:115-123`) |
 | `getRoomAccess(slug, roomId)` | org access + the room row (must match `org_id`) + `room_members.role`; computes `canAdmin = roomRole === "admin" || isOrgAdmin(org.role)` |

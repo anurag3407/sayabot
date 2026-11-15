@@ -17,6 +17,7 @@ import type {
   MemberView,
   MessageView,
   RoomAgentView,
+  RoomExecutionMode,
   ToolCallView,
   TurnStateView,
 } from "@/lib/types"
@@ -49,6 +50,7 @@ export function ChatPanel({
   roomId,
   roomName,
   roomKind = "public",
+  executionMode = "ask_risky",
   user,
   messages,
   toolCalls,
@@ -74,6 +76,7 @@ export function ChatPanel({
   roomId: string
   roomName: string
   roomKind?: "public" | "private" | "dm"
+  executionMode?: RoomExecutionMode
   user: { id: string; displayName: string }
   messages: MessageView[]
   toolCalls: ToolCallView[]
@@ -408,6 +411,7 @@ export function ChatPanel({
           selfId={user.id}
           canAdmin={canAdmin}
           roomKind={roomKind}
+          executionMode={executionMode}
           placeholder={
             roomKind === "public" ? `Message #${roomName}` : `Message ${roomName}`
           }

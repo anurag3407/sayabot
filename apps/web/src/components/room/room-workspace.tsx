@@ -11,7 +11,6 @@ import { useRoomRealtime } from "@/components/room/use-room-realtime"
 import { EnableAlerts, RoomActivity } from "@/components/room/room-activity"
 import { RoomMeetingBar } from "@/components/room/room-meeting-bar"
 import { InviteBotDialog } from "@/components/room/invite-bot-dialog"
-import { RoomModelPicker } from "@/components/room/model-picker/room-model-picker"
 import { InvitePeople, RoomInviteNudge } from "@/components/room/invite-people"
 import { RoomSidePanel, type RoomRoutine, type SideTab } from "@/components/room/side-panel"
 import { PresenceLine } from "@/components/ui/avatar"
@@ -161,6 +160,7 @@ export function RoomWorkspace({
       roomId={data.room.id}
       roomName={data.room.name}
       roomKind={data.room.kind}
+      executionMode={data.room.executionMode}
       user={{ id: data.user.id, displayName: data.user.displayName }}
       messages={realtime.messages}
       toolCalls={realtime.toolCalls}
@@ -254,7 +254,8 @@ export function RoomWorkspace({
             <Mascot
               seed={dmAgent.displayName}
               mood={realtime.turnState?.activeAgentId ? "busy" : "idle"}
-              blink
+              lit={Boolean(realtime.turnState?.activeAgentId)}
+              live
               className="h-8 w-8 shrink-0"
             />
           ) : data.roomAgents.length ? (
@@ -308,7 +309,6 @@ export function RoomWorkspace({
               <InvitePeople {...inviteProps} />
             </div>
           ) : null}
-          <RoomModelPicker orgSlug={data.org.slug} roomId={data.room.id} />
           <button
             type="button"
             aria-pressed={panelShowing}

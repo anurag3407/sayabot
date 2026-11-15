@@ -1,16 +1,21 @@
 import "server-only"
 import { notFound, redirect } from "next/navigation"
+import { cache } from "react"
 import type { SupabaseClient, User } from "@supabase/supabase-js"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 import type { OrgAccess, OrgRole, OrgSummary, RoomAccess, RoomRole, RoomView } from "@/lib/types"
 
-export async function getCurrentUser(): Promise<User | null> {
+/**
+ * The signed-in user, asked of Supabase once per request. Layouts, pages and actions all call
+ * this; without the per-request cache every navigation paid for several auth round trips.
+ */
+export const getCurrentUser = cache(async (): Promise<User | null> => {
   const supabase = await createSupabaseServerClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
   return user
-}
+})
 
 export async function requireUser(nextPath?: string): Promise<User> {
   const user = await getCurrentUser()
@@ -72,7 +77,17 @@ export async function listUserOrgs(userId: string): Promise<OrgSummary[]> {
   }))
 }
 
+/** The layout and the page both check access; one lookup per request serves both. */
+const orgAccessForRequest = cache((slug: string) => loadOrgAccess(slug))
+
 export async function getOrgAccess(
+  slug: string,
+  options?: { client?: SupabaseClient<any>; user?: User },
+): Promise<OrgAccess | null> {
+  return options ? loadOrgAccess(slug, options) : orgAccessForRequest(slug)
+}
+
+async function loadOrgAccess(
   slug: string,
   options?: { client?: SupabaseClient<any>; user?: User },
 ): Promise<OrgAccess | null> {
@@ -139,12 +154,11 @@ export async function getRoomAccess(
     .eq("org_id", org.org.id)
     .maybeSingle()
   if (!room) return null
-  const { data: membership } = await supabase
-    .from("room_members")
-    .select("role")
-    .eq("room_id", roomId)
-    .eq("user_id", org.user.id)
-    .maybeSingle()
+  // The execution mode is read on its own so a server ahead of its migration still opens rooms.
+  const [{ data: membership }, { data: mode }] = await Promise.all([
+    supabase.from("room_members").select("role").eq("room_id", roomId).eq("user_id", org.user.id).maybeSingle(),
+    supabase.from("rooms").select("execution_mode").eq("id", roomId).maybeSingle(),
+  ])
   const roomRole = (membership?.role as RoomRole | undefined) ?? null
   const roomView: RoomView = {
     id: room.id,
@@ -161,6 +175,7 @@ export async function getRoomAccess(
     timezone: room.timezone ?? "UTC",
     agentDmUserId: room.agent_dm_user_id ?? null,
     agentDmAgentId: room.agent_dm_agent_id ?? null,
+    executionMode: (mode as { execution_mode?: string } | null)?.execution_mode === "review_all" ? "review_all" : "ask_risky",
     createdAt: room.created_at,
   }
   return {

@@ -13,16 +13,20 @@ const COLORS = [
   "var(--color-m-coral)",
 ]
 
-type Antenna = "orb" | "twin" | "loop" | "sprout"
+type Antenna = "orb" | "twin" | "loop" | "sprout" | "crown"
 type Ears = "pods" | "fins" | "none"
 type Eyes = "pill" | "round" | "wide"
 
 const ANTENNAS: Antenna[] = ["orb", "twin", "loop", "sprout"]
 const EYES: Eyes[] = ["pill", "round", "wide"]
 
+/** The rare one. Its prism shell, crown and sparkles are reserved for the orchestrator. */
+export const RARE_MASCOT = "Nova"
+
 /** The named cast is art-directed. Everyone else gets a stable generated look. */
-const CAST: Record<string, { shape: MascotShape; color: string; antenna: Antenna }> = {
+const CAST: Record<string, { shape: MascotShape; color: string; antenna: Antenna; rare?: boolean }> = {
   Saya: { shape: "squircle", color: "var(--color-accent)", antenna: "orb" },
+  [RARE_MASCOT]: { shape: "squircle", color: "var(--color-m-prism)", antenna: "crown", rare: true },
   "Claude Code": { shape: "cloud", color: "var(--color-m-yellow)", antenna: "orb" },
   Codex: { shape: "pentagon", color: "var(--color-m-blue)", antenna: "twin" },
   Hermes: { shape: "triangle", color: "var(--color-m-pink)", antenna: "sprout" },
@@ -98,6 +102,12 @@ const ANATOMY: Record<
 
 const INK = "#0e0b12"
 const LAMP = "#ffd08a"
+const GOLD = "#f6c26b"
+
+/** A four-point sparkle centred on (x, y). */
+function sparkle(x: number, y: number, size: number) {
+  return `M${x} ${y - size}Q${x} ${y} ${x + size} ${y}Q${x} ${y} ${x} ${y + size}Q${x} ${y} ${x - size} ${y}Q${x} ${y} ${x} ${y - size}Z`
+}
 
 function AntennaArt({ kind, top, paint }: { kind: Antenna; top: number; paint: string }) {
   const lamp = (cx: number, cy: number, r: number) => (
@@ -109,6 +119,22 @@ function AntennaArt({ kind, top, paint }: { kind: Antenna; top: number; paint: s
   )
   const y = top + 2
   switch (kind) {
+    case "crown":
+      return (
+        <g>
+          <path
+            d={`M36 ${y + 1}L34 ${y - 13}L42.5 ${y - 6}L50 ${y - 17}L57.5 ${y - 6}L66 ${y - 13}L64 ${y + 1}Z`}
+            fill={GOLD}
+            stroke="#b9802e"
+            strokeWidth="1.4"
+            strokeLinejoin="round"
+          />
+          <path d={`M37 ${y - 2}H63`} stroke="#fff3d6" strokeOpacity="0.7" strokeWidth="1.4" strokeLinecap="round" />
+          <circle cx="34" cy={y - 14} r="2.2" fill="#f9a8d4" />
+          <circle cx="66" cy={y - 14} r="2.2" fill="#93c5fd" />
+          {lamp(50, y - 19, 3.8)}
+        </g>
+      )
     case "twin":
       return (
         <g>
@@ -232,6 +258,8 @@ export function Mascot({
   figure = false,
   shadow = false,
   blink = false,
+  live = false,
+  rare,
   label,
   className,
   style,
@@ -250,6 +278,10 @@ export function Mascot({
   /** The soft pool of colour a Saya hovers over. */
   shadow?: boolean
   blink?: boolean
+  /** Alive: hovers, sways its antenna and blinks. Respects reduced motion. */
+  live?: boolean
+  /** The rare prism Saya (crown, iridescent shell, sparkles). Defaults on for the rare cast member. */
+  rare?: boolean
   label?: string
   className?: string
   style?: CSSProperties
@@ -263,6 +295,8 @@ export function Mascot({
   const base = color ?? known?.color ?? COLORS[(value >>> 4) % COLORS.length]!
   const antennaKind = antenna ?? known?.antenna ?? ANTENNAS[(value >>> 8) % ANTENNAS.length]!
   const eyeKind = EYES[(value >>> 11) % EYES.length]!
+  const isRare = rare ?? Boolean(known?.rare)
+  const blinking = blink || live
   const body = ANATOMY[bodyShape]
   const [vx, vy, vw, vh, vr] = body.visor
   const cx = vx + vw / 2
@@ -274,9 +308,11 @@ export function Mascot({
 
   const shell = (
     <g className="saya-head">
-      <AntennaArt kind={antennaKind} top={body.top} paint={darker} />
+      <g className="saya-antenna">
+        <AntennaArt kind={isRare ? "crown" : antennaKind} top={body.top} paint={darker} />
+      </g>
       <EarArt kind={body.ears} xs={body.earX} y={cy} paint={darker} />
-      <path d={body.shell} fill={paint} />
+      <path d={body.shell} fill={isRare ? `url(#${id}p)` : paint} className={isRare ? "saya-prism" : undefined} />
       <g clipPath={`url(#${id}c)`}>
         <ellipse cx="30" cy={body.top + 8} rx="46" ry="30" fill={`url(#${id}h)`} />
         <ellipse cx="50" cy="104" rx="66" ry="30" fill={`url(#${id}d)`} />
@@ -291,7 +327,7 @@ export function Mascot({
       />
       <ellipse cx={cx - gap - 7} cy={cy + 10.5} rx="4.4" ry="2.2" fill={base} opacity="0.5" />
       <ellipse cx={cx + gap + 7} cy={cy + 10.5} rx="4.4" ry="2.2" fill={base} opacity="0.5" />
-      <Face mood={mood} eyes={eyeKind} cx={cx} cy={cy - 1} gap={gap} glow={glow} blink={blink} />
+      <Face mood={mood} eyes={eyeKind} cx={cx} cy={cy - 1} gap={gap} glow={glow} blink={blinking} />
       {mood === "sleep" || mood === "busy" ? null : (
         <path
           d={mood === "alert" ? `M${cx - 2.4} ${cy + 12.6}a2.4 2.2 0 1 0 4.8 0a2.4 2.2 0 1 0 -4.8 0Z` : `M${cx - 3.6} ${cy + 11}q3.6 3.6 7.2 0`}
@@ -309,7 +345,8 @@ export function Mascot({
       ref={svgRef}
       viewBox={figure ? "0 0 100 146" : "0 0 100 100"}
       data-lit={lit ? "true" : undefined}
-      className={className}
+      data-mood={live ? mood : undefined}
+      className={[live ? "saya-live" : null, className].filter(Boolean).join(" ") || undefined}
       style={{ overflow: "visible", flex: "none", ...style }}
       {...(label ? { role: "img", "aria-label": label } : { "aria-hidden": true })}
       focusable="false"
@@ -337,6 +374,14 @@ export function Mascot({
           <stop offset="0" style={{ stopColor: base, stopOpacity: 0.55 }} />
           <stop offset="1" style={{ stopColor: base, stopOpacity: 0 }} />
         </radialGradient>
+        {isRare ? (
+          <linearGradient id={`${id}p`} x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stopColor="#fbcfe8" />
+            <stop offset="0.35" stopColor="#c4b5fd" />
+            <stop offset="0.65" stopColor="#93c5fd" />
+            <stop offset="1" stopColor="#86efac" />
+          </linearGradient>
+        ) : null}
         <clipPath id={`${id}c`}>
           <path d={body.shell} />
         </clipPath>
@@ -348,20 +393,28 @@ export function Mascot({
 
       {figure ? (
         <g className="saya-body">
-          <path d="M34 86H66C72 86 74 92 74 98C74 114 66 126 50 126C34 126 26 114 26 98C26 92 28 86 34 86Z" fill={paint} />
+          <path d="M34 86H66C72 86 74 92 74 98C74 114 66 126 50 126C34 126 26 114 26 98C26 92 28 86 34 86Z" fill={isRare ? `url(#${id}p)` : paint} />
           <ellipse cx="50" cy="124" rx="24" ry="9" fill={darker} opacity="0.55" />
           <circle cx="50" cy="104" r="6.4" fill={INK} />
           <circle className="saya-halo" cx="50" cy="104" r="11" fill={LAMP} />
           <circle className="saya-lamp" cx="50" cy="104" r="3.6" />
           <g className="saya-hand saya-hand-l">
-            <ellipse cx="16" cy="104" rx="8" ry="9.5" fill={paint} />
+            <ellipse cx="16" cy="104" rx="8" ry="9.5" fill={isRare ? `url(#${id}p)` : paint} />
           </g>
           <g className="saya-hand saya-hand-r">
-            <ellipse cx="84" cy="104" rx="8" ry="9.5" fill={paint} />
+            <ellipse cx="84" cy="104" rx="8" ry="9.5" fill={isRare ? `url(#${id}p)` : paint} />
           </g>
         </g>
       ) : null}
       {shell}
+      {isRare ? (
+        <g fill="#fff">
+          <path className="saya-spark" d={sparkle(8, 34, 5)} />
+          <path className="saya-spark" d={sparkle(93, 28, 4)} fill="#fde68a" />
+          <path className="saya-spark" d={sparkle(96, 72, 3.4)} />
+          <path className="saya-spark" d={sparkle(4, 80, 3.6)} fill="#c4b5fd" />
+        </g>
+      ) : null}
       {children}
     </svg>
   )

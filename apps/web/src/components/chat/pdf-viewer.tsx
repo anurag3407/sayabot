@@ -377,6 +377,7 @@ export function PdfViewer({
                   disabled={page <= 1}
                   className="grid h-7 w-7 place-items-center rounded text-muted hover:bg-hover hover:text-text disabled:opacity-30"
                   title="Previous page"
+                  aria-label="Previous page"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </button>
@@ -388,6 +389,7 @@ export function PdfViewer({
                   onClick={handleNextPage}
                   className="grid h-7 w-7 place-items-center rounded text-muted hover:bg-hover hover:text-text"
                   title="Next page"
+                  aria-label="Next page"
                 >
                   <ChevronRight className="h-4 w-4" />
                 </button>
@@ -400,6 +402,7 @@ export function PdfViewer({
                   disabled={zoom <= 50}
                   className="grid h-7 w-7 place-items-center rounded text-muted hover:bg-hover hover:text-text disabled:opacity-30"
                   title="Zoom out"
+                  aria-label="Zoom out"
                 >
                   <ZoomOut className="h-4 w-4" />
                 </button>
@@ -417,6 +420,7 @@ export function PdfViewer({
                   disabled={zoom >= 250}
                   className="grid h-7 w-7 place-items-center rounded text-muted hover:bg-hover hover:text-text disabled:opacity-30"
                   title="Zoom in"
+                  aria-label="Zoom in"
                 >
                   <ZoomIn className="h-4 w-4" />
                 </button>
@@ -427,6 +431,7 @@ export function PdfViewer({
                 download={filename}
                 className="grid h-8 w-8 place-items-center rounded-lg bg-raised text-muted hover:bg-hover hover:text-text"
                 title="Download PDF"
+                aria-label="Download PDF"
               >
                 <Download className="h-4 w-4" />
               </a>
@@ -437,6 +442,7 @@ export function PdfViewer({
                 rel="noopener noreferrer"
                 className="grid h-8 w-8 place-items-center rounded-lg bg-raised text-muted hover:bg-hover hover:text-text"
                 title="Open in new window"
+                aria-label="Open in new window"
               >
                 <ExternalLink className="h-4 w-4" />
               </a>

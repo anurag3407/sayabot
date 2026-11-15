@@ -8,7 +8,7 @@ import { Mascot } from "@/components/ui/mascot"
 import { AppleIcon, AndroidIcon } from "@/components/landing/brand-icons"
 import { DOWNLOADS } from "@/components/landing/content"
 import { edition, instanceName } from "@/lib/env"
-import { getPublicOrigin } from "@/lib/public-origin"
+import { getPublicOrigin, needsServerAddress } from "@/lib/public-origin"
 
 const SELF_HOSTING_DOCS =
   "https://github.com/anurag3407/sayabot/blob/main/docs/self-hosting-quickstart.md"
@@ -27,7 +27,9 @@ export const metadata: Metadata = {
 
 export default async function DownloadPage() {
   const server = await thisServer()
-  const selfHosted = edition() === "self-hosted"
+  // The connect panel is for self-hosted servers. On the default server the apps already
+  // connect here, so telling people to pick "My own server" and type this address was wrong.
+  const selfHosted = edition() === "self-hosted" && needsServerAddress(server)
   const host = server.replace(/^https?:\/\//, "")
   const connectLink = `sayabot://connect?server=${encodeURIComponent(server)}`
   const installCmd = `curl -fsSL ${server}/install-mac.sh | bash`
@@ -37,13 +39,13 @@ export default async function DownloadPage() {
       <div className="mx-auto max-w-5xl px-5 py-12 sm:px-8 lg:py-20">
         {/* Header */}
         <div className="text-center max-w-2xl mx-auto">
-          <p className="font-mono text-xs uppercase tracking-widest text-emerald-400">
+          <p className="font-mono text-xs uppercase tracking-widest text-accent">
             Multi-Device Workspace
           </p>
           <h1 className="mt-3 text-4xl font-medium tracking-tight sm:text-5xl text-white">
             Take your agents anywhere.
           </h1>
-          <p className="mt-4 text-base leading-relaxed text-neutral-400">
+          <p className="mt-4 text-base leading-relaxed text-muted">
             Your bots run on your Mac or on Sayabot. Chat with them and approve what they do from
             your Mac or your phone.
           </p>
@@ -52,15 +54,15 @@ export default async function DownloadPage() {
         {selfHosted ? (
           <section
             aria-labelledby="connect-title"
-            className="mx-auto mt-10 max-w-3xl rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.06] p-6"
+            className="mx-auto mt-10 max-w-3xl rounded-2xl border border-accent/25 bg-accent/[0.06] p-6"
           >
             <div className="flex items-start gap-3">
-              <Server className="mt-0.5 h-5 w-5 shrink-0 text-emerald-400" />
+              <Server className="mt-0.5 h-5 w-5 shrink-0 text-accent" />
               <div className="min-w-0 flex-1">
                 <h2 id="connect-title" className="text-base font-medium text-white">
                   Connect your apps to {instanceName()}
                 </h2>
-                <p className="mt-1 text-sm leading-relaxed text-neutral-400">
+                <p className="mt-1 text-sm leading-relaxed text-muted">
                   These apps work with this server. Install one, then connect it here: your data
                   stays on this server.
                 </p>
@@ -73,14 +75,14 @@ export default async function DownloadPage() {
                     Open in Sayabot for Mac
                   </a>
                   <div className="flex min-w-0 items-center gap-2 rounded-xl border border-white/10 bg-black/30 px-3 py-2">
-                    <span className="font-mono text-[11px] text-neutral-500">server</span>
+                    <span className="font-mono text-[11px] text-faint">server</span>
                     <span className="min-w-0 truncate font-mono text-[13px] text-neutral-200">
                       {host}
                     </span>
                     <CopyButton text={server} />
                   </div>
                 </div>
-                <p className="mt-3 text-xs leading-relaxed text-neutral-500">
+                <p className="mt-3 text-xs leading-relaxed text-faint">
                   On your phone or a fresh Mac install, choose <strong>My own server</strong> and
                   enter <span className="font-mono text-neutral-300">{host}</span>.
                 </p>
@@ -92,36 +94,36 @@ export default async function DownloadPage() {
         {/* Download Cards */}
         <div className="mt-14 grid gap-8 sm:grid-cols-2">
           {/* macOS Card */}
-          <div className="relative rounded-3xl border border-white/10 bg-[#0f130f] p-8 shadow-xl flex flex-col justify-between overflow-hidden">
-            <div className="absolute top-0 right-0 -mr-6 -mt-6 h-32 w-32 rounded-full bg-emerald-500/10 blur-2xl" />
+          <div className="relative rounded-3xl border border-white/10 bg-panel p-8 shadow-xl flex flex-col justify-between overflow-hidden">
+            <div className="absolute top-0 right-0 -mr-6 -mt-6 h-32 w-32 rounded-full bg-accent/10 blur-2xl" />
 
             <div>
               <div className="flex items-center justify-between">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/5 border border-white/10">
                   <AppleIcon className="h-7 w-7 text-white" />
                 </div>
-                <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-mono text-emerald-400 border border-emerald-500/20">
+                <span className="rounded-full bg-accent/10 px-3 py-1 text-xs font-mono text-accent border border-accent/20">
                   macOS 14+
                 </span>
               </div>
 
               <h2 className="mt-6 text-2xl font-medium text-white">Sayabot for Mac</h2>
-              <p className="mt-2 text-sm text-neutral-400 leading-relaxed">
+              <p className="mt-2 text-sm text-muted leading-relaxed">
                 Your bots work with the Claude Code or Codex you already use on your Mac. No API key
                 needed, and they ask before doing anything risky.
               </p>
 
               <ul className="mt-6 space-y-2.5 text-xs text-neutral-300">
                 <li className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                  <CheckCircle2 className="h-4 w-4 text-accent shrink-0" />
                   <span>Sign in with Google or GitHub in one click</span>
                 </li>
                 <li className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                  <CheckCircle2 className="h-4 w-4 text-accent shrink-0" />
                   <span>Uses your own Claude or ChatGPT subscription</span>
                 </li>
                 <li className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                  <CheckCircle2 className="h-4 w-4 text-accent shrink-0" />
                   <span>Same chats and bots as on {host}</span>
                 </li>
               </ul>
@@ -133,35 +135,35 @@ export default async function DownloadPage() {
           </div>
 
           {/* Android Card */}
-          <div className="relative rounded-3xl border border-white/10 bg-[#0f130f] p-8 shadow-xl flex flex-col justify-between overflow-hidden">
-            <div className="absolute top-0 right-0 -mr-6 -mt-6 h-32 w-32 rounded-full bg-emerald-500/10 blur-2xl" />
+          <div className="relative rounded-3xl border border-white/10 bg-panel p-8 shadow-xl flex flex-col justify-between overflow-hidden">
+            <div className="absolute top-0 right-0 -mr-6 -mt-6 h-32 w-32 rounded-full bg-accent/10 blur-2xl" />
 
             <div>
               <div className="flex items-center justify-between">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/5 border border-white/10">
                   <AndroidIcon className="h-7 w-7 text-white" />
                 </div>
-                <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-mono text-emerald-400 border border-emerald-500/20">
+                <span className="rounded-full bg-accent/10 px-3 py-1 text-xs font-mono text-accent border border-accent/20">
                   Android 10+
                 </span>
               </div>
 
               <h2 className="mt-6 text-2xl font-medium text-white">Sayabot for Android</h2>
-              <p className="mt-2 text-sm text-neutral-400 leading-relaxed">
+              <p className="mt-2 text-sm text-muted leading-relaxed">
                 Chat with your bots and say yes or no to what they want to do, from your phone.
               </p>
 
               <ul className="mt-6 space-y-2.5 text-xs text-neutral-300">
                 <li className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                  <CheckCircle2 className="h-4 w-4 text-accent shrink-0" />
                   <span>Signs into the same account as your Mac</span>
                 </li>
                 <li className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                  <CheckCircle2 className="h-4 w-4 text-accent shrink-0" />
                   <span>Approve your bots&apos; actions with one tap</span>
                 </li>
                 <li className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                  <CheckCircle2 className="h-4 w-4 text-accent shrink-0" />
                   <span>Works with bots on your Mac or on Sayabot</span>
                 </li>
               </ul>
@@ -176,7 +178,7 @@ export default async function DownloadPage() {
                 <ArrowDownToLine className="h-4 w-4" />
                 <span>Download Android APK</span>
               </a>
-              <p className="text-center text-[11px] text-neutral-500">
+              <p className="text-center text-[11px] text-faint">
                 Direct release install · No Google Play account required
               </p>
             </div>
@@ -192,42 +194,42 @@ export default async function DownloadPage() {
 
           <div className="mt-8 grid gap-6 sm:grid-cols-4">
             <div className="space-y-2">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-mono font-medium text-emerald-400">
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/10 border border-accent/20 text-xs font-mono font-medium text-accent">
                 1
               </span>
               <h4 className="text-sm font-medium text-white">Install Mac App</h4>
-              <p className="text-xs text-neutral-400 leading-relaxed">
+              <p className="text-xs text-muted leading-relaxed">
                 Paste the Terminal command on the Mac card. macOS opens Sayabot directly.
               </p>
             </div>
 
             <div className="space-y-2">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-mono font-medium text-emerald-400">
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/10 border border-accent/20 text-xs font-mono font-medium text-accent">
                 2
               </span>
               <h4 className="text-sm font-medium text-white">Sign In with Google</h4>
-              <p className="text-xs text-neutral-400 leading-relaxed">
+              <p className="text-xs text-muted leading-relaxed">
                 Click Sign In in the Mac app. Your browser opens, and Supabase safely passes back
                 your session tokens.
               </p>
             </div>
 
             <div className="space-y-2">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-mono font-medium text-emerald-400">
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/10 border border-accent/20 text-xs font-mono font-medium text-accent">
                 3
               </span>
               <h4 className="text-sm font-medium text-white">Install Phone APK</h4>
-              <p className="text-xs text-neutral-400 leading-relaxed">
+              <p className="text-xs text-muted leading-relaxed">
                 Install the APK on Android and log in with the exact same Google or GitHub account.
               </p>
             </div>
 
             <div className="space-y-2">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-mono font-medium text-emerald-400">
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/10 border border-accent/20 text-xs font-mono font-medium text-accent">
                 4
               </span>
               <h4 className="text-sm font-medium text-white">Control 24/7</h4>
-              <p className="text-xs text-neutral-400 leading-relaxed">
+              <p className="text-xs text-muted leading-relaxed">
                 Control tasks on your Mac while it is open, or deploy on your VPS so agents work
                 24/7 even when your Mac sleeps!
               </p>
@@ -238,7 +240,7 @@ export default async function DownloadPage() {
         {/* Self-hosting callout */}
         <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl border border-white/5 bg-white/[0.02] px-6 py-5">
           <div className="flex items-center gap-3">
-            <Terminal className="h-5 w-5 text-emerald-400 shrink-0" />
+            <Terminal className="h-5 w-5 text-accent shrink-0" />
             <p className="text-xs text-neutral-300">
               Want to self-host Sayabot backend on your private VPS with Docker?
             </p>
@@ -247,7 +249,7 @@ export default async function DownloadPage() {
             href={SELF_HOSTING_DOCS}
             target="_blank"
             rel="noreferrer"
-            className="flex items-center gap-1.5 text-xs font-medium text-emerald-400 hover:text-emerald-300 transition-colors"
+            className="flex items-center gap-1.5 text-xs font-medium text-accent hover:text-[var(--color-accent-strong)] transition-colors"
           >
             <span>Self-host in 10 minutes</span>
             <ArrowRight className="h-3.5 w-3.5" />

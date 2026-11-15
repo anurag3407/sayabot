@@ -2,7 +2,8 @@
 
 import Link from "next/link"
 import { ChatList, type BotLink } from "@/components/workspace/chat-list"
-import { Mascot } from "@/components/ui/mascot"
+import { RARE_MASCOT } from "@/components/ui/mascot"
+import { LiveMascot } from "@/components/ui/live-mascot"
 import type { BotChatView, ChatListItem } from "@/lib/types"
 
 function relativeTime(iso: string | null): string {
@@ -68,7 +69,9 @@ export function ChatsView({
   handoffs: BotChatView[]
   inboxCount: number
 }) {
-  const faces = [...bots.map((bot) => bot.displayName), "Pip", "Moss", "Juno"].slice(0, 3)
+  // Your first two bots flank the rare orchestrator; the cast fills in when you have fewer.
+  const [left = "Pip", right = "Moss"] = [...bots.map((bot) => bot.displayName), "Pip", "Moss"]
+  const faces = [left, RARE_MASCOT, right]
   return (
     <div className="h-full">
       <div className="h-full md:hidden">
@@ -76,9 +79,16 @@ export function ChatsView({
       </div>
       <div className="hidden h-full overflow-y-auto md:block">
         <div className="mx-auto flex min-h-full max-w-2xl flex-col items-center justify-center px-8 py-12 text-center">
-          <div className="flex items-end gap-1" aria-hidden>
-            {faces.map((name) => (
-              <Mascot key={name} seed={name} blink className="h-16 w-16" />
+          <div className="flex items-end gap-3" aria-hidden>
+            {faces.map((name, index) => (
+              <LiveMascot
+                key={`${name}-${index}`}
+                seed={name}
+                live
+                shadow
+                delay={index * 0.4}
+                className={index === 1 ? "h-20 w-20" : "h-14 w-14"}
+              />
             ))}
           </div>
           <h1 className="mt-6 text-[22px] font-medium tracking-[-0.02em]">Pick up where you left off</h1>
@@ -90,21 +100,21 @@ export function ChatsView({
           <div className="mt-6 flex flex-wrap justify-center gap-2">
             <Link
               href={`/${orgSlug}/chats/new`}
-              className="inline-flex h-9 items-center rounded-xl bg-accent px-4 text-[13px] font-medium text-void hover:bg-[var(--color-accent-strong)]"
+              className="inline-flex h-9 items-center rounded-full bg-text px-4 text-[13px] font-medium text-void transition-colors hover:bg-white"
             >
               New chat
             </Link>
             {inboxCount > 0 ? (
               <Link
                 href={`/${orgSlug}/inbox`}
-                className="inline-flex h-9 items-center rounded-xl bg-raised px-4 text-[13px] text-text hover:bg-hover"
+                className="inline-flex h-9 items-center rounded-full border border-line-strong px-4 text-[13px] text-text transition-colors hover:bg-raised"
               >
                 Open Inbox
               </Link>
             ) : null}
             <Link
               href={`/${orgSlug}/settings/bots`}
-              className="inline-flex h-9 items-center rounded-xl bg-raised px-4 text-[13px] text-text hover:bg-hover"
+              className="inline-flex h-9 items-center rounded-full border border-line-strong px-4 text-[13px] text-text transition-colors hover:bg-raised"
             >
               Connect an agent over MCP
             </Link>

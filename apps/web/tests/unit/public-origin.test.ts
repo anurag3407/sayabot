@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { getPublicOrigin } from "../../src/lib/public-origin"
+import { getPublicOrigin, needsServerAddress } from "../../src/lib/public-origin"
 
 describe("getPublicOrigin", () => {
   it("replaces 0.0.0.0 with localhost when present in Host header", () => {
@@ -30,5 +30,16 @@ describe("getPublicOrigin", () => {
       headers: { host: "localhost:3005" },
     })
     expect(getPublicOrigin(req)).toBe("http://localhost:3005")
+  })
+})
+
+describe("needsServerAddress", () => {
+  it("is false on the server the apps use by default", () => {
+    expect(needsServerAddress("https://sayabot.sayalabs.in")).toBe(false)
+  })
+
+  it("is true for a self-hosted server", () => {
+    expect(needsServerAddress("https://sayabot.acme.com")).toBe(true)
+    expect(needsServerAddress("http://localhost:3000")).toBe(true)
   })
 })

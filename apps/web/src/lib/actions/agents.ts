@@ -16,6 +16,7 @@ import { ensureBotDmRoom } from "@/lib/bot-dm"
 import { planGate } from "@/lib/plan-limits"
 import { getKek } from "@/lib/env"
 import { headers } from "next/headers"
+import { revalidatePath } from "next/cache"
 import { localDetectionAllowed } from "@/lib/local-agents"
 import { resolveModelChoice } from "@/lib/model-choice"
 import { testAgentInOrchestrator } from "@/lib/orchestrator"
@@ -560,7 +561,8 @@ export async function setAgentModelAction(input: {
     metadata: { keyId: input.providerKeyId, model: input.model, runner: choice.runner, effort: params.effort ?? null },
   })
   // A chat that followed this bot's default keeps doing so; one with its own model keeps that.
-  revalidateOrg(input.orgSlug)
+  // Only the bot pages show its model; re-rendering the whole workspace made picks lag.
+  revalidatePath(`/${input.orgSlug}/agents`, "layout")
   return ok(`@${agent.handle} now uses ${choice.label}`)
 }
 
@@ -608,7 +610,7 @@ export async function setRoomAgentModelAction(input: {
       .eq("room_id", room.id)
       .eq("agent_id", agent.id)
     if (error) return fail(errorMessage(error))
-    revalidateOrg(input.orgSlug)
+    // Chat models are read by the picker's own API, so no server page needs re-rendering.
     return ok(input.clear ? `@${agent.handle} uses its own model here again` : `@${agent.handle}'s model changed everywhere`)
   }
 
@@ -648,7 +650,7 @@ export async function setRoomAgentModelAction(input: {
     target: room.id,
     metadata: { agentId: agent.id, keyId: override.keyId, model: override.model, effort: override.effort },
   })
-  revalidateOrg(input.orgSlug)
+  // Chat models are read by the picker's own API, so no server page needs re-rendering.
   return ok(`@${agent.handle} uses ${choice.label} in this chat`)
 }
 

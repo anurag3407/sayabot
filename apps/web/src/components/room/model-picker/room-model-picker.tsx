@@ -20,7 +20,9 @@ interface Lists {
 }
 
 /** The last lists per chat, shown at once while fresh ones load. */
-const lastLists = new Map<string, Lists>()
+const lastLists = new Map<string, { at: number; lists: Lists }>()
+/** Opening the picker again within this window reuses the lists instead of refetching. */
+const FRESH_MS = 60_000
 
 async function readJson<T>(url: string): Promise<T> {
   const response = await fetch(url, { cache: "no-store" })
@@ -31,12 +33,17 @@ async function readJson<T>(url: string): Promise<T> {
 
 function useRoomModels(orgSlug: string, roomId: string) {
   const cacheKey = `${orgSlug}/${roomId}`
-  const [lists, setLists] = useState<Lists | null>(() => lastLists.get(cacheKey) ?? null)
+  const [lists, setLists] = useState<Lists | null>(() => lastLists.get(cacheKey)?.lists ?? null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(
-    async (refresh = false) => {
+    async (refresh = false, reuseFresh = false) => {
+      const cached = lastLists.get(cacheKey)
+      if (reuseFresh && cached && Date.now() - cached.at < FRESH_MS) {
+        setLists(cached.lists)
+        return
+      }
       setLoading(true)
       setError(null)
       try {
@@ -48,7 +55,7 @@ function useRoomModels(orgSlug: string, roomId: string) {
           ),
         ])
         const next = { groups: models.groups, bots: room.bots, canEdit: room.canEdit }
-        lastLists.set(cacheKey, next)
+        lastLists.set(cacheKey, { at: Date.now(), lists: next })
         setLists(next)
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : "Could not load the model list")
@@ -60,11 +67,25 @@ function useRoomModels(orgSlug: string, roomId: string) {
   )
 
   useEffect(() => {
-    void load()
+    void load(false, true)
   }, [load])
 
   const reload = useReloadAfterRescan(load)
-  return { lists, loading, error, reload }
+  /** Show a change at once; the server catches up behind it. */
+  const patch = useCallback(
+    (update: (current: Lists) => Lists) => {
+      setLists((current) => {
+        if (!current) return current
+        const next = update(current)
+        lastLists.set(cacheKey, { at: Date.now(), lists: next })
+        return next
+      })
+    },
+    [cacheKey],
+  )
+  const forget = useCallback(() => lastLists.delete(cacheKey), [cacheKey])
+  const reloadIfStale = useCallback(() => load(false, true), [load])
+  return { lists, loading, error, reload, reloadIfStale, patch, forget }
 }
 
 /**
@@ -72,8 +93,17 @@ function useRoomModels(orgSlug: string, roomId: string) {
  * "Only this chat" keeps the pick here even when the bot's own model changes later; "Chat + bot
  * default" changes the bot everywhere. "Use @bot's model" drops this chat's own pick.
  */
-export function RoomModelPicker({ orgSlug, roomId }: { orgSlug: string; roomId: string }) {
-  const { lists, loading, error, reload } = useRoomModels(orgSlug, roomId)
+export function RoomModelPicker({
+  orgSlug,
+  roomId,
+  placement = "down",
+}: {
+  orgSlug: string
+  roomId: string
+  /** "up" opens above the button, for the composer at the bottom of the chat. */
+  placement?: "down" | "up"
+}) {
+  const { lists, loading, error, reload, reloadIfStale, patch, forget } = useRoomModels(orgSlug, roomId)
   const [open, setOpen] = useState(false)
   const [botId, setBotId] = useState<string | null>(null)
   const [scope, setScope] = useState<Scope>("chat")
@@ -89,7 +119,7 @@ export function RoomModelPicker({ orgSlug, roomId }: { orgSlug: string; roomId: 
 
   useEffect(() => {
     if (!open) return
-    void reload()
+    void reloadIfStale()
     const onDown = (event: PointerEvent) => {
       if (ref.current && !ref.current.contains(event.target as Node)) setOpen(false)
     }
@@ -100,7 +130,7 @@ export function RoomModelPicker({ orgSlug, roomId }: { orgSlug: string; roomId: 
       document.removeEventListener("pointerdown", onDown)
       document.removeEventListener("keydown", onKey)
     }
-  }, [open, reload])
+  }, [open, reloadIfStale])
 
   const bots = lists?.bots.filter((b) => b.editable) ?? []
   const bot = bots.find((b) => b.id === botId) ?? bots[0]
@@ -117,6 +147,22 @@ export function RoomModelPicker({ orgSlug, roomId }: { orgSlug: string; roomId: 
 
   function save(next: ModelValue | null) {
     if (!bot) return
+    const before = lists
+    const target = bot.id
+    // Optimistic: the button shows the new model right away and the picker closes.
+    patch((current) => ({
+      ...current,
+      bots: current.bots.map((b) =>
+        b.id !== target
+          ? b
+          : next === null
+            ? { ...b, chat: null }
+            : scope === "default"
+              ? { ...b, bot: next, chat: null }
+              : { ...b, chat: next },
+      ),
+    }))
+    setOpen(false)
     startTransition(async () => {
       const result = await setRoomAgentModelAction({
         orgSlug,
@@ -129,11 +175,13 @@ export function RoomModelPicker({ orgSlug, roomId }: { orgSlug: string; roomId: 
         effort: next?.effort ?? null,
       })
       if (!result.ok) {
+        if (before) patch(() => before)
         showToast({ tone: "danger", message: result.error ?? "Could not change the model" })
         return
       }
       showToast({ tone: "success", message: result.message ?? "Saved" })
-      await reload()
+      // The server may have normalised the pick (effort, runner); refresh quietly next open.
+      forget()
     })
   }
 
@@ -209,19 +257,35 @@ export function RoomModelPicker({ orgSlug, roomId }: { orgSlug: string; roomId: 
         aria-expanded={open}
         aria-haspopup="dialog"
         aria-label={`Model: ${buttonLabel}`}
-        className="flex h-9 items-center gap-2 rounded-xl px-3 text-[13.5px] font-medium text-text transition-colors hover:bg-panel aria-expanded:bg-panel"
+        className={cn(
+          placement === "up"
+            ? "flex h-8 items-center gap-1.5 rounded-full px-2.5 text-[13px] text-muted transition-colors hover:bg-white/[0.06] hover:text-text aria-expanded:bg-white/[0.06] aria-expanded:text-text"
+            : "flex h-9 items-center gap-2 rounded-xl px-3 text-[13.5px] font-medium text-text transition-colors hover:bg-panel aria-expanded:bg-panel",
+          pending && "opacity-70",
+        )}
       >
         {effectiveGroup ? <RailIcon group={effectiveGroup} size={16} /> : null}
         <span className="max-w-[160px] truncate">{buttonLabel}</span>
-        {bot?.chat ? <span className="h-1.5 w-1.5 rounded-full bg-accent" title="This chat has its own model" /> : null}
-        {open ? <ChevronUp className="h-3.5 w-3.5 text-faint" /> : <ChevronDown className="h-3.5 w-3.5 text-faint" />}
+        {bot?.chat ? (
+          <span className="h-1.5 w-1.5 rounded-full bg-accent" title="This chat has its own model" aria-hidden="true" />
+        ) : null}
+        {open === (placement === "down") ? (
+          <ChevronUp className="h-3.5 w-3.5 text-faint" aria-hidden="true" />
+        ) : (
+          <ChevronDown className="h-3.5 w-3.5 text-faint" aria-hidden="true" />
+        )}
       </button>
 
       {open ? (
         <div
           role="dialog"
           aria-label="Choose a model for this chat"
-          className="absolute right-0 top-11 z-50 flex h-[640px] max-h-[82vh] w-[min(94vw,560px)] flex-col overflow-hidden rounded-2xl border border-line-strong bg-panel shadow-2xl"
+          className={cn(
+            "surface-pop pop-in absolute z-50 flex w-[min(94vw,560px)] flex-col overflow-hidden rounded-2xl",
+            placement === "up"
+              ? "bottom-full left-0 mb-2 h-[560px] max-h-[68vh]"
+              : "right-0 top-11 h-[640px] max-h-[82vh]",
+          )}
         >
           {!lists && loading ? (
             <p className="p-6 text-center text-[13px] text-faint">Loading models…</p>

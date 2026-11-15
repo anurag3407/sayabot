@@ -73,6 +73,7 @@ describe("Engine Dispatcher (E4)", () => {
     moderatorAgentId: null,
     debateOrder: [],
     timezone: "UTC",
+    executionMode: "ask_risky",
     agentDmUserId: null,
     agentDmAgentId: null,
     createdBy: null,

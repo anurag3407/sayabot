@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useCallback, useEffect, useState } from "react"
+import { useSyncExternalStore } from "react"
 import { RefreshCw } from "lucide-react"
 import { cn } from "@/lib/format"
 import { ProviderIcon } from "@/components/room/model-picker/provider-icons"
@@ -12,39 +12,77 @@ import {
   type PlanLimits,
   type PlanWindow,
 } from "@/lib/desktop-bridge"
+import { mergePlanLimits } from "@/lib/plan-limits-store"
 
 const POLL_MS = 5 * 60_000
 
-/** Plan limits from the Mac app, refreshed every few minutes and whenever the window regains focus. */
-export function usePlanLimits() {
-  const [supported, setSupported] = useState(false)
-  const [limits, setLimits] = useState<PlanLimits[] | null>(null)
-  const [loading, setLoading] = useState(false)
+/**
+ * One store for every ring on the page (top bar, model picker, Usage page). Readings survive
+ * remounts and navigation, and a failed read never wipes a good one (see `mergePlanLimits`).
+ */
+interface PlanLimitsState {
+  supported: boolean
+  limits: PlanLimits[] | null
+  loading: boolean
+}
 
-  const refresh = useCallback(async (force = false) => {
-    setLoading(true)
-    try {
-      const next = await readPlanLimits(force)
-      if (next) setLimits(next)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+const SERVER_STATE: PlanLimitsState = { supported: false, limits: null, loading: false }
+let state: PlanLimitsState = SERVER_STATE
+const listeners = new Set<() => void>()
+let stopPolling: (() => void) | null = null
+let inflight: Promise<void> | null = null
 
-  useEffect(() => {
-    if (!canReadPlanLimits()) return
-    setSupported(true)
-    void refresh()
-    const timer = window.setInterval(() => void refresh(), POLL_MS)
-    const onFocus = () => void refresh()
+function setState(next: Partial<PlanLimitsState>) {
+  state = { ...state, ...next }
+  listeners.forEach((listener) => listener())
+}
+
+function refreshPlanLimits(force = false): Promise<void> {
+  if (inflight && !force) return inflight
+  setState({ loading: true })
+  const run = readPlanLimits(force)
+    .then((next) => {
+      if (next) setState({ limits: mergePlanLimits(state.limits, next) })
+    })
+    .catch(() => {})
+    .finally(() => {
+      if (inflight === run) inflight = null
+      setState({ loading: false })
+    })
+  inflight = run
+  return run
+}
+
+function subscribe(listener: () => void) {
+  listeners.add(listener)
+  if (!stopPolling && canReadPlanLimits()) {
+    if (!state.supported) setState({ supported: true })
+    void refreshPlanLimits()
+    const timer = window.setInterval(() => void refreshPlanLimits(), POLL_MS)
+    const onFocus = () => void refreshPlanLimits()
     window.addEventListener("focus", onFocus)
-    return () => {
+    stopPolling = () => {
       window.clearInterval(timer)
       window.removeEventListener("focus", onFocus)
     }
-  }, [refresh])
+  }
+  return () => {
+    listeners.delete(listener)
+    if (!listeners.size && stopPolling) {
+      stopPolling()
+      stopPolling = null
+    }
+  }
+}
 
-  return { supported, limits, loading, refresh }
+/** Plan limits from the Mac app, refreshed every few minutes and whenever the window regains focus. */
+export function usePlanLimits() {
+  const snapshot = useSyncExternalStore(
+    subscribe,
+    () => state,
+    () => SERVER_STATE,
+  )
+  return { ...snapshot, refresh: refreshPlanLimits }
 }
 
 const left = (window: PlanWindow) => Math.max(0, Math.min(100, 100 - window.usedPercent))
@@ -131,31 +169,22 @@ export function PlanRing({ limits, size = 44 }: { limits: PlanLimits; size?: num
   )
 }
 
-/** The little rings above the account menu, like a fuel gauge for each plan. */
-export function SidebarPlanRings({ usageHref, onNavigate }: { usageHref: string; onNavigate?: () => void }) {
+/** The fuel gauges in the top-right corner: one small ring per plan, tap for the Usage page. */
+export function TopBarPlanRings({ usageHref }: { usageHref: string }) {
   const { supported, limits } = usePlanLimits()
   const shown = (limits ?? []).filter((item) => item.windows.length > 0)
   if (!supported || !shown.length) return null
+  const summary = shown.map(describeLimits)
   return (
     <Link
       href={usageHref}
-      onClick={onNavigate}
-      aria-label={`Plan limits. ${shown.map(describeLimits).join(". ")}`}
-      title={shown.map(describeLimits).join("\n")}
-      className="flex items-center gap-2 rounded-2xl px-2 py-1.5 transition-colors hover:bg-panel"
+      aria-label={`Plan limits. ${summary.join(". ")}. Open Usage.`}
+      title={summary.join("\n")}
+      className="fade-in flex h-8 items-center gap-1 rounded-full px-1.5 transition-colors hover:bg-white/[0.06] [-webkit-app-region:no-drag]"
     >
       {shown.map((item) => (
-        <PlanRing key={item.provider} limits={item} size={36} />
+        <PlanRing key={item.provider} limits={item} size={26} />
       ))}
-      <span className="ml-1 min-w-0 truncate text-[12.5px] text-faint">
-        {(() => {
-          const worst = shown
-            .map((item) => ({ item, window: tightest(item) }))
-            .filter((entry): entry is { item: PlanLimits; window: PlanWindow } => entry.window !== null)
-            .sort((a, b) => left(a.window) - left(b.window))[0]
-          return worst ? `${worst.item.label} ${Math.round(left(worst.window))}% left` : null
-        })()}
-      </span>
     </Link>
   )
 }

@@ -2,7 +2,7 @@
 
 This catalog documents every database migration in `packages/db`: the four Drizzle-generated migrations in `packages/db/migrations/` (the declarative schema snapshot pipeline) and the 35 hand-written SQL scripts in `packages/db/sql/` (functions, triggers, RLS, realtime, and RPCs that Drizzle cannot express). `src/migrate.ts` runs both phases in order — Drizzle first, then every `sql/*.sql` file in sorted filename order — and the SQL phase re-applies on every run, so each script is written to be idempotent.
 
-Source files: `packages/db/migrations/0000_conscious_natasha_romanoff.sql` through `0003_gigantic_the_call.sql`, `packages/db/sql/0001_functions.sql` through `0035_model_choice.sql`, `packages/db/src/migrate.ts`
+Source files: `packages/db/migrations/0000_conscious_natasha_romanoff.sql` through `0003_gigantic_the_call.sql`, `packages/db/sql/0001_functions.sql` through `0036_room_execution_mode.sql`, `packages/db/src/migrate.ts`
 
 ---
 
@@ -260,6 +260,10 @@ Creates `agent_reads` (PK `(agent_id, room_id)`, `last_read_at`, `updated_at`) w
 
 - `local_runner_jobs` columns `model` and `effort` (what a Mac run uses inside the local app; null keeps the app default) (`0035_model_choice.sql:9-10`).
 - `room_agents.model_override` JSONB — "only this chat" model override, shape `{ keyId, model, effort, providerKeyId, agentModel, runner }` (`0035_model_choice.sql:11`; typed at `packages/db/src/schema/rooms.ts:25-32`).
+
+### `0036_room_execution_mode.sql` — execution mode per chat
+
+- `rooms.execution_mode text not null default 'ask_risky'` plus the idempotent `rooms_execution_mode_check` constraint (`'ask_risky'`, `'review_all'`). `review_all` makes the orchestrator's audited tool wrapper ask before every tool call; there is no value that skips approval for risky tools.
 
 ---
 

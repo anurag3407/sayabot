@@ -13,9 +13,17 @@ vi.mock("../realtime", () => ({
 
 const insertedToolCallId = "tool-call-123"
 const lastInsertedValues: any[] = []
+const roomState = { mode: "ask_risky" as string }
 
 vi.mock("../db", () => ({
   getDb: () => ({
+    select: () => ({
+      from: () => ({
+        where: () => ({
+          limit: () => Promise.resolve([{ mode: roomState.mode }]),
+        }),
+      }),
+    }),
     insert: () => ({
       values: (val: any) => {
         lastInsertedValues.push(val)
@@ -44,6 +52,32 @@ vi.mock("./approvals", () => ({
 describe("toAuditedTools", () => {
   beforeEach(() => {
     broadcastEvents.length = 0
+    lastInsertedValues.length = 0
+    roomState.mode = "ask_risky"
+  })
+
+  const readSpec: ToolSpec = {
+    name: "read_tool",
+    description: "Reads something",
+    schema: z.object({}),
+    dangerous: false,
+    execute: async () => ({ ok: true }),
+  }
+  const runtime: ToolRuntime = { orgId: "org-1", roomId: "room-1", agentId: "agent-1" }
+
+  it("lets a safe tool run without asking in the default mode", async () => {
+    const toolSet = toAuditedTools([readSpec], runtime)
+    await (toolSet.read_tool as any).execute({}, {})
+    expect(lastInsertedValues[0]?.status).toBe("running")
+    expect(broadcastEvents.some((e) => e.event.type === "tool.approval_requested")).toBe(false)
+  })
+
+  it("asks before every tool when the room reviews every step", async () => {
+    roomState.mode = "review_all"
+    const toolSet = toAuditedTools([readSpec], runtime)
+    await (toolSet.read_tool as any).execute({}, {})
+    expect(lastInsertedValues[0]?.status).toBe("pending_approval")
+    expect(broadcastEvents.some((e) => e.event.type === "tool.approval_requested")).toBe(true)
   })
 
   it("threads toolCallId into ctx and broadcasts tool.started and tool.finished", async () => {

@@ -1,8 +1,9 @@
 "use client"
 
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useMemo, useRef, useState, type ComponentType } from "react"
 import {
+  ArrowLeft,
   Bot,
   CalendarClock,
   CheckSquare,
@@ -21,8 +22,8 @@ import { CommandPalette } from "@/components/command-palette"
 import { useWorkspaceActivity } from "@/components/use-workspace-activity"
 import { cn } from "@/lib/format"
 import { CloseIcon, MenuIcon } from "@/components/ui/icons"
-import { GuestBanner } from "@/components/auth/guest-banner"
 import { PlanUsageBanner } from "@/components/plan-usage-banner"
+import { TopBarPlanRings } from "@/components/usage/plan-rings"
 import type { ChatListItem, OrgRole, OrgSummary } from "@/lib/types"
 
 type NavIcon = ComponentType<{ className?: string }>
@@ -61,6 +62,41 @@ function useDesktopApp(): boolean {
   return desktop
 }
 
+/**
+ * Back: one step through what you opened in this window, or up to the workspace home when there
+ * is nothing to go back to (a fresh window, a link from elsewhere). Hidden on the home itself.
+ */
+function BackButton({ home, className }: { home: string; className?: string }) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const steps = useRef(-1)
+  useEffect(() => {
+    steps.current += 1
+  }, [pathname])
+  if (pathname === home) return null
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        if (steps.current > 0) {
+          steps.current -= 2
+          router.back()
+        } else {
+          router.push(home)
+        }
+      }}
+      aria-label="Go back"
+      title="Back (⌘[)"
+      className={cn(
+        "grid h-8 w-8 shrink-0 place-items-center rounded-lg text-muted transition-colors hover:bg-white/[0.06] hover:text-text [-webkit-app-region:no-drag]",
+        className,
+      )}
+    >
+      <ArrowLeft className="h-[17px] w-[17px]" aria-hidden="true" />
+    </button>
+  )
+}
+
 export function WorkspaceShell({
   org,
   orgs,
@@ -96,6 +132,8 @@ export function WorkspaceShell({
   const [mobileOpen, setMobileOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
   const desktopApp = useDesktopApp()
+  const router = useRouter()
+  const home = `/${org.slug}`
 
   useEffect(() => {
     setMobileOpen(false)
@@ -140,10 +178,16 @@ export function WorkspaceShell({
         event.preventDefault()
         setPaletteOpen((open) => !open)
       }
+      // ⌘[ goes back, like every Mac app. Not while typing, where it indents.
+      const typing = (event.target as HTMLElement | null)?.closest("input, textarea, [contenteditable]")
+      if (event.metaKey && event.key === "[" && !typing) {
+        event.preventDefault()
+        router.back()
+      }
     }
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
-  }, [])
+  }, [router])
 
   const sidebarProps = {
     org,
@@ -168,6 +212,7 @@ export function WorkspaceShell({
           >
             <MenuIcon />
           </Button>
+          <BackButton home={home} className="h-10 w-10" />
           <SayabotMark className="h-6 w-6" />
           <span className="truncate text-[14px] text-text">{org.name}</span>
           {inboxCount + totalUnread > 0 ? (
@@ -177,7 +222,6 @@ export function WorkspaceShell({
           ) : null}
         </div>
 
-        {user.isGuest ? <GuestBanner orgSlug={org.slug} /> : null}
         {planUsage ? <PlanUsageBanner orgSlug={org.slug} {...planUsage} /> : null}
 
         {/* In the Mac app the window has no title bar: the dark gutters are what you drag. */}
@@ -189,16 +233,25 @@ export function WorkspaceShell({
             <AppSidebar {...sidebarProps} desktopApp={desktopApp} />
           </aside>
 
-          <main
-            id="main-content"
-            tabIndex={-1}
-            className={cn(
-              "min-h-0 min-w-0 flex-1 overflow-hidden bg-ink outline-none md:my-2 md:mr-2 md:rounded-2xl md:border md:border-line",
-              desktopApp && "[-webkit-app-region:no-drag]",
-            )}
-          >
-            {children}
-          </main>
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+            {/* The top bar: back on the left, plan gauges on the right. In the Mac app it is
+                also the strip you drag the window by. */}
+            <div className="hidden h-11 shrink-0 items-center gap-1 pr-3 md:flex">
+              <BackButton home={home} />
+              <span className="flex-1" />
+              <TopBarPlanRings usageHref={`${home}/analytics`} />
+            </div>
+            <main
+              id="main-content"
+              tabIndex={-1}
+              className={cn(
+                "min-h-0 min-w-0 flex-1 overflow-hidden bg-ink outline-none md:mb-2 md:mr-2 md:rounded-[18px] md:border md:border-white/[0.06] md:shadow-[0_1px_0_rgba(255,255,255,0.03)_inset,0_12px_40px_-20px_rgba(0,0,0,0.8)]",
+                desktopApp && "[-webkit-app-region:no-drag]",
+              )}
+            >
+              {children}
+            </main>
+          </div>
         </div>
 
         <CommandPalette

@@ -79,12 +79,12 @@ async function keySecrets(orgId: string): Promise<Map<string, string>> {
 
 ## 💬 Room Picker (`components/room/model-picker/room-model-picker.tsx`)
 
-`RoomModelPicker` — the title-bar control rendered by `RoomWorkspace` — manages **per-chat** model overrides for each bot in the room:
+`RoomModelPicker` — rendered in the composer's toolbar (`placement="up"` opens the panel above the button; the default `"down"` opens below) — manages **per-chat** model overrides for each bot in the room:
 
-- Data comes from two endpoints (cached per `org/room` in a module-level `lastLists` map so reopening is instant): `GET /api/connectors/models?org=…` (PickerGroups + `canManage`) and `GET /api/connectors/models/room?org=…&room=…` (room bots with their `bot` and `chat` model values + `canEdit`).
+- Data comes from two endpoints (cached per `org/room` in a module-level `lastLists` map with a timestamp; mounting or reopening within `FRESH_MS = 60_000` reuses the lists without a request, while the refresh button and the Mac rescan reloads always refetch): `GET /api/connectors/models?org=…` (PickerGroups + `canManage`) and `GET /api/connectors/models/room?org=…&room=…` (room bots with their `bot` and `chat` model values + `canEdit`).
 - The button label shows the effective model (`bot.chat ?? bot.bot`) with a " · Mac" suffix when the group section is `mac`/`local`, and a small accent dot when this chat has its own pick.
 - Header inside the dialog: bot tabs (when several editable bots), "Use <bot>'s model" (clears the chat override), and a scope radio: **Only this chat** vs **Chat + bot default** ("Changes <bot>'s model everywhere, and this chat follows it").
-- Saving calls `setRoomAgentModelAction({ orgSlug, roomId, agentId, scope, clear, keyId, model, effort })` (in `src/lib/actions/agents.ts`) then reloads. Non-admins see "Only workspace admins can change models."
+- Saving is **optimistic**: the bot's `chat`/`bot` value is patched locally and the panel closes at once, then `setRoomAgentModelAction({ orgSlug, roomId, agentId, scope, clear, keyId, model, effort })` (in `src/lib/actions/agents.ts`) runs in a transition. Failure restores the previous lists and shows a danger toast; success drops the cache entry so the next open reads the server's normalised pick. The action no longer re-renders the whole workspace (see [agents/bots actions](../actions/actions-agents-bots.md)). Non-admins see "Only workspace admins can change models."
 - Listens for `MODEL_PICKER_EVENT` (dispatched by the failure-recovery UI in `message-actions.tsx`) to open itself.
 
 The barrel `components/room/model-picker/index.ts` exports `ManageAccountsModal`; `model-list.tsx` provides `useModelList(orgSlug)` (workspace-wide groups from the same `/api/connectors/models` endpoint, cached per org) and `GroupIcon`.

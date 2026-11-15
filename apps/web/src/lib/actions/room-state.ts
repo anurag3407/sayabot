@@ -126,3 +126,33 @@ export async function openBotDmAction(orgSlug: string, agentId: string): Promise
     return fail(errorMessage(error))
   }
 }
+
+/**
+ * How bots in this chat ask before acting, picked from the composer. Either mode keeps risky
+ * steps behind a person's OK; "review_all" also holds reading and searching for approval.
+ * Anyone in the chat (or a workspace admin) may change it.
+ */
+export async function setRoomExecutionModeAction(input: {
+  orgSlug: string
+  roomId: string
+  mode: "ask_risky" | "review_all"
+}): Promise<ActionResult> {
+  if (input.mode !== "ask_risky" && input.mode !== "review_all") return fail("Unknown mode")
+  const access = await getRoomAccess(input.orgSlug, input.roomId)
+  if (!access) return fail("Room not found")
+  if (access.roomRole === null && !access.canAdmin) return fail("Only people in this chat can change this")
+  const { error } = await createAdminClient()
+    .from("rooms")
+    .update({ execution_mode: input.mode })
+    .eq("id", input.roomId)
+    .eq("org_id", access.org.id)
+  if (error) return fail(errorMessage(error))
+  await audit({
+    orgId: access.org.id,
+    actorId: access.user.id,
+    action: "room.execution_mode_set",
+    target: input.roomId,
+    metadata: { mode: input.mode },
+  })
+  return ok(input.mode === "review_all" ? "Bots will ask before every step here" : "Bots will ask before risky steps")
+}

@@ -44,3 +44,22 @@ export function getPublicOrigin(request?: Request): string {
   }
   return origin
 }
+
+/**
+ * The address the Mac and Android apps connect to out of the box (Sayabot Cloud). Keep in step
+ * with `DEFAULT_SERVER_URL` in apps/desktop/src/main.ts.
+ */
+export const DEFAULT_APP_SERVER_HOST = "sayabot.sayalabs.in"
+
+/**
+ * True when the apps would need to be pointed at this server by hand: it is not the default they
+ * already use. The official server can run with SAYABOT_EDITION unset (it defaults to
+ * self-hosted), so the edition alone is not enough to decide.
+ */
+export function needsServerAddress(origin: string): boolean {
+  try {
+    return new URL(origin).hostname !== DEFAULT_APP_SERVER_HOST
+  } catch {
+    return true
+  }
+}

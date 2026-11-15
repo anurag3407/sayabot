@@ -22,7 +22,7 @@ Source files: `apps/web/src/app/(workspace)/[org]/r/[roomId]/page.tsx`, `apps/we
 
 - **Split panes** — `react-resizable-panels` (`Group`/`Panel`/`Separator`) with chat at 60% min 380px and the side panel at 40% min 340px, persisted via a localStorage-backed `layoutStorage` (the library's default breaks SSR). `isDesktop` starts `null` until `matchMedia("(min-width: 768px)")` resolves, rendering a skeleton so the layout mounts exactly once.
 - **Panel state per room** — `localStorage["sayabot:panel:<roomId>"]` remembers the last tab (`canvas | screen | activity | routines`) or `closed`. Default: the panel opens when a canvas has real content (`canvasHasContent`, `room-workspace.tsx:48`).
-- **Header** — presence line (left), a pill with room mascots / `#`-prefix, room name, "Working" badge when `turnState.activeAgentId` is set, invite button, `RoomModelPicker`, the panel toggle (with a red dot when approvals are pending), and a `DetailsMenu` with settings / add-bot / open-canvas / `EnableAlerts`.
+- **Header** — presence line (left), a pill with room mascots / `#`-prefix, room name, "Working" badge when `turnState.activeAgentId` is set, invite button, the panel toggle (with a red dot when approvals are pending), and a `DetailsMenu` with settings / add-bot / open-canvas / `EnableAlerts`.
 - **Children**: `RoomMeetingBar`, `RoomActivity` (screen + activity tabs' backing logic), the resizable chat + `RoomSidePanel`, and the `ThreadSheet` dialog.
 
 ## 📡 Realtime Hook (`use-room-realtime.ts`)
@@ -74,9 +74,10 @@ Retry eligibility: system `halted` messages retry only when `metadata.reason` is
 - **Drafts** — persisted per room+thread under `mesh:draft:<roomId>:<thread|main>`; cleared only if the sent text is unchanged (`clearIfUnchanged`).
 - **Slash commands** — `/cron` alone navigates to `/<org>/cron`; `/cron <anything>` opens the routine dialog; `/remember <text>` calls `rememberAction` (`src/lib/actions/memory.ts`) saving to room memory.
 - **Offline outbox** — when `navigator.onLine` is false (or `sendMessage` throws), the message goes to `enqueueOutbox` (`src/lib/outbox.ts`) with a UUID, shown as "N messages waiting to send" and flushed on the `online` event.
-- **PDF attach** — paperclip or drag-drop accepts only PDFs ≤ 8 MB, reads them as data URLs, and appends `[name](dataUrl)` markdown that the message renderer turns into a `PdfViewer`.
+- **Layout** — one rounded surface: the auto-growing textarea on top, a toolbar row below with a **"+" menu** (a `DetailsMenu` with Attach a PDF, Add a to-do, Do this on a schedule, Start a meeting for admins outside DMs, Open canvas), the chat's `RoomModelPicker` (`placement="up"`, see [Model system](./model-system.md)), then on the right the **execution mode** menu and a round white send button. Threads (`threadRootId`) show only the textarea and send button.
+- **PDF attach** — "+" → Attach a PDF, or drag-drop, accepts only PDFs ≤ 8 MB, reads them as data URLs, and appends `[name](dataUrl)` markdown that the message renderer turns into a `PdfViewer`.
 - **Quick actions** (main chat only) — `QuickActionDialog` for "task" (`createTaskAction` from `src/lib/actions/tasks.ts`, with people/agent assignee select), "meeting" (`startMeetingNowAction` from `src/lib/actions/meetings.ts`, admin + non-DM only), and "cron" (POSTs to `/api/workspaces/<org>/routines` with name, natural-language or cron `schedule_expr`, `agent_id`, `room_id`, `prompt`), each with success toasts and deep links.
-- **SafetyChip** — an "Ask first" popover explaining that sending, file changes, commands and spending always wait for a human OK, that unanswered approvals are turned down automatically, linking to the Inbox. There is deliberately no bypass mode.
+- **Execution mode** (`ExecutionModeMenu`) — a dropdown showing the chat's `rooms.execution_mode`: **Ask first** (`ask_risky`, default: sending, file changes, commands and spending wait for an OK; reading just happens) or **Review every step** (`review_all`: every tool call waits for an OK, even reading and searching). Choosing one is optimistic and saved with `setRoomExecutionModeAction` (rolls back with a danger toast on failure). The footnote says risky steps always ask and that bots on a Mac read files on their own in either mode (Claude Code's own permission mode allows reads). There is deliberately no bypass mode. The initial value comes from `RoomView.executionMode` via `RoomWorkspace` → `ChatPanel` → `Composer`.
 - Enter sends (Shift+Enter newline, IME-composition safe); the textarea auto-grows to 220 px (160 compact); 100,000-char cap with a counter above 90,000.
 
 `sendMessage` (from `src/lib/actions/messages.ts`) inserts the row server-side via `insertHumanMessage` (`src/lib/message-send.ts`), which validates 1–100k chars, resolves/validates the thread root (threading replies to a reply flattens to its root), and dedupes on `metadata.clientId`.
@@ -134,7 +135,7 @@ A slim strip under the header fed by `data.meeting` / `data.roomSchedule`:
 ## Related docs
 
 - [Canvas UI](./canvas-ui.md) — the side panel's main tab
-- [Model system](./model-system.md) — `RoomModelPicker` in the header
+- [Model system](./model-system.md) — `RoomModelPicker` in the composer
 - [Tasks, Inbox & Meetings UI](./tasks-inbox-meetings-ui.md) — where approvals and meeting threads land
 - [Cron UI](./cron-ui.md) — the routines created by the composer's Schedule action
 - [App overview](./app-overview.md) — the workspace shell around this screen

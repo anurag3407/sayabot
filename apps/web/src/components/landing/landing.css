@@ -19,6 +19,13 @@
   --lift: inset 0 1px 0 rgb(255 255 255 / 0.09), 0 1px 2px rgb(0 0 0 / 0.5), 0 18px 40px -18px rgb(0 0 0 / 0.75), 0 50px 90px -50px rgb(0 0 0 / 0.9);
 }
 
+/* The marketing page keeps its warm ember brand; the app runs on the cool iris palette. */
+.l-page {
+  --color-accent: #ff5d6c;
+  --color-accent-strong: #ff7a86;
+  --color-accent-soft: #2e1619;
+}
+
 .l-container {
   width: 100%;
   max-width: 1240px;
@@ -177,13 +184,7 @@
 }
 .l-dot { width: 7px; height: 7px; border-radius: 999px; background: var(--color-accent); flex: none; }
 
-/* ---------- Saya parts ---------- */
-
-.saya-lamp { fill: color-mix(in oklab, #ffd08a 26%, #4a3b52); transition: fill 0.25s; }
-.saya-halo { opacity: 0; transition: opacity 0.25s; pointer-events: none; }
-[data-lit="true"] .saya-lamp { fill: #ffd08a; }
-[data-lit="true"] .saya-halo { opacity: 0.32; }
-.saya-head, .saya-body, .saya-hand { transform-box: fill-box; transform-origin: 50% 100%; }
+/* Saya parts (lamp, halo, motion) live in globals.css so the app shares them. */
 
 /* ---------- motion primitives ---------- */
 

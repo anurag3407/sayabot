@@ -7,54 +7,144 @@ import { sendMessage } from "@/lib/actions/messages"
 import { rememberAction } from "@/lib/actions/memory"
 import { startMeetingNowAction } from "@/lib/actions/meetings"
 import { createTaskAction } from "@/lib/actions/tasks"
+import { setRoomExecutionModeAction } from "@/lib/actions/room-state"
 import { enqueueOutbox, flushOutbox, readOutbox } from "@/lib/outbox"
 import { humanHandle } from "@/lib/human-handle"
 import { Button } from "@/components/ui/button"
 import { DetailsMenu } from "@/components/ui/details-menu"
 import { Field, Input, Select, Textarea } from "@/components/ui/field"
 import { showToast } from "@/components/ui/toast"
-import { AlarmClock, ArrowUp, Check, FileText, ListTodo, Paperclip, ShieldCheck, Video } from "lucide-react"
+import { RoomModelPicker } from "@/components/room/model-picker/room-model-picker"
+import {
+  AlarmClock,
+  ArrowUp,
+  Check,
+  ChevronDown,
+  Eye,
+  FileText,
+  ListTodo,
+  Paperclip,
+  Plus,
+  ShieldCheck,
+  Video,
+} from "lucide-react"
 import { cn } from "@/lib/format"
-import type { MemberView, RoomAgentView } from "@/lib/types"
+import type { MemberView, RoomAgentView, RoomExecutionMode } from "@/lib/types"
+
+const MODES: {
+  id: RoomExecutionMode
+  label: string
+  short: string
+  detail: string
+  icon: typeof ShieldCheck
+}[] = [
+  {
+    id: "review_all",
+    label: "Review every step",
+    short: "Review all",
+    detail: "Every action waits for your OK, even reading and searching.",
+    icon: Eye,
+  },
+  {
+    id: "ask_risky",
+    label: "Ask first",
+    short: "Ask first",
+    detail: "Sending, changing files, running commands and spending wait for your OK. Reading just happens.",
+    icon: ShieldCheck,
+  },
+]
 
 /**
- * What a bot does before acting, in one small popover. Risky steps (sending, deleting, running
- * commands, spending) always wait for a person's OK; there is deliberately no "skip approval" mode.
+ * Execution mode, right in the composer. Both modes keep risky steps (sending, deleting, running
+ * commands, spending) behind a person's OK; there is deliberately no "skip approval" mode.
  */
-function SafetyChip({ orgSlug }: { orgSlug: string }) {
+function ExecutionModeMenu({
+  orgSlug,
+  roomId,
+  initial,
+}: {
+  orgSlug: string
+  roomId: string
+  initial: RoomExecutionMode
+}) {
+  const [mode, setMode] = useState<RoomExecutionMode>(initial)
+  const [pending, startTransition] = useTransition()
+  useEffect(() => setMode(initial), [initial])
+  const current = MODES.find((item) => item.id === mode) ?? MODES[1]!
+  const Icon = current.icon
+
+  function choose(next: RoomExecutionMode) {
+    if (next === mode) return
+    const before = mode
+    setMode(next)
+    startTransition(async () => {
+      const result = await setRoomExecutionModeAction({ orgSlug, roomId, mode: next })
+      if (!result.ok) {
+        setMode(before)
+        showToast({ tone: "danger", message: result.error ?? "Could not change the mode" })
+      }
+    })
+  }
+
   return (
     <DetailsMenu
       className="relative"
-      summaryLabel="How bots ask before acting"
-      summaryClassName="flex h-9 cursor-pointer list-none items-center gap-1.5 rounded-full px-2.5 text-[13px] text-muted transition-colors hover:bg-raised hover:text-text"
+      summaryLabel={`Execution mode: ${current.label}`}
+      summaryClassName={cn(
+        "flex h-8 cursor-pointer list-none items-center gap-1.5 rounded-full px-2.5 text-[12.5px] text-muted transition-colors hover:bg-white/[0.06] hover:text-text",
+        pending && "opacity-70",
+      )}
       summary={
         <>
-          <ShieldCheck className="h-[17px] w-[17px] text-ok" />
-          <span className="hidden sm:inline">Ask first</span>
+          <Icon className={cn("h-4 w-4", mode === "review_all" ? "text-accent" : "text-ok")} aria-hidden="true" />
+          <span className="hidden sm:inline">{current.short}</span>
+          <ChevronDown className="h-3.5 w-3.5 text-faint" aria-hidden="true" />
         </>
       }
     >
-      <div className="absolute bottom-full left-0 z-20 mb-2 w-[300px] rounded-2xl border border-line-strong bg-panel p-3 shadow-[0_16px_40px_rgba(0,0,0,0.5)]">
-        <p className="text-[14px] font-medium text-text">How bots ask before acting</p>
-        <div className="mt-2.5 flex gap-2.5 rounded-xl bg-raised/70 p-2.5">
-          <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-ok" />
-          <div className="min-w-0 flex-1">
-            <p className="flex items-center gap-1.5 text-[13.5px] font-medium text-text">
-              Ask before risky steps
-              <Check className="ml-auto h-4 w-4 text-text" aria-label="On" />
-            </p>
-            <p className="mt-0.5 text-[12.5px] leading-relaxed text-faint">
-              Sending messages, changing files, running commands and spending money wait for your OK.
-              Reading and searching just happen.
-            </p>
-          </div>
+      <div
+        role="menu"
+        aria-label="Execution mode"
+        className="surface-pop pop-in absolute bottom-full right-0 z-30 mb-2 w-[min(340px,86vw)] rounded-2xl p-1.5"
+      >
+        <p className="px-2.5 pb-1 pt-1.5 text-[12px] font-medium text-faint">Execution mode</p>
+        {MODES.map((item) => {
+          const ItemIcon = item.icon
+          const active = item.id === mode
+          return (
+            <button
+              key={item.id}
+              type="button"
+              role="menuitemradio"
+              aria-checked={active}
+              onClick={() => choose(item.id)}
+              className={cn(
+                "flex w-full items-start gap-3 rounded-xl px-2.5 py-2.5 text-left transition-colors hover:bg-white/[0.05]",
+                active && "bg-white/[0.04]",
+              )}
+            >
+              <ItemIcon className="mt-0.5 h-[18px] w-[18px] shrink-0 text-muted" aria-hidden="true" />
+              <span className="min-w-0 flex-1">
+                <span className="flex items-center gap-2 text-[13.5px] font-medium text-text">
+                  {item.label}
+                  {item.id === "ask_risky" ? (
+                    <span className="rounded-md bg-white/[0.07] px-1.5 py-px text-[10.5px] font-normal text-muted">
+                      Default
+                    </span>
+                  ) : null}
+                </span>
+                <span className="mt-0.5 block text-[12.5px] leading-snug text-faint">{item.detail}</span>
+              </span>
+              {active ? <Check className="mt-0.5 h-4 w-4 shrink-0 text-text" aria-hidden="true" /> : null}
+            </button>
+          )
+        })}
+        <div className="mt-1 border-t border-line px-2.5 pb-1.5 pt-2 text-[11.5px] leading-relaxed text-faint">
+          Risky steps always wait for your OK. Bots on your Mac read files on their own in either mode.{" "}
+          <Link href={`/${orgSlug}/inbox`} className="text-accent hover:underline">
+            See what&apos;s waiting
+          </Link>
         </div>
-        <p className="mt-2 text-[12px] leading-relaxed text-faint">
-          A request nobody answers is turned down after a few minutes.
-        </p>
-        <Link href={`/${orgSlug}/inbox`} className="mt-2 inline-block text-[12.5px] text-accent hover:underline">
-          See what is waiting for you
-        </Link>
       </div>
     </DetailsMenu>
   )
@@ -328,6 +418,7 @@ export function Composer({
   selfId,
   canAdmin = false,
   roomKind = "public",
+  executionMode = "ask_risky",
   placeholder,
   compact = false,
   autoFocus = false,
@@ -343,6 +434,7 @@ export function Composer({
   selfId?: string
   canAdmin?: boolean
   roomKind?: "public" | "private" | "dm"
+  executionMode?: RoomExecutionMode
   placeholder: string
   compact?: boolean
   autoFocus?: boolean
@@ -618,14 +710,14 @@ export function Composer({
   }
 
   const showQuickActions = !threadRootId
-  const toolButton =
-    "grid h-9 w-9 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-raised hover:text-text"
+  const menuItem =
+    "flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-[13.5px] text-muted transition-colors hover:bg-white/[0.05] hover:text-text"
 
   return (
     <div className={cn("relative", compact ? "px-3 pb-3 pt-2" : "px-3 pb-3 pt-2 md:px-4 md:pb-4")}>
       {mention && options.length ? (
         <div
-          className="absolute bottom-full left-3 z-10 mb-1 max-h-56 w-72 max-w-[calc(100%-1.5rem)] overflow-y-auto rounded-xl border border-line-strong bg-panel py-1 shadow-[0_12px_32px_rgba(0,0,0,0.45)]"
+          className="surface-pop pop-in absolute bottom-full left-3 z-10 mb-1 max-h-56 w-72 max-w-[calc(100%-1.5rem)] overflow-y-auto rounded-xl py-1"
           id={listboxId}
           role="listbox"
           aria-label="Mention an agent or a person"
@@ -676,8 +768,8 @@ export function Composer({
 
       <div
         className={cn(
-          "relative flex flex-col rounded-[24px] border border-line bg-panel/70 px-2 pb-2 pt-1.5 transition-colors focus-within:border-line-strong",
-          isDragging && "ring-2 ring-accent bg-accent-soft/30",
+          "relative flex flex-col rounded-[22px] border border-white/[0.08] bg-panel shadow-[0_1px_0_rgba(255,255,255,0.04)_inset,0_10px_30px_-18px_rgba(0,0,0,0.9)] transition-[border-color,box-shadow] duration-200 focus-within:border-white/[0.14] focus-within:shadow-[0_1px_0_rgba(255,255,255,0.05)_inset,0_0_0_4px_rgba(157,140,255,0.06),0_10px_30px_-18px_rgba(0,0,0,0.9)]",
+          isDragging && "ring-2 ring-accent",
         )}
         onDragOver={(e) => {
           e.preventDefault()
@@ -695,7 +787,7 @@ export function Composer({
         }}
       >
         {isDragging ? (
-          <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-[28px] bg-panel/90 text-[14px] text-accent backdrop-blur-xs">
+          <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-[22px] bg-panel/90 text-[14px] text-accent backdrop-blur-xs">
             Drop PDF to attach to message
           </div>
         ) : null}
@@ -730,78 +822,69 @@ export function Composer({
           }
           onKeyDown={onKeyDown}
           onBlur={() => window.setTimeout(() => setMention(null), 120)}
-          className="block max-h-[220px] min-h-10 w-full resize-none bg-transparent px-2 py-[9px] text-[15px] leading-[22px] text-text outline-none placeholder:text-faint"
+          className="block max-h-[220px] min-h-10 w-full resize-none bg-transparent px-4 pb-1 pt-3.5 text-[15px] leading-[22px] text-text outline-none placeholder:text-faint"
         />
-        <div className="flex items-center gap-0.5">
+        <div className="flex items-center gap-1 px-1.5 pb-1.5">
           {showQuickActions ? (
             <>
-              <button
-                type="button"
-                className={toolButton}
-                onClick={() => fileInputRef.current?.click()}
-                aria-label="Attach a PDF"
-                title="Attach a PDF"
+              <DetailsMenu
+                className="relative"
+                summaryLabel="Add to your message"
+                summaryClassName="grid h-8 w-8 cursor-pointer list-none place-items-center rounded-full text-muted transition-colors hover:bg-white/[0.06] hover:text-text"
+                summary={<Plus className="h-[18px] w-[18px]" aria-hidden="true" />}
               >
-                <Paperclip className="h-[17px] w-[17px]" />
-              </button>
-              <button
-                type="button"
-                className={toolButton}
-                onClick={() => setQuickAction("task")}
-                aria-label="Add a to-do"
-                title="Add a to-do"
-              >
-                <ListTodo className="h-[17px] w-[17px]" />
-              </button>
-              <button
-                type="button"
-                className={cn(toolButton, "w-auto gap-1.5 px-2.5 text-[13px]")}
-                onClick={() => setQuickAction("cron")}
-                title="Do this on a schedule"
-              >
-                <AlarmClock className="h-[17px] w-[17px]" />
-                <span className="hidden sm:inline">Schedule</span>
-              </button>
-              {canAdmin && roomKind !== "dm" ? (
-                <button
-                  type="button"
-                  className={toolButton}
-                  onClick={() => setQuickAction("meeting")}
-                  aria-label="Start a meeting"
-                  title="Start a meeting"
+                <div
+                  role="menu"
+                  aria-label="Add to your message"
+                  className="surface-pop pop-in absolute bottom-full left-0 z-30 mb-2 w-60 rounded-2xl p-1.5"
                 >
-                  <Video className="h-[17px] w-[17px]" />
-                </button>
-              ) : null}
-              {onShowCanvas ? (
-                <button
-                  type="button"
-                  className={toolButton}
-                  onClick={onShowCanvas}
-                  aria-label="Open canvas"
-                  title="Open canvas"
-                >
-                  <FileText className="h-[17px] w-[17px]" />
-                </button>
-              ) : null}
-              <SafetyChip orgSlug={orgSlug} />
+                  <button type="button" role="menuitem" className={menuItem} onClick={() => fileInputRef.current?.click()}>
+                    <Paperclip className="h-4 w-4" aria-hidden="true" />
+                    Attach a PDF
+                  </button>
+                  <button type="button" role="menuitem" className={menuItem} onClick={() => setQuickAction("task")}>
+                    <ListTodo className="h-4 w-4" aria-hidden="true" />
+                    Add a to-do
+                  </button>
+                  <button type="button" role="menuitem" className={menuItem} onClick={() => setQuickAction("cron")}>
+                    <AlarmClock className="h-4 w-4" aria-hidden="true" />
+                    Do this on a schedule
+                  </button>
+                  {canAdmin && roomKind !== "dm" ? (
+                    <button type="button" role="menuitem" className={menuItem} onClick={() => setQuickAction("meeting")}>
+                      <Video className="h-4 w-4" aria-hidden="true" />
+                      Start a meeting
+                    </button>
+                  ) : null}
+                  {onShowCanvas ? (
+                    <button type="button" role="menuitem" className={menuItem} onClick={onShowCanvas}>
+                      <FileText className="h-4 w-4" aria-hidden="true" />
+                      Open canvas
+                    </button>
+                  ) : null}
+                </div>
+              </DetailsMenu>
+              <RoomModelPicker orgSlug={orgSlug} roomId={roomId} placement="up" />
             </>
           ) : null}
           <span className="flex-1" />
           {value.length > 90_000 ? (
-            <span className="mr-2 font-mono text-[11px] text-warn">{value.length}/100000</span>
+            <span className="mr-1 font-mono text-[11px] text-warn">{value.length}/100000</span>
           ) : null}
-        <button
-          type="button"
-          data-testid="send-message"
-          aria-label={pending ? "Sending" : "Send message"}
-          title="Send"
-          onClick={() => void send()}
-          disabled={pending || !value.trim()}
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-text text-void transition-all hover:scale-105 hover:bg-white disabled:cursor-not-allowed disabled:bg-raised disabled:text-faint disabled:hover:scale-100"
-        >
-          <ArrowUp className="h-[18px] w-[18px]" aria-hidden />
-        </button>
+          {showQuickActions ? (
+            <ExecutionModeMenu orgSlug={orgSlug} roomId={roomId} initial={executionMode} />
+          ) : null}
+          <button
+            type="button"
+            data-testid="send-message"
+            aria-label={pending ? "Sending" : "Send message"}
+            title="Send (Enter)"
+            onClick={() => void send()}
+            disabled={pending || !value.trim()}
+            className="ml-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-text text-void transition-[transform,background-color,color] duration-150 hover:bg-white active:scale-95 disabled:cursor-not-allowed disabled:bg-white/[0.08] disabled:text-faint"
+          >
+            <ArrowUp className="h-[17px] w-[17px]" strokeWidth={2.4} aria-hidden="true" />
+          </button>
         </div>
       </div>
 

@@ -2,7 +2,7 @@
 
 The Usage page (`/[org]/analytics`) answers "how much did my agents work and what did it cost?" over a 1/7/30/90-day window. It combines an exact database rollup (for totals) with the newest raw `usage_events` (for charts and latency), estimates spend from a `model_pricing` table, and — when opened on the person's own computer — can also show local coding-tool usage (Claude Code, Codex, Antigravity sessions) read through the Mac app or a local-only API route. Plan-limit "fuel gauge" rings from the Mac app render above the dashboard.
 
-Source files: `apps/web/src/app/(workspace)/[org]/analytics/page.tsx`, `apps/web/src/components/analytics/usage-dashboard.tsx`, `apps/web/src/components/analytics/usage-bars.tsx`, `apps/web/src/components/usage/plan-rings.tsx`, `apps/web/src/lib/usage.ts`, `apps/web/src/lib/usage-math.ts`, `apps/web/src/lib/usage-summary.ts`, `apps/web/src/lib/actions/pricing.ts`
+Source files: `apps/web/src/app/(workspace)/[org]/analytics/page.tsx`, `apps/web/src/components/analytics/usage-dashboard.tsx`, `apps/web/src/components/analytics/usage-bars.tsx`, `apps/web/src/components/usage/plan-rings.tsx`, `apps/web/src/lib/plan-limits-store.ts`, `apps/web/src/lib/usage.ts`, `apps/web/src/lib/usage-math.ts`, `apps/web/src/lib/usage-summary.ts`, `apps/web/src/lib/actions/pricing.ts`
 
 ---
 
@@ -70,9 +70,9 @@ The pure computation layer for everything the dashboard shows (unit-tested):
 
 Local plan-limit UI driven entirely by the Mac app bridge (`lib/desktop-bridge.ts`: `canReadPlanLimits`, `readPlanLimits`, `resetsIn`, types `PlanLimits`/`PlanWindow`):
 
-- `usePlanLimits()` polls every `POLL_MS = 5 * 60_000` and on window focus (`plan-rings.tsx:34-45`); `supported` is false outside the desktop app, so all of this renders nothing in a plain browser.
+- `usePlanLimits()` reads one module-level store through `useSyncExternalStore`, so every ring (top bar, model picker, Usage page) shares one reading that survives remounts. Polling starts with the first subscriber and stops with the last: every `POLL_MS = 5 * 60_000` and on window focus, with concurrent reads de-duplicated. Each read is folded in by `mergePlanLimits` (`lib/plan-limits-store.ts`): an empty result (the app could not be asked) changes nothing, and a provider without windows keeps its last good windows while they are younger than `STALE_READING_MS` (12 h). This, with the desktop's own `withLastGood` and 429 back-off, fixes Claude's ring disappearing on rate limits or token refreshes. `supported` is false outside the desktop app, so all of this renders nothing in a plain browser.
 - `PlanRing` draws up to two nested SVG arcs per provider (outer = first window, usually 5-hour; inner = second, usually weekly); the arc shows **what's left** with `toneColor`: green, amber ≤ 25%, red ≤ 10% (`plan-rings.tsx:53-57`). The provider icon sits in the middle; no windows renders a dashed grey ring.
-- `SidebarPlanRings({ usageHref, onNavigate })` — "the little rings above the account menu" — links to the usage page with an aria-label/title composed by `describeLimits` ("<label>: 62% left of 5-hour, resets in 2h 14m; …") and shows the worst window across plans as "<label> N% left" (`tightest()` picks the window with the least remaining).
+- `TopBarPlanRings({ usageHref })` — the gauges in the workspace's top-right corner (rendered by `WorkspaceShell`): one 26px ring per plan with readings, linking to the usage page with an aria-label/title composed by `describeLimits` ("<label>: 62% left of 5-hour, resets in 2h 14m; …"). `tightest()` (the window with the least remaining) is still exported.
 - `PlanLimitsSection` — the card `UsageDashboard` renders at the top: one tile per provider (Claude, Codex, Antigravity) with ring, plan name, per-window percentages and reset times, a refresh button, and for Codex a staleness note ("As Codex last saw it, N min ago", from `observedAt`).
 
 ## 💵 Pricing Action (`lib/actions/pricing.ts`)
