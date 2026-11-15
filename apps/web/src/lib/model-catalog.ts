@@ -1,4 +1,5 @@
 import "server-only"
+import { MAC_CLI_APPS } from "@sayabot/core"
 import { providerKeyToApiKey } from "@sayabot/llm"
 import {
   ENGINE_EFFORT_LEVELS,
@@ -96,13 +97,7 @@ export interface PickerGroup {
   hostName?: string
 }
 
-const RUNNER_APPS: Record<string, string> = {
-  "claude-code": "Claude Code",
-  codex: "Codex",
-  gemini: "Gemini CLI",
-  opencode: "OpenCode",
-  cursor: "Cursor",
-}
+const RUNNER_APPS: Record<string, string> = Object.fromEntries(MAC_CLI_APPS.map((app) => [app.id, app.name]))
 
 /** A model an app on someone's Mac listed (see the desktop heartbeat). */
 export interface ReportedModel {
@@ -126,14 +121,20 @@ export interface RunnerHost {
   }>
 }
 
-/** Apps on a Mac and the model provider each one stands for in the picker. */
-const MAC_APPS: Record<string, { provider: string; label: string; engine?: "claude-code" | "codex" | "cursor"; suggestions?: string }> = {
-  "claude-code": { provider: "anthropic", label: "Claude", engine: "claude-code" },
-  codex: { provider: "openai", label: "Codex", engine: "codex" },
-  gemini: { provider: "google", label: "Gemini", suggestions: "google" },
-  opencode: { provider: "opencode", label: "OpenCode" },
-  cursor: { provider: "cursor", label: "Cursor", engine: "cursor" },
+/**
+ * Apps on a Mac and the model provider each one stands for in the picker (MAC_CLI_APPS in
+ * @sayabot/core). Apps that don't report their models fall back to Sayabot's list for the engine.
+ */
+const MAC_APP_FALLBACK: Record<string, { engine?: "claude-code" | "codex" | "cursor"; suggestions?: string }> = {
+  "claude-code": { engine: "claude-code" },
+  codex: { engine: "codex" },
+  gemini: { suggestions: "google" },
+  cursor: { engine: "cursor" },
 }
+const MAC_APPS: Record<string, { provider: string; label: string; engine?: "claude-code" | "codex" | "cursor"; suggestions?: string }> =
+  Object.fromEntries(
+    MAC_CLI_APPS.map((app) => [app.id, { provider: app.provider, label: app.label, ...MAC_APP_FALLBACK[app.id] }]),
+  )
 const LOCAL_MODEL_APPS: Record<string, { provider: string; label: string }> = {
   ollama: { provider: "ollama", label: "Ollama" },
   lmstudio: { provider: "lmstudio", label: "LM Studio" },

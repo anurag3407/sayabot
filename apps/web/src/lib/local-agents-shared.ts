@@ -1,3 +1,5 @@
+import { MAC_CLI_APPS, macAppInfo, macAppSetupHint, type MacAppAccess } from "@sayabot/core"
+
 /** Client-safe parts of local agent detection: the app list and how a status is decided. */
 
 export type LocalAgentStatus = "ready" | "signed_out" | "installed" | "not_installed"
@@ -26,6 +28,12 @@ export interface LocalAgentReport {
   models?: Array<{ id: string; label: string }>
   /** Who it is signed in as ("you@example.com · Org"), when the app says. */
   account?: string
+  /** Whether it needs an API key or runs on its own sign-in (see MAC_ACCESS_LABEL). */
+  access?: MacAppAccess
+  /** What to run when it isn't ready yet. */
+  setupHint?: string
+  /** How to install it, for apps not on this computer yet. */
+  install?: string
 }
 
 /** Where the list came from: this server's own machine, or what a Mac app reported. */
@@ -46,7 +54,8 @@ const LOCAL_MODEL_SERVERS: Record<string, { name: string; icon: string }> = {
 
 /**
  * What the Sayabot Mac app reported in its heartbeat (apps/desktop local-agents.ts) → the same rows
- * the Providers page shows for this server's own machine. Apps that aren't installed are left out.
+ * the Providers page shows for this server's own machine. Apps that aren't installed stay in the
+ * list (status not_installed) so the page can offer them; local model servers only when running.
  */
 export function reportedAgentsToReports(raw: unknown): LocalAgentReport[] {
   if (!Array.isArray(raw)) return []
@@ -55,11 +64,14 @@ export function reportedAgentsToReports(raw: unknown): LocalAgentReport[] {
     if (!entry || typeof entry !== "object") continue
     const row = entry as Record<string, unknown>
     const id = typeof row.id === "string" ? row.id : ""
-    const status = row.status === "ready" || row.status === "signed_out" ? row.status : null
+    const status =
+      row.status === "ready" || row.status === "signed_out" || row.status === "not_installed" ? row.status : null
     if (!id || !status || out.some((agent) => agent.id === id)) continue
     const app = LOCAL_AGENT_APPS.find((item) => item.id === id)
     const server = LOCAL_MODEL_SERVERS[id]
     if (!app && !server) continue
+    if (server && status === "not_installed") continue
+    const info = macAppInfo(id)
     const models = Array.isArray(row.models)
       ? row.models.flatMap((model) =>
           model && typeof model === "object" && typeof (model as { id?: unknown }).id === "string"
@@ -77,19 +89,34 @@ export function reportedAgentsToReports(raw: unknown): LocalAgentReport[] {
       cli: typeof row.binary === "string" && row.binary.length > 0,
       ...(models.length ? { models } : {}),
       ...(typeof row.account === "string" && row.account ? { account: row.account } : {}),
+      ...(info ? { access: info.access, setupHint: macAppSetupHint(info), install: info.install } : {}),
     })
   }
   return out
 }
 
+/** Which app id the "Add agent" invite uses for each app (the rest use the generic invite). */
+const INVITE_APP: Record<string, string> = {
+  "claude-code": "claude-code",
+  codex: "codex",
+  gemini: "antigravity",
+  cursor: "cursor",
+  hermes: "hermes",
+}
+
+const MAC_BUNDLES: Record<string, string> = { cursor: "/Applications/Cursor.app" }
+
+/** Every agent app Sayabot can run on a computer (MAC_CLI_APPS in @sayabot/core), plus Antigravity. */
 export const LOCAL_AGENT_APPS: readonly LocalAgentApp[] = [
-  { id: "claude-code", name: "Claude Code", icon: "anthropic", binaries: ["claude"], inviteApp: "claude-code" },
-  { id: "codex", name: "Codex", icon: "openai", binaries: ["codex"], inviteApp: "codex" },
-  { id: "gemini", name: "Gemini CLI", icon: "google", binaries: ["gemini"], inviteApp: "antigravity" },
-  { id: "opencode", name: "OpenCode", icon: "opencode", binaries: ["opencode"], inviteApp: "generic" },
-  // `cursor-agent` is Cursor's CLI; plain `cursor` only opens the editor, and `agent` can be another app.
-  { id: "cursor", name: "Cursor", icon: "cursor", binaries: ["cursor-agent"], macApp: "/Applications/Cursor.app", inviteApp: "cursor" },
-  { id: "hermes", name: "Hermes", icon: "hermes", binaries: ["hermes"], inviteApp: "hermes" },
+  ...MAC_CLI_APPS.map((app) => ({
+    id: app.id,
+    name: app.name,
+    icon: app.provider,
+    // `cursor-agent` is Cursor's CLI; plain `cursor` only opens the editor, and `agent` can be another app.
+    binaries: [app.bin],
+    ...(MAC_BUNDLES[app.id] ? { macApp: MAC_BUNDLES[app.id] } : {}),
+    inviteApp: INVITE_APP[app.id] ?? "generic",
+  })),
   { id: "antigravity", name: "Antigravity", icon: "antigravity", binaries: ["antigravity"], macApp: "/Applications/Antigravity.app", inviteApp: "antigravity" },
 ]
 

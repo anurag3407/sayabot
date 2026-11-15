@@ -1,7 +1,8 @@
 import { spawn } from "node:child_process"
-import { readFile } from "node:fs/promises"
+import { mkdir, readFile } from "node:fs/promises"
 import { homedir, tmpdir } from "node:os"
 import { delimiter, dirname, join } from "node:path"
+import { discoverAcpModels } from "./acp"
 
 /**
  * What each app on this Mac can run, so Sayabot's model picker can offer it: the models an app
@@ -193,21 +194,60 @@ export async function codexModels(home = homedir()): Promise<ReportedModel[] | n
   }
 }
 
+/** `pi --list-models`: a table of provider and model for the providers pi has keys for. */
+export function piRowsToModels(output: string): ReportedModel[] {
+  const out: ReportedModel[] = []
+  for (const line of output.split("\n").slice(1)) {
+    const [provider, model] = line.trim().split(/\s+/)
+    const id = provider && model ? `${provider}/${model}` : ""
+    if (!id || !MODEL_ID.test(id) || out.some((row) => row.id === id)) continue
+    out.push({ id, label: `${model.split("/").pop() ?? model} · ${provider}` })
+    if (out.length >= MAX_MODELS) break
+  }
+  return out
+}
+
+function piModels(binary: string): Promise<ReportedModel[] | null> {
+  return new Promise((resolve) => {
+    const env = { ...process.env, PATH: [dirname(binary), process.env.PATH ?? ""].join(delimiter) }
+    const child = spawn(binary, ["--list-models"], { env, cwd: tmpdir(), stdio: ["ignore", "pipe", "ignore"] })
+    let output = ""
+    const timer = setTimeout(() => child.kill("SIGTERM"), CLI_TIMEOUT_MS)
+    child.stdout?.on("data", (chunk: Buffer) => {
+      if (output.length < 2 * 1024 * 1024) output += chunk.toString("utf8")
+    })
+    child.on("error", () => resolve(null))
+    child.on("close", () => {
+      clearTimeout(timer)
+      const models = piRowsToModels(output)
+      resolve(models.length ? models : null)
+    })
+  })
+}
+
 const listCache = new Map<string, { at: number; version: string | null; models: ReportedModel[] | null }>()
 
 /** An app's models, read at most every 6 hours, and again when its version changes. */
 export async function appModels(
-  id: string,
+  app: { id: string; run: { kind: string; args?: readonly string[] } },
   binary: string | null,
   version: string | null,
   now = Date.now(),
 ): Promise<ReportedModel[] | null> {
   if (!binary) return null
+  const id = app.id
   const cached = listCache.get(id)
   if (cached && cached.version === version && now - cached.at < LIST_FRESH_MS && cached.models) return cached.models
   let models: ReportedModel[] | null = null
   if (id === "claude-code") models = await fetchClaudeModels(binary)
   else if (id === "codex") models = await codexModels()
+  else if (id === "pi") models = await piModels(binary)
+  else if (app.run.kind === "acp") {
+    const folder = join(tmpdir(), "sayabot-models")
+    await mkdir(folder, { recursive: true }).catch(() => undefined)
+    const env = { ...process.env, PATH: [dirname(binary), process.env.PATH ?? ""].join(delimiter), NO_COLOR: "1" }
+    models = await discoverAcpModels(binary, app.run.args ?? [], { cwd: folder, env })
+  }
   // Keep the last good list when a read fails; the server falls back to its own list otherwise.
   if (!models && cached?.version === version) models = cached.models
   listCache.set(id, { at: now, version, models })

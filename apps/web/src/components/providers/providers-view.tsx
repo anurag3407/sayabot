@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { ChevronRight, Laptop } from "lucide-react"
 import { saveProviderKey } from "@/lib/actions/keys"
+import { MAC_ACCESS_LABEL } from "@sayabot/core"
 import { LOCAL_STATUS_LABEL, type LocalAgentReport, type LocalAgentsResponse } from "@/lib/local-agents-shared"
 import { InviteBotDialog } from "@/components/room/invite-bot-dialog"
 import { ManageAccountsModal } from "@/components/room/model-picker"
@@ -120,7 +121,10 @@ function LocalAgents({ orgSlug, rooms }: { orgSlug: string; rooms: { id: string;
     )
   }
 
-  const sorted = [...state.agents].sort((a, b) => order(a.status) - order(b.status))
+  const sorted = state.agents
+    .filter((agent) => agent.status !== "not_installed")
+    .sort((a, b) => order(a.status) - order(b.status))
+  const more = state.agents.filter((agent) => agent.status === "not_installed")
   return (
     <>
       {macHeader}
@@ -141,11 +145,12 @@ function LocalAgents({ orgSlug, rooms }: { orgSlug: string; rooms: { id: string;
                       .filter(Boolean)
                       .join(" · ")
                   : agent.status === "signed_out"
-                    ? `Installed${agent.version ? ` · ${agent.version}` : ""}. Open it once and sign in.`
+                    ? `Installed${agent.version ? ` · ${agent.version}` : ""}. ${agent.setupHint ?? "Open it once and sign in."}`
                     : agent.status === "installed"
                       ? `Installed${agent.version ? ` · ${agent.version}` : ""}`
                       : "Not on this computer"}
               </p>
+              {agent.access ? <p className="text-[11.5px] text-faint/80">{MAC_ACCESS_LABEL[agent.access]}</p> : null}
             </div>
             <span className={cn("hidden rounded-full px-2.5 py-1 text-[12px] sm:inline", STATUS_TONE[agent.status])}>
               {LOCAL_STATUS_LABEL[agent.status]}
@@ -158,6 +163,7 @@ function LocalAgents({ orgSlug, rooms }: { orgSlug: string; rooms: { id: string;
           </li>
         ))}
       </ul>
+      {more.length ? <MoreProviders agents={more} /> : null}
       {inviting && rooms.length > 1 ? (
         <div className="mt-2 flex items-center gap-2 text-[13px] text-muted">
           <span>Room for {inviting.name}:</span>
@@ -199,6 +205,37 @@ function seenAgo(iso: string): string {
 function isStale(iso: string | null | undefined): boolean {
   if (!iso) return true
   return Date.now() - Date.parse(iso) > 10 * 60_000
+}
+
+/** Apps Sayabot can run that aren't on this computer yet: what each needs, and how to install it. */
+function MoreProviders({ agents }: { agents: LocalAgentReport[] }) {
+  return (
+    <details className="group mt-2 rounded-xl border border-line bg-panel">
+      <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-[13px] text-muted hover:text-text">
+        <span>More providers</span>
+        <span className="text-faint">
+          {agents.length} <span className="inline-block transition-transform group-open:rotate-90">›</span>
+        </span>
+      </summary>
+      <ul className="divide-y divide-line border-t border-line">
+        {agents.map((agent) => (
+          <li key={agent.id} className="flex items-start gap-3 px-4 py-3">
+            <Tile icon={agent.icon} />
+            <div className="min-w-0 flex-1">
+              <p className="text-[14px] font-medium text-text">{agent.name}</p>
+              {agent.access ? <p className="text-[12px] text-faint">{MAC_ACCESS_LABEL[agent.access]}</p> : null}
+              {agent.install ? (
+                <code className="mt-1 block truncate rounded-md bg-raised px-2 py-1 font-mono text-[11.5px] text-muted">
+                  {agent.install}
+                </code>
+              ) : null}
+              {agent.setupHint ? <p className="mt-1 text-[11.5px] text-faint">Then: {agent.setupHint}</p> : null}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </details>
+  )
 }
 
 function order(status: string): number {

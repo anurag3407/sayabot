@@ -3,8 +3,18 @@ import * as fs from "node:fs"
 import * as net from "node:net"
 import * as os from "node:os"
 import * as path from "node:path"
+import {
+  AcpConnection,
+  acpModels,
+  acpUpdate,
+  initializeParams,
+  isAuthError,
+  modelRequest,
+  permissionOutcome,
+  toolName,
+} from "./acp"
 import type { DesktopHost } from "./host"
-import { findBinary } from "./local-agents"
+import { agentSpec, findBinary, type AgentSpec } from "./local-agents"
 import { localServerUrl } from "./local-models"
 import {
   allowedByRules,
@@ -16,9 +26,13 @@ import {
 } from "./mac-stream"
 
 /**
- * The local runner: agents set to run on this computer answer through Claude Code, Codex,
- * Gemini CLI, OpenCode or Cursor signed in here, on the person's own subscription. Each agent
- * works in its own folder (~/Sayabot/agents/<handle>).
+ * The local runner: agents set to run on this computer answer through an agent app signed in
+ * here (Claude Code, Codex, GitHub Copilot, Command Code, Cursor, Gemini CLI, OpenCode, Mistral
+ * Vibe, Grok, Kimi, Kiro, Droid, Devin, Cline, Qwen, Hermes, OMP, pi, DeepSeek Harness), on the
+ * person's own subscription or keys. Each agent works in its own folder (~/Sayabot/agents/<handle>).
+ *
+ * Apps that speak the Agent Client Protocol run through acp.ts: their reply streams into the room,
+ * their steps show up as live cards, and every permission they ask for becomes an approval card.
  *
  * Claude Code and Codex also get Sayabot's room tools (tasks, canvas, decisions, facts) through a
  * one-run token, and every step they take shows up live in the room. Anything Claude wants to do
@@ -110,6 +124,12 @@ export function commandFor(
       return {
         bin: "opencode",
         args: ["run", ...(model ? ["-m", model] : []), prompt.slice(-100_000)],
+        stdin: null,
+      }
+    case "pi":
+      return {
+        bin: "pi",
+        args: ["-p", ...(model ? ["--model", model] : []), prompt.slice(-100_000)],
         stdin: null,
       }
     case "cursor":
@@ -235,9 +255,11 @@ export class LocalRunner {
     try {
       const claimed = await this.host.post<{ job: Job | null }>("/api/desktop/jobs/claim", {})
       if (!claimed?.job) return
+      const spec = agentSpec(claimed.job.app)
       if (claimed.job.app === "claude-code" || claimed.job.app === "codex")
         await this.runWithTools(claimed.job)
       else if (localServerUrl(claimed.job.app)) await this.runLocalModel(claimed.job)
+      else if (spec?.run.kind === "acp") await this.runAcp(claimed.job, spec, spec.run.args)
       else await this.runPlain(claimed.job)
     } finally {
       this.busy = false
@@ -513,7 +535,136 @@ export class LocalRunner {
     return { behavior: "deny", message: "Nobody answered in time, so this wasn't allowed." }
   }
 
-  // ---------- Gemini CLI / OpenCode / Cursor: plain text ----------
+  // ---------- Agent Client Protocol apps: Copilot, Command Code, Vibe, Kimi, Kiro… ----------
+
+  private async runAcp(job: Job, spec: AgentSpec, args: readonly string[]): Promise<void> {
+    const bin = await findBinary(spec.bin)
+    if (!bin) {
+      await this.finish(job, { status: "failed", error: `${spec.name} isn't installed on this computer.` })
+      return
+    }
+    const cwd = agentFolder(job.agentHandle)
+    const env: NodeJS.ProcessEnv = {
+      ...process.env,
+      PATH: [path.dirname(bin), ...EXTRA_PATH, process.env.PATH ?? ""].join(path.delimiter),
+      NO_COLOR: "1",
+    }
+    let output = ""
+    let cancelled = false
+    let sessionId: string | null = null
+    const sessionRules = [...(job.allow ?? [])]
+    let pending: Activity[] = []
+    const flush = async () => {
+      if (!pending.length) return
+      const events = pending
+      pending = []
+      await this.host.post(`/api/desktop/jobs/${job.id}/events`, { events })
+    }
+    const child = spawn(bin, [...args], { cwd, env, stdio: ["pipe", "pipe", "pipe"] })
+    this.child = child
+    const connection = new AcpConnection(child, {
+      onNotification: (method, params) => {
+        if (method !== "session/update") return
+        const update = acpUpdate(params)
+        if (update.delta) output = (output + update.delta).slice(-200_000)
+        if (update.activity.length) pending.push(...update.activity)
+      },
+      onRequest: async (method, params) => {
+        if (method !== "session/request_permission") throw new Error("Not supported")
+        const request = (params ?? {}) as { toolCall?: Record<string, unknown>; options?: unknown }
+        const call = request.toolCall ?? {}
+        const input =
+          call.rawInput && typeof call.rawInput === "object"
+            ? (call.rawInput as Record<string, unknown>)
+            : { title: String(call.title ?? "") }
+        const answer = await this.decide(
+          job,
+          {
+            tool_name: toolName(call),
+            input,
+            tool_use_id: typeof call.toolCallId === "string" ? call.toolCallId : `acp-${Date.now()}`,
+          },
+          sessionRules,
+          () => cancelled,
+          flush,
+        )
+        return permissionOutcome(request.options, answer.behavior === "allow")
+      },
+    })
+    const stop = () => {
+      if (sessionId) connection.notify("session/cancel", { sessionId })
+      setTimeout(() => child.kill("SIGTERM"), 3_000).unref()
+    }
+    const eventsTimer = setInterval(() => void flush(), EVENTS_MS)
+    let lastSent = ""
+    const progress = setInterval(async () => {
+      const text = output.trim()
+      const reply = await this.host.post<{ cancelled?: boolean }>(
+        `/api/desktop/jobs/${job.id}`,
+        text === lastSent ? {} : { output: text },
+      )
+      lastSent = text
+      if (reply?.cancelled && !cancelled) {
+        cancelled = true
+        stop()
+      }
+    }, PROGRESS_MS)
+    const deadline = setTimeout(stop, MAX_RUNTIME_MS)
+    try {
+      await connection.request("initialize", initializeParams(), 60_000)
+      const session = await connection.request("session/new", { cwd, mcpServers: [] }, 120_000)
+      sessionId = typeof (session as { sessionId?: unknown })?.sessionId === "string"
+        ? (session as { sessionId: string }).sessionId
+        : null
+      if (!sessionId) throw new Error(`${spec.name} didn't start a session.`)
+      const model = jobModel(job)
+      const switchTo = model ? modelRequest(acpModels(session).setter, sessionId, model) : null
+      if (switchTo) {
+        await connection.request(switchTo.method, switchTo.params, 30_000).catch((error: unknown) => {
+          console.warn(`[runner] ${spec.name} kept its own model`, error)
+        })
+      }
+      const result = (await connection.request(
+        "session/prompt",
+        { sessionId, prompt: [{ type: "text", text: job.prompt }] },
+        null,
+      )) as { stopReason?: unknown } | null
+      await flush()
+      if (cancelled) return
+      const final = output.trim()
+      const stopReason = typeof result?.stopReason === "string" ? result.stopReason : "end_turn"
+      if (final) await this.finish(job, { output: final, status: "done" })
+      else
+        await this.finish(job, {
+          output: "",
+          status: "failed",
+          error:
+            stopReason === "refusal"
+              ? `${spec.name} declined to answer this.`
+              : `${spec.name} finished without a reply (${stopReason}).`,
+        })
+    } catch (error) {
+      await flush().catch(() => undefined)
+      if (cancelled) return
+      const message = error instanceof Error ? error.message : String(error)
+      const keys = spec.keyEnv.length ? `, or set ${spec.keyEnv[0]}` : ""
+      await this.finish(job, {
+        output: output.trim(),
+        status: "failed",
+        error: isAuthError(error)
+          ? `${spec.name} isn't signed in on this computer. Run \`${spec.bin}\` once in a terminal and sign in${keys}. (${message.slice(0, 200)})`
+          : message.slice(0, 500),
+      })
+    } finally {
+      clearInterval(eventsTimer)
+      clearInterval(progress)
+      clearTimeout(deadline)
+      connection.close()
+      this.child = null
+    }
+  }
+
+  // ---------- Gemini CLI / OpenCode / Cursor / pi: plain text ----------
 
   private async runPlain(job: Job): Promise<void> {
     const lastMessageFile = path.join(os.tmpdir(), `sayabot-${job.id}.txt`)

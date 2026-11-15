@@ -1,5 +1,5 @@
 import "server-only"
-import { isSayaModel, sayaModelLabel, sayaModelValue } from "@sayabot/core"
+import { isSayaModel, MAC_CLI_APP_IDS, MAC_CLI_APPS, sayaModelLabel, sayaModelValue } from "@sayabot/core"
 import { EFFORT_LEVELS } from "@sayabot/llm/models/effort"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { sayaAi } from "@/lib/env"
@@ -12,16 +12,13 @@ import { parseMacKeyId } from "@/lib/model-catalog"
  * "only this chat", so both accept exactly the same choices.
  */
 
-export const MAC_APPS = ["claude-code", "codex", "gemini", "opencode", "cursor"] as const
+/** Every agent app a Mac can run bots with (MAC_CLI_APPS in @sayabot/core). */
+export const MAC_APPS: readonly string[] = MAC_CLI_APP_IDS
 export const LOCAL_MODEL_APPS = ["ollama", "lmstudio"] as const
 const SERVER_APPS = ["claude-code", "codex", "cursor"] as const
 
 const APP_NAMES: Record<string, string> = {
-  "claude-code": "Claude Code",
-  codex: "Codex",
-  gemini: "Gemini CLI",
-  opencode: "OpenCode",
-  cursor: "Cursor",
+  ...Object.fromEntries(MAC_CLI_APPS.map((app) => [app.id, app.name])),
   ollama: "Ollama",
   lmstudio: "LM Studio",
 }
@@ -75,7 +72,7 @@ export async function resolveModelChoice(input: {
       return { ok: false, error: "You can only pick a computer you set up yourself" }
     }
     const isLocalModel = (LOCAL_MODEL_APPS as readonly string[]).includes(app ?? "")
-    if (!app || (!isLocalModel && !(MAC_APPS as readonly string[]).includes(app))) {
+    if (!app || (!isLocalModel && !MAC_APPS.includes(app))) {
       return { ok: false, error: "Pick an app on that computer" }
     }
     const chosen = appModel && appModel !== "default" ? appModel : null

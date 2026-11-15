@@ -1,8 +1,9 @@
 # Agents on your Mac
 
-With Sayabot for Mac installed, your agents run **on your Mac**, using the Claude Code, Codex,
-Gemini CLI, OpenCode or Cursor you're already signed in to. That means your own subscription, no API
-key and no setup. Chats, tasks and canvases still live on the server, so the web and phone
+With Sayabot for Mac installed, your agents run **on your Mac**, using an agent app you're already
+signed in to: Claude Code, Codex, GitHub Copilot, Command Code, Cursor, Gemini CLI, OpenCode,
+Mistral Vibe, Grok, Kimi, Kiro, Droid, Devin, Cline, Qwen, Hermes, OMP, pi or DeepSeek Harness.
+That means your own subscription, and for most of them no API key and no setup. Chats, tasks and canvases still live on the server, so the web and phone
 see everything live.
 
 ## What happens when you message an agent
@@ -22,11 +23,45 @@ see everything live.
                                  token revoked
 ```
 
+## Which apps, and do you need an API key?
+
+Sayabot for Mac looks for each app's command-line tool and its sign-in (a login file or keychain
+entry; the credentials themselves are never read or sent) and reports what it finds every minute.
+The Providers page lists them under _On this computer_, with the rest under _More providers_ and
+their install command. The model picker shows each ready app with the models it offers you.
+
+| App | Command | Sign-in | API key instead |
+| --- | --- | --- | --- |
+| Claude Code | `claude` | its own login | `ANTHROPIC_API_KEY` |
+| Codex | `codex` | `codex login` | `OPENAI_API_KEY` |
+| GitHub Copilot | `copilot` | `copilot login` | `COPILOT_GITHUB_TOKEN` / `GH_TOKEN` |
+| Command Code | `command-code` | `command-code login` | `COMMAND_CODE_API_KEY` |
+| Cursor | `cursor-agent` | `cursor-agent login` | `CURSOR_API_KEY` |
+| Gemini CLI | `gemini` | its own login | `GEMINI_API_KEY` |
+| OpenCode | `opencode` | `opencode auth login`, or its free models | `OPENCODE_API_KEY` |
+| Mistral (Vibe) | `vibe-acp` | `vibe` | `MISTRAL_API_KEY` |
+| Grok | `grok` | `grok login` | none (subscription only) |
+| Kimi Code | `kimi` | `kimi login` | none (subscription only) |
+| Kiro | `kiro-cli` | `kiro-cli login` | `KIRO_API_KEY` |
+| Droid (Factory) | `droid` | `droid` | `FACTORY_API_KEY` |
+| Devin | `devin` | `devin auth login` | `WINDSURF_API_KEY` |
+| Cline | `cline` | `cline auth` | `CLINE_API_KEY` |
+| Qwen Code | `qwen` | providers set up in Qwen | — |
+| Hermes | `hermes` | providers set up with `hermes setup` | — |
+| OMP (Oh My Pi) | `omp` | providers set up in OMP | — |
+| pi | `pi` | **needs a provider key** saved in pi | `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`… |
+| DeepSeek Harness | `dsh` | **needs a key** | `DEEPSEEK_API_KEY` |
+
+An "API key instead" only counts when Sayabot for Mac can see it: saved in the app itself, or in
+the environment the Mac app was started with (apps opened from the Dock don't read your shell
+profile). Keys you add to Sayabot's own Providers page are used by the server, not by these apps.
+
 ## Which agents run on the Mac
 
 - **By default:** once Sayabot for Mac finds a signed-in app, agents with no key or computer of
   their own run on that Mac, in workspaces where **you're the only member**. The app picked is
-  Claude Code, then Codex, Gemini CLI, OpenCode, Cursor.
+  Claude Code, then Codex, Copilot, Cursor, Gemini CLI, OpenCode, then the others in the table
+  above.
 - **When the Mac is offline,** the server answers as before.
 - **In shared workspaces,** pick "run on my computer" per agent. Nobody else's messages run on your
   Mac by default.
@@ -35,12 +70,20 @@ see everything live.
 
 ## What they can do
 
-|                                                             | Claude Code   | Codex                            | Gemini / OpenCode / Cursor |
-| ----------------------------------------------------------- | ------------- | -------------------------------- | -------------------------- |
-| Reply in the room                                           | ✓             | ✓                                | ✓                          |
-| Sayabot tools: tasks, canvas, decisions, votes, owner facts | ✓             | ✓                                | —                          |
-| Live tool cards in the room                                 | ✓             | ✓                                | —                          |
-| Commands, edits, web pages                                  | ask you first | inside its folder only (sandbox) | app defaults               |
+|                                                             | Claude Code   | Codex                            | ACP apps¹     | Gemini / OpenCode / Cursor / pi |
+| ----------------------------------------------------------- | ------------- | -------------------------------- | ------------- | ------------------------------- |
+| Reply in the room                                           | ✓             | ✓                                | ✓             | ✓                               |
+| Sayabot tools: tasks, canvas, decisions, votes, owner facts | ✓             | ✓                                | —             | —                               |
+| Live tool cards in the room                                 | ✓             | ✓                                | ✓             | —                               |
+| Pick a model in the picker                                  | ✓             | ✓                                | ✓             | ✓                               |
+| Commands, edits, web pages                                  | ask you first | inside its folder only (sandbox) | ask you first | app defaults                    |
+
+¹ Copilot, Command Code, Mistral Vibe, Grok, Kimi, Kiro, Droid, Devin, Cline, Qwen, Hermes, OMP and
+DeepSeek Harness speak the [Agent Client Protocol](https://agentclientprotocol.com). Sayabot for Mac
+starts them with no file or terminal access of its own (`apps/desktop/src/acp.ts`), streams their
+reply, and turns every permission they ask for into an approval card; a yes allows that one step.
+Their model list comes from a session that is opened and closed without a prompt, at most every
+six hours.
 
 Each agent works in its own folder: `~/Sayabot/agents/<handle>`.
 
@@ -77,6 +120,9 @@ the agent's settings (`params.localAllow`).
 ## Files
 
 - [`apps/desktop/src/runner.ts`](../apps/desktop/src/runner.ts): runs the apps, reports steps, answers approvals
+- [`apps/desktop/src/acp.ts`](../apps/desktop/src/acp.ts): the Agent Client Protocol client (sessions, models, steps, permissions)
+- [`apps/desktop/src/local-agents.ts`](../apps/desktop/src/local-agents.ts): finds each app and its sign-in, and how to start it
+- [`packages/core/src/mac-apps.ts`](../packages/core/src/mac-apps.ts): the app list the web and the server share, and whether each needs an API key
 - [`apps/desktop/src/approve-mcp.ts`](../apps/desktop/src/approve-mcp.ts): Claude Code's permission prompt (stdio MCP)
 - [`apps/desktop/src/mac-stream.ts`](../apps/desktop/src/mac-stream.ts): reads Claude / Codex output, always-allow rules
 - [`apps/orchestrator/src/runner/local.ts`](../apps/orchestrator/src/runner/local.ts): queues the job, the tool token, the Mac default

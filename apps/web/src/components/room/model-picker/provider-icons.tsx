@@ -134,6 +134,26 @@ export function HermesMark({ size = 16, className = "" }: { size?: number; class
   )
 }
 
+/** Providers without a mark of their own get their initial, never another company's logo. */
+export function LetterMark({ letter, size = 16, className = "" }: { letter: string; size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className} aria-hidden="true">
+      <rect x="2" y="2" width="20" height="20" rx="6" fill="currentColor" opacity="0.16" />
+      <text
+        x="12"
+        y="16.5"
+        textAnchor="middle"
+        fontSize="13"
+        fontWeight="600"
+        fontFamily="ui-sans-serif, system-ui, sans-serif"
+        fill="currentColor"
+      >
+        {letter}
+      </text>
+    </svg>
+  )
+}
+
 export function ProviderIcon({
   provider,
   size = 14,
@@ -193,6 +213,6 @@ export function ProviderIcon({
     case "groq":
       return <OpenAIMark size={size} className={className} />
     default:
-      return <OpenAIMark size={size} className={className} />
+      return <LetterMark letter={(norm.match(/[a-z0-9]/)?.[0] ?? "?").toUpperCase()} size={size} className={className} />
   }
 }

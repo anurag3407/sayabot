@@ -1,4 +1,5 @@
 import "server-only"
+import { MAC_CLI_APP_IDS, MAC_CLI_APPS } from "@sayabot/core"
 import { hashAgentApiKey } from "@sayabot/core/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 
@@ -53,8 +54,12 @@ export async function orgRoleOf(userId: string, orgId: string | null): Promise<"
   return (data?.role as "owner" | "admin" | "member" | undefined) ?? null
 }
 
-/** Best app to run agents with on a Mac, from what it reported as signed in (most capable first). */
-const DEFAULT_APP_ORDER = ["claude-code", "codex", "gemini", "opencode", "cursor"]
+/**
+ * Best app to run agents with on a Mac, from what it reported as signed in: the subscription apps
+ * people most often have first, then the rest in MAC_CLI_APPS order.
+ */
+const PREFERRED = ["claude-code", "codex", "copilot", "cursor", "gemini", "opencode"]
+const DEFAULT_APP_ORDER = [...PREFERRED, ...MAC_CLI_APP_IDS.filter((id) => !PREFERRED.includes(id))]
 
 export function pickDefaultApp(localAgents: Array<Record<string, unknown>>): string | null {
   const ready = new Set(
@@ -82,13 +87,7 @@ export function withLocalDefault(
   return stillReady || current === best ? null : { ...settings, localDefault: { app: best } }
 }
 
-const APP_NAMES: Record<string, string> = {
-  "claude-code": "Claude Code",
-  codex: "Codex",
-  gemini: "Gemini CLI",
-  opencode: "OpenCode",
-  cursor: "Cursor",
-}
+const APP_NAMES: Record<string, string> = Object.fromEntries(MAC_CLI_APPS.map((app) => [app.id, app.name]))
 
 /**
  * The app this person's agents will run with on their Mac, if Sayabot for Mac found one signed

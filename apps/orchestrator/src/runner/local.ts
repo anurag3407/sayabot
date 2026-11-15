@@ -1,4 +1,4 @@
-import { hostOnline, redactSecrets } from "@sayabot/core"
+import { hostOnline, MAC_CLI_APP_IDS, redactSecrets } from "@sayabot/core"
 import { clampEffort, ENGINE_EFFORT_LEVELS } from "@sayabot/llm/models/effort"
 import { sealSecret } from "@sayabot/llm"
 import { agentRuns, desktopHosts, localRunnerJobs, messages, orgMembers, toolCalls } from "@sayabot/db"
@@ -26,9 +26,12 @@ import { serverCanAnswer, withoutRunner, type RunLlmTurnArgs, type TurnResult } 
  * its output back, which we relay into the room message as it arrives.
  */
 
-/** Apps a Mac runs agents with: signed-in CLIs, and models served locally (Ollama, LM Studio). */
-export const MAC_RUNNER_APPS = ["claude-code", "codex", "gemini", "opencode", "cursor", "ollama", "lmstudio"] as const
-export type MacRunnerApp = (typeof MAC_RUNNER_APPS)[number]
+/**
+ * Apps a Mac runs agents with: signed-in agent CLIs (MAC_CLI_APPS in @sayabot/core: Claude Code,
+ * Codex, Copilot, Command Code, Kimi, Kiro…) and models served locally (Ollama, LM Studio).
+ */
+export const MAC_RUNNER_APPS: readonly string[] = [...MAC_CLI_APP_IDS, "ollama", "lmstudio"]
+export type MacRunnerApp = string
 
 export interface LocalRunnerConfig {
   hostId: string
@@ -45,9 +48,7 @@ const MAC_MODEL_ID = /^[\w.:/@+[\]-]{1,160}$/
 export function localRunnerConfig(params: Record<string, unknown> | null | undefined): LocalRunnerConfig | null {
   const runner = params?.runner as Record<string, unknown> | undefined
   if (!runner || typeof runner.hostId !== "string" || !/^[0-9a-f-]{36}$/i.test(runner.hostId)) return null
-  const app = (MAC_RUNNER_APPS as readonly string[]).includes(String(runner.app))
-    ? (runner.app as MacRunnerApp)
-    : "claude-code"
+  const app = MAC_RUNNER_APPS.includes(String(runner.app)) ? String(runner.app) : "claude-code"
   const model =
     typeof runner.model === "string" && runner.model !== "default" && MAC_MODEL_ID.test(runner.model)
       ? runner.model
@@ -57,7 +58,7 @@ export function localRunnerConfig(params: Record<string, unknown> | null | undef
 }
 
 /** The Mac default only picks a signed-in app; a local model needs a model picked for it. */
-const RUNNER_APPS = new Set<string>(["claude-code", "codex", "gemini", "opencode", "cursor"])
+const RUNNER_APPS = new Set<string>(MAC_CLI_APP_IDS)
 
 /**
  * The owner's Mac as the default for agents that have no key or computer of their own, when

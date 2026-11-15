@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process"
 import { readdirSync } from "node:fs"
-import { access, constants, readFile, stat } from "node:fs/promises"
+import { access, constants, readdir, readFile, stat } from "node:fs/promises"
 import { homedir } from "node:os"
 import { delimiter, dirname, join } from "node:path"
 import {
@@ -15,10 +15,13 @@ import {
  * Agent apps signed in on this computer. The desktop reports these to Sayabot (so the web
  * can show them even when Sayabot is hosted elsewhere) and the local runner uses them.
  * We check for login files/keychain entries; credentials are never read or sent.
+ *
+ * The list matches MAC_CLI_APPS in @sayabot/core (a test keeps them in step). Each app says how it
+ * signs in: its own login, an API key it accepts instead (`keyEnv`), or the providers set up in it.
  */
 
 export interface LocalAgent {
-  id: "claude-code" | "codex" | "gemini" | "opencode" | "hermes" | "cursor" | "ollama" | "lmstudio"
+  id: string
   name: string
   binary: string | null
   status: "ready" | "signed_out" | "not_installed"
@@ -27,6 +30,248 @@ export interface LocalAgent {
   account?: string | null
   /** Models it can run for that account; omitted when the app doesn't list them. */
   models?: ReportedModel[]
+}
+
+/**
+ * How the runner starts each app: Claude Code and Codex with Sayabot's room tools, a few in their
+ * plain print mode, and the rest over the Agent Client Protocol (see acp.ts).
+ */
+export type RunMode = { kind: "tools" } | { kind: "plain" } | { kind: "acp"; args: readonly string[] }
+
+export interface AgentSpec {
+  id: string
+  name: string
+  bin: string
+  run: RunMode
+  /** API keys the app takes instead of a sign-in (read from this app's environment only). */
+  keyEnv: readonly string[]
+  signedIn: (home: string) => Promise<boolean>
+}
+
+const hasEnv = (names: readonly string[]) => names.some((name) => Boolean(process.env[name]?.trim()))
+const fileHas = (file: string, pattern: RegExp) =>
+  readFile(file, "utf8").then(
+    (text) => pattern.test(text),
+    () => false,
+  )
+const dirHas = (dir: string, pattern: RegExp) =>
+  readdir(dir).then(
+    (names) => names.some((name) => pattern.test(name)),
+    () => false,
+  )
+const xdgData = (home: string) => process.env.XDG_DATA_HOME?.trim() || join(home, ".local/share")
+const xdgConfig = (home: string) => process.env.XDG_CONFIG_HOME?.trim() || join(home, ".config")
+const someTrue = async (checks: Array<() => Promise<boolean>>) => {
+  for (const check of checks) if (await check()) return true
+  return false
+}
+
+export const AGENT_SPECS: readonly AgentSpec[] = [
+  {
+    id: "claude-code",
+    name: "Claude Code",
+    bin: "claude",
+    run: { kind: "tools" },
+    keyEnv: ["ANTHROPIC_API_KEY"],
+    signedIn: (home) =>
+      someTrue([
+        () => exists(join(home, ".claude/.credentials.json")),
+        () => fileHas(join(home, ".claude.json"), /"oauthAccount"/),
+        () => keychainHas("Claude Code-credentials"),
+      ]),
+  },
+  {
+    id: "codex",
+    name: "Codex",
+    bin: "codex",
+    run: { kind: "tools" },
+    keyEnv: ["OPENAI_API_KEY"],
+    signedIn: (home) => exists(join(process.env.CODEX_HOME?.trim() || join(home, ".codex"), "auth.json")),
+  },
+  {
+    id: "copilot",
+    name: "GitHub Copilot",
+    bin: "copilot",
+    run: { kind: "acp", args: ["--acp", "--stdio"] },
+    keyEnv: ["COPILOT_GITHUB_TOKEN", "GH_TOKEN", "GITHUB_TOKEN"],
+    signedIn: (home) =>
+      someTrue([
+        () =>
+          fileHas(
+            join(process.env.COPILOT_HOME?.trim() || join(home, ".copilot"), "config.json"),
+            /"loggedInUsers"\s*:\s*\[\s*\{|"lastLoggedInUser"\s*:\s*\{/,
+          ),
+        () => keychainHas("copilot-cli"),
+      ]),
+  },
+  {
+    id: "command-code",
+    name: "Command Code",
+    bin: "command-code",
+    run: { kind: "acp", args: ["acp"] },
+    keyEnv: ["COMMAND_CODE_API_KEY"],
+    signedIn: (home) => fileHas(join(home, ".commandcode/auth.json"), /"apiKey"\s*:\s*"[^"]+"/),
+  },
+  {
+    id: "cursor",
+    name: "Cursor",
+    bin: "cursor-agent",
+    run: { kind: "plain" },
+    keyEnv: ["CURSOR_API_KEY", "CURSOR_AUTH_TOKEN"],
+    signedIn: (home) =>
+      someTrue([
+        () => keychainHas("cursor-access-token"),
+        () => fileHas(join(home, ".cursor/cli-config.json"), /"authInfo"/),
+      ]),
+  },
+  {
+    id: "gemini",
+    name: "Gemini CLI",
+    bin: "gemini",
+    run: { kind: "plain" },
+    keyEnv: ["GEMINI_API_KEY", "GOOGLE_API_KEY"],
+    signedIn: (home) => exists(join(home, ".gemini/oauth_creds.json")),
+  },
+  {
+    id: "opencode",
+    name: "OpenCode",
+    bin: "opencode",
+    run: { kind: "plain" },
+    keyEnv: ["OPENCODE_API_KEY"],
+    // OpenCode also runs on its own free models and on providers set up in opencode.json.
+    signedIn: (home) =>
+      someTrue([
+        () => exists(join(xdgData(home), "opencode/auth.json")),
+        () => exists(join(xdgConfig(home), "opencode/opencode.json")),
+        () => exists(join(xdgData(home), "opencode/opencode.db")),
+      ]),
+  },
+  {
+    id: "mistral-vibe",
+    name: "Mistral (Vibe)",
+    bin: "vibe-acp",
+    run: { kind: "acp", args: [] },
+    keyEnv: ["MISTRAL_API_KEY"],
+    signedIn: (home) => {
+      const vibe = process.env.VIBE_HOME?.trim() || join(home, ".vibe")
+      return someTrue([
+        () => fileHas(join(vibe, "whoami_cache.json"), /customer_id|api_base/),
+        () => fileHas(join(vibe, ".env"), /^(?:export )?MISTRAL_API_KEY=\S/m),
+        () => keychainHas("ai.mistral.vibe"),
+      ])
+    },
+  },
+  {
+    id: "grok",
+    name: "Grok",
+    bin: "grok",
+    run: { kind: "acp", args: ["agent", "stdio"] },
+    keyEnv: [],
+    signedIn: (home) => exists(join(process.env.GROK_HOME?.trim() || join(home, ".grok"), "auth.json")),
+  },
+  {
+    id: "kimi",
+    name: "Kimi Code",
+    bin: "kimi",
+    run: { kind: "acp", args: ["acp"] },
+    keyEnv: [],
+    signedIn: (home) =>
+      dirHas(join(process.env.KIMI_CODE_HOME?.trim() || join(home, ".kimi-code"), "credentials"), /^kimi-code.*\.json$/),
+  },
+  {
+    id: "kiro",
+    name: "Kiro",
+    bin: "kiro-cli",
+    run: { kind: "acp", args: ["acp", "--agent-engine=v3", "--auth-method=cli"] },
+    keyEnv: ["KIRO_API_KEY"],
+    // The login lives in Kiro's own database; its presence is the best sign without opening it.
+    signedIn: (home) =>
+      exists(
+        process.platform === "darwin"
+          ? join(home, "Library/Application Support/kiro-cli/data.sqlite3")
+          : join(xdgData(home), "kiro-cli/data.sqlite3"),
+      ),
+  },
+  {
+    id: "droid",
+    name: "Droid (Factory)",
+    bin: "droid",
+    run: { kind: "acp", args: ["exec", "-o", "acp"] },
+    keyEnv: ["FACTORY_API_KEY"],
+    signedIn: (home) => dirHas(join(home, ".factory"), /^auth(?:\.v2\.[\w-]+|\.json)$/),
+  },
+  {
+    id: "devin",
+    name: "Devin",
+    bin: "devin",
+    run: { kind: "acp", args: ["acp"] },
+    keyEnv: ["WINDSURF_API_KEY"],
+    signedIn: (home) => exists(join(xdgConfig(home), "devin/credentials.toml")),
+  },
+  {
+    id: "cline",
+    name: "Cline",
+    bin: "cline",
+    run: { kind: "acp", args: ["--acp", "--auto-approve", "false"] },
+    keyEnv: ["CLINE_API_KEY"],
+    signedIn: (home) =>
+      fileHas(
+        join(process.env.CLINE_DIR?.trim() || join(home, ".cline"), "data/settings/providers.json"),
+        /"(?:apiKey|accessToken)"\s*:\s*"[^"]+"/,
+      ),
+  },
+  {
+    id: "qwen",
+    name: "Qwen Code",
+    bin: "qwen",
+    run: { kind: "acp", args: ["--acp"] },
+    keyEnv: [],
+    signedIn: (home) =>
+      someTrue([() => exists(join(home, ".qwen/oauth_creds.json")), () => exists(join(home, ".qwen/settings.json"))]),
+  },
+  {
+    id: "hermes",
+    name: "Hermes",
+    bin: "hermes",
+    run: { kind: "acp", args: ["acp"] },
+    keyEnv: [],
+    signedIn: (home) =>
+      someTrue([() => exists(join(home, ".hermes/config.yaml")), () => exists(join(home, ".hermes/auth.json"))]),
+  },
+  {
+    id: "omp",
+    name: "OMP (Oh My Pi)",
+    bin: "omp",
+    run: { kind: "acp", args: ["acp"] },
+    keyEnv: [],
+    signedIn: (home) => exists(join(home, ".omp/agent")),
+  },
+  {
+    id: "pi",
+    name: "pi",
+    bin: "pi",
+    run: { kind: "plain" },
+    keyEnv: ["ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"],
+    signedIn: (home) => fileHas(join(home, ".pi/agent/auth.json"), /"\w[^"]*"\s*:\s*\{/),
+  },
+  {
+    id: "deepseek",
+    name: "DeepSeek Harness",
+    bin: "dsh",
+    run: { kind: "acp", args: ["--profile", "acp"] },
+    keyEnv: ["DEEPSEEK_API_KEY"],
+    signedIn: (home) => {
+      const dsh = process.env.DSH_HOME?.trim() || join(home, ".dsh")
+      return someTrue([
+        () => fileHas(join(dsh, ".credentials.yaml"), /DEEPSEEK_API_KEY\s*:\s*\S/),
+        () => fileHas(join(dsh, ".env"), /^(?:export )?DEEPSEEK_API_KEY\s*=\s*\S/m),
+      ])
+    },
+  },
+]
+
+export function agentSpec(id: string): AgentSpec | undefined {
+  return AGENT_SPECS.find((spec) => spec.id === id)
 }
 
 const BIN_DIRS = [
@@ -81,46 +326,22 @@ async function keychainHas(service: string): Promise<boolean> {
 
 export async function detectLocalAgents(): Promise<LocalAgent[]> {
   const home = homedir()
-  const specs: Array<{ id: LocalAgent["id"]; name: string; bin: string; signedIn: () => Promise<boolean> }> = [
-    {
-      id: "claude-code",
-      name: "Claude Code",
-      bin: "claude",
-      signedIn: async () =>
-        (await exists(join(home, ".claude/.credentials.json"))) ||
-        (await readFile(join(home, ".claude.json"), "utf8").then((t) => t.includes('"oauthAccount"'), () => false)) ||
-        (await keychainHas("Claude Code-credentials")),
-    },
-    { id: "codex", name: "Codex", bin: "codex", signedIn: () => exists(join(home, ".codex/auth.json")) },
-    { id: "gemini", name: "Gemini CLI", bin: "gemini", signedIn: () => exists(join(home, ".gemini/oauth_creds.json")) },
-    { id: "opencode", name: "OpenCode", bin: "opencode", signedIn: () => exists(join(home, ".local/share/opencode/auth.json")) },
-    { id: "hermes", name: "Hermes", bin: "hermes", signedIn: () => exists(join(home, ".hermes")) },
-    {
-      id: "cursor",
-      name: "Cursor",
-      bin: "cursor-agent",
-      signedIn: async () =>
-        Boolean(process.env.CURSOR_API_KEY) ||
-        (await keychainHas("cursor-access-token")) ||
-        (await readFile(join(home, ".cursor/cli-config.json"), "utf8").then((t) => t.includes('"authInfo"'), () => false)),
-    },
-  ]
-  const accounts: Partial<Record<LocalAgent["id"], () => Promise<string | null>>> = {
+  const accounts: Partial<Record<string, () => Promise<string | null>>> = {
     "claude-code": () => claudeAccount(home),
     gemini: () => geminiAccount(home),
   }
   const [apps, servers] = await Promise.all([
     Promise.all(
-      specs.map(async (spec) => {
+      AGENT_SPECS.map(async (spec) => {
         const binary = await findBinary(spec.bin)
-        const signedIn = await spec.signedIn()
+        const signedIn = binary ? hasEnv(spec.keyEnv) || (await spec.signedIn(home).catch(() => false)) : false
         const version = binary ? ((await run(binary, ["--version"])).match(/\d+\.\d+(?:\.\d+)?/)?.[0] ?? null) : null
         const status: LocalAgent["status"] = !binary ? "not_installed" : signedIn ? "ready" : "signed_out"
         const [account, models] =
           status === "ready"
             ? await Promise.all([
                 accounts[spec.id]?.().catch(() => null) ?? Promise.resolve(null),
-                appModels(spec.id, binary, version).catch(() => null),
+                appModels(spec, binary, version).catch(() => null),
               ])
             : [null, null]
         return {
