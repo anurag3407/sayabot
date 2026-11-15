@@ -86,6 +86,10 @@ export const localRunnerJobs = pgTable(
     runId: uuid("run_id"),
     /** Which app runs it (claude-code, codex…): chosen per agent, or the Mac's default. */
     app: text("app"),
+    /** The model inside that app (claude-opus-5-5, llama3.2…); null keeps the app's default. */
+    model: text("model"),
+    /** Thinking effort passed to the app; null keeps its default. */
+    effort: text("effort"),
     status: text("status").notNull().default("queued"),
     prompt: text("prompt").notNull(),
     /** One-run MCP token for Sayabot's room tools, sealed with MESH_KEK; cleared once claimed. */

@@ -185,7 +185,14 @@ function startHost(): void {
         }
       },
       detectLocalAgents: async () =>
-        (await detectLocalAgents()).map((a) => ({ id: a.id, name: a.name, status: a.status, version: a.version })),
+        (await detectLocalAgents()).map((a) => ({
+          id: a.id,
+          name: a.name,
+          status: a.status,
+          version: a.version,
+          ...(a.account ? { account: a.account } : {}),
+          ...(a.models ? { models: a.models } : {}),
+        })),
       // The local runner picks up work after each heartbeat (one job at a time).
       onHeartbeat: (reply) => {
         localRunnerRunning = Boolean(reply.settings.runnerEnabled)

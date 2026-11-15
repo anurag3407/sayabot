@@ -1,16 +1,16 @@
 "use server"
 
 import { z } from "zod"
-import { DEFAULT_CAPABILITIES, isSayaModel, isWorksOn, parseCapabilities, redactSecrets, sayaModelLabel, sayaModelValue, type WorksOn } from "@sayabot/core"
+import { DEFAULT_CAPABILITIES, isWorksOn, parseCapabilities, redactSecrets, type WorksOn } from "@sayabot/core"
 import { generateWebhookSecret } from "@sayabot/core/server"
 import { sealSecret } from "@sayabot/llm"
-import { EFFORT_LEVELS } from "@sayabot/llm/models/effort"
 import { randomBytes } from "node:crypto"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { planGate } from "@/lib/plan-limits"
-import { getKek, sayaAi } from "@/lib/env"
+import { getKek } from "@/lib/env"
 import { headers } from "next/headers"
 import { localDetectionAllowed } from "@/lib/local-agents"
+import { resolveModelChoice } from "@/lib/model-choice"
 import { testAgentInOrchestrator } from "@/lib/orchestrator"
 import {
   adminOrgAccess,
@@ -423,8 +423,6 @@ export async function createBotFromTemplate(
   return computerNote ? { ...created, warning: `Created without its own computer. ${computerNote}` } : created
 }
 
-const EFFORTS = new Set<string>(EFFORT_LEVELS)
-
 /**
  * The refresh button in the model picker: reads every model list again now instead of waiting
  * for its schedule (models.dev daily, the model manifest hourly, CLI lists every 6 hours, key
@@ -470,107 +468,134 @@ export async function setAgentModelAction(input: {
   if (!agent || agent.org_id !== check.access.org.id) return fail("Agent not found")
   if (agent.kind !== "llm") return fail("Invited agents use the model of their own app")
 
-  const model = input.model?.trim().slice(0, 200) || null
+  const requestHeaders = await headers()
+  const resolved = await resolveModelChoice({
+    orgId: check.access.org.id,
+    userId: check.access.user.id,
+    requestHost: requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host"),
+    keyId: input.providerKeyId,
+    model: input.model,
+    effort: input.effort,
+  })
+  if (!resolved.ok) return fail(resolved.error)
+  const choice = resolved.choice
   const params = { ...((agent.params as Record<string, unknown>) ?? {}) }
   if (input.effort !== undefined) {
-    if (input.effort && EFFORTS.has(input.effort)) params.effort = input.effort
+    if (choice.effort) params.effort = choice.effort
     else delete params.effort
   }
-
-  // "Run on my computer": the agent answers through an app signed in on the person's own Mac.
-  if (input.providerKeyId?.startsWith("host:")) {
-    const hostId = input.providerKeyId.slice(5)
-    const { data: host } = await admin
-      .from("desktop_hosts")
-      .select("id, user_id, name, revoked_at")
-      .eq("id", hostId)
-      .maybeSingle()
-    if (!host || host.revoked_at || host.user_id !== check.access.user.id) {
-      return fail("You can only pick a computer you set up yourself")
-    }
-    if (!model || !["claude-code", "codex", "gemini", "opencode", "cursor"].includes(model)) return fail("Pick an app on that computer")
-    params.runner = { hostId: host.id, app: model }
-    const { error } = await admin
-      .from("agents")
-      .update({ provider_key_id: null, model: null, params, owner_user_id: check.access.user.id })
-      .eq("id", agent.id)
-    if (error) return fail(errorMessage(error))
-    await audit({
-      orgId: check.access.org.id,
-      actorId: check.access.user.id,
-      action: "agent.runner_set",
-      target: agent.id,
-      metadata: { hostId: host.id, app: model },
-    })
-    revalidateOrg(input.orgSlug)
-    return ok(`@${agent.handle} now runs on ${host.name}`)
-  }
-  // "This computer": Claude Code / Codex signed in on the machine Sayabot runs on. No key, no login.
-  if (input.providerKeyId?.startsWith("cli:")) {
-    const app = input.providerKeyId.slice(4)
-    if (app !== "claude-code" && app !== "codex" && app !== "cursor") return fail("Pick Claude Code, Codex or Cursor")
-    const requestHeaders = await headers()
-    if (!localDetectionAllowed(requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host"))) {
-      return fail("Apps on this computer are only available when Sayabot runs on your own machine")
-    }
-    if (model && model !== "default" && !/^[\w./:@~-]{1,120}$/.test(model)) return fail("That model id isn't valid")
-    params.runner = { where: "server", app, ...(model && model !== "default" ? { model } : {}) }
-    const { error } = await admin
-      .from("agents")
-      .update({ provider_key_id: null, model: null, params, owner_user_id: check.access.user.id })
-      .eq("id", agent.id)
-    if (error) return fail(errorMessage(error))
-    await audit({
-      orgId: check.access.org.id,
-      actorId: check.access.user.id,
-      action: "agent.runner_set",
-      target: agent.id,
-      metadata: { where: "server", app, model },
-    })
-    revalidateOrg(input.orgSlug)
-    const appName = app === "codex" ? "Codex" : app === "cursor" ? "Cursor" : "Claude Code"
-    return ok(`@${agent.handle} now uses ${appName} on this computer`)
-  }
-  delete params.runner
-
-  if (input.providerKeyId) {
-    const { data: key } = await admin
-      .from("provider_keys")
-      .select("id, org_id")
-      .eq("id", input.providerKeyId)
-      .maybeSingle()
-    if (!key || key.org_id !== check.access.org.id) return fail("That provider account isn't in this workspace")
-    if (!model) return fail("Pick a model")
-  }
-
-  // Saya AI (no key): store the alias, never the real id, so .env changes reach this agent.
-  // null means "Automatic": follow the server's current default.
-  let storedModel: string | null = input.providerKeyId ? model : null
-  if (!input.providerKeyId && model) {
-    const saya = sayaAi()
-    if (!saya) return fail("This server has no Saya AI models set up")
-    if (!isSayaModel(model) || !saya.models.some((m) => sayaModelValue(m.alias) === model)) {
-      return fail("That Saya AI model isn't offered by this server any more")
-    }
-    storedModel = model
-  }
+  if (choice.runner) params.runner = choice.runner
+  else delete params.runner
 
   const { error } = await admin
     .from("agents")
-    .update({ provider_key_id: input.providerKeyId, model: storedModel, params })
+    .update({
+      provider_key_id: choice.providerKeyId,
+      model: choice.agentModel,
+      params,
+      // A Mac only runs its owner's bots, so picking your Mac makes the bot yours.
+      ...(choice.macOwnerUserId ? { owner_user_id: choice.macOwnerUserId } : {}),
+    })
     .eq("id", agent.id)
   if (error) return fail(errorMessage(error))
   await audit({
     orgId: check.access.org.id,
     actorId: check.access.user.id,
-    action: "agent.model_changed",
+    action: choice.runner ? "agent.runner_set" : "agent.model_changed",
     target: agent.id,
-    metadata: { model, providerKeyId: input.providerKeyId, effort: params.effort ?? null },
+    metadata: { keyId: input.providerKeyId, model: input.model, runner: choice.runner, effort: params.effort ?? null },
+  })
+  // A chat that followed this bot's default keeps doing so; one with its own model keeps that.
+  revalidateOrg(input.orgSlug)
+  return ok(`@${agent.handle} now uses ${choice.label}`)
+}
+
+/**
+ * The model picker in a chat: this bot's model in this chat only ("only this chat"), or its
+ * default everywhere ("chat + bot default", which also drops this chat's own pick so the chat
+ * follows the bot). `clear` goes back to the bot's default here.
+ */
+export async function setRoomAgentModelAction(input: {
+  orgSlug: string
+  roomId: string
+  agentId: string
+  scope: "chat" | "default"
+  keyId?: string | null
+  model?: string | null
+  effort?: string | null
+  clear?: boolean
+}): Promise<ActionResult> {
+  const check = await adminOrgAccess(input.orgSlug)
+  if ("error" in check) return fail(check.error)
+  const admin = createAdminClient()
+  const [{ data: room }, { data: link }, { data: agent }] = await Promise.all([
+    admin.from("rooms").select("id, org_id").eq("id", input.roomId).maybeSingle(),
+    admin.from("room_agents").select("agent_id").eq("room_id", input.roomId).eq("agent_id", input.agentId).maybeSingle(),
+    admin.from("agents").select("id, org_id, kind, handle, owner_user_id").eq("id", input.agentId).maybeSingle(),
+  ])
+  if (!room || room.org_id !== check.access.org.id) return fail("Chat not found")
+  if (!link || !agent || agent.org_id !== check.access.org.id) return fail("That bot isn't in this chat")
+  if (agent.kind !== "llm") return fail("Invited agents use the model of their own app")
+
+  if (input.scope === "default" || input.clear) {
+    if (input.scope === "default" && !input.clear) {
+      const saved = await setAgentModelAction({
+        orgSlug: input.orgSlug,
+        agentId: agent.id,
+        providerKeyId: input.keyId ?? null,
+        model: input.model ?? null,
+        effort: input.effort ?? null,
+      })
+      if (!saved.ok) return saved
+    }
+    const { error } = await admin
+      .from("room_agents")
+      .update({ model_override: null })
+      .eq("room_id", room.id)
+      .eq("agent_id", agent.id)
+    if (error) return fail(errorMessage(error))
+    revalidateOrg(input.orgSlug)
+    return ok(input.clear ? `@${agent.handle} uses its own model here again` : `@${agent.handle}'s model changed everywhere`)
+  }
+
+  const requestHeaders = await headers()
+  const resolved = await resolveModelChoice({
+    orgId: check.access.org.id,
+    userId: check.access.user.id,
+    requestHost: requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host"),
+    keyId: input.keyId ?? null,
+    model: input.model ?? null,
+    effort: input.effort,
+  })
+  if (!resolved.ok) return fail(resolved.error)
+  const choice = resolved.choice
+  // A chat can't hand someone else's bot to your Mac: a Mac only runs its owner's bots.
+  if (choice.macOwnerUserId && agent.owner_user_id !== choice.macOwnerUserId) {
+    return fail(`Only @${agent.handle}'s owner can run it on their computer. Use "Chat + bot default" to take it over.`)
+  }
+  const override = {
+    keyId: input.keyId ?? null,
+    model: input.model ?? null,
+    effort: choice.effort,
+    providerKeyId: choice.providerKeyId,
+    agentModel: choice.agentModel,
+    runner: choice.runner,
+  }
+  const { error } = await admin
+    .from("room_agents")
+    .update({ model_override: override })
+    .eq("room_id", room.id)
+    .eq("agent_id", agent.id)
+  if (error) return fail(errorMessage(error))
+  await audit({
+    orgId: check.access.org.id,
+    actorId: check.access.user.id,
+    action: "room.agent_model_set",
+    target: room.id,
+    metadata: { agentId: agent.id, keyId: override.keyId, model: override.model, effort: override.effort },
   })
   revalidateOrg(input.orgSlug)
-  const saya = !input.providerKeyId ? sayaAi() : null
-  if (saya) return ok(`@${agent.handle} now uses ${sayaModelLabel(saya, storedModel)}`)
-  return ok(model ? `@${agent.handle} now uses ${model}` : `@${agent.handle} uses the default model`)
+  return ok(`@${agent.handle} uses ${choice.label} in this chat`)
 }
 
 const WORKS_ON_LABEL: Record<WorksOn, string> = {

@@ -12,6 +12,7 @@ import {
 } from "./cloud-handoff"
 import { Injector, KEY_CODES } from "./injector"
 import { measureLocalStorage, type LocalStorageReport } from "./storage"
+import type { ReportedModel } from "./local-models"
 
 /**
  * This computer as a Sayabot "host": it registers once (getting its own token), sends a
@@ -24,11 +25,21 @@ export interface HostAuth {
   serverUrl: string
 }
 
+/** One app on this Mac as the server sees it (see LocalAgent). */
+export interface ReportedAgent {
+  id: string
+  name: string
+  status: string
+  version: string | null
+  account?: string | null
+  models?: ReportedModel[]
+}
+
 export interface HostDeps {
   getServerUrl: () => string
   getSession: () => { accessToken: string; refreshToken: string } | null
   onSessionUpdate?: (session: { accessToken: string; refreshToken: string }) => void
-  detectLocalAgents: () => Promise<Array<{ id: string; name: string; status: string; version: string | null }>>
+  detectLocalAgents: () => Promise<ReportedAgent[]>
   onHeartbeat?: (reply: HeartbeatReply) => void
 }
 
@@ -150,7 +161,7 @@ export class DesktopHost {
   private injector = new Injector()
   private beating = false
   private lastAgentsScan = 0
-  private agents: Array<{ id: string; name: string; status: string; version: string | null }> = []
+  private agents: ReportedAgent[] = []
   private storage: LocalStorageReport | null = null
   private lastStorageScan = 0
   private lastHandoff = 0
@@ -308,9 +319,12 @@ export class DesktopHost {
     if (this.beating) return
     this.beating = true
     try {
+      // Apps and their model lists go up once a minute; the server keeps the last list between.
+      let localAgents: ReportedAgent[] | undefined
       if (Date.now() - this.lastAgentsScan > 60_000) {
         this.lastAgentsScan = Date.now()
         this.agents = await this.deps.detectLocalAgents().catch(() => this.agents)
+        localAgents = this.agents
       }
       let storage: LocalStorageReport | undefined
       if (Date.now() - this.lastStorageScan > 10 * 60_000) {
@@ -320,7 +334,7 @@ export class DesktopHost {
       }
       const reply = await this.post<HeartbeatReply>("/api/desktop/heartbeat", {
         permissions: permissionState(),
-        localAgents: this.agents,
+        ...(localAgents ? { localAgents } : {}),
         ...(storage ? { storage } : {}),
       })
       if (!reply) return

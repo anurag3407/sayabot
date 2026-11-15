@@ -2,7 +2,9 @@ import "server-only"
 import { providerKeyToApiKey } from "@sayabot/llm"
 import {
   ENGINE_EFFORT_LEVELS,
+  engineCatalogFromManifest,
   engineModelCatalog,
+  isEffortLevel,
   listProviderModels,
   loadEnginePlanUsage,
   modelCatalog,
@@ -54,7 +56,12 @@ export interface PickerModel {
   releaseDate?: string
 }
 
-export type PickerSection = "server" | "subscription" | "key" | "computer"
+/**
+ * Rail sections: the server's own models, apps signed in on the server, saved API keys, apps
+ * signed in on the person's own Macs, models served on their Macs (Ollama, LM Studio), and a Mac
+ * with nothing to offer yet.
+ */
+export type PickerSection = "server" | "subscription" | "key" | "mac" | "local" | "computer"
 
 export interface PickerPlan {
   /** "max", "pro", "plus"…, or null when the vendor did not say. */
@@ -78,8 +85,15 @@ export interface PickerGroup {
   source?: "live" | "cache" | "manifest" | "catalog" | "static"
   /** Set when the live list could not be read. */
   notice?: string
-  /** Computer groups only: whether "Run agents on this computer" is on. */
+  /** Mac groups only: whether "Run agents on this computer" is on. */
   runnerEnabled?: boolean
+  /** Who the app is signed in as, when it says ("you@example.com · Org"). */
+  account?: string
+  /** The app's version, shown as a badge. */
+  version?: string
+  /** Mac, local and computer groups: which of the person's computers it is on. */
+  hostId?: string
+  hostName?: string
 }
 
 const RUNNER_APPS: Record<string, string> = {
@@ -90,11 +104,90 @@ const RUNNER_APPS: Record<string, string> = {
   cursor: "Cursor",
 }
 
+/** A model an app on someone's Mac listed (see the desktop heartbeat). */
+export interface ReportedModel {
+  id: string
+  label: string
+  effort?: string[]
+  defaultEffort?: string
+  isDefault?: boolean
+}
+
 export interface RunnerHost {
   id: string
   name: string
   runnerEnabled: boolean
-  localAgents: Array<{ id: string; status: string }>
+  localAgents: Array<{
+    id: string
+    status: string
+    version?: string | null
+    account?: string
+    models?: ReportedModel[]
+  }>
+}
+
+/** Apps on a Mac and the model provider each one stands for in the picker. */
+const MAC_APPS: Record<string, { provider: string; label: string; engine?: "claude-code" | "codex" | "cursor"; suggestions?: string }> = {
+  "claude-code": { provider: "anthropic", label: "Claude", engine: "claude-code" },
+  codex: { provider: "openai", label: "Codex", engine: "codex" },
+  gemini: { provider: "google", label: "Gemini", suggestions: "google" },
+  opencode: { provider: "opencode", label: "OpenCode" },
+  cursor: { provider: "cursor", label: "Cursor", engine: "cursor" },
+}
+const LOCAL_MODEL_APPS: Record<string, { provider: string; label: string }> = {
+  ollama: { provider: "ollama", label: "Ollama" },
+  lmstudio: { provider: "lmstudio", label: "LM Studio" },
+}
+
+/** Picker key for an app on a Mac: `host:<hostId>:<app>`. */
+export function macKeyId(hostId: string, app: string): string {
+  return `host:${hostId}:${app}`
+}
+
+/** `host:<id>:<app>` (or the older `host:<id>`, whose model was the app) back into its parts. */
+export function parseMacKeyId(keyId: string): { hostId: string; app: string | null } | null {
+  const match = /^host:([0-9a-f-]{36})(?::([a-z-]{1,20}))?$/i.exec(keyId)
+  return match?.[1] ? { hostId: match[1], app: match[2] ?? null } : null
+}
+
+function effortList(values: string[] | undefined): EffortLevel[] {
+  return (values ?? []).filter(isEffortLevel)
+}
+
+/** One Mac app's models: what the app listed itself, else Sayabot's list for its version. */
+function macAppModels(
+  app: string,
+  reported: ReportedModel[] | undefined,
+  version: string | null,
+): { models: PickerModel[]; effortLevels: EffortLevel[]; source: PickerGroup["source"] } {
+  const spec = MAC_APPS[app]
+  const engineLevels = [...(ENGINE_EFFORT_LEVELS[app] ?? [])]
+  const fromApp = (reported ?? []).map((m) => ({
+    id: m.id,
+    label: m.label,
+    ...(m.effort ? { effort: effortList(m.effort) } : {}),
+    ...(m.defaultEffort && isEffortLevel(m.defaultEffort) ? { defaultEffort: m.defaultEffort } : {}),
+  }))
+  const defaultModel = reported?.find((m) => m.isDefault)
+  const defaultRow: PickerModel = {
+    id: "default",
+    label: defaultModel ? `${spec?.label ?? app} default · ${defaultModel.label}` : `${spec?.label ?? app} default`,
+  }
+  if (fromApp.length) return { models: [defaultRow, ...fromApp], effortLevels: engineLevels, source: "live" }
+  if (spec?.engine) {
+    const listed = engineCatalogFromManifest(spec.engine, version)
+    return {
+      models: [defaultRow, ...listed.options.map(fromEngine)],
+      effortLevels: [...listed.effortLevels],
+      source: "manifest",
+    }
+  }
+  const suggested = spec?.suggestions ? (MODEL_SUGGESTIONS[spec.suggestions] ?? []) : []
+  return {
+    models: [defaultRow, ...suggested.map((id) => ({ id, label: id }))],
+    effortLevels: engineLevels,
+    source: "static",
+  }
 }
 
 /** An app signed in on the computer this server runs on (Claude Code, Codex). */
@@ -325,29 +418,82 @@ export async function buildModelCatalog(
     })
   })
 
-  // "Run on my computer": apps signed in on this person's own Macs, on their own subscription.
+  // Apps signed in on this person's own Macs, each its own provider: no key, no login, their own
+  // subscription. Then models served on those Macs (Ollama, LM Studio).
   for (const host of hosts) {
-    const models: PickerModel[] = host.localAgents
-      .filter((a) => RUNNER_APPS[a.id] && a.status === "ready")
-      .map((a) => ({ id: a.id, label: `${RUNNER_APPS[a.id]} · your subscription` }))
-    for (const use of inUse) {
-      if (use.keyId === `host:${host.id}` && use.model && !models.some((m) => m.id === use.model)) {
-        models.push({ id: use.model, label: `${RUNNER_APPS[use.model] ?? use.model} (not signed in right now)` })
-      }
+    const off = host.runnerEnabled ? "" : " · turn on “Run agents on this computer” in Settings → Computers"
+    let offered = 0
+    for (const agent of host.localAgents) {
+      const spec = MAC_APPS[agent.id]
+      const keyId = macKeyId(host.id, agent.id)
+      const used = inUse.filter((use) => use.keyId === keyId)
+      if (!spec || (agent.status !== "ready" && !used.length)) continue
+      offered++
+      const { models, effortLevels, source } = macAppModels(agent.id, agent.models, agent.version ?? null)
+      const seen = new Set(models.map((m) => m.id))
+      for (const use of used) if (use.model) addModel(models, seen, { id: use.model, label: use.model })
+      groups.push({
+        keyId,
+        provider: spec.provider,
+        label: spec.label,
+        detail:
+          agent.status === "ready"
+            ? `${RUNNER_APPS[agent.id] ?? spec.label} on ${host.name} · your subscription${off}`
+            : `${RUNNER_APPS[agent.id] ?? spec.label} isn't signed in on ${host.name} right now. Open it once and sign in.`,
+        section: "mac",
+        models,
+        effortLevels,
+        source,
+        runnerEnabled: host.runnerEnabled,
+        hostId: host.id,
+        hostName: host.name,
+        ...(agent.account ? { account: agent.account } : {}),
+        ...(agent.version ? { version: agent.version } : {}),
+      })
     }
-    groups.push({
-      keyId: `host:${host.id}`,
-      provider: "computer",
-      label: host.name,
-      detail: host.runnerEnabled
-        ? "Runs on this computer with the apps signed in there"
-        : "Turn on “Run agents on this computer” in Settings → Computers first",
-      section: "computer",
-      models,
-      effortLevels: [],
-      source: "static",
-      runnerEnabled: host.runnerEnabled,
-    })
+    for (const agent of host.localAgents) {
+      const spec = LOCAL_MODEL_APPS[agent.id]
+      const keyId = macKeyId(host.id, agent.id)
+      const used = inUse.filter((use) => use.keyId === keyId)
+      if (!spec || (agent.status !== "ready" && !used.length)) continue
+      offered++
+      const models: PickerModel[] = (agent.models ?? []).map((m) => ({ id: m.id, label: m.label, free: true }))
+      const seen = new Set(models.map((m) => m.id))
+      for (const use of used) {
+        if (use.model) addModel(models, seen, { id: use.model, label: `${use.model} (not running right now)` })
+      }
+      groups.push({
+        keyId,
+        provider: spec.provider,
+        label: spec.label,
+        detail:
+          agent.status === "ready"
+            ? `Runs on ${host.name} · free, nothing leaves that computer but the reply${off}`
+            : `${spec.label} isn't running on ${host.name} right now`,
+        section: "local",
+        models,
+        effortLevels: [],
+        source: "live",
+        runnerEnabled: host.runnerEnabled,
+        hostId: host.id,
+        hostName: host.name,
+      })
+    }
+    if (!offered) {
+      groups.push({
+        keyId: `host:${host.id}`,
+        provider: "computer",
+        label: host.name,
+        detail: "No signed-in app found on this computer yet",
+        section: "computer",
+        models: [],
+        effortLevels: [],
+        source: "static",
+        runnerEnabled: host.runnerEnabled,
+        hostId: host.id,
+        hostName: host.name,
+      })
+    }
   }
   return groups.map((group) =>
     group.section === "subscription" || group.section === "key"
@@ -393,7 +539,9 @@ export function agentRunner(
   if (runner?.where === "server" && runner.app) {
     return { keyId: `cli:${runner.app}`, model: runner.model ?? "default" }
   }
-  return runner?.hostId ? { keyId: `host:${runner.hostId}`, model: runner.app ?? null } : null
+  return runner?.hostId
+    ? { keyId: macKeyId(runner.hostId, runner.app ?? "claude-code"), model: runner.model ?? "default" }
+    : null
 }
 
 /**
@@ -424,7 +572,7 @@ export async function loadWorkspaceModels(input: {
       id: string
       name: string
       settings: { runnerEnabled?: boolean } | null
-      local_agents: Array<{ id: string; status: string }> | null
+      local_agents: RunnerHost["localAgents"] | null
     }>
   ).map((row) => ({
     id: row.id,

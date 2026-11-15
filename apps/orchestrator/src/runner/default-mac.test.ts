@@ -13,7 +13,7 @@ vi.mock("../db", () => ({ getDb: () => ({ select: () => chain() }) }))
 vi.mock("../realtime", () => ({ broadcast: vi.fn() }))
 vi.mock("../active-runs", () => ({ registerRun: vi.fn(), unregisterRun: vi.fn() }))
 
-const { defaultMacRunner } = await import("./local")
+const { defaultMacRunner, localRunnerConfig } = await import("./local")
 
 const agent = { orgId: "org-1", providerKeyId: null, params: { computer: { thisComputer: true } } }
 const screenOff = { orgId: "org-1", providerKeyId: null, params: {} }
@@ -81,5 +81,28 @@ describe("defaultMacRunner", () => {
     expect(
       await defaultMacRunner({ ...agent, params: { runner: { where: "server", app: "codex" } } }),
     ).toBeNull()
+  })
+})
+
+describe("localRunnerConfig", () => {
+  const hostId = "11111111-1111-1111-1111-111111111111"
+
+  it("carries the model and an effort the app takes", () => {
+    expect(localRunnerConfig({ runner: { hostId, app: "claude-code", model: "claude-opus-5-5" }, effort: "high" })).toEqual({
+      hostId,
+      app: "claude-code",
+      model: "claude-opus-5-5",
+      effort: "high",
+    })
+  })
+
+  it("runs a local model with no effort and drops unsafe or default models", () => {
+    expect(localRunnerConfig({ runner: { hostId, app: "ollama", model: "llama3.2:latest" }, effort: "high" })).toEqual({
+      hostId,
+      app: "ollama",
+      model: "llama3.2:latest",
+    })
+    expect(localRunnerConfig({ runner: { hostId, app: "codex", model: "default" } })).toEqual({ hostId, app: "codex" })
+    expect(localRunnerConfig({ runner: { hostId, app: "codex", model: "$(whoami)" } })).toEqual({ hostId, app: "codex" })
   })
 })

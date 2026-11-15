@@ -3,6 +3,13 @@ import { readdirSync } from "node:fs"
 import { access, constants, readFile, stat } from "node:fs/promises"
 import { homedir } from "node:os"
 import { delimiter, dirname, join } from "node:path"
+import {
+  appModels,
+  claudeAccount,
+  detectLocalModelServers,
+  geminiAccount,
+  type ReportedModel,
+} from "./local-models"
 
 /**
  * Agent apps signed in on this computer. The desktop reports these to Sayabot (so the web
@@ -11,11 +18,15 @@ import { delimiter, dirname, join } from "node:path"
  */
 
 export interface LocalAgent {
-  id: "claude-code" | "codex" | "gemini" | "opencode" | "hermes" | "cursor"
+  id: "claude-code" | "codex" | "gemini" | "opencode" | "hermes" | "cursor" | "ollama" | "lmstudio"
   name: string
   binary: string | null
   status: "ready" | "signed_out" | "not_installed"
   version: string | null
+  /** Who it's signed in as ("you@example.com · Org"), when the app keeps that outside its tokens. */
+  account?: string | null
+  /** Models it can run for that account; omitted when the app doesn't list them. */
+  models?: ReportedModel[]
 }
 
 const BIN_DIRS = [
@@ -94,18 +105,45 @@ export async function detectLocalAgents(): Promise<LocalAgent[]> {
         (await readFile(join(home, ".cursor/cli-config.json"), "utf8").then((t) => t.includes('"authInfo"'), () => false)),
     },
   ]
-  return Promise.all(
-    specs.map(async (spec) => {
-      const binary = await findBinary(spec.bin)
-      const signedIn = await spec.signedIn()
-      const version = binary ? ((await run(binary, ["--version"])).match(/\d+\.\d+(?:\.\d+)?/)?.[0] ?? null) : null
-      return {
-        id: spec.id,
-        name: spec.name,
-        binary,
-        status: !binary ? "not_installed" : signedIn ? "ready" : "signed_out",
-        version,
-      } satisfies LocalAgent
-    }),
-  )
+  const accounts: Partial<Record<LocalAgent["id"], () => Promise<string | null>>> = {
+    "claude-code": () => claudeAccount(home),
+    gemini: () => geminiAccount(home),
+  }
+  const [apps, servers] = await Promise.all([
+    Promise.all(
+      specs.map(async (spec) => {
+        const binary = await findBinary(spec.bin)
+        const signedIn = await spec.signedIn()
+        const version = binary ? ((await run(binary, ["--version"])).match(/\d+\.\d+(?:\.\d+)?/)?.[0] ?? null) : null
+        const status: LocalAgent["status"] = !binary ? "not_installed" : signedIn ? "ready" : "signed_out"
+        const [account, models] =
+          status === "ready"
+            ? await Promise.all([
+                accounts[spec.id]?.().catch(() => null) ?? Promise.resolve(null),
+                appModels(spec.id, binary, version).catch(() => null),
+              ])
+            : [null, null]
+        return {
+          id: spec.id,
+          name: spec.name,
+          binary,
+          status,
+          version,
+          ...(account ? { account } : {}),
+          ...(models?.length ? { models } : {}),
+        } satisfies LocalAgent
+      }),
+    ),
+    detectLocalModelServers().catch(() => []),
+  ])
+  // Ollama / LM Studio: no sign-in, ready whenever they're running with a model downloaded.
+  const local: LocalAgent[] = servers.map((server) => ({
+    id: server.id,
+    name: server.name,
+    binary: null,
+    status: server.models.length ? "ready" : "signed_out",
+    version: null,
+    models: server.models,
+  }))
+  return [...apps, ...local]
 }

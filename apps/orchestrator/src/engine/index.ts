@@ -2,13 +2,16 @@ import { agentCliRunner, runCliTurn } from "../runner/cli"
 import type { RunLlmTurnArgs, TurnResult } from "../runner/llm"
 import { runLlmTurn } from "../runner/llm"
 import { defaultMacRunner, localRunnerConfig, runLocalTurn } from "../runner/local"
+import { applyRoomModel } from "../runner/room-model"
 import { admitServerTurn, planLimitTurn } from "../plans"
 import { runEngineTurn } from "./run"
 
 export * from "./context"
 export * from "./run"
 
-export async function startAgentTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
+export async function startAgentTurn(input: RunLlmTurnArgs): Promise<TurnResult> {
+  // A model picked for this bot in this chat only ("only this chat") wins over its default.
+  const args = { ...input, agent: await applyRoomModel(input.room.id, input.agent) }
   const params = args.agent.params as Record<string, unknown> | null
   // Runs on the owner's paired computer through Claude Code / Codex signed in there.
   const local = localRunnerConfig(params)

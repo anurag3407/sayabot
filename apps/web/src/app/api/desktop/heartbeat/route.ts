@@ -2,6 +2,30 @@ import { NextResponse } from "next/server"
 import { hostFromRequest, withLocalDefault } from "@/lib/desktop-hosts"
 import { createAdminClient } from "@/lib/supabase/admin"
 
+const MODEL_ID = /^[\w.:/@+[\]-]{1,160}$/
+const EFFORT = /^[a-z]{1,10}$/
+
+/** The models an app on the Mac listed: ids and names only, at most 200. */
+function reportedModels(rows: unknown[]): Array<Record<string, unknown>> {
+  const out: Array<Record<string, unknown>> = []
+  for (const raw of rows.slice(0, 200)) {
+    if (!raw || typeof raw !== "object") continue
+    const row = raw as Record<string, unknown>
+    if (typeof row.id !== "string" || !MODEL_ID.test(row.id)) continue
+    const effort = Array.isArray(row.effort)
+      ? row.effort.filter((e): e is string => typeof e === "string" && EFFORT.test(e)).slice(0, 8)
+      : []
+    out.push({
+      id: row.id,
+      label: typeof row.label === "string" && row.label.trim() ? row.label.trim().slice(0, 120) : row.id,
+      ...(effort.length ? { effort } : {}),
+      ...(typeof row.defaultEffort === "string" && EFFORT.test(row.defaultEffort) ? { defaultEffort: row.defaultEffort } : {}),
+      ...(row.isDefault === true ? { isDefault: true } : {}),
+    })
+  }
+  return out
+}
+
 const PERMISSION_VALUES = new Set(["granted", "denied", "not-determined", "restricted", "unknown"])
 
 /**
@@ -32,6 +56,8 @@ export async function POST(request: Request) {
           name: String(a.name ?? "").slice(0, 60),
           status: String(a.status ?? "").slice(0, 20),
           version: a.version ? String(a.version).slice(0, 20) : null,
+          ...(typeof a.account === "string" && a.account ? { account: a.account.slice(0, 160) } : {}),
+          ...(Array.isArray(a.models) ? { models: reportedModels(a.models) } : {}),
         }))
     : host.local_agents
 

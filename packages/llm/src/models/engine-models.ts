@@ -187,6 +187,14 @@ export function listPriceFor(
 
 // ── manifest-backed engines ─────────────────────────────────────────────────────────────────
 
+/**
+ * An engine's models from the Sayabot manifest, for a CLI this process cannot run itself (one on
+ * someone's Mac reports only its version). Marks models that version is too old for.
+ */
+export function engineCatalogFromManifest(engine: ManifestEngine, version: string | null): EngineCatalog {
+  return manifestCatalog(engine, version)
+}
+
 function manifestCatalog(engine: ManifestEngine, version: string | null): EngineCatalog {
   const manifest = modelManifest().current()
   const entry = manifest.engines[engine]
@@ -474,7 +482,7 @@ export async function cursorModelCatalog(
 
 // ── Codex: the CLI's own list ───────────────────────────────────────────────────────────────
 
-interface CodexModelRow {
+export interface CodexModelRow {
   id?: unknown
   model?: unknown
   displayName?: unknown

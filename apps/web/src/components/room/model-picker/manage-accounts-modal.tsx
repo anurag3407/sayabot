@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react"
 import { Check, Copy, ExternalLink, Loader2, Terminal, X } from "lucide-react"
-import { GroupIcon, useModelList } from "./model-picker-dropdown"
+import { GroupIcon, useModelList } from "./model-list"
 import { updateHostSettingsAction } from "@/lib/actions/desktop"
 import { connectAccountAction, deleteProviderKey } from "@/lib/actions/keys"
 import {
@@ -403,8 +403,9 @@ function CopilotSignIn({ orgSlug, onConnected }: { orgSlug: string; onConnected:
 
 /** A plan used through its app on the server: nothing to save here, only to sign in there. */
 /** A computer group (one of the person's Macs) where this app is signed in right now. */
+/** A Mac group (`host:<id>:<app>`) for this app, signed in right now. */
 function signedInOn(group: PickerGroup, appId: string): boolean {
-  return group.models.some((m) => m.id === appId && !/not signed in/i.test(m.label))
+  return Boolean(group.keyId?.endsWith(`:${appId}`)) && !/isn't signed in/i.test(group.detail)
 }
 
 function AppPlan({
@@ -429,7 +430,7 @@ function AppPlan({
   const ready = Boolean(group && !/isn't signed in/i.test(group.detail))
 
   const turnOnRunner = (mac: PickerGroup) => {
-    const hostId = mac.keyId?.replace(/^host:/, "")
+    const hostId = mac.hostId
     if (!hostId) return
     setError(null)
     startTransition(async () => {
@@ -457,13 +458,13 @@ function AppPlan({
           >
             <Check className="h-4 w-4 shrink-0" />
             <span className="min-w-0 text-[13.5px]">
-              Ready on {mac.label}: agents set to run there use your {app.plan} plan.
+              Ready on {mac.hostName ?? mac.label}: agents set to run there use your {app.plan} plan.
             </span>
           </div>
         ) : (
           <div key={mac.keyId} className="space-y-2.5 rounded-xl bg-raised/60 p-4">
             <p className="text-[13.5px] leading-relaxed text-text">
-              Found on {mac.label}: {provider.name.replace(/ plan$/, "")} is signed in there.
+              Found on {mac.hostName ?? mac.label}: {provider.name.replace(/ plan$/, "")} is signed in there.
             </p>
             <p className="text-[12.5px] leading-relaxed text-faint">
               Let agents run on that Mac to use your plan. Their work happens on the Mac, with the
@@ -476,7 +477,7 @@ function AppPlan({
               className="inline-flex items-center gap-2 rounded-full bg-text px-4 py-2 text-[13px] font-medium text-void disabled:opacity-60"
             >
               {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Use it from {mac.label}
+              Use it from {mac.hostName ?? mac.label}
             </button>
           </div>
         ),
@@ -539,7 +540,7 @@ export function ManageAccountsModal({
   // Plans signed in on the person's own Macs (reported by Sayabot for Mac), not only the server.
   const macsWith = (provider: AccountProvider) =>
     provider.kind === "app" && provider.app
-      ? groups.filter((g) => g.section === "computer" && signedInOn(g, provider.app?.id ?? ""))
+      ? groups.filter((g) => g.section === "mac" && signedInOn(g, provider.app?.id ?? ""))
       : []
   const connectedOf = (provider: AccountProvider) =>
     provider.kind === "app"

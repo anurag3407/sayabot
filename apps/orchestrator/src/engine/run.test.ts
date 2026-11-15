@@ -5,6 +5,7 @@ import * as cliRunner from "../runner/cli"
 import * as cliAgent from "../runner/cli-agent"
 import * as llmRunner from "../runner/llm"
 import * as localRunner from "../runner/local"
+import * as roomModel from "../runner/room-model"
 import { startAgentTurn } from "./index"
 import * as engineRun from "./run"
 
@@ -14,6 +15,8 @@ describe("Engine Dispatcher (E4)", () => {
     vi.stubEnv("SAYABOT_LOCAL_CLI", "0")
     // No paired Mac set as the default (that path has its own tests in default-mac.test.ts).
     vi.spyOn(localRunner, "defaultMacRunner").mockResolvedValue(null)
+    // No model picked for this chat only (that path has its own tests in room-model.test.ts).
+    vi.spyOn(roomModel, "applyRoomModel").mockImplementation(async (_roomId, agent) => agent)
   })
   afterEach(() => {
     vi.unstubAllEnvs()
@@ -168,6 +171,20 @@ describe("Engine Dispatcher (E4)", () => {
     expect(fallback).not.toHaveBeenCalled()
     expect(spy).toHaveBeenCalledTimes(1)
     fallback.mockRestore()
+    spy.mockRestore()
+  })
+
+  it("answers with the model picked for this chat only", async () => {
+    const result: TurnResult = { messageId: "m-mac", runId: "r-mac", content: "hi", error: null, aborted: false }
+    const hostId = "11111111-1111-1111-1111-111111111111"
+    vi.spyOn(roomModel, "applyRoomModel").mockImplementation(async (_roomId, agent) => ({
+      ...agent,
+      providerKeyId: null,
+      params: { runner: { hostId, app: "claude-code", model: "claude-opus-5-5" } },
+    }))
+    const spy = vi.spyOn(localRunner, "runLocalTurn").mockResolvedValueOnce(result)
+    expect(await startAgentTurn(dummyArgs)).toEqual(result)
+    expect(spy).toHaveBeenCalledWith(expect.anything(), { hostId, app: "claude-code", model: "claude-opus-5-5" })
     spy.mockRestore()
   })
 })

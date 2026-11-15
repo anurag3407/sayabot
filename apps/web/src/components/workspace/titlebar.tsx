@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { useEffect, useMemo, useState, useTransition, type ComponentType } from "react"
 import { ArrowLeft, ArrowRight, PanelLeft, Pin, PinOff, X } from "lucide-react"
 import { setChatPreferenceAction } from "@/lib/actions/room-state"
-import { ModelPickerButton } from "@/components/room/model-picker"
+import { RoomModelPicker } from "@/components/room/model-picker"
 import { Mascot } from "@/components/ui/mascot"
 import { PlusIcon } from "@/components/ui/icons"
 import { showToast } from "@/components/ui/toast"
@@ -221,7 +221,7 @@ export function Titlebar({
       </nav>
 
       <div className="flex shrink-0 items-center gap-1 [-webkit-app-region:no-drag]">
-        <ModelPickerButton orgSlug={orgSlug} variant="titlebar" />
+        {currentRoomId ? <RoomModelPicker key={currentRoomId} orgSlug={orgSlug} roomId={currentRoomId} /> : null}
         {current ? (
           <button
             type="button"

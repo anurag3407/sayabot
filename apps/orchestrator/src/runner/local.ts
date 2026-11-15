@@ -1,4 +1,5 @@
 import { hostOnline, redactSecrets } from "@sayabot/core"
+import { clampEffort, ENGINE_EFFORT_LEVELS } from "@sayabot/llm/models/effort"
 import { sealSecret } from "@sayabot/llm"
 import { agentRuns, desktopHosts, localRunnerJobs, messages, orgMembers, toolCalls } from "@sayabot/db"
 import { and, desc, eq, isNull, sql } from "drizzle-orm"
@@ -25,18 +26,37 @@ import type { RunLlmTurnArgs, TurnResult } from "./llm"
  * its output back, which we relay into the room message as it arrives.
  */
 
+/** Apps a Mac runs agents with: signed-in CLIs, and models served locally (Ollama, LM Studio). */
+export const MAC_RUNNER_APPS = ["claude-code", "codex", "gemini", "opencode", "cursor", "ollama", "lmstudio"] as const
+export type MacRunnerApp = (typeof MAC_RUNNER_APPS)[number]
+
 export interface LocalRunnerConfig {
   hostId: string
-  app: "claude-code" | "codex" | "gemini" | "opencode" | "cursor"
+  app: MacRunnerApp
+  /** The model inside the app; null keeps the app's own default. */
+  model?: string | null
+  /** Thinking effort, for apps that take one. */
+  effort?: string | null
 }
+
+/** A model id reaches the Mac's command line, so only plain ones pass. */
+const MAC_MODEL_ID = /^[\w.:/@+[\]-]{1,160}$/
 
 export function localRunnerConfig(params: Record<string, unknown> | null | undefined): LocalRunnerConfig | null {
   const runner = params?.runner as Record<string, unknown> | undefined
   if (!runner || typeof runner.hostId !== "string" || !/^[0-9a-f-]{36}$/i.test(runner.hostId)) return null
-  const app = ["claude-code", "codex", "gemini", "opencode", "cursor"].includes(String(runner.app)) ? (runner.app as LocalRunnerConfig["app"]) : "claude-code"
-  return { hostId: runner.hostId, app }
+  const app = (MAC_RUNNER_APPS as readonly string[]).includes(String(runner.app))
+    ? (runner.app as MacRunnerApp)
+    : "claude-code"
+  const model =
+    typeof runner.model === "string" && runner.model !== "default" && MAC_MODEL_ID.test(runner.model)
+      ? runner.model
+      : null
+  const effort = clampEffort(params?.effort as string | undefined, ENGINE_EFFORT_LEVELS[app] ?? []) ?? null
+  return { hostId: runner.hostId, app, ...(model ? { model } : {}), ...(effort ? { effort } : {}) }
 }
 
+/** The Mac default only picks a signed-in app; a local model needs a model picked for it. */
 const RUNNER_APPS = new Set<string>(["claude-code", "codex", "gemini", "opencode", "cursor"])
 
 /**
@@ -153,7 +173,13 @@ export async function runLocalTurn(args: RunLlmTurnArgs, config: LocalRunnerConf
       status: "streaming",
       mentions: [],
       runId: run.id,
-      metadata: { agentName: agent.displayName, agentHandle: agent.handle, role: args.role, runsOn: config.app },
+      metadata: {
+        agentName: agent.displayName,
+        agentHandle: agent.handle,
+        role: args.role,
+        runsOn: config.app,
+        ...(config.model ? { model: config.model } : {}),
+      },
     })
     .returning()
   if (!message) throw new Error("failed to create agent message")
@@ -209,6 +235,8 @@ export async function runLocalTurn(args: RunLlmTurnArgs, config: LocalRunnerConf
       replyMessageId: message.id,
       runId: run.id,
       app: config.app,
+      model: config.model ?? null,
+      effort: config.effort ?? null,
       prompt: `${grant ? `${system}\n\n${ROOM_TOOLS_NOTE} ${MAC_NOTE}` : system}\n\n${prompt}`.slice(0, 200_000),
       status: "queued",
       mcpTokenEnc: grant ? sealSecret(grant.token, getEnv().MESH_KEK) : null,

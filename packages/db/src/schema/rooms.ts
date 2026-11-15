@@ -4,6 +4,7 @@ import {
   check,
   index,
   integer,
+  jsonb,
   numeric,
   pgTable,
   primaryKey,
@@ -15,6 +16,20 @@ import {
 import { roomKindEnum, roomMemberRoleEnum, turnModeEnum } from "./enums"
 import { agents } from "./agents"
 import { orgs, profiles } from "./identity"
+
+/**
+ * One bot's model in one chat ("only this chat"). `keyId`/`model`/`effort` are the picker's
+ * choice; `providerKeyId`/`agentModel`/`runner` are what a turn applies to the bot, resolved and
+ * checked when it was saved.
+ */
+export interface RoomModelOverride {
+  keyId: string | null
+  model: string | null
+  effort: string | null
+  providerKeyId: string | null
+  agentModel: string | null
+  runner: Record<string, unknown> | null
+}
 
 export const rooms = pgTable(
   "rooms",
@@ -73,6 +88,8 @@ export const roomAgents = pgTable(
       .notNull()
       .references(() => agents.id, { onDelete: "cascade" }),
     position: integer("position").notNull().default(0),
+    /** "Only this chat": another model for this bot here. null follows the bot's default. */
+    modelOverride: jsonb("model_override").$type<RoomModelOverride | null>(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

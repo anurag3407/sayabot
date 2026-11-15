@@ -5,6 +5,7 @@ import * as os from "node:os"
 import * as path from "node:path"
 import type { DesktopHost } from "./host"
 import { findBinary } from "./local-agents"
+import { localServerUrl } from "./local-models"
 import {
   allowedByRules,
   allowRuleFor,
@@ -30,6 +31,10 @@ interface Job {
   id: string
   prompt: string
   app: string
+  /** The model inside the app; null/absent keeps the app's own default. */
+  model?: string | null
+  /** Thinking effort for apps that take one; absent keeps the app's default. */
+  effort?: string | null
   agentHandle: string
   agentName?: string
   /** Sayabot's room tools for this run (null for apps without MCP, or if it couldn't be made). */
@@ -62,37 +67,65 @@ const EXTRA_PATH = [
 const BLOCKED_ROOM_TOOLS = ["post_message", "wait_for_activity", "use_secret"]
 const TOKEN_ENV = "SAYABOT_MCP_TOKEN"
 
+/** Model ids and effort levels reach a command line, so only plain ones pass. */
+const MODEL_ID = /^[\w.:/@+[\]-]{1,160}$/
+const EFFORT = /^[a-z]{1,10}$/
+
+export function jobModel(job: Pick<Job, "model">): string | null {
+  return job.model && job.model !== "default" && MODEL_ID.test(job.model) ? job.model : null
+}
+
+export function jobEffort(job: Pick<Job, "effort">): string | null {
+  return job.effort && EFFORT.test(job.effort) ? job.effort : null
+}
+
 /** argv + whether the prompt goes on stdin, for the apps that answer in plain text. */
 export function commandFor(
   app: string,
   prompt: string,
   lastMessageFile: string,
+  model: string | null = null,
 ): { bin: string; args: string[]; stdin: string | null } {
   switch (app) {
     case "codex":
       return {
         bin: "codex",
-        args: ["exec", "--skip-git-repo-check", "--output-last-message", lastMessageFile, "-"],
+        args: [
+          "exec",
+          "--skip-git-repo-check",
+          ...(model ? ["--model", model] : []),
+          "--output-last-message",
+          lastMessageFile,
+          "-",
+        ],
         stdin: prompt,
       }
     case "gemini":
       return {
         bin: "gemini",
-        args: ["-p", "Answer the request given on standard input."],
+        args: [...(model ? ["-m", model] : []), "-p", "Answer the request given on standard input."],
         stdin: prompt,
       }
     case "opencode":
-      return { bin: "opencode", args: ["run", prompt.slice(-100_000)], stdin: null }
+      return {
+        bin: "opencode",
+        args: ["run", ...(model ? ["-m", model] : []), prompt.slice(-100_000)],
+        stdin: null,
+      }
     case "cursor":
       // No --force: Cursor proposes changes but doesn't apply them on its own.
       return {
         bin: "cursor-agent",
-        args: ["-p", "--output-format", "text", prompt.slice(-100_000)],
+        args: ["-p", "--output-format", "text", ...(model ? ["--model", model] : []), prompt.slice(-100_000)],
         stdin: null,
       }
     case "claude-code":
     default:
-      return { bin: "claude", args: ["-p", "--output-format", "text"], stdin: prompt }
+      return {
+        bin: "claude",
+        args: ["-p", "--output-format", "text", ...(model ? ["--model", model] : [])],
+        stdin: prompt,
+      }
   }
 }
 
@@ -120,6 +153,8 @@ export function claudeArgs(job: Job, mcpConfigPath: string): string[] {
     // The agent's folder settings only: the person's own hooks and plugins stay out of agent runs.
     "--setting-sources",
     "project,local",
+    ...(jobModel(job) ? ["--model", jobModel(job) as string] : []),
+    ...(jobEffort(job) ? ["--effort", jobEffort(job) as string] : []),
   ]
 }
 
@@ -144,6 +179,8 @@ export function codexArgs(job: Job): string[] {
     "--ephemeral",
     "--sandbox",
     "workspace-write",
+    ...(jobModel(job) ? ["--model", jobModel(job) as string] : []),
+    ...(jobEffort(job) ? ["-c", `model_reasoning_effort=${JSON.stringify(jobEffort(job))}`] : []),
     ...mcp,
     "-",
   ]
@@ -180,6 +217,7 @@ function describeStep(toolName: string, input: Record<string, unknown>): string 
 export class LocalRunner {
   private busy = false
   private child: ChildProcess | null = null
+  private abortLocal: (() => void) | null = null
 
   constructor(
     private host: DesktopHost,
@@ -199,6 +237,7 @@ export class LocalRunner {
       if (!claimed?.job) return
       if (claimed.job.app === "claude-code" || claimed.job.app === "codex")
         await this.runWithTools(claimed.job)
+      else if (localServerUrl(claimed.job.app)) await this.runLocalModel(claimed.job)
       else await this.runPlain(claimed.job)
     } finally {
       this.busy = false
@@ -207,6 +246,7 @@ export class LocalRunner {
 
   stop(): void {
     this.child?.kill("SIGTERM")
+    this.abortLocal?.()
   }
 
   private finish(job: Job, body: Record<string, unknown>): Promise<unknown> {
@@ -477,7 +517,7 @@ export class LocalRunner {
 
   private async runPlain(job: Job): Promise<void> {
     const lastMessageFile = path.join(os.tmpdir(), `sayabot-${job.id}.txt`)
-    const cmd = commandFor(job.app, job.prompt, lastMessageFile)
+    const cmd = commandFor(job.app, job.prompt, lastMessageFile, jobModel(job))
     const bin = await findBinary(cmd.bin)
     if (!bin) {
       await this.finish(job, {
@@ -551,5 +591,90 @@ export class LocalRunner {
         error: failureHint(cmd.bin, stderr, code),
       })
     }
+  }
+
+  // ---------- Ollama / LM Studio: a model served on this Mac ----------
+
+  /**
+   * Streams one chat completion from the local server's OpenAI-style endpoint. Text only: no
+   * tools, nothing outside the reply. Ollama and LM Studio both speak `/v1/chat/completions`.
+   */
+  private async runLocalModel(job: Job): Promise<void> {
+    const base = localServerUrl(job.app)
+    const model = jobModel(job)
+    const name = job.app === "ollama" ? "Ollama" : "LM Studio"
+    if (!base || !model) {
+      await this.finish(job, { status: "failed", error: `Pick a ${name} model for this bot first.` })
+      return
+    }
+    const controller = new AbortController()
+    this.abortLocal = () => controller.abort()
+    const deadline = setTimeout(() => controller.abort(), MAX_RUNTIME_MS)
+    let output = ""
+    let lastSent = ""
+    let cancelled = false
+    const progress = setInterval(async () => {
+      if (output === lastSent) return
+      lastSent = output
+      const reply = await this.host.post<{ cancelled?: boolean }>(`/api/desktop/jobs/${job.id}`, { output })
+      if (reply?.cancelled) {
+        cancelled = true
+        controller.abort()
+      }
+    }, PROGRESS_MS)
+    try {
+      const res = await fetch(`${base}/v1/chat/completions`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ model, stream: true, messages: [{ role: "user", content: job.prompt }] }),
+        signal: controller.signal,
+      })
+      if (!res.ok || !res.body) {
+        const detail = (await res.text().catch(() => "")).slice(0, 300)
+        throw new Error(detail || `${name} answered ${res.status}`)
+      }
+      const decoder = new TextDecoder()
+      let buffer = ""
+      for await (const chunk of res.body as unknown as AsyncIterable<Uint8Array>) {
+        buffer += decoder.decode(chunk, { stream: true })
+        let newline: number
+        while ((newline = buffer.indexOf("\n")) !== -1) {
+          output += localDelta(buffer.slice(0, newline))
+          buffer = buffer.slice(newline + 1)
+        }
+        if (output.length > 200_000) output = output.slice(-200_000)
+      }
+      output += localDelta(buffer)
+      if (cancelled) return
+      const final = output.trim()
+      if (final) await this.finish(job, { output: final, status: "done" })
+      else await this.finish(job, { output: "", status: "failed", error: `${name} sent an empty answer.` })
+    } catch (error) {
+      if (cancelled) return
+      const message = error instanceof Error ? error.message : String(error)
+      const hint = /ECONNREFUSED|fetch failed/i.test(message)
+        ? `${name} isn't running on this computer. Open it and try again.`
+        : message.slice(0, 500)
+      await this.finish(job, { output: output.trim(), status: "failed", error: hint })
+    } finally {
+      clearInterval(progress)
+      clearTimeout(deadline)
+      this.abortLocal = null
+    }
+  }
+}
+
+/** The text in one `data: {...}` line of an OpenAI-style stream. */
+export function localDelta(line: string): string {
+  const trimmed = line.trim()
+  if (!trimmed.startsWith("data:")) return ""
+  const payload = trimmed.slice(5).trim()
+  if (!payload || payload === "[DONE]") return ""
+  try {
+    const parsed = JSON.parse(payload) as { choices?: Array<{ delta?: { content?: unknown } }> }
+    const content = parsed.choices?.[0]?.delta?.content
+    return typeof content === "string" ? content : ""
+  } catch {
+    return ""
   }
 }
