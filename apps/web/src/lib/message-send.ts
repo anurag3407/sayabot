@@ -12,6 +12,8 @@ export async function insertHumanMessage(args: {
   content: string
   threadRootId?: string | null
   clientId?: string | null
+  /** "/goal": the bots loop until it's done. "/btw": a side note that doesn't interrupt them. */
+  command?: "goal" | "btw" | null
 }): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
   const content = args.content.trim()
   if (!contentSchema.safeParse(content).success) {
@@ -47,6 +49,7 @@ export async function insertHumanMessage(args: {
   }
   const metadata: Record<string, unknown> = {}
   if (args.clientId) metadata.clientId = args.clientId.slice(0, 80)
+  if (args.command === "goal" || args.command === "btw") metadata.command = args.command
   const { data, error } = await args.supabase
     .from("messages")
     .insert({

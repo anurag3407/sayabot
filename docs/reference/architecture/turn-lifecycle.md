@@ -116,6 +116,15 @@ Finally the session is persisted with its terminal state and an empty queue, and
 
 1. **Steer (Engine v2 only).** If the incoming human message mentions an agent that has an active run with `engine === "v2"`, the message is queued as a `RunInterrupt` on that run (`addRunInterrupt`) and delivered at the next step boundary; the session is **not** superseded. All *other* runs in the room are aborted (`apps/orchestrator/src/engine/interrupts.ts:23-60`).
 2. **Abort otherwise.** All `active` sessions in the room become `superseded`, in-process `AbortController`s fire (`abortRoomRuns`, `apps/orchestrator/src/active-runs.ts:46-55`), and `pg_notify('mesh_room_interrupt', { roomId })` tells other orchestrator instances to do the same (`apps/orchestrator/src/db.ts:44-46`, consumed at `apps/orchestrator/src/index.ts:30-46`). A `/internal/runs/:runId/stop` endpoint and `mesh_stop_run` channel implement single-run stops.
+3. **Side notes (`/btw`).** A human message with `metadata.command === "btw"` never interrupts: `processRoomMessage` calls `deliverSideNote` (`coordinator/interrupt.ts`), which queues it as a `RunInterrupt` on every active `v2` run in the room (`roomRuns`, `active-runs.ts`) and returns without starting a session. Agents that can't take notes mid-run read it in the transcript on their next turn, so a running `/goal` keeps going.
+
+## 🎯 Goals (`/goal`)
+
+A human message with `metadata.command === "goal"` (`goalOf`, `coordinator/goal.ts`) makes the session iterative. The queue is planned as usual (the DM bot, or the agents mentioned); then every round:
+
+- The agent is run against the **goal message** itself (not its own last reply), with `goalDirective(goal, round)` appended to `room.systemDirective` for that turn, so the server engine and Mac/CLI runs (both read the directive) get: round N of up to `GOAL_MAX_ROUNDS = 20`, the goal, "plan, act, check, fix", and the two finish lines.
+- After a successful reply, `goalOutcome(reply)` reads the last 400 characters: `GOAL COMPLETE` or `GOAL BLOCKED: …` ends that agent's goal; otherwise the agent is pushed back onto the queue. At 20 rounds a system message (`goal_paused`) says "paused the goal after 20 rounds. Send /goal again to keep going."
+- The turn-cap breaker is raised to `GOAL_MAX_ROUNDS × agents` for the session; the RPM and daily-budget breakers, the repetition guard, Stop and new human messages all still end it. Everything runs inside the same session under `withRoomLock`.
 
 ---
 

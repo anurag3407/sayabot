@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button"
 import { EmptyState, InlineAlert } from "@/components/ui/empty"
 import { RETRYABLE_REASONS } from "@/lib/recovery-hint"
 import { truncate } from "@/lib/format"
+import { stopGeneration } from "@/lib/actions/messages"
+import { showToast } from "@/components/ui/toast"
 import type {
   MemberView,
   MessageView,
@@ -412,8 +414,20 @@ export function ChatPanel({
           canAdmin={canAdmin}
           roomKind={roomKind}
           executionMode={executionMode}
-          placeholder={
-            roomKind === "public" ? `Message #${roomName}` : `Message ${roomName}`
+          placeholder={`${roomKind === "public" ? `Message #${roomName}` : `Message ${roomName}`}, / for commands`}
+          onStop={
+            streamingMessage?.runId
+              ? () => {
+                  const runId = streamingMessage.runId
+                  if (!runId) return
+                  void stopGeneration({ orgSlug, roomId, runId }).then((result) => {
+                    showToast({
+                      tone: result.ok ? "neutral" : "danger",
+                      message: result.ok ? "Stopping" : (result.error ?? "Could not stop it"),
+                    })
+                  })
+                }
+              : undefined
           }
           onTyping={onTyping}
           onSent={scrollToBottom}

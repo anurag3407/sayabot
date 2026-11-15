@@ -72,7 +72,14 @@ Retry eligibility: system `halted` messages retry only when `metadata.reason` is
 
 - **Mentions** — typing `@` after whitespace/paren opens a listbox of `@all_bots` (only when >1 agent), agents, and people (filtered by the trailing query); full combobox ARIA (`role="combobox"`, `aria-activedescendant`), ArrowUp/Down/Enter/Tab/Escape handling; `insertMention` splices the handle and restores the caret.
 - **Drafts** — persisted per room+thread under `mesh:draft:<roomId>:<thread|main>`; cleared only if the sent text is unchanged (`clearIfUnchanged`).
-- **Slash commands** — `/cron` alone navigates to `/<org>/cron`; `/cron <anything>` opens the routine dialog; `/remember <text>` calls `rememberAction` (`src/lib/actions/memory.ts`) saving to room memory.
+- **Slash commands** (`src/lib/slash-commands.ts`) — typing `/` as the first character opens a "Commands" listbox (same keyboard handling as mentions: ↑/↓, Enter/Tab picks, Escape clears; commands without arguments run on pick). The placeholder ends with ", / for commands". `parseSlashCommand` drives `send()`:
+  - `/goal <what to achieve>` — sends the text with `metadata.command = "goal"`; the orchestrator loops the bot round by round until it ends a reply with `GOAL COMPLETE` / `GOAL BLOCKED: …` (see [Turn lifecycle](../../architecture/turn-lifecycle.md)).
+  - `/btw <note>` — sends with `metadata.command = "btw"`: delivered to agents running now without interrupting them, and read by the rest on their next turn.
+  - `/stop` — calls the chat panel's `onStop` (`stopGeneration` for the streaming run), or toasts "Nothing is running right now".
+  - `/model` — dispatches `MODEL_PICKER_EVENT` to open the composer's model picker.
+  - `/todo [title]` and `/schedule [instructions]` (alias `/cron`; `/schedule list` opens `/<org>/cron`) — open the quick-action dialog with the text pre-filled (`initialText`).
+  - `/remember <fact>` — `rememberAction` (`src/lib/actions/memory.ts`), saved to room memory.
+  Human bubbles of `/goal` and `/btw` messages carry a small "Goal" / "Side note" label (`message-item.tsx`).
 - **Offline outbox** — when `navigator.onLine` is false (or `sendMessage` throws), the message goes to `enqueueOutbox` (`src/lib/outbox.ts`) with a UUID, shown as "N messages waiting to send" and flushed on the `online` event.
 - **Layout** — one rounded surface: the auto-growing textarea on top, a toolbar row below with a **"+" menu** (a `DetailsMenu` with Attach a PDF, Add a to-do, Do this on a schedule, Start a meeting for admins outside DMs, Open canvas), the chat's `RoomModelPicker` (`placement="up"`, see [Model system](./model-system.md)), then on the right the **execution mode** menu and a round white send button. Threads (`threadRootId`) show only the textarea and send button.
 - **PDF attach** — "+" → Attach a PDF, or drag-drop, accepts only PDFs ≤ 8 MB, reads them as data URLs, and appends `[name](dataUrl)` markdown that the message renderer turns into a `PdfViewer`.

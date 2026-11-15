@@ -180,6 +180,11 @@ export function MessageItem({
               mine && "ml-auto rounded-tl-[22px] rounded-tr-md",
             )}
           >
+            {!isAgent && (message.metadata.command === "goal" || message.metadata.command === "btw") ? (
+              <span className="mb-1 block text-[11px] font-medium uppercase tracking-[0.06em] text-accent">
+                {message.metadata.command === "goal" ? "Goal" : "Side note"}
+              </span>
+            ) : null}
             <Markdown content={message.content} streaming={streaming} />
             {streaming ? <span className="streaming-caret" aria-hidden="true" /> : null}
           </div>

@@ -8,6 +8,8 @@ import { rememberAction } from "@/lib/actions/memory"
 import { startMeetingNowAction } from "@/lib/actions/meetings"
 import { createTaskAction } from "@/lib/actions/tasks"
 import { setRoomExecutionModeAction } from "@/lib/actions/room-state"
+import { MODEL_PICKER_EVENT } from "@/lib/recovery-hint"
+import { parseSlashCommand, slashSuggestions, type SlashCommand } from "@/lib/slash-commands"
 import { enqueueOutbox, flushOutbox, readOutbox } from "@/lib/outbox"
 import { humanHandle } from "@/lib/human-handle"
 import { Button } from "@/components/ui/button"
@@ -207,6 +209,7 @@ function QuickActionDialog({
   roomId,
   agents,
   people,
+  initialText = "",
   onClose,
 }: {
   action: QuickAction
@@ -214,6 +217,8 @@ function QuickActionDialog({
   roomId: string
   agents: RoomAgentView[]
   people: MemberView[]
+  /** Text typed after /todo or /schedule, used as the title or the routine's instructions. */
+  initialText?: string
   onClose: () => void
 }) {
   const ref = useRef<HTMLDialogElement>(null)
@@ -307,7 +312,15 @@ function QuickActionDialog({
           <>
             <input type="hidden" name="kind" value="task" />
             <Field label="title" htmlFor="quick-task-title">
-              <Input id="quick-task-title" name="title" required minLength={2} maxLength={120} autoFocus />
+              <Input
+                id="quick-task-title"
+                name="title"
+                required
+                minLength={2}
+                maxLength={120}
+                defaultValue={initialText.slice(0, 120)}
+                autoFocus
+              />
             </Field>
             <Field label="assignee" htmlFor="quick-task-assignee" hint="optional">
               <Select id="quick-task-assignee" name="assignee" defaultValue="">
@@ -401,7 +414,7 @@ function QuickActionDialog({
                 name="prompt"
                 rows={3}
                 required
-                defaultValue="Summarize uncompleted tasks, report progress, and plan next actions."
+                defaultValue={initialText || "Summarize uncompleted tasks, report progress, and plan next actions."}
               />
             </Field>
           </>
@@ -440,6 +453,7 @@ export function Composer({
   onTyping,
   onSent,
   onShowCanvas,
+  onStop,
 }: {
   orgSlug: string
   roomId: string
@@ -456,6 +470,8 @@ export function Composer({
   onTyping?: () => void
   onSent?: () => void
   onShowCanvas?: () => void
+  /** Stops the run in progress (/stop); absent when nothing can be stopped from here. */
+  onStop?: () => void
 }) {
   const router = useRouter()
   const storageKey = draftKey(roomId, threadRootId)
@@ -466,6 +482,8 @@ export function Composer({
   const [mention, setMention] = useState<MentionState | null>(null)
   const [outboxCount, setOutboxCount] = useState(0)
   const [quickAction, setQuickAction] = useState<QuickAction | null>(null)
+  const [quickText, setQuickText] = useState("")
+  const [slashIndex, setSlashIndex] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -529,8 +547,30 @@ export function Composer({
         )
       })
     : []
+  // The "/" menu, while the first word of the message is still being typed.
+  const slashOptions = mention ? [] : slashSuggestions(value)
+  const slashOpen = slashOptions.length > 0
   const activeOptionId =
-    mention && options.length ? `${listboxId}-${mention.index % options.length}` : undefined
+    mention && options.length
+      ? `${listboxId}-${mention.index % options.length}`
+      : slashOpen
+        ? `${listboxId}-slash-${slashIndex % slashOptions.length}`
+        : undefined
+
+  function pickSlash(command: SlashCommand) {
+    setSlashIndex(0)
+    if (!command.args) {
+      void runSlash(command, "", `/${command.name}`)
+      return
+    }
+    updateValue(`/${command.name} `)
+    requestAnimationFrame(() => {
+      const textarea = textareaRef.current
+      if (!textarea) return
+      textarea.focus()
+      textarea.setSelectionRange(textarea.value.length, textarea.value.length)
+    })
+  }
 
   const refreshOutbox = async () => {
     const items = await readOutbox()
@@ -621,51 +661,79 @@ export function Composer({
     setError(null)
     setNotice(null)
 
-    if (content.startsWith("/cron")) {
-      const remainder = content.slice("/cron".length).trim()
-      if (!remainder || remainder === "list") {
-        router.push(`/${orgSlug}/cron`)
-        clearIfUnchanged(content)
-        return
-      }
-      setQuickAction("cron")
-      clearIfUnchanged(content)
+    const slash = parseSlashCommand(content)
+    if (slash) {
+      await runSlash(slash.command, slash.rest, content)
       return
     }
 
-    if (content.startsWith("/remember ")) {
-      const memoryText = content.slice("/remember ".length).trim()
-      if (!memoryText) {
-        setError("Please provide memory text: /remember <fact or decision>")
-        return
-      }
-      setPending(true)
-      try {
-        const result = await rememberAction({
-          orgSlug,
-          roomId,
-          body: memoryText,
-        })
-        if (!result.ok) {
-          setError(result.error ?? "Failed to save memory")
-        } else {
-          clearIfUnchanged(content)
-          setNotice("Saved to team memory")
-          showToast({ message: "Saved to room memory", tone: "success" })
+    await deliver(content)
+  }
+
+  /** Runs a "/" command. `typed` is the composer text, cleared once the command is handled. */
+  async function runSlash(command: SlashCommand, rest: string, typed: string) {
+    setError(null)
+    setNotice(null)
+    switch (command.name) {
+      case "goal":
+      case "btw":
+        if (!rest) {
+          setError(command.name === "goal" ? "Say what to achieve: /goal <what to achieve>" : "Add the note: /btw <note>")
+          return
         }
-      } catch {
-        setError("Failed to save memory")
-      } finally {
-        setPending(false)
+        await deliver(rest, command.name, typed)
+        return
+      case "stop":
+        clearIfUnchanged(typed)
+        if (onStop) onStop()
+        else showToast({ message: "Nothing is running right now" })
+        return
+      case "model":
+        clearIfUnchanged(typed)
+        window.dispatchEvent(new Event(MODEL_PICKER_EVENT))
+        return
+      case "todo":
+      case "schedule":
+        if (command.name === "schedule" && rest === "list") {
+          router.push(`/${orgSlug}/cron`)
+          clearIfUnchanged(typed)
+          return
+        }
+        setQuickText(rest)
+        setQuickAction(command.name === "todo" ? "task" : "cron")
+        clearIfUnchanged(typed)
+        return
+      case "remember": {
+        if (!rest) {
+          setError("Add the fact: /remember <fact or decision>")
+          return
+        }
+        setPending(true)
+        try {
+          const result = await rememberAction({ orgSlug, roomId, body: rest })
+          if (!result.ok) {
+            setError(result.error ?? "Failed to save memory")
+          } else {
+            clearIfUnchanged(typed)
+            showToast({ message: "Saved to room memory", tone: "success" })
+          }
+        } catch {
+          setError("Failed to save memory")
+        } finally {
+          setPending(false)
+        }
+        return
       }
-      return
     }
+  }
 
+  /** Sends a message (or a /goal or /btw), queuing it offline when there is no connection. */
+  async function deliver(content: string, command: "goal" | "btw" | null = null, typed = content) {
     setPending(true)
     if (!navigator.onLine) {
       try {
         await queueOffline(content)
-        clearIfUnchanged(content)
+        clearIfUnchanged(typed)
       } catch {
         setError("Could not save this message for later in this browser.")
       } finally {
@@ -674,18 +742,20 @@ export function Composer({
       return
     }
     try {
-      const result = await sendMessage({ orgSlug, roomId, content, threadRootId })
+      const result = await sendMessage({ orgSlug, roomId, content, threadRootId, command })
       if (!result.ok) {
         setError(result.error ?? "Message could not be sent")
       } else {
-        clearIfUnchanged(content)
+        clearIfUnchanged(typed)
         if (result.warning) setNotice(result.warning)
+        else if (command === "goal") setNotice("Goal set. The bot keeps working round by round until it's done; /stop ends it.")
+        else if (command === "btw") setNotice("Noted. The bots will see it without being interrupted.")
         onSent?.()
       }
     } catch {
       try {
         await queueOffline(content)
-        clearIfUnchanged(content)
+        clearIfUnchanged(typed)
       } catch {
         setError("Connection lost, and this message could not be saved for later.")
       }
@@ -696,6 +766,24 @@ export function Composer({
 
   function onKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (event.nativeEvent.isComposing) return
+    if (slashOpen) {
+      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        event.preventDefault()
+        const step = event.key === "ArrowDown" ? 1 : -1
+        setSlashIndex((index) => (index + step + slashOptions.length) % slashOptions.length)
+        return
+      }
+      if (event.key === "Enter" || event.key === "Tab") {
+        event.preventDefault()
+        const command = slashOptions[slashIndex % slashOptions.length]
+        if (command) pickSlash(command)
+        return
+      }
+      if (event.key === "Escape") {
+        updateValue("")
+        return
+      }
+    }
     if (mention && options.length) {
       if (event.key === "ArrowDown") {
         event.preventDefault()
@@ -730,6 +818,46 @@ export function Composer({
 
   return (
     <div className={cn("relative", compact ? "px-3 pb-3 pt-2" : "px-3 pb-3 pt-2 md:px-4 md:pb-4")}>
+      {slashOpen ? (
+        <div
+          className="surface-pop pop-in absolute bottom-full left-3 z-10 mb-1 max-h-72 w-80 max-w-[calc(100%-1.5rem)] overflow-y-auto rounded-xl py-1"
+          id={listboxId}
+          role="listbox"
+          aria-label="Commands"
+        >
+          <p className="px-3 pb-1 pt-1.5 text-[11px] font-medium text-faint">Commands</p>
+          {slashOptions.map((command, index) => {
+            const active = index === slashIndex % slashOptions.length
+            return (
+              <button
+                key={command.name}
+                type="button"
+                id={`${listboxId}-slash-${index}`}
+                role="option"
+                aria-selected={active}
+                onMouseDown={(event) => {
+                  event.preventDefault()
+                  pickSlash(command)
+                }}
+                onMouseEnter={() => setSlashIndex(index)}
+                className={cn(
+                  "flex w-full items-baseline gap-2 px-3 py-2 text-left md:py-1.5",
+                  active ? "bg-white/[0.06]" : "hover:bg-white/[0.04]",
+                )}
+              >
+                <span className="shrink-0 font-mono text-[13px] text-text">/{command.name}</span>
+                {command.args ? (
+                  <span className="shrink-0 text-[12px] text-faint">{command.args}</span>
+                ) : null}
+                <span className="ml-auto truncate pl-2 text-right text-[12px] text-muted">
+                  {command.description}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      ) : null}
+
       {mention && options.length ? (
         <div
           className="surface-pop pop-in absolute bottom-full left-3 z-10 mb-1 max-h-56 w-72 max-w-[calc(100%-1.5rem)] overflow-y-auto rounded-xl py-1"
@@ -815,8 +943,8 @@ export function Composer({
           data-testid="composer"
           role="combobox"
           aria-autocomplete="list"
-          aria-expanded={Boolean(mention && options.length)}
-          aria-controls={mention && options.length ? listboxId : undefined}
+          aria-expanded={Boolean(mention && options.length) || slashOpen}
+          aria-controls={(mention && options.length) || slashOpen ? listboxId : undefined}
           aria-activedescendant={activeOptionId}
           ref={textareaRef}
           value={value}
@@ -825,10 +953,11 @@ export function Composer({
           maxLength={100_000}
           spellCheck
           placeholder={placeholder}
-          title="@ to mention, Enter to send, Shift+Enter for a new line"
+          title="@ to mention, / for commands, Enter to send, Shift+Enter for a new line"
           onChange={(event) => {
             const next = event.target.value
             updateValue(next)
+            setSlashIndex(0)
             updateMention(next, event.target.selectionStart ?? next.length)
             onTyping?.()
           }}
@@ -930,7 +1059,11 @@ export function Composer({
           roomId={roomId}
           agents={agents}
           people={others}
-          onClose={() => setQuickAction(null)}
+          initialText={quickText}
+          onClose={() => {
+            setQuickAction(null)
+            setQuickText("")
+          }}
         />
       ) : null}
     </div>

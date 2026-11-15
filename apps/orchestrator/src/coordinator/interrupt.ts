@@ -1,6 +1,6 @@
 import { turnSessions } from "@sayabot/db"
 import { and, eq } from "drizzle-orm"
-import { abortRoomRuns } from "../active-runs"
+import { abortRoomRuns, addRunInterrupt, roomRuns } from "../active-runs"
 import { getDb, notify } from "../db"
 import { handleMidRunInterrupt, type MessageInterruptCheck } from "../engine/interrupts"
 
@@ -27,4 +27,17 @@ export async function interruptRoom(roomId: string, incoming?: MessageInterruptC
     .where(and(eq(turnSessions.roomId, roomId), eq(turnSessions.state, "active")))
   abortRoomRuns(roomId)
   await notify(INTERRUPT_CHANNEL, { roomId }).catch(() => {})
+}
+
+/**
+ * A "/btw" side note: hand it to every agent working in the room right now (agents that read
+ * mid-run notes pick it up on their next step) and change nothing else: no abort, no new turn.
+ * Agents that can't take notes mid-run read it in the transcript on their next round.
+ */
+export function deliverSideNote(roomId: string, note: MessageInterruptCheck): number {
+  let delivered = 0
+  for (const run of roomRuns(roomId)) {
+    if (run.engine === "v2" && addRunInterrupt(run.runId, { messageId: note.id, content: note.content })) delivered++
+  }
+  return delivered
 }

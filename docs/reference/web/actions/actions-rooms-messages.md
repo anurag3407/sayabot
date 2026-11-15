@@ -74,7 +74,9 @@ Authenticated action that resolves the agent in the org, ensures the 1:1 room vi
 
 ## ✉️ Sending messages (`messages.ts` + `message-send.ts`)
 
-### `sendMessage(input: { orgSlug, roomId, content, threadRootId?, clientId? })`
+### `sendMessage(input: { orgSlug, roomId, content, threadRootId?, clientId?, command? })`
+
+`command` (`"goal" | "btw"`, from the composer's `/goal` and `/btw`) is stored as `metadata.command`; the orchestrator turns a goal into a round-by-round loop and lets a side note through without interrupting.
 
 Member-level action (`getRoomAccess`). The write itself lives in `insertHumanMessage` (`message-send.ts:8`), so web, mobile and offline flush share one code path:
 

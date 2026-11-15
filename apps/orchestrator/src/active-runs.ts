@@ -81,3 +81,8 @@ export function findActiveRunForAgent(roomId: string, agentId: string): ActiveRu
 export function activeRunIds(): string[] {
   return [...runs.keys()]
 }
+
+/** Every run in progress in a room (for side notes delivered to all of them). */
+export function roomRuns(roomId: string): ActiveRun[] {
+  return [...runs.values()].filter((run) => run.roomId === roomId)
+}

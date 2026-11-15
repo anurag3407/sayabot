@@ -15,6 +15,7 @@ export async function sendMessage(input: {
   content: string
   threadRootId?: string | null
   clientId?: string | null
+  command?: "goal" | "btw" | null
 }): Promise<ActionResult> {
   const supabase = await createSupabaseServerClient()
   const {
@@ -30,6 +31,7 @@ export async function sendMessage(input: {
     content: input.content,
     threadRootId: input.threadRootId ?? null,
     clientId: input.clientId ?? null,
+    command: input.command ?? null,
   })
   if (!inserted.ok) return fail(inserted.error)
   const queued = await queueRoomMessage(input.roomId, inserted.id)

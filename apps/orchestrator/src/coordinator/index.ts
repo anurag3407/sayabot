@@ -45,7 +45,8 @@ import {
 } from "../runner/context"
 import { startAgentTurn } from "../engine"
 import { resolveAgentModel } from "../runner/llm"
-import { interruptRoom } from "./interrupt"
+import { deliverSideNote, interruptRoom } from "./interrupt"
+import { GOAL_MAX_ROUNDS, goalDirective, goalOf, goalOutcome, isSideNote } from "./goal"
 
 export interface CoordinatorDeps {
   enqueueWebhook: (data: WebhookJobData) => Promise<void>
@@ -151,7 +152,13 @@ async function halt(
   await broadcastTurn(sessionId, roomId, threadRootId, null, queue)
 }
 
-async function breakerTrip(room: RoomRow, botTurnsUsed: number, taskId?: string | null) {
+async function breakerTrip(
+  room: RoomRow,
+  botTurnsUsed: number,
+  taskId?: string | null,
+  /** A /goal session runs many rounds on purpose: the room's per-message cap would end it early. */
+  goalTurns?: number,
+) {
   const db = getDb()
   const [rpm] = await db
     .select({ count: sql<number>`count(*)::int` })
@@ -175,6 +182,7 @@ async function breakerTrip(room: RoomRow, botTurnsUsed: number, taskId?: string 
       .limit(1)
     effectiveTurnCap = t?.budgetTurns ?? 12
   }
+  if (goalTurns) effectiveTurnCap = Math.max(effectiveTurnCap, goalTurns)
 
   return checkPreTurnBreakers({
     botTurnsUsed,
@@ -340,6 +348,12 @@ export async function processRoomMessage(
   // Only a human message supersedes work in progress; a bot waking a teammate
   // queues behind the current session instead of cancelling it.
   const incoming = await loadMessage(messageId)
+  // "/btw": a side note for the bots. It reaches agents working right now and is read by the
+  // rest on their next turn; it never interrupts a run or starts one (a /goal keeps going).
+  if (incoming && isSideNote(incoming)) {
+    deliverSideNote(roomId, incoming)
+    return
+  }
   if (incoming?.senderType === "human") await interruptRoom(roomId, incoming)
 
   await withRoomLock(roomId, async () => {
@@ -421,6 +435,9 @@ export async function processRoomMessage(
     let botTurnsUsed = 0
     let state: "active" | "complete" | "halted" | "superseded" = "active"
     let lastTrigger = trigger
+    // "/goal": every agent in the queue works in rounds until it reports done or blocked.
+    const goal = goalOf(trigger)
+    const goalRounds = new Map<string, number>()
 
     await setSession(session.id, { botTurnsUsed, queue, state: "active" })
     await broadcastTurn(session.id, roomId, trigger.threadRootId, null, queue)
@@ -438,7 +455,12 @@ export async function processRoomMessage(
         break
       }
 
-      const trip = await breakerTrip(room, botTurnsUsed, session.taskId)
+      const trip = await breakerTrip(
+        room,
+        botTurnsUsed,
+        session.taskId,
+        goal ? GOAL_MAX_ROUNDS * Math.max(1, agentRefs.length) : undefined,
+      )
       if (trip) {
         if (session.taskId && trip.code === "turn_cap") {
           await db
@@ -492,6 +514,19 @@ export async function processRoomMessage(
       await setSession(session.id, { botTurnsUsed, queue, state: "active" })
       await broadcastTurn(session.id, roomId, trigger.threadRootId, next.agentId, queue)
 
+      // On a goal, each round re-reads the goal message with the round's instructions added to
+      // the room directive (both the server engine and Mac/CLI runs read the directive).
+      const round = (goalRounds.get(agentRow.id) ?? 0) + 1
+      const turnRoom = goal
+        ? {
+            ...room,
+            systemDirective: [room.systemDirective?.trim(), goalDirective(goal, round)]
+              .filter(Boolean)
+              .join("\n\n"),
+          }
+        : room
+      const turnTrigger = goal ? trigger : lastTrigger
+
       let result: {
         runId: string
         messageId: string | null
@@ -504,16 +539,16 @@ export async function processRoomMessage(
       try {
         if (agentRow.kind === "external") {
           const payload = await buildWebhookPayload({
-            room,
-            trigger: lastTrigger,
+            room: turnRoom,
+            trigger: turnTrigger,
             threadRootId: trigger.threadRootId,
           })
           result = await runExternalTurn({
-            room,
+            room: turnRoom,
             agent: agentRow,
             sessionId: session.id,
             threadRootId: trigger.threadRootId,
-            trigger: lastTrigger,
+            trigger: turnTrigger,
             role: next.role,
             step: botTurnsUsed + 1,
             payload,
@@ -521,11 +556,11 @@ export async function processRoomMessage(
           })
         } else {
           result = await startAgentTurn({
-            room,
+            room: turnRoom,
             agent: agentRow,
             sessionId: session.id,
             threadRootId: trigger.threadRootId,
-            trigger: lastTrigger,
+            trigger: turnTrigger,
             role: next.role,
             step: botTurnsUsed + 1,
             taskId: session.taskId,
@@ -605,7 +640,24 @@ export async function processRoomMessage(
             state = "halted"
             break
           }
-          if (room.turnMode === "mentions" && result.content) {
+          if (goal) {
+            goalRounds.set(agentRow.id, round)
+            const outcome = goalOutcome(result.content)
+            if (outcome === "continue" && round < GOAL_MAX_ROUNDS) {
+              if (!queue.some((turn) => turn.agentId === agentRow.id)) {
+                queue.push({ agentId: agentRow.id, role: "responder", reason: "goal" })
+                await setSession(session.id, { botTurnsUsed, queue, state: "active" })
+                await broadcastTurn(session.id, roomId, trigger.threadRootId, null, queue)
+              }
+            } else if (outcome === "continue") {
+              await postSystemMessage({
+                roomId,
+                threadRootId: trigger.threadRootId,
+                content: `@${agentRow.handle} paused the goal after ${GOAL_MAX_ROUNDS} rounds. Send /goal again to keep going.`,
+                reason: "goal_paused",
+              })
+            }
+          } else if (room.turnMode === "mentions" && result.content) {
             const followUps = planBotFollowUps({
               text: result.content,
               roomAgents: agentRefs,
