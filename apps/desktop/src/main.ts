@@ -1,8 +1,8 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, MenuItemConstructorOptions, Notification, shell } from "electron"
 import * as path from "node:path"
 import * as fs from "node:fs"
-import * as os from "node:os"
-import { downloadFile, runDetached, stageMacUpdate } from "./mac-install"
+import { canReplace, downloadFile, inspectDmg, installTarget, runDetached, stageMacUpdate } from "./mac-install"
+import { DesktopUpdater, type VersionInfo } from "./updater"
 import { fetchWorkspaceSnapshot, leaveCloudHome, type LocalWorkspaceSnapshot } from "./cloud-handoff"
 import { DesktopHost, loadHostAuth } from "./host"
 import { detectLocalAgents } from "./local-agents"
@@ -442,159 +442,125 @@ app.on("open-url", (event, urlStr) => {
   }
 })
 
-function parseSemver(v: string): [number, number, number] {
-  const parts = v
-    .replace(/^v/, "")
-    .split(".")
-    .map((x) => parseInt(x, 10) || 0)
-  return [parts[0] ?? 0, parts[1] ?? 0, parts[2] ?? 0]
-}
+// ---------- Updates: one state for the menu, the notification and the workspace page ----------
 
-function isNewerVersion(current: string, latest: string): boolean {
-  const [cMaj, cMin, cPat] = parseSemver(current)
-  const [lMaj, lMin, lPat] = parseSemver(latest)
-  if (lMaj > cMaj) return true
-  if (lMaj === cMaj && lMin > cMin) return true
-  if (lMaj === cMaj && lMin === cMin && lPat > cPat) return true
-  return false
-}
-
-export interface DesktopUpdateResult {
-  isUpdateAvailable: boolean
-  currentVersion: string
-  latestVersion?: string
-  dmgUrl?: string
-  releaseNotes?: string
-  error?: string
-}
-
-/** The release has one DMG per architecture; send Intel Macs to the Intel one. */
-function dmgForThisMac(url: string): string {
-  return process.arch === "x64" ? url.replace("Sayabot-arm64.dmg", "Sayabot-x64.dmg") : url
-}
-
-/** Automatic checks prompt once per new version per launch, so "Later" isn't nagged again. */
-let promptedUpdateVersion: string | null = null
-
-async function checkDesktopUpdates(manual = false): Promise<DesktopUpdateResult> {
-  const currentVersion = app.getVersion()
-  const config = loadConfig()
+function updateServerBase(): string {
   const session = loadSession()
-  const base = (session?.serverUrl || config.serverUrl || DEFAULT_SERVER_URL).replace(/\/+$/, "")
+  return (session?.serverUrl || loadConfig().serverUrl || DEFAULT_SERVER_URL).replace(/\/+$/, "")
+}
 
-  try {
-    const res = await fetch(`${base}/api/version`, {
+const updater = new DesktopUpdater({
+  currentVersion: app.getVersion(),
+  arch: process.arch,
+  fetchVersion: async () => {
+    const res = await fetch(`${updateServerBase()}/api/version`, {
       headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(10_000),
     })
-    if (!res.ok) {
-      throw new Error(`Server returned HTTP ${res.status}`)
+    if (!res.ok) throw new Error(`The server answered HTTP ${res.status}.`)
+    return (await res.json()) as VersionInfo
+  },
+  download: downloadFile,
+  inspect: inspectDmg,
+  dmgPath: (version) => path.join(app.getPath("temp"), "sayabot-updates", `Sayabot-${version}.dmg`),
+  install: async (dmgPath, version) => {
+    const target = installTarget(app.getPath("exe"))
+    if (!canReplace(target)) {
+      // No permission to swap the app: open the disk image so it can be dragged over by hand.
+      void shell.openPath(dmgPath)
+      throw new Error(
+        `Sayabot can't replace itself in ${path.dirname(target)}. The new version is open in Finder: drag it to Applications.`,
+      )
     }
-    const data = (await res.json()) as {
-      version?: string
-      latestDesktopVersion?: string
-      dmgUrl?: string
-      releaseNotes?: string
-    }
+    runDetached(stageMacUpdate({ dmgPath, target, version }))
+    quitForUpdate()
+  },
+})
 
-    const latest = data.latestDesktopVersion || data.version || currentVersion
-    const updateAvailable = isNewerVersion(currentVersion, latest)
-    const dmgUrl = dmgForThisMac(
-      data.dmgUrl ||
-        "https://github.com/anurag3407/sayabot/releases/latest/download/Sayabot-arm64.dmg",
-    )
-    const releaseNotes =
-      data.releaseNotes || "A new version of Sayabot for Mac is available."
+/** Quits so the helper can swap the app; force-exits if something holds the quit up. */
+function quitForUpdate(): void {
+  setTimeout(() => app.exit(0), 5_000).unref()
+  app.quit()
+}
 
-    if (updateAvailable) {
-      const shouldPrompt = manual || promptedUpdateVersion !== latest
-      if (shouldPrompt && mainWindow && !mainWindow.isDestroyed()) {
-        promptedUpdateVersion = latest
-        const choice = await dialog.showMessageBox(mainWindow, {
-          type: "info",
-          title: "Update Available",
-          message: `Sayabot v${latest} is now available!`,
-          detail: `${releaseNotes}\n\n(Current version: v${currentVersion})`,
-          buttons: ["Install Update", "Later"],
-          defaultId: 0,
-          cancelId: 1,
-        })
-        if (choice.response === 0) {
-          void installMacUpdate(dmgUrl)
-        }
-      }
-      return {
-        isUpdateAvailable: true,
-        currentVersion,
-        latestVersion: latest,
-        dmgUrl,
-        releaseNotes,
-      }
-    }
+/** Tell people once per version, even when the workspace page is older and has no update toast. */
+let notifiedVersion: string | null = null
 
-    if (manual && mainWindow && !mainWindow.isDestroyed()) {
-      await dialog.showMessageBox(mainWindow, {
-        type: "info",
-        title: "You're Up to Date",
-        message: "You're running the latest version of Sayabot for Mac.",
-        detail: `Version: v${currentVersion}`,
-        buttons: ["OK"],
-      })
-    }
+updater.onChange((state) => {
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) win.webContents.send("app:update-state", state)
+  }
+  buildAppMenu()
+  if (state.status === "available" && notifiedVersion !== state.latest && Notification.isSupported()) {
+    notifiedVersion = state.latest
+    const note = new Notification({
+      title: `Sayabot ${state.latest} is available`,
+      body: "Click to install. Sayabot reopens by itself in about a minute.",
+    })
+    note.on("click", () => void updater.install())
+    note.show()
+  }
+})
 
-    return {
-      isUpdateAvailable: false,
-      currentVersion,
-      latestVersion: latest,
-    }
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err)
-    console.warn("[Sayabot Desktop] Update check failed:", msg)
-    if (manual && mainWindow && !mainWindow.isDestroyed()) {
-      await dialog.showMessageBox(mainWindow, {
-        type: "warning",
-        title: "Update Check Failed",
-        message: "Could not check for updates.",
-        detail: msg,
-        buttons: ["OK"],
-      })
-    }
-    return {
-      isUpdateAvailable: false,
-      currentVersion,
-      error: msg,
-    }
+/** "Check for Updates…": the same check, with the answer in a dialog. */
+async function checkForUpdatesWithDialog(): Promise<void> {
+  const parent = mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined
+  const show = (options: Electron.MessageBoxOptions) =>
+    parent ? dialog.showMessageBox(parent, options) : dialog.showMessageBox(options)
+  const before = updater.current
+  if (before.status === "downloading" || before.status === "installing") {
+    await show({
+      type: "info",
+      message: `Sayabot ${before.latest} is ${before.status === "installing" ? "installing" : "downloading"}`,
+      detail: before.status === "downloading" && before.percent !== null ? `${before.percent}% done.` : "",
+      buttons: ["OK"],
+    })
+    return
+  }
+  const state = await updater.check(true)
+  if (state.status === "available") {
+    const choice = await show({
+      type: "info",
+      message: `Sayabot ${state.latest} is available`,
+      detail: `${state.notes ? `${state.notes}\n\n` : ""}You have ${state.current}. Sayabot closes, updates and reopens by itself.`,
+      buttons: ["Install Now", "Later"],
+      defaultId: 0,
+      cancelId: 1,
+    })
+    if (choice.response === 0) void updater.install()
+  } else if (state.status === "error") {
+    await show({ type: "warning", message: "Could not check for updates", detail: state.message, buttons: ["OK"] })
+  } else {
+    await show({
+      type: "info",
+      message: "Sayabot is up to date",
+      detail: `You have version ${state.current}, the newest one.`,
+      buttons: ["OK"],
+    })
   }
 }
 
-/**
- * Downloads the new DMG itself and swaps /Applications/Sayabot.app after quit.
- * A browser download is what makes macOS show "Apple could not verify".
- */
-async function installMacUpdate(dmgUrl: string): Promise<void> {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sayabot-update-"))
-  const dmgPath = path.join(dir, "Sayabot.dmg")
-  try {
-    if (Notification.isSupported()) {
-      new Notification({
-        title: "Installing Sayabot",
-        body: "The update is downloading. Sayabot will reopen when it is ready.",
-      }).show()
-    }
-    await downloadFile(dmgUrl, dmgPath)
-    runDetached(stageMacUpdate(dmgPath))
-    app.exit(0)
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err)
-    console.warn("[Sayabot Desktop] Update install failed:", msg)
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      await dialog.showMessageBox(mainWindow, {
-        type: "warning",
-        title: "Update Failed",
-        message: "Sayabot could not install the update.",
-        detail: msg,
-        buttons: ["OK"],
-      })
-    }
+/** The update line in the Sayabot menu, which always says what is going on. */
+function updateMenuItem(): MenuItemConstructorOptions {
+  const state = updater.current
+  switch (state.status) {
+    case "available":
+      return { label: `Install Sayabot ${state.latest}…`, click: () => void updater.install() }
+    case "downloading":
+      return {
+        label: `Downloading Sayabot ${state.latest}${state.percent !== null ? ` (${state.percent}%)` : ""}…`,
+        enabled: false,
+      }
+    case "installing":
+      return { label: `Installing Sayabot ${state.latest}…`, enabled: false }
+    case "checking":
+      return { label: "Checking for Updates…", enabled: false }
+    case "error":
+      return state.latest
+        ? { label: `Retry Installing Sayabot ${state.latest}…`, click: () => void updater.install() }
+        : { label: "Check for Updates…", click: () => void checkForUpdatesWithDialog() }
+    default:
+      return { label: "Check for Updates…", click: () => void checkForUpdatesWithDialog() }
   }
 }
 
@@ -604,20 +570,7 @@ function buildAppMenu() {
       label: "Sayabot",
       submenu: [
         { label: "About Sayabot", role: "about" },
-        {
-          label: "Check for Updates…",
-          click: () => {
-            void checkDesktopUpdates(true)
-          },
-        },
-        {
-          label: "Restart to Apply Update",
-          accelerator: "CmdOrCtrl+R",
-          click: () => {
-            app.relaunch()
-            app.exit(0)
-          },
-        },
+        updateMenuItem(),
         { type: "separator" },
         {
           label: "Return to Controller",
@@ -1038,10 +991,10 @@ ipcMain.handle("runner:toggle", () => {
   return { running: localRunnerRunning, busy: runner?.running ?? false, port: 4100 }
 })
 
-ipcMain.handle("app:restart", () => {
-  console.log("[Sayabot Desktop] Restarting application upon update request...")
-  app.relaunch()
-  app.exit(0)
+// Older workspace pages call this from their "update ready" toast. It only ever meant "load the
+// newest page", so reload instead of relaunching the whole app (which updated nothing).
+ipcMain.handle("app:restart", (event) => {
+  event.sender.reloadIgnoringCache()
 })
 
 ipcMain.handle("app:get-version", () => {
@@ -1049,7 +1002,16 @@ ipcMain.handle("app:get-version", () => {
 })
 
 ipcMain.handle("app:check-for-updates", async (_event, manual?: boolean) => {
-  return await checkDesktopUpdates(manual ?? true)
+  if (manual ?? true) await checkForUpdatesWithDialog()
+  else await updater.check(false)
+  return updater.current
+})
+
+ipcMain.handle("app:get-update-state", () => updater.current)
+
+ipcMain.handle("app:install-update", () => {
+  void updater.install()
+  return updater.current
 })
 
 // ---------- Usage: plan limits and coding-tool token history read on this Mac ----------
@@ -1110,11 +1072,12 @@ app.whenReady().then(() => {
   })
 
   // Look for a newer Mac app shortly after launch, every hour, and when you come back to the app
-  // (at most every 10 minutes). Each new version still prompts only once per launch.
+  // (at most every 10 minutes). Checks never interrupt you; the menu, a notification and the
+  // workspace page say when one is ready.
   let lastUpdateCheck = Date.now()
   const checkSoon = () => {
     lastUpdateCheck = Date.now()
-    void checkDesktopUpdates(false)
+    void updater.check(false)
   }
   setTimeout(checkSoon, 15_000)
   setInterval(checkSoon, 60 * 60 * 1000)

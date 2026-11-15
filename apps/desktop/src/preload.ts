@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron"
+import type { UpdateState } from "./updater"
 
 export interface AuthSession {
   accessToken: string
@@ -7,15 +8,6 @@ export interface AuthSession {
   userId: string
   serverUrl: string
   isGuest?: boolean
-}
-
-export interface DesktopUpdateResult {
-  isUpdateAvailable: boolean
-  currentVersion: string
-  latestVersion?: string
-  dmgUrl?: string
-  releaseNotes?: string
-  error?: string
 }
 
 export type ServerCheck =
@@ -42,7 +34,12 @@ export interface DesktopBridge {
   toggleLocalRunner: () => Promise<{ running: boolean; port: number }>
   restartApp: () => Promise<void>
   getVersion: () => Promise<string>
-  checkForUpdates: (manual?: boolean) => Promise<DesktopUpdateResult>
+  /** Manual checks answer in a dialog; either way the newest update state comes back. */
+  checkForUpdates: (manual?: boolean) => Promise<UpdateState>
+  getUpdateState: () => Promise<UpdateState>
+  /** Downloads, checks and installs the newest version; Sayabot reopens by itself. */
+  installUpdate: () => Promise<UpdateState>
+  onUpdateState: (callback: (state: UpdateState) => void) => () => void
   /** Claude / Codex / Antigravity plan limits, read with this Mac's own sign-ins. */
   getPlanLimits: (force?: boolean) => Promise<unknown[]>
   /** Token history from coding-tool logs on this Mac. */
@@ -69,6 +66,15 @@ const bridge: DesktopBridge = {
   restartApp: () => ipcRenderer.invoke("app:restart"),
   getVersion: () => ipcRenderer.invoke("app:get-version"),
   checkForUpdates: (manual) => ipcRenderer.invoke("app:check-for-updates", manual),
+  getUpdateState: () => ipcRenderer.invoke("app:get-update-state"),
+  installUpdate: () => ipcRenderer.invoke("app:install-update"),
+  onUpdateState: (callback) => {
+    const listener = (_event: unknown, state: UpdateState) => callback(state)
+    ipcRenderer.on("app:update-state", listener)
+    return () => {
+      ipcRenderer.removeListener("app:update-state", listener)
+    }
+  },
   getPlanLimits: (force) => ipcRenderer.invoke("usage:plan-limits", force),
   getLocalUsage: (days) => ipcRenderer.invoke("usage:local", days),
   onSessionUpdate: (callback) => {

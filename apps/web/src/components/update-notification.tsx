@@ -1,235 +1,301 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
-import { RefreshCw, X } from "lucide-react"
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react"
+import { ArrowDownToLine, RefreshCw, X } from "lucide-react"
+import { showToast } from "@/components/ui/toast"
+import { onWebUpdate } from "@/lib/web-update"
 import { cn } from "@/lib/format"
 
-export interface VersionData {
-  version: string
-  gitCommit: string
-  buildTime: string
-  latestDesktopVersion: string
-  latestMobileVersion: string
-  dmgUrl: string
-  apkUrl: string
-  releaseNotes?: string
+/**
+ * Two kinds of update, kept apart so each says something true:
+ * - the website was deployed again: reload the page to get it (browser and Mac app alike);
+ * - a newer Sayabot for Mac is out: the Mac app downloads, checks and installs it, and this
+ *   shows its progress. Older Mac apps without that bridge keep their own dialog.
+ */
+
+/** Mirrors UpdateState in apps/desktop/src/updater.ts. */
+export type DesktopUpdateState =
+  | { status: "idle"; current: string; latest: string | null; checkedAt: number | null }
+  | { status: "checking"; current: string; latest: string | null }
+  | { status: "available"; current: string; latest: string; notes: string }
+  | { status: "downloading"; current: string; latest: string; percent: number | null }
+  | { status: "installing"; current: string; latest: string }
+  | { status: "error"; current: string; latest: string | null; message: string }
+
+interface DesktopUpdateBridge {
+  getVersion?: () => Promise<string>
+  checkForUpdates?: (manual?: boolean) => Promise<unknown>
+  getUpdateState?: () => Promise<DesktopUpdateState>
+  installUpdate?: () => Promise<DesktopUpdateState>
+  onUpdateState?: (callback: (state: DesktopUpdateState) => void) => () => void
+}
+
+function desktopBridge(): DesktopUpdateBridge | null {
+  if (typeof window === "undefined") return null
+  return (window as unknown as { sayabotDesktop?: DesktopUpdateBridge }).sayabotDesktop ?? null
 }
 
 interface UpdateContextType {
+  /** Something to act on: a newer website, or a Mac update ready to install. */
   updateReady: boolean
-  dismissed: boolean
   checking: boolean
-  lastChecked: Date | null
-  versionData: VersionData | null
-  checkForUpdates: () => Promise<boolean>
-  restartToUpdate: () => void
-  dismiss: () => void
+  /** The Mac app's version, inside the Mac app; null in a browser. */
+  appVersion: string | null
+  desktop: DesktopUpdateState | null
+  checkForUpdates: () => Promise<void>
+  /** Installs the Mac update when there is one, otherwise reloads for the newer website. */
+  applyUpdate: () => void
 }
 
 const UpdateContext = createContext<UpdateContextType | null>(null)
 
-const INITIAL_VERSION = "1.0.1"
+const POLL_MS = 5 * 60_000
+
+async function readCommit(): Promise<string | null> {
+  try {
+    const res = await fetch(`/api/version?t=${Date.now()}`, { cache: "no-store" })
+    if (!res.ok) return null
+    const data = (await res.json()) as { gitCommit?: unknown }
+    return typeof data.gitCommit === "string" && data.gitCommit ? data.gitCommit : null
+  } catch {
+    return null
+  }
+}
+
+function reloadPage() {
+  navigator.serviceWorker
+    ?.getRegistration()
+    .then((reg) => reg?.waiting?.postMessage({ type: "SKIP_WAITING" }))
+    .catch(() => undefined)
+  window.location.reload()
+}
 
 export function UpdateProvider({ children }: { children: ReactNode }) {
-  const [updateReady, setUpdateReady] = useState(false)
-  const [dismissed, setDismissed] = useState(false)
+  const [webUpdate, setWebUpdate] = useState(false)
+  const [webDismissed, setWebDismissed] = useState(false)
   const [checking, setChecking] = useState(false)
-  const [lastChecked, setLastChecked] = useState<Date | null>(null)
-  const [versionData, setVersionData] = useState<VersionData | null>(null)
-  const [initialCommit, setInitialCommit] = useState<string | null>(null)
+  const [appVersion, setAppVersion] = useState<string | null>(null)
+  const [desktop, setDesktop] = useState<DesktopUpdateState | null>(null)
+  const [laterVersion, setLaterVersion] = useState<string | null>(null)
+  // The deploy this page was loaded from; a different one later means a newer website.
+  const loadedCommit = useRef<string | null>(null)
 
-  const checkForUpdates = async (): Promise<boolean> => {
+  const checkWeb = useCallback(async (): Promise<boolean> => {
+    const commit = await readCommit()
+    if (!commit) return false
+    if (!loadedCommit.current) {
+      loadedCommit.current = commit
+      return false
+    }
+    if (commit === loadedCommit.current) return false
+    setWebUpdate(true)
+    setWebDismissed(false)
+    return true
+  }, [])
+
+  useEffect(() => {
+    void checkWeb()
+    const timer = window.setInterval(() => void checkWeb(), POLL_MS)
+    const onVisible = () => document.visibilityState === "visible" && void checkWeb()
+    document.addEventListener("visibilitychange", onVisible)
+    const stop = onWebUpdate(() => {
+      setWebUpdate(true)
+      setWebDismissed(false)
+    })
+    return () => {
+      window.clearInterval(timer)
+      document.removeEventListener("visibilitychange", onVisible)
+      stop()
+    }
+  }, [checkWeb])
+
+  useEffect(() => {
+    const bridge = desktopBridge()
+    if (!bridge) return
+    void bridge.getVersion?.().then(setAppVersion, () => undefined)
+    if (!bridge.onUpdateState || !bridge.getUpdateState) return
+    void bridge.getUpdateState().then(setDesktop, () => undefined)
+    return bridge.onUpdateState(setDesktop)
+  }, [])
+
+  const checkForUpdates = useCallback(async () => {
+    const bridge = desktopBridge()
     setChecking(true)
     try {
-      const res = await fetch(`/api/version?t=${Date.now()}`, {
-        cache: "no-store",
+      const web = await checkWeb()
+      if (bridge?.checkForUpdates) {
+        // The Mac app answers in its own dialog (up to date, available, or why it failed).
+        await bridge.checkForUpdates(true)
+        return
+      }
+      showToast({
+        message: web ? "A newer Sayabot is out. Reload to get it." : "You have the newest Sayabot.",
+        tone: web ? "neutral" : "success",
       })
-      if (!res.ok) return false
-      const data: VersionData = await res.json()
-      setVersionData(data)
-      setLastChecked(new Date())
-
-      // Record initial commit on first check
-      if (!initialCommit && data.gitCommit) {
-        setInitialCommit(data.gitCommit)
-        return false
-      }
-
-      // If remote commit is newer or version differs, update is ready
-      const isNewCommit = initialCommit && data.gitCommit && data.gitCommit !== initialCommit
-      const isNewVersion = data.version && data.version !== INITIAL_VERSION
-
-      if (isNewCommit || isNewVersion) {
-        setUpdateReady(true)
-        setDismissed(false)
-        return true
-      }
-      return false
-    } catch (err) {
-      console.warn("[Sayabot] Version check failed:", err)
-      return false
     } finally {
       setChecking(false)
     }
-  }
+  }, [checkWeb])
 
-  useEffect(() => {
-    // Initial check on mount
-    void checkForUpdates()
-
-    // Poll every 5 minutes
-    const interval = setInterval(() => {
-      void checkForUpdates()
-    }, 5 * 60 * 1000)
-
-    // Check when user returns to tab
-    const onVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        void checkForUpdates()
-      }
-    }
-    document.addEventListener("visibilitychange", onVisibilityChange)
-
-    // Listen to Serwist/Service Worker update events
-    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
-      navigator.serviceWorker.addEventListener("controllerchange", () => {
-        setUpdateReady(true)
-        setDismissed(false)
-      })
-    }
-
-    return () => {
-      clearInterval(interval)
-      document.removeEventListener("visibilitychange", onVisibilityChange)
-    }
-  }, [initialCommit])
-
-  const restartToUpdate = () => {
-    // 1. If running inside Electron desktop shell
-    const electronBridge = (window as any).sayabotDesktop
-    if (electronBridge?.restartApp) {
-      try {
-        electronBridge.restartApp()
-        return
-      } catch (e) {
-        console.warn("[Sayabot] Electron restart error:", e)
-      }
-    }
-
-    // 2. If Service Worker is waiting, tell it to take over
-    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
-      navigator.serviceWorker.getRegistration().then((reg) => {
-        if (reg?.waiting) {
-          reg.waiting.postMessage({ type: "SKIP_WAITING" })
-        }
-      })
-    }
-
-    // 3. Clear transient caches & reload fresh page
-    try {
-      if (typeof window !== "undefined" && "caches" in window) {
-        caches.keys().then((keys) => {
-          for (const key of keys) {
-            caches.delete(key)
-          }
-        })
-      }
-    } catch {
-      // ignore
-    }
-
-    window.location.reload()
-  }
-
-  const dismiss = () => {
-    setDismissed(true)
-  }
+  const desktopReady = desktop?.status === "available"
+  const applyUpdate = useCallback(() => {
+    const bridge = desktopBridge()
+    if (desktopReady && bridge?.installUpdate) void bridge.installUpdate()
+    else reloadPage()
+  }, [desktopReady])
 
   return (
     <UpdateContext.Provider
       value={{
-        updateReady,
-        dismissed,
+        updateReady: webUpdate || desktopReady,
         checking,
-        lastChecked,
-        versionData,
+        appVersion,
+        desktop,
         checkForUpdates,
-        restartToUpdate,
-        dismiss,
+        applyUpdate,
       }}
     >
       {children}
-      <UpdateToast />
+      <UpdateToast
+        desktop={desktop}
+        laterVersion={laterVersion}
+        onLater={setLaterVersion}
+        webUpdate={webUpdate && !webDismissed}
+        onDismissWeb={() => setWebDismissed(true)}
+      />
     </UpdateContext.Provider>
   )
 }
 
-export function useAppUpdate() {
+export function useAppUpdate(): UpdateContextType {
   const context = useContext(UpdateContext)
-  if (!context) {
-    return {
+  return (
+    context ?? {
       updateReady: false,
-      dismissed: false,
       checking: false,
-      lastChecked: null,
-      versionData: null,
-      checkForUpdates: async () => false,
-      restartToUpdate: () => window.location.reload(),
-      dismiss: () => {},
+      appVersion: null,
+      desktop: null,
+      checkForUpdates: async () => {},
+      applyUpdate: () => window.location.reload(),
     }
-  }
-  return context
+  )
 }
 
-export function UpdateToast() {
-  const { updateReady, dismissed, restartToUpdate, dismiss, versionData } = useAppUpdate()
+const card =
+  "fixed bottom-5 right-5 z-[100] flex w-[min(92vw,360px)] items-start gap-3 rounded-2xl border border-line-strong bg-panel/95 px-4 py-3 shadow-[0_16px_48px_rgba(0,0,0,0.6)] backdrop-blur-xl"
+const primary =
+  "inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-text px-2.5 py-1.5 text-[12px] font-semibold text-void transition-colors hover:bg-white"
+const quiet = "rounded-md p-1 text-faint transition-colors hover:bg-raised hover:text-text"
 
-  if (!updateReady || dismissed) return null
+function UpdateToast({
+  desktop,
+  laterVersion,
+  onLater,
+  webUpdate,
+  onDismissWeb,
+}: {
+  desktop: DesktopUpdateState | null
+  laterVersion: string | null
+  onLater: (version: string) => void
+  webUpdate: boolean
+  onDismissWeb: () => void
+}) {
+  const install = () => void desktopBridge()?.installUpdate?.()
 
-  const targetVersion = versionData?.version ? `v${versionData.version}` : "v1.0.2"
-
-  return (
-    <div
-      role="alert"
-      className={cn(
-        "fixed bottom-6 right-6 z-[100] flex max-w-sm items-center gap-3.5 rounded-2xl border border-emerald-500/30 bg-[#070a07]/95 px-4 py-3 shadow-[0_16px_48px_rgba(0,0,0,0.8)] backdrop-blur-xl transition-all duration-300 animate-in fade-in slide-in-from-bottom-4",
-      )}
-    >
-      <div className="relative flex h-3 w-3 shrink-0 items-center justify-center">
-        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-        <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-      </div>
-
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5">
-          <p className="text-[12.5px] font-semibold text-text">Sayabot update ready</p>
-          <span className="font-mono text-[10px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded font-medium">
-            {targetVersion}
-          </span>
+  if (desktop?.status === "downloading" || desktop?.status === "installing") {
+    const percent = desktop.status === "downloading" ? desktop.percent : 100
+    return (
+      <div role="status" className={card}>
+        <ArrowDownToLine className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] font-medium text-text">
+            {desktop.status === "installing"
+              ? `Installing Sayabot ${desktop.latest}…`
+              : `Downloading Sayabot ${desktop.latest}${percent !== null ? ` · ${percent}%` : "…"}`}
+          </p>
+          <div className="mt-2 h-1 overflow-hidden rounded-full bg-line">
+            <div
+              className={cn("h-full rounded-full bg-accent transition-[width]", percent === null && "w-1/3 animate-pulse")}
+              style={percent !== null ? { width: `${Math.max(3, percent)}%` } : undefined}
+            />
+          </div>
+          <p className="mt-1.5 text-[11.5px] text-faint">
+            {desktop.status === "installing"
+              ? "Sayabot closes and reopens by itself in a moment."
+              : "Keep working. Sayabot restarts by itself when it is ready."}
+          </p>
         </div>
-        <p className="text-[11px] text-muted truncate">
-          A new version has been deployed.
-        </p>
       </div>
+    )
+  }
 
-      <div className="flex items-center gap-2 pl-1">
-        <button
-          type="button"
-          onClick={restartToUpdate}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 active:scale-95 px-2.5 py-1.5 text-[11.5px] font-semibold text-black transition-all shadow-sm cursor-pointer"
-        >
-          <RefreshCw className="h-3 w-3" />
-          Restart to update
-        </button>
-        <button
-          type="button"
-          onClick={dismiss}
-          aria-label="Dismiss notification"
-          className="rounded-md p-1 text-muted hover:text-text hover:bg-white/5 transition-colors cursor-pointer"
-        >
+  if (desktop?.status === "error" && desktop.latest && laterVersion !== `error:${desktop.latest}`) {
+    return (
+      <div role="alert" className={card}>
+        <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-danger" />
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] font-medium text-text">Sayabot {desktop.latest} didn&apos;t install</p>
+          <p className="mt-0.5 text-[12px] leading-relaxed text-muted">{desktop.message}</p>
+          <button type="button" onClick={install} className={cn(primary, "mt-2")}>
+            <RefreshCw className="h-3 w-3" />
+            Try again
+          </button>
+        </div>
+        <button type="button" onClick={() => onLater(`error:${desktop.latest}`)} aria-label="Dismiss" className={quiet}>
           <X className="h-3.5 w-3.5" />
         </button>
       </div>
-    </div>
-  )
+    )
+  }
+
+  if (desktop?.status === "available" && laterVersion !== desktop.latest) {
+    return (
+      <div role="alert" className={card}>
+        <span className="relative mt-1 flex h-2 w-2 shrink-0">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-ok opacity-60" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-ok" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] font-medium text-text">Sayabot {desktop.latest} for Mac is ready</p>
+          <p className="mt-0.5 text-[12px] text-muted">
+            You have {desktop.current}. It installs in about a minute and reopens by itself.
+          </p>
+          <div className="mt-2 flex items-center gap-2">
+            <button type="button" onClick={install} className={primary}>
+              <ArrowDownToLine className="h-3 w-3" />
+              Install
+            </button>
+            <button
+              type="button"
+              onClick={() => onLater(desktop.latest)}
+              className="rounded-lg px-2 py-1.5 text-[12px] text-muted hover:text-text"
+            >
+              Later
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (webUpdate) {
+    return (
+      <div role="alert" className={cn(card, "items-center")}>
+        <span className="h-2 w-2 shrink-0 rounded-full bg-ok" />
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] font-medium text-text">Sayabot was updated</p>
+          <p className="text-[12px] text-muted">Reload to get the newest version.</p>
+        </div>
+        <button type="button" onClick={reloadPage} className={primary}>
+          <RefreshCw className="h-3 w-3" />
+          Reload
+        </button>
+        <button type="button" onClick={onDismissWeb} aria-label="Dismiss" className={quiet}>
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    )
+  }
+
+  return null
 }

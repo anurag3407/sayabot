@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react"
 import { showToast } from "./ui/toast"
+import { reportWebUpdate } from "@/lib/web-update"
 
 export function PwaUpdatePrompt() {
   const hasPrompted = useRef(false)
@@ -19,6 +20,8 @@ export function PwaUpdatePrompt() {
     const notifyUpdate = () => {
       if (hasPrompted.current) return
       hasPrompted.current = true
+      // Inside the workspace its own update card shows this; only one toast per deploy.
+      if (reportWebUpdate()) return
 
       showToast({
         message: "A new version of Sayabot is available.",

@@ -390,7 +390,7 @@ function WorkspaceSwitcher({ org, orgs, role }: { org: { slug: string; name: str
 }
 
 function AccountRow({ base, user, role }: { base: string; user: SidebarUser; role: OrgRole }) {
-  const { updateReady, restartToUpdate, checkForUpdates, checking, versionData } = useAppUpdate()
+  const { updateReady, applyUpdate, checkForUpdates, checking, appVersion, desktop } = useAppUpdate()
   return (
     <DetailsMenu
       className="relative min-w-0 flex-1"
@@ -416,11 +416,11 @@ function AccountRow({ base, user, role }: { base: string; user: SidebarUser; rol
         {updateReady ? (
           <button
             type="button"
-            onClick={restartToUpdate}
+            onClick={applyUpdate}
             className="mb-1 flex w-full items-center justify-center gap-1.5 rounded-xl bg-ok/15 px-2.5 py-2 text-[13px] font-medium text-ok hover:bg-ok/25"
           >
             <RefreshCw className="h-3.5 w-3.5" />
-            Restart to get the new version
+            {desktop?.status === "available" ? `Install Sayabot ${desktop.latest}` : "Reload for the new version"}
           </button>
         ) : null}
         <div className="h-px bg-line" />
@@ -440,7 +440,7 @@ function AccountRow({ base, user, role }: { base: string; user: SidebarUser; rol
           <Link href="/download" className={popoverItem}>
             <ArrowDownToLine className="h-4 w-4 text-faint" />
             <span className="flex-1">Get the apps</span>
-            <span className="text-[11px] text-faint">{versionData?.version ? `v${versionData.version}` : ""}</span>
+            <span className="text-[11px] text-faint">{appVersion ? `v${appVersion}` : ""}</span>
           </Link>
           <button type="button" onClick={() => void checkForUpdates()} disabled={checking} className={popoverItem}>
             <RefreshCw className={cn("h-4 w-4 text-faint", checking && "animate-spin")} />
