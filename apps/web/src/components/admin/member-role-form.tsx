@@ -1,7 +1,6 @@
 "use client"
 
-import { useActionState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useActionState } from "react"
 import { setMemberRole } from "@/lib/actions/orgs"
 import { Button } from "@/components/ui/button"
 import { Select } from "@/components/ui/field"
@@ -19,11 +18,6 @@ export function MemberRoleForm({
   allowOwner: boolean
 }) {
   const [state, action, pending] = useActionState<ActionResult | null, FormData>(setMemberRole, null)
-  const router = useRouter()
-
-  useEffect(() => {
-    if (state?.ok) router.refresh()
-  }, [state, router])
 
   return (
     <form action={action} className="flex flex-wrap items-center gap-2">

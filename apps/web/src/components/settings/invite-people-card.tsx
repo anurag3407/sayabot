@@ -1,6 +1,5 @@
 "use client"
 
-import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
 import { inviteMember } from "@/lib/actions/orgs"
 import { createInviteLinkAction, revokeInviteAction } from "@/lib/actions/workspace-invites"
@@ -56,7 +55,6 @@ export function InvitePeopleCard({
   rooms: { id: string; name: string; kind: string }[]
   pending: PendingInviteView[]
 }) {
-  const router = useRouter()
   const [tab, setTab] = useState<Tab>("email")
   const [role, setRole] = useState<"member" | "admin">("member")
   const [made, setMade] = useState<{ url: string; expiresAt: string | null } | null>(null)
@@ -70,7 +68,6 @@ export function InvitePeopleCard({
         return
       }
       setMade({ url: result.data.url as string, expiresAt: (result.data.expiresAt as string | null) ?? null })
-      router.refresh()
     })
   }
 
@@ -78,7 +75,6 @@ export function InvitePeopleCard({
     startTransition(async () => {
       const result = await revokeInviteAction({ orgSlug, inviteId: id })
       showToast({ tone: result.ok ? "neutral" : "danger", message: result.ok ? "Revoked" : (result.error ?? "Could not revoke") })
-      router.refresh()
     })
   }
 

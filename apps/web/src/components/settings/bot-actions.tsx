@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
 import { issueAgentApiKey, revokeAgentApiKey, rotateWebhookSecret } from "@/lib/actions/bots"
 import { Button } from "@/components/ui/button"
 import { Field, Input } from "@/components/ui/field"
@@ -28,7 +27,6 @@ export function IssueApiKey({
   const [token, setToken] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
-  const router = useRouter()
 
   function issue() {
     setError(null)
@@ -41,7 +39,6 @@ export function IssueApiKey({
       }
       const issued = result.data?.token
       if (typeof issued === "string") setToken(issued)
-      router.refresh()
     })
   }
 
@@ -163,7 +160,6 @@ export function RevokeKeyButton({ orgSlug, keyId }: { orgSlug: string; keyId: st
   const [confirming, setConfirming] = useState(false)
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
-  const router = useRouter()
 
   function revoke() {
     setError(null)
@@ -172,8 +168,6 @@ export function RevokeKeyButton({ orgSlug, keyId }: { orgSlug: string; keyId: st
       if (!result.ok) {
         setError(result.error ?? "Could not revoke the key")
         setConfirming(false)
-      } else {
-        router.refresh()
       }
     })
   }

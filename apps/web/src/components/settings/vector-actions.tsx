@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
 import { deleteVectorProvider, setActiveVectorProvider, testVectorProvider } from "@/lib/actions/vector-keys"
 import { Button } from "@/components/ui/button"
 import type { ActionResult } from "@/lib/types"
@@ -15,7 +14,6 @@ export function SetActiveVectorButton({
   providerId: string
   isActive: boolean
 }) {
-  const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
@@ -26,8 +24,6 @@ export function SetActiveVectorButton({
       const result = await setActiveVectorProvider({ orgSlug, providerId })
       if (!result.ok) {
         setError(result.error ?? "Failed to activate provider")
-      } else {
-        router.refresh()
       }
     })
   }
@@ -103,7 +99,6 @@ export function DeleteVectorButton({
   orgSlug: string
   providerId: string
 }) {
-  const router = useRouter()
   const [confirming, setConfirming] = useState(false)
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -115,8 +110,6 @@ export function DeleteVectorButton({
       if (!result.ok) {
         setError(result.error ?? "Could not delete provider")
         setConfirming(false)
-      } else {
-        router.refresh()
       }
     })
   }

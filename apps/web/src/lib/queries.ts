@@ -1,4 +1,5 @@
 import "server-only"
+import { cache } from "react"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { openSecret } from "@sayabot/llm"
@@ -436,7 +437,10 @@ export async function listRoomAgents(roomId: string): Promise<RoomAgentView[]> {
   }))
 }
 
-export async function listOrgAgents(orgId: string): Promise<AgentView[]> {
+/** The workspace layout and several pages both list agents; one query per request serves all. */
+export const listOrgAgents = cache((orgId: string) => loadOrgAgents(orgId))
+
+async function loadOrgAgents(orgId: string): Promise<AgentView[]> {
   const supabase = await createSupabaseServerClient()
   const { data } = await supabase
     .from("agents")

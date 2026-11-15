@@ -50,7 +50,7 @@ Client components feed this into `useActionState`, which is why the canonical fo
 | `adminOrgAccess(slug)` | `shared.ts:74` | Loads `OrgAccess` and requires the caller to be an org admin (`owner` or `admin`, see `isOrgAdmin` at `apps/web/src/lib/auth.ts:111`). Returns `{ access }` or `{ error }`. |
 | `adminRoomAccess(slug, roomId)` | `shared.ts:83` | Loads `RoomAccess` and requires `access.canAdmin` — a room-level `admin` role or an org admin (`apps/web/src/lib/auth.ts:172`). |
 | `audit(args)` | `shared.ts:93` | Inserts a row into `audit_logs` with `org_id`, `actor_type` (default `"user"`), `actor_id`, `action`, `target`, `metadata`. Failure is logged, never thrown — audit must not break the mutation. |
-| `revalidateOrg(orgSlug)` | `shared.ts:116` | Calls `revalidatePath("/" + orgSlug, "layout")` so every server-rendered page in the workspace refreshes. |
+| `revalidateOrg(orgSlug)` | `shared.ts:116` | Calls `revalidatePath("/" + orgSlug, "layout")` so every server-rendered page in the workspace refreshes. The action's response already carries the re-rendered page, so client callers must **not** follow it with `router.refresh()` (that renders the whole workspace a second time). |
 
 ---
 

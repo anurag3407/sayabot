@@ -28,6 +28,8 @@ Source files: `apps/web/src/lib/settings-nav.ts`, `apps/web/src/components/setti
 
 `visibleSettingsGroups(isAdmin)` filters by role and by `publicEdition() === "cloud"`. `SettingsNav` renders a sticky vertical sidebar on desktop (`SETTINGS_ICONS` per link, active state from `usePathname`) and a horizontally scrolling chip row on phones. The layout requires org access, shows "org name · role" and gives the body a `max-w-3xl` column.
 
+**Loading and saving.** `settings/loading.tsx` renders a skeleton inside the settings layout, so a nav click shows the next page's shell at once (and Next prefetches it) instead of freezing on the previous page while the server renders. Settings client components do not call `router.refresh()` after an action: the actions revalidate (`revalidateOrg` or a settings path), and that response already carries the fresh page, so a refresh rendered everything twice. The remaining refreshes pick up changes made outside an action: a phone finishing pairing, closing the AI accounts modal, and Storage's "measure again". The layout's access check and the shared lists (`listOrgAgents`, `listUserOrgs`) are memoised per request with React `cache()`.
+
 The **overview page** (`settings/page.tsx`) reuses the same list as link cards with live status text (e.g. `keys: "2 keys"`, `tools: "3 MCP servers on"`, `vector: "Active"`) computed by `adminSummary()` (provider keys, members, LLM vs external agents, enabled MCP servers, vault secret count, vector provider kinds). Admins additionally get a setup checklist (Connect a model provider → Create your first agent → Invite your team → Give agents tools (optional) → Turn on long-term memory (optional)) with a progress bar and highlighted next step; non-admins get a "your settings" note.
 
 ---

@@ -1,7 +1,6 @@
 "use client"
 
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
 import { Monitor } from "lucide-react"
 import { removeHostAction, saveWorkspaceComputersAction, updateHostSettingsAction } from "@/lib/actions/desktop"
@@ -48,7 +47,6 @@ function Toggle({ checked, onChange, label, disabled }: { checked: boolean; onCh
 }
 
 function ComputerCard({ orgSlug, computer }: { orgSlug: string; computer: ComputerView }) {
-  const router = useRouter()
   const [pending, startTransition] = useTransition()
   const s = computer.settings
 
@@ -56,7 +54,6 @@ function ComputerCard({ orgSlug, computer }: { orgSlug: string; computer: Comput
     startTransition(async () => {
       const result = await updateHostSettingsAction({ orgSlug, hostId: computer.id, ...patch })
       showToast({ tone: result.ok ? "success" : "danger", message: result.ok ? "Saved" : (result.error ?? "Could not save") })
-      router.refresh()
     })
   }
 
@@ -170,7 +167,6 @@ function ComputerCard({ orgSlug, computer }: { orgSlug: string; computer: Comput
                 startTransition(async () => {
                   const result = await removeHostAction({ orgSlug, hostId: computer.id })
                   showToast({ tone: result.ok ? "neutral" : "danger", message: result.ok ? (result.message ?? "Removed") : (result.error ?? "Could not remove") })
-                  router.refresh()
                 })
               }
             >
@@ -196,7 +192,6 @@ function WorkspaceComputers({
   vpsSshAlias: string
   vpsStartAutomatically: boolean
 }) {
-  const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [boatToken, setBoatToken] = useState("")
   const [alias, setAlias] = useState(vpsSshAlias)
@@ -233,7 +228,6 @@ function WorkspaceComputers({
                 message: result.ok ? "Saved" : (result.error ?? "Could not save"),
               })
               if (result.ok) setBoatToken("")
-              router.refresh()
             })
           }}
         >

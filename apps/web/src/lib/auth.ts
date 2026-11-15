@@ -57,7 +57,10 @@ export async function getProfile(user: User, client?: SupabaseClient<any>): Prom
   }
 }
 
-export async function listUserOrgs(userId: string): Promise<OrgSummary[]> {
+/** Used by the workspace layout and the profile page in the same request; asked once. */
+export const listUserOrgs = cache((userId: string) => loadUserOrgs(userId))
+
+async function loadUserOrgs(userId: string): Promise<OrgSummary[]> {
   const supabase = await createSupabaseServerClient()
   const { data } = await supabase
     .from("org_members")

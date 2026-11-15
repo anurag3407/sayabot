@@ -23,7 +23,6 @@ export function PhonesList({ orgSlug, phones }: { orgSlug: string; phones: Phone
     startTransition(async () => {
       const result = await revokePhoneAction({ orgSlug, phoneId: phone.id })
       showToast({ tone: result.ok ? "neutral" : "danger", message: result.ok ? (result.message ?? "Removed") : (result.error ?? "Could not remove") })
-      router.refresh()
     })
   }
 

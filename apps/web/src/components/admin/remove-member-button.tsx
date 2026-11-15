@@ -1,6 +1,5 @@
 "use client"
 
-import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
 import { removeMemberAction } from "@/lib/actions/orgs"
 import { ConfirmButton } from "@/components/ui/confirm-button"
@@ -15,7 +14,6 @@ export function RemoveMemberButton({
   userId: string
   name: string
 }) {
-  const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   return (
@@ -36,7 +34,6 @@ export function RemoveMemberButton({
               return
             }
             showToast({ message: `${name} removed`, tone: "success" })
-            router.refresh()
           })
         }}
       />

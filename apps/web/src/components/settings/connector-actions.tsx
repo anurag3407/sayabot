@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
 import { deleteWorkspaceConnector, testWorkspaceConnector } from "@/lib/actions/connectors"
 import { Button } from "@/components/ui/button"
 
@@ -12,7 +11,6 @@ export function TestConnectorButton({
   orgSlug: string
   connectorId: string
 }) {
-  const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null)
 
@@ -25,7 +23,6 @@ export function TestConnectorButton({
       } else {
         setStatus({ ok: false, msg: res.error ?? "Failed" })
       }
-      router.refresh()
     })
   }
 
@@ -62,7 +59,6 @@ export function DeleteConnectorButton({
   connectorId: string
   name: string
 }) {
-  const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
@@ -75,8 +71,6 @@ export function DeleteConnectorButton({
       const res = await deleteWorkspaceConnector({ orgSlug, connectorId })
       if (!res.ok) {
         setError(res.error ?? "Failed to delete connector")
-      } else {
-        router.refresh()
       }
     })
   }

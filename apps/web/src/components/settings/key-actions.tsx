@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
 import { deleteProviderKey, testProviderKey } from "@/lib/actions/keys"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/field"
@@ -55,7 +54,6 @@ export function TestKeyButton({
 }
 
 export function DeleteKeyButton({ orgSlug, keyId }: { orgSlug: string; keyId: string }) {
-  const router = useRouter()
   const [confirming, setConfirming] = useState(false)
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -67,8 +65,6 @@ export function DeleteKeyButton({ orgSlug, keyId }: { orgSlug: string; keyId: st
       if (!result.ok) {
         setError(result.error ?? "Could not delete the key")
         setConfirming(false)
-      } else {
-        router.refresh()
       }
     })
   }
