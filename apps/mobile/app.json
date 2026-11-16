@@ -19,7 +19,7 @@
       "infoPlist": {
         "NSFaceIDUsageDescription": "Sayabot uses Face ID to keep your chats private when App lock is on.",
         "NSPhotoLibraryUsageDescription": "Choose photos to send to your agents.",
-        "NSCameraUsageDescription": "Take photos to send to your agents."
+        "NSCameraUsageDescription": "Scan the QR code on your computer to connect, and take photos to send to your agents."
       }
     },
     "android": {
@@ -55,10 +55,17 @@
     "owner": "anurag3407",
     "plugins": [
       [
+        "expo-camera",
+        {
+          "cameraPermission": "Scan the QR code on your computer to connect, and take photos to send to your agents.",
+          "recordAudioAndroid": false
+        }
+      ],
+      [
         "expo-image-picker",
         {
           "photosPermission": "Choose photos to send to your agents.",
-          "cameraPermission": "Take photos to send to your agents."
+          "cameraPermission": "Scan the QR code on your computer to connect, and take photos to send to your agents."
         }
       ],
       [

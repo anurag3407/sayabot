@@ -5,6 +5,8 @@ import "@fontsource-variable/geist-mono"
 import "@/styles/base.css"
 import "@/styles/hero.css"
 import "@/styles/sections.css"
+import "@/styles/homes.css"
+import "@/styles/story.css"
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://sayabot.com"
 

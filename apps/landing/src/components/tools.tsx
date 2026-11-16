@@ -1,50 +1,87 @@
-import type { CSSProperties } from "react"
+import type { CSSProperties, ReactNode } from "react"
 import { Reveal } from "./reveal"
 import { Saya } from "./saya"
+import {
+  GitHubLogo,
+  SlackLogo,
+  GoogleDriveLogo,
+  NotionLogo,
+  LinearLogo,
+  JiraLogo,
+  StripeLogo,
+  SentryLogo,
+  DiscordLogo,
+  TelegramLogo,
+  WhatsAppLogo,
+  VercelLogo,
+  SupabaseLogo,
+  CloudflareLogo,
+  OnePasswordLogo,
+  BitwardenLogo,
+  ProtonPassLogo,
+  GitLogo,
+  McpLogo,
+  ApiLogo,
+  CronLogo,
+  ClaudeLogo,
+  OpenAiLogo,
+  CursorLogo,
+  GeminiLogo,
+  HermesLogo,
+  OpenCodeLogo,
+  QwenLogo,
+  CopilotLogo,
+  ChatGptLogo,
+} from "./brand-logos"
 
-type Tool = { name: string; mark: string; color: string }
+type Tool = { name: string; icon: ReactNode }
 
 /** Connectors and channels Sayabot ships, plus anything that speaks MCP. */
 const ROWS: Tool[][] = [
   [
-    { name: "GitHub", mark: "GH", color: "#e6e6e6" },
-    { name: "Slack", mark: "Sl", color: "#e8a3ff" },
-    { name: "Google Drive", mark: "Dr", color: "#7fb3ff" },
-    { name: "Notion", mark: "N", color: "#f2f2f2" },
-    { name: "Linear", mark: "Li", color: "#a8a3ff" },
-    { name: "Jira", mark: "Ji", color: "#6aa8ff" },
-    { name: "Stripe", mark: "St", color: "#9d8cff" },
+    { name: "GitHub", icon: <GitHubLogo /> },
+    { name: "Slack", icon: <SlackLogo /> },
+    { name: "Google Drive", icon: <GoogleDriveLogo /> },
+    { name: "Notion", icon: <NotionLogo /> },
+    { name: "Linear", icon: <LinearLogo /> },
+    { name: "Jira", icon: <JiraLogo /> },
+    { name: "Stripe", icon: <StripeLogo /> },
   ],
   [
-    { name: "Sentry", mark: "Se", color: "#c9a6ff" },
-    { name: "Discord", mark: "Di", color: "#8c9bff" },
-    { name: "Telegram", mark: "Tg", color: "#6cc6ff" },
-    { name: "WhatsApp", mark: "Wa", color: "#78dc8c" },
-    { name: "Vercel", mark: "Ve", color: "#f2f2f2" },
-    { name: "Supabase", mark: "Sb", color: "#6fdca2" },
-    { name: "Cloudflare", mark: "Cf", color: "#ffad5c" },
+    { name: "Sentry", icon: <SentryLogo /> },
+    { name: "Discord", icon: <DiscordLogo /> },
+    { name: "Telegram", icon: <TelegramLogo /> },
+    { name: "WhatsApp", icon: <WhatsAppLogo /> },
+    { name: "Vercel", icon: <VercelLogo /> },
+    { name: "Supabase", icon: <SupabaseLogo /> },
+    { name: "Cloudflare", icon: <CloudflareLogo /> },
   ],
   [
-    { name: "1Password", mark: "1P", color: "#7fb3ff" },
-    { name: "Bitwarden", mark: "Bw", color: "#7f9cff" },
-    { name: "Proton Pass", mark: "Pp", color: "#b49cff" },
-    { name: "Shell & git", mark: "$_", color: "#ffb547" },
-    { name: "Any MCP server", mark: "+", color: "#9d8cff" },
-    { name: "Your own API", mark: "{}", color: "#e6e6e6" },
-    { name: "Cron schedules", mark: "Cr", color: "#8bd46e" },
+    { name: "1Password", icon: <OnePasswordLogo /> },
+    { name: "Bitwarden", icon: <BitwardenLogo /> },
+    { name: "Proton Pass", icon: <ProtonPassLogo /> },
+    { name: "Shell & git", icon: <GitLogo /> },
+    { name: "Any MCP server", icon: <McpLogo /> },
+    { name: "Your own API", icon: <ApiLogo /> },
+    { name: "Cron schedules", icon: <CronLogo /> },
   ],
 ]
 
-const CLIS = [
-  "Claude Code",
-  "Codex",
-  "Cursor",
-  "Gemini CLI",
-  "Hermes",
-  "OpenCode",
-  "Qwen Code",
-  "Copilot",
-  "ChatGPT",
+type CliAgent = {
+  name: string
+  icon: ReactNode
+}
+
+const CLIS: CliAgent[] = [
+  { name: "Claude Code", icon: <ClaudeLogo /> },
+  { name: "Codex", icon: <OpenAiLogo /> },
+  { name: "Cursor", icon: <CursorLogo /> },
+  { name: "Gemini CLI", icon: <GeminiLogo /> },
+  { name: "Hermes", icon: <HermesLogo /> },
+  { name: "OpenCode", icon: <OpenCodeLogo /> },
+  { name: "Qwen Code", icon: <QwenLogo /> },
+  { name: "Copilot", icon: <CopilotLogo /> },
+  { name: "ChatGPT", icon: <ChatGptLogo /> },
 ]
 
 export function Tools() {
@@ -71,8 +108,8 @@ export function Tools() {
           <div key={rowIndex} className="tools-row" style={{ "--r": rowIndex } as CSSProperties}>
             {row.map((tool) => (
               <div key={tool.name} className="tool">
-                <span className="tool-mark" style={{ color: tool.color }}>
-                  {tool.mark}
+                <span className="tool-mark">
+                  {tool.icon}
                 </span>
                 <span className="tool-name">{tool.name}</span>
               </div>
@@ -88,14 +125,14 @@ export function Tools() {
       </div>
       <div className="marquee" aria-label="Agent clients that can join">
         <div className="marquee-track">
-          {[...CLIS, ...CLIS].map((name, index) => (
+          {[...CLIS, ...CLIS].map((cli, index) => (
             <span
-              key={`${name}-${index}`}
+              key={`${cli.name}-${index}`}
               className="marquee-item"
               aria-hidden={index >= CLIS.length}
             >
-              <span className="marquee-dot" />
-              {name}
+              <span className="marquee-icon">{cli.icon}</span>
+              {cli.name}
             </span>
           ))}
         </div>

@@ -20,11 +20,29 @@ export function cleanPairCode(input: string): string {
   return input.toUpperCase().replace(/[^0-9A-Z]/g, "")
 }
 
+/**
+ * What a scanned QR should sign in with. A Sayabot pair link carries the code and the server.
+ * A bare 8-character code still works when the phone is already on the right server.
+ */
+export function codeFromScan(data: string | null | undefined): PairLink | null {
+  const text = (data ?? "").trim()
+  if (!text) return null
+  const link = parsePairLink(text)
+  if (link) return link
+  const code = cleanPairCode(text)
+  if (code.length !== 8) return null
+  return { code, server: null }
+}
+
 /** True when the server signs people in on a different Supabase project than this app build. */
-export function supabaseMismatch(appSupabaseUrl: string, serverSupabaseUrl: string | null | undefined): boolean {
+export function supabaseMismatch(
+  appSupabaseUrl: string,
+  serverSupabaseUrl: string | null | undefined,
+): boolean {
   if (!serverSupabaseUrl) return false
   // No `URL`: React Native's doesn't implement host.
-  const host = (url: string) => /^https?:\/\/([^/?#]+)/i.exec(url.trim())?.[1]?.toLowerCase() ?? null
+  const host = (url: string) =>
+    /^https?:\/\/([^/?#]+)/i.exec(url.trim())?.[1]?.toLowerCase() ?? null
   const app = host(appSupabaseUrl)
   const server = host(serverSupabaseUrl)
   return Boolean(app && server && app !== server)

@@ -2,7 +2,7 @@
 
 The phone can attach to a Sayabot server two ways: the hosted Sayabot Cloud (built-in defaults), or a self-hosted server whose address is verified via `GET /api/instance` and stored locally. Once a computer that is signed in offers "Add a phone", the phone signs in with a one-time 8-character code — scanned as a `sayabot://pair` QR/deep link or typed by hand — which the web app exchanges for a single-use Supabase magic-link token. First sign-in lands on a three-step onboarding wizard that sets theme, push alerts, and App Lock before marking the account `onboarded`.
 
-Source files: `src/core/pair-link.ts`, `src/core/pairing.ts`, `src/core/server-url.ts`, `src/core/server.ts`, `src/core/workspace-draft.ts`, `src/screens/OnboardingScreen.tsx`
+Source files: `src/core/pair-link.ts`, `src/core/pairing.ts`, `src/core/server-url.ts`, `src/core/server.ts`, `src/core/workspace-draft.ts`, `src/components/PairScanner.tsx`, `src/screens/AuthScreen.tsx`, `src/screens/OnboardingScreen.tsx`
 
 ---
 
@@ -11,7 +11,8 @@ Source files: `src/core/pair-link.ts`, `src/core/pairing.ts`, `src/core/server-u
 Pure helpers, deliberately free of React Native imports so they unit-test in Node (`pair-link.ts:1`):
 
 - `parsePairLink(url)` matches `sayabot://pair?code=…&server=…` (case-insensitive scheme check `/^sayabot:\/\/pair\b/i`), trims the code, and keeps `server` only when it is an `http(s)` URL with trailing slashes stripped. Returns `null` for anything else or a missing code (`pair-link.ts:9-17`).
-- `cleanPairCode(input)` uppercases and strips everything except `[0-9A-Z]` (`pair-link.ts:19-21`).
+- `cleanPairCode(input)` uppercases and strips everything except `[0-9A-Z]`.
+- `codeFromScan(data)` is what the camera uses: a pair link (code + server) or a bare 8-character code. Anything else, including a random URL, returns `null` so the scanner keeps looking.
 - `supabaseMismatch(appSupabaseUrl, serverSupabaseUrl)` compares URL hosts with a hand-rolled regex (React Native's `URL` lacks `host`), returning true when the server signs people in on a different Supabase project than the app build (`pair-link.ts:24-31`).
 
 ---
@@ -97,9 +98,10 @@ Pure helpers used when the phone creates rooms and tasks (kept node-testable; se
 
 Three entry points all funnel into `pairWithCode`:
 
-1. **Scanned QR / tapped link** — `useAuth`'s deep-link handler parses `sayabot://pair?code=…&server=…` and passes both the code and the server URL, so a QR from a self-hosted server can redirect the phone to that server in one step (see [Navigation & auth](navigation-and-auth.md)).
-2. **Typed code** — AuthScreen's "Sign in with a code" modal calls `signInWithCode(codeInput)` → `pairWithCode(code)` with no server argument, which then uses `currentWebApiUrl()` — i.e. whatever server the phone is currently configured for. The modal displays that target ("Server: <url>") with a "Change server" shortcut opening the server sheet (`AuthScreen.tsx:385-428`).
-3. Both paths share the same dedupe map, so a QR scanned while the code modal is submitting cannot double-pair.
+1. **Scanned QR** — AuthScreen's primary button "Scan the QR code" opens `PairScanner` (`src/components/PairScanner.tsx`), a full-screen `CameraView` from `expo-camera` that reads QR codes. `codeFromScan` (`pair-link.ts`) accepts a `sayabot://pair?code=…&server=…` link or a bare 8-character code. The scan calls `signInWithCode(code, server)` so the server in the QR is used. Camera permission is requested when the scanner opens; if it is refused, the screen offers "Allow camera" and "Type the code instead". A bad code unlocks the camera so the next QR can be tried.
+2. **Tapped link** — `useAuth`'s deep-link handler parses the same `sayabot://pair` URL and passes both the code and the server (see [Navigation & auth](navigation-and-auth.md)).
+3. **Typed code** — "Type the code instead" opens the code modal, which calls `signInWithCode(codeInput)` with no server argument, so it uses `currentWebApiUrl()`. The modal displays that target ("Server: <url>") with a "Change server" shortcut.
+4. All three paths share the same dedupe map, so a QR scanned while a code is already being redeemed cannot double-pair.
 
 The unit suites `tests/unit/server-url.test.ts` and `tests/unit/server-check.test.ts` pin `normalizeServerUrl` and `checkServer` behavior (the node-testable halves of this page); `tests/unit/workspace-draft.test.ts` covers the draft helpers.
 

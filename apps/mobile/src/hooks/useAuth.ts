@@ -125,9 +125,9 @@ export function useAuth() {
     }
   }
 
-  const signInWithCode = async (code: string) => {
+  const signInWithCode = async (code: string, server?: string | null) => {
     setPairError(null)
-    await pairWithCode(code)
+    await pairWithCode(code, server)
   }
 
   const signOut = async () => {

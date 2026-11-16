@@ -177,3 +177,11 @@ export function LaptopIcon({ className }: Props) {
     </svg>
   )
 }
+
+export function CloudIcon({ className }: Props) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} {...stroke} aria-hidden>
+      <path d="M7 18.5h10a4 4 0 0 0 .6-7.96A5.5 5.5 0 0 0 7.1 9.6 4.5 4.5 0 0 0 7 18.5Z" />
+    </svg>
+  )
+}

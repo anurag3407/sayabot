@@ -746,6 +746,39 @@ function createWindow() {
     return { action: "deny" }
   })
 
+  // Prevent Google / Supabase OAuth from loading inside the Electron webview,
+  // where Google blocks embedded webviews with "disallowed_useragent" or prompts credentials.
+  const isAuthOrOAuthUrl = (urlStr: string) => {
+    try {
+      const u = new URL(urlStr)
+      if (
+        u.hostname === "accounts.google.com" ||
+        u.hostname === "github.com" ||
+        (u.hostname.endsWith(".supabase.co") && (u.pathname.startsWith("/auth/v1/authorize") || u.pathname.includes("/oauth"))) ||
+        u.pathname.startsWith("/auth/v1/authorize")
+      ) {
+        return true
+      }
+      return false
+    } catch {
+      return false
+    }
+  }
+
+  mainWindow.webContents.on("will-navigate", (event, url) => {
+    if (isAuthOrOAuthUrl(url)) {
+      event.preventDefault()
+      void shell.openExternal(url)
+    }
+  })
+
+  mainWindow.webContents.on("will-redirect", (event, url) => {
+    if (isAuthOrOAuthUrl(url)) {
+      event.preventDefault()
+      void shell.openExternal(url)
+    }
+  })
+
   mainWindow.on("closed", () => {
     mainWindow = null
   })

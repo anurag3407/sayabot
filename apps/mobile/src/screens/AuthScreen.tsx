@@ -15,7 +15,9 @@ import {
   View,
 } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
-import { ChevronRight, Eye, EyeOff, KeyRound, Lock, Mail, Server, X } from "lucide-react-native"
+import { ChevronRight, Eye, EyeOff, Lock, Mail, QrCode, Server, X } from "lucide-react-native"
+import { PairScanner } from "../components/PairScanner"
+import type { PairLink } from "../core/pair-link"
 import { setDemoMode } from "../core/session-mode"
 import { checkServer, useCloud, useServer } from "../core/server"
 import { loadSavedServer, supabase } from "../core/supabase"
@@ -32,9 +34,11 @@ export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
   const { settings, updateSettings } = useSettings()
   const { signInWithOAuth, signInWithCode, pairError } = useAuth()
   const [codeModal, setCodeModal] = useState(false)
+  const [scanOpen, setScanOpen] = useState(false)
   const [codeInput, setCodeInput] = useState("")
   const [codeBusy, setCodeBusy] = useState(false)
   const [codeError, setCodeError] = useState<string | null>(null)
+  const [scanError, setScanError] = useState<string | null>(null)
 
   const submitCode = async () => {
     setCodeBusy(true)
@@ -45,6 +49,19 @@ export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
       setCodeInput("")
     } catch (err: unknown) {
       setCodeError(err instanceof Error ? err.message : "Could not sign in with that code")
+    } finally {
+      setCodeBusy(false)
+    }
+  }
+
+  const submitScan = async (link: PairLink) => {
+    setCodeBusy(true)
+    setScanError(null)
+    try {
+      await signInWithCode(link.code, link.server)
+      setScanOpen(false)
+    } catch (err: unknown) {
+      setScanError(err instanceof Error ? err.message : "Could not sign in with that code")
     } finally {
       setCodeBusy(false)
     }
@@ -255,16 +272,26 @@ export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
               <TouchableOpacity
                 style={styles.codeBtn}
                 onPress={() => {
-                  setCodeError(null)
-                  setCodeModal(true)
+                  setScanError(null)
+                  setScanOpen(true)
                 }}
                 disabled={loading}
                 activeOpacity={0.85}
               >
-                <KeyRound size={18} color={colors.textInverse} />
-                <Text style={styles.codeBtnText}>Sign in with a code</Text>
+                <QrCode size={18} color={colors.textInverse} />
+                <Text style={styles.codeBtnText}>Scan the QR code</Text>
               </TouchableOpacity>
-              <Text style={styles.codeHint}>Get a code on your computer: Settings → Phones</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setCodeError(null)
+                  setCodeModal(true)
+                }}
+                disabled={loading}
+                style={styles.linkBtn}
+              >
+                <Text style={styles.linkText}>Type the code instead</Text>
+              </TouchableOpacity>
+              <Text style={styles.codeHint}>On your computer: Settings → Phones → Add phone</Text>
 
               <View style={styles.dividerRow}>
                 <View style={styles.dividerLine} />
@@ -408,6 +435,19 @@ export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
           </View>
         )}
       </KeyboardAvoidingView>
+
+      <PairScanner
+        visible={scanOpen}
+        busy={codeBusy}
+        error={scanError}
+        onClose={() => setScanOpen(false)}
+        onScan={(link) => void submitScan(link)}
+        onTypeInstead={() => {
+          setScanOpen(false)
+          setCodeError(null)
+          setCodeModal(true)
+        }}
+      />
 
       {/* One-time code modal */}
       <Modal

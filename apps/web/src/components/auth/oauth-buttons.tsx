@@ -67,6 +67,17 @@ function Spinner({ className }: { className?: string }) {
   )
 }
 
+function inDesktopApp(): boolean {
+  if (typeof window === "undefined") return false
+  return (
+    "sayabotDesktop" in window ||
+    navigator.userAgent.includes("SayabotDesktop") ||
+    navigator.userAgent.includes("Electron") ||
+    window.location.search.includes("next=%2Fauth%2Fdesktop") ||
+    window.location.search.includes("next=/auth/desktop")
+  )
+}
+
 export function OAuthButtons({
   next,
   googleEnabled,
@@ -78,19 +89,24 @@ export function OAuthButtons({
 }) {
   const [pending, setPending] = useState<"google" | "github" | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [openedInBrowser, setOpenedInBrowser] = useState(false)
 
   if (!googleEnabled && !githubEnabled) return null
 
   async function start(provider: "google" | "github") {
     setPending(provider)
     setError(null)
+    setOpenedInBrowser(false)
     try {
+      const desktop = inDesktopApp()
+      const targetNext = desktop ? "/auth/desktop" : next
       const supabase = createSupabaseBrowserClient()
-      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
-      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(targetNext)}`
+      const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
           redirectTo,
+          skipBrowserRedirect: desktop,
           queryParams:
             provider === "google"
               ? {
@@ -102,6 +118,12 @@ export function OAuthButtons({
       })
       if (oauthError) {
         setError(oauthError.message)
+        setPending(null)
+        return
+      }
+      if (desktop && data?.url) {
+        window.open(data.url, "_blank")
+        setOpenedInBrowser(true)
         setPending(null)
       }
     } catch (err) {
@@ -163,6 +185,17 @@ export function OAuthButtons({
           </Button>
         ) : null}
       </div>
+
+      {openedInBrowser ? (
+        <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-center">
+          <p className="text-[12px] font-medium text-emerald-400">
+            Opened sign-in in your browser
+          </p>
+          <p className="mt-1 text-[11px] text-muted">
+            Complete sign-in in your browser window. Sayabot Desktop will connect automatically.
+          </p>
+        </div>
+      ) : null}
 
       {error ? (
         <p role="alert" className="text-[12px] leading-relaxed text-danger bg-danger/10 border border-danger/20 rounded p-2">

@@ -13,7 +13,7 @@
     "build:apk": "eas build -p android --profile preview",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
-    "test": "tsc --noEmit -p tests/unit/tsconfig.json && node --no-warnings --experimental-strip-types tests/unit/env.test.ts && node --no-warnings --experimental-strip-types tests/unit/workspace-draft.test.ts && node --no-warnings --experimental-strip-types tests/unit/markdown.test.ts && node --no-warnings --experimental-strip-types tests/unit/server-url.test.ts && node --no-warnings --experimental-strip-types tests/unit/server-check.test.ts && node --no-warnings --experimental-strip-types tests/unit/app-version.test.ts && node --no-warnings --experimental-strip-types tests/unit/model-choice.test.ts"
+    "test": "tsc --noEmit -p tests/unit/tsconfig.json && node --no-warnings --experimental-strip-types tests/unit/env.test.ts && node --no-warnings --experimental-strip-types tests/unit/workspace-draft.test.ts && node --no-warnings --experimental-strip-types tests/unit/markdown.test.ts && node --no-warnings --experimental-strip-types tests/unit/server-url.test.ts && node --no-warnings --experimental-strip-types tests/unit/server-check.test.ts && node --no-warnings --experimental-strip-types tests/unit/app-version.test.ts && node --no-warnings --experimental-strip-types tests/unit/model-choice.test.ts && node --no-warnings --experimental-strip-types tests/unit/pair-link.test.ts"
   },
   "dependencies": {
     "@babel/runtime": "^8.1.0",
@@ -26,6 +26,7 @@
     "expo": "~52.0.0",
     "expo-asset": "^11.0.5",
     "expo-blur": "~14.0.3",
+    "expo-camera": "~16.0.18",
     "expo-clipboard": "~7.0.1",
     "expo-constants": "~17.0.8",
     "expo-device": "~7.0.3",

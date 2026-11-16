@@ -9,6 +9,8 @@ const COLUMNS = [
       { label: "Web app", href: LINKS.app },
       { label: "How it works", href: "#how" },
       { label: "Computers", href: "#computer" },
+      { label: "Memory", href: "#memory" },
+      { label: "Questions", href: "#faq" },
     ],
   },
   {
