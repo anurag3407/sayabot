@@ -399,3 +399,52 @@ export function agentListPrompt(
     .map(({ agent }) => `- ${agent.id}: @${agent.handle} (${agent.displayName})`)
     .join("\n")
 }
+
+/** An invited agent's own app counts as open when it called in within this window. */
+export const APP_ONLINE_WINDOW_MS = 15 * 60_000
+
+/** Whether an invited (MCP) agent's app has called Sayabot recently. */
+export function agentAppOnline(lastSeenAt: Date | string | null | undefined, now = Date.now()): boolean {
+  if (!lastSeenAt) return false
+  const at = typeof lastSeenAt === "string" ? Date.parse(lastSeenAt) : lastSeenAt.getTime()
+  return Number.isFinite(at) && now - at <= APP_ONLINE_WINDOW_MS
+}
+
+/** One line on what an agent is for: its bio, else the start of its instructions. */
+export function agentJobSummary(agent: Pick<AgentRow, "bio" | "systemPrompt">, max = 200): string {
+  const text = (agent.bio?.trim() || agent.systemPrompt?.trim() || "").replace(/\s+/g, " ")
+  if (!text) return "no description"
+  return text.length > max ? `${text.slice(0, max - 1)}\u2026` : text
+}
+
+/**
+ * The room's agents as the lead agent sees them: id, handle, name, what each one is for, and
+ * whether it answers now or later (an invited app replies when its owner's app is open).
+ */
+export function leadAgentListPrompt(
+  roomAgentRows: RoomAgentRow[],
+  leadAgentId: string | null,
+  now = Date.now(),
+): string {
+  return roomAgentRows
+    .map(({ agent }) => {
+      const you = agent.id === leadAgentId ? " (you, the lead)" : ""
+      const where =
+        agent.kind === "external"
+          ? agent.webhookUrl
+            ? "invited app, answers within a minute"
+            : agentAppOnline(agent.lastSeenAt, now)
+              ? "invited app, open now, answers in its own time"
+              : "invited app, not open right now, answers when its owner opens it"
+          : "answers now"
+      return `- ${agent.id}: @${agent.handle} (${agent.displayName})${you} [${where}]: ${agentJobSummary(agent)}`
+    })
+    .join("\n")
+}
+
+/** "@a", "@a and @b", "@a, @b and @c": who the lead handed a message to. */
+export function handoffNames(handles: string[]): string {
+  const names = handles.map((h) => `@${h}`)
+  if (names.length <= 1) return names[0] ?? ""
+  return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`
+}

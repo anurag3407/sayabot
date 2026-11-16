@@ -175,6 +175,7 @@ Task-oriented guides live at the top level of `docs/`. The **reference library**
 | [auth-flows](reference/web/pages/auth-flows.md) | Login/signup/OTP, OAuth, guest→account merge, desktop/mobile handoff |
 | [onboarding](reference/web/pages/onboarding.md) | Resume-aware wizard, workspace setup graph |
 | [room-chat-ui](reference/web/pages/room-chat-ui.md) | Room page, chat panel, composer, messages, threads, approvals UI |
+| [room-settings-ui](reference/web/pages/room-settings-ui.md) | Name-only room creation; room settings: agents (ready-made, existing, your app), where each runs, lead agent, tools, people |
 | [canvas-ui](reference/web/pages/canvas-ui.md) | Yjs/Monaco collaborative canvas, presence, versions, restore |
 | [model-system](reference/web/pages/model-system.md) | Model catalog, pickers, accounts, provider keys |
 | [agents-ui](reference/web/pages/agents-ui.md) | Agent roster, creation, profile, connector scopes, testing |

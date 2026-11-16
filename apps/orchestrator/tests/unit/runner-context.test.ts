@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { agentListPrompt, buildSystemPrompt, buildUserPrompt, renderTranscript, toWebhookContext, type ContextMessage, type AgentRow, type RoomRow } from "../../src/runner/context"
+import { agentAppOnline, agentJobSummary, agentListPrompt, buildSystemPrompt, handoffNames, leadAgentListPrompt, APP_ONLINE_WINDOW_MS, buildUserPrompt, renderTranscript, toWebhookContext, type ContextMessage, type AgentRow, type RoomRow } from "../../src/runner/context"
 
 const room = { id: "r", name: "general", orgId: "o", systemDirective: null } as unknown as RoomRow
 const agent = { id: "a", handle: "ada", displayName: "Ada", systemPrompt: "Be terse.", capabilities: null, params: {} } as unknown as AgentRow
@@ -65,5 +65,65 @@ describe("toWebhookContext / agentListPrompt", () => {
   it("lists agents as id: @handle (name) lines", () => {
     const out = agentListPrompt([{ agent: { id: "a1", handle: "ada", displayName: "Ada" } } as never])
     expect(out).toBe("- a1: @ada (Ada)")
+  })
+})
+
+describe("lead agent helpers", () => {
+  const now = Date.parse("2026-11-16T12:00:00Z")
+  const row = (over: Record<string, unknown>) =>
+    ({
+      agent: {
+        id: "x",
+        handle: "x",
+        displayName: "X",
+        kind: "llm",
+        bio: null,
+        systemPrompt: "",
+        webhookUrl: null,
+        lastSeenAt: null,
+        ...over,
+      },
+      position: 0,
+    }) as never
+
+  it("treats an app as open only when it called in within the window", () => {
+    expect(agentAppOnline(null, now)).toBe(false)
+    expect(agentAppOnline(new Date(now - 60_000), now)).toBe(true)
+    expect(agentAppOnline(new Date(now - APP_ONLINE_WINDOW_MS - 1), now)).toBe(false)
+    expect(agentAppOnline("not a date", now)).toBe(false)
+  })
+
+  it("summarises an agent's job from its bio, then its instructions", () => {
+    expect(agentJobSummary({ bio: "Writes docs", systemPrompt: "ignored" })).toBe("Writes docs")
+    expect(agentJobSummary({ bio: null, systemPrompt: "Review   code\ncarefully" })).toBe("Review code carefully")
+    expect(agentJobSummary({ bio: null, systemPrompt: "" })).toBe("no description")
+    expect(agentJobSummary({ bio: "y".repeat(500), systemPrompt: "" }).length).toBe(200)
+  })
+
+  it("lists each agent with its job and whether it answers now", () => {
+    const out = leadAgentListPrompt(
+      [
+        row({ id: "lead", handle: "lead", displayName: "Lead", systemPrompt: "Route work" }),
+        row({ id: "w", handle: "writer", displayName: "Writer", bio: "Technical documentation" }),
+        row({ id: "c", handle: "coder", displayName: "Coder", kind: "external", lastSeenAt: new Date(now - 1000) }),
+        row({ id: "o", handle: "old", displayName: "Old", kind: "external" }),
+        row({ id: "h", handle: "hook", displayName: "Hook", kind: "external", webhookUrl: "https://x" }),
+      ],
+      "lead",
+      now,
+    )
+    const lines = out.split("\n")
+    expect(lines[0]).toBe("- lead: @lead (Lead) (you, the lead) [answers now]: Route work")
+    expect(lines[1]).toBe("- w: @writer (Writer) [answers now]: Technical documentation")
+    expect(lines[2]).toContain("[invited app, open now, answers in its own time]")
+    expect(lines[3]).toContain("[invited app, not open right now, answers when its owner opens it]")
+    expect(lines[4]).toContain("[invited app, answers within a minute]")
+  })
+
+  it("names who the lead handed a message to", () => {
+    expect(handoffNames(["writer"])).toBe("@writer")
+    expect(handoffNames(["writer", "coder"])).toBe("@writer and @coder")
+    expect(handoffNames(["a", "b", "c"])).toBe("@a, @b and @c")
+    expect(handoffNames([])).toBe("")
   })
 })

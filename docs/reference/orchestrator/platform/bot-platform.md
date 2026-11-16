@@ -39,7 +39,7 @@ function safeEqualHex(a: string, b: string): boolean {
 }
 ```
 
-Any other prefix, missing bearer, failed lookup, or hash mismatch returns `null` → HTTP 401. A successful API-key hit fire-and-forget updates `lastUsedAt` (errors swallowed). There is no HMAC signature scheme on bot *requests* — possession of the (hash-stored) key is the proof; webhook *deliveries out to* bots are HMAC-signed with a per-agent secret via the egress/webhook path in [internal-api-and-jobs.md](./internal-api-and-jobs.md).
+Any other prefix, missing bearer, failed lookup, or hash mismatch returns `null` → HTTP 401. A successful API-key hit fire-and-forget updates `lastUsedAt` (errors swallowed). Every successful hit, API key or OAuth access token, also calls `markAgentSeen(agentId)` (`auth.ts:29`). This fire-and-forget conditional `UPDATE agents SET last_seen_at = now()` is a no-op within 30 seconds of the last stamp. Room settings' "open now" badge and the coordinator's "app isn't open" notice read it. There is no HMAC signature scheme on bot *requests* — possession of the (hash-stored) key is the proof; webhook *deliveries out to* bots are HMAC-signed with a per-agent secret via the egress/webhook path in [internal-api-and-jobs.md](./internal-api-and-jobs.md).
 
 The `scopes` and `roomIds` carried on the identity are enforced downstream: `roomIds` confines an MCP/API token to specific rooms (checked in `resolveAgentRoomId`, see [collab-tasks.md](./collab-tasks.md)), and `scopes` gate scoped MCP tools in `callTool` (see [mcp-server.md](./mcp-server.md)).
 

@@ -2,7 +2,8 @@ import type { Metadata } from "next"
 import { requireOrgAccess } from "@/lib/auth"
 import { listOrgAgents, listRooms } from "@/lib/queries"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
-import { loadRecentUsageEvents, loadUsageRollup } from "@/lib/usage"
+import { backfillMacUsage } from "@/lib/mac-usage-store"
+import { loadRecentUsageEvents, loadUsageRollup, mergeListPrices } from "@/lib/usage"
 import {
   UsageDashboard,
   type ModelPricingInfo,
@@ -10,6 +11,7 @@ import {
 } from "@/components/analytics/usage-dashboard"
 
 export const metadata: Metadata = { title: "Usage" }
+export const dynamic = "force-dynamic"
 
 const PERIODS = new Set([1, 7, 30, 90])
 
@@ -27,6 +29,7 @@ export default async function AnalyticsPage({
   const access = await requireOrgAccess(orgSlug)
   const supabase = await createSupabaseServerClient()
   const since = new Date(Date.now() - days * 86_400_000).toISOString()
+  await backfillMacUsage(access.org.id, since)
 
   const [sample, rollup, agents, rooms, pricingResult] = await Promise.all([
     loadRecentUsageEvents(access.org.id, since),
@@ -42,12 +45,21 @@ export default async function AnalyticsPage({
     input_per_mtok: number | string
     output_per_mtok: number | string
   }>
-  const pricing: ModelPricingInfo[] = pricingRows.map((row) => ({
+  const tablePrices: ModelPricingInfo[] = pricingRows.map((row) => ({
     provider: row.provider,
     model: row.model,
     inputPerMtok: Number(row.input_per_mtok) || 0,
     outputPerMtok: Number(row.output_per_mtok) || 0,
   }))
+  const seen = new Set<string>()
+  const used: Array<{ provider: string; model: string }> = []
+  for (const row of [...(rollup ?? []), ...sample.events]) {
+    const key = `${row.provider}\n${row.model}`
+    if (!row.provider || !row.model || seen.has(key)) continue
+    seen.add(key)
+    used.push({ provider: row.provider, model: row.model })
+  }
+  const pricing = mergeListPrices(tablePrices, used)
 
   return (
     <div className="h-full overflow-y-auto">

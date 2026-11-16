@@ -1,6 +1,6 @@
 import { agentKeyPrefix, hashAgentApiKey } from "@sayabot/core/server"
 import { agentApiKeys, agents, oauthTokens } from "@sayabot/db"
-import { and, eq, gt, isNull } from "drizzle-orm"
+import { and, eq, gt, isNull, lt, or } from "drizzle-orm"
 import { getDb } from "../db"
 
 export interface BotIdentity {
@@ -17,6 +17,26 @@ function safeEqualHex(a: string, b: string): boolean {
   let diff = 0
   for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i)
   return diff === 0
+}
+
+/** How often an agent's "last seen" stamp is written; calls in between skip the write. */
+const SEEN_EVERY_MS = 30_000
+
+/**
+ * Stamps when an invited agent's own app last called in, so a room can tell whether the app is
+ * open. Fire-and-forget and throttled: one conditional UPDATE, a no-op within 30 seconds.
+ */
+export function markAgentSeen(agentId: string, now = new Date()): void {
+  void getDb()
+    .update(agents)
+    .set({ lastSeenAt: now })
+    .where(
+      and(
+        eq(agents.id, agentId),
+        or(isNull(agents.lastSeenAt), lt(agents.lastSeenAt, new Date(now.getTime() - SEEN_EVERY_MS))),
+      ),
+    )
+    .catch(() => {})
 }
 
 export async function authenticateAgentKey(
@@ -44,6 +64,7 @@ export async function authenticateAgentKey(
       .limit(1)
 
     if (!row) return null
+    markAgentSeen(row.agent.id, now)
 
     return {
       keyId: row.token.id,
@@ -76,6 +97,7 @@ export async function authenticateAgentKey(
     .set({ lastUsedAt: now })
     .where(eq(agentApiKeys.id, row.key.id))
     .catch(() => {})
+  markAgentSeen(row.agent.id, now)
 
   return {
     keyId: row.key.id,

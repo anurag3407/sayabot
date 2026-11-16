@@ -17,7 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import * as Clipboard from "expo-clipboard"
 import * as DocumentPicker from "expo-document-picker"
 import * as ImagePicker from "expo-image-picker"
-import { ArrowDown, ArrowUp, Camera, ChevronLeft, Copy, CornerUpLeft, FileText, Hash, ImageIcon, Plus, ShieldAlert, SquareTerminal, X } from "lucide-react-native"
+import { ArrowDown, ArrowUp, Camera, ChevronLeft, Copy, CornerUpLeft, FileText, Hash, ImageIcon, Plus, Settings2, ShieldAlert, SquareTerminal, X } from "lucide-react-native"
 import { attachmentMarkdown, uploadToRoom, type Picked } from "../core/api"
 import { ChatModelButton } from "../components/chat/ModelPicker"
 import { TerminalDrawer } from "../components/chat/TerminalDrawer"
@@ -202,7 +202,10 @@ export function ChatScreen({ route, navigation }: any) {
   const theme = useTheme()
   const insets = useSafeAreaInsets()
   const { messages, loading, error, agentStatus, terminalLogs, approval, sendMessage, resolveApproval, clearTerminal } = useRoomRealtime(roomId, orgSlug)
-  const { agents } = useRoomAgents(roomId)
+  // Reload the agent list on return from room settings, where agents are added and removed.
+  const [agentsKey, setAgentsKey] = useState(0)
+  useEffect(() => navigation.addListener("focus", () => setAgentsKey((k) => k + 1)), [navigation])
+  const { agents } = useRoomAgents(roomId, agentsKey)
   const { questions, answer } = useInbox(orgSlug)
   const roomQuestions = questions.filter((q) => q.roomId === roomId)
   const [draft, setDraft] = useState("")
@@ -236,6 +239,8 @@ export function ChatScreen({ route, navigation }: any) {
   }, [messages])
 
   const working = messages.some((m) => m.status === "streaming" && m.senderType === "agent")
+  // Room settings are the web page, opened signed in: agents, where each runs, lead, tools, people.
+  const openSettings = () => navigation.navigate("WebPage", { path: `/${orgSlug}/r/${roomId}/settings`, title: "Room settings" })
   const subtitle = agentStatus ?? (working ? "Replying…" : agents.length ? agents.map((a) => a.displayName).join(", ") : "No agents yet")
   const mentionQuery = draft.match(/@([a-z0-9-]*)$/i)?.[1]?.toLowerCase()
   const mentionMatches = mentionQuery !== undefined ? agents.filter((a) => a.handle.toLowerCase().startsWith(mentionQuery)) : []
@@ -329,6 +334,7 @@ export function ChatScreen({ route, navigation }: any) {
           {terminalLogs.length ? (
             <IconButton label="Computer output" icon={<SquareTerminal size={18} color={theme.text} />} onPress={() => setTerminalOpen(true)} />
           ) : null}
+          <IconButton label="Room settings" tint="transparent" icon={<Settings2 size={20} color={theme.text} />} onPress={openSettings} />
         </View>
         {roomQuestions.length ? (
           <Pressable
@@ -368,8 +374,9 @@ export function ChatScreen({ route, navigation }: any) {
                     Say hello
                   </Text>
                   <Text variant="subhead" tone="muted" center>
-                    {agents.length ? `Mention ${agents.map((a) => `@${a.handle}`).join(" or ")} to get them going.` : "Add an agent to this chat from the web app."}
+                    {agents.length ? `Mention ${agents.map((a) => `@${a.handle}`).join(" or ")} to get them going.` : "Add agents, pick a lead and connect apps in room settings."}
                   </Text>
+                  {!agents.length ? <Button title="Room settings" variant="secondary" onPress={openSettings} style={{ marginTop: 8 }} /> : null}
                 </View>
               ) : null
             }

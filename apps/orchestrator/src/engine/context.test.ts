@@ -43,6 +43,7 @@ const mockAgent: AgentRow = {
     engine: "v2",
     maxSteps: 60,
   },
+  lastSeenAt: null,
   createdAt: new Date("2026-01-01"),
   updatedAt: new Date("2026-01-01"),
 }

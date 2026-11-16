@@ -49,6 +49,8 @@ A floating bottom search pill (blurred on iOS) filters as you type: chats by nam
 4. Inserts `room_members` (`role: "admin"`) and one `room_agents` row per picked agent with sequential `position`.
 5. Fires `haptic.success()`, then `onCreated` refreshes home and opens the new chat.
 
+Picking agents is optional ("Who should be in it? (optional)"). The sheet says a name is enough: agents, the lead and apps are set up later in room settings.
+
 It is also opened by the "New chat" home-screen quick action, which lands via `route.params.action === "new-chat"` (`HomeScreen.tsx:137-140`).
 
 ### Room list hook (`src/hooks/useRooms.ts`)
@@ -93,7 +95,7 @@ A second randomized channel `room-rows:<roomId>:<rand>` listens to `postgres_cha
 
 ### Room agents
 
-`useRoomAgents(roomId)` queries `room_agents` joined to `agents` (`agents!inner(id, handle, display_name, kind)`, ordered by `position`) to list who is in the room — used for the header subtitle, mention autocomplete, and delegation pickers (`useRoomAgents.ts:24-41`).
+`useRoomAgents(roomId, refreshKey = 0)` queries `room_agents` joined to `agents` (`agents!inner(id, handle, display_name, kind)`, ordered by `position`) to list who is in the room — used for the header subtitle, mention autocomplete, and delegation pickers. It loads again whenever `refreshKey` changes. `ChatScreen` bumps it on each navigation `focus`, so agents added in room settings show on return.
 
 ---
 
@@ -101,7 +103,7 @@ A second randomized channel `room-rows:<roomId>:<rand>` listens to `postgres_cha
 
 ### Layout
 
-Params `{ roomId, roomName, orgSlug }` (`ChatScreen.tsx:200`). The header shows a back button, the first room agent's Mascot (working state mirrors live streaming), the room name, and a status subtitle: `agentStatus` when set, "Replying…" while any agent message streams, otherwise the comma-joined agent list or "No agents yet" (`ChatScreen.tsx:237-238`, `302-331`). A `SquareTerminal` icon button appears only when `terminalLogs` exist.
+Params `{ roomId, roomName, orgSlug }` (`ChatScreen.tsx:200`). The header shows a back button, the first room agent's Mascot (working state mirrors live streaming), the room name, and a status subtitle: `agentStatus` when set, "Replying…" while any agent message streams, otherwise the comma-joined agent list or "No agents yet" (`ChatScreen.tsx:237-238`, `302-331`). A `SquareTerminal` icon button appears only when `terminalLogs` exist. A `Settings2` **Room settings** button always shows. It opens the web room settings signed in via `WebPageScreen` (path `/<org>/r/<roomId>/settings`): agents, where each runs, the lead, tools and people ([room-settings-ui](../web/pages/room-settings-ui.md)).
 
 If open questions exist for this room (from `useInbox(orgSlug)` filtered by `roomId`), a warn-colored banner reads "<agent> has a question" (or "and others need N answers") and opens a `Sheet` reusing `QuestionCard` from Inbox (`ChatScreen.tsx:332-345`, `555-566`).
 
@@ -112,7 +114,7 @@ If open questions exist for this room (from `useInbox(orgSlug)` filtered by `roo
 - **Swipe right to reply**: a `PanResponder` moves the bubble up to 80px, fires `haptic.select()` past 60px, and on release seeds the draft with a quote — `> <first 160 chars>` plus `@handle` for agents — then focuses the input (`ChatScreen.tsx:96-120`, `293-298`).
 - Long-press opens an actions `Sheet` with **Copy** (expo-clipboard) and **Reply** (`ChatScreen.tsx:522-545`).
 - A "Jump to latest" arrow appears when scrolled away from the bottom (`atBottom` = offset < 80) (`ChatScreen.tsx:389-393`).
-- Empty rooms show a "Say hello" footer suggesting `@mentions`, or "Add an agent to this chat from the web app" if the room has none (`ChatScreen.tsx:362-374`).
+- Empty rooms show a "Say hello" footer suggesting `@mentions`. If the room has no agents, it shows "Add agents, pick a lead and connect apps in room settings." with a **Room settings** button.
 
 ### Mentions, attachments, sending
 

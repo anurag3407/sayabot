@@ -109,7 +109,7 @@ Response job payload (`jobs/claim/route.ts:63`):
 
 ### Progress and completion — `POST /api/desktop/jobs/[id]` (`jobs/[id]/route.ts:11`)
 
-Body `{ output?, status?: "done" | "failed", error? }`. Output is stored cumulatively but truncated to the last 100,000 chars (`MAX_OUTPUT`); a terminal status stamps `finished_at` (error ≤ 1,000 chars). Updates are guarded `.eq("status", "running")`; if the job is no longer running — the room stopped the turn — the reply is `{ cancelled: true }` so the Mac kills the app.
+Body `{ output?, status?: "done" | "failed", error?, usage?, model? }`. Output is stored cumulatively but truncated to the last 100,000 chars (`MAX_OUTPUT`); a terminal status stamps `finished_at` (error ≤ 1,000 chars). Updates are guarded `.eq("status", "running")`; if the job is no longer running — the room stopped the turn — the reply is `{ cancelled: true }` so the Mac kills the app. When `status` is `"done"`, `recordMacJobUsage` inserts a `usage_events` row for that job: provider is the app id (`copilot`, `codex`, …), model is the one the app reported or the one the job asked for (`auto` when that is what was chosen), tokens come from `usage` when the app sent them and otherwise from the reply text. The event time is the job's `created_at`, so posting done twice does not add a second row. Cost is stored as 0; the Usage page treats these apps as the person's own plan.
 
 ### Live tool cards — `POST /api/desktop/jobs/[id]/events` (`jobs/[id]/events/route.ts:9`)
 

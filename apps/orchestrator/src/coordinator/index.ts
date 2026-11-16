@@ -8,8 +8,8 @@ import {
   planModeratedMentions,
   redactSecrets,
   REPETITION_HALT_MESSAGE,
-  validateModeratorChoice,
-  HUMAN_TURN,
+  validateLeadPlan,
+  LEAD_MAX_AGENTS,
   type PlannedTurn,
   type WebhookPayload,
 } from "@sayabot/core"
@@ -25,16 +25,18 @@ import { generateObject } from "ai"
 import { and, desc, eq, gte, isNull, ne, sql } from "drizzle-orm"
 import { z } from "zod"
 import { recordUsageEvent, tokensFrom } from "../usage"
-import { getDb, withRoomLock } from "../db"
+import { getDb, notify, withRoomLock } from "../db"
 import type { WebhookJobData } from "../jobs/webhook"
 import { broadcast } from "../realtime"
 import { runExternalTurn } from "../runner/external"
 import {
-  agentListPrompt,
+  agentAppOnline,
   buildSystemPrompt,
+  handoffNames,
   loadConversation,
   loadMessage,
   loadRoom,
+  leadAgentListPrompt,
   loadRoomAgents,
   renderTranscript,
   toWebhookContext,
@@ -131,6 +133,75 @@ async function postQuietBotNotice(args: {
       status: "complete",
       metadata: {
         reason: "agent_quiet",
+        quietAgentId: args.agent.id,
+        quietAgentHandle: args.agent.handle,
+      },
+    })
+    .returning({ id: messages.id })
+  if (row) await broadcast(args.roomId, { type: "message.done", messageId: row.id, status: "complete" })
+}
+
+/**
+ * The lead agent handed the floor to another agent: say so in the room, and mention the agent
+ * so an invited app finds the request in its inbox (it reads mentions, not the turn queue).
+ */
+async function postLeadHandoff(args: {
+  roomId: string
+  threadRootId: string | null
+  lead: AgentRow
+  /** In the order they will answer. */
+  chosen: AgentRow[]
+  reason: string
+}) {
+  const reason = args.reason.replace(/\s+/g, " ").trim().slice(0, 200)
+  const content = redactSecrets(
+    `@${args.lead.handle} asked ${handoffNames(args.chosen.map((a) => a.handle))} to take this${reason ? `: ${reason}` : "."}`,
+  ).text
+  const [row] = await getDb()
+    .insert(messages)
+    .values({
+      roomId: args.roomId,
+      threadRootId: args.threadRootId,
+      senderType: "system",
+      senderId: null,
+      content,
+      status: "complete",
+      mentions: args.chosen.map((a) => a.handle.toLowerCase()),
+      metadata: {
+        reason: "lead_handoff",
+        leadAgentId: args.lead.id,
+        chosenAgentIds: args.chosen.map((a) => a.id),
+      },
+    })
+    .returning({ id: messages.id })
+  if (row) await broadcast(args.roomId, { type: "message.done", messageId: row.id, status: "complete" })
+  for (const agent of args.chosen) {
+    if (agent.kind !== "external") continue
+    void notify("mesh_agent_inbox", { agentId: agent.id, roomId: args.roomId, kind: "mention" }).catch(
+      () => {},
+    )
+  }
+}
+
+
+/** A turn went to an invited app that isn't open: tell the room instead of going silent. */
+async function postAppOfflineNotice(args: {
+  roomId: string
+  threadRootId: string | null
+  agent: AgentRow
+}) {
+  const content = `@${args.agent.handle}'s app isn't open right now. It will see this and reply when its owner opens it.`
+  const [row] = await getDb()
+    .insert(messages)
+    .values({
+      roomId: args.roomId,
+      threadRootId: args.threadRootId,
+      senderType: "system",
+      senderId: null,
+      content,
+      status: "complete",
+      metadata: {
+        reason: "agent_app_offline",
         quietAgentId: args.agent.id,
         quietAgentHandle: args.agent.handle,
       },
@@ -249,9 +320,22 @@ async function buildWebhookPayload(args: {
 
 interface ModeratorDecision {
   human: boolean
-  agent: AgentRow | null
+  /** Who answers next, in order: one agent, or a few when the message needs several. */
+  agents: AgentRow[]
   reason: string
+  lead: AgentRow
 }
+
+/** What the lead agent is told on top of its own instructions. */
+export const LEAD_AGENT_INSTRUCTIONS = [
+  "You are the lead agent of this room. People write requests without naming an agent; you pass each request to the agent whose job fits it best, for example documentation to a writer and code changes to a coder.",
+  "Read the newest message first and match it against each agent's description. If you fit best yourself, choose your own id.",
+  `When one message clearly needs more than one agent (for example "document this and then fix the bug"), put the first in "next" and the others, in the order they should answer, in "also" (at most ${LEAD_MAX_AGENTS} agents in all). Otherwise leave "also" empty.`,
+  "Prefer agents that answer now or whose app is open. Choose an app that is not open only when no other agent can do the job.",
+  "When the last reply already answers the request, or the people need to decide or answer something, return control with \"human\".",
+  "Never choose more than two turns in a row from the same agent.",
+  "\"next\" is one agent id from the list, or the exact string \"human\".",
+].join(" ")
 
 async function decideModerator(args: {
   room: RoomRow
@@ -268,8 +352,10 @@ async function decideModerator(args: {
     .from(agents)
     .where(and(eq(agents.id, args.room.moderatorAgentId), eq(agents.orgId, args.room.orgId)))
     .limit(1)
-  if (!moderator) throw new Error("The room's moderator agent no longer exists")
-  if (moderator.kind !== "llm") throw new Error("The moderator must be an LLM agent")
+  if (!moderator) throw new Error("The room's lead agent no longer exists")
+  if (moderator.kind !== "llm") {
+    throw new Error("The lead agent must be one made in Sayabot, not an invited app")
+  }
 
   const resolved = await resolveAgentModel(moderator)
   const conversation = await loadConversation({
@@ -279,12 +365,12 @@ async function decideModerator(args: {
   })
   const system = [
     buildSystemPrompt({ room: args.room, agent: moderator, role: "moderator" }),
-    "You are the room moderator. Choose who should speak next, or return control to the humans. Prefer agents that add new information. Never choose more than two consecutive turns from the same agent. Answer with one agent id from the list, or the exact string \"human\".",
+    LEAD_AGENT_INSTRUCTIONS,
   ].join("\n\n")
   const prompt = [
     `Conversation so far:\n${renderTranscript(conversation)}`,
-    `Available agents:\n${agentListPrompt(args.roomAgentRows)}`,
-    `Reply with {"next": "<agent id or human>", "reason": "<short reason>"}.`,
+    `Agents in this room:\n${leadAgentListPrompt(args.roomAgentRows, moderator.id)}`,
+    `Reply with {"next": "<agent id or human>", "also": ["<more agent ids, usually none>"], "reason": "<short reason>"}.`,
   ].join("\n\n")
 
   const started = Date.now()
@@ -292,7 +378,7 @@ async function decideModerator(args: {
     model: resolved.model,
     system,
     prompt,
-    schema: z.object({ next: z.string(), reason: z.string() }),
+    schema: z.object({ next: z.string(), also: z.array(z.string()), reason: z.string() }),
     temperature: 0,
     abortSignal: AbortSignal.timeout(60_000),
   })
@@ -302,8 +388,10 @@ async function decideModerator(args: {
     handle: agent.handle,
     kind: agent.kind,
   }))
-  const validated = validateModeratorChoice(result.object.next, agentRefs)
-  const chosen = args.roomAgentRows.find(({ agent }) => agent.id === validated.next)?.agent ?? null
+  const plan = validateLeadPlan(result.object.next, result.object.also ?? [], agentRefs)
+  const chosen = plan.agentIds
+    .map((id) => args.roomAgentRows.find(({ agent }) => agent.id === id)?.agent)
+    .filter((agent): agent is AgentRow => Boolean(agent))
 
   const cost = await recordUsageEvent({
     orgId: args.room.orgId,
@@ -329,9 +417,10 @@ async function decideModerator(args: {
   })
 
   return {
-    human: validated.next === HUMAN_TURN,
-    agent: chosen,
+    human: plan.human || chosen.length === 0,
+    agents: chosen,
     reason: result.object.reason,
+    lead: moderator,
   }
 }
 
@@ -433,6 +522,8 @@ export async function processRoomMessage(
     const explicitModeratedMentions =
       agentTriggered || (room.turnMode === "moderated" && queue.length > 0)
     let botTurnsUsed = 0
+    /** The next queued turn was picked by the lead agent (moderated rooms). */
+    const leadQueued = new Set<string>()
     let state: "active" | "complete" | "halted" | "superseded" = "active"
     let lastTrigger = trigger
     // "/goal": every agent in the queue works in rounds until it reports done or blocked.
@@ -492,22 +583,38 @@ export async function processRoomMessage(
           await postSystemMessage({
             roomId,
             threadRootId: trigger.threadRootId,
-            content: `Moderator failed: ${error instanceof Error ? error.message : String(error)}`,
+            content: `The lead agent couldn't pick who answers: ${error instanceof Error ? error.message : String(error)}`,
             reason: "moderator_error",
           })
           await setSession(session.id, { state: "halted", queue: [] })
           state = "halted"
           break
         }
-        if (decision.human || !decision.agent) {
+        if (decision.human || decision.agents.length === 0) {
           state = "complete"
           break
         }
-        queue = [{ agentId: decision.agent.id, role: "responder", reason: decision.reason }]
+        const handedTo = decision.agents.filter((agent) => agent.id !== decision.lead.id)
+        if (handedTo.length) {
+          await postLeadHandoff({
+            roomId,
+            threadRootId: trigger.threadRootId,
+            lead: decision.lead,
+            chosen: handedTo,
+            reason: decision.reason,
+          })
+        }
+        queue = decision.agents.map((agent) => ({
+          agentId: agent.id,
+          role: "responder" as const,
+          reason: decision.reason,
+        }))
+        for (const agent of decision.agents) leadQueued.add(agent.id)
       }
 
       const next = queue.shift()
       if (!next) continue
+      const fromLead = leadQueued.delete(next.agentId)
       const agentRow = roomAgentRows.find(({ agent }) => agent.id === next.agentId)?.agent
       if (!agentRow) continue
 
@@ -614,6 +721,14 @@ export async function processRoomMessage(
         // Pull-based bots don't consume the room's bot-turn budget.
         botTurnsUsed -= 1
         await setSession(session.id, { botTurnsUsed, queue, state: "active" })
+        if (!agentAppOnline(agentRow.lastSeenAt)) {
+          await postAppOfflineNotice({ roomId, threadRootId: trigger.threadRootId, agent: agentRow })
+        }
+        // The app answers in its own time; asking the lead again now would only pick it again.
+        if (fromLead && queue.length === 0) {
+          state = "complete"
+          break
+        }
         continue
       }
 

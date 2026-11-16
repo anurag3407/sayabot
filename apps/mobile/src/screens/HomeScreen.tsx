@@ -564,7 +564,7 @@ function NewChatSheet({
       {agents.length ? (
         <>
           <Text variant="footnote" tone="muted" style={{ marginTop: space.lg, marginBottom: 8 }}>
-            Who should be in it?
+            Who should be in it? (optional)
           </Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
             {agents.map((agent) => {
@@ -582,6 +582,9 @@ function NewChatSheet({
           </View>
         </>
       ) : null}
+      <Text variant="footnote" tone="muted" style={{ marginTop: space.md }}>
+        Just a name is enough. Add agents, pick a lead and connect apps later in room settings.
+      </Text>
       {error ? (
         <Text variant="footnote" tone="danger" style={{ marginTop: space.md }}>
           {error}

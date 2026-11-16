@@ -87,7 +87,9 @@ export function validateModeratorChoice(
 
 Returns `{ next: choice, valid: true }` when the choice names a real room agent, `{ next: "human", valid: true }` when the moderator explicitly hands the floor to a human, and `{ next: "human", valid: false }` otherwise. The `valid: false` case is the important one: *a hallucinated agent id can never wedge the room* — the turn falls back to the human instead of stalling.
 
-The coordinator's moderator step (`apps/orchestrator/src/coordinator/index.ts:276-300`) builds the full picture: it runs a `generateObject` call whose Zod schema is `{ next: z.string(), reason: z.string() }` at `temperature: 0` with a 60-second abort timeout, records the moderator turn as a usage event of kind `"moderator"`, and then passes `result.object.next` through `validateModeratorChoice` before resolving which agent row actually speaks.
+- **`validateLeadPlan(next, also, roomAgents)`** checks the lead agent's whole plan. The lead picks `next` and may add more agents for the same message in `also`, in order. Unknown and repeated ids are dropped, and the list is capped at **`LEAD_MAX_AGENTS = 3`**. `next === "human"`, or no usable id at all, returns `{ agentIds: [], human: true }`; otherwise it returns `{ agentIds, human: false }`. A hallucinated first pick doesn't discard valid `also` picks.
+
+The coordinator's lead step (`decideModerator` in `apps/orchestrator/src/coordinator/index.ts`) runs a `generateObject` call whose Zod schema is `{ next: z.string(), also: z.array(z.string()), reason: z.string() }` at `temperature: 0` with a 60-second abort timeout. It records the turn as a usage event of kind `"moderator"`, passes the result through `validateLeadPlan`, and queues every resolved agent as a responder. `validateModeratorChoice` stays exported for single-pick callers.
 
 ## 🗣️ Debate role instructions
 

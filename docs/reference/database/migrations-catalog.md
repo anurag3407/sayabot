@@ -2,7 +2,7 @@
 
 This catalog documents every database migration in `packages/db`: the four Drizzle-generated migrations in `packages/db/migrations/` (the declarative schema snapshot pipeline) and the 35 hand-written SQL scripts in `packages/db/sql/` (functions, triggers, RLS, realtime, and RPCs that Drizzle cannot express). `src/migrate.ts` runs both phases in order — Drizzle first, then every `sql/*.sql` file in sorted filename order — and the SQL phase re-applies on every run, so each script is written to be idempotent.
 
-Source files: `packages/db/migrations/0000_conscious_natasha_romanoff.sql` through `0003_gigantic_the_call.sql`, `packages/db/sql/0001_functions.sql` through `0037_execution_mode_mac.sql`, `packages/db/src/migrate.ts`
+Source files: `packages/db/migrations/0000_conscious_natasha_romanoff.sql` through `0003_gigantic_the_call.sql`, `packages/db/sql/0001_functions.sql` through `0038_agent_last_seen.sql`, `packages/db/src/migrate.ts`
 
 ---
 
@@ -268,6 +268,10 @@ Creates `agent_reads` (PK `(agent_id, room_id)`, `last_read_at`, `updated_at`) w
 ### `0037_execution_mode_mac.sql` — four permission modes
 
 - `rooms.execution_mode_set_by uuid` (FK `profiles`, `on delete set null`) and `rooms_execution_mode_check` widened to `'review_all', 'ask_risky', 'auto', 'turbo'`. `auto`/`turbo` loosen only the Mac of the person who set them (the job claim checks `execution_mode_set_by` against the host owner); server tools marked dangerous keep asking in every mode.
+
+### `0038_agent_last_seen.sql` — when an invited app last called in
+
+- `agents.last_seen_at timestamptz` (nullable). The orchestrator stamps it on every authenticated bot call (API key or OAuth access token), at most every 30 seconds. Room settings shows "open now" from it, and the coordinator posts "app isn't open" when a turn is handed to an app that hasn't called in for 15 minutes. Idempotent (`add column if not exists`).
 
 ---
 

@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest"
-import { allowedByRules, allowRuleFor, isReadOnlyStep, parseClaudeLine, parseCodexLine } from "./mac-stream"
+import {
+  allowedByRules,
+  allowRuleFor,
+  isReadOnlyStep,
+  parseClaudeLine,
+  parseCodexLine,
+} from "./mac-stream"
 import { claudeArgs, codexArgs } from "./runner"
 
 const line = (value: unknown) => JSON.stringify(value)
@@ -72,6 +78,19 @@ describe("parseClaudeLine (claude -p --output-format stream-json)", () => {
   it("ignores noise", () => {
     expect(parseClaudeLine("not json")).toEqual({ activity: [] })
     expect(parseClaudeLine(line({ type: "system", subtype: "init" }))).toEqual({ activity: [] })
+  })
+
+  it("keeps the token counts on the final result", () => {
+    expect(
+      parseClaudeLine(
+        line({
+          type: "result",
+          subtype: "success",
+          result: "Done.",
+          usage: { input_tokens: 20, output_tokens: 5, cache_read_input_tokens: 4 },
+        }),
+      ).done?.usage,
+    ).toEqual({ inputTokens: 20, outputTokens: 5, cachedInputTokens: 4 })
   })
 })
 
@@ -162,6 +181,10 @@ describe("parseCodexLine (codex exec --json)", () => {
       text: null,
       error: null,
     })
+    expect(
+      parseCodexLine(line({ type: "turn.completed", usage: { input_tokens: 8, output_tokens: 3 } }))
+        .done?.usage,
+    ).toEqual({ inputTokens: 8, outputTokens: 3, cachedInputTokens: 0 })
     expect(parseCodexLine(line({ type: "turn.failed", error: { message: "boom" } })).done).toEqual({
       text: null,
       error: "boom",

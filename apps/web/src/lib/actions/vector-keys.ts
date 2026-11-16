@@ -40,14 +40,21 @@ export async function saveVectorProvider(
   const namespace = optionalField(formData, "namespace")
   const makeActive = formData.get("makeActive") === "true" || formData.get("makeActive") === "on"
 
-  if (label.length < 1 || label.length > 80) return fail("Label must be between 1 and 80 characters")
+  if (label.length < 1 || label.length > 80)
+    return fail("Label must be between 1 and 80 characters")
 
   const isLocalNoKey = provider === "pglite" || provider === "fastembed_local"
-  if (!isLocalNoKey && rawApiKey.length < 4) {
+  const allowsBlankKey =
+    isLocalNoKey || (provider === "openai_compatible" && rawApiKey.length === 0)
+  if (!allowsBlankKey && rawApiKey.length < 4) {
     return fail("API key or connection credential is required")
   }
 
-  if (endpointUrl && !/^https?:\/\//.test(endpointUrl) && !/^postgres(ql)?:\/\//.test(endpointUrl)) {
+  if (
+    endpointUrl &&
+    !/^https?:\/\//.test(endpointUrl) &&
+    !/^postgres(ql)?:\/\//.test(endpointUrl)
+  ) {
     return fail("Endpoint URL must start with https:// or postgresql://")
   }
 
@@ -57,7 +64,7 @@ export async function saveVectorProvider(
   if (dimension && !Number.isNaN(dimension)) config.dimension = dimension
   if (namespace) config.namespace = namespace
 
-  const apiKeyToStore = isLocalNoKey ? "local-embedded-key" : rawApiKey
+  const apiKeyToStore = isLocalNoKey ? "local-embedded-key" : allowsBlankKey ? "no-key" : rawApiKey
   const encrypted = encryptSecret(apiKeyToStore, getKek())
 
   const admin = createAdminClient()
@@ -97,7 +104,7 @@ export async function saveVectorProvider(
       ciphertext: encrypted.ciphertext,
       iv: encrypted.iv,
       tag: encrypted.tag,
-      last4: isLocalNoKey ? "local" : last4(apiKeyToStore),
+      last4: isLocalNoKey || allowsBlankKey ? "local" : last4(apiKeyToStore),
       config,
       is_active: shouldBeActive,
     })
@@ -195,10 +202,7 @@ export async function deleteVectorProvider(input: {
       .limit(1)
 
     if (remaining && remaining.length > 0 && remaining[0]?.id) {
-      await admin
-        .from("vector_providers")
-        .update({ is_active: true })
-        .eq("id", remaining[0].id)
+      await admin.from("vector_providers").update({ is_active: true }).eq("id", remaining[0].id)
     }
   }
 
@@ -249,7 +253,8 @@ export async function testVectorProvider(
     // Test based on provider
     if (record.provider === "pinecone") {
       const endpoint = record.endpoint_url || ""
-      if (!endpoint) return fail("Pinecone requires an index host URL (e.g. https://index-xxx.svc.pinecone.io)")
+      if (!endpoint)
+        return fail("Pinecone requires an index host URL (e.g. https://index-xxx.svc.pinecone.io)")
       const cleanEndpoint = endpoint.replace(/\/+$/, "")
       const res = await fetch(`${cleanEndpoint}/describe_index_stats`, {
         method: "POST",
@@ -270,7 +275,8 @@ export async function testVectorProvider(
 
     if (record.provider === "qdrant") {
       const endpoint = record.endpoint_url || ""
-      if (!endpoint) return fail("Qdrant requires an endpoint URL (e.g. https://xyz.cloud.qdrant.io:6333)")
+      if (!endpoint)
+        return fail("Qdrant requires an endpoint URL (e.g. https://xyz.cloud.qdrant.io:6333)")
       const cleanEndpoint = endpoint.replace(/\/+$/, "")
       const res = await fetch(`${cleanEndpoint}/collections`, {
         method: "GET",
@@ -305,7 +311,9 @@ export async function testVectorProvider(
         return fail(`Gemini API error (${res.status}): ${text.slice(0, 100)}`)
       }
       const latency = Date.now() - started
-      return ok(`Connected to Google Gemini Embeddings (768d) in ${latency} ms (1500 RPM Free Tier)`)
+      return ok(
+        `Connected to Google Gemini Embeddings (768d) in ${latency} ms (1500 RPM Free Tier)`,
+      )
     }
 
     if (record.provider === "voyage") {
@@ -350,10 +358,16 @@ export async function testVectorProvider(
       return ok(`Connected to OpenAI Embeddings in ${latency} ms`)
     }
 
-    if (record.provider === "supabase_pgvector" || record.provider === "neon_pgvector" || record.provider === "custom_postgres") {
+    if (
+      record.provider === "supabase_pgvector" ||
+      record.provider === "neon_pgvector" ||
+      record.provider === "custom_postgres"
+    ) {
       // Basic credential and endpoint format check
       if (apiKey.startsWith("postgres://") || apiKey.startsWith("postgresql://")) {
-        return ok(`Connection string validated for ${record.provider} in ${Date.now() - started} ms`)
+        return ok(
+          `Connection string validated for ${record.provider} in ${Date.now() - started} ms`,
+        )
       }
       return ok(`API Key format validated for ${record.provider} in ${Date.now() - started} ms`)
     }

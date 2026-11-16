@@ -47,10 +47,10 @@ Org-admin action that refuses external agents ("checked in their webhook deliver
 
 ## 🤖 One-step bot creation (`createBotAction`)
 
-The streamlined "new bot" path takes a plain object: `{ orgSlug, name, instructions?, keyId?, model?, templateId?, capabilities?, roomId? }` (`agents.ts:294`). It is org-admin gated and plan-gated (`planGate(orgId, "agents")`).
+The streamlined "new bot" path takes a plain object: `{ orgSlug, name, instructions?, keyId?, model?, effort?, templateId?, capabilities?, roomId? }`. It is org-admin gated and plan-gated (`planGate(orgId, "agents")`).
 
 1. **Template**: when `templateId` is set, `agent_templates` is loaded and accepted if it is global (`org_id` null) or belongs to the org (`agents.ts:321`).
-2. **Model**: `resolveModelChoice` resolves `keyId`/`model` — a provider key, a `host:…` Mac key, or null for the server default — using the request host from `x-forwarded-host`/`host` headers (`agents.ts:330`). `choice.runner` and `choice.effort` land in `agents.params`.
+2. **Model**: `resolveModelChoice` resolves `keyId`/`model`/`effort` — a provider key, a `host:…` Mac key, or null for the server default — using the request host from `x-forwarded-host`/`host` headers (`agents.ts:330`). `choice.runner` and `choice.effort` land in `agents.params`.
 3. **Capabilities**: merged `DEFAULT_CAPABILITIES` + template defaults + caller overrides, run through `parseCapabilities` (`agents.ts:341`). If the plan does not cover computers, `capabilities.computer` is silently downgraded and a `warning` is attached to the result instead of failing (`agents.ts:347`).
 4. **Handle**: `handleFromName` (local to `agents.ts:277`) slugs the display name (max 32 chars, `bot-` prefix when it would not start with a letter, reserved names get `-bot`); collisions get numeric suffixes `name-2`, `name-3`, … by scanning existing handles (`agents.ts:369`).
 5. **Rows created**: the `agents` insert carries `capabilities`, `template_id`, and `owner_user_id` (the Mac owner when the key belongs to one, else the caller — `agents.ts:385`). With the `computer` capability an `agent_computers` row is created: profile from capabilities, `status: "none"`, Docker volume name `saaya-bot-<agentId>` (`agents.ts:393`).

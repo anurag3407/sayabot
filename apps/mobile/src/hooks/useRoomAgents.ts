@@ -8,8 +8,11 @@ export interface RoomAgent {
   kind: "llm" | "external"
 }
 
-/** Agents in a room, for "who should do it?" when delegating from the phone. */
-export function useRoomAgents(roomId: string | null) {
+/**
+ * Agents in a room, for "who should do it?" when delegating from the phone. Bump `refreshKey`
+ * to load again, e.g. when the chat comes back from room settings.
+ */
+export function useRoomAgents(roomId: string | null, refreshKey = 0) {
   const [agents, setAgents] = useState<RoomAgent[]>([])
   const [loading, setLoading] = useState(false)
 
@@ -43,7 +46,7 @@ export function useRoomAgents(roomId: string | null) {
     return () => {
       cancelled = true
     }
-  }, [roomId])
+  }, [roomId, refreshKey])
 
   return { agents, loading }
 }

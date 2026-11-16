@@ -125,7 +125,8 @@ export async function updateRoomSettings(
   const check = await adminRoomAccess(orgSlug, roomId)
   if ("error" in check) return fail(check.error)
   const { access } = check
-  const name = field(formData, "name")
+  // The name lives in the "Room" form now; a form without it keeps the current name.
+  const name = formData.has("name") ? field(formData, "name") : access.room.name
   const turnModeParsed = turnModeSchema.safeParse(field(formData, "turnMode"))
   const turnCapParsed = z.coerce.number().int().min(1).max(10).safeParse(field(formData, "turnCap"))
   const rpmRaw = optionalField(formData, "rpmLimit")
@@ -152,7 +153,18 @@ export async function updateRoomSettings(
   const roomAgentIds = new Set((roomAgents ?? []).map((r) => r.agent_id))
   const moderatorAgentId = optionalField(formData, "moderatorAgentId")
   if (moderatorAgentId) {
-    if (!roomAgentIds.has(moderatorAgentId)) return fail("The moderator must be an agent in this room")
+    if (!roomAgentIds.has(moderatorAgentId)) return fail("The lead agent must be an agent in this room")
+    const { data: lead } = await admin
+      .from("agents")
+      .select("kind")
+      .eq("id", moderatorAgentId)
+      .maybeSingle()
+    if (lead?.kind !== "llm") {
+      return fail("The lead agent must be one made in Sayabot. Invited apps can't lead a room.")
+    }
+  }
+  if (turnModeParsed.data === "moderated" && !moderatorAgentId) {
+    return fail("Choose a lead agent, or pick another way for agents to reply")
   }
   let debateOrder: string[] = []
   const orderRaw = field(formData, "debateOrder")
@@ -191,6 +203,37 @@ export async function updateRoomSettings(
   })
   revalidateOrg(orgSlug)
   return ok("Room settings saved")
+}
+
+/** Room basics: its name and, for group rooms, who can see it (private or public). */
+export async function updateRoomBasics(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const orgSlug = field(formData, "orgSlug")
+  const roomId = field(formData, "roomId")
+  const check = await adminRoomAccess(orgSlug, roomId)
+  if ("error" in check) return fail(check.error)
+  const { access } = check
+  const name = field(formData, "name")
+  if (name.length < 1 || name.length > 60) return fail("Room name must be 1 to 60 characters")
+  const update: { name: string; kind?: "public" | "private" } = { name }
+  if (access.room.kind !== "dm" && formData.has("kind")) {
+    const kind = z.enum(["public", "private"]).safeParse(field(formData, "kind"))
+    if (!kind.success) return fail("Choose who can see the room")
+    update.kind = kind.data
+  }
+  const { error } = await createAdminClient().from("rooms").update(update).eq("id", roomId)
+  if (error) return fail(errorMessage(error))
+  await audit({
+    orgId: access.org.id,
+    actorId: access.user.id,
+    action: "room.settings_changed",
+    target: roomId,
+    metadata: update,
+  })
+  revalidateOrg(orgSlug)
+  return ok("Room saved")
 }
 
 export async function addRoomMember(

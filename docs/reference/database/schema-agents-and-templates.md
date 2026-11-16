@@ -56,7 +56,8 @@ Defined at `packages/db/src/schema/agents.ts:37`. The central row per bot: ident
 | `owner_user_id` | `uuid` | nullable, FK → `profiles.id`, `ON DELETE SET NULL` | Private-agent owner (`0009_bot_platform.sql:65`). |
 | `visibility` | `agent_visibility` enum | NOT NULL, default `"org"` | `org` (all members can add it) or `private` (owner-only) (`enums.ts:103`). |
 | `avatar` | `text` | nullable | Avatar URL/emoji. |
-| `bio` | `text` | nullable | Short description shown in the agents list. |
+| `bio` | `text` | nullable | Short description shown in the agents list. A room's lead agent also reads it (else the system prompt) to route work. |
+| `last_seen_at` | `timestamptz` | nullable | When an invited agent's own app last called Sayabot with its key or sign-in token; stamped at most every 30 s by `markAgentSeen` (`0038_agent_last_seen.sql`). |
 | `capabilities` | `jsonb` | NOT NULL, default `DEFAULT_CAPABILITIES` | Typed `AgentCapabilities` (`agents.ts:61`) — see below. |
 | `created_at` / `updated_at` | `timestamptz` | NOT NULL, default `now()` | Timestamps (`updated_at` maintained by trigger). |
 

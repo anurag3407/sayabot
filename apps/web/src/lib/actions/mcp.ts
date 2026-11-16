@@ -470,3 +470,42 @@ export async function testDocumentOcrAction(
     },
   )
 }
+
+/**
+ * Where a connected app's tools apply: every room (`roomId: null`) or just one room. Room
+ * settings uses this for "Only this room" / "All rooms" on each app.
+ */
+export async function setMcpServerRoomAction(input: {
+  orgSlug: string
+  serverId: string
+  roomId: string | null
+}): Promise<ActionResult> {
+  const check = await adminOrgAccess(input.orgSlug)
+  if ("error" in check) return fail(check.error)
+  const orgId = check.access.org.id
+  const server = await loadServer(orgId, input.serverId)
+  if (!server) return fail("Connection not found")
+  const admin = createAdminClient()
+  if (input.roomId) {
+    const { data: room } = await admin
+      .from("rooms")
+      .select("id, org_id")
+      .eq("id", input.roomId)
+      .maybeSingle()
+    if (!room || room.org_id !== orgId) return fail("Room not found")
+  }
+  const { error } = await admin
+    .from("mcp_servers")
+    .update({ room_id: input.roomId, updated_at: new Date().toISOString() })
+    .eq("id", server.id)
+  if (error) return fail(errorMessage(error))
+  await audit({
+    orgId,
+    actorId: check.access.user.id,
+    action: "mcp_server.scope_changed",
+    target: server.name as string,
+    metadata: { roomId: input.roomId },
+  })
+  revalidateOrg(input.orgSlug)
+  return ok(input.roomId ? `${server.name} now works only in this room` : `${server.name} now works in every room`)
+}

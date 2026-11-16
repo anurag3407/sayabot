@@ -6,6 +6,7 @@ import {
   planDebateTurns,
   planMentionsTurn,
   planModeratedMentions,
+  validateLeadPlan,
   validateModeratorChoice,
 } from "./turns"
 import type { AgentRef } from "./types"
@@ -102,6 +103,19 @@ describe("moderated mode", () => {
     expect(validateModeratorChoice("a", agents)).toEqual({ next: "a", valid: true })
     expect(validateModeratorChoice("human", agents)).toEqual({ next: "human", valid: true })
     expect(validateModeratorChoice("ghost", agents)).toEqual({ next: "human", valid: false })
+  })
+
+  it("validates a lead agent's plan for one or several agents", () => {
+    expect(validateLeadPlan("a", [], agents)).toEqual({ agentIds: ["a"], human: false })
+    expect(validateLeadPlan("b", ["a", "b", "ghost", "c"], agents)).toEqual({
+      agentIds: ["b", "a", "c"],
+      human: false,
+    })
+    expect(validateLeadPlan("ghost", ["c"], agents)).toEqual({ agentIds: ["c"], human: false })
+    expect(validateLeadPlan("human", ["a"], agents)).toEqual({ agentIds: [], human: true })
+    expect(validateLeadPlan("ghost", ["nope"], agents)).toEqual({ agentIds: [], human: true })
+    const many = [...agents, { id: "d", handle: "dan", kind: "llm" as const }]
+    expect(validateLeadPlan("a", ["b", "c", "d"], many).agentIds).toEqual(["a", "b", "c"])
   })
 
   it("provides debate instructions only for debate roles", () => {

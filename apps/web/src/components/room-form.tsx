@@ -24,7 +24,7 @@ export function RoomForm({
       <div>
         <h2 className="text-[15px] font-medium">New room</h2>
         <p className="mt-1 text-[12px] leading-relaxed text-muted">
-          A room has its own chat, canvas and agents.
+          Give it a name. Everything else can wait.
         </p>
       </div>
       <Field label="name" htmlFor="room-name" hint="1 to 60 characters">
@@ -36,31 +36,48 @@ export function RoomForm({
           placeholder="release-triage"
         />
       </Field>
-      <Field label="who can see it" htmlFor="room-kind">
-        <Select id="room-kind" name="kind" value={kind} onChange={(e) => setKind(e.target.value)}>
-          <option value="private">Private: only people you add</option>
-          <option value="public">Public: anyone in the workspace can read</option>
-          <option value="dm">Direct chat with one person</option>
-        </Select>
-      </Field>
-      <Field
-        label={kind === "dm" ? "person" : "add a person"}
-        htmlFor="room-member"
-        hint={kind === "dm" ? "required" : "optional"}
-      >
-        <Select id="room-member" name="memberId" required={kind === "dm"} defaultValue="">
-          <option value="">{kind === "dm" ? "Choose a person" : "No one else for now"}</option>
-          {members
-            .filter((member) => member.userId !== selfId)
-            .map((member) => (
-              <option key={member.userId} value={member.userId}>
-                {member.displayName}
-              </option>
-            ))}
-        </Select>
-      </Field>
+      <details className="rounded-md border border-line">
+        <summary className="cursor-pointer select-none px-3 py-2 text-[12px] text-muted hover:text-text">
+          More options{" "}
+          <span className="text-faint">
+            ({kind === "private" ? "private" : kind === "public" ? "public" : "direct chat"}
+            {kind !== "dm" ? ", just you" : ""})
+          </span>
+        </summary>
+        <div className="space-y-4 border-t border-line px-3 py-3">
+          <Field label="who can see it" htmlFor="room-kind">
+            <Select
+              id="room-kind"
+              name="kind"
+              value={kind}
+              onChange={(e) => setKind(e.target.value)}
+            >
+              <option value="private">Private: only people you add</option>
+              <option value="public">Public: anyone in the workspace can read</option>
+              <option value="dm">Direct chat with one person</option>
+            </Select>
+          </Field>
+          <Field
+            label={kind === "dm" ? "person" : "add a person"}
+            htmlFor="room-member"
+            hint={kind === "dm" ? "required" : "optional"}
+          >
+            <Select id="room-member" name="memberId" required={kind === "dm"} defaultValue="">
+              <option value="">{kind === "dm" ? "Choose a person" : "No one else for now"}</option>
+              {members
+                .filter((member) => member.userId !== selfId)
+                .map((member) => (
+                  <option key={member.userId} value={member.userId}>
+                    {member.displayName}
+                  </option>
+                ))}
+            </Select>
+          </Field>
+        </div>
+      </details>
       <HelpText>
-        You can add agents and more people from room settings once the room exists.
+        Just a name is enough. Agents, people, tools and who leads are all set up later in the
+        room&apos;s settings.
       </HelpText>
       {state && !state.ok ? <InlineAlert tone="danger">{state.error}</InlineAlert> : null}
       <Button type="submit" disabled={pending} className="w-full">

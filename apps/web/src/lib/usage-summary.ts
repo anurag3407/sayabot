@@ -1,4 +1,10 @@
-import { baseModelName, pickModelPrice, type PriceRow } from "@sayabot/core"
+import {
+  baseModelName,
+  computeCostUsd,
+  MAC_CLI_APPS,
+  pickModelPrice,
+  type PriceRow,
+} from "@sayabot/core"
 import { localDayKey, localHourKey, type UsageRollupRow } from "@/lib/usage-math"
 
 /**
@@ -10,8 +16,18 @@ import { localDayKey, localHourKey, type UsageRollupRow } from "@/lib/usage-math
  *   output = what the model wrote
  */
 
-/** Runs on someone's own Claude Code / Codex / Cursor plan: no per-token cost. */
-export const SUBSCRIPTION_PROVIDERS = new Set(["claude-code", "codex", "cursor"])
+/**
+ * Runs on the person's own app plan, so Sayabot does not add a per-token price.
+ * Includes the Mac apps that sign in with an account (GitHub Copilot, Claude Code, Codex, …).
+ */
+export const SUBSCRIPTION_PROVIDERS = new Set([
+  "claude-code",
+  "codex",
+  "cursor",
+  ...MAC_CLI_APPS.filter((app) => app.access === "account" || app.access === "account_or_key").map(
+    (app) => app.id,
+  ),
+])
 
 export interface UsageRow {
   agentId: string | null
@@ -90,11 +106,50 @@ export function rowFromRollup(row: UsageRollupRow): UsageRow {
   }
 }
 
-export type PriceState = "priced" | "subscription" | "unpriced"
+export type PriceState = "priced" | "subscription" | "free" | "unpriced"
 
-export function priceState(row: Pick<UsageRow, "provider" | "model">, prices: readonly PriceRow[]): PriceState {
+/** OpenRouter and similar gateways mark a $0 route with a `:free` suffix. */
+export function isFreeModel(model: string): boolean {
+  return /:free$/i.test(model.trim())
+}
+
+export function priceState(
+  row: Pick<UsageRow, "provider" | "model">,
+  prices: readonly PriceRow[],
+): PriceState {
   if (SUBSCRIPTION_PROVIDERS.has(row.provider)) return "subscription"
-  return pickModelPrice(prices, row.provider, row.model) ? "priced" : "unpriced"
+  if (isFreeModel(row.model)) return "free"
+  const price = pickModelPrice(prices, row.provider, row.model)
+  if (!price) return "unpriced"
+  if (price.inputPerMtok <= 0 && price.outputPerMtok <= 0) return "free"
+  return "priced"
+}
+
+/**
+ * What this row costs to show. A stored cost wins. A call recorded before we knew the list price
+ * (cost 0) is estimated from the price table, except subscription plans and free routes.
+ */
+export function pricedCost(row: UsageRow, prices: readonly PriceRow[]): number {
+  if (row.cost > 0) return row.cost
+  if (priceState(row, prices) !== "priced") return 0
+  const price = pickModelPrice(prices, row.provider, row.model)
+  if (!price) return 0
+  return computeCostUsd(
+    {
+      inputTokens: row.input,
+      outputTokens: row.output,
+      cachedInputTokens: row.cached,
+      cacheCreationTokens: row.cacheWrite,
+    },
+    price,
+  )
+}
+
+export function applyPrices(rows: readonly UsageRow[], prices: readonly PriceRow[]): UsageRow[] {
+  return rows.map((row) => {
+    const cost = pricedCost(row, prices)
+    return cost === row.cost ? row : { ...row, cost }
+  })
 }
 
 export interface Bucket {
@@ -111,6 +166,8 @@ export interface ModelBucket extends Bucket {
   provider: string
   model: string
   price: PriceState
+  /** Calls that were not a reply (summaries, checks, memory). */
+  backgroundCalls: number
 }
 
 export interface UsageSummary {
@@ -213,9 +270,14 @@ export function summarize(
         provider: row.provider,
         model: row.model,
         price: state,
+        backgroundCalls: 0,
       }),
       row,
     )
+    if (row.kind !== "llm") {
+      const bucket = models.get(modelKey)
+      if (bucket) bucket.backgroundCalls += row.calls
+    }
   }
 
   const tokens = input + output
@@ -258,7 +320,9 @@ function quantile(values: number[], q: number): number | null {
 export function speed(rows: readonly UsageRow[]): SpeedSummary {
   const replies = rows.filter((row) => row.kind === "llm")
   const firstWord = replies.flatMap((row) => (row.ttftMs && row.ttftMs > 0 ? [row.ttftMs] : []))
-  const whole = replies.flatMap((row) => (row.latencyMs && row.latencyMs > 0 ? [row.latencyMs] : []))
+  const whole = replies.flatMap((row) =>
+    row.latencyMs && row.latencyMs > 0 ? [row.latencyMs] : [],
+  )
   return {
     medianFirstWordMs: quantile(firstWord, 0.5),
     medianReplyMs: quantile(whole, 0.5),
@@ -397,7 +461,9 @@ export function prettyModelName(model: string): string {
     } else if (/^o\d/.test(part)) {
       out.push(part)
     } else {
-      out.push(WORD_CASE[part] ?? (/^\d/.test(part) ? part : part.charAt(0).toUpperCase() + part.slice(1)))
+      out.push(
+        WORD_CASE[part] ?? (/^\d/.test(part) ? part : part.charAt(0).toUpperCase() + part.slice(1)),
+      )
     }
   }
   return out.join(" ")
@@ -419,6 +485,9 @@ const PROVIDER_LABELS: Record<string, string> = {
   claude: "Claude Code",
   codex: "Codex",
   cursor: "Cursor",
+  copilot: "GitHub Copilot",
+  opencode: "OpenCode",
+  "command-code": "Command Code",
   antigravity: "Antigravity",
 }
 

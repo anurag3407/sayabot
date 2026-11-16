@@ -56,6 +56,7 @@ describe("Engine Dispatcher (E4)", () => {
       cron: true,
       connectors: true,
     },
+    lastSeenAt: null,
     createdAt: new Date(),
     updatedAt: new Date(),
   }

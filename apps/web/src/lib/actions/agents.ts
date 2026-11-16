@@ -302,6 +302,8 @@ export async function createBotAction(input: {
    */
   keyId?: string | null
   model?: string | null
+  /** Thinking effort for the picked model, when it takes one. */
+  effort?: string | null
   templateId?: string | null
   capabilities?: Partial<AgentCapabilities>
   /** Optional: also add the bot to this group chat. */
@@ -335,6 +337,7 @@ export async function createBotAction(input: {
     requestHost: requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host"),
     keyId: input.keyId ?? null,
     model: input.model ?? null,
+    effort: input.effort ?? null,
   })
   if (!resolved.ok) return fail(resolved.error)
   const choice = resolved.choice

@@ -20,10 +20,14 @@ Every Sayabot room has an active **Turn Mode** that governs how and when AI agen
 - Multiple agents take sequential turns evaluating a proposition or pull request.
 - Agents can challenge each other's assumptions, propose counter-examples, and reach consensus before presenting conclusions to human team members.
 
-### 3. `moderated` Mode
-- A human moderator has absolute control over the conversation floor.
-- Agents only speak when explicitly called upon by the moderator.
-- Ideal for client presentations, executive summaries, or sensitive operations where an agent must not run autonomously.
+### 3. `moderated` Mode (shown as "Lead agent")
+- One agent made in Sayabot is the room's **lead agent** (`rooms.moderator_agent_id`), picked in room settings.
+- A message that @mentions nobody goes to the lead. It reads what each agent in the room is for (its bio, else its instructions) and whether it answers now. Then it hands the message to the best fit, for example documentation to a writer and code to a coder, or gives the floor back to the people. A message that needs several agents ("document this, then fix the bug") can go to up to three, who answer in order.
+- Each handoff shows in the room ("@lead asked @writer to take this: …"). An @mention always goes straight to that agent.
+- Invited apps (Claude Code, Cursor… connected over MCP) can be handed work but can't lead. If such an app isn't open, the room says so, and the app replies when its owner opens it.
+
+### Setting up a room
+A room starts with just a name. Agents (ready-made specialists, existing ones, or your own app), where each one runs, the lead agent, tools and people are all set in the room's settings. See [room-settings-ui](reference/web/pages/room-settings-ui.md).
 
 ---
 

@@ -98,7 +98,7 @@ Each iteration, in order:
 1. **Session state check** — re-reads `turn_sessions.state`; anything other than `active` (e.g. `superseded` set by an interrupt) breaks the loop.
 2. **Completion** — empty queue with no moderator needed → `state = "complete"`.
 3. **Budget breakers** — `breakerTrip(room, botTurnsUsed, session.taskId)` (below). On trip: if the session is task-bound and the code is `turn_cap`, the task is updated to `status: "stuck"` with `unblockNeeds: "human_answer"` and detail `Budget used up (N turns). Approve more?`; then `halt(...)` posts a system message and ends the session.
-4. **Moderator decision** — when the queue is empty and `room.turnMode === "moderated"` and `!explicitModeratedMentions`, `decideModerator(...)` runs (below). Moderator failure → system message with reason `moderator_error` and session `halted`. Decision `"human"` (constant `HUMAN_TURN` from `@sayabot/core`) → session completes; otherwise the queue becomes a single responder turn carrying the moderator's reason.
+4. **Moderator decision** — when the queue is empty and `room.turnMode === "moderated"` and `!explicitModeratedMentions`, `decideModerator(...)` runs (below). Failure → system message "The lead agent couldn't pick who answers: …" with reason `moderator_error` and session `halted`. Decision `"human"` (constant `HUMAN_TURN` from `@sayabot/core`) → session completes. The lead may pick one agent or, for a message that needs several, up to three in order (`validateLeadPlan` in `@sayabot/core`). For the picked agents other than the lead itself, `postLeadHandoff(...)` posts one complete system message `@<lead> asked @a, @b and @c to take this: <reason>` (names from `handoffNames`; reason whitespace-collapsed, ≤200 chars, redacted). It carries `mentions` for every handed-to agent and metadata `{ reason: "lead_handoff", leadAgentId, chosenAgentIds }`. Because the mentions are on the message, invited (MCP) agents find the request in `get_inbox`, and each external agent also gets a `mesh_agent_inbox` notification that wakes a waiting client. The queue becomes one responder turn per picked agent carrying the lead's reason; `leadQueued` remembers which turns the lead planned. When that queue drains, the lead is asked again and usually returns `"human"`.
 5. **Dispatch** — pops the next turn, resolves the `AgentRow`:
    - `agentRow.kind === "external"` → `buildWebhookPayload(...)` + `runExternalTurn({ room, agent, sessionId, threadRootId, trigger, role, step, payload, enqueueWebhook })` (`src/runner/external.ts`).
    - otherwise → `startAgentTurn({ room, agent, sessionId, threadRootId, trigger, role, step, taskId })` from `src/engine/index.ts`.
@@ -106,7 +106,7 @@ Each iteration, in order:
 6. **Result handling** (after `botTurnsUsed += 1` and another state check):
    - `result.aborted` → halt with `"Generation stopped. Human input is required to continue."` (reason `stopped`).
    - `result.error` → halt with the redacted error (reason `agent_error`).
-   - `result.deferred` → **`botTurnsUsed -= 1`** (pull-based bots do not consume the room's bot-turn budget) and `continue`.
+   - `result.deferred` → **`botTurnsUsed -= 1`** (pull-based bots do not consume the room's bot-turn budget). If the agent's app isn't open (`agentAppOnline(agent.lastSeenAt)` is false: no call in the last 15 minutes), `postAppOfflineNotice(...)` (`index.ts:180`) posts `@<handle>'s app isn't open right now. It will see this and reply when its owner opens it.` with metadata `{ reason: "agent_app_offline", quietAgentId, quietAgentHandle }`. When the lead planned this turn (`leadQueued`) and nothing else is queued, the session completes instead of asking the lead again; the app replies in its own time. Otherwise `continue`.
    - `result.timedOut` → `postQuietBotNotice(...)` posts `@<handle> didn't answer within 60 seconds, so the turn moved on.` with metadata `{ reason: "agent_quiet", quietAgentId, quietAgentHandle }` and continues to the next turn.
    - Success path: reload the posted message, set `lastTrigger = message`, run `detectRepetition(result.content, recent)` over the last 4 complete agent replies in the thread (`recentBotReplies`, excluding the new message). Repetition → halt with `REPETITION_HALT_MESSAGE` and the detector's reason. In `mentions` mode, `planBotFollowUps({ text, roomAgents, senderAgentId })` appends cross-agent follow-up turns to the queue and re-broadcasts `turn.state`.
 7. **Finalize** — `setSession(session.id, { state, queue: [] })` and a final `turn.state` broadcast with `activeAgentId: null`.
@@ -121,12 +121,14 @@ Each iteration, in order:
 
 These feed `checkPreTurnBreakers({ botTurnsUsed, turnCap, rpmUsed, rpmLimit, spentUsd, dailyBudgetUsd })` from `@sayabot/core`, which returns a trip (`{ message, reason, code }`) or null.
 
-### Moderator LLM (`decideModerator`)
+### Lead agent (`decideModerator`)
 
-- Requires `room.moderatorAgentId` to exist, belong to the org, and be `kind === "llm"` (otherwise an error message halts the session).
-- Loads the last 30 conversation messages, builds a system prompt with `buildSystemPrompt({ room, agent, role: "moderator" })` plus the instruction to pick the next speaker or return `"human"`, and prompts with `renderTranscript(conversation)` + `agentListPrompt(roomAgentRows)`.
-- Calls `generateObject` (`ai` package) with schema `z.object({ next: z.string(), reason: z.string() })`, `temperature: 0`, and a 60-second `AbortSignal.timeout`.
-- The choice is validated by `validateModeratorChoice(next, agentRefs)` from `@sayabot/core`.
+The UI calls a moderated room's moderator its **lead agent** ([room settings](../../web/pages/room-settings-ui.md)).
+
+- Requires `room.moderatorAgentId` to exist, belong to the org, and be `kind === "llm"` (an agent made in Sayabot; otherwise an error message halts the session). The lead can run on any model choice, including a Claude Code / Codex app via the CLI language model.
+- Loads the last 30 conversation messages. The system prompt is `buildSystemPrompt({ room, agent, role: "moderator" })` plus `LEAD_AGENT_INSTRUCTIONS`: route each request to the agent whose job fits it best, choose itself if it fits best, list extra agents in `also` only when one message clearly needs several (at most three in all), prefer agents that answer now or whose app is open, return `"human"` when the request is answered or people must decide, never more than two turns in a row from one agent. The prompt is `renderTranscript(conversation)` plus `leadAgentListPrompt(roomAgentRows, lead.id)` from `src/runner/context.ts`. Each line of that list is `- <id>: @<handle> (<name>)[ (you, the lead)] [<where>]: <job>`, where `<job>` is `agentJobSummary` (bio, else instructions, ≤200 chars) and `<where>` is `answers now`, or for invited apps `answers within a minute` (webhook), `open now, answers in its own time`, or `not open right now, answers when its owner opens it` (from `agents.last_seen_at`).
+- Calls `generateObject` (`ai` package) with schema `z.object({ next: z.string(), also: z.array(z.string()), reason: z.string() })`, `temperature: 0`, and a 60-second `AbortSignal.timeout`.
+- The schema is `{ next, also: string[], reason }`, and the plan is validated by `validateLeadPlan(next, also, agentRefs)` from `@sayabot/core`.
 - Usage is recorded twice: `recordUsageEvent({ ..., kind: "moderator", latencyMs })` and an `agent_runs` row with `role: "moderator"`, `status: "complete"`, token counts, cost, and latency.
 
 ### Helper surface

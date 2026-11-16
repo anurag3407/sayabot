@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest"
 import {
+  applyPrices,
   prettyModelName,
+  priceState,
+  providerLabel,
   rowFromEvent,
   rowFromRollup,
   speed,
@@ -12,7 +15,10 @@ import {
 const prices = [
   { provider: "anthropic", model: "claude-sonnet-4-5", inputPerMtok: 3, outputPerMtok: 15 },
 ]
-const names = { agent: (id: string | null) => id ?? "No agent", room: (id: string | null) => id ?? "None" }
+const names = {
+  agent: (id: string | null) => id ?? "No agent",
+  room: (id: string | null) => id ?? "None",
+}
 
 function event(partial: Partial<RawEvent>): RawEvent {
   return {
@@ -34,7 +40,9 @@ function event(partial: Partial<RawEvent>): RawEvent {
 
 describe("summarize", () => {
   it("counts replies separately from background calls", () => {
-    const rows = [event({}), event({ kind: "summary" }), event({ kind: "verify" })].map(rowFromEvent)
+    const rows = [event({}), event({ kind: "summary" }), event({ kind: "verify" })].map(
+      rowFromEvent,
+    )
     const result = summarize(rows, prices, names)
     expect(result.replies).toBe(1)
     expect(result.backgroundCalls).toBe(2)
@@ -58,6 +66,66 @@ describe("summarize", () => {
     expect(result.subscriptionTokens).toBe(1100)
     expect(result.byModel.find((m) => m.provider === "groq")?.price).toBe("unpriced")
     expect(result.byModel.find((m) => m.provider === "claude-code")?.price).toBe("subscription")
+  })
+
+  it("estimates a stored $0 from the list price, and keeps a free route free", () => {
+    const groq = rowFromEvent(
+      event({
+        provider: "groq",
+        model: "openai/gpt-oss-120b",
+        kind: "llm",
+        input_tokens: 10_000,
+        output_tokens: 200,
+        cached_input_tokens: 0,
+        cost_usd: 0,
+      }),
+    )
+    const background = rowFromEvent(
+      event({
+        provider: "groq",
+        model: "openai/gpt-oss-20b",
+        kind: "memory",
+        input_tokens: 400,
+        output_tokens: 100,
+        cached_input_tokens: 0,
+        cost_usd: 0,
+      }),
+    )
+    const free = rowFromEvent(
+      event({
+        provider: "openai-compatible",
+        model: "nvidia/nemotron:free",
+        cost_usd: 0,
+        input_tokens: 1000,
+        output_tokens: 0,
+      }),
+    )
+    const priced = applyPrices(
+      [groq, background, free],
+      [
+        { provider: "groq", model: "openai/gpt-oss-120b", inputPerMtok: 0.15, outputPerMtok: 0.6 },
+        { provider: "groq", model: "openai/gpt-oss-20b", inputPerMtok: 0.075, outputPerMtok: 0.3 },
+        {
+          provider: "openai-compatible",
+          model: "nvidia/nemotron",
+          inputPerMtok: 1,
+          outputPerMtok: 1,
+        },
+      ],
+    )
+    const result = summarize(
+      priced,
+      [
+        { provider: "groq", model: "openai/gpt-oss-120b", inputPerMtok: 0.15, outputPerMtok: 0.6 },
+        { provider: "groq", model: "openai/gpt-oss-20b", inputPerMtok: 0.075, outputPerMtok: 0.3 },
+      ],
+      names,
+    )
+    expect(result.byModel.find((m) => m.model === "openai/gpt-oss-120b")?.price).toBe("priced")
+    expect(result.byModel.find((m) => m.model === "openai/gpt-oss-120b")?.cost).toBeCloseTo(0.00162)
+    expect(result.byModel.find((m) => m.model === "openai/gpt-oss-20b")?.backgroundCalls).toBe(1)
+    expect(result.byModel.find((m) => m.model.endsWith(":free"))?.price).toBe("free")
+    expect(result.byModel.find((m) => m.model.endsWith(":free"))?.cost).toBe(0)
   })
 
   it("weights rollup rows by how many calls they stand for", () => {
@@ -116,7 +184,9 @@ describe("timeSeries", () => {
 
   it("folds small groups into one", () => {
     const rows = Array.from({ length: 8 }, (_, index) =>
-      rowFromEvent(event({ agent_id: `a${index}`, input_tokens: 100 * (index + 1), output_tokens: 0 })),
+      rowFromEvent(
+        event({ agent_id: `a${index}`, input_tokens: 100 * (index + 1), output_tokens: 0 }),
+      ),
     )
     const result = timeSeries(rows, {
       sinceIso: "2026-11-09T00:00:00.000Z",
@@ -141,5 +211,11 @@ describe("prettyModelName", () => {
     ["o3-mini", "o3 Mini"],
   ])("%s → %s", (input, expected) => {
     expect(prettyModelName(input)).toBe(expected)
+  })
+
+  it("shows GitHub Copilot Auto on the person's plan", () => {
+    expect(prettyModelName("auto")).toBe("Auto")
+    expect(providerLabel("copilot")).toBe("GitHub Copilot")
+    expect(priceState({ provider: "copilot", model: "auto" }, prices)).toBe("subscription")
   })
 })

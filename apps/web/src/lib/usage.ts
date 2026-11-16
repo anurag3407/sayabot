@@ -1,5 +1,8 @@
 import "server-only"
+import { pickModelPrice, type PriceRow } from "@sayabot/core"
+import { listPriceFor } from "@sayabot/llm/models"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
+import { isFreeModel } from "@/lib/usage-summary"
 import type { UsageRollupRow } from "@/lib/usage-math"
 
 export { usageByAgent, type AgentUsage, type UsageRollupRow } from "@/lib/usage-math"
@@ -77,5 +80,27 @@ export async function loadRecentUsageEvents(
     }
   }
   return { events: events.reverse(), complete }
+}
+
+/**
+ * Prices the page doesn't have a saved row for, taken from the model catalog (models.dev).
+ * A saved row always wins. Free routes (`:free`) stay free even when the paid id has a price.
+ */
+export function mergeListPrices(table: readonly PriceRow[], models: readonly { provider: string; model: string }[]): PriceRow[] {
+  const rows = [...table]
+  for (const item of models) {
+    if (!item.provider || !item.model || isFreeModel(item.model)) continue
+    if (pickModelPrice(rows, item.provider, item.model)) continue
+    const list = listPriceFor(item.provider, item.model)
+    if (!list || (list.inputPerMillion <= 0 && list.outputPerMillion <= 0)) continue
+    rows.push({
+      provider: item.provider,
+      model: item.model,
+      inputPerMtok: list.inputPerMillion,
+      outputPerMtok: list.outputPerMillion,
+      ...(list.cachedInputPerMillion !== undefined ? { cacheReadPerMtok: list.cachedInputPerMillion } : {}),
+    })
+  }
+  return rows
 }
 

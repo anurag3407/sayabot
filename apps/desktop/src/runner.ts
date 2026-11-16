@@ -24,6 +24,7 @@ import {
   isReadOnlyStep,
   parseClaudeLine,
   parseCodexLine,
+  tokenUsage,
   type Activity,
   type StreamUpdate,
 } from "./mac-stream"
@@ -65,6 +66,32 @@ interface Job {
    */
   permissions?: "review" | "ask" | "auto" | "turbo"
   room?: { id: string; name: string; path: string | null } | null
+}
+
+/** What the Mac posts when a run finishes, including token counts when the app reported them. */
+function completionBody(
+  job: Job,
+  output: string,
+  usage: unknown,
+  model?: string | null,
+): Record<string, unknown> {
+  const counted = tokenUsage(usage)
+  const chosen = (model ?? job.model ?? "").trim().slice(0, 120)
+  return {
+    output,
+    status: "done",
+    ...(counted ? { usage: counted } : {}),
+    ...(chosen ? { model: chosen } : {}),
+  }
+}
+
+function acpModel(result: unknown): string | null {
+  if (!result || typeof result !== "object") return null
+  const raw = result as Record<string, unknown>
+  const meta =
+    raw.meta && typeof raw.meta === "object" ? (raw.meta as Record<string, unknown>) : null
+  const value = raw.model ?? meta?.model
+  return typeof value === "string" && /^[\w./:@~-]{1,120}$/.test(value) ? value : null
 }
 
 export interface ApprovalNotice {
@@ -438,7 +465,7 @@ export class LocalRunner {
           : failureHint(binName, stderr, code)
         await this.finish(job, { output: final, status: "failed", error })
       } else {
-        await this.finish(job, { output: final, status: "done" })
+        await this.finish(job, completionBody(job, final, finished?.usage))
       }
     } finally {
       clearInterval(eventsTimer)
@@ -675,7 +702,7 @@ export class LocalRunner {
       if (cancelled) return
       const final = output.trim()
       const stopReason = typeof result?.stopReason === "string" ? result.stopReason : "end_turn"
-      if (final) await this.finish(job, { output: final, status: "done" })
+      if (final) await this.finish(job, completionBody(job, final, result, acpModel(result)))
       else
         await this.finish(job, {
           output: "",
@@ -773,7 +800,7 @@ export class LocalRunner {
       // only Codex writes this file
     }
     if (code === 0 && final) {
-      await this.finish(job, { output: final, status: "done" })
+      await this.finish(job, completionBody(job, final, null))
     } else {
       await this.finish(job, {
         output: final,
@@ -845,7 +872,7 @@ export class LocalRunner {
       output += localDelta(buffer)
       if (cancelled) return
       const final = output.trim()
-      if (final) await this.finish(job, { output: final, status: "done" })
+      if (final) await this.finish(job, completionBody(job, final, null))
       else
         await this.finish(job, {
           output: "",

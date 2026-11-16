@@ -22,7 +22,11 @@ Org-member action (any role) — `getOrgAccess` is enough; you do not need to be
 
 ### `updateRoomSettings(_prev, formData)`
 
-Room-admin gated (`adminRoomAccess`). Validates name (1–60), `turnMode` enum (`mentions | debate | moderated`), `turnCap` 1–10, optional `rpmLimit` 1–1000 and `dailyBudgetUsd` 0–1,000,000, `systemDirective` up to 4,000 chars (`rooms.ts:130`–144). A `moderatorAgentId` must already be in the room, and `debateOrder` (JSON text) is filtered down to agents present in the room (`rooms.ts:155`). Writes to `rooms`, audits `room.settings_changed`, revalidates.
+Room-admin gated (`adminRoomAccess`). Validates `turnMode` enum (`mentions | debate | moderated`), `turnCap` 1–10, optional `rpmLimit` 1–1000 and `dailyBudgetUsd` 0–1,000,000, and `systemDirective` up to 4,000 chars. `name` is optional here: a form without a `name` field keeps the current name, since the settings page edits it with `updateRoomBasics`. When `name` is sent it must be 1–60 characters. A `moderatorAgentId` (the **lead agent**) must already be in the room and be `kind: "llm"`; an invited app is refused with "The lead agent must be one made in Sayabot…" (`rooms.ts:156`–163). `turnMode: "moderated"` without a lead fails with "Choose a lead agent…" (`rooms.ts:167`). `debateOrder` (JSON text) is filtered down to agents present in the room. Writes to `rooms`, audits `room.settings_changed`, revalidates.
+
+### `updateRoomBasics(_prev, formData)`
+
+Room-admin gated (`rooms.ts:209`). Updates `name` (1–60) and, for non-DM rooms when a `kind` field is posted, visibility (`public | private`; a room can't become or stop being a DM). Audits `room.settings_changed` with the changed fields and revalidates. Used by the **Room** section of [room settings](../pages/room-settings-ui.md).
 
 ### `deleteRoomAction(input)`
 
@@ -34,14 +38,14 @@ Room-admin plain-object action: deletes the `rooms` row (cascade handles childre
 
 - `addRoomMember(_prev, formData)` (`rooms.ts:196`) — room-admin. The person must be an org member and not already in the room; inserted as `role: "member"` with a matching `room_reads` upsert. Audit `room.member_added`.
 - `removeRoomMember(_prev, formData)` (`rooms.ts:240`) — room-admin. Refuses to remove the last room admin (counts `room_members` with `role: "admin"`), deletes the member and their `room_reads` row. Audit `room.member_removed`.
-- `addAgentToRoom(_prev, formData)` (`rooms.ts:284`) — room-admin. The agent must exist in the same org and not already be linked; appended to `room_agents` at `position = max + 1`. Audit `room.agent_added`, message "`@handle` added".
-- `removeAgentFromRoom(_prev, formData)` (`rooms.ts:329`) — room-admin. If the agent is the room's `moderator_agent_id`, the moderator field is cleared first. Deletes the `room_agents` link, audits `room.agent_removed`.
+- `addAgentToRoom(_prev, formData)` — room-admin. The agent must exist in the same org and not already be linked; appended to `room_agents` at `position = max + 1`. Audit `room.agent_added`, message "`@handle` added".
+- `removeAgentFromRoom(_prev, formData)` — room-admin. If the agent is the room's `moderator_agent_id` (its lead agent), the field is cleared first. Deletes the `room_agents` link, audits `room.agent_removed`.
 
 ---
 
 ## 🧾 The new-room form (`room-form.tsx`)
 
-`RoomForm` (`components/room-form.tsx:10`) is the client component wired to `createRoom` via `useActionState<ActionResult | null, FormData>` (`room-form.tsx:19`). It posts hidden `orgSlug`, the name (1–60), a `kind` select (private / public / dm), and a `memberId` select filtered to members other than the caller. Errors surface in an inline alert; the submit button disables while pending. Client state tracks `kind` only to switch which fields are required.
+`RoomForm` (`components/room-form.tsx:10`) is the client component wired to `createRoom` via `useActionState<ActionResult | null, FormData>` (`room-form.tsx:19`). Only the name (1–60) is shown up front. The `kind` select (private by default / public / dm) and a `memberId` select (members other than the caller) sit in a collapsed **More options** `<details>` (`room-form.tsx:39`), and the help text points to room settings for agents, people, tools and the lead. It posts hidden `orgSlug`. Errors surface in an inline alert; the submit button disables while pending. Client state tracks `kind` only to switch which fields are required.
 
 ---
 

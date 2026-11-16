@@ -115,13 +115,13 @@ export const ROOM_KIND_LABELS: Record<string, string> = {
 export const TURN_MODE_LABELS: Record<string, string> = {
   mentions: "Reply when @mentioned",
   debate: "Debate: agents take set roles",
-  moderated: "Moderated: one agent picks who speaks",
+  moderated: "Lead agent: one agent sends each message to the right agent",
 }
 
 export const TURN_MODE_SHORT: Record<string, string> = {
   mentions: "agents reply when mentioned",
   debate: "debate",
-  moderated: "moderated",
+  moderated: "lead agent",
 }
 
 export function statusTone(status: string): string {

@@ -99,6 +99,29 @@ export function validateModeratorChoice(
     : { next: HUMAN_TURN, valid: false }
 }
 
+/** Most agents a lead agent may hand one message to at once. */
+export const LEAD_MAX_AGENTS = 3
+
+/**
+ * Validates a lead agent's plan: its first pick (`next`) plus any others it wants on the same
+ * message (`also`), in order. Unknown and repeated ids are dropped and the list is capped at
+ * LEAD_MAX_AGENTS. `"human"` as the first pick, or nothing usable at all, hands the floor back.
+ */
+export function validateLeadPlan(
+  next: string,
+  also: string[],
+  roomAgents: AgentRef[],
+): { agentIds: string[]; human: boolean } {
+  if (next === HUMAN_TURN) return { agentIds: [], human: true }
+  const known = new Set(roomAgents.map((a) => a.id))
+  const agentIds: string[] = []
+  for (const id of [next, ...also]) {
+    if (agentIds.length >= LEAD_MAX_AGENTS) break
+    if (known.has(id) && !agentIds.includes(id)) agentIds.push(id)
+  }
+  return agentIds.length ? { agentIds, human: false } : { agentIds: [], human: true }
+}
+
 export function debateRoleInstruction(role: TurnRole): string | null {
   switch (role) {
     case "producer":

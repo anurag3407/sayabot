@@ -15,7 +15,30 @@ export interface StreamUpdate {
   message?: string
   activity: Activity[]
   /** The run is over: the final reply (if the app says it) and an error, if it failed. */
-  done?: { text: string | null; error: string | null }
+  done?: {
+    text: string | null
+    error: string | null
+    usage?: { inputTokens: number; outputTokens: number; cachedInputTokens: number }
+  }
+}
+
+function num(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0
+}
+
+/** Token counts from a Claude result, a Codex turn, or an ACP prompt result. */
+export function tokenUsage(
+  value: unknown,
+): { inputTokens: number; outputTokens: number; cachedInputTokens: number } | null {
+  const raw = obj(value)
+  const usage = raw.usage && typeof raw.usage === "object" ? obj(raw.usage) : raw
+  const input = num(usage.inputTokens ?? usage.input_tokens)
+  const output = num(usage.outputTokens ?? usage.output_tokens)
+  const cached = num(
+    usage.cachedInputTokens ?? usage.cached_input_tokens ?? usage.cache_read_input_tokens,
+  )
+  if (input + output <= 0) return null
+  return { inputTokens: input, outputTokens: output, cachedInputTokens: Math.min(input, cached) }
 }
 
 const MAX_RESULT = 4_000
@@ -115,11 +138,13 @@ export function parseClaudeLine(line: string): StreamUpdate {
     const failed =
       data.is_error === true || (typeof data.subtype === "string" && data.subtype !== "success")
     const text = typeof data.result === "string" ? data.result : null
+    const usage = tokenUsage(data.usage)
     return {
       activity: [],
       done: {
         text: failed ? null : text,
         error: failed ? text || String(data.subtype ?? "Claude Code failed") : null,
+        ...(usage ? { usage } : {}),
       },
     }
   }
@@ -201,7 +226,10 @@ export function parseCodexLine(line: string): StreamUpdate {
     }
     return { activity: [] }
   }
-  if (data.type === "turn.completed") return { activity: [], done: { text: null, error: null } }
+  if (data.type === "turn.completed") {
+    const usage = tokenUsage(data.usage)
+    return { activity: [], done: { text: null, error: null, ...(usage ? { usage } : {}) } }
+  }
   if (data.type === "turn.failed" || data.type === "error") {
     const message = obj(data.error).message ?? data.message
     // Codex retries on its own and reports each attempt; only the last word counts.
@@ -264,20 +292,95 @@ export function allowedByRules(
 }
 
 /** Tools that only look: run without asking in "auto". */
-const READ_ONLY_TOOLS = new Set(["Read", "Glob", "Grep", "LS", "WebSearch", "WebFetch", "Think", "TodoWrite"])
+const READ_ONLY_TOOLS = new Set([
+  "Read",
+  "Glob",
+  "Grep",
+  "LS",
+  "WebSearch",
+  "WebFetch",
+  "Think",
+  "TodoWrite",
+])
 
 /** Commands that only report (status, files, system info). Their write flags are refused below. */
 const READ_ONLY_COMMANDS = new Set([
-  "cat", "head", "tail", "less", "wc", "ls", "pwd", "whoami", "id", "date", "cal", "uptime",
-  "uname", "sw_vers", "hostname", "df", "du", "which", "type", "file", "stat", "echo", "printf",
-  "grep", "rg", "egrep", "fgrep", "find", "tree", "basename", "dirname", "realpath", "sort",
-  "uniq", "cut", "diff", "cmp", "md5", "shasum", "ps", "top", "vm_stat", "iostat", "lsof",
-  "pmset", "system_profiler", "sysctl", "ioreg", "networksetup", "ipconfig", "ifconfig",
-  "scutil", "mdfind", "mdls", "defaults", "git", "node", "python3", "npm", "pnpm",
+  "cat",
+  "head",
+  "tail",
+  "less",
+  "wc",
+  "ls",
+  "pwd",
+  "whoami",
+  "id",
+  "date",
+  "cal",
+  "uptime",
+  "uname",
+  "sw_vers",
+  "hostname",
+  "df",
+  "du",
+  "which",
+  "type",
+  "file",
+  "stat",
+  "echo",
+  "printf",
+  "grep",
+  "rg",
+  "egrep",
+  "fgrep",
+  "find",
+  "tree",
+  "basename",
+  "dirname",
+  "realpath",
+  "sort",
+  "uniq",
+  "cut",
+  "diff",
+  "cmp",
+  "md5",
+  "shasum",
+  "ps",
+  "top",
+  "vm_stat",
+  "iostat",
+  "lsof",
+  "pmset",
+  "system_profiler",
+  "sysctl",
+  "ioreg",
+  "networksetup",
+  "ipconfig",
+  "ifconfig",
+  "scutil",
+  "mdfind",
+  "mdls",
+  "defaults",
+  "git",
+  "node",
+  "python3",
+  "npm",
+  "pnpm",
 ])
 
 /** Sub-commands / flags that make an otherwise read-only command change something. */
-const GIT_READ = new Set(["status", "log", "diff", "show", "branch", "remote", "rev-parse", "blame", "ls-files", "describe", "tag"])
+const GIT_READ = new Set([
+  "status",
+  "log",
+  "diff",
+  "show",
+  "branch",
+  "remote",
+  "rev-parse",
+  "blame",
+  "ls-files",
+  "describe",
+  "tag",
+])
 const VERSION_ONLY = new Set(["node", "python3", "npm", "pnpm"])
 
 /**
@@ -293,9 +396,11 @@ export function isReadOnlyStep(toolName: string, input: Record<string, unknown>)
   const words = command.split(/\s+/)
   const [bin, sub] = words
   if (!bin || !READ_ONLY_COMMANDS.has(bin)) return false
-  if (bin === "git") return Boolean(sub && GIT_READ.has(sub)) && !words.includes("-D") && !words.includes("--delete")
+  if (bin === "git")
+    return Boolean(sub && GIT_READ.has(sub)) && !words.includes("-D") && !words.includes("--delete")
   if (VERSION_ONLY.has(bin)) return words.length === 2 && (sub === "--version" || sub === "-v")
-  if (bin === "find") return !words.some((w) => ["-delete", "-exec", "-execdir", "-ok", "-fprint"].includes(w))
+  if (bin === "find")
+    return !words.some((w) => ["-delete", "-exec", "-execdir", "-ok", "-fprint"].includes(w))
   if (bin === "defaults") return sub === "read" || sub === "domains"
   if (bin === "pmset") return sub === "-g"
   if (bin === "networksetup") return Boolean(sub?.startsWith("-get") || sub?.startsWith("-list"))

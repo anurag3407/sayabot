@@ -6,6 +6,7 @@ import { computeCacheSavingsUsd, pickModelPrice } from "@sayabot/core"
 import { cn, formatMs, formatNumber, formatPercent, formatTokens } from "@/lib/format"
 import type { UsageRollupRow } from "@/lib/usage-math"
 import {
+  applyPrices,
   providerLabel,
   rowFromEvent,
   rowFromRollup,
@@ -234,9 +235,10 @@ export function UsageDashboard({
       const rows = local.events.map(rowFromEvent)
       return { exactRows: rows, sampleRows: rows }
     }
-    const sample = events.map(rowFromEvent)
-    return { exactRows: rollup ? rollup.map(rowFromRollup) : sample, sampleRows: sample }
-  }, [isLocal, local.events, events, rollup])
+    const sample = applyPrices(events.map(rowFromEvent), pricing)
+    const exact = rollup ? applyPrices(rollup.map(rowFromRollup), pricing) : sample
+    return { exactRows: exact, sampleRows: sample }
+  }, [isLocal, local.events, events, rollup, pricing])
 
   const names = useMemo(
     () => ({
@@ -506,7 +508,9 @@ export function UsageDashboard({
                     </span>
                     <span className="shrink-0 text-[14px] text-text tabular-nums">
                       {metric === "cost" && bucket.price !== "priced" ? (
-                        <span className="text-faint">{bucket.price === "subscription" ? "In your plan" : "No price"}</span>
+                        <span className="text-faint">
+                          {bucket.price === "subscription" ? "In your plan" : bucket.price === "free" ? "Free" : "No price"}
+                        </span>
                       ) : (
                         show(bucket)
                       )}
@@ -516,10 +520,15 @@ export function UsageDashboard({
                     <span>{providerLabel(bucket.provider)}</span>
                     <span aria-hidden="true">·</span>
                     <span>
-                      {formatNumber(bucket.calls)} {bucket.calls === 1 ? "call" : "calls"}
+                      {bucket.backgroundCalls === bucket.calls
+                        ? "Behind the scenes"
+                        : `${formatNumber(bucket.calls)} ${bucket.calls === 1 ? "call" : "calls"}`}
                     </span>
                     {bucket.price === "unpriced" && !isLocal ? (
                       <span className="rounded-full bg-warn/15 px-2 py-px text-[11.5px] text-warn">No price set</span>
+                    ) : null}
+                    {bucket.price === "free" ? (
+                      <span className="rounded-full bg-raised px-2 py-px text-[11.5px] text-muted">Free</span>
                     ) : null}
                     {bucket.price === "subscription" ? (
                       <span className="rounded-full bg-raised px-2 py-px text-[11.5px] text-muted">Your plan</span>

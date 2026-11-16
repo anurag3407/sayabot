@@ -109,11 +109,15 @@ These are the placeholders agents reference (never plaintext), matching the orch
 
 ## 🧠 Memory & RAG (`vector`, admin)
 
-An educational banner distinguishes the "thinking brain" (LLMs) from "persistent memory" (vector DB + embedding model) and shows the currently active pair (defaults: built-in PostgreSQL/PGLite storage; hybrid keyword/recency matching). Sections:
+A short status page. Memory already uses the workspace database and keyword matching; this screen adds an optional vector store and an optional embedding model. A three-cell strip states how each provider authenticates:
 
-- A static "Generous Free-Tier Options" cheat sheet (Pinecone 2 GB, Gemini embeddings 1500 RPM, Qdrant 1 GB, Voyage 200M tokens, Supabase/Neon 500 MB, local PGLite).
-- **Vector Databases** and **Embedding Models** lists (`listVectorProviders`, split by `kind`) — each row shows provider display name (`PROVIDER_NAMES`), `•••• last4`, endpoint/index/dimension info, and `SetActiveVectorButton` / `TestVectorButton` / `DeleteVectorButton` (`vector-actions.tsx` → `setActiveVectorProvider` / `testVectorProvider` / `deleteVectorProvider` in `src/lib/actions/vector-keys.ts`).
-- **`VectorAddForm`** (`vector-add-form.tsx`) — kind (vector_db | embedding) + provider selects (7 vector DBs, 8 embedding providers, with free-tier labels), key/endpoint/index/dimension fields as the provider requires (local `pglite`/`fastembed_local` need no key), saved through `saveVectorProvider`.
+- **No credential** — built-in Postgres and on-device embeddings (`pglite`, `fastembed_local`).
+- **API key** — Pinecone, Qdrant, Cloudflare, Gemini, Voyage, OpenAI, Cohere. Gemini’s embedding API and OpenAI’s embeddings API refuse Google / ChatGPT sign-in tokens.
+- **OAuth** — Neon only (`oauth2.neon.tech`). Neon’s authorization-code flow returns a connection string. This screen does not start that flow (no Neon OAuth client is registered); the admin pastes the URL Neon shows after approval. Pinecone’s OAuth is admin-API only and cannot read or write vectors. Qdrant console SSO does not authorize the database API.
+
+Two lanes, **Storage** and **Embeddings**, each show the active provider (or the built-in fallback), saved rows from `listVectorProviders`, and a `VectorAddForm`. Rows keep `SetActiveVectorButton` / `TestVectorButton` / `DeleteVectorButton` (`vector-actions.tsx` → `setActiveVectorProvider` / `testVectorProvider` / `deleteVectorProvider`).
+
+**`VectorAddForm`** (`vector-add-form.tsx`) takes a fixed `kind`. The admin picks one provider card; the form then renders only that provider’s fields (API key, database URL, endpoint, index). Label, dimension, and “make active” are submitted as hidden values (`vectorProviderName` supplies the display name). Local providers submit no secret. Saved through `saveVectorProvider`.
 
 ## 👥 General & Members (`workspace`, admin)
 
