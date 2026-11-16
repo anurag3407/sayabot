@@ -966,7 +966,7 @@ export function Composer({
           }
           onKeyDown={onKeyDown}
           onBlur={() => window.setTimeout(() => setMention(null), 120)}
-          className="block max-h-[220px] min-h-10 w-full resize-none bg-transparent px-4 pb-1 pt-3.5 text-[15px] leading-[22px] text-text outline-none placeholder:text-faint"
+          className="block max-h-[220px] min-h-10 w-full resize-none bg-transparent px-4 pb-1 pt-3.5 text-[15px] leading-[22px] text-text outline-none focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 placeholder:text-faint"
         />
         <div className="flex items-center gap-1 px-1.5 pb-1.5">
           {showQuickActions ? (

@@ -89,6 +89,13 @@ body {
   outline-offset: 2px;
 }
 
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[contenteditable="true"]:focus-visible {
+  outline: none;
+}
+
 /* Chromium draws a disclosure triangle on <summary> even with list-style: none. */
 summary::-webkit-details-marker {
   display: none;
