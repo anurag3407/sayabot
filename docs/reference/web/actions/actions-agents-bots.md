@@ -142,7 +142,7 @@ This server-only module backs the public `bot/[code]` routes (documented in the 
 
 ## 🏷️ Handle generation (`lib/agent-handle.ts`)
 
-`handleFromName(name)` (`agent-handle.ts:4`) is the client-side helper used by the create-agent form and onboarding wizard to suggest a handle: NFKD-normalize, strip combining marks, lowercase, non-alphanumerics to `-`, drop leading non-letters and trailing hyphens, cap at 39 characters. The server keeps its own stricter variants (max 32 + `bot-` fallback in `agents.ts:277`, and `@sayabot/core`'s version inside the invite flow), so a suggested handle is always re-validated server-side.
+`handleFromName(name)` (`agent-handle.ts:4`) is the client-side helper used by the create-agent form to suggest a handle: NFKD-normalize, strip combining marks, lowercase, non-alphanumerics to `-`, drop leading non-letters and trailing hyphens, cap at 39 characters. The server keeps its own stricter variants (max 32 + `bot-` fallback in `agents.ts:277`, and `@sayabot/core`'s version inside the invite flow), so a suggested handle is always re-validated server-side.
 
 ---
 

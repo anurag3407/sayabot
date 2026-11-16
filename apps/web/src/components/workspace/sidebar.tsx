@@ -348,7 +348,7 @@ function NewBotRow({ bot, orgSlug, onNavigate }: { bot: BotLink; orgSlug: string
 }
 
 /** Which workspace you are in, as a small pill at the top. */
-function WorkspaceSwitcher({ org, orgs, role }: { org: { slug: string; name: string }; orgs: OrgSummary[]; role: OrgRole }) {
+function WorkspaceSwitcher({ org, orgs }: { org: { slug: string; name: string }; orgs: OrgSummary[] }) {
   const seen = new Set<string>()
   const list = orgs.filter((item) => {
     if (seen.has(item.id)) return false
@@ -367,11 +367,6 @@ function WorkspaceSwitcher({ org, orgs, role }: { org: { slug: string; name: str
         <>
           <Mascot seed={org.name} mood="happy" className="h-6 w-6 shrink-0" />
           <span className="truncate">{org.name}</span>
-          {role === "owner" ? (
-            <span className="shrink-0 text-[11px] text-m-yellow" title="You own this workspace" aria-label="Owner">
-              ♛
-            </span>
-          ) : null}
           <ChevronDown className="h-3.5 w-3.5 shrink-0 text-faint" />
         </>
       }
@@ -616,7 +611,7 @@ export function AppSidebar({
       >
         {headerExtra}
         <div className="min-w-0 flex-1 [-webkit-app-region:no-drag]">
-          <WorkspaceSwitcher org={org} orgs={orgs} role={role} />
+          <WorkspaceSwitcher org={org} orgs={orgs} />
         </div>
         <DetailsMenu
           className="shrink-0 [-webkit-app-region:no-drag]"

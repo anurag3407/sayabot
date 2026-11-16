@@ -209,13 +209,7 @@ Turborepo will spin up all workspace microservices in parallel:
 
 1. Open your browser and navigate to [http://localhost:3000](http://localhost:3000).
 2. Click **Sign In** and authenticate using Email Magic Link or GitHub OAuth.
-3. Complete the **3-Step Setup Wizard**:
-   - **Step 1: Workspace**: Set your workspace name (e.g. `Acme Engineering`) and slug (`acme`).
-   - **Step 2: Default Agent**: Choose your starting agent:
-     - **Pocket Saya**: General-purpose companion with web search, canvas editing, and task planning.
-     - **Research Agent**: Deep web scraping, multi-source synthesis, and academic paper summaries.
-     - **Full-Stack Developer**: Linux bash terminal, git staging, ripgrep, and code intelligence.
-   - **Step 3: Tools & Model**: Configure your preferred model provider (OpenAI, Anthropic Claude 3.7 Sonnet, Google Gemini 2.0 Flash, or Ollama local models).
+3. Name your workspace (for example `Acme Engineering`). Onboarding asks only for that name, then opens a first chat called General. API keys and bots are set up later, inside the app.
 4. Enter your new room and send a test message:
    ```
    @saya introduce yourself and list what tools you have available

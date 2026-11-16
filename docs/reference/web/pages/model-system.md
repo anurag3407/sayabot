@@ -130,7 +130,7 @@ Rendered on `/settings/keys`; receives `keys` (ProviderKeyView[]), `agentCounts`
 
 ## 💡 Suggestions (`lib/model-options.ts`)
 
-`MODEL_SUGGESTIONS` maps provider → starter model ids (the field stays free text; used by the onboarding datalist, key-less fallback lists and `defaultModel(provider)`), covering openai, anthropic, google, groq, cerebras, openrouter (with `:free` ids), copilot, cloudflare and `openai-compatible` (empty).
+`MODEL_SUGGESTIONS` maps provider → starter model ids (the field stays free text; used by the create-agent datalist, key-less fallback lists and `defaultModel(provider)`), covering openai, anthropic, google, groq, cerebras, openrouter (with `:free` ids), copilot, cloudflare and `openai-compatible` (empty).
 
 Provider marks (`provider-icons.tsx`) are inline SVG components — `OpenAIMark`, `AnthropicMark`, `GoogleMark`, `CopilotMark`, `OpenRouterMark`, `OpenCodeMark`, `MiniMaxMark`, `QwenMark`, `KimiMark`, `GrokMark`, and more — selected by string id.
 
@@ -151,7 +151,7 @@ Three exported helpers keep the picker and its callers consistent:
 - [Room chat UI](./room-chat-ui.md) — where the title-bar picker mounts and `MODEL_PICKER_EVENT` fires
 - [Agents UI](./agents-ui.md) — `setAgentModelAction` / `refreshModelListsAction` in context
 - [Settings UI](./settings-ui.md) — the `/settings/keys` page hosting `ProvidersView`
-- [App overview](./app-overview.md) — onboarding's "connect a model" step uses the same actions
+- [App overview](./app-overview.md) — where signed-in users land after onboarding
 - ../../architecture/security-model.md — KEK envelope encryption for `provider_keys`
 - ../../database/schema-connectors-and-vault.md — the `provider_keys` table
 - The model API routes (`/api/connectors/models`, `/api/connectors/models/room`, `/api/providers/local`) are documented under `docs/reference/web/api/`; the key actions in `docs/reference/web/actions/`.

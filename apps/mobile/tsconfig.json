@@ -5,7 +5,9 @@
     "lib": ["ES2023"],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "react": ["./node_modules/@types/react"],
+      "react/*": ["./node_modules/@types/react/*"]
     }
   },
   "include": ["src/**/*", "App.tsx", "index.js"]

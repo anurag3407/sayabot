@@ -180,7 +180,7 @@ Task-oriented guides live at the top level of `docs/`. The **reference library**
 | :-- | :-- |
 | [app-overview](reference/web/pages/app-overview.md) | Proxy middleware, layouts, workspace shell, PWA/service worker, updates |
 | [auth-flows](reference/web/pages/auth-flows.md) | Login/signup/OTP, OAuth, guest→account merge, desktop/mobile handoff |
-| [onboarding](reference/web/pages/onboarding.md) | Resume-aware wizard, workspace setup graph |
+| [onboarding](reference/web/pages/onboarding.md) | Workspace name form, then the first room |
 | [room-chat-ui](reference/web/pages/room-chat-ui.md) | Room page, chat panel, composer, messages, threads, approvals UI |
 | [room-settings-ui](reference/web/pages/room-settings-ui.md) | Name-only room creation; room settings: agents (ready-made, existing, your app), where each runs, lead agent, tools, people |
 | [canvas-ui](reference/web/pages/canvas-ui.md) | Yjs/Monaco collaborative canvas, presence, versions, restore |
