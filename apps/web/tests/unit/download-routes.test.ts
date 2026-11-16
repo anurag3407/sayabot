@@ -2,9 +2,11 @@ import { describe, it, expect } from "vitest"
 import { GET as getDownloadAndroid } from "../../src/app/api/download/android/route"
 import { GET as getDownloadApk } from "../../src/app/api/download/apk/route"
 import { GET as getDownloadMac } from "../../src/app/api/download/mac/route"
+import { GET as getDownloadWindows } from "../../src/app/api/download/windows/route"
 import { GET as getPageDownloadAndroid } from "../../src/app/download/android/route"
 import { GET as getPageDownloadApk } from "../../src/app/download/apk/route"
 import { GET as getPageDownloadMac } from "../../src/app/download/mac/route"
+import { GET as getPageDownloadWindows } from "../../src/app/download/windows/route"
 import { DOWNLOADS } from "../../src/components/landing/content"
 
 describe("Download API & page redirect routes", () => {
@@ -53,5 +55,19 @@ describe("Download API & page redirect routes", () => {
     const res = await getPageDownloadMac(req)
     expect(res.status).toBe(302)
     expect(res.headers.get("location")).toBe(DOWNLOADS.macArm64)
+  })
+
+  it("redirects /api/download/windows to the x64 setup exe", async () => {
+    const req = new Request("http://localhost:3000/api/download/windows")
+    const res = await getDownloadWindows(req)
+    expect(res.status).toBe(302)
+    expect(res.headers.get("location")).toBe(DOWNLOADS.winX64)
+  })
+
+  it("redirects /download/windows?arch=arm64 to the ARM setup exe", async () => {
+    const req = new Request("http://localhost:3000/download/windows?arch=arm64")
+    const res = await getPageDownloadWindows(req)
+    expect(res.status).toBe(302)
+    expect(res.headers.get("location")).toBe(DOWNLOADS.winArm64)
   })
 })

@@ -2,7 +2,7 @@ import { execFile } from "node:child_process"
 import { readdir, readFile, stat } from "node:fs/promises"
 import { homedir } from "node:os"
 import { join } from "node:path"
-import { findBinary, toolPath } from "./bin-path"
+import { findBinary, spawnTool, toolPath } from "./bin-path"
 import {
   appModels,
   claudeAccount,
@@ -36,7 +36,8 @@ export interface LocalAgent {
  * How the runner starts each app: Claude Code and Codex with Sayabot's room tools, a few in their
  * plain print mode, and the rest over the Agent Client Protocol (see acp.ts).
  */
-export type RunMode = { kind: "tools" } | { kind: "plain" } | { kind: "acp"; args: readonly string[] }
+export type RunMode =
+  { kind: "tools" } | { kind: "plain" } | { kind: "acp"; args: readonly string[] }
 
 export interface AgentSpec {
   id: string
@@ -48,7 +49,8 @@ export interface AgentSpec {
   signedIn: (home: string) => Promise<boolean>
 }
 
-const hasEnv = (names: readonly string[]) => names.some((name) => Boolean(process.env[name]?.trim()))
+const hasEnv = (names: readonly string[]) =>
+  names.some((name) => Boolean(process.env[name]?.trim()))
 const fileHas = (file: string, pattern: RegExp) =>
   readFile(file, "utf8").then(
     (text) => pattern.test(text),
@@ -59,8 +61,14 @@ const dirHas = (dir: string, pattern: RegExp) =>
     (names) => names.some((name) => pattern.test(name)),
     () => false,
   )
-const xdgData = (home: string) => process.env.XDG_DATA_HOME?.trim() || join(home, ".local/share")
-const xdgConfig = (home: string) => process.env.XDG_CONFIG_HOME?.trim() || join(home, ".config")
+const xdgData = (home: string) =>
+  process.platform === "win32"
+    ? process.env.APPDATA?.trim() || join(home, "AppData", "Roaming")
+    : process.env.XDG_DATA_HOME?.trim() || join(home, ".local/share")
+const xdgConfig = (home: string) =>
+  process.platform === "win32"
+    ? process.env.APPDATA?.trim() || join(home, "AppData", "Roaming")
+    : process.env.XDG_CONFIG_HOME?.trim() || join(home, ".config")
 const someTrue = async (checks: Array<() => Promise<boolean>>) => {
   for (const check of checks) if (await check()) return true
   return false
@@ -86,7 +94,8 @@ export const AGENT_SPECS: readonly AgentSpec[] = [
     bin: "codex",
     run: { kind: "tools" },
     keyEnv: ["OPENAI_API_KEY"],
-    signedIn: (home) => exists(join(process.env.CODEX_HOME?.trim() || join(home, ".codex"), "auth.json")),
+    signedIn: (home) =>
+      exists(join(process.env.CODEX_HOME?.trim() || join(home, ".codex"), "auth.json")),
   },
   {
     id: "copilot",
@@ -134,8 +143,13 @@ export const AGENT_SPECS: readonly AgentSpec[] = [
     // or a Vertex setup counts; the env keys are checked before this.
     signedIn: (home) =>
       someTrue([
-        () => fileHas(join(home, ".gemini/.env"), /^(?:export )?(?:GEMINI|GOOGLE)_API_KEY\s*=\s*\S/m),
-        () => fileHas(join(home, ".gemini/settings.json"), /"selectedType"\s*:\s*"(?:gemini-api-key|vertex-ai)"/),
+        () =>
+          fileHas(join(home, ".gemini/.env"), /^(?:export )?(?:GEMINI|GOOGLE)_API_KEY\s*=\s*\S/m),
+        () =>
+          fileHas(
+            join(home, ".gemini/settings.json"),
+            /"selectedType"\s*:\s*"(?:gemini-api-key|vertex-ai)"/,
+          ),
       ]),
   },
   {
@@ -173,7 +187,8 @@ export const AGENT_SPECS: readonly AgentSpec[] = [
     bin: "grok",
     run: { kind: "acp", args: ["agent", "stdio"] },
     keyEnv: [],
-    signedIn: (home) => exists(join(process.env.GROK_HOME?.trim() || join(home, ".grok"), "auth.json")),
+    signedIn: (home) =>
+      exists(join(process.env.GROK_HOME?.trim() || join(home, ".grok"), "auth.json")),
   },
   {
     id: "kimi",
@@ -182,7 +197,10 @@ export const AGENT_SPECS: readonly AgentSpec[] = [
     run: { kind: "acp", args: ["acp"] },
     keyEnv: [],
     signedIn: (home) =>
-      dirHas(join(process.env.KIMI_CODE_HOME?.trim() || join(home, ".kimi-code"), "credentials"), /^kimi-code.*\.json$/),
+      dirHas(
+        join(process.env.KIMI_CODE_HOME?.trim() || join(home, ".kimi-code"), "credentials"),
+        /^kimi-code.*\.json$/,
+      ),
   },
   {
     id: "kiro",
@@ -192,11 +210,23 @@ export const AGENT_SPECS: readonly AgentSpec[] = [
     keyEnv: ["KIRO_API_KEY"],
     // The login lives in Kiro's own database; its presence is the best sign without opening it.
     signedIn: (home) =>
-      exists(
-        process.platform === "darwin"
-          ? join(home, "Library/Application Support/kiro-cli/data.sqlite3")
-          : join(xdgData(home), "kiro-cli/data.sqlite3"),
-      ),
+      someTrue([
+        () =>
+          exists(
+            process.platform === "darwin"
+              ? join(home, "Library/Application Support/kiro-cli/data.sqlite3")
+              : join(xdgData(home), "kiro-cli/data.sqlite3"),
+          ),
+        () =>
+          process.platform === "win32"
+            ? exists(
+                join(
+                  process.env.LOCALAPPDATA || join(home, "AppData", "Local"),
+                  "kiro-cli/data.sqlite3",
+                ),
+              )
+            : Promise.resolve(false),
+      ]),
   },
   {
     id: "droid",
@@ -233,7 +263,10 @@ export const AGENT_SPECS: readonly AgentSpec[] = [
     run: { kind: "acp", args: ["--acp"] },
     keyEnv: [],
     signedIn: (home) =>
-      someTrue([() => exists(join(home, ".qwen/oauth_creds.json")), () => exists(join(home, ".qwen/settings.json"))]),
+      someTrue([
+        () => exists(join(home, ".qwen/oauth_creds.json")),
+        () => exists(join(home, ".qwen/settings.json")),
+      ]),
   },
   {
     id: "hermes",
@@ -242,7 +275,10 @@ export const AGENT_SPECS: readonly AgentSpec[] = [
     run: { kind: "acp", args: ["acp"] },
     keyEnv: [],
     signedIn: (home) =>
-      someTrue([() => exists(join(home, ".hermes/config.yaml")), () => exists(join(home, ".hermes/auth.json"))]),
+      someTrue([
+        () => exists(join(home, ".hermes/config.yaml")),
+        () => exists(join(home, ".hermes/auth.json")),
+      ]),
   },
   {
     id: "omp",
@@ -280,20 +316,40 @@ export function agentSpec(id: string): AgentSpec | undefined {
   return AGENT_SPECS.find((spec) => spec.id === id)
 }
 
-const exists = (p: string) => stat(p).then(() => true, () => false)
+const exists = (p: string) =>
+  stat(p).then(
+    () => true,
+    () => false,
+  )
 
 export { findBinary } from "./bin-path"
 
 function run(file: string, args: string[], timeoutMs = 2_500): Promise<string> {
   return new Promise((resolve) => {
     const env = { ...process.env, PATH: toolPath(file) }
-    execFile(file, args, { timeout: timeoutMs, env }, (error, stdout) => resolve(error ? "" : String(stdout)))
+    const child = spawnTool(file, args, { env, stdio: ["ignore", "pipe", "ignore"] })
+    let out = ""
+    const timer = setTimeout(() => child.kill(), timeoutMs)
+    child.stdout?.on("data", (chunk: Buffer) => {
+      out += chunk.toString("utf8")
+    })
+    const finish = () => {
+      clearTimeout(timer)
+      resolve(out)
+    }
+    child.on("error", () => {
+      clearTimeout(timer)
+      resolve("")
+    })
+    child.on("close", finish)
   })
 }
 
 async function keychainHas(service: string): Promise<boolean> {
   if (process.platform !== "darwin") return false
-  return new Promise((resolve) => execFile("/usr/bin/security", ["find-generic-password", "-s", service], (err) => resolve(!err)))
+  return new Promise((resolve) =>
+    execFile("/usr/bin/security", ["find-generic-password", "-s", service], (err) => resolve(!err)),
+  )
 }
 
 /** `fresh` re-reads every model list now instead of using the six-hour cache (the picker's refresh). */
@@ -307,9 +363,17 @@ export async function detectLocalAgents(opts: { fresh?: boolean } = {}): Promise
     Promise.all(
       AGENT_SPECS.map(async (spec) => {
         const binary = await findBinary(spec.bin)
-        const signedIn = binary ? hasEnv(spec.keyEnv) || (await spec.signedIn(home).catch(() => false)) : false
-        const version = binary ? ((await run(binary, ["--version"])).match(/\d+\.\d+(?:\.\d+)?/)?.[0] ?? null) : null
-        const status: LocalAgent["status"] = !binary ? "not_installed" : signedIn ? "ready" : "signed_out"
+        const signedIn = binary
+          ? hasEnv(spec.keyEnv) || (await spec.signedIn(home).catch(() => false))
+          : false
+        const version = binary
+          ? ((await run(binary, ["--version"])).match(/\d+\.\d+(?:\.\d+)?/)?.[0] ?? null)
+          : null
+        const status: LocalAgent["status"] = !binary
+          ? "not_installed"
+          : signedIn
+            ? "ready"
+            : "signed_out"
         const [account, models] =
           status === "ready"
             ? await Promise.all([

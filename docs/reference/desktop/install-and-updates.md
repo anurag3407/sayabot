@@ -118,6 +118,16 @@ There is **no first-run installer logic in this codebase's desktop app** — no 
 
 ---
 
+## 🪟 Windows updates (`src/win-install.ts`)
+
+The same `DesktopUpdater` runs on Windows. `main.ts` sets `platform: "win32"`, so `install()` downloads `winZipUrlFor` (`Sayabot-win-<arch>.zip` pinned to the checked version, or `winUrls[arm64|x64]` from `GET /api/version`) instead of a DMG. `inspect` is `inspectWinZip`: PowerShell `Expand-Archive`, then `Sayabot.exe`'s `ProductVersion`, normalized by `normalizeProductVersion` (`1.2.3.0` → `1.2.3`).
+
+`installTargetWin(exe)` is the directory containing the running `Sayabot.exe`. A dev `electron.exe` falls back to `%LOCALAPPDATA%\Programs\Sayabot`. `canReplaceWin` requires that folder (and its parent) to be writable. If it is not, the zip is opened and the update stops with a message to run `Sayabot Setup`.
+
+`stageWinUpdate` writes `install.ps1` and `runDetachedWin` starts it with Windows PowerShell, then the app quits. The script waits up to 60 seconds for the app PID to exit, expands the zip, checks the product version, robocopies into `Sayabot.new`, renames the live folder to `Sayabot.old`, renames `.new` into place, deletes `.old` and the zip, and `Start-Process`es `Sayabot.exe`. On failure it removes `.new` and, if `Sayabot.exe` is gone but `.old` exists, moves `.old` back and reopens it. The log is `%LOCALAPPDATA%\Sayabot\Logs\update.log`.
+
+First-run install is the NSIS exe (`Sayabot-Setup-<arch>.exe`), not the zip. `apps/web/public/install-windows.ps1` downloads that exe and runs it with `/S`. The download page and `/download/windows` (default x64, `?arch=arm64` for ARM) point at the setup exe. CI (`.github/workflows/desktop-release.yml`, job `build-windows`) builds both arches on `windows-latest` after the Mac job has published the release, then `gh release upload`s the exe and zip files.
+
 ## Related docs
 
 - [Overview (lifecycle, IPC, storage)](./overview.md)

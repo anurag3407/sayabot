@@ -26,7 +26,7 @@ Each `PlanLimits` (type from `@sayabot/core/scanner`) is `{ provider, label, pla
 
 ### Codex (`readCodexLimits`, `src/usage/index.ts:173`)
 
-No sign-in is needed: Codex writes its own rate-limit readings into every session log. `newestCodexLogs` (`src/usage/index.ts:129`) walks `$CODEX_HOME` (default `~/.codex`) `sessions/<year>/<month>/<day>/*.jsonl` newest-first (directories sorted descending, files by mtime) up to 8 files; `tail` reads the **last 512 KB** of each; `lastCodexRateLimits` finds the newest recorded limits and `parseCodexRateLimits` converts them to windows plus a plan name. The first log with a usable reading wins; logs without one are skipped. No logs → "No Codex sessions on this Mac yet."
+No sign-in is needed: Codex writes its own rate-limit readings into every session log. `newestCodexLogs` (`src/usage/index.ts:129`) walks `$CODEX_HOME` (default `~/.codex`) `sessions/<year>/<month>/<day>/*.jsonl` newest-first (directories sorted descending, files by mtime) up to 8 files; `tail` reads the **last 512 KB** of each; `lastCodexRateLimits` finds the newest recorded limits and `parseCodexRateLimits` converts them to windows plus a plan name. The first log with a usable reading wins; logs without one are skipped. No logs → "No Codex sessions on this computer yet."
 
 ### Antigravity (`readAntigravityLimits`, `src/usage/index.ts:228`)
 

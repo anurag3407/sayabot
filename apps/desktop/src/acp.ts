@@ -1,4 +1,5 @@
-import { spawn, type ChildProcess } from "node:child_process"
+import { type ChildProcess } from "node:child_process"
+import { spawnTool } from "./bin-path"
 import type { ReportedModel } from "./local-models"
 import type { Activity } from "./mac-stream"
 
@@ -484,7 +485,7 @@ export async function discoverAcpModels(
   args: readonly string[],
   opts: { cwd: string; env: NodeJS.ProcessEnv; timeoutMs?: number },
 ): Promise<ReportedModel[] | null> {
-  const child = spawn(binary, [...args], {
+  const child = spawnTool(binary, [...args], {
     cwd: opts.cwd,
     env: opts.env,
     stdio: ["pipe", "pipe", "pipe"],

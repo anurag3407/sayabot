@@ -1,9 +1,8 @@
-import { spawn } from "node:child_process"
 import { mkdir, readFile } from "node:fs/promises"
 import { homedir, tmpdir } from "node:os"
 import { join } from "node:path"
 import { discoverAcpModels } from "./acp"
-import { toolPath } from "./bin-path"
+import { spawnTool, toolPath } from "./bin-path"
 
 /**
  * What each app on this Mac can run, so Sayabot's model picker can offer it: the models an app
@@ -107,7 +106,7 @@ export function fetchClaudeModels(binary: string): Promise<ReportedModel[] | nul
     let buffer = ""
     const requestId = `sayabot-models-${Date.now()}`
     const env = { ...process.env, PATH: toolPath(binary) }
-    const child = spawn(
+    const child = spawnTool(
       binary,
       [
         "-p",
@@ -237,7 +236,11 @@ export function cursorRowsToModels(output: string): ReportedModel[] {
 function cliText(binary: string, args: string[]): Promise<string> {
   return new Promise((resolve) => {
     const env = { ...process.env, PATH: toolPath(binary), NO_COLOR: "1" }
-    const child = spawn(binary, args, { env, cwd: tmpdir(), stdio: ["ignore", "pipe", "ignore"] })
+    const child = spawnTool(binary, args, {
+      env,
+      cwd: tmpdir(),
+      stdio: ["ignore", "pipe", "ignore"],
+    })
     let output = ""
     const timer = setTimeout(() => child.kill("SIGTERM"), CLI_TIMEOUT_MS)
     child.stdout?.on("data", (chunk: Buffer) => {

@@ -1,5 +1,12 @@
 import { describe, expect, it, vi } from "vitest"
-import { DesktopUpdater, NotPublishedError, dmgUrlFor, isNewer, type UpdaterDeps } from "./updater"
+import {
+  DesktopUpdater,
+  NotPublishedError,
+  dmgUrlFor,
+  isNewer,
+  winZipUrlFor,
+  type UpdaterDeps,
+} from "./updater"
 
 function deps(over: Partial<UpdaterDeps> = {}): UpdaterDeps {
   return {
@@ -36,10 +43,30 @@ describe("dmgUrlFor", () => {
     expect(dmgUrlFor({}, "1.0.10", "arm64")).toBe(
       "https://github.com/anurag3407/sayabot/releases/download/v1.0.10/Sayabot-arm64.dmg",
     )
-    expect(dmgUrlFor({ dmgUrl: "https://github.com/x/releases/latest/download/Sayabot-arm64.dmg" }, "1.0.10", "x64")).toBe(
-      "https://github.com/anurag3407/sayabot/releases/download/v1.0.10/Sayabot-x64.dmg",
+    expect(
+      dmgUrlFor(
+        { dmgUrl: "https://github.com/x/releases/latest/download/Sayabot-arm64.dmg" },
+        "1.0.10",
+        "x64",
+      ),
+    ).toBe("https://github.com/anurag3407/sayabot/releases/download/v1.0.10/Sayabot-x64.dmg")
+    expect(dmgUrlFor({ dmgUrls: { x64: "https://mirror/x.dmg" } }, "1.0.10", "x64")).toBe(
+      "https://mirror/x.dmg",
     )
-    expect(dmgUrlFor({ dmgUrls: { x64: "https://mirror/x.dmg" } }, "1.0.10", "x64")).toBe("https://mirror/x.dmg")
+  })
+})
+
+describe("winZipUrlFor", () => {
+  it("pins the Windows zip to the version that was checked, per chip", () => {
+    expect(winZipUrlFor({}, "1.0.10", "x64")).toBe(
+      "https://github.com/anurag3407/sayabot/releases/download/v1.0.10/Sayabot-win-x64.zip",
+    )
+    expect(winZipUrlFor({}, "1.0.10", "ia32")).toBe(
+      "https://github.com/anurag3407/sayabot/releases/download/v1.0.10/Sayabot-win-x64.zip",
+    )
+    expect(winZipUrlFor({ winUrls: { arm64: "https://mirror/win.zip" } }, "1.0.10", "arm64")).toBe(
+      "https://mirror/win.zip",
+    )
   })
 })
 
@@ -48,15 +75,26 @@ describe("DesktopUpdater", () => {
     const install = vi.fn(async () => {})
     const updater = new DesktopUpdater(deps({ install }))
     const seen: string[] = []
-    updater.onChange((s) => seen.push(s.status === "downloading" ? `downloading:${s.percent}` : s.status))
+    updater.onChange((s) =>
+      seen.push(s.status === "downloading" ? `downloading:${s.percent}` : s.status),
+    )
     expect((await updater.check()).status).toBe("available")
     await updater.install()
     expect(install).toHaveBeenCalledWith("/tmp/Sayabot-1.0.10.dmg", "1.0.10")
-    expect(seen).toEqual(["checking", "available", "downloading:0", "downloading:50", "downloading:100", "installing"])
+    expect(seen).toEqual([
+      "checking",
+      "available",
+      "downloading:0",
+      "downloading:50",
+      "downloading:100",
+      "installing",
+    ])
   })
 
   it("says up to date when the server's version is not newer", async () => {
-    const updater = new DesktopUpdater(deps({ fetchVersion: async () => ({ latestDesktopVersion: "1.0.9" }) }))
+    const updater = new DesktopUpdater(
+      deps({ fetchVersion: async () => ({ latestDesktopVersion: "1.0.9" }) }),
+    )
     expect(await updater.check()).toMatchObject({ status: "idle", latest: "1.0.9" })
   })
 
@@ -82,7 +120,9 @@ describe("DesktopUpdater", () => {
     )
     await updater.check()
     await updater.install()
-    expect(updater.current.status === "error" && updater.current.message).toContain("still being published")
+    expect(updater.current.status === "error" && updater.current.message).toContain(
+      "still being published",
+    )
   })
 
   it("does not start a second download while one runs", async () => {

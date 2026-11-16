@@ -61,13 +61,14 @@ All four are static server components with only `metadata`; every page's copy em
 
 ## ⬇️ Download Page (`app/download/page.tsx`)
 
-A server component under `PublicShell` promoting the Mac and Android clients:
+A server component under `PublicShell` promoting the Mac, Windows, and Android clients:
 
 - Computes `thisServer()` from the request headers via `getPublicOrigin` (`lib/public-origin.ts`), so a self-hosted page advertises its own address.
-- **Self-hosted extra panel** (only when `edition() === "self-hosted"` from `lib/env.ts` **and** `needsServerAddress(server)` from `lib/public-origin.ts`, i.e. the host is not `DEFAULT_APP_SERVER_HOST` = `sayabot.sayalabs.in`, the server the apps use out of the box; the official server may run with `SAYABOT_EDITION` unset, which defaults to self-hosted): "Connect your apps to <instanceName>" with a `sayabot://connect?server=<url>` deep link ("Open in Sayabot for Mac"), the host name with a `CopyButton`, and instructions to pick "My own server" on a fresh install (`download/page.tsx:52-90`).
+- **Self-hosted extra panel** (only when `edition() === "self-hosted"` from `lib/env.ts` **and** `needsServerAddress(server)` from `lib/public-origin.ts`, i.e. the host is not `DEFAULT_APP_SERVER_HOST` = `sayabot.sayalabs.in`, the server the apps use out of the box; the official server may run with `SAYABOT_EDITION` unset, which defaults to self-hosted): "Connect your apps to <instanceName>" with a `sayabot://connect?server=<url>` deep link ("Open in Sayabot for Mac" and "Open in Sayabot for Windows"), the host name with a `CopyButton`, and instructions to pick "My own server" on a fresh install.
 - **Mac card**: Apple icon, "macOS 14+" badge, feature list ("Uses your own Claude or ChatGPT subscription", etc.), and the `<MacDownload>` client widget.
+- **Windows card**: Windows icon, "Windows 10+" badge, a **Download for Windows** button (`DOWNLOADS.winX64`, saved as `Sayabot-Setup-x64.exe`), a Windows on ARM link (`DOWNLOADS.winArm64`), and a copyable PowerShell install: `irm <server>/install-windows.ps1 | iex`.
 - **Android card**: "Android 10+" badge and a single white **Download Android APK** button pointing at `DOWNLOADS.androidApk` (downloaded as `Sayabot.apk`), noted as "Direct release install · No Google Play account required".
-- **How the Connected Flow Works**: a 4-step banner (install Mac app → sign in with Google → install phone APK → control 24/7) with an alert-mood `Mascot seed="Pip"`.
+- **How the Connected Flow Works**: a 4-step banner (install the desktop app → sign in with Google → install phone APK → control 24/7) with an alert-mood `Mascot seed="Pip"`.
 - **Self-hosting callout** linking to the GitHub self-hosting quickstart (`SELF_HOSTING_DOCS` constant at `download/page.tsx:13-14`).
 
 ### `MacDownload` (`components/public/mac-download.tsx`)
@@ -79,15 +80,16 @@ Client component detecting the Mac's chip so users get one button instead of an 
 
 ### Download URLs (`components/landing/content.ts`)
 
-`DOWNLOADS` is the single source of truth used by both the download page and the redirect routes: `macArm64` / `macIntel` / `androidApk` all point at GitHub release assets (`https://github.com/anurag3407/sayabot/releases/latest/download/…`), `web` at `/signup`, `mobile` at `/download`.
+`DOWNLOADS` is the single source of truth used by both the download page and the redirect routes: `macArm64` / `macIntel` / `winX64` / `winArm64` / `androidApk` all point at GitHub release assets (`https://github.com/anurag3407/sayabot/releases/latest/download/…`), `web` at `/signup`, `mobile` at `/download`. The landing downloads section links the Windows setup exe and lists Linux AppImage and Google Play as still coming.
 
 ## 🔀 Download Redirect Routes
 
-Six thin route handlers, all `dynamic = "force-dynamic"` and 302 redirects with `Cache-Control: no-cache, no-store, must-revalidate` (so a re-release takes effect immediately):
+Eight thin route handlers, all `dynamic = "force-dynamic"` and 302 redirects with `Cache-Control: no-cache, no-store, must-revalidate` (so a re-release takes effect immediately):
 
 | Route | Behaviour |
 | :--- | :--- |
 | `GET /api/download/mac` and `GET /download/mac` | `?arch=x64` → `DOWNLOADS.macIntel`; otherwise `DOWNLOADS.macArm64` |
+| `GET /api/download/windows` and `GET /download/windows` | `?arch=arm64` → `DOWNLOADS.winArm64`; otherwise `DOWNLOADS.winX64` |
 | `GET /api/download/android` and `GET /download/android` | → `DOWNLOADS.androidApk` |
 | `GET /api/download/apk` and `GET /download/apk` | → `DOWNLOADS.androidApk` |
 

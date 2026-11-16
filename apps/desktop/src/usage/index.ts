@@ -92,11 +92,21 @@ let claudeQuietUntil = 0
 
 export async function readClaudeLimits(): Promise<PlanLimits> {
   const label = "Claude"
-  if (Date.now() < claudeQuietUntil) return unavailable("claude", label, "Claude is busy. Showing the last reading.")
+  if (Date.now() < claudeQuietUntil)
+    return unavailable("claude", label, "Claude is busy. Showing the last reading.")
   const credentials = await claudeCredentials()
-  if (!credentials) return unavailable("claude", label, "Sign in to Claude Code on this Mac to see its limits.")
+  if (!credentials)
+    return unavailable(
+      "claude",
+      label,
+      "Sign in to Claude Code on this computer to see its limits.",
+    )
   if (credentials.expiresAt !== null && credentials.expiresAt < Date.now() + 60_000) {
-    return unavailable("claude", label, "Claude Code's sign-in needs a refresh. Run Claude Code once, then check again.")
+    return unavailable(
+      "claude",
+      label,
+      "Claude Code's sign-in needs a refresh. Run Claude Code once, then check again.",
+    )
   }
   try {
     const response = await fetch("https://api.anthropic.com/api/oauth/usage", {
@@ -108,17 +118,28 @@ export async function readClaudeLimits(): Promise<PlanLimits> {
       signal: withTimeout(),
     })
     if (response.status === 401 || response.status === 403) {
-      return unavailable("claude", label, "Claude Code's sign-in needs a refresh. Run Claude Code once, then check again.")
+      return unavailable(
+        "claude",
+        label,
+        "Claude Code's sign-in needs a refresh. Run Claude Code once, then check again.",
+      )
     }
     if (response.status === 429) {
       const retryAfter = Number(response.headers.get("retry-after"))
-      claudeQuietUntil = Date.now() + (Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : CLAUDE_BACKOFF_MS)
+      claudeQuietUntil =
+        Date.now() +
+        (Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : CLAUDE_BACKOFF_MS)
       return unavailable("claude", label, "Claude is busy. Showing the last reading.")
     }
-    if (!response.ok) return unavailable("claude", label, `Claude didn't answer (error ${response.status}).`)
+    if (!response.ok)
+      return unavailable("claude", label, `Claude didn't answer (error ${response.status}).`)
     const windows = parseClaudeUsage(await response.json())
     if (!windows.length) {
-      return unavailable("claude", label, "This Claude account has no plan limits (an API key or a team plan without them).")
+      return unavailable(
+        "claude",
+        label,
+        "This Claude account has no plan limits (an API key or a team plan without them).",
+      )
     }
     return {
       provider: "claude",
@@ -140,7 +161,9 @@ async function newestCodexLogs(limit: number): Promise<string[]> {
   const root = path.join(process.env.CODEX_HOME || path.join(os.homedir(), ".codex"), "sessions")
   const found: string[] = []
   const desc = async (dir: string) =>
-    (await fs.readdir(dir, { withFileTypes: true }).catch(() => [])).sort((a, b) => b.name.localeCompare(a.name))
+    (await fs.readdir(dir, { withFileTypes: true }).catch(() => [])).sort((a, b) =>
+      b.name.localeCompare(a.name),
+    )
   for (const year of await desc(root)) {
     if (!year.isDirectory()) continue
     for (const month of await desc(path.join(root, year.name))) {
@@ -148,7 +171,9 @@ async function newestCodexLogs(limit: number): Promise<string[]> {
       for (const day of await desc(path.join(root, year.name, month.name))) {
         if (!day.isDirectory()) continue
         const dayDir = path.join(root, year.name, month.name, day.name)
-        const files = (await desc(dayDir)).filter((entry) => entry.isFile() && entry.name.endsWith(".jsonl"))
+        const files = (await desc(dayDir)).filter(
+          (entry) => entry.isFile() && entry.name.endsWith(".jsonl"),
+        )
         const withTimes = await Promise.all(
           files.map(async (entry) => {
             const file = path.join(dayDir, entry.name)
@@ -183,7 +208,7 @@ async function tail(file: string, bytes: number): Promise<string> {
 export async function readCodexLimits(): Promise<PlanLimits> {
   const label = "Codex"
   const logs = await newestCodexLogs(8)
-  if (!logs.length) return unavailable("codex", label, "No Codex sessions on this Mac yet.")
+  if (!logs.length) return unavailable("codex", label, "No Codex sessions on this computer yet.")
   for (const file of logs) {
     const found = lastCodexRateLimits(await tail(file, 512 * 1024).catch(() => ""))
     if (!found) continue
@@ -198,7 +223,11 @@ export async function readCodexLimits(): Promise<PlanLimits> {
       error: null,
     }
   }
-  return unavailable("codex", label, "Codex hasn't reported its limits yet. Use Codex once and check again.")
+  return unavailable(
+    "codex",
+    label,
+    "Codex hasn't reported its limits yet. Use Codex once and check again.",
+  )
 }
 
 // ---------- Antigravity ----------
@@ -209,8 +238,12 @@ const CODE_ASSIST_METERED = "https://daily-cloudcode-pa.googleapis.com/v1interna
 async function antigravityToken(): Promise<string | null | "expired"> {
   const home = process.env.GEMINI_HOME || path.join(os.homedir(), ".gemini")
   try {
-    const text = await fs.readFile(path.join(home, "antigravity-cli", "antigravity-oauth-token"), "utf8")
-    const token = (JSON.parse(text) as { token?: { access_token?: unknown; expiry?: unknown } }).token
+    const text = await fs.readFile(
+      path.join(home, "antigravity-cli", "antigravity-oauth-token"),
+      "utf8",
+    )
+    const token = (JSON.parse(text) as { token?: { access_token?: unknown; expiry?: unknown } })
+      .token
     if (!token || typeof token.access_token !== "string") return null
     const expiry = typeof token.expiry === "string" ? Date.parse(token.expiry) : NaN
     if (!(expiry > Date.now() + 60_000)) return "expired"
@@ -220,7 +253,12 @@ async function antigravityToken(): Promise<string | null | "expired"> {
   }
 }
 
-async function codeAssist(base: string, method: string, body: unknown, token: string): Promise<unknown> {
+async function codeAssist(
+  base: string,
+  method: string,
+  body: unknown,
+  token: string,
+): Promise<unknown> {
   const response = await fetch(`${base}:${method}`, {
     method: "POST",
     headers: {
@@ -238,21 +276,44 @@ async function codeAssist(base: string, method: string, body: unknown, token: st
 export async function readAntigravityLimits(): Promise<PlanLimits> {
   const label = "Antigravity"
   const token = await antigravityToken()
-  if (token === null) return unavailable("antigravity", label, "Sign in to Antigravity on this Mac to see its limits.")
+  if (token === null)
+    return unavailable(
+      "antigravity",
+      label,
+      "Sign in to Antigravity on this computer to see its limits.",
+    )
   if (token === "expired") {
-    return unavailable("antigravity", label, "Antigravity's sign-in needs a refresh. Open Antigravity once, then check again.")
+    return unavailable(
+      "antigravity",
+      label,
+      "Antigravity's sign-in needs a refresh. Open Antigravity once, then check again.",
+    )
   }
   try {
     const loaded = (await codeAssist(CODE_ASSIST, "loadCodeAssist", {}, token)) as {
       cloudaicompanionProject?: unknown
     }
-    const project = typeof loaded.cloudaicompanionProject === "string" ? loaded.cloudaicompanionProject : null
-    if (!project) return unavailable("antigravity", label, "This Google account has no Antigravity plan limits.")
+    const project =
+      typeof loaded.cloudaicompanionProject === "string" ? loaded.cloudaicompanionProject : null
+    if (!project)
+      return unavailable(
+        "antigravity",
+        label,
+        "This Google account has no Antigravity plan limits.",
+      )
     const windows = parseAntigravityQuota(
       await codeAssist(CODE_ASSIST_METERED, "retrieveUserQuotaSummary", { project }, token),
     )
-    if (!windows.length) return unavailable("antigravity", label, "Antigravity didn't report any limits.")
-    return { provider: "antigravity", label, plan: null, windows, observedAt: new Date().toISOString(), error: null }
+    if (!windows.length)
+      return unavailable("antigravity", label, "Antigravity didn't report any limits.")
+    return {
+      provider: "antigravity",
+      label,
+      plan: null,
+      windows,
+      observedAt: new Date().toISOString(),
+      error: null,
+    }
   } catch {
     return unavailable("antigravity", label, "Couldn't reach Antigravity's quota service.")
   }

@@ -5,12 +5,11 @@ import { ArrowDownToLine, Check, FolderOpen, ArrowRight } from "lucide-react"
 import Link from "next/link"
 import { Mascot } from "@/components/ui/mascot"
 import { SectionHead } from "./section-head"
-import { AndroidIcon, AppleIcon, WindowsIcon } from "./brand-icons"
+import { AndroidIcon, AppleIcon, LinuxIcon, WindowsIcon } from "./brand-icons"
 import { DOWNLOADS } from "./content"
 
 const SOON: { name: string; icon: ComponentType<{ className?: string }> }[] = [
-  { name: "Native Windows .exe", icon: WindowsIcon },
-  { name: "Linux AppImage", icon: WindowsIcon },
+  { name: "Linux AppImage", icon: LinuxIcon },
   { name: "Google Play Store", icon: AndroidIcon },
 ]
 
@@ -25,10 +24,7 @@ export function Downloads() {
 
         <div className="mt-20 grid gap-16 sm:grid-cols-2 sm:gap-4">
           {/* macOS Card */}
-          <div
-            data-reveal
-            className="group relative block"
-          >
+          <div data-reveal className="group relative block">
             <div
               data-tilt
               className="relative flex flex-col justify-between rounded-[26px] p-7 text-[#15121a] shadow-[inset_0_1px_0_rgb(255_255_255/0.5),0_40px_70px_-34px_rgb(0_0_0/0.95)] sm:p-9 min-h-[380px]"
@@ -87,7 +83,8 @@ export function Downloads() {
                       <span>Download started! Next step:</span>
                     </p>
                     <p className="mt-1 text-[11px] opacity-80 pl-5">
-                      Open <strong>Sayabot-arm64.dmg</strong> in Downloads and drag <strong>Sayabot</strong> into your <strong>Applications</strong> folder.
+                      Open <strong>Sayabot-arm64.dmg</strong> in Downloads and drag{" "}
+                      <strong>Sayabot</strong> into your <strong>Applications</strong> folder.
                     </p>
                   </div>
                 ) : (
@@ -97,7 +94,10 @@ export function Downloads() {
                       Move to Applications to install
                     </span>
                     <span className="text-[11px] opacity-60">· macOS 14+ (M1–M4 & Intel)</span>
-                    <a href="/download#install" className="text-[11px] font-medium underline underline-offset-2">
+                    <a
+                      href="/download#install"
+                      className="text-[11px] font-medium underline underline-offset-2"
+                    >
                       Install from Terminal
                     </a>
                   </div>
@@ -107,10 +107,7 @@ export function Downloads() {
           </div>
 
           {/* Android Card */}
-          <div
-            data-reveal
-            className="group relative block"
-          >
+          <div data-reveal className="group relative block">
             <div
               data-tilt
               className="relative flex flex-col justify-between rounded-[26px] p-7 text-[#15121a] shadow-[inset_0_1px_0_rgb(255_255_255/0.5),0_40px_70px_-34px_rgb(0_0_0/0.95)] sm:p-9 min-h-[380px]"
@@ -168,7 +165,9 @@ export function Downloads() {
                       <span>Download started! Next step:</span>
                     </p>
                     <p className="mt-1 text-[11px] opacity-80 pl-5">
-                      Open <strong>Sayabot.apk</strong> on your device and tap <strong>Install</strong> (enable &ldquo;Install from unknown sources&rdquo; if prompted).
+                      Open <strong>Sayabot.apk</strong> on your device and tap{" "}
+                      <strong>Install</strong> (enable &ldquo;Install from unknown sources&rdquo; if
+                      prompted).
                     </p>
                   </div>
                 ) : (
@@ -176,7 +175,9 @@ export function Downloads() {
                     <span className="inline-flex items-center gap-1.5 rounded-lg bg-black/10 px-2.5 py-1 text-[11px] font-medium">
                       Direct release install
                     </span>
-                    <span className="text-[11px] opacity-60">· Android 10+ · Works with Mac account</span>
+                    <span className="text-[11px] opacity-60">
+                      · Android 10+ · Works with Mac account
+                    </span>
                   </div>
                 )}
               </div>
@@ -184,12 +185,35 @@ export function Downloads() {
           </div>
         </div>
 
-        <ul className="mt-4 grid gap-2 sm:grid-cols-3">
+        <div className="mt-4">
+          <a
+            href={DOWNLOADS.winX64}
+            download="Sayabot-Setup-x64.exe"
+            className="l-card flex flex-wrap items-center gap-3 px-5 py-4"
+          >
+            <WindowsIcon className="h-5 w-5" />
+            <span className="text-[14px]">Sayabot for Windows</span>
+            <span className="text-[12px] text-muted">Setup exe · Windows 10+</span>
+            <span className="ml-auto text-[12px] font-medium underline underline-offset-2">
+              Download
+            </span>
+          </a>
+          <a
+            href={DOWNLOADS.winArm64}
+            className="mt-2 inline-block px-5 text-[12px] text-muted underline underline-offset-2"
+          >
+            Windows on ARM
+          </a>
+        </div>
+
+        <ul className="mt-4 grid gap-2 sm:grid-cols-2">
           {SOON.map((item) => (
             <li key={item.name} data-reveal className="l-card flex items-center gap-3 px-5 py-4">
               <item.icon className="h-5 w-5 text-faint" />
               <span className="text-[14px] text-muted">{item.name}</span>
-              <span className="ml-auto font-mono text-[10px] tracking-[0.12em] text-faint">COMING SOON</span>
+              <span className="ml-auto font-mono text-[10px] tracking-[0.12em] text-faint">
+                COMING SOON
+              </span>
             </li>
           ))}
         </ul>

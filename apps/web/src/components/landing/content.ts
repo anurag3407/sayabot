@@ -7,6 +7,9 @@ export const DOWNLOADS = {
   macDmg: "https://github.com/anurag3407/sayabot/releases/latest/download/Sayabot-arm64.dmg",
   macArm64: "https://github.com/anurag3407/sayabot/releases/latest/download/Sayabot-arm64.dmg",
   macIntel: "https://github.com/anurag3407/sayabot/releases/latest/download/Sayabot-x64.dmg",
+  winX64: "https://github.com/anurag3407/sayabot/releases/latest/download/Sayabot-Setup-x64.exe",
+  winArm64:
+    "https://github.com/anurag3407/sayabot/releases/latest/download/Sayabot-Setup-arm64.exe",
   androidApk: "https://github.com/anurag3407/sayabot/releases/latest/download/Sayabot.apk",
   github: GITHUB_URL,
 }

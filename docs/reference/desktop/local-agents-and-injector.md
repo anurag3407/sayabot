@@ -1,6 +1,6 @@
 # Sayabot Desktop — Local Agent Detection & Input Injection
 
-Two pieces of macOS plumbing support the "agents on your Mac" feature and remote control. `local-agents.ts` finds the AI coding CLIs installed on this computer and reports **only their presence, version, account label and model list** — credentials are never read or sent. `injector.ts` is the mouse/keyboard side of remote desktop: one long-lived JXA process that posts CoreGraphics and System Events into macOS once Accessibility is granted.
+`local-agents.ts` finds the AI coding CLIs installed on this computer and reports **only their presence, version, account label and model list** — credentials are never read or sent. `injector.ts` is the mouse/keyboard side of remote desktop. On macOS it is one long-lived JXA process that posts CoreGraphics and System Events once Accessibility is granted. On Windows it is one long-lived hidden PowerShell process (`WIN_INJECTOR_SCRIPT`) that calls `SetCursorPos`, `mouse_event`, `keybd_event`, and `SendInput`. Windows has no Accessibility prompt; `permissionState()` reports `accessibility: "granted"` and `screen: "granted"` unless `getMediaAccessStatus("screen")` is `denied` or `restricted`. The Command key from a viewer is the Windows key (`VK 0x5B`).
 
 Source files: `apps/desktop/src/local-agents.ts`, `src/injector.ts`
 
@@ -32,9 +32,11 @@ Each of the 19 CLI apps is an `AgentSpec`: `{ id, name, bin, run, keyEnv, signed
 | `pi` | pi | `pi` | plain | `~/.pi/agent/auth.json` containing a JSON object |
 | `deepseek` | DeepSeek Harness | `dsh` | acp `--profile acp` | `.credentials.yaml` or `.env` with `DEEPSEEK_API_KEY` under `$DSH_HOME` (default `~/.dsh`) |
 
-`keyEnv` lists API keys each app accepts **instead of** a sign-in; `hasEnv` only checks that a variable is non-empty in the app's own environment — the values are never opened. Keychain probes run `/usr/bin/security find-generic-password -s <service>` and check only the exit code.
+`keyEnv` lists API keys each app accepts **instead of** a sign-in; `hasEnv` only checks that a variable is non-empty in the app's own environment — the values are never opened. Keychain probes run `/usr/bin/security find-generic-password -s <service>` on macOS only (`keychainHas` returns false on Windows) and check only the exit code. Sign-in files under the home directory still count on Windows.
 
-The detection primitives (`src/local-agents.ts:51-67`) are small async helpers reused across specs: `fileHas(file, regex)` reads a file and tests its text (missing file → false), `dirHas(dir, regex)` matches at least one entry name, `exists` is a `stat` probe, and `xdgData`/`xdgConfig` resolve XDG base dirs with `~/.local/share` / `~/.config` defaults (respecting `$XDG_DATA_HOME` / `$XDG_CONFIG_HOME`). `someTrue` short-circuits the per-app check list in order, so the cheapest probe wins.
+The detection primitives are small async helpers reused across specs: `fileHas(file, regex)` reads a file and tests its text (missing file → false), `dirHas(dir, regex)` matches at least one entry name, `exists` is a `stat` probe, and `xdgData`/`xdgConfig` resolve XDG base dirs with `~/.local/share` / `~/.config` defaults (respecting `$XDG_DATA_HOME` / `$XDG_CONFIG_HOME`). On Windows both resolve to `%APPDATA%` (`~/AppData/Roaming`). Kiro's database is also checked under `%LOCALAPPDATA%`. `someTrue` short-circuits the per-app check list in order, so the cheapest probe wins.
+
+`findBinary` (`src/bin-path.ts`) searches `PATH` plus Homebrew/`/usr/local` on macOS, or npm, pnpm, Scoop, WinGet, Chocolatey, Volta, and nvm-windows on Windows. On Windows it tries `PATHEXT` (`.exe` before `.cmd`). `spawnTool` runs `.exe` directly and `.cmd`/`.bat` shims through `cmd.exe /d /s /c` with `quoteForCmd`, because Node refuses `spawn` of a `.cmd` file. The runner, ACP client, model probes, vault CLI, and local MCP host all start tools through `spawnTool`.
 
 ### Coordination with `@sayabot/core`
 
@@ -102,7 +104,7 @@ The `KEY_CODES` table (`src/injector.ts:46-61`) covers the special keys a viewer
 
 Everything is normalized upstream by `DesktopHost.parseInput` (coordinates 0–1, scaled to the display, string keys ≤ 20 chars, text ≤ 500 chars) — see [host.md](./host.md). Without the Accessibility permission macOS silently drops the events, which is why the host gates control on `permissionState().accessibility === "granted"`.
 
-The JXA process is kept long-lived: `send` respawns it only when `proc` is null or has an `exitCode`, writes one JSON line per event to its stdin, and swallows its stderr — so a burst of pointer events costs no process startup. If spawn itself fails (e.g. `osascript` missing), `proc` is reset and the event is dropped silently.
+The injector process is kept long-lived: `send` respawns it only when `proc` is null or has an `exitCode`, writes one JSON line per event to its stdin, and swallows its stderr — so a burst of pointer events costs no process startup. On Windows the script is passed as a UTF-16 `-EncodedCommand` to `%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe` with the window hidden. If spawn itself fails, `proc` is reset and the event is dropped silently. `supported` is true on `darwin` and `win32`.
 
 `stop()` ends stdin and kills the process; the app tears the injector down when the host stops (menu-driven server change, sign-out, quit), and the next `send` after that transparently spawns a fresh JXA process. The script is exported as `INJECTOR_SCRIPT` for tests.
 

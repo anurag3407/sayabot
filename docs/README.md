@@ -253,12 +253,12 @@ Task-oriented guides live at the top level of `docs/`. The **reference library**
 
 | Doc | Covers |
 | :-- | :-- |
-| [overview](reference/desktop/overview.md) | Electron lifecycle, IPC surface, storage, deep links |
+| [overview](reference/desktop/overview.md) | Electron lifecycle, IPC surface, storage, deep links, Mac and Windows packaging |
 | [host](reference/desktop/host.md) | Host registration, heartbeat, remote-desktop gating |
 | [runner-and-stream](reference/desktop/runner-and-stream.md) | Local Mac agent runner: job claiming, CLI dispatch, approvals, streaming |
 | [local-agents-and-injector](reference/desktop/local-agents-and-injector.md) | 19 local AI CLI specs, session injection |
 | [local-mcp-and-models](reference/desktop/local-mcp-and-models.md) | Local MCP servers, fail-closed approvals, model discovery |
-| [install-and-updates](reference/desktop/install-and-updates.md) | DMG update state machine, verify→swap→rollback |
+| [install-and-updates](reference/desktop/install-and-updates.md) | Mac DMG and Windows zip update state machine, verify→swap→rollback |
 | [vault-cli](reference/desktop/vault-cli.md) | Password-manager job fulfillment |
 | [usage-and-cloud-handoff](reference/desktop/usage-and-cloud-handoff.md) | Local plan-usage readers, cloud-home snapshot, copy_to_cloud |
 

@@ -1,4 +1,4 @@
-import { spawn, type ChildProcess } from "node:child_process"
+import { type ChildProcess } from "node:child_process"
 import * as fs from "node:fs"
 import * as net from "node:net"
 import * as os from "node:os"
@@ -15,7 +15,7 @@ import {
   toolName,
 } from "./acp"
 import type { DesktopHost } from "./host"
-import { toolPath } from "./bin-path"
+import { spawnTool, toolPath } from "./bin-path"
 import { agentSpec, findBinary, type AgentSpec } from "./local-agents"
 import { localServerUrl } from "./local-models"
 import {
@@ -360,7 +360,7 @@ export class LocalRunner {
         if (job.mcp) env[TOKEN_ENV] = job.mcp.token
       }
 
-      const child = spawn(bin, args, {
+      const child = spawnTool(bin, args, {
         cwd: agentFolder(job.agentHandle),
         env,
         stdio: ["pipe", "pipe", "pipe"],
@@ -585,7 +585,7 @@ export class LocalRunner {
       pending = []
       await this.host.post(`/api/desktop/jobs/${job.id}/events`, { events })
     }
-    const child = spawn(bin, [...args], { cwd, env, stdio: ["pipe", "pipe", "pipe"] })
+    const child = spawnTool(bin, [...args], { cwd, env, stdio: ["pipe", "pipe", "pipe"] })
     this.child = child
     const connection = new AcpConnection(child, {
       onNotification: (method, params) => {
@@ -727,7 +727,7 @@ export class LocalRunner {
       PATH: toolPath(bin),
       NO_COLOR: "1",
     }
-    const child = spawn(bin, cmd.args, {
+    const child = spawnTool(bin, cmd.args, {
       cwd: agentFolder(job.agentHandle),
       env,
       stdio: ["pipe", "pipe", "pipe"],

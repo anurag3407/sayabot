@@ -102,7 +102,7 @@ From `package.json`:
 | `pnpm db:generate` / `db:migrate` / `db:seed` | delegated to `pnpm --filter @sayabot/db generate|migrate|seed` |
 | `pnpm format` | `prettier --write .` |
 | `pnpm mobile:dev` / `mobile:typecheck` / `mobile:update` / `mobile:build:apk` | mobile helpers |
-| `pnpm desktop:build` / `desktop:dev` / `desktop:package:dmg` | desktop helpers |
+| `pnpm desktop:build` / `desktop:dev` / `desktop:package:dmg` / `desktop:package:win` / `desktop:package:win:x64` / `desktop:package:win:arm64` | desktop helpers. Windows packaging (`nsis` + `zip`) runs on Windows; `deploy/desktop/package-windows.ps1` is the same build. |
 | `pnpm e2e` | `playwright test` (config in `playwright.config.ts`) |
 | `pnpm typecheck:e2e` | `tsc -p tsconfig.e2e.json` |
 | `pnpm test:unit` | `turbo run test` filtered to core, llm, orchestrator, web, egress, computerd, mobile |
@@ -158,7 +158,7 @@ Key traits:
 | :--- | :--- | :--- |
 | `test.yml` | push to `main`, all PRs | **unit-integration** job: pnpm 10.33 / Node 24, `pnpm install --frozen-lockfile`, then `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm test:integration`, `pnpm typecheck:e2e`. **e2e-smoke** job (push only): builds web, starts it, waits for `/api/health`, runs the Playwright smoke lane with dummy env (`ci-test-kek`, `ci-test-internal-secret-0123456789`, …) |
 | `deploy.yml` | release tags | builds/pushes images and deploys per the repo's configured host |
-| `desktop-release.yml` | desktop tags | macOS DMG packaging (signing/notarization per `docs/macos-signing-and-notarization.md`) |
+| `desktop-release.yml` | desktop paths on `main`, or manual dispatch | macOS DMG packaging (signing/notarization per `docs/macos-signing-and-notarization.md`), then a Windows job that attaches `Sayabot-Setup-<arch>.exe` and `Sayabot-win-<arch>.zip` to the same release |
 | `mobile-updates.yml` | mobile release | Expo OTA update publishing; builds and attaches `Sayabot-<version>.apk` to the latest GitHub release when `app.json` version has no APK yet |
 
 The smoke CI env is worth copying when debugging: it shows the minimal env set the orchestrator's Zod schema demands (`DATABASE_URL`, `SAYABOT_KEK`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ORCHESTRATOR_INTERNAL_SECRET` ≥ 16 chars).

@@ -1,8 +1,8 @@
 name: Desktop Release
 
-# Builds the Mac app and publishes it as the latest GitHub release, which is where the website's
-# download buttons (releases/latest/download/Sayabot-<arch>.dmg) and the in-app update check
-# (/api/version → latestDesktopVersion) look.
+# Builds the Mac app and the Windows app and publishes them as the latest GitHub release.
+# The website's download buttons and the in-app update check (/api/version → latestDesktopVersion)
+# read that release: Sayabot-<arch>.dmg, Sayabot-Setup-<arch>.exe, and Sayabot-win-<arch>.zip.
 #
 # Version: <major>.<minor> from apps/desktop/package.json + the workflow run number, so every
 # release is newer than the last and installed apps are told to update.
@@ -29,6 +29,8 @@ jobs:
   build-and-release:
     name: Build DMGs and publish release
     runs-on: macos-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
@@ -111,3 +113,50 @@ jobs:
               --target "$GITHUB_SHA" \
               --latest
           fi
+
+  build-windows:
+    name: Build Windows installers and attach them
+    needs: build-and-release
+    runs-on: windows-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Pin the same version as the Mac release
+        working-directory: apps/desktop
+        shell: bash
+        run: pnpm pkg set version="${{ needs.build-and-release.outputs.version }}"
+
+      - name: Package NSIS and zip (x64 + arm64)
+        working-directory: apps/desktop
+        shell: bash
+        run: |
+          pnpm build
+          node scripts/make-ico.mjs
+          pnpm exec electron-builder --win nsis zip --x64 --publish never
+          pnpm exec electron-builder --win nsis zip --arm64 --publish never
+          ls -la dist/installers
+
+      - name: Upload to the release
+        shell: bash
+        run: |
+          version="${{ needs.build-and-release.outputs.version }}"
+          tag="v${version}"
+          dir=apps/desktop/dist/installers
+          shopt -s nullglob
+          files=("$dir"/Sayabot-Setup-*.exe "$dir"/Sayabot-win-*.zip)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No Windows artifacts were produced." >&2
+            exit 1
+          fi
+          gh release upload "$tag" "${files[@]}" --clobber

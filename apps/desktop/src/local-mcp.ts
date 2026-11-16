@@ -1,4 +1,5 @@
-import { spawn, type ChildProcess } from "node:child_process"
+import { type ChildProcess } from "node:child_process"
+import { spawnTool } from "./bin-path"
 import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
@@ -40,13 +41,23 @@ class StdioSession {
   private child: ChildProcess | null = null
   private buffer = Buffer.alloc(0)
   private nextId = 1
-  private waiters = new Map<number, { resolve: (value: unknown) => void; reject: (error: Error) => void }>()
+  private waiters = new Map<
+    number,
+    { resolve: (value: unknown) => void; reject: (error: Error) => void }
+  >()
 
-  constructor(private command: string, private args: string[], private env: NodeJS.ProcessEnv) {}
+  constructor(
+    private command: string,
+    private args: string[],
+    private env: NodeJS.ProcessEnv,
+  ) {}
 
   private async ensure(): Promise<void> {
     if (this.child && !this.child.killed) return
-    const child = spawn(this.command, this.args, { env: this.env, stdio: ["pipe", "pipe", "ignore"] })
+    const child = spawnTool(this.command, this.args, {
+      env: this.env,
+      stdio: ["pipe", "pipe", "ignore"],
+    })
     this.child = child
     child.stdout?.on("data", (chunk: Buffer) => this.onData(chunk))
     child.on("close", () => {
@@ -113,7 +124,8 @@ class StdioSession {
       const waiter = this.waiters.get(message.id)
       if (!waiter) continue
       this.waiters.delete(message.id)
-      if (message.error) waiter.reject(new Error(message.error.message || "The local app returned an error"))
+      if (message.error)
+        waiter.reject(new Error(message.error.message || "The local app returned an error"))
       else waiter.resolve(message.result ?? null)
     }
   }
@@ -157,14 +169,17 @@ export class LocalMcpHost {
     }
     const command = commandFor(call.appId)
     if (!command) {
-      await this.host.post(`/api/desktop/mcp/${call.id}`, { error: "That app isn't allowed on this computer." })
+      await this.host.post(`/api/desktop/mcp/${call.id}`, {
+        error: "That app isn't allowed on this computer.",
+      })
       return
     }
     const env: NodeJS.ProcessEnv = { ...process.env }
     for (const [key, value] of Object.entries(call.env ?? {})) {
       if (ENV_KEYS.has(key) && typeof value === "string") env[key] = value
     }
-    const session = this.sessions.get(call.serverId) ?? new StdioSession(command.command, command.args, env)
+    const session =
+      this.sessions.get(call.serverId) ?? new StdioSession(command.command, command.args, env)
     this.sessions.set(call.serverId, session)
     try {
       const result = await session.call(call.method, call.params ?? {})
@@ -172,7 +187,9 @@ export class LocalMcpHost {
     } catch (error) {
       this.sessions.delete(call.serverId)
       session.stop()
-      await this.host.post(`/api/desktop/mcp/${call.id}`, { error: error instanceof Error ? error.message : "The local app failed" })
+      await this.host.post(`/api/desktop/mcp/${call.id}`, {
+        error: error instanceof Error ? error.message : "The local app failed",
+      })
     }
   }
 }

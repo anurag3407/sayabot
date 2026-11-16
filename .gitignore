@@ -20,6 +20,9 @@ __pycache__
 .expo/
 brag-output/
 
+# Generated from apps/desktop/assets/icon.png by scripts/make-ico.mjs
+apps/desktop/build/icon.ico
+
 # Binaries and large release artifacts
 *.apk
 *.dmg

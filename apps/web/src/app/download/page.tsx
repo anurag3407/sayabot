@@ -5,7 +5,7 @@ import { CopyButton } from "@/components/copy-button"
 import { MacDownload } from "@/components/public/mac-download"
 import { PublicShell } from "@/components/public/public-shell"
 import { Mascot } from "@/components/ui/mascot"
-import { AppleIcon, AndroidIcon } from "@/components/landing/brand-icons"
+import { AppleIcon, AndroidIcon, WindowsIcon } from "@/components/landing/brand-icons"
 import { DOWNLOADS } from "@/components/landing/content"
 import { edition, instanceName } from "@/lib/env"
 import { getPublicOrigin, needsServerAddress } from "@/lib/public-origin"
@@ -20,9 +20,9 @@ async function thisServer(): Promise<string> {
 }
 
 export const metadata: Metadata = {
-  title: "Download Sayabot for Mac & Android",
+  title: "Download Sayabot for Mac, Windows & Android",
   description:
-    "Download Sayabot native macOS app (.dmg) and Android APK. Control your autonomous agents from anywhere.",
+    "Download Sayabot for macOS (.dmg), Windows (.exe), and Android. Control your autonomous agents from anywhere.",
 }
 
 export default async function DownloadPage() {
@@ -33,6 +33,7 @@ export default async function DownloadPage() {
   const host = server.replace(/^https?:\/\//, "")
   const connectLink = `sayabot://connect?server=${encodeURIComponent(server)}`
   const installCmd = `curl -fsSL ${server}/install-mac.sh | bash`
+  const installWindows = `irm ${server}/install-windows.ps1 | iex`
 
   return (
     <PublicShell>
@@ -46,8 +47,8 @@ export default async function DownloadPage() {
             Take your agents anywhere.
           </h1>
           <p className="mt-4 text-base leading-relaxed text-muted">
-            Your bots run on your Mac or on Sayabot. Chat with them and approve what they do from
-            your Mac or your phone.
+            Your bots run on your Mac, your Windows PC, or on Sayabot. Chat with them and approve
+            what they do from your computer or your phone.
           </p>
         </div>
 
@@ -74,6 +75,13 @@ export default async function DownloadPage() {
                     <AppleIcon className="h-4 w-4" />
                     Open in Sayabot for Mac
                   </a>
+                  <a
+                    href={connectLink}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-white/10"
+                  >
+                    <WindowsIcon className="h-4 w-4" />
+                    Open in Sayabot for Windows
+                  </a>
                   <div className="flex min-w-0 items-center gap-2 rounded-xl border border-white/10 bg-black/30 px-3 py-2">
                     <span className="font-mono text-[11px] text-faint">server</span>
                     <span className="min-w-0 truncate font-mono text-[13px] text-neutral-200">
@@ -92,7 +100,7 @@ export default async function DownloadPage() {
         ) : null}
 
         {/* Download Cards */}
-        <div className="mt-14 grid gap-8 sm:grid-cols-2">
+        <div className="mt-14 grid gap-8 lg:grid-cols-3">
           {/* macOS Card */}
           <div className="relative rounded-3xl border border-white/10 bg-panel p-8 shadow-xl flex flex-col justify-between overflow-hidden">
             <div className="absolute top-0 right-0 -mr-6 -mt-6 h-32 w-32 rounded-full bg-accent/10 blur-2xl" />
@@ -130,7 +138,74 @@ export default async function DownloadPage() {
             </div>
 
             <div id="install" className="mt-8 scroll-mt-28 border-t border-white/5 pt-6">
-              <MacDownload armUrl={DOWNLOADS.macArm64} intelUrl={DOWNLOADS.macIntel} installCmd={installCmd} />
+              <MacDownload
+                armUrl={DOWNLOADS.macArm64}
+                intelUrl={DOWNLOADS.macIntel}
+                installCmd={installCmd}
+              />
+            </div>
+          </div>
+
+          <div className="relative rounded-3xl border border-white/10 bg-panel p-8 shadow-xl flex flex-col justify-between overflow-hidden">
+            <div className="absolute top-0 right-0 -mr-6 -mt-6 h-32 w-32 rounded-full bg-accent/10 blur-2xl" />
+
+            <div>
+              <div className="flex items-center justify-between">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/5 border border-white/10">
+                  <WindowsIcon className="h-7 w-7 text-white" />
+                </div>
+                <span className="rounded-full bg-accent/10 px-3 py-1 text-xs font-mono text-accent border border-accent/20">
+                  Windows 10+
+                </span>
+              </div>
+
+              <h2 className="mt-6 text-2xl font-medium text-white">Sayabot for Windows</h2>
+              <p className="mt-2 text-sm text-muted leading-relaxed">
+                The same controller as the Mac app: sign in, run local agents, and share this PC
+                when you allow it.
+              </p>
+
+              <ul className="mt-6 space-y-2.5 text-xs text-neutral-300">
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-accent shrink-0" />
+                  <span>Per-user installer, no admin account required</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-accent shrink-0" />
+                  <span>Uses the Claude Code or Codex you already have</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-accent shrink-0" />
+                  <span>Updates itself from this server</span>
+                </li>
+              </ul>
+            </div>
+
+            <div className="mt-8 scroll-mt-28 border-t border-white/5 pt-6 space-y-3">
+              <a
+                href={DOWNLOADS.winX64}
+                download="Sayabot-Setup-x64.exe"
+                className="flex items-center justify-center gap-2 w-full rounded-xl bg-white px-5 py-3 text-sm font-medium text-black hover:bg-neutral-200 transition-colors shadow-sm"
+              >
+                <ArrowDownToLine className="h-4 w-4" />
+                <span>Download for Windows</span>
+              </a>
+              <a
+                href={DOWNLOADS.winArm64}
+                download="Sayabot-Setup-arm64.exe"
+                className="block text-center text-[12px] text-muted underline underline-offset-2 hover:text-white"
+              >
+                Windows on ARM
+              </a>
+              <div className="rounded-xl border border-white/10 bg-black/30 px-3 py-2">
+                <p className="font-mono text-[11px] text-faint">PowerShell</p>
+                <p className="mt-1 break-all font-mono text-[12px] text-neutral-200">
+                  {installWindows}
+                </p>
+                <div className="mt-2">
+                  <CopyButton text={installWindows} />
+                </div>
+              </div>
             </div>
           </div>
 
@@ -197,9 +272,10 @@ export default async function DownloadPage() {
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/10 border border-accent/20 text-xs font-mono font-medium text-accent">
                 1
               </span>
-              <h4 className="text-sm font-medium text-white">Install Mac App</h4>
+              <h4 className="text-sm font-medium text-white">Install the desktop app</h4>
               <p className="text-xs text-muted leading-relaxed">
-                Paste the Terminal command on the Mac card. macOS opens Sayabot directly.
+                On a Mac, paste the Terminal command. On Windows, run the PowerShell command or open
+                the setup exe.
               </p>
             </div>
 

@@ -1,6 +1,6 @@
 # Sayabot Desktop — Overview
 
-`apps/desktop` is the **macOS Electron app** ("Sayabot", bundle id `in.sayalabs.sayabot.desktop`): a controller window that signs in (or starts as a guest), opens the Sayabot workspace in-app, and turns the Mac into a **Sayabot host** — reporting to the server, answering remote-desktop requests, running local agent jobs, fulfilling secret lookups and local MCP calls. This page documents the app lifecycle, window management, the IPC surface between main and renderer, secure session/config storage, server URL resolution, and the packaging scripts.
+`apps/desktop` is the **Electron app** ("Sayabot", bundle id `in.sayalabs.sayabot.desktop`) for macOS and Windows: a controller window that signs in (or starts as a guest), opens the Sayabot workspace in-app, and turns that computer into a **Sayabot host** — reporting to the server, answering remote-desktop requests, running local agent jobs, fulfilling secret lookups and local MCP calls. This page documents the app lifecycle, window management, the IPC surface between main and renderer, secure session/config storage, server URL resolution, and the packaging scripts.
 
 Source files: `apps/desktop/src/main.ts`, `src/preload.ts`, `src/remote-preload.ts`, `src/storage.ts`, `src/server-url.ts`, `package.json`
 
@@ -10,9 +10,9 @@ Source files: `apps/desktop/src/main.ts`, `src/preload.ts`, `src/remote-preload.
 
 `main.ts` is the Electron main process. On module load it:
 
-1. **Registers the `sayabot://` URL scheme** (`src/main.ts:410-416`) — via `app.setAsDefaultProtocolClient`, passing `process.execPath` + the script path when running from `process.defaultApp` (dev).
-2. **Enforces a single instance** (`src/main.ts:419-433`) — `app.requestSingleInstanceLock()`; a second launch quits, and its `second-instance` event refocuses the window and handles any `sayabot://` argument found in `argv`.
-3. **Handles deep links** — macOS `open-url` events are queued in `pendingDeepLinkUrl` if the app is not ready yet (`src/main.ts:436-443`), then processed by `handleDeepLink` (`src/main.ts:358`):
+1. **Registers the `sayabot://` URL scheme** — via `app.setAsDefaultProtocolClient`, passing `process.execPath` + the script path when running from `process.defaultApp` (dev). The Windows NSIS installer also registers the scheme (`package.json` `build.win.protocols`).
+2. **Enforces a single instance** — `app.requestSingleInstanceLock()`; a second launch quits, and its `second-instance` event refocuses the window and handles any `sayabot://` argument found in `argv`.
+3. **Handles deep links** — macOS `open-url` events are queued in `pendingDeepLinkUrl` if the app is not ready yet, then processed by `handleDeepLink`. On Windows the first launch puts `sayabot://` on `process.argv`; `app.whenReady` copies that into `pendingDeepLinkUrl` before the window is created. A second launch still arrives through `second-instance`. `handleDeepLink`:
    - `sayabot://connect?server=<url>` — shown by a self-hosted server's download page; always runs `connectFromLink`, which validates the server (`checkServer`), asks for confirmation in a dialog ("Only connect to servers you trust"), and switches via `useServer`. A link can never silently move the app to another server.
    - `sayabot://auth/callback` (or host `auth`) — carries `access_token`, `refresh_token`, `email`, `user_id`, `server_url` query params from the browser login; saved as the `AuthSession` (`src/main.ts:18-26`), the host restarts (`startHost`), the workspace opens, and `auth:session-updated` is broadcast to the renderer. If the previous session was a different non-guest user, `host?.forget()` drops the old computer registration.
 4. **`app.whenReady()`** (`src/main.ts:1064-1087`) — creates the window, calls `startHost()`, re-creates the window on `activate` (macOS dock clicks), and schedules update checks: first at 15 s, then hourly, plus a focus-triggered check at most every 10 minutes.
@@ -32,7 +32,7 @@ Source files: `apps/desktop/src/main.ts`, `src/preload.ts`, `src/remote-preload.
 
 `createWindow` (`src/main.ts:640`) builds a single `BrowserWindow`:
 
-- 1240×840 (min 900×600), `titleBarStyle: "hiddenInset"` with traffic lights at `{x:16, y:16}`, background `#070907`.
+- 1240×840 (min 900×600), background `#070907`. On macOS the title bar is `hiddenInset` with traffic lights at `{x:16, y:16}`. On Windows the native title bar is kept so the window can move, minimize, and close.
 - `webPreferences`: `preload.js`, `contextIsolation: true`, `nodeIntegration: false`, `sandbox: false` (the preload needs full `ipcRenderer`).
 - `setWindowOpenHandler` denies every `window.open` and forwards the URL to `shell.openExternal` (`src/main.ts:659-662`) — no popups inside the app.
 
@@ -129,14 +129,17 @@ The result (`LocalStorageReport`) carries `measuredAt` plus `{ bytes, files, app
 
 | Script | What it does |
 | :--- | :--- |
-| `dev` | `tsc` → `build:usage` → copy `src/renderer` into `dist/` → `electron .` |
-| `build` | same without launching Electron |
+| `dev` | `tsc` → `build:usage` → `node scripts/copy-renderer.mjs` → `electron .` |
+| `build` | same without launching Electron. The renderer copy is Node `fs.cpSync`, so it runs on Windows as well as macOS. |
 | `build:usage` | esbuild-bundles `src/usage/index.ts` to `dist/usage.js` (CJS, node20 target) — a separate bundle because it imports `@sayabot/core/scanner` |
 | `typecheck` | `tsc --noEmit` for the app plus `tsc -p tsconfig.usage.json` for the usage module (`tsconfig.usage.json` is a no-emit ESNext/Bundler project that excludes tests) |
 | `package:mac` / `package:dmg` / `package:arm64` / `package:x64` | `electron-builder` targets: `dmg`+`zip` |
+| `package:win` / `package:win:x64` / `package:win:arm64` | `node scripts/make-ico.mjs`, then `electron-builder --win nsis zip`. Produces `Sayabot-Setup-<arch>.exe` (first-run installer) and `Sayabot-win-<arch>.zip` (the file the in-app updater swaps). Run these on Windows. Root aliases: `pnpm desktop:package:win`, `desktop:package:win:x64`, `desktop:package:win:arm64`. `deploy/desktop/package-windows.ps1` is the same x64 build (arm64 when `SAYABOT_WIN_ARM64=1`). |
 | `test` | `vitest run` (unit tests live next to sources) |
 
-The `build` (electron-builder) block: appId `in.sayalabs.sayabot.desktop`, product name **Sayabot**, mac category `public.app-category.developer-tools`, **hardened runtime** with `build/entitlements.mac.plist`, `afterSign: build/adhoc-sign.cjs`, `publish: null` (updates come from the Sayabot server, not a binary publish channel), artifact `Sayabot-${arch}.${ext}` into `dist/installers`. It registers the `sayabot` URL scheme as an installer protocol, and `extendInfo` declares the two macOS usage descriptions the remote host needs: `NSAppleEventsUsageDescription` (System Events keystrokes) and `NSScreenCaptureUsageDescription` (screen sharing during allowed sessions). The DMG layout is a 660×400 window with a background image and the standard app + Applications link.
+The `build` (electron-builder) block: appId `in.sayalabs.sayabot.desktop`, product name **Sayabot**, mac category `public.app-category.developer-tools`, **hardened runtime** with `build/entitlements.mac.plist`, `afterSign: build/adhoc-sign.cjs` (no-op unless the platform is `darwin`), `publish: null` (updates come from the Sayabot server, not a binary publish channel), artifact `Sayabot-${arch}.${ext}` into `dist/installers` for Mac. It registers the `sayabot` URL scheme as an installer protocol, and `extendInfo` declares the two macOS usage descriptions the remote host needs: `NSAppleEventsUsageDescription` (System Events keystrokes) and `NSScreenCaptureUsageDescription` (screen sharing during allowed sessions). The DMG layout is a 660×400 window with a background image and the standard app + Applications link.
+
+Windows (`build.win` + `build.nsis`): per-user NSIS installer (`oneClick: false`, `perMachine: false`, `requestedExecutionLevel: asInvoker`) so the app runs in the signed-in session and can see that user's CLIs. Default folder is `%LOCALAPPDATA%\Programs\Sayabot`. Artifacts are `Sayabot-Setup-${arch}.exe` and `Sayabot-win-${arch}.zip`. The icon is `build/icon.ico`, generated from `assets/icon.png` by `scripts/make-ico.mjs` before packaging. There is no Authenticode certificate in CI (`CSC_IDENTITY_AUTO_DISCOVERY=false`); SmartScreen will warn until one is added.
 
 ---
 

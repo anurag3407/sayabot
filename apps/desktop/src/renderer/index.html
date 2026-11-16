@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sayabot for Mac</title>
+  <title>Sayabot</title>
   <style>
     :root {
       color-scheme: dark;
@@ -329,7 +329,7 @@
             </span>
             <span>
               <span class="choice-title">Sayabot Cloud <span class="choice-badge">Recommended</span></span>
-              <span class="choice-sub">Start in seconds, no account needed. Your agents run on this Mac with the apps you already use; save your account whenever you like.</span>
+              <span class="choice-sub" id="guest-choice-sub">Start in seconds, no account needed. Your agents run on this computer with the apps you already use; save your account whenever you like.</span>
             </span>
           </button>
           <button id="choose-own" class="choice" type="button">
@@ -406,13 +406,13 @@
         <span>Signed in and synced</span>
       </div>
 
-      <h1 id="user-display">Sayabot Mac Controller</h1>
+      <h1 id="user-display">Sayabot</h1>
       <p id="user-email-label" class="subtitle">user@gmail.com</p>
 
       <div class="info-grid">
         <div class="info-box">
           <div class="info-label">Host Machine</div>
-          <div class="info-val">macOS Local Node</div>
+          <div class="info-val" id="host-machine">This computer</div>
         </div>
         <div class="info-box">
           <div class="info-label">Android Companion</div>
@@ -423,17 +423,17 @@
       <div class="toggle-row">
         <div>
           <div class="toggle-title">Local Computer Runner (computerd)</div>
-          <div class="toggle-sub">Execute bash & code directly on this Mac</div>
+          <div class="toggle-sub" id="runner-sub">Execute bash and code directly on this computer</div>
         </div>
         <label class="switch">
-          <input type="checkbox" id="local-runner-toggle" checked aria-label="Run bash and code on this Mac">
+          <input type="checkbox" id="local-runner-toggle" checked aria-label="Run bash and code on this computer">
           <span class="slider"></span>
         </label>
       </div>
 
       <div class="toggle-row" style="margin: 14px 0;">
         <div>
-          <div class="toggle-title" id="desktop-version-title">Sayabot for Mac</div>
+          <div class="toggle-title" id="desktop-version-title">Sayabot</div>
           <div class="toggle-sub" id="desktop-version-subtitle">Checking version…</div>
         </div>
         <button id="auth-check-updates-btn" class="btn btn-secondary" type="button" style="width: auto; padding: 6px 14px; font-size: 12px; margin-top: 0;">
@@ -453,6 +453,13 @@
 
   <script>
     const bridge = window.sayabotDesktop;
+    const onWindows = navigator.userAgent.includes("Windows");
+    const productName = onWindows ? "Sayabot for Windows" : "Sayabot for Mac";
+    const hostMachine = document.getElementById("host-machine");
+    if (hostMachine) hostMachine.textContent = onWindows ? "Windows local node" : "macOS local node";
+    const userDisplay = document.getElementById("user-display");
+    if (userDisplay) userDisplay.textContent = productName;
+    document.title = productName;
     const unauthView = document.getElementById("unauth-view");
     const authView = document.getElementById("auth-view");
     const gatewayLabel = document.getElementById("gateway-label");
@@ -701,7 +708,7 @@
       if (!bridge.getVersion) return;
       try {
         const v = await bridge.getVersion();
-        if (desktopVersionTitle) desktopVersionTitle.textContent = `Sayabot for Mac v${v}`;
+        if (desktopVersionTitle) desktopVersionTitle.textContent = `${productName} v${v}`;
         if (desktopVersionSubtitle) desktopVersionSubtitle.textContent = "Latest release installed";
       } catch (e) {
         // ignore

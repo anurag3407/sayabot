@@ -1,8 +1,8 @@
 /**
- * The Mac app's own updates, as one state machine the menu, the notification and the workspace
+ * The desktop app's own updates, as one state machine the menu, the notification and the workspace
  * page all read, so they never disagree. Checking asks the Sayabot server which version is newest;
- * installing downloads that exact version's DMG, makes sure it really is that version, and only
- * then quits so a helper can swap the app (see mac-install.ts).
+ * installing downloads that exact version's package (a DMG on macOS, a zip on Windows), makes sure
+ * it really is that version, and only then quits so a helper can swap the app.
  */
 
 export type UpdateState =
@@ -17,14 +17,22 @@ export interface VersionInfo {
   latestDesktopVersion?: string
   dmgUrl?: string
   dmgUrls?: Partial<Record<"arm64" | "x64", string>>
+  /** Unpacked-app zips of exactly latestDesktopVersion, per Windows arch. */
+  winUrls?: Partial<Record<"arm64" | "x64", string>>
   releaseNotes?: string
 }
 
 export interface UpdaterDeps {
   currentVersion: string
   arch: string
+  /** Which package to download. Omitted means the Mac DMG, so existing callers stay on macOS. */
+  platform?: "darwin" | "win32"
   fetchVersion: () => Promise<VersionInfo>
-  download: (url: string, dest: string, onProgress: (percent: number | null) => void) => Promise<void>
+  download: (
+    url: string,
+    dest: string,
+    onProgress: (percent: number | null) => void,
+  ) => Promise<void>
   /** The CFBundleShortVersionString of the Sayabot.app inside a DMG, or null. */
   inspect: (dmgPath: string) => Promise<string | null>
   /** Throws a plain-words error when the app cannot replace itself where it lives. */
@@ -66,6 +74,17 @@ export function dmgUrlFor(info: VersionInfo, version: string, arch: string): str
     return given.replace(/Sayabot-(arm64|x64)\.dmg$/, name)
   }
   return `${REPO_DOWNLOADS}/v${version}/${name}`
+}
+
+/**
+ * The Windows zip for exactly `version` on this PC's chip. A "latest" link could hand over a
+ * different build than the one the check saw, so it is pinned to the version's own release.
+ */
+export function winZipUrlFor(info: VersionInfo, version: string, arch: string): string {
+  const chip = arch === "arm64" ? "arm64" : "x64"
+  const pinned = info.winUrls?.[chip]
+  if (pinned) return pinned
+  return `${REPO_DOWNLOADS}/v${version}/Sayabot-win-${chip}.zip`
 }
 
 export class DesktopUpdater {
@@ -110,7 +129,8 @@ export class DesktopUpdater {
       try {
         const info = await this.deps.fetchVersion()
         const latest = info.latestDesktopVersion ?? ""
-        if (!parseVersion(latest)) throw new Error("The server did not say which version is newest.")
+        if (!parseVersion(latest))
+          throw new Error("The server did not say which version is newest.")
         this.info = info
         this.set(
           isNewer(current, latest)
@@ -119,8 +139,19 @@ export class DesktopUpdater {
         )
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
-        if (manual) this.set({ status: "error", current, latest: null, message: `Could not check for updates. ${message}` })
-        else this.set(before.status === "checking" ? { status: "idle", current, latest: null, checkedAt: null } : before)
+        if (manual)
+          this.set({
+            status: "error",
+            current,
+            latest: null,
+            message: `Could not check for updates. ${message}`,
+          })
+        else
+          this.set(
+            before.status === "checking"
+              ? { status: "idle", current, latest: null, checkedAt: null }
+              : before,
+          )
       } finally {
         this.checking = null
       }
@@ -140,7 +171,10 @@ export class DesktopUpdater {
     if (state.status !== "available" || !this.info) return
     const { current, latest } = state
     const dmgPath = this.deps.dmgPath(latest)
-    const url = dmgUrlFor(this.info, latest, this.deps.arch)
+    const url =
+      this.deps.platform === "win32"
+        ? winZipUrlFor(this.info, latest, this.deps.arch)
+        : dmgUrlFor(this.info, latest, this.deps.arch)
     this.set({ status: "downloading", current, latest, percent: 0 })
     try {
       let shown = -1

@@ -1,9 +1,36 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, MenuItemConstructorOptions, Notification, shell } from "electron"
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  ipcMain,
+  Menu,
+  MenuItemConstructorOptions,
+  Notification,
+  shell,
+} from "electron"
 import * as path from "node:path"
 import * as fs from "node:fs"
-import { canReplace, downloadFile, inspectDmg, installTarget, runDetached, stageMacUpdate } from "./mac-install"
+import {
+  canReplace,
+  downloadFile,
+  inspectDmg,
+  installTarget,
+  runDetached,
+  stageMacUpdate,
+} from "./mac-install"
+import {
+  canReplaceWin,
+  inspectWinZip,
+  installTargetWin,
+  runDetachedWin,
+  stageWinUpdate,
+} from "./win-install"
 import { DesktopUpdater, type VersionInfo } from "./updater"
-import { fetchWorkspaceSnapshot, leaveCloudHome, type LocalWorkspaceSnapshot } from "./cloud-handoff"
+import {
+  fetchWorkspaceSnapshot,
+  leaveCloudHome,
+  type LocalWorkspaceSnapshot,
+} from "./cloud-handoff"
 import { DesktopHost, loadHostAuth } from "./host"
 import { detectLocalAgents } from "./local-agents"
 import { LocalMcpHost } from "./local-mcp"
@@ -58,12 +85,15 @@ async function checkServer(input: string): Promise<ServerInfo | { ok: false; err
       redirect: "manual",
       signal: AbortSignal.timeout(8_000),
     })
-    const data = res.ok ? ((await res.json().catch(() => null)) as Record<string, unknown> | null) : null
+    const data = res.ok
+      ? ((await res.json().catch(() => null)) as Record<string, unknown> | null)
+      : null
     if (!data || data.sayabot !== true) {
       // Servers on an older Sayabot have no /api/instance yet, but they do answer these two.
       const legacy = await legacyCheck
       if (legacy) return legacy
-      if (res.status >= 500) return { ok: false, error: `The server answered with an error (${res.status}).` }
+      if (res.status >= 500)
+        return { ok: false, error: `The server answered with an error (${res.status}).` }
       return { ok: false, error: "That server answered, but it isn't running Sayabot." }
     }
     return {
@@ -75,10 +105,16 @@ async function checkServer(input: string): Promise<ServerInfo | { ok: false; err
     }
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
-    if (/timeout|aborted/i.test(msg)) return { ok: false, error: "The server didn't answer in time. Is it running?" }
-    if (/ENOTFOUND|getaddrinfo/i.test(msg)) return { ok: false, error: "Couldn't find that address. Check the spelling." }
-    if (/certificate|SSL|TLS/i.test(msg)) return { ok: false, error: "The server's HTTPS certificate isn't valid." }
-    return { ok: false, error: "Couldn't reach that server. Check the address and your connection." }
+    if (/timeout|aborted/i.test(msg))
+      return { ok: false, error: "The server didn't answer in time. Is it running?" }
+    if (/ENOTFOUND|getaddrinfo/i.test(msg))
+      return { ok: false, error: "Couldn't find that address. Check the spelling." }
+    if (/certificate|SSL|TLS/i.test(msg))
+      return { ok: false, error: "The server's HTTPS certificate isn't valid." }
+    return {
+      ok: false,
+      error: "Couldn't reach that server. Check the address and your connection.",
+    }
   }
 }
 
@@ -90,7 +126,9 @@ async function checkLegacyServer(url: string): Promise<ServerInfo | null> {
         .then((r) => (r.ok ? (r.json() as Promise<{ enabled?: boolean }>) : null))
         .catch(() => null),
     ])
-    const info = version.ok ? ((await version.json().catch(() => null)) as Record<string, unknown> | null) : null
+    const info = version.ok
+      ? ((await version.json().catch(() => null)) as Record<string, unknown> | null)
+      : null
     if (!info || typeof info.latestDesktopVersion !== "string") return null
     return {
       ok: true,
@@ -140,9 +178,16 @@ async function useServer(info: ServerInfo): Promise<void> {
   if (switching && info.edition === "cloud") {
     const auth = loadHostAuth(config.serverUrl)
     if (auth) {
-      const snapshot = await fetchWorkspaceSnapshot(auth.serverUrl, auth.hostId, auth.hostToken).catch(() => null)
+      const snapshot = await fetchWorkspaceSnapshot(
+        auth.serverUrl,
+        auth.hostId,
+        auth.hostToken,
+      ).catch(() => null)
       if (snapshot) {
-        fs.writeFileSync(path.join(app.getPath("userData"), "cloud-home.json"), JSON.stringify(snapshot, null, 2))
+        fs.writeFileSync(
+          path.join(app.getPath("userData"), "cloud-home.json"),
+          JSON.stringify(snapshot, null, 2),
+        )
       }
     }
   }
@@ -181,7 +226,11 @@ function startHost(): void {
       onSessionUpdate: (updated) => {
         const cur = loadSession()
         if (cur) {
-          saveSession({ ...cur, accessToken: updated.accessToken, refreshToken: updated.refreshToken })
+          saveSession({
+            ...cur,
+            accessToken: updated.accessToken,
+            refreshToken: updated.refreshToken,
+          })
         }
       },
       detectLocalAgents: async (opts) =>
@@ -303,7 +352,7 @@ async function changeServerFromMenu(): Promise<void> {
     const choice = await dialog.showMessageBox({
       type: "question",
       message: "Change server?",
-      detail: `You'll be signed out of ${where} on this Mac. Your data stays on that server, and you can come back any time.`,
+      detail: `You'll be signed out of ${where} on this computer. Your data stays on that server, and you can come back any time.`,
       buttons: ["Change Server", "Cancel"],
       defaultId: 0,
       cancelId: 1,
@@ -452,6 +501,7 @@ function updateServerBase(): string {
 const updater = new DesktopUpdater({
   currentVersion: app.getVersion(),
   arch: process.arch,
+  platform: process.platform === "win32" ? "win32" : "darwin",
   fetchVersion: async () => {
     const res = await fetch(`${updateServerBase()}/api/version`, {
       headers: { Accept: "application/json" },
@@ -461,18 +511,35 @@ const updater = new DesktopUpdater({
     return (await res.json()) as VersionInfo
   },
   download: downloadFile,
-  inspect: inspectDmg,
-  dmgPath: (version) => path.join(app.getPath("temp"), "sayabot-updates", `Sayabot-${version}.dmg`),
-  install: async (dmgPath, version) => {
+  inspect: (file) => (process.platform === "win32" ? inspectWinZip(file) : inspectDmg(file)),
+  dmgPath: (version) =>
+    path.join(
+      app.getPath("temp"),
+      "sayabot-updates",
+      process.platform === "win32" ? `Sayabot-${version}.zip` : `Sayabot-${version}.dmg`,
+    ),
+  install: async (artifactPath, version) => {
+    if (process.platform === "win32") {
+      const target = installTargetWin(app.getPath("exe"))
+      if (!canReplaceWin(target)) {
+        void shell.openPath(artifactPath)
+        throw new Error(
+          `Sayabot can't replace itself in ${target}. The new version was downloaded: close Sayabot and run Sayabot Setup, or extract the zip over that folder.`,
+        )
+      }
+      runDetachedWin(stageWinUpdate({ zipPath: artifactPath, target, version }))
+      quitForUpdate()
+      return
+    }
     const target = installTarget(app.getPath("exe"))
     if (!canReplace(target)) {
       // No permission to swap the app: open the disk image so it can be dragged over by hand.
-      void shell.openPath(dmgPath)
+      void shell.openPath(artifactPath)
       throw new Error(
         `Sayabot can't replace itself in ${path.dirname(target)}. The new version is open in Finder: drag it to Applications.`,
       )
     }
-    runDetached(stageMacUpdate({ dmgPath, target, version }))
+    runDetached(stageMacUpdate({ dmgPath: artifactPath, target, version }))
     quitForUpdate()
   },
 })
@@ -491,7 +558,11 @@ updater.onChange((state) => {
     if (!win.isDestroyed()) win.webContents.send("app:update-state", state)
   }
   buildAppMenu()
-  if (state.status === "available" && notifiedVersion !== state.latest && Notification.isSupported()) {
+  if (
+    state.status === "available" &&
+    notifiedVersion !== state.latest &&
+    Notification.isSupported()
+  ) {
     notifiedVersion = state.latest
     const note = new Notification({
       title: `Sayabot ${state.latest} is available`,
@@ -512,7 +583,10 @@ async function checkForUpdatesWithDialog(): Promise<void> {
     await show({
       type: "info",
       message: `Sayabot ${before.latest} is ${before.status === "installing" ? "installing" : "downloading"}`,
-      detail: before.status === "downloading" && before.percent !== null ? `${before.percent}% done.` : "",
+      detail:
+        before.status === "downloading" && before.percent !== null
+          ? `${before.percent}% done.`
+          : "",
       buttons: ["OK"],
     })
     return
@@ -529,7 +603,12 @@ async function checkForUpdatesWithDialog(): Promise<void> {
     })
     if (choice.response === 0) void updater.install()
   } else if (state.status === "error") {
-    await show({ type: "warning", message: "Could not check for updates", detail: state.message, buttons: ["OK"] })
+    await show({
+      type: "warning",
+      message: "Could not check for updates",
+      detail: state.message,
+      buttons: ["OK"],
+    })
   } else {
     await show({
       type: "info",
@@ -557,7 +636,10 @@ function updateMenuItem(): MenuItemConstructorOptions {
       return { label: "Checking for Updates…", enabled: false }
     case "error":
       return state.latest
-        ? { label: `Retry Installing Sayabot ${state.latest}…`, click: () => void updater.install() }
+        ? {
+            label: `Retry Installing Sayabot ${state.latest}…`,
+            click: () => void updater.install(),
+          }
         : { label: "Check for Updates…", click: () => void checkForUpdatesWithDialog() }
     default:
       return { label: "Check for Updates…", click: () => void checkForUpdatesWithDialog() }
@@ -638,13 +720,16 @@ function buildAppMenu() {
 }
 
 function createWindow() {
+  const darwinChrome =
+    process.platform === "darwin"
+      ? { titleBarStyle: "hiddenInset" as const, trafficLightPosition: { x: 16, y: 16 } }
+      : {}
   mainWindow = new BrowserWindow({
     width: 1240,
     height: 840,
     minWidth: 900,
     minHeight: 600,
-    titleBarStyle: "hiddenInset",
-    trafficLightPosition: { x: 16, y: 16 },
+    ...darwinChrome,
     backgroundColor: "#070907",
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -754,9 +839,12 @@ async function refreshSessionIfNeeded(force = false): Promise<AuthSession | null
 }
 
 // Background session keeper: refresh tokens every 15 minutes so they never expire
-setInterval(() => {
-  void refreshSessionIfNeeded()
-}, 15 * 60 * 1000)
+setInterval(
+  () => {
+    void refreshSessionIfNeeded()
+  },
+  15 * 60 * 1000,
+)
 
 async function openWorkspaceInWindow() {
   const session = await refreshSessionIfNeeded()
@@ -800,7 +888,10 @@ async function signInFromMenu(): Promise<void> {
     const base = session.serverUrl.replace(/\/+$/, "")
     const res = await fetch(`${base}/api/account/merge`, {
       method: "POST",
-      headers: { "content-type": "application/json", authorization: `Bearer ${session.accessToken}` },
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${session.accessToken}`,
+      },
       body: JSON.stringify({ next: "/auth/desktop" }),
     })
     const data = (await res.json().catch(() => ({}))) as { url?: string; error?: string }
@@ -900,13 +991,24 @@ ipcMain.handle("config:choose-server", async (_event, input: string | null) => {
   if (!info.ok) {
     // Sayabot Cloud being briefly unreachable shouldn't block choosing it.
     if (!input) {
-      await useServer({ ok: true, url: DEFAULT_SERVER_URL, name: "Sayabot Cloud", edition: "cloud", guestMode: true })
+      await useServer({
+        ok: true,
+        url: DEFAULT_SERVER_URL,
+        name: "Sayabot Cloud",
+        edition: "cloud",
+        guestMode: true,
+      })
       return { ok: true, url: DEFAULT_SERVER_URL, name: "Sayabot Cloud", guestMode: true }
     }
     return info
   }
   await useServer(input ? info : { ...info, name: "Sayabot Cloud" })
-  return { ok: true, url: info.url, name: input ? info.name : "Sayabot Cloud", guestMode: info.guestMode }
+  return {
+    ok: true,
+    url: info.url,
+    name: input ? info.name : "Sayabot Cloud",
+    guestMode: info.guestMode,
+  }
 })
 
 ipcMain.handle("auth:start-guest", () => {
@@ -1062,6 +1164,11 @@ ipcMain.handle("usage:local", async (event, days?: number) => {
 })
 
 app.whenReady().then(() => {
+  // Windows delivers sayabot:// on the first process argv. macOS uses the open-url event.
+  if (process.platform === "win32") {
+    const deepLinkArg = process.argv.find((arg) => arg.startsWith("sayabot://"))
+    if (deepLinkArg) pendingDeepLinkUrl = deepLinkArg
+  }
   createWindow()
   startHost()
 

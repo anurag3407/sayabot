@@ -81,7 +81,7 @@ Eight "Sayabot vs X" cards (ChatGPT, Claude Cowork, Grok, Manus, Devin, OpenClaw
 "Help keep the bots fed." with two floating mascots and a link to `SPONSOR_URL`.
 
 ### Downloads (`downloads.tsx`)
-Two big colored cards (purple Mac with Pip, peach Android with Juno): working download links to the GitHub release assets ("Downloading DMG…" state with next-step install hints, Intel .dmg secondary button, "Install from Terminal" deep link to `/download#install`, Pairing Guide to `/download`), plus three COMING SOON chips (Windows .exe, Linux AppImage, Google Play).
+Two big colored cards (purple Mac with Pip, peach Android with Juno): working download links to the GitHub release assets ("Downloading DMG…" state with next-step install hints, Intel .dmg secondary button, "Install from Terminal" deep link to `/download#install`, Pairing Guide to `/download`). Under them, a Sayabot for Windows row links `DOWNLOADS.winX64` (and a Windows on ARM link). Two COMING SOON chips remain: Linux AppImage and Google Play.
 
 ### FAQ (`faq.tsx`)
 Ten accordion items (default first open): what Sayabot is, team rooms, permissions (private rooms hidden from admins, per-room agent keys), bringing your own agent (Claude Code, Codex, Cursor, Hermes, Antigravity, Claude app, ChatGPT + any MCP client), bot-to-bot talk, safety (approval gates + 5-minute timeout + cut-in + breakers), agent computers, pricing ("free for now. Pro and Ultra plans are coming"), devices (web/macOS/Android today; Windows/Linux/iPhone soon), and the public code.

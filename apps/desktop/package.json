@@ -1,17 +1,20 @@
 {
   "name": "@sayabot/desktop",
   "version": "1.0.0",
-  "description": "Sayabot Desktop for macOS - Autonomous Remote Agent Workspace & Computer Controller",
+  "description": "Sayabot Desktop for macOS and Windows - Autonomous Remote Agent Workspace & Computer Controller",
   "private": true,
   "main": "dist/main.js",
   "scripts": {
-    "dev": "tsc && pnpm build:usage && cp -r src/renderer dist/ && electron .",
-    "build": "tsc && pnpm build:usage && cp -r src/renderer dist/",
+    "dev": "tsc && pnpm build:usage && node scripts/copy-renderer.mjs && electron .",
+    "build": "tsc && pnpm build:usage && node scripts/copy-renderer.mjs",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.usage.json",
     "package:mac": "pnpm build && electron-builder --mac",
     "package:dmg": "pnpm build && electron-builder --mac dmg",
     "package:arm64": "pnpm build && electron-builder --mac --arm64",
     "package:x64": "pnpm build && electron-builder --mac --x64",
+    "package:win": "pnpm build && node scripts/make-ico.mjs && electron-builder --win nsis zip --publish never",
+    "package:win:x64": "pnpm build && node scripts/make-ico.mjs && electron-builder --win nsis zip --x64 --publish never",
+    "package:win:arm64": "pnpm build && node scripts/make-ico.mjs && electron-builder --win nsis zip --arm64 --publish never",
     "build:usage": "esbuild src/usage/index.ts --bundle --platform=node --target=node20 --format=cjs --outfile=dist/usage.js",
     "test": "vitest run"
   },
@@ -50,6 +53,37 @@
         "NSAppleEventsUsageDescription": "Sayabot uses System Events to type for you during a remote desktop session you allowed.",
         "NSScreenCaptureUsageDescription": "Sayabot shares this screen only during remote desktop sessions you allow."
       }
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "zip"
+      ],
+      "icon": "build/icon.ico",
+      "artifactName": "Sayabot-win-${arch}.${ext}",
+      "requestedExecutionLevel": "asInvoker",
+      "protocols": [
+        {
+          "name": "Sayabot URL Scheme",
+          "schemes": [
+            "sayabot"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Sayabot",
+      "uninstallDisplayName": "Sayabot",
+      "artifactName": "Sayabot-Setup-${arch}.${ext}",
+      "deleteAppDataOnUninstall": false,
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico"
     },
     "dmg": {
       "title": "Sayabot macOS Installer",

@@ -26,7 +26,7 @@ Heartbeats land on the account that **registered** the computer, so a stale regi
 
 `HEARTBEAT_MS` is **2,500 ms** (`src/host.ts:58`); a `beating` guard prevents overlap. Each beat is `POST /api/desktop/heartbeat` with:
 
-- **`permissions`** — `permissionState()` (`src/host.ts:82`): macOS screen-recording status and accessibility (`isTrustedAccessibilityClient`); `"unknown"` off macOS.
+- **`permissions`** — `permissionState()` (`src/host.ts`): macOS screen-recording status and accessibility (`isTrustedAccessibilityClient`). On Windows, screen is `granted` unless `getMediaAccessStatus("screen")` is `denied` or `restricted`, and accessibility is `granted` (injection uses the interactive session). Other platforms stay `"unknown"`.
 - **`localAgents`** — re-scanned at most every **60 s** via the injected `detectLocalAgents` (see [local-agents-and-injector.md](./local-agents-and-injector.md)); the server keeps the last list in between.
 - **`storage`** — re-measured at most every **10 min** via `measureLocalStorage` (see [overview.md](./overview.md)).
 
@@ -81,7 +81,7 @@ Each heartbeat reply's `sessions` list is deduplicated by a `handled` set and di
 3. **Local confirmation** — unless `settings.askOnComputer === false`, `askAtComputer` (`src/host.ts:400`) shows a modal dialog ("`<viewerName>` wants to see/control this computer", default button **Don't allow**, auto-refused after 30 s via `AbortController`).
 4. **No capturable screen** → deny.
 
-If control was requested, actual control is only enabled when `injector.supported` (darwin) **and** accessibility is granted (`src/host.ts:438`). The primary display's capturer source is matched by `display_id`; the hidden capture window (`ensureCaptureWindow`, `src/host.ts:446`) loads `remote-host.html` with the `remote-preload.js` bridge and receives `remote-host:start` with `{ sessionId, offer, sourceId }` once it finishes loading.
+If control was requested, actual control is only enabled when `injector.supported` (darwin or win32) **and** accessibility is granted. The primary display's capturer source is matched by `display_id`; the hidden capture window (`ensureCaptureWindow`, `src/host.ts:446`) loads `remote-host.html` with the `remote-preload.js` bridge and receives `remote-host:start` with `{ sessionId, offer, sourceId }` once it finishes loading.
 
 ### Input injection
 
