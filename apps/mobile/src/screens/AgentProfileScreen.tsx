@@ -2,6 +2,7 @@ import React from "react"
 import { ScrollView, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { Activity, ChevronLeft, Cpu, Hash, MessageCircle } from "lucide-react-native"
+import { ModelPicker } from "../components/chat/ModelPicker"
 import { compactNumber, shortTime, useHome, type HomeAgent } from "../hooks/useHome"
 import { Button, Group, IconButton, Row } from "../ui/controls"
 import { Mascot } from "../ui/Mascot"
@@ -12,7 +13,7 @@ import { space, useTheme } from "../ui/theme"
 export function AgentProfileScreen({ route, navigation }: any) {
   const theme = useTheme()
   const insets = useSafeAreaInsets()
-  const { data } = useHome()
+  const { data, refresh } = useHome()
   const initial = route?.params?.agent as HomeAgent
   const orgSlug = route?.params?.orgSlug as string
   const agent = data?.agents.find((a) => a.id === initial?.id) ?? initial
@@ -54,9 +55,28 @@ export function AgentProfileScreen({ route, navigation }: any) {
           ) : null}
         </View>
 
-        <Group title="Thinks with">
-          <Row icon={<Cpu size={16} color={theme.text} />} title={agent.model} subtitle={agent.kind === "external" ? "Its own app's model and subscription" : "Change it in the web app under Agents"} chevron={false} />
-        </Group>
+        {agent.kind === "llm" ? (
+          <ModelPicker
+            orgSlug={orgSlug}
+            agentId={agent.id}
+            onSaved={() => void refresh()}
+            trigger={({ label, canEdit, open }) => (
+              <Group title="Thinks with">
+                <Row
+                  icon={<Mascot seed={agent.handle} size={22} />}
+                  iconBg="transparent"
+                  title={label === "Model" ? agent.model : label}
+                  subtitle={canEdit === false ? "Only workspace admins can change this" : "Tap to change the model"}
+                  onPress={open}
+                />
+              </Group>
+            )}
+          />
+        ) : (
+          <Group title="Thinks with">
+            <Row icon={<Cpu size={16} color={theme.text} />} title={agent.model} subtitle="Its own app's model and subscription" chevron={false} />
+          </Group>
+        )}
 
         <Group title="Last 30 days" footer={agent.kind === "external" || /computer/.test(agent.model) ? "Runs on its own subscription, so tokens aren't billed here." : undefined}>
           <Row icon={<Activity size={16} color={theme.text} />} title="Runs" value={agent.usage ? agent.usage.runs.toLocaleString() : "0"} chevron={false} />

@@ -2,7 +2,7 @@
 
 The Chats tab (`HomeScreen`) is the app's dashboard: an org-switcher header, a "needs you" banner, an agent strip, and the chat list — all backed by one shared home snapshot cached on disk and kept live by a single realtime subscription. Opening a chat pushes `ChatScreen`, which loads the room's message history, subscribes to a private broadcast channel for token streaming, agent status, terminal output, and danger-tool approvals, and posts outgoing messages through the web API. Message bodies are rendered by a lightweight Markdown pipeline (`parseBlocks` + `RichText`), and any `tool.output` events feed a slide-up terminal drawer showing the agent's computer shell.
 
-Source files: `src/screens/HomeScreen.tsx`, `src/screens/ChatScreen.tsx`, `src/hooks/useHome.ts`, `src/hooks/useRooms.ts`, `src/hooks/useRoomRealtime.ts`, `src/hooks/useRoomAgents.ts`, `src/core/room-message.ts`, `src/core/api.ts`, `src/ui/RichText.tsx`, `src/core/markdown.ts`, `src/components/chat/TerminalDrawer.tsx`, `src/types/index.ts`
+Source files: `src/screens/HomeScreen.tsx`, `src/screens/ChatScreen.tsx`, `src/hooks/useHome.ts`, `src/hooks/useRooms.ts`, `src/hooks/useRoomRealtime.ts`, `src/hooks/useRoomAgents.ts`, `src/core/room-message.ts`, `src/core/api.ts`, `src/ui/RichText.tsx`, `src/core/markdown.ts`, `src/components/chat/TerminalDrawer.tsx`, `src/components/chat/ModelPicker.tsx`, `src/core/model-choice.ts`, `src/types/index.ts`
 
 ---
 
@@ -117,6 +117,7 @@ If open questions exist for this room (from `useInbox(orgSlug)` filtered by `roo
 ### Mentions, attachments, sending
 
 - Typing `@text` at the draft's end opens agent-handle autocomplete chips (`mentionQuery` regex on the draft tail); picking one rewrites the tail to `@handle ` (`ChatScreen.tsx:239-240`, `433-449`).
+- Above the input, `ChatModelButton` (`components/chat/ModelPicker.tsx`) opens the model picker for every bot in the chat that was made here (invited bots keep their own app's model, and the chip hides when the room has none). It reads `GET /api/mobile/models?orgSlug&roomId` and saves with `POST /api/mobile/models`. "Only this chat" writes this room's override; "Everywhere" changes the bot's default and clears the override. A dot on the chip means this chat has its own pick. Members see the list; only workspace admins can save ("Only workspace admins can change models."). See [Mobile App API](../web/api/api-mobile.md).
 - The "+" button opens "Add to message": **Photos** (library, up to 4), **Camera**, **File** (DocumentPicker). Picked files cap at 6 (`ChatScreen.tsx:271-291`, `547-553`). Permissions denied produce explicit errors like "Photo access is off for Sayabot in Settings."
 - `send()` uploads each attachment via `uploadToRoom(roomId, file)` and appends `attachmentMarkdown(...)` links to the text before `sendMessage` (`ChatScreen.tsx:246-269`). Upload contract (`src/core/api.ts`):
   - `prepareForUpload` resizes images to a 1600px long side and re-encodes to JPEG at 0.72 quality (GIFs untouched) (`api.ts:54-62`).

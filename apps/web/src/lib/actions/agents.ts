@@ -16,9 +16,9 @@ import { ensureBotDmRoom } from "@/lib/bot-dm"
 import { planGate } from "@/lib/plan-limits"
 import { getKek } from "@/lib/env"
 import { headers } from "next/headers"
-import { revalidatePath } from "next/cache"
 import { localDetectionAllowed } from "@/lib/local-agents"
 import { resolveModelChoice } from "@/lib/model-choice"
+import { writeAgentModel, writeRoomAgentModel } from "@/lib/room-models"
 import { testAgentInOrchestrator } from "@/lib/orchestrator"
 import {
   adminOrgAccess,
@@ -514,56 +514,15 @@ export async function setAgentModelAction(input: {
 }): Promise<ActionResult> {
   const check = await adminOrgAccess(input.orgSlug)
   if ("error" in check) return fail(check.error)
-  const admin = createAdminClient()
-  const { data: agent } = await admin
-    .from("agents")
-    .select("id, org_id, kind, handle, params")
-    .eq("id", input.agentId)
-    .maybeSingle()
-  if (!agent || agent.org_id !== check.access.org.id) return fail("Agent not found")
-  if (agent.kind !== "llm") return fail("Invited agents use the model of their own app")
-
   const requestHeaders = await headers()
-  const resolved = await resolveModelChoice({
-    orgId: check.access.org.id,
-    userId: check.access.user.id,
+  return writeAgentModel({
+    access: check.access,
     requestHost: requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host"),
-    keyId: input.providerKeyId,
+    agentId: input.agentId,
+    providerKeyId: input.providerKeyId,
     model: input.model,
     effort: input.effort,
   })
-  if (!resolved.ok) return fail(resolved.error)
-  const choice = resolved.choice
-  const params = { ...((agent.params as Record<string, unknown>) ?? {}) }
-  if (input.effort !== undefined) {
-    if (choice.effort) params.effort = choice.effort
-    else delete params.effort
-  }
-  if (choice.runner) params.runner = choice.runner
-  else delete params.runner
-
-  const { error } = await admin
-    .from("agents")
-    .update({
-      provider_key_id: choice.providerKeyId,
-      model: choice.agentModel,
-      params,
-      // A Mac only runs its owner's bots, so picking your Mac makes the bot yours.
-      ...(choice.macOwnerUserId ? { owner_user_id: choice.macOwnerUserId } : {}),
-    })
-    .eq("id", agent.id)
-  if (error) return fail(errorMessage(error))
-  await audit({
-    orgId: check.access.org.id,
-    actorId: check.access.user.id,
-    action: choice.runner ? "agent.runner_set" : "agent.model_changed",
-    target: agent.id,
-    metadata: { keyId: input.providerKeyId, model: input.model, runner: choice.runner, effort: params.effort ?? null },
-  })
-  // A chat that followed this bot's default keeps doing so; one with its own model keeps that.
-  // Only the bot pages show its model; re-rendering the whole workspace made picks lag.
-  revalidatePath(`/${input.orgSlug}/agents`, "layout")
-  return ok(`@${agent.handle} now uses ${choice.label}`)
 }
 
 /**
@@ -583,75 +542,18 @@ export async function setRoomAgentModelAction(input: {
 }): Promise<ActionResult> {
   const check = await adminOrgAccess(input.orgSlug)
   if ("error" in check) return fail(check.error)
-  const admin = createAdminClient()
-  const [{ data: room }, { data: link }, { data: agent }] = await Promise.all([
-    admin.from("rooms").select("id, org_id").eq("id", input.roomId).maybeSingle(),
-    admin.from("room_agents").select("agent_id").eq("room_id", input.roomId).eq("agent_id", input.agentId).maybeSingle(),
-    admin.from("agents").select("id, org_id, kind, handle, owner_user_id").eq("id", input.agentId).maybeSingle(),
-  ])
-  if (!room || room.org_id !== check.access.org.id) return fail("Chat not found")
-  if (!link || !agent || agent.org_id !== check.access.org.id) return fail("That bot isn't in this chat")
-  if (agent.kind !== "llm") return fail("Invited agents use the model of their own app")
-
-  if (input.scope === "default" || input.clear) {
-    if (input.scope === "default" && !input.clear) {
-      const saved = await setAgentModelAction({
-        orgSlug: input.orgSlug,
-        agentId: agent.id,
-        providerKeyId: input.keyId ?? null,
-        model: input.model ?? null,
-        effort: input.effort ?? null,
-      })
-      if (!saved.ok) return saved
-    }
-    const { error } = await admin
-      .from("room_agents")
-      .update({ model_override: null })
-      .eq("room_id", room.id)
-      .eq("agent_id", agent.id)
-    if (error) return fail(errorMessage(error))
-    // Chat models are read by the picker's own API, so no server page needs re-rendering.
-    return ok(input.clear ? `@${agent.handle} uses its own model here again` : `@${agent.handle}'s model changed everywhere`)
-  }
-
   const requestHeaders = await headers()
-  const resolved = await resolveModelChoice({
-    orgId: check.access.org.id,
-    userId: check.access.user.id,
+  return writeRoomAgentModel({
+    access: check.access,
     requestHost: requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host"),
-    keyId: input.keyId ?? null,
-    model: input.model ?? null,
+    roomId: input.roomId,
+    agentId: input.agentId,
+    scope: input.scope,
+    keyId: input.keyId,
+    model: input.model,
     effort: input.effort,
+    clear: input.clear,
   })
-  if (!resolved.ok) return fail(resolved.error)
-  const choice = resolved.choice
-  // A chat can't hand someone else's bot to your Mac: a Mac only runs its owner's bots.
-  if (choice.macOwnerUserId && agent.owner_user_id !== choice.macOwnerUserId) {
-    return fail(`Only @${agent.handle}'s owner can run it on their computer. Use "Chat + bot default" to take it over.`)
-  }
-  const override = {
-    keyId: input.keyId ?? null,
-    model: input.model ?? null,
-    effort: choice.effort,
-    providerKeyId: choice.providerKeyId,
-    agentModel: choice.agentModel,
-    runner: choice.runner,
-  }
-  const { error } = await admin
-    .from("room_agents")
-    .update({ model_override: override })
-    .eq("room_id", room.id)
-    .eq("agent_id", agent.id)
-  if (error) return fail(errorMessage(error))
-  await audit({
-    orgId: check.access.org.id,
-    actorId: check.access.user.id,
-    action: "room.agent_model_set",
-    target: room.id,
-    metadata: { agentId: agent.id, keyId: override.keyId, model: override.model, effort: override.effort },
-  })
-  // Chat models are read by the picker's own API, so no server page needs re-rendering.
-  return ok(`@${agent.handle} uses ${choice.label} in this chat`)
 }
 
 const WORKS_ON_LABEL: Record<WorksOn, string> = {

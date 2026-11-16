@@ -89,6 +89,8 @@ async function keySecrets(orgId: string): Promise<Map<string, string>> {
 
 The barrel `components/room/model-picker/index.ts` exports `ManageAccountsModal`; `model-list.tsx` provides `useModelList(orgSlug)` (workspace-wide groups from the same `/api/connectors/models` endpoint, cached per org) and `GroupIcon`.
 
+The phone uses the same catalog and the same writes. `GET /api/mobile/models` returns `groups` from `loadWorkspaceModels` plus `bots` from `loadRoomBotModels` (a chat) or `loadAgentPickerModel` (an agent page). `POST /api/mobile/models` calls `writeRoomAgentModel` / `writeAgentModel` in `lib/room-models.ts` — the functions behind `setRoomAgentModelAction` and `setAgentModelAction`. See [Mobile App API](../api/api-mobile.md).
+
 ## 🤖 Agent Picker (`components/agents/agent-model-picker.tsx`)
 
 `AgentModelPicker` is the compact pill on each agent's card showing `choiceLabel(groups, value)` + effort label. It opens the same `ModelPickerPanel` in a 540px dialog and saves on every pick through `setAgentModelAction({ orgSlug, agentId, providerKeyId, model, effort })` with optimistic state (rollback + danger toast on failure). Its refresh button calls `refreshModelListsAction(orgSlug)` then `router.refresh()`.

@@ -1,31 +1,8 @@
 import { NextResponse } from "next/server"
 import { getOrgAccess, isOrgAdmin } from "@/lib/auth"
-import { localDetectionAllowed } from "@/lib/local-agents"
 import { loadWorkspaceModels } from "@/lib/model-catalog"
+import { refreshModelSources } from "@/lib/model-refresh"
 import { requireRouteUser } from "@/lib/route-auth"
-import { createAdminClient } from "@/lib/supabase/admin"
-
-/**
- * Asks the person's own Macs to read their apps' model lists again now (they pick this up on the
- * next heartbeat, skip their six-hour cache, and report back within a minute).
- */
-async function askMacsToRescan(userId: string): Promise<void> {
-  const admin = createAdminClient()
-  const { data } = await admin
-    .from("desktop_hosts")
-    .select("id, settings")
-    .eq("user_id", userId)
-    .is("revoked_at", null)
-  const at = new Date().toISOString()
-  await Promise.all(
-    ((data ?? []) as Array<{ id: string; settings: Record<string, unknown> | null }>).map((host) =>
-      admin
-        .from("desktop_hosts")
-        .update({ settings: { ...(host.settings ?? {}), agentsRescanAt: at } })
-        .eq("id", host.id),
-    ),
-  )
-}
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 60
@@ -48,23 +25,7 @@ export async function GET(request: Request) {
 
   const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host")
   if (url.searchParams.get("refresh") === "1") {
-    await askMacsToRescan(auth.user.id).catch((error: unknown) => {
-      console.warn("[models] could not ask the Macs to rescan", error)
-    })
-  }
-  if (url.searchParams.get("refresh") === "1" && isOrgAdmin(access.role)) {
-    const models = await import("@sayabot/llm/models")
-    models.clearProviderModelCache()
-    await Promise.all([
-      models.modelCatalog().refresh({ force: true }),
-      models.modelManifest().refresh({ force: true }),
-      ...(localDetectionAllowed(host)
-        ? [
-            models.codexModelCatalog({ force: true }).catch(() => null),
-            models.claudeModelCatalog({ force: true }).catch(() => null),
-          ]
-        : []),
-    ])
+    await refreshModelSources({ userId: auth.user.id, host, forceCatalog: isOrgAdmin(access.role) })
   }
   // Without `refresh`, buildModelCatalog refreshes models.dev and the manifest in the background:
   // this answer uses what is on hand and the next one sees any update.

@@ -19,6 +19,7 @@ import * as DocumentPicker from "expo-document-picker"
 import * as ImagePicker from "expo-image-picker"
 import { ArrowDown, ArrowUp, Camera, ChevronLeft, Copy, CornerUpLeft, FileText, Hash, ImageIcon, Plus, ShieldAlert, SquareTerminal, X } from "lucide-react-native"
 import { attachmentMarkdown, uploadToRoom, type Picked } from "../core/api"
+import { ChatModelButton } from "../components/chat/ModelPicker"
 import { TerminalDrawer } from "../components/chat/TerminalDrawer"
 import { useInbox } from "../hooks/useInbox"
 import { useRoomAgents } from "../hooks/useRoomAgents"
@@ -485,6 +486,7 @@ export function ChatScreen({ route, navigation }: any) {
           </ScrollView>
         ) : null}
 
+        {orgSlug && roomId ? <ChatModelButton orgSlug={orgSlug} roomId={roomId} /> : null}
         <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8, paddingHorizontal: space.md, paddingTop: 6, paddingBottom: Math.max(insets.bottom, 10), backgroundColor: theme.bg }}>
           <IconButton label="Attach" size={44} icon={<Plus size={22} color={theme.text} />} onPress={() => setAttachOpen(true)} />
           <View style={{ flex: 1, minHeight: 44, maxHeight: 140, borderRadius: 22, backgroundColor: theme.card, borderWidth: StyleSheet.hairlineWidth, borderColor: theme.lineStrong, paddingHorizontal: 16, justifyContent: "center" }}>

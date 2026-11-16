@@ -207,7 +207,7 @@ Task-oriented guides live at the top level of `docs/`. The **reference library**
 
 | Doc | Covers |
 | :-- | :-- |
-| [api-mobile](reference/web/api/api-mobile.md) | `/api/mobile/*`: pairing, push, inbox, upload, usage, version |
+| [api-mobile](reference/web/api/api-mobile.md) | `/api/mobile/*`: pairing, push, inbox, upload, usage, models, version |
 | [api-desktop](reference/web/api/api-desktop.md) | `/api/desktop/*`: host registration, job queue, secrets/MCP delegation |
 | [api-webhooks-oauth](reference/web/api/api-webhooks-oauth.md) | Messaging webhooks, billing webhook, OAuth 2.1 server, bot invites |
 | [api-proxy-files](reference/web/api/api-proxy-files.md) | `/api/v1` proxy, files, providers, sessions, health/version |

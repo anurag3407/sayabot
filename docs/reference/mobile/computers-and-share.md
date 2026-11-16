@@ -84,7 +84,7 @@ On the AdvancedScreen server field: because it writes `settings.webApiUrl` witho
 
 - **Identity**: a 96px `Mascot` (working ring while `workingRoomId` is set), name, `@handle` with `kind` ("Invited" for `external`, "Made here" for `llm`), optional `about`, and "Working in <room> now" when active (`AgentProfileScreen.tsx:29-46`).
 - **Message button**: appears when the agent shares at least one chat; navigates to the first one (`AgentProfileScreen.tsx:47-54`).
-- **"Thinks with"**: the agent's `model` with the subtitle "Its own app's model and subscription" (external) or "Change it in the web app under Agents" (`AgentProfileScreen.tsx:57-59`).
+- **"Thinks with"**: invited agents show `model` with "Its own app's model and subscription". Agents made here open the same `ModelPicker` as the chat composer (`agentId`, no room), so the pick is the bot's default everywhere; the row title is the catalog label once the list has loaded, otherwise the home snapshot's `model` string (`AgentProfileScreen.tsx`). A successful save calls `refresh()` so the home snapshot catches up.
 - **"Last 30 days"**: Runs / Tokens / Spend / Last active rows from `agent.usage` (`{ tokens, runs, costUsd, lastAt, topModel }`), with a footer noting "Runs on its own subscription, so tokens aren't billed here." for external agents or when the model string matches `/computer/` (`AgentProfileScreen.tsx:61-66`).
 - **"In N chats"**: the agent's rooms — either listed in its `roomIds` or containing the agent — each opening the chat (`AgentProfileScreen.tsx:20`, `68-72`).
 

@@ -2,7 +2,7 @@
 
 `app/api/mobile/*` is the HTTP surface for the Sayabot phone app (Expo/React Native). Pairing exchanges a one-time code for a Supabase sign-in plus a device token; everything else authenticates with either a Supabase bearer token or the web session cookie through `userFromRequest` (`lib/route-bearer.ts`), and reads run through the caller's own RLS-scoped client. Most responses are JSON with `cache-control: no-store`.
 
-Source files: `apps/web/src/app/api/mobile/device/route.ts`, `apps/web/src/app/api/mobile/pair/route.ts`, `apps/web/src/app/api/mobile/push/route.ts`, `apps/web/src/app/api/mobile/home/route.ts`, `apps/web/src/app/api/mobile/inbox/route.ts`, `apps/web/src/app/api/mobile/inbox/answer/route.ts`, `apps/web/src/app/api/mobile/upload/route.ts`, `apps/web/src/app/api/mobile/usage/route.ts`, `apps/web/src/app/api/mobile/version/route.ts`, `apps/web/src/app/api/mobile/computers/route.ts`
+Source files: `apps/web/src/app/api/mobile/device/route.ts`, `apps/web/src/app/api/mobile/pair/route.ts`, `apps/web/src/app/api/mobile/push/route.ts`, `apps/web/src/app/api/mobile/home/route.ts`, `apps/web/src/app/api/mobile/inbox/route.ts`, `apps/web/src/app/api/mobile/inbox/answer/route.ts`, `apps/web/src/app/api/mobile/upload/route.ts`, `apps/web/src/app/api/mobile/usage/route.ts`, `apps/web/src/app/api/mobile/models/route.ts`, `apps/web/src/app/api/mobile/version/route.ts`, `apps/web/src/app/api/mobile/computers/route.ts`
 
 ---
 
@@ -150,6 +150,26 @@ Validates JSON (`400 "invalid JSON"`) and the presence of `orgSlug` + `taskId` (
 - `cloud` — every `agent_computers` row in the org joined with the agent's handle/name: `{ agentId, handle, name, status, profile, diskUsedMb, diskMb, lastActiveAt, error }`.
 
 Errors: `401 { error: "unauthorized" }`, `404 { error: "workspace not found" }`.
+
+---
+
+## 🧠 Models — `GET` / `POST /api/mobile/models`
+
+**Auth:** `userFromRequest`; force-dynamic; `maxDuration = 60`. The phone's model picker. It reads the same catalog as `GET /api/connectors/models` (`loadWorkspaceModels`) and the same bot rows as the web chat picker (`loadRoomBotModels` / `loadAgentPickerModel` in `lib/room-models.ts`). Saves go through `writeAgentModel` / `writeRoomAgentModel`, which the web's `setAgentModelAction` and `setRoomAgentModelAction` call too.
+
+**GET** `?orgSlug=&roomId=&agentId=&refresh=1`
+
+- `orgSlug` is required (`400 { error: "Which workspace?" }`).
+- `roomId` (a chat) or `agentId` (one bot's default) is optional. A bad id is `400`. A missing room or agent is `404 { error: "Not found" }`.
+- `?refresh=1` asks the caller's Macs to rescan their app model lists. Org admins also drop the server model caches (same rule as the web route, via `refreshModelSources`).
+- Response: `{ groups, bots, canEdit }`. `groups` is the picker catalog (`PickerGroup[]`). `bots` is `RoomBotModel[]` for the chat, a one-element list for `agentId`, or `[]` when neither is set. `canEdit` is true for workspace owners and admins. Members can read; they cannot save.
+- `500 { error: "Could not load the model list" }` when the catalog throws. `401 { error: "unauthorized" }` with no session.
+
+**POST** JSON `{ orgSlug, agentId, roomId?, scope?: "chat" | "default", clear?: boolean, keyId, model, effort }`
+
+- With `roomId`, this is the chat picker: `scope: "chat"` stores `room_agents.model_override` for this chat only; `scope: "default"` changes the bot everywhere and clears this chat's override; `clear: true` drops the chat override so the chat follows the bot again.
+- Without `roomId`, this changes the agent's own model (`provider_key_id`, `model`, `params.effort`, `params.runner`), the same write as the agent card on the web.
+- `403 { ok: false, error: "Only workspace admins can change models." }` for members. Other refusals (invited agents, unknown model, a Mac the caller does not own) are `400 { ok: false, error }`. Success is `{ ok: true, message }`.
 
 ---
 
