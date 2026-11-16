@@ -18,4 +18,13 @@ config.resolver.nodeModulesPaths = [
 // 3. Prevent duplicate react/react-native resolutions
 // config.resolver.disableHierarchicalLookup = true
 
+// 4. The shared mascot geometry. Expo 52's Metro ignores package "exports", so map this one
+//    subpath straight to its source file instead of turning exports on for every package.
+const coreMascot = path.resolve(monorepoRoot, "packages/core/src/mascot.ts")
+const upstreamResolve = config.resolver.resolveRequest
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (moduleName === "@sayabot/core/mascot") return { type: "sourceFile", filePath: coreMascot }
+  return (upstreamResolve ?? context.resolveRequest)(context, moduleName, platform)
+}
+
 module.exports = config

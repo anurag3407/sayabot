@@ -67,6 +67,7 @@ Task-oriented guides live at the top level of `docs/`. The **reference library**
 | [invites-pairing-and-remote](reference/core/invites-pairing-and-remote.md) | Invite codes, bot invites, device pairing, remote hosts, clients |
 | [scanner](reference/core/scanner.md) | Read-only scanning of local Claude Code / Codex / Antigravity installs |
 | [platform-utilities](reference/core/platform-utilities.md) | Cloud handoff, workspace copy, Saya AI, editions, server helpers |
+| [mascot](reference/core/mascot.md) | Saya mascot geometry shared by web, landing, mobile and brand exports |
 
 ### Database — `docs/reference/database/`
 
@@ -164,6 +165,12 @@ Task-oriented guides live at the top level of `docs/`. The **reference library**
 | [memory/modules](reference/orchestrator/memory/modules.md) | 9 memory modules: beliefs, dream, graph, retrieval, salience, … |
 | [computers/boat](reference/orchestrator/computers/boat.md) | Boat-hosted Linux desktops: client, provisioning, shell layer |
 | [computers/vps-and-client](reference/orchestrator/computers/vps-and-client.md) | Docker-over-SSH VPS, sleep policy, computerd client |
+
+### Landing Site — `docs/reference/landing/`
+
+| Doc | Covers |
+| :-- | :-- |
+| [overview](reference/landing/overview.md) | `apps/landing`: static public site, sections, motion system, download links |
 
 ### Web App — `docs/reference/web/`
 

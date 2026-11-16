@@ -75,7 +75,7 @@ Android-only: an ongoing, sticky, low-priority notification (identifier `"agent-
 
 - **Android `POST_NOTIFICATIONS`** is declared in `app.json` (`app.json:34`), required on Android 13+ before any channel or notification works; `configureNotifications()` only creates the channels and categories, while runtime permission is requested by `enablePush` (or pre-granted by the OS install-time default on older versions).
 - **iOS Face ID permission string** ("Sayabot uses Face ID to keep your chats private when App lock is on.") comes from the `expo-local-authentication` plugin, unrelated to push but configured alongside it in `app.json:62-66`.
-- The notification icon and accent color for Android notifications come from the `expo-notifications` plugin config (`./assets/notification-icon.png`, color `#9d8cff`) — the same iris used for the `"agents"` channel light color (`app.json:69-74`).
+- The notification icon and accent color for Android notifications come from the `expo-notifications` plugin config (`./assets/notification-icon.png` — the alpha-only Saya ghost glyph from `brand:icons` — color `#9d8cff`) — the same iris used for the `"agents"` channel light color (`app.json:69-74`).
 - `SignedInEffects` also registers the cold-start response listener once per sign-in and removes it on unmount, so a stale listener cannot double-handle taps after a server switch restart (`RootNavigator.tsx:38-43`).
 
 ---

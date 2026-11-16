@@ -2,10 +2,10 @@
  * Exports the Saya family as standalone SVG files for branding (pnpm --filter @sayabot/web
  * brand:mascots). Renders the real <Mascot> component, then makes each file self-contained:
  * CSS variables and color-mix() become plain hex (so Figma, Illustrator and browsers agree),
- * ids are namespaced, and the canvas is padded so antennas, crowns and shadows are not clipped.
+ * ids are namespaced, and the canvas is padded so halos, extras and shadows are not clipped.
  *
- *   <name>.svg        static, lamp lit: logos, stickers, print
- *   <name>-live.svg   animated with embedded CSS (hover, antenna sway, blink; the rare one also
+ *   <name>.svg        static, halo lit: logos, stickers, print
+ *   <name>-live.svg   animated with embedded CSS (hover, blink; the rare one also
  *                     shimmers and sparkles). Animates in <img>, browsers and most viewers.
  *
  * Output: apps/web/public/brand/mascots/ (served at /brand/mascots/*), and the live trio is
@@ -106,10 +106,6 @@ function resolveColours(svg: string): string {
 
 const LIVE_CSS = `
 .saya-float{animation:saya-bob 3.6s ease-in-out infinite}
-.saya-antenna,.saya-hand{transform-box:fill-box;transform-origin:50% 100%}
-.saya-antenna{animation:saya-sway 4.2s ease-in-out infinite}
-.saya-hand-l{animation:saya-hand 3.6s ease-in-out infinite}
-.saya-hand-r{animation:saya-hand 3.6s ease-in-out infinite reverse}
 .mascot-eyes{transform-box:fill-box;transform-origin:center;animation:saya-blink 5.6s infinite}
 .saya-halo{animation:saya-halo 1.8s ease-in-out infinite}
 .saya-shadow{transform-box:fill-box;transform-origin:center;animation:saya-pool 3.6s ease-in-out infinite}
@@ -117,8 +113,6 @@ const LIVE_CSS = `
 .saya-spark{transform-box:fill-box;transform-origin:center;animation:saya-spark 2.4s ease-in-out infinite}
 .saya-spark:nth-of-type(2){animation-delay:.8s}.saya-spark:nth-of-type(3){animation-delay:1.6s}.saya-spark:nth-of-type(4){animation-delay:1.2s}
 @keyframes saya-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
-@keyframes saya-sway{0%,100%{transform:rotate(-5deg)}50%{transform:rotate(6deg)}}
-@keyframes saya-hand{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
 @keyframes saya-blink{0%,45%,49%,100%{transform:scaleY(1)}47%{transform:scaleY(.08)}}
 @keyframes saya-halo{0%,100%{opacity:.32}50%{opacity:.12}}
 @keyframes saya-pool{0%,100%{transform:scaleX(1);opacity:1}50%{transform:scaleX(.82);opacity:.6}}
@@ -130,8 +124,7 @@ function finish(markup: string, prefix: string, { live, figure }: { live: boolea
   let svg = resolveColours(markup)
   // Namespaced ids, so several mascots can share one page or one design file.
   svg = svg.replace(/id="([^"]+)"/g, `id="${prefix}-$1"`).replace(/url\(#([^)]+)\)/g, `url(#${prefix}-$1)`)
-  // Lamp lit and halo glowing as plain attributes (no stylesheet needed for static use).
-  svg = svg.replace(/class="saya-lamp"/g, 'class="saya-lamp" fill="#ffd08a"')
+  // Halo glowing as a plain attribute (no stylesheet needed for static use).
   svg = svg.replace(/class="saya-halo"/g, `class="saya-halo" opacity="${live ? "0.32" : "0.24"}"`)
   // Gradient stops as attributes (design tools ignore some inline styles); the pointer-tracking
   // eye offset only means something inside the app.
@@ -194,7 +187,7 @@ for (const name of ["Saya", RARE_MASCOT]) {
   write(`${slug(name)}-figure-live.svg`, render(name, { figure: true, live: true }))
 }
 
-for (const mood of ["happy", "busy", "sleep", "alert"] as const) {
+for (const mood of ["happy", "busy", "sleep", "alert", "thinking"] as const) {
   write(`saya-${mood}.svg`, render("Saya", { mood }))
 }
 
@@ -225,13 +218,14 @@ these files by hand.
 
 | File | Use |
 | :-- | :-- |
-| \`<name>.svg\` | Static, lamp lit. Logos, stickers, social images, print. |
-| \`<name>-live.svg\` | Animated with embedded CSS (hover, antenna sway, blink). Web and app screens. |
-| \`saya-figure.svg\`, \`nova-figure.svg\` (+ \`-live\`) | Full body with torso and hands. Hero art. |
-| \`saya-{happy,busy,sleep,alert}.svg\` | Saya's moods for states and empty screens. |
+| \`<name>.svg\` | Static, halo lit. Logos, stickers, social images, print. |
+| \`<name>-live.svg\` | Animated with embedded CSS (hover, blink). Web and app screens. |
+| \`saya-figure.svg\`, \`nova-figure.svg\` (+ \`-live\`) | Standing on a floor pool with headroom for mood extras. Hero art. |
+| \`saya-{happy,busy,sleep,alert,thinking}.svg\` | Saya's moods for states and empty screens. |
 | \`cast.svg\` | Contact sheet of the whole family. |
 
-The lit antenna lamp means one thing across the brand: it is this agent's turn.
+Every Saya is one soft shape, an ink visor and two lit eyes, over its own saaya (the darker
+layer underneath). A lit halo means one thing across the brand: it is this agent's turn.
 
 ${CAST.map(({ name, role }) => `- **${name}**: ${role}`).join("\n")}
 `,
@@ -241,4 +235,4 @@ ${CAST.map(({ name, role }) => `- **${name}**: ${role}`).join("\n")}
 mkdirSync(DESKTOP, { recursive: true })
 for (const name of ["pip", slug(RARE_MASCOT), "moss"]) copyFileSync(join(OUT, `${name}-live.svg`), join(DESKTOP, `${name}-live.svg`))
 
-console.log(`Wrote ${CAST.length * 2 + 8 + 2} files to ${OUT}`)
+console.log(`Wrote ${CAST.length * 2 + 9 + 2} files to ${OUT}`)

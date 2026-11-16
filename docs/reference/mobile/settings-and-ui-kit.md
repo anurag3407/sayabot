@@ -98,7 +98,7 @@ The OLED override only darkens three tokens: `bg: "#000000"`, `surface: "#050505
 
 ### `Mascot` (`src/ui/Mascot.tsx`)
 
-`Mascot({ seed, size, working?, waiting? })` draws each agent's face from its handle: `hashString(seed)` picks one of eight `IDENTITY` pastels and one of four SVG shapes (rounded rect, circle, pentagon, ellipse), eye gap derives from bits 5+ — so the same handle always renders the same face (`Mascot.tsx:22-25`, `57-66`). While `working`, a coral ring pulses via a looping `Animated` scale/opacity animation (`Mascot.tsx:28-56`); `waiting` adds a 12px warn-colored dot badge at the top-right (`Mascot.tsx:67-81`). `PersonAvatar({ name, size })` renders up to two initials in a neutral raised circle (`Mascot.tsx:87-111`).
+`Mascot({ seed, size, working?, waiting? })` draws each agent as a Saya from the shared family, using the same geometry as the web app: `sayaPick(seed)` from `@sayabot/core/mascot` picks a stable shape (ghost, peak, ledger, bubble, hoot, bloom, sprout, block) and tone, and `sayaGeometry(shape, mood)` returns the paths painted with `react-native-svg` (saaya layer, shell, ink visor, tinted eyes). The mood is `waiting` when `waiting` (wide eyes plus the amber approval badge), `working` when `working` (dash eyes), else `idle`. While `working`, an accent ring also pulses via a looping `Animated` scale/opacity animation. Expo 52's Metro ignores package `exports`, so `metro.config.js` maps the `@sayabot/core/mascot` subpath straight to `packages/core/src/mascot.ts` with a narrow `resolveRequest` alias. See [core/mascot](../core/mascot.md). `PersonAvatar({ name, size })` renders up to two initials in a neutral raised circle (`Mascot.tsx:87-111`).
 
 ### `Sheet` (`src/ui/Sheet.tsx`)
 

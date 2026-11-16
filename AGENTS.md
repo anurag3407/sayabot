@@ -30,6 +30,7 @@ Sayabot is structured as a Turborepo monorepo powered by `pnpm@10`:
 sayabot/
 ├── apps/
 │   ├── web/                     # Next.js 16 (App Router), React 19, Tailwind CSS, Server Actions, Live Canvas UI
+│   ├── landing/                 # Static public site (Next.js export to out/): remote-agent marketing page, download links only
 │   ├── orchestrator/            # Hono HTTP & SSE engine, Turn Coordinator, Agent Loop V2, Tools, Connectors, Cron
 │   ├── computerd/               # Persistent Linux Docker sandbox daemon, agentd file & terminal daemon (/home/bot)
 │   ├── egress/                  # Hardened SSRF-safe HTTP proxy, IP filtering (RFC 1918 blocks), DNS rebinding defense
@@ -57,6 +58,7 @@ sayabot/
 
 | Package / App       | NPM Filter              | Role & Dependencies                                                                                                                                                                                 |
 | :------------------ | :---------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/landing`      | `@sayabot/landing`      | Public marketing site: one static, animated page with links to downloads, the web app and GitHub. No auth or API. Depends on `@sayabot/core` (mascot geometry). |
 | `apps/web`          | `@sayabot/web`          | User interface: Room chat, real-time Yjs Monaco collaborative canvas, n8n-style visual workflow editor, settings, connector OAuth flows. Depends on `@sayabot/core`, `@sayabot/db`, `@sayabot/llm`. |
 | `apps/orchestrator` | `@sayabot/orchestrator` | Core execution engine: Hono REST/SSE server, Turn Coordinator, room PostgreSQL advisory locks, Agent Loop V2 (planner, critic, subagents), tool execution, connectors, Hermes cron scheduler.       |
 | `apps/computerd`    | `@sayabot/computerd`    | Computer sandbox daemon: Manages persistent Docker containers (`saaya-bot-${agentId}`), mounts `/home/bot`, runs `agentd` socket server for command execution and file edits.                       |
@@ -597,6 +599,7 @@ The `docs/reference/` tree is generated from a full read of the codebase and des
 | `apps/orchestrator/src/engine/*`, `coordinator/*`, `runner/*` | `docs/reference/orchestrator/engine/*.md` |
 | `apps/orchestrator/src/tools/*` (new/changed tool) | `docs/reference/orchestrator/tools/*.md` (+ the tool inventory table in `tool-system.md`) |
 | `apps/orchestrator/src/connectors/*`, `bot/*`, `mcp/*`, `canvas/*`, `collab/*`, `internal/*`, `jobs/*`, `scheduler/*`, `memory/*`, `computers/*` | `docs/reference/orchestrator/{platform,memory,computers}/*.md` |
+| `apps/landing/*` | `docs/reference/landing/*.md` |
 | `apps/web` pages/components | `docs/reference/web/pages/*.md` |
 | `apps/web` server actions / API routes | `docs/reference/web/{actions,api}/*.md` |
 | `apps/computerd/*` | `docs/reference/computerd/*.md` |

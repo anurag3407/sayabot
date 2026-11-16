@@ -6,13 +6,14 @@ these files by hand.
 
 | File | Use |
 | :-- | :-- |
-| `<name>.svg` | Static, lamp lit. Logos, stickers, social images, print. |
-| `<name>-live.svg` | Animated with embedded CSS (hover, antenna sway, blink). Web and app screens. |
-| `saya-figure.svg`, `nova-figure.svg` (+ `-live`) | Full body with torso and hands. Hero art. |
-| `saya-{happy,busy,sleep,alert}.svg` | Saya's moods for states and empty screens. |
+| `<name>.svg` | Static, halo lit. Logos, stickers, social images, print. |
+| `<name>-live.svg` | Animated with embedded CSS (hover, blink). Web and app screens. |
+| `saya-figure.svg`, `nova-figure.svg` (+ `-live`) | Standing on a floor pool with headroom for mood extras. Hero art. |
+| `saya-{happy,busy,sleep,alert,thinking}.svg` | Saya's moods for states and empty screens. |
 | `cast.svg` | Contact sheet of the whole family. |
 
-The lit antenna lamp means one thing across the brand: it is this agent's turn.
+Every Saya is one soft shape, an ink visor and two lit eyes, over its own saaya (the darker
+layer underneath). A lit halo means one thing across the brand: it is this agent's turn.
 
 - **Saya**: The face of Sayabot
 - **Nova**: Rare. Reserved for the orchestrator

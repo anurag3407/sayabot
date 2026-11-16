@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./mascot": "./src/mascot.ts",
     "./server": "./src/server/index.ts",
     "./scanner": "./src/scanner/index.ts"
   },

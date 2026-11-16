@@ -1,0 +1,487 @@
+/* ---------- Tokens ---------- */
+:root {
+  --bg: #08080a;
+  --bg-2: #0c0c0f;
+  --surface: #111114;
+  --raised: #17171b;
+  --raised-2: #1d1d22;
+  --line: rgba(255, 255, 255, 0.08);
+  --line-2: rgba(255, 255, 255, 0.13);
+  --text: #f4f3f8;
+  --muted: #a6a4b0;
+  --faint: #75737f;
+  --accent: #9d8cff;
+  --accent-2: #b6a9ff;
+  --accent-ink: #120d2a;
+  --amber: #ffb547;
+  --green: #8bd46e;
+  --red: #ff7a70;
+  --radius: 22px;
+  --spring: cubic-bezier(0.2, 1.6, 0.4, 1);
+  --soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --font: "Geist Variable", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --mono: "Geist Mono Variable", ui-monospace, SFMono-Regular, Menlo, monospace;
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+::selection {
+  background: rgba(157, 140, 255, 0.35);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- Layout ---------- */
+.wrap {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.section {
+  position: relative;
+  padding: 140px 0;
+}
+
+.section + .section {
+  border-top: 1px solid var(--line);
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-2);
+}
+
+.eyebrow::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 2px;
+  background: currentColor;
+  box-shadow: 0 0 12px currentColor;
+}
+
+.h2 {
+  margin: 16px 0 0;
+  font-size: clamp(36px, 5.2vw, 64px);
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+  font-weight: 640;
+  text-wrap: balance;
+}
+
+.h2 em {
+  font-style: normal;
+  color: var(--accent-2);
+}
+
+.lede {
+  margin: 20px 0 0;
+  max-width: 620px;
+  font-size: clamp(17px, 1.6vw, 19px);
+  line-height: 1.6;
+  color: var(--muted);
+  text-wrap: pretty;
+}
+
+.head-center {
+  text-align: center;
+}
+
+.head-center .lede {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ---------- Buttons ---------- */
+.btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 52px;
+  padding: 0 22px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 15.5px;
+  font-weight: 560;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    transform 0.25s var(--spring),
+    background 0.2s,
+    border-color 0.2s,
+    box-shadow 0.3s;
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+.btn-primary {
+  background: var(--text);
+  color: #0b0b0e;
+  box-shadow: 0 10px 40px -12px rgba(157, 140, 255, 0.6);
+}
+
+.btn-primary:hover {
+  background: #fff;
+  box-shadow: 0 14px 50px -10px rgba(157, 140, 255, 0.8);
+}
+
+.btn-ghost {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: var(--line-2);
+}
+
+.btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.btn-ghost .arrow {
+  transition: transform 0.3s var(--spring);
+}
+
+.btn-ghost:hover .arrow {
+  transform: translateX(3px);
+}
+
+.btn-sm {
+  height: 40px;
+  padding: 0 16px;
+  font-size: 14px;
+}
+
+.link {
+  color: var(--text);
+  border-bottom: 1px solid var(--line-2);
+  transition: border-color 0.2s;
+}
+
+.link:hover {
+  border-color: var(--text);
+}
+
+/* ---------- Cards ---------- */
+.card {
+  position: relative;
+  background: linear-gradient(180deg, var(--raised), var(--surface));
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 13.5px;
+  white-space: nowrap;
+}
+
+.mono {
+  font-family: var(--mono);
+}
+
+/* A slow light that runs around a card's border. */
+.beam {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  pointer-events: none;
+  background: conic-gradient(
+    from var(--beam-angle, 0deg),
+    transparent 0 72%,
+    rgba(182, 169, 255, 0.9) 82%,
+    transparent 92%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box exclude,
+    linear-gradient(#000 0 0);
+  animation: beam-spin 6s linear infinite;
+}
+
+@property --beam-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes beam-spin {
+  to {
+    --beam-angle: 360deg;
+  }
+}
+
+/* ---------- Reveal on scroll ---------- */
+.reveal {
+  opacity: 0;
+  transform: translateY(28px) scale(0.985);
+  transition:
+    opacity 0.8s var(--soft),
+    transform 0.9s var(--soft);
+  transition-delay: calc(var(--i, 0) * 80ms);
+}
+
+.reveal.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+/* ---------- The Sayas ---------- */
+.saya {
+  display: block;
+  overflow: visible;
+  flex: none;
+}
+
+.saya-body {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+
+.saya-look {
+  transform: translate(var(--lx, 0px), var(--ly, 0px));
+  transition: transform 0.18s ease-out;
+}
+
+.saya-eyes {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: saya-blink 5.4s infinite;
+  animation-delay: var(--blink, 0s);
+}
+
+.saya-halo {
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+
+.saya-lit .saya-halo {
+  opacity: 0.55;
+  animation: saya-halo 1.8s ease-in-out infinite;
+}
+
+.saya-live .saya-body {
+  animation: saya-bob 3.8s ease-in-out infinite;
+  animation-delay: var(--bob, 0s);
+}
+
+.saya-live .saya-pool {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: saya-pool 3.8s ease-in-out infinite;
+  animation-delay: var(--bob, 0s);
+}
+
+.saya-live[data-mood="working"] .saya-body {
+  animation: saya-work 0.9s ease-in-out infinite;
+}
+
+.saya-live[data-mood="done"] .saya-body {
+  animation: saya-hop 1s var(--spring) infinite;
+}
+
+.saya-dots path,
+.saya-dots {
+  animation: saya-fade 1.6s ease-in-out infinite;
+}
+
+.saya-badge {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: saya-ping 1.6s var(--soft) infinite;
+}
+
+.saya-zz {
+  animation: saya-fade 2.4s ease-in-out infinite;
+}
+
+@keyframes saya-blink {
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  95% {
+    transform: scaleY(0.08);
+  }
+}
+
+@keyframes saya-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5%);
+  }
+}
+
+@keyframes saya-pool {
+  0%,
+  100% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scaleX(0.82);
+    opacity: 0.55;
+  }
+}
+
+@keyframes saya-work {
+  0%,
+  100% {
+    transform: rotate(-2.5deg);
+  }
+  50% {
+    transform: rotate(2.5deg);
+  }
+}
+
+@keyframes saya-hop {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  35% {
+    transform: translateY(-8%);
+  }
+}
+
+@keyframes saya-halo {
+  50% {
+    opacity: 0.22;
+  }
+}
+
+@keyframes saya-fade {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@keyframes saya-ping {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.12);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .reveal {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .section {
+    padding: 96px 0;
+  }
+  .wrap {
+    padding: 0 16px;
+  }
+}

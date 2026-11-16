@@ -1,11 +1,21 @@
 import React, { useEffect, useRef } from "react"
 import { Animated, Easing, View } from "react-native"
-import Svg, { Circle, Ellipse, Path, Rect } from "react-native-svg"
-import { hashString, IDENTITY, useTheme } from "./theme"
+import Svg, { Path, Rect } from "react-native-svg"
+import {
+  SAYA_BADGE,
+  SAYA_EYE_STROKE,
+  SAYA_INK,
+  SAYA_SAAYA_OFFSET,
+  SAYA_TONES,
+  sayaGeometry,
+  sayaPick,
+} from "@sayabot/core/mascot"
+import { useTheme } from "./theme"
 
 /**
- * Each agent's face: a soft shape in its own colour with two eyes, seeded from its handle so
- * it never changes. An accent ring pulses while it works; a dot shows it's waiting on you.
+ * Each agent's face: a Saya from the shared family (same geometry as web), seeded from its
+ * handle so it never changes. An accent ring pulses while it works; the approval badge shows
+ * it's waiting on you.
  */
 export function Mascot({
   seed,
@@ -19,18 +29,27 @@ export function Mascot({
   waiting?: boolean
 }) {
   const theme = useTheme()
-  const h = hashString(seed || "agent")
-  const color = IDENTITY[h % IDENTITY.length]!
-  const shape = (h >> 3) % 4
-  const eyeGap = 9 + ((h >> 5) % 4)
+  const { shape, tone } = sayaPick(seed || "agent")
+  const palette = SAYA_TONES[tone]
+  const g = sayaGeometry(shape, waiting ? "waiting" : working ? "working" : "idle")
   const pulse = useRef(new Animated.Value(0)).current
 
   useEffect(() => {
     if (!working) return
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulse, { toValue: 1, duration: 900, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 0, duration: 900, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+        Animated.timing(pulse, {
+          toValue: 1,
+          duration: 900,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulse, {
+          toValue: 0,
+          duration: 900,
+          easing: Easing.in(Easing.quad),
+          useNativeDriver: true,
+        }),
       ]),
     )
     loop.start()
@@ -50,35 +69,37 @@ export function Mascot({
             borderWidth: 2,
             borderColor: theme.accent,
             opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.35, 1] }),
-            transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.96, 1.04] }) }],
+            transform: [
+              { scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.96, 1.04] }) },
+            ],
           }}
         />
       ) : null}
-      <Svg width={size} height={size} viewBox="0 0 48 48">
-        {shape === 0 ? <Rect x="4" y="5" width="40" height="38" rx="15" fill={color} /> : null}
-        {shape === 1 ? <Circle cx="24" cy="25" r="20" fill={color} /> : null}
-        {shape === 2 ? <Path d="M24 4 L44 18 L37 43 L11 43 L4 18 Z" fill={color} strokeLinejoin="round" stroke={color} strokeWidth="4" /> : null}
-        {shape === 3 ? <Ellipse cx="24" cy="26" rx="21" ry="17" fill={color} /> : null}
-        <Ellipse cx={24 - eyeGap / 2} cy="24" rx="2.6" ry="3.6" fill="#1b1b1f" />
-        <Ellipse cx={24 + eyeGap / 2} cy="24" rx="2.6" ry="3.6" fill="#1b1b1f" />
-        <Circle cx={24 - eyeGap / 2 + 0.9} cy="22.6" r="0.9" fill="#ffffff" />
-        <Circle cx={24 + eyeGap / 2 + 0.9} cy="22.6" r="0.9" fill="#ffffff" />
+      <Svg width={size} height={size} viewBox="0 0 100 100">
+        <Path d={g.shell} fill={palette.shade} translateY={SAYA_SAAYA_OFFSET} />
+        <Path d={g.shell} fill={palette.base} />
+        {g.detail ? <Path d={g.detail} fill={palette.shade} /> : null}
+        <Rect
+          x={g.visor.x}
+          y={g.visor.y}
+          width={g.visor.w}
+          height={g.visor.h}
+          rx={g.visor.r}
+          fill={SAYA_INK}
+        />
+        {g.eyesFill ? <Path d={g.eyesFill} fill={palette.eye} /> : null}
+        {g.eyesLine ? (
+          <Path
+            d={g.eyesLine}
+            fill="none"
+            stroke={palette.eye}
+            strokeWidth={SAYA_EYE_STROKE}
+            strokeLinecap="round"
+          />
+        ) : null}
+        {g.badge ? <Path d={g.badge} fill={SAYA_BADGE} /> : null}
+        {g.bang ? <Path d={g.bang} fill={SAYA_INK} /> : null}
       </Svg>
-      {waiting ? (
-        <View
-          style={{
-            position: "absolute",
-            right: 2,
-            top: 2,
-            width: 12,
-            height: 12,
-            borderRadius: 6,
-            backgroundColor: theme.warn,
-            borderWidth: 2,
-            borderColor: theme.bg,
-          }}
-        />
-      ) : null}
     </View>
   )
 }
@@ -105,7 +126,9 @@ export function PersonAvatar({ name, size = 36 }: { name: string; size?: number 
       }}
     >
       <Svg width={size} height={size} style={{ position: "absolute" }} />
-      <Animated.Text style={{ color: theme.text, fontWeight: "600", fontSize: size * 0.38 }}>{initials || "?"}</Animated.Text>
+      <Animated.Text style={{ color: theme.text, fontWeight: "600", fontSize: size * 0.38 }}>
+        {initials || "?"}
+      </Animated.Text>
     </View>
   )
 }

@@ -8,11 +8,12 @@ Source files: `packages/core/src/index.ts`, `packages/core/src/types.ts`, `packa
 
 ## 📦 Package entry points
 
-`@sayabot/core` exposes **three** subpath exports (`packages/core/package.json:6-10`):
+`@sayabot/core` exposes **four** subpath exports (`packages/core/package.json:6-11`):
 
 | Import path | Resolves to | Contents |
 | :--- | :--- | :--- |
-| `@sayabot/core` | `src/index.ts` | The 26-module public surface (below) |
+| `@sayabot/core` | `src/index.ts` | The 28-module public surface (below) |
+| `@sayabot/core/mascot` | `src/mascot.ts` | Saya mascot geometry only (also in the root index). Lets the landing site and mobile import it without the rest of core — see [./mascot.md](./mascot.md) |
 | `@sayabot/core/server` | `src/server/index.ts` | Server-only helpers: agent key derivation, SSRF checks, webhook payload signing — see [./platform-utilities.md](./platform-utilities.md) |
 | `@sayabot/core/scanner` | `src/scanner/index.ts` | Local CLI usage scanner — see [./scanner.md](./scanner.md) |
 
@@ -20,7 +21,7 @@ The `scanner` and `server` subtrees are intentionally **not** re-exported from t
 
 ## 🧾 The root export surface (`index.ts`)
 
-`packages/core/src/index.ts` is a flat list of 26 wildcard re-exports, in four rough groups:
+`packages/core/src/index.ts` is a flat list of 28 wildcard re-exports, in rough groups:
 
 | Group | Modules |
 | :--- | :--- |
@@ -29,7 +30,8 @@ The `scanner` and `server` subtrees are intentionally **not** re-exported from t
 | **Security** | `redact`, `hosts` |
 | **Scheduling & money** | `schedule`, `cron`, `cost` |
 | **Agent config** | `capabilities`, `commands`, `engine`, `computers` |
-| **Platform / companion** | `invite`, `bot-invite`, `pairing`, `remote`, `saya-ai`, `edition`, `cloud-handoff`, `workspace-copy` |
+| **Platform / companion** | `invite`, `bot-invite`, `pairing`, `remote`, `saya-ai`, `edition`, `cloud-handoff`, `workspace-copy`, `mac-apps` |
+| **Brand** | `mascot` |
 
 Because every module is `export *`-ed, the effective API is the union of all of them; the reference docs in this directory walk through each module individually.
 
@@ -59,6 +61,7 @@ Every root export and where it is documented:
 | `computers` | Computer placement and desktop guidance | [./engine-and-computers.md](./engine-and-computers.md) |
 | `invite` / `bot-invite` / `pairing` / `remote` | Human-invites, approval-gated bot invites, device pairing, remote desktop rules | [./invites-pairing-and-remote.md](./invites-pairing-and-remote.md) |
 | `saya-ai` / `edition` / `cloud-handoff` / `workspace-copy` | Saya provider config, editions/plans, cloud handoff, workspace copy validation | [./platform-utilities.md](./platform-utilities.md) |
+| `mascot` | Saya mascot geometry: shapes, tones, moods, path builders | [./mascot.md](./mascot.md) |
 
 ## 🧾 Key types in `types.ts`
 
