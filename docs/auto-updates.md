@@ -55,6 +55,7 @@ Because mobile applications are compiled native binaries, updates are split into
 - **Automated in GitHub Actions**:
   - [`.github/workflows/mobile-updates.yml`](../.github/workflows/mobile-updates.yml) automatically publishes an OTA update whenever changes are pushed to `apps/mobile/**`.
   - *Prerequisite*: Add `EXPO_TOKEN` to your GitHub repository secrets.
+  - *One-time Expo setup*: link the channel the APK asks for to the branch CI publishes to: `npx eas-cli channel:edit production --branch production`. APKs from 1.2.1 send `expo-channel-name: production`; 1.2.0 did not, so it can only update by APK.
 
 ### B. New APKs (native changes) — automatic
 - **When it applies**: Changes to native dependencies, Android permissions, or anything outside the JS bundle.
