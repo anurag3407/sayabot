@@ -49,7 +49,7 @@ A single exported `ENV` object, resolved at module load from Expo public env var
 
 - `scheme: "sayabot"` — deep links use the `sayabot://` scheme (pair links); `userInterfaceStyle: "automatic"` gives the app light/dark appearance tracking; `newArchEnabled: true` (`app.json:6-10`).
 - iOS bundle id / Android package: `in.sayalabs.sayabot`; iOS InfoPlist entries for Face ID, photo library, and camera usage; Android permissions `USE_BIOMETRIC`, `USE_FINGERPRINT`, `POST_NOTIFICATIONS` (`app.json:19-35`).
-- `updates`: `enabled: true`, `checkAutomatically: "ON_LOAD"`, `fallbackToCacheTimeout: 0`, with `runtimeVersion` policy `appVersion` (`app.json:37-44`).
+- `updates`: `url: https://u.expo.dev/<projectId>`, `enabled: true`, `checkAutomatically: "ON_LOAD"`, `fallbackToCacheTimeout: 0`. `runtimeVersion` is pinned to `version` by `app.config.js` (the bare workflow rejects runtime version policies).
 - Config plugins: `expo-image-picker` (photo/camera permission strings), `expo-local-authentication` (Face ID permission), `expo-notifications` (icon + accent color `#9d8cff`), `expo-quick-actions`, and `expo-share-intent` — the latter registers iOS activation rules (text, 1 web URL, up to 4 images/files) and Android intent filters for `text/*`, `image/*`, and `application/pdf` (`app.json:54-91`).
 
 **`eas.json`** build profiles:
