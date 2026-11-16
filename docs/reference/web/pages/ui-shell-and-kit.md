@@ -23,7 +23,7 @@ The client-side wrapper every `/[org]/*` page renders inside (fed by the `[org]`
 
 One column, top to bottom:
 
-- **WorkspaceSwitcher** — a `DetailsMenu` pill with a happy Mascot seeded by the org name, a ♛ marker for owners, and a popover listing the user's orgs (`/<slug>` links) plus "New workspace" (`/new-workspace`).
+- **WorkspaceSwitcher** — a `DetailsMenu` pill (`rounded-full`, `bg-white/6`) with a happy Mascot seeded by the org name, a ♛ marker for owners, and a popover listing the user's orgs (`/<slug>` links) plus "New workspace" (`/new-workspace`). The menu is positioned against the header (`left-2.5 right-2.5 top-full`), so in the desktop app it spans the sidebar under the traffic-light inset instead of covering only the right half of Search. Rows are unique by org id; when two workspaces share a name, the slug is shown beside it.
 - **"+" menu** — New bot (`${base}/agents/new`, with a ⌘N kbd hint) and New group chat (`${base}/chats/new`). A global keydown also binds plain `⌘/Ctrl+N` (no shift/alt) to new-bot; only the *visible* sidebar instance answers, checked via `searchInput.current?.offsetParent` (`sidebar.tsx:516-526`).
 - **Search** — a filter input (`/` focuses it, Escape clears) that falls through to full-message search on Enter (`${base}/search?q=…`) with a "Nothing matches. Press Enter to search every message." empty state; a ⌘K chip opens the palette.
 - **Inbox row** — always-visible Inbox link with a `99+`-capped accent badge.

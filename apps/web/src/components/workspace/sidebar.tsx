@@ -349,11 +349,20 @@ function NewBotRow({ bot, orgSlug, onNavigate }: { bot: BotLink; orgSlug: string
 
 /** Which workspace you are in, as a small pill at the top. */
 function WorkspaceSwitcher({ org, orgs, role }: { org: { slug: string; name: string }; orgs: OrgSummary[]; role: OrgRole }) {
+  const seen = new Set<string>()
+  const list = orgs.filter((item) => {
+    if (seen.has(item.id)) return false
+    seen.add(item.id)
+    return true
+  })
+  const nameCount = new Map<string, number>()
+  for (const item of list) nameCount.set(item.name, (nameCount.get(item.name) ?? 0) + 1)
+
   return (
     <DetailsMenu
-      className="relative min-w-0"
+      className="group min-w-0"
       summaryLabel={`${org.name}: switch workspace`}
-      summaryClassName="flex h-9 min-w-0 cursor-pointer list-none items-center gap-2 rounded-xl px-2 text-[14px] font-medium text-text transition-colors hover:bg-white/5"
+      summaryClassName="flex h-9 min-w-0 max-w-full cursor-pointer list-none items-center gap-2 rounded-full bg-white/[0.06] px-2 text-[14px] font-medium text-text transition-colors hover:bg-white/10 group-open:bg-white/10"
       summary={
         <>
           <Mascot seed={org.name} mood="happy" className="h-6 w-6 shrink-0" />
@@ -367,9 +376,11 @@ function WorkspaceSwitcher({ org, orgs, role }: { org: { slug: string; name: str
         </>
       }
     >
-      <div className={cn(popover, "left-0 top-full mt-1 w-64")}>
+      {/* The header is the positioning parent, so the menu spans the sidebar
+          instead of starting under the traffic lights and covering half the search field. */}
+      <div className={cn(popover, "left-2.5 right-2.5 top-full z-50 mt-1 w-auto")}>
         <p className="px-2.5 pb-1 pt-1 text-[12px] text-faint">Your workspaces</p>
-        {orgs.map((item) => (
+        {list.map((item) => (
           <Link
             key={item.id}
             href={`/${item.slug}`}
@@ -377,6 +388,9 @@ function WorkspaceSwitcher({ org, orgs, role }: { org: { slug: string; name: str
           >
             <Mascot seed={item.name} className="h-6 w-6 shrink-0" />
             <span className="min-w-0 flex-1 truncate">{item.name}</span>
+            {(nameCount.get(item.name) ?? 0) > 1 ? (
+              <span className="shrink-0 truncate text-[11px] text-faint">{item.slug}</span>
+            ) : null}
           </Link>
         ))}
         <div className="my-1 h-px bg-line" />
@@ -596,7 +610,7 @@ export function AppSidebar({
 
       <div
         className={cn(
-          "relative flex h-14 shrink-0 items-center gap-1 px-2.5",
+          "relative z-30 flex h-14 shrink-0 items-center gap-1 px-2.5",
           desktopApp && "pl-[84px] [-webkit-app-region:drag]",
         )}
       >
@@ -605,12 +619,12 @@ export function AppSidebar({
           <WorkspaceSwitcher org={org} orgs={orgs} role={role} />
         </div>
         <DetailsMenu
-          className="relative shrink-0 [-webkit-app-region:no-drag]"
+          className="shrink-0 [-webkit-app-region:no-drag]"
           summaryLabel="New bot or group chat"
           summaryClassName="grid h-9 w-9 cursor-pointer list-none place-items-center rounded-xl text-muted transition-colors hover:bg-white/5 hover:text-text"
           summary={<Plus className="h-[18px] w-[18px]" />}
         >
-          <div className={cn(popover, "right-0 top-full mt-1 w-56")}>
+          <div className={cn(popover, "right-2.5 top-full z-50 mt-1 w-56")}>
             <Link href={`${base}/agents/new`} onClick={onNavigate} className={popoverItem}>
               <Bot className="h-4 w-4 text-faint" />
               <span className="flex-1">New bot</span>
