@@ -1,11 +1,13 @@
 "use client"
 
 import Link from "next/link"
-import { useState, useTransition } from "react"
+import { useTransition } from "react"
 import { Monitor } from "lucide-react"
-import { removeHostAction, saveWorkspaceComputersAction, updateHostSettingsAction } from "@/lib/actions/desktop"
+import { removeHostAction, updateHostSettingsAction } from "@/lib/actions/desktop"
 import { Button } from "@/components/ui/button"
-import { Input, Select } from "@/components/ui/field"
+import { Select } from "@/components/ui/field"
+import { ComputerProviders } from "@/components/providers/computer-providers"
+import type { ComputerProvidersView } from "@/lib/computer-providers-shared"
 import { showToast } from "@/components/ui/toast"
 import { cn } from "@/lib/format"
 import type { ComputerView } from "@/lib/computers"
@@ -179,103 +181,16 @@ function ComputerCard({ orgSlug, computer }: { orgSlug: string; computer: Comput
   )
 }
 
-function WorkspaceComputers({
-  orgSlug,
-  canEdit,
-  boatLast4,
-  vpsSshAlias,
-  vpsStartAutomatically,
-}: {
-  orgSlug: string
-  canEdit: boolean
-  boatLast4: string | null
-  vpsSshAlias: string
-  vpsStartAutomatically: boolean
-}) {
-  const [pending, startTransition] = useTransition()
-  const [boatToken, setBoatToken] = useState("")
-  const [alias, setAlias] = useState(vpsSshAlias)
-  const [startVps, setStartVps] = useState(vpsStartAutomatically)
-  const [clearBoat, setClearBoat] = useState(false)
-
-  return (
-    <section className="rounded-xl border border-line bg-panel p-4 space-y-3">
-      <div>
-        <h3 className="text-[15px] font-medium text-text">Boat and your VPS</h3>
-        <p className="mt-1 text-[13px] text-muted">
-          One Boat key for this app. It is billed by Boat. A Cloud plan&apos;s relay token is used only when this is empty.
-          Your VPS is Docker over SSH. Sayabot never turns that server off.
-        </p>
-      </div>
-      <p className="text-[12px] text-faint">
-        {boatLast4 && !clearBoat ? `Boat key ending ${boatLast4}` : "No Boat key yet"}
-      </p>
-      {canEdit ? (
-        <form
-          className="space-y-3"
-          onSubmit={(event) => {
-            event.preventDefault()
-            startTransition(async () => {
-              const result = await saveWorkspaceComputersAction({
-                orgSlug,
-                boatToken,
-                clearBoat,
-                vpsSshAlias: alias,
-                vpsStartAutomatically: startVps,
-              })
-              showToast({
-                tone: result.ok ? "success" : "danger",
-                message: result.ok ? "Saved" : (result.error ?? "Could not save"),
-              })
-              if (result.ok) setBoatToken("")
-            })
-          }}
-        >
-          <Input
-            type="password"
-            autoComplete="off"
-            placeholder="boat_… or box_…"
-            value={boatToken}
-            onChange={(event) => setBoatToken(event.target.value)}
-            aria-label="Boat key"
-          />
-          <label className="flex items-center gap-2 text-[13px] text-muted">
-            <input type="checkbox" checked={clearBoat} onChange={(event) => setClearBoat(event.target.checked)} />
-            Remove the saved Boat key
-          </label>
-          <Input
-            placeholder="SSH config name, for example vps"
-            value={alias}
-            onChange={(event) => setAlias(event.target.value)}
-            aria-label="VPS SSH name"
-          />
-          <label className="flex items-center gap-2 text-[13px] text-muted">
-            <input type="checkbox" checked={startVps} onChange={(event) => setStartVps(event.target.checked)} />
-            Auto may start the desktop container on that server
-          </label>
-          <Button size="sm" type="submit" disabled={pending}>
-            Save
-          </Button>
-        </form>
-      ) : null}
-    </section>
-  )
-}
-
 export function ComputersView({
   orgSlug,
   computers,
   canEdit,
-  boatLast4,
-  vpsSshAlias,
-  vpsStartAutomatically,
+  providers,
 }: {
   orgSlug: string
   computers: ComputerView[]
   canEdit: boolean
-  boatLast4: string | null
-  vpsSshAlias: string
-  vpsStartAutomatically: boolean
+  providers: ComputerProvidersView
 }) {
   return (
     <div className="space-y-5">
@@ -285,13 +200,16 @@ export function ComputersView({
           The agent stays on this Mac or on Cloud. These are the desktops it can see and click.
         </p>
       </div>
-      <WorkspaceComputers
-        orgSlug={orgSlug}
-        canEdit={canEdit}
-        boatLast4={boatLast4}
-        vpsSshAlias={vpsSshAlias}
-        vpsStartAutomatically={vpsStartAutomatically}
-      />
+      <section aria-labelledby="cloud-heading">
+        <h3 id="cloud-heading" className="text-[15px] font-medium text-text">
+          Cloud desktops and your server
+        </h3>
+        <p className="mb-2 mt-0.5 text-[12.5px] text-muted">
+          The same settings as AI providers → Computers and browser. Pick one per bot under Works on.
+        </p>
+        <ComputerProviders orgSlug={orgSlug} view={providers} canEdit={canEdit} />
+      </section>
+      <h3 className="text-[15px] font-medium text-text">Your Macs</h3>
       {computers.length === 0 ? (
         <div className="rounded-xl border border-dashed border-line p-6 text-center">
           <p className="text-[14px] text-text">No computers yet</p>

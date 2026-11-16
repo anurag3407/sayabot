@@ -99,7 +99,7 @@ Shared row types: `RoomRow`, `AgentRow`, `MessageRow`, `CanvasRow` (Drizzle `$in
 ### Renderers
 
 - **`renderTranscript(messages)`** — `[Label](still streaming)?: content` lines joined by blank lines; per-message content cut at `MESSAGE_CHAR_LIMIT = 4_000`; oldest lines are dropped until the transcript fits `TRANSCRIPT_CHAR_LIMIT = 60_000`. Labels: `System`, `Name (@handle) (agent)`, `Name (human)`.
-- **`buildSystemPrompt({ room, agent, role })`** (v1) — identity + shared-transcript rules + tool/mention guidance + markdown note; capability blocks for `computer` (persistent workspace, Secret Broker placeholders, HTTPS-only egress, `computer_publish`) and `cron` (Hermes `cronjob`); room directive; agent instructions; `debateRoleInstruction(role)`.
+- **`buildSystemPrompt({ room, agent, role })`** (v1) — identity + shared-transcript rules + tool/mention guidance + markdown note; capability blocks for `computer` (persistent workspace, Secret Broker placeholders, HTTPS-only egress, `computer_publish`) and `cron` (Hermes `cronjob`); room directive; agent instructions; `replyStyleInstruction` when `params.replyStyle` is `"conversational"`; `debateRoleInstruction(role)`.
 - **`buildUserPrompt({ transcript, canvases, tasks?, agent, extra? })`** — canvases, tasks, `Conversation so far:`, extra (task brief), `Write your next message as @<handle>.`
 - **`toWebhookContext(messages)`** — last 20 messages as `{ sender, content ≤ 4000 }` for external webhook payloads.
 - **`agentListPrompt(roomAgentRows)`** — `- <id>: @<handle> (<displayName>)` lines for the moderator prompt.

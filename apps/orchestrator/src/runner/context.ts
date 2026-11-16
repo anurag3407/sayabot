@@ -1,4 +1,13 @@
-import { debateRoleInstruction, desktopGuidance, desktopHome, parseCapabilities, worksOnFromParams, type TurnRole } from "@sayabot/core"
+import {
+  debateRoleInstruction,
+  desktopGuidance,
+  desktopHome,
+  parseCapabilities,
+  replyStyleFromParams,
+  replyStyleInstruction,
+  worksOnFromParams,
+  type TurnRole,
+} from "@sayabot/core"
 import {
   agents,
   canvases,
@@ -190,7 +199,9 @@ const TRANSCRIPT_CHAR_LIMIT = 60_000
 export function renderTranscript(messages: ContextMessage[]): string {
   const lines = messages.map((m) => {
     const content =
-      m.content.length > MESSAGE_CHAR_LIMIT ? `${m.content.slice(0, MESSAGE_CHAR_LIMIT)}…` : m.content
+      m.content.length > MESSAGE_CHAR_LIMIT
+        ? `${m.content.slice(0, MESSAGE_CHAR_LIMIT)}…`
+        : m.content
     const status = m.status === "streaming" ? " (still streaming)" : ""
     return `[${label(m)}]${status}: ${content}`
   })
@@ -364,6 +375,10 @@ export function buildSystemPrompt(args: {
   if (args.agent.systemPrompt?.trim()) {
     parts.push(`Your instructions:\n${args.agent.systemPrompt.trim()}`)
   }
+  const replyStyle = replyStyleInstruction(
+    replyStyleFromParams(args.agent.params as Record<string, unknown> | null),
+  )
+  if (replyStyle) parts.push(replyStyle)
   const role = debateRoleInstruction(args.role)
   if (role) parts.push(role)
   return parts.join("\n\n")
@@ -385,16 +400,16 @@ export function buildUserPrompt(args: {
   return parts.join("\n\n")
 }
 
-export function toWebhookContext(messages: ContextMessage[]): { sender: string; content: string }[] {
+export function toWebhookContext(
+  messages: ContextMessage[],
+): { sender: string; content: string }[] {
   return messages.slice(-20).map((m) => ({
     sender: label(m),
     content: m.content.slice(0, 4_000),
   }))
 }
 
-export function agentListPrompt(
-  roomAgentRows: RoomAgentRow[],
-): string {
+export function agentListPrompt(roomAgentRows: RoomAgentRow[]): string {
   return roomAgentRows
     .map(({ agent }) => `- ${agent.id}: @${agent.handle} (${agent.displayName})`)
     .join("\n")
@@ -404,7 +419,10 @@ export function agentListPrompt(
 export const APP_ONLINE_WINDOW_MS = 15 * 60_000
 
 /** Whether an invited (MCP) agent's app has called Sayabot recently. */
-export function agentAppOnline(lastSeenAt: Date | string | null | undefined, now = Date.now()): boolean {
+export function agentAppOnline(
+  lastSeenAt: Date | string | null | undefined,
+  now = Date.now(),
+): boolean {
   if (!lastSeenAt) return false
   const at = typeof lastSeenAt === "string" ? Date.parse(lastSeenAt) : lastSeenAt.getTime()
   return Number.isFinite(at) && now - at <= APP_ONLINE_WINDOW_MS

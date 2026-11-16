@@ -6,6 +6,7 @@ import {
   Menu,
   MenuItemConstructorOptions,
   Notification,
+  session,
   shell,
 } from "electron"
 import * as path from "node:path"
@@ -35,6 +36,7 @@ import { DesktopHost, loadHostAuth } from "./host"
 import { detectLocalAgents } from "./local-agents"
 import { LocalMcpHost } from "./local-mcp"
 import { LocalRunner, type ApprovalNotice } from "./runner"
+import { readJsonFile, removeJsonFile, writeJsonAtomic } from "./durable-json"
 import { normalizeServerUrl } from "./server-url"
 import { VaultRunner } from "./vault-cli"
 
@@ -244,10 +246,11 @@ function startHost(): void {
         })),
       // The local runner picks up work after each heartbeat (one job at a time).
       onHeartbeat: (reply) => {
-        localRunnerRunning = Boolean(reply.settings.runnerEnabled)
-        void runner?.maybeRun(reply.queuedJobs, Boolean(reply.settings.runnerEnabled))
-        void vaults?.maybeRun(reply.secretJobs ?? 0)
-        void localMcp?.maybeRun(reply.mcpCalls ?? 0)
+        const enabled = Boolean(reply?.settings?.runnerEnabled)
+        localRunnerRunning = enabled
+        void runner?.maybeRun(reply?.queuedJobs ?? 0, enabled)
+        void vaults?.maybeRun(reply?.secretJobs ?? 0)
+        void localMcp?.maybeRun(reply?.mcpCalls ?? 0)
       },
     })
     runner = new LocalRunner(host, notifyApproval)
@@ -290,11 +293,8 @@ function getUserDataDir(): string {
 
 function loadConfig(): DesktopConfig {
   try {
-    const filePath = path.join(getUserDataDir(), CONFIG_FILE)
-    if (fs.existsSync(filePath)) {
-      const data = fs.readFileSync(filePath, "utf-8")
-      return { serverUrl: DEFAULT_SERVER_URL, enableLocalRunner: true, ...JSON.parse(data) }
-    }
+    const data = readJsonFile<Partial<DesktopConfig>>(path.join(getUserDataDir(), CONFIG_FILE))
+    if (data) return { serverUrl: DEFAULT_SERVER_URL, enableLocalRunner: true, ...data }
   } catch (err) {
     console.error("Failed to load desktop config:", err)
   }
@@ -303,34 +303,21 @@ function loadConfig(): DesktopConfig {
 
 function saveConfig(config: DesktopConfig): void {
   try {
-    const filePath = path.join(getUserDataDir(), CONFIG_FILE)
-    fs.writeFileSync(filePath, JSON.stringify(config, null, 2), "utf-8")
+    writeJsonAtomic(path.join(getUserDataDir(), CONFIG_FILE), config, 0o644)
   } catch (err) {
     console.error("Failed to save desktop config:", err)
   }
 }
 
 function loadSession(): AuthSession | null {
-  try {
-    const filePath = path.join(getUserDataDir(), SESSION_FILE)
-    if (fs.existsSync(filePath)) {
-      const data = fs.readFileSync(filePath, "utf-8")
-      return JSON.parse(data)
-    }
-  } catch (err) {
-    console.error("Failed to load session:", err)
-  }
-  return null
+  return readJsonFile<AuthSession>(path.join(getUserDataDir(), SESSION_FILE))
 }
 
 function saveSession(session: AuthSession | null): void {
   try {
     const filePath = path.join(getUserDataDir(), SESSION_FILE)
-    if (session) {
-      fs.writeFileSync(filePath, JSON.stringify(session, null, 2), "utf-8")
-    } else if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath)
-    }
+    if (session) writeJsonAtomic(filePath, session, 0o600)
+    else removeJsonFile(filePath)
   } catch (err) {
     console.error("Failed to write session file:", err)
   }
@@ -544,10 +531,22 @@ const updater = new DesktopUpdater({
   },
 })
 
-/** Quits so the helper can swap the app; force-exits if something holds the quit up. */
+/**
+ * Quits so the helper can swap the app. The login file and the cookie database are flushed
+ * first: a hard exit mid-write is what made an update look like a brand-new empty account.
+ */
 function quitForUpdate(): void {
-  setTimeout(() => app.exit(0), 5_000).unref()
-  app.quit()
+  void (async () => {
+    try {
+      await flushLiveSessionFromPage()
+      await session.defaultSession.flushStorageData()
+      await session.defaultSession.cookies.flushStore()
+    } catch (err) {
+      console.warn("[Sayabot Desktop] Could not flush local data before update:", err)
+    }
+    setTimeout(() => app.exit(0), 8_000).unref()
+    app.quit()
+  })()
 }
 
 /** Tell people once per version, even when the workspace page is older and has no update toast. */
@@ -801,46 +800,84 @@ function createWindow() {
   }
 }
 
-async function refreshSessionIfNeeded(force = false): Promise<AuthSession | null> {
-  const session = loadSession()
-  if (!session || !session.refreshToken) return null
+/** True when the last file refresh was rejected. The window's cookies may still be the live login. */
+let lastRefreshRejected = false
+let refreshInFlight: Promise<AuthSession | null> | null = null
 
-  let isNearExpiry = force
-  if (!isNearExpiry && session.accessToken) {
-    try {
-      const parts = session.accessToken.split(".")
-      if (parts.length === 3) {
-        const payload = JSON.parse(Buffer.from(parts[1]!, "base64").toString())
-        if (typeof payload.exp === "number") {
-          const nowSec = Math.floor(Date.now() / 1000)
-          isNearExpiry = payload.exp - nowSec < 600 // Expiring within 10 minutes
-        }
-      }
-    } catch {
-      isNearExpiry = true
-    }
+function accessTokenNearExpiry(accessToken: string, force: boolean): boolean {
+  if (force) return true
+  try {
+    const parts = accessToken.split(".")
+    if (parts.length !== 3) return true
+    const payload = JSON.parse(Buffer.from(parts[1]!, "base64").toString()) as { exp?: unknown }
+    if (typeof payload.exp !== "number") return true
+    return payload.exp - Math.floor(Date.now() / 1000) < 600
+  } catch {
+    return true
   }
+}
 
-  if (!isNearExpiry) return session
+/** The workspace page's cookies already hold a login. Reloading with an older file token would replace it. */
+async function hasBrowserSession(serverUrl: string): Promise<boolean> {
+  try {
+    const cookies = await session.defaultSession.cookies.get({ url: serverUrl })
+    return cookies.some((cookie) => cookie.name.startsWith("sb-") && cookie.name.includes("auth-token"))
+  } catch {
+    return false
+  }
+}
+
+/** Ask the open workspace page for the login it is using, and store that copy. */
+async function flushLiveSessionFromPage(): Promise<boolean> {
+  const win = mainWindow
+  if (!win || win.isDestroyed()) return false
+  const url = win.webContents.getURL()
+  if (!url.startsWith("http")) return false
+  try {
+    const saved = await win.webContents.executeJavaScript(
+      `(async () => {
+        const read = window.__sayabotReadSession
+        if (typeof read !== "function" || !window.sayabotDesktop || !window.sayabotDesktop.saveLiveSession) return false
+        const live = await read()
+        if (!live) return false
+        await window.sayabotDesktop.saveLiveSession(live)
+        return true
+      })()`,
+      true,
+    )
+    return saved === true
+  } catch {
+    return false
+  }
+}
+
+async function refreshSessionOnce(force = false): Promise<AuthSession | null> {
+  const saved = loadSession()
+  if (!saved || !saved.refreshToken) return null
+  if (!accessTokenNearExpiry(saved.accessToken, force)) {
+    lastRefreshRejected = false
+    return saved
+  }
 
   console.log("[Sayabot Desktop] Refreshing auth token...")
   try {
-    const cleanUrl = session.serverUrl.replace(/\/+$/, "")
+    const cleanUrl = saved.serverUrl.replace(/\/+$/, "")
     const res = await fetch(`${cleanUrl}/api/desktop/refresh`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ refreshToken: session.refreshToken }),
+      body: JSON.stringify({ refreshToken: saved.refreshToken }),
     })
     if (res.status === 401) {
-      // The login is gone for good (revoked, expired, or the user was deleted, e.g. a merged
-      // guest). Drop it so the start page can begin guest mode or ask to sign in again.
-      console.warn("[Sayabot Desktop] Saved login is no longer valid; signing out locally")
-      saveSession(null)
+      // The page often already rotated this token. Deleting the file made the next launch
+      // start a new empty guest. Leave the file; the window keeps its own cookies.
+      lastRefreshRejected = true
+      console.warn("[Sayabot Desktop] Saved refresh token was rejected. Keeping the window's login.")
       return null
     }
     if (!res.ok) {
       console.warn(`[Sayabot Desktop] Refresh token request failed (HTTP ${res.status})`)
-      return session
+      lastRefreshRejected = false
+      return saved
     }
     const data = (await res.json()) as {
       accessToken?: string
@@ -851,44 +888,66 @@ async function refreshSessionIfNeeded(force = false): Promise<AuthSession | null
     }
     if (data.accessToken && data.refreshToken) {
       const updated: AuthSession = {
-        ...session,
+        ...saved,
         accessToken: data.accessToken,
         refreshToken: data.refreshToken,
-        email: data.email || session.email,
-        userId: data.userId || session.userId,
-        isGuest: typeof data.isAnonymous === "boolean" ? data.isAnonymous : session.isGuest,
+        email: data.email || saved.email,
+        userId: data.userId || saved.userId,
+        isGuest: typeof data.isAnonymous === "boolean" ? data.isAnonymous : saved.isGuest,
       }
       saveSession(updated)
-      if (host) {
-        startHost()
-      }
+      lastRefreshRejected = false
+      if (host) startHost()
       console.log("[Sayabot Desktop] Refreshed and persisted new session tokens.")
       return updated
     }
   } catch (err) {
     console.error("[Sayabot Desktop] Token refresh error:", err)
   }
-  return session
+  lastRefreshRejected = false
+  return saved
 }
 
-// Background session keeper: refresh tokens every 15 minutes so they never expire
-setInterval(
-  () => {
-    void refreshSessionIfNeeded()
-  },
-  15 * 60 * 1000,
-)
+function refreshSessionIfNeeded(force = false): Promise<AuthSession | null> {
+  if (refreshInFlight) return refreshInFlight
+  refreshInFlight = refreshSessionOnce(force).finally(() => {
+    refreshInFlight = null
+  })
+  return refreshInFlight
+}
+
+// The page refreshes its own cookies. Copy those into the file. Only refresh the file when
+// no window is holding a login, so two refreshes cannot revoke the account.
+setInterval(() => {
+  void (async () => {
+    if (await flushLiveSessionFromPage()) return
+    const saved = loadSession()
+    if (!saved || (await hasBrowserSession(saved.serverUrl))) return
+    await refreshSessionIfNeeded()
+  })()
+}, 15 * 60 * 1000)
 
 async function openWorkspaceInWindow() {
-  const session = await refreshSessionIfNeeded()
+  const saved = loadSession()
   if (!mainWindow) return
-  if (!session) {
+  if (!saved) {
     loadLocalHtml()
     return
   }
-  const cleanUrl = session.serverUrl.replace(/\/+$/, "")
-  // Authenticate seamlessly via /auth/complete hash tokens
-  const targetUrl = `${cleanUrl}/auth/complete#access_token=${session.accessToken}&refresh_token=${session.refreshToken}`
+  const cleanUrl = saved.serverUrl.replace(/\/+$/, "")
+  if (await hasBrowserSession(saved.serverUrl)) {
+    // Cookies are the login that survived the last run. Do not hand the file's older
+    // refresh token to the page; the server treats a reused token as theft and revokes it.
+    mainWindow.loadURL(cleanUrl)
+    return
+  }
+  const refreshed = await refreshSessionIfNeeded()
+  const next = refreshed ?? (lastRefreshRejected ? null : saved)
+  if (!next) {
+    mainWindow.loadURL(cleanUrl)
+    return
+  }
+  const targetUrl = `${cleanUrl}/auth/complete#access_token=${next.accessToken}&refresh_token=${next.refreshToken}`
   mainWindow.loadURL(targetUrl)
 }
 
@@ -896,6 +955,37 @@ async function openWorkspaceInWindow() {
 ipcMain.handle("auth:get-session", () => {
   return loadSession()
 })
+
+/** The workspace page rotated the login. Keep the file on that same account. */
+ipcMain.handle(
+  "auth:save-live-session",
+  (
+    _event,
+    input: {
+      accessToken?: string
+      refreshToken?: string
+      email?: string
+      userId?: string
+      isGuest?: boolean
+    },
+  ) => {
+    const current = loadSession()
+    if (!current || !input?.accessToken || !input.refreshToken) return { ok: false }
+    if (input.userId && current.userId && input.userId !== current.userId) return { ok: false }
+    if (input.accessToken === current.accessToken && input.refreshToken === current.refreshToken) {
+      return { ok: true }
+    }
+    saveSession({
+      ...current,
+      accessToken: input.accessToken,
+      refreshToken: input.refreshToken,
+      email: input.email || current.email,
+      userId: input.userId || current.userId,
+      isGuest: typeof input.isGuest === "boolean" ? input.isGuest : current.isGuest,
+    })
+    return { ok: true }
+  },
+)
 
 function openBrowserAuth(): void {
   const config = loadConfig()

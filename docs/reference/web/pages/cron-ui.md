@@ -97,7 +97,7 @@ flowchart LR
     C -->|GET /routines/:id| H[Execution Runs tab]
 ```| Call | Purpose |
 | :--- | :--- |
-| `POST /api/workspaces/<org>/routines` | Create (also used by the composer's `/cron` quick action in the chat composer) |
+| `POST /api/workspaces/<org>/routines` | Create (also used by the composer's `/cron` quick action and the bot sidebar's Create schedule) |
 | `PATCH /api/workspaces/<org>/routines/<id>` | Edit fields or `{ enabled }`; `metadata` is merged |
 | `DELETE /api/workspaces/<org>/routines/<id>` | Delete after confirm |
 | `POST /api/workspaces/<org>/routines/<id>/run` | Trigger an immediate run ("Workflow executed immediately! Agent turn enqueued." toast) |

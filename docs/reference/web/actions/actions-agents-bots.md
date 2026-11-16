@@ -75,8 +75,17 @@ Changes only `display_name` (1–60 chars) and `system_prompt` (trimmed, capped 
 
 ### Desktop placement (`setAgentWorksOnAction`, `setAgentWhenMacOffAction`)
 
-- `setAgentWorksOnAction` (`agents.ts:665`) stores `params.worksOn` — one of `off | auto | this_computer | local_vm | boat | vps` (labels: Off, Auto, This computer, Local VM, Boat, Your own VPS) plus `params.computer.thisComputer`. `auto` never creates or wakes a Boat; the agent calls `select_computer`. Audit `agent.works_on`.
-- `setAgentWhenMacOffAction` (`agents.ts:698`) stores `params.whenMacOff` ∈ `{ auto, server, wait, fail }` — what happens to a message that arrives while the bot's Mac is offline; `auto` deletes the key (system default). No audit entry for this one.
+- `setAgentWorksOnAction` stores `params.worksOn` — one of `off | auto | this_computer | local_vm | boat | vps | e2b` (labels: Off, Auto, This computer, Private desktop, Boat, your own VPS, E2B) plus `params.computer.thisComputer`. `auto` never creates or wakes a Boat; the agent calls `select_computer`. Choosing a cloud desktop (`boat`, `vps`, `e2b`) on an LLM bot without the computer capability also sets `capabilities.computer = { profile: "standard" }`, since the computer tools are what run commands there; no `agent_computers` row or Cloud plan computer is used, as the workspace pays that provider. The toast then adds "Computer tools are on." Audit `agent.works_on` with `turnedOnTools`.
+- `setAgentWhenMacOffAction` stores `params.whenMacOff` ∈ `{ auto, server, wait, fail }` — what happens to a message that arrives while the bot's Mac is offline; `auto` deletes the key (system default). No audit entry for this one.
+
+### Bot sidebar (`setAgentCapabilitiesAction`, `setAgentLookAction`)
+
+Used by the chat's bot settings sidebar ([Room chat UI](../pages/room-chat-ui.md)).
+
+- `setAgentCapabilitiesAction({ orgSlug, agentId, capabilities })` is org-admin and only for `kind: "llm"` ("Invited bots bring their own tools"). The payload is passed through `parseCapabilities`, so unknown keys are dropped and missing flags fall back to defaults — the sidebar sends the full object. Turning `computer` on inserts `agent_computers` (`profile`, `status: "none"`, volume `saaya-bot-<agentId>`) when the row is missing, after `planGate(orgId, "computers")`. A plan block returns that message and does not change capabilities. Changing the profile updates the existing row. Audit `agent.capabilities_changed` with the list of changed keys.
+- `setAgentLookAction({ orgSlug, agentId, shape, tone, mood? })` writes `params.mascot` (`shape` one of the Saya shapes, `tone` one of the Saya tones, optional `mood` of `idle | happy | sleep | busy | alert | thinking`) and leaves every other param in place. Omitting `mood` keeps the expression already saved. A bad shape or tone fails with "Pick a shape and a colour". A bad mood fails with "Pick an expression". Audit `agent.look_changed`. The chat reads it back with `readAgentLook` / `mascotProps` (`src/lib/agent-look.ts`).
+- `setAgentReplyStyleAction({ orgSlug, agentId, replyStyle })` stores `params.replyStyle` as `"conversational"`, or deletes the key for `"default"`. Anything else fails with "Pick a reply style". Org-admin. Audit `agent.reply_style`. Both prompt builders append `replyStyleInstruction` only for conversational bots.
+- `saveOrgSkillAction({ orgSlug, name, description, body })` (`src/lib/actions/skills.ts`) inserts an org-visible `skills` row the bot can load by slug. The name becomes a slug (`a-z`, `0-9`, hyphens, max 80). Built-in slugs (`write-and-run-tests`, `open-pr`, `research-citations`, `summarise-thread`, `canvas-landing-page`) are rejected. Description max 200, body max 32,000. A duplicate slug returns "A skill with that name already exists". Audit `skill.created`. The room page lists these skills; saving one does not register a composer slash command.
 
 ---
 

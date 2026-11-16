@@ -6,12 +6,7 @@ export type SenderType = "human" | "agent" | "system"
 export type MessageStatus = "streaming" | "complete" | "error" | "halted"
 export type CanvasKind = "markdown" | "code" | "svg" | "html"
 export type ToolCallStatus =
-  | "pending_approval"
-  | "approved"
-  | "rejected"
-  | "running"
-  | "done"
-  | "error"
+  "pending_approval" | "approved" | "rejected" | "running" | "done" | "error"
 
 export interface OrgSummary {
   id: string
@@ -80,6 +75,8 @@ export interface AgentView {
   toolIds: string[]
   webhookUrl: string | null
   createdAt: string
+  /** Raw `agents.capabilities` JSON. Missing on lists that do not load the column. */
+  capabilities?: unknown
 }
 
 export interface RoomAgentView {
@@ -501,7 +498,8 @@ export interface AgentConnectorGrantView {
   connector?: WorkspaceConnectorView
 }
 
-export type RunStepKind = "model" | "tool" | "compaction" | "recall" | "plan" | "subagent" | "verify"
+export type RunStepKind =
+  "model" | "tool" | "compaction" | "recall" | "plan" | "subagent" | "verify"
 
 export interface RunStepView {
   id: string
@@ -549,4 +547,3 @@ export interface RunTraceView {
   subagentRuns?: RunTraceView[]
   transcriptPlan?: Record<string, unknown> | null
 }
-

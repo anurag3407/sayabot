@@ -91,8 +91,6 @@ export function BillingView({
     })
   }
 
-  const rank = (id: PlanId) => PLAN_ORDER.indexOf(id)
-
   return (
     <div className="space-y-8">
       <div className="space-y-4 rounded-sm border border-line bg-panel p-4">
@@ -102,6 +100,11 @@ export function BillingView({
       </div>
 
       {error ? <InlineAlert tone="danger">{error}</InlineAlert> : null}
+      <InlineAlert tone="warning">
+        Sayabot Cloud is coming soon. Every feature on these plans is listed because it is part of
+        the plan, and none of them are on yet. Agents on your Mac, and a server you host, work
+        today.
+      </InlineAlert>
       {!configured ? (
         <InlineAlert tone="warning">
           Billing isn&apos;t set up on this server yet (Stripe keys missing), so plans can&apos;t be
@@ -113,7 +116,6 @@ export function BillingView({
         {PLAN_ORDER.map((id) => {
           const option = PLANS[id]
           const current = id === plan
-          const higher = rank(id) > rank(plan)
           return (
             <div
               key={id}
@@ -135,9 +137,12 @@ export function BillingView({
               <p className="mt-1 text-[12.5px] leading-relaxed text-muted">{option.tagline}</p>
               <ul className="mt-3 flex-1 space-y-1.5">
                 {option.highlights.map((line) => (
-                  <li key={line} className="flex gap-2 text-[12.5px] text-text">
+                  <li key={line} className="flex items-start gap-2 text-[12.5px] text-text">
                     <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent" />
-                    <span>{line}</span>
+                    <span className="min-w-0 flex-1">{line}</span>
+                    <span className="shrink-0 font-mono text-[10px] tracking-wide text-faint">
+                      Coming soon
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -146,25 +151,9 @@ export function BillingView({
                   <Button variant="outline" size="md" className="w-full" disabled>
                     Current plan
                   </Button>
-                ) : higher ? (
-                  <Button
-                    variant="primary"
-                    size="md"
-                    className="w-full"
-                    disabled={!configured || pending}
-                    onClick={() => go(id)}
-                  >
-                    {busyPlan === id ? "Opening…" : `Upgrade to ${option.name}`}
-                  </Button>
                 ) : (
-                  <Button
-                    variant="ghost"
-                    size="md"
-                    className="w-full"
-                    disabled={!configured || pending || !paying}
-                    onClick={() => go("portal")}
-                  >
-                    {paying ? `Switch to ${option.name}` : option.name}
+                  <Button variant="outline" size="md" className="w-full" disabled>
+                    Coming soon
                   </Button>
                 )}
               </div>

@@ -1,10 +1,11 @@
 import { readFileSync } from "node:fs"
-import { isDestructiveCommand, redactSecrets, resolveComputer, type ComputerAvailability, type WorksOn } from "@sayabot/core"
+import { desktopHome, isDestructiveCommand, redactSecrets, resolveComputer, type ComputerAvailability, type WorksOn } from "@sayabot/core"
 import { canvases, canvasVersions } from "@sayabot/db"
 import { z } from "zod"
 import { getComputerClient, type CodeIntelligenceArgs, type EditFileArgs, type ReadFileArgs } from "../../computer/client"
 import { boatCatCommand, boatClickCommand, boatListCommand, boatReadCommand, boatWriteCommand, captureBoatScreen, numberBoatLines, planBoatEdit, runBoatShell } from "../../computers/boat-shell"
-import { runVpsShell } from "../../computers/vps"
+import { captureE2bScreen, runE2bShell } from "../../computers/e2b"
+import { runVpsShell, type VpsTarget } from "../../computers/vps"
 import { getDb } from "../../db"
 import { broadcast } from "../../realtime"
 import type { ToolSpec } from "../audited"
@@ -17,8 +18,15 @@ export interface ComputerToolsArgs {
   worksOn: WorksOn
   available: ComputerAvailability
   params: Record<string, unknown> | null
-  /** SSH config name from Settings → Computers. Empty when no VPS is saved. */
-  vpsSshAlias?: string | null
+  /** The saved server from Settings → AI providers. Null when no VPS is saved. */
+  vps?: VpsTarget | null
+}
+
+/** A shell on a desktop this turn already uses, other than a Boat or the local VM. */
+interface ServerShell {
+  /** "VPS" or "E2B sandbox", for messages. */
+  name: string
+  run(command: string, timeoutMs?: number): Promise<{ ok: boolean; output: string; stdout: string }>
 }
 
 /** Single-quotes a value for POSIX sh. */
@@ -55,10 +63,21 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
   const client = getComputerClient()
   const { agentId, orgId, roomId, profile } = args
 
-  /** The SSH name when this turn is already on the person's VPS. Auto does not start it. */
-  function readyVps(): string | null {
+  /** The VPS or E2B sandbox this turn is already on. Auto does not start either. */
+  function readyServer(): ServerShell | null {
     const decision = resolveComputer(args.worksOn, args.available)
-    return decision.surface === "vps" && decision.action === "use" ? args.vpsSshAlias || null : null
+    if (decision.action !== "use") return null
+    const vps = args.vps
+    if (decision.surface === "vps" && vps) {
+      return { name: "VPS", run: (command, timeoutMs) => runVpsShell(vps, agentId, command, timeoutMs) }
+    }
+    if (decision.surface === "e2b") {
+      return {
+        name: "E2B sandbox",
+        run: (command, timeoutMs) => runE2bShell({ orgId, agentId, params: args.params, command, timeoutMs }),
+      }
+    }
+    return null
   }
 
   /** Opens the local VM only when one is already ready. Auto does not create one. */
@@ -86,6 +105,12 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
       }
       return { ok: false, error: "This bot's desktop is your VPS. Call select_computer with vps. Sayabot does not turn that server off." }
     }
+    if (decision.surface === "e2b") {
+      if (decision.action === "use") {
+        return { ok: false, error: "This tool uses the local VM. On the E2B sandbox, use computer_shell, fs_read, fs_write, or fs_edit." }
+      }
+      return { ok: false, error: decision.reason || "This bot works on an E2B sandbox. Call select_computer with e2b." }
+    }
     return {
       ok: false,
       error: decision.reason || "No local VM is ready. Call select_computer to create one. Auto does not create a desktop.",
@@ -95,7 +120,7 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
   const shellTool: ToolSpec = {
     name: "computer_shell",
     description:
-      "Execute a command on this bot's desktop. A local VM uses /home/bot. A Boat runs the same command on its Linux desktop; background: true keeps that Boat awake for up to two hours. The agent process stays where it already runs.",
+      "Execute a command on this bot's desktop. A local VM and a VPS use /home/bot; a Boat and an E2B sandbox use /home/user. background: true (Boat or E2B) starts it and returns at once, keeping that desktop awake for up to two hours. The agent process stays where it already runs.",
     schema: z.object({
       command: z.string().min(1).max(20_000),
       cwd: z.string().optional(),
@@ -124,10 +149,24 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
           detached: input.background === true,
         })
       }
+      if (decision.surface === "e2b") {
+        if (decision.action !== "use") {
+          return { ok: false, error: decision.reason || "Call select_computer with e2b. Auto does not create a sandbox." }
+        }
+        const ran = await runE2bShell({
+          orgId,
+          agentId,
+          params: args.params,
+          command: input.cwd ? `cd ${shellQuote(input.cwd)} && ${input.command}` : input.command,
+          timeoutMs: (input.timeoutSeconds || 60) * 1000,
+          background: input.background === true,
+        })
+        return { ok: ran.ok, output: ran.output, exit_code: ran.exitCode, ...(ran.background ? { background: true } : {}) }
+      }
       if (input.background) {
         return {
           ok: false,
-          error: "A background command runs on a Boat that is already awake. Call select_computer with boat.",
+          error: "A background command runs on a Boat or an E2B sandbox that is already awake. Call select_computer with boat or e2b.",
         }
       }
       if (decision.surface === "this_computer") {
@@ -140,9 +179,9 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
             error: "This bot's desktop is your VPS. Call select_computer with vps. Sayabot does not turn that server off.",
           }
         }
-        if (!args.vpsSshAlias) return { ok: false, error: "No VPS is set in Settings → Computers." }
+        if (!args.vps) return { ok: false, error: "No VPS is set in Settings → AI providers." }
         const command = input.cwd ? `cd ${shellQuote(input.cwd)} && ${input.command}` : input.command
-        const ran = await runVpsShell(args.vpsSshAlias, command, (input.timeoutSeconds || 60) * 1000)
+        const ran = await runVpsShell(args.vps, agentId, command, (input.timeoutSeconds || 60) * 1000)
         return { ok: ran.ok, output: ran.output }
       }
       if (decision.surface !== "local_vm" || decision.action !== "use") {
@@ -218,13 +257,13 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
           encoding: "utf8",
         }
       }
-      const vps = readyVps()
-      if (vps) {
+      const server = readyServer()
+      if (server) {
         const command = boatReadCommand(input.path, input.startLine, input.endLine)
-        if (!command) return { ok: false, error: "That path cannot be read on the VPS." }
-        const ran = await runVpsShell(vps, command)
-        if (!ran.ok) return { ok: false, error: ran.output || "The VPS did not read that file." }
-        return { path: input.path, content: numberBoatLines(ran.output, input.startLine ?? 1), encoding: "utf8" }
+        if (!command) return { ok: false, error: `That path cannot be read on the ${server.name}.` }
+        const ran = await server.run(command)
+        if (!ran.ok) return { ok: false, error: ran.output || `The ${server.name} did not read that file.` }
+        return { path: input.path, content: numberBoatLines(ran.stdout, input.startLine ?? 1), encoding: "utf8" }
       }
       const blocked = await useLocalVm()
       if (blocked) return blocked
@@ -260,16 +299,16 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
         if (wrote.ok === false) return wrote
         return { ok: true, path: input.path, replacements: planned.replacements, hash: planned.hash, matchMode: "exact" }
       }
-      const vps = readyVps()
-      if (vps) {
+      const server = readyServer()
+      if (server) {
         const readCommand = boatCatCommand(input.path)
-        if (!readCommand) return { ok: false, error: "That path cannot be read on the VPS." }
-        const read = await runVpsShell(vps, readCommand)
-        if (!read.ok) return { ok: false, error: read.output || "The VPS did not read that file." }
-        const planned = planBoatEdit(input.path, read.output, input)
+        if (!readCommand) return { ok: false, error: `That path cannot be read on the ${server.name}.` }
+        const read = await server.run(readCommand)
+        if (!read.ok) return { ok: false, error: read.output || `The ${server.name} did not read that file.` }
+        const planned = planBoatEdit(input.path, read.stdout, input)
         if ("error" in planned) return { ok: false, error: planned.error }
-        const wrote = await runVpsShell(vps, planned.command)
-        if (!wrote.ok) return { ok: false, error: wrote.output || "The VPS did not write that file." }
+        const wrote = await server.run(planned.command)
+        if (!wrote.ok) return { ok: false, error: wrote.output || `The ${server.name} did not write that file.` }
         return { ok: true, path: input.path, replacements: planned.replacements, hash: planned.hash, matchMode: "exact" }
       }
       const blocked = await useLocalVm()
@@ -337,12 +376,12 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
         if (!command) return { ok: false, error: "That path cannot be written on the Boat." }
         return runBoatShell({ orgId, agentId, params: args.params, command, detached: false })
       }
-      const vps = readyVps()
-      if (vps) {
+      const server = readyServer()
+      if (server) {
         const command = boatWriteCommand(input.path, input.content)
-        if (!command) return { ok: false, error: "That path cannot be written on the VPS." }
-        const ran = await runVpsShell(vps, command)
-        return ran.ok ? { ok: true, path: input.path } : { ok: false, error: ran.output || "The VPS did not write that file." }
+        if (!command) return { ok: false, error: `That path cannot be written on the ${server.name}.` }
+        const ran = await server.run(command)
+        return ran.ok ? { ok: true, path: input.path } : { ok: false, error: ran.output || `The ${server.name} did not write that file.` }
       }
       const blocked = await useLocalVm()
       if (blocked) return blocked
@@ -510,13 +549,13 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
         if (result.ok === false) return result
         return { path: input.path, content: typeof result.output === "string" ? result.output : "", encoding: "utf8" }
       }
-      const vps = readyVps()
-      if (vps) {
+      const server = readyServer()
+      if (server) {
         const command = boatReadCommand(input.path, input.startLine, input.endLine)
-        if (!command) return { ok: false, error: "That path cannot be read on the VPS." }
-        const ran = await runVpsShell(vps, command)
-        if (!ran.ok) return { ok: false, error: ran.output || "The VPS did not read that file." }
-        return { path: input.path, content: ran.output, encoding: "utf8" }
+        if (!command) return { ok: false, error: `That path cannot be read on the ${server.name}.` }
+        const ran = await server.run(command)
+        if (!ran.ok) return { ok: false, error: ran.output || `The ${server.name} did not read that file.` }
+        return { path: input.path, content: ran.stdout, encoding: "utf8" }
       }
       const blocked = await useLocalVm()
       if (blocked) return blocked
@@ -541,12 +580,12 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
         if (!command) return { ok: false, error: "That path cannot be written on the Boat." }
         return runBoatShell({ orgId, agentId, params: args.params, command, detached: false })
       }
-      const vps = readyVps()
-      if (vps) {
+      const server = readyServer()
+      if (server) {
         const command = boatWriteCommand(input.path, input.content)
-        if (!command) return { ok: false, error: "That path cannot be written on the VPS." }
-        const ran = await runVpsShell(vps, command)
-        return ran.ok ? { ok: true, path: input.path } : { ok: false, error: ran.output || "The VPS did not write that file." }
+        if (!command) return { ok: false, error: `That path cannot be written on the ${server.name}.` }
+        const ran = await server.run(command)
+        return ran.ok ? { ok: true, path: input.path } : { ok: false, error: ran.output || `The ${server.name} did not write that file.` }
       }
       const blocked = await useLocalVm()
       if (blocked) return blocked
@@ -563,18 +602,17 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
     }),
     dangerous: false,
     execute: async (input: { path?: string; depth?: number }) => {
-      const home = resolveComputer(args.worksOn, args.available).surface === "boat" ? "/home/user" : "/home/bot"
-      const command = boatListCommand(input.path || home, input.depth ?? 1)
       const decision = resolveComputer(args.worksOn, args.available)
+      const command = boatListCommand(input.path || desktopHome(decision.surface), input.depth ?? 1)
       if (decision.surface === "boat" && decision.action === "use") {
         if (!command) return { ok: false, error: "That path cannot be listed on the Boat." }
         return runBoatShell({ orgId, agentId, params: args.params, command, detached: false })
       }
-      const vps = readyVps()
-      if (vps) {
-        if (!command) return { ok: false, error: "That path cannot be listed on the VPS." }
-        const ran = await runVpsShell(vps, command)
-        return ran.ok ? { ok: true, output: ran.output } : { ok: false, error: ran.output || "The VPS did not list that directory." }
+      const server = readyServer()
+      if (server) {
+        if (!command) return { ok: false, error: `That path cannot be listed on the ${server.name}.` }
+        const ran = await server.run(command)
+        return ran.ok ? { ok: true, output: ran.stdout } : { ok: false, error: ran.output || `The ${server.name} did not list that directory.` }
       }
       const blocked = await useLocalVm()
       if (blocked) return blocked
@@ -638,11 +676,14 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
 
   const seeTool: ToolSpec = {
     name: "computer_screenshot",
-    description: "See the Boat desktop. The picture is the screen the agent can click. A sleeping Boat is not woken.",
+    description: "See the Boat or E2B desktop. The picture is the screen the agent can click. A sleeping Boat is not woken.",
     schema: z.object({}),
     dangerous: false,
     execute: async () => {
       const decision = resolveComputer(args.worksOn, args.available)
+      if (decision.surface === "e2b" && decision.action === "use") {
+        return captureE2bScreen({ orgId, agentId, params: args.params })
+      }
       if (decision.surface !== "boat" || decision.action !== "use") {
         return { ok: false, error: "A Boat screenshot needs a Boat that is already awake. Call select_computer with boat. Auto does not wake one." }
       }
@@ -652,7 +693,7 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
 
   const clickTool: ToolSpec = {
     name: "computer_click",
-    description: "Click a point on the Boat desktop. x and y are pixels. A sleeping Boat is not woken.",
+    description: "Click a point on the Boat or E2B desktop. x and y are pixels. A sleeping Boat is not woken.",
     schema: z.object({
       x: z.number().int().min(0).max(32767),
       y: z.number().int().min(0).max(32767),
@@ -662,6 +703,12 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
     dangerous: false,
     execute: async (input: { x: number; y: number; button?: "left" | "middle" | "right"; count?: number }) => {
       const decision = resolveComputer(args.worksOn, args.available)
+      if (decision.surface === "e2b" && decision.action === "use") {
+        const command = boatClickCommand(input.x, input.y, input.button ?? "left", input.count ?? 1)
+        if (!command) return { ok: false, error: "That point is not on the E2B screen." }
+        const ran = await runE2bShell({ orgId, agentId, params: args.params, command, timeoutMs: 15_000 })
+        return { ok: ran.ok, output: ran.output }
+      }
       if (decision.surface !== "boat" || decision.action !== "use") {
         return { ok: false, error: "A Boat click needs a Boat that is already awake. Call select_computer with boat. Auto does not wake one." }
       }

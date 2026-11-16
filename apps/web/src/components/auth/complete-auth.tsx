@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
 import { createSupabaseBrowserClient } from "@/lib/supabase/client"
-import { MascotLoader } from "@/components/ui/mascot-loader"
+import { WorkspaceSkeleton } from "@/components/ui/skeleton"
 
 export function CompleteAuth({ next }: { next: string }) {
   const [error, setError] = useState<string | null>(null)
@@ -107,7 +107,7 @@ export function CompleteAuth({ next }: { next: string }) {
 
   if (!error) {
     return (
-      <MascotLoader title="Opening your workspace" steps={["Waking up your bots", "Syncing your chats", "Getting the canvas ready"]} />
+      <WorkspaceSkeleton label="Opening your workspace" />
     )
   }
 

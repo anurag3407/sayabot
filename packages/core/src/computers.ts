@@ -6,10 +6,18 @@
  * The bot calls select_computer for that.
  */
 
-export const WORKS_ON = ["off", "auto", "this_computer", "local_vm", "boat", "vps"] as const
+export const WORKS_ON = ["off", "auto", "this_computer", "local_vm", "boat", "vps", "e2b"] as const
 export type WorksOn = (typeof WORKS_ON)[number]
 
 export type BoatState = "running" | "sleeping" | "absent"
+
+/** Desktops hosted off this Mac: a Boat, the person's own VPS, or an E2B sandbox. */
+export const CLOUD_DESKTOPS = ["boat", "vps", "e2b"] as const
+export type CloudDesktop = (typeof CLOUD_DESKTOPS)[number]
+
+export function isCloudDesktop(value: unknown): value is CloudDesktop {
+  return typeof value === "string" && (CLOUD_DESKTOPS as readonly string[]).includes(value)
+}
 
 export interface ComputerAvailability {
   /** This bot is allowed to use the Mac's screen and apps. Off until turned on for that bot. */
@@ -23,6 +31,10 @@ export interface ComputerAvailability {
   vpsReady: boolean
   /** When false, Auto will not create the VPS container. Reusing a ready one is still allowed. */
   startVpsAutomatically: boolean
+  /** An E2B key (the workspace's own, or the server's E2B_API_KEY) is configured. */
+  e2bConfigured: boolean
+  /** This bot already has an E2B sandbox. Connecting resumes it if E2B paused it. */
+  e2bReady: boolean
 }
 
 export type ComputerAction = "use" | "wake" | "provision" | "none"
@@ -43,7 +55,7 @@ const NONE: ComputerDecision = { surface: "off", action: "none", reason: "" }
  */
 export function macScreenAllowed(params: Record<string, unknown> | null | undefined): boolean {
   const worksOn = worksOnFromParams(params)
-  if (worksOn === "boat" || worksOn === "local_vm" || worksOn === "vps" || worksOn === "off") return false
+  if (worksOn === "boat" || worksOn === "local_vm" || worksOn === "vps" || worksOn === "e2b" || worksOn === "off") return false
   return availabilityFromParams(params).thisComputer
 }
 
@@ -52,17 +64,18 @@ export function desktopGuidance(worksOn: WorksOn): string {
   return [
     `Works on: ${worksOn}.`,
     "You keep running on this Mac or on Cloud. The desktop is only what you can see and click.",
-    "Auto reuses a desktop that is already ready. It does not create or wake a Boat. Call select_computer with this_computer, local_vm, boat, or vps for that.",
+    "Auto reuses a desktop that is already ready. It does not create or wake a Boat. Call select_computer with this_computer, local_vm, boat, vps, or e2b for that.",
     "This computer uses the Mac's screen and apps, and it is off until a person turns it on for you.",
     "A local VM keeps its files when the container is recreated.",
     "A Boat sleeps after 10 idle minutes and wakes with its files. Those files live in /home/user and /tmp, not /home/bot. computer_screenshot sees that desktop and computer_click presses it. computer_shell with background true keeps it awake for up to two hours.",
-    "Your own VPS is Docker over SSH. You do not turn that server off.",
+    "Your own VPS is Docker over SSH, one container per bot with its files in /home/bot. You do not turn that server off.",
+    "An E2B sandbox is a cloud Linux machine for this bot. It pauses when idle and resumes with its files in /home/user.",
   ].join(" ")
 }
 
-/** Where this desktop keeps files. A Boat's home is /home/user. The local VM and a VPS use /home/bot. */
+/** Where this desktop keeps files. A Boat and E2B use /home/user. The local VM and a VPS use /home/bot. */
 export function desktopHome(worksOn: WorksOn): "/home/user" | "/home/bot" {
-  return worksOn === "boat" ? "/home/user" : "/home/bot"
+  return worksOn === "boat" || worksOn === "e2b" ? "/home/user" : "/home/bot"
 }
 export function worksOnFromParams(params: Record<string, unknown> | null | undefined): WorksOn {
   return isWorksOn(params?.worksOn) ? params.worksOn : "auto"
@@ -80,6 +93,8 @@ export function availabilityFromParams(params: Record<string, unknown> | null | 
     boatState: boatState === "running" || boatState === "sleeping" || boatState === "absent" ? boatState : "absent",
     vpsReady: computer.vpsReady === true,
     startVpsAutomatically: computer.startVpsAutomatically === true,
+    e2bConfigured: computer.e2bConfigured === true,
+    e2bReady: computer.e2bReady === true && typeof computer.e2bId === "string",
   }
 }
 
@@ -126,7 +141,7 @@ export function resolveComputer(
   const surface = asked ?? (worksOn === "auto" ? null : worksOn)
   if (!surface) return pickReady(available)
   // Auto's own choice never creates or wakes. An explicit select_computer does.
-  return place(surface, available, !asked && worksOn === "auto")
+  return place(surface, available, !asked && worksOn === "auto", worksOn === surface)
 }
 
 function pickReady(available: ComputerAvailability): ComputerDecision {
@@ -141,7 +156,17 @@ function pickReady(available: ComputerAvailability): ComputerDecision {
   }
 }
 
-function place(surface: Exclude<WorksOn, "off" | "auto">, available: ComputerAvailability, fromAuto: boolean): ComputerDecision {
+/**
+ * `pinned` means a person set this bot to work on exactly this surface. For a VPS that is
+ * their consent to start the bot's container on it, so the admin-wide "Auto may start" switch
+ * is not needed.
+ */
+function place(
+  surface: Exclude<WorksOn, "off" | "auto">,
+  available: ComputerAvailability,
+  fromAuto: boolean,
+  pinned = false,
+): ComputerDecision {
   switch (surface) {
     case "this_computer":
       return available.thisComputer
@@ -170,7 +195,7 @@ function place(surface: Exclude<WorksOn, "off" | "auto">, available: ComputerAva
         : { surface: "boat", action: "provision", reason: "" }
     case "vps":
       if (available.vpsReady) return use("vps")
-      if (fromAuto || !available.startVpsAutomatically) {
+      if (fromAuto || !(available.startVpsAutomatically || pinned)) {
         return {
           surface: "off",
           action: "none",
@@ -178,6 +203,19 @@ function place(surface: Exclude<WorksOn, "off" | "auto">, available: ComputerAva
         }
       }
       return { surface: "vps", action: "provision", reason: "" }
+    case "e2b":
+      if (available.e2bReady) return use("e2b")
+      if (!available.e2bConfigured) {
+        return { surface: "off", action: "none", reason: "No E2B key is set in Settings → AI providers." }
+      }
+      if (fromAuto) {
+        return {
+          surface: "off",
+          action: "none",
+          reason: "Auto does not create an E2B sandbox. Call select_computer with e2b.",
+        }
+      }
+      return { surface: "e2b", action: "provision", reason: "" }
   }
 }
 
@@ -207,6 +245,12 @@ export function rememberSelectedDesktop(
   } else if (decision.surface === "vps") {
     available.vpsReady = true
     current.vpsReady = true
+  } else if (decision.surface === "e2b" && typeof applied.e2bId === "string") {
+    available.e2bReady = true
+    available.e2bConfigured = true
+    current.e2bId = applied.e2bId
+    current.e2bReady = true
+    current.e2bConfigured = true
   } else {
     return
   }

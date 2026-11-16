@@ -7,6 +7,11 @@ of it. The billing code lives in [`apps/web/src/ee/`](../apps/web/src/ee/) under
 
 ## Plans
 
+The Plan & billing page, the Mac app's first screen, and the public site list every hosted
+feature as **coming soon**. Checkout is not offered from those cards. Agents on the Mac app and
+on a server you host work today. The limits below still describe what a cloud workspace allows
+once Cloud is on.
+
 Defined in one place: [`packages/core/src/edition.ts`](../packages/core/src/edition.ts) (`PLANS`).
 
 |                        | Free      | Pro ($12) | Team ($39) |

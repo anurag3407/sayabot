@@ -3,10 +3,15 @@
 import { z } from "zod"
 import {
   DEFAULT_CAPABILITIES,
+  SAYA_SHAPES,
+  SAYA_TONES,
+  isCloudDesktop,
   isWorksOn,
   parseCapabilities,
   redactSecrets,
   type AgentCapabilities,
+  type SayaShape,
+  type SayaTone,
   type WorksOn,
 } from "@sayabot/core"
 import { generateWebhookSecret } from "@sayabot/core/server"
@@ -35,14 +40,19 @@ import type { ActionResult } from "@/lib/types"
 
 const handleSchema = z
   .string()
-  .regex(/^[a-z][a-z0-9-]{0,38}$/, "Use lowercase letters, numbers and hyphens, starting with a letter")
+  .regex(
+    /^[a-z][a-z0-9-]{0,38}$/,
+    "Use lowercase letters, numbers and hyphens, starting with a letter",
+  )
 const RESERVED_HANDLES = new Set(["all_bots", "human", "system", "moderator"])
 
 function validateAgentFields(formData: FormData, kind: "llm" | "external") {
   const handle = field(formData, "handle").toLowerCase()
   const displayName = field(formData, "displayName")
   if (!handleSchema.safeParse(handle).success) {
-    return { error: "Handle must be lowercase letters, numbers and hyphens, starting with a letter" }
+    return {
+      error: "Handle must be lowercase letters, numbers and hyphens, starting with a letter",
+    }
   }
   if (RESERVED_HANDLES.has(handle)) return { error: "That handle is reserved" }
   if (displayName.length < 1 || displayName.length > 60) {
@@ -116,9 +126,7 @@ export async function createAgent(
     .select("id")
     .single()
   if (error || !agent) {
-    return fail(
-      error?.code === "23505" ? `@${fields.handle} already exists` : errorMessage(error),
-    )
+    return fail(error?.code === "23505" ? `@${fields.handle} already exists` : errorMessage(error))
   }
   const roomId = optionalField(formData, "roomId")
   let addedToRoom = false
@@ -314,13 +322,19 @@ export async function createBotAction(input: {
   const orgId = check.access.org.id
 
   const displayName = input.name.trim()
-  if (!displayName || displayName.length > 60) return fail("Give your bot a name (up to 60 characters)")
+  if (!displayName || displayName.length > 60)
+    return fail("Give your bot a name (up to 60 characters)")
   const agentGate = await planGate(orgId, "agents")
   if (!agentGate.ok) return fail(agentGate.message)
 
   const admin = createAdminClient()
 
-  let template: { id: string; slug: string; system_prompt: string | null; default_capabilities: unknown } | null = null
+  let template: {
+    id: string
+    slug: string
+    system_prompt: string | null
+    default_capabilities: unknown
+  } | null = null
   if (input.templateId) {
     const { data } = await admin
       .from("agent_templates")
@@ -391,7 +405,11 @@ export async function createBotAction(input: {
     .select("id, handle, display_name")
     .single()
   if (agentError || !agent) {
-    return fail(agentError?.code === "23505" ? "A bot with that name was just made. Try again." : errorMessage(agentError))
+    return fail(
+      agentError?.code === "23505"
+        ? "A bot with that name was just made. Try again."
+        : errorMessage(agentError),
+    )
   }
 
   if (capabilities.computer) {
@@ -407,7 +425,11 @@ export async function createBotAction(input: {
   // From a group chat's "Add bot": join that chat as well.
   let path: string | null = null
   if (input.roomId) {
-    const { data: room } = await admin.from("rooms").select("id, org_id, kind").eq("id", input.roomId).maybeSingle()
+    const { data: room } = await admin
+      .from("rooms")
+      .select("id, org_id, kind")
+      .eq("id", input.roomId)
+      .maybeSingle()
     if (room && room.org_id === orgId && room.kind !== "dm") {
       const { data: last } = await admin
         .from("room_agents")
@@ -440,8 +462,14 @@ export async function createBotAction(input: {
     metadata: { agentId: agent.id, templateSlug: template?.slug ?? null, model: choice.label },
   })
   revalidateOrg(input.orgSlug)
-  const created = ok(`${agent.display_name} is ready`, { agentId: agent.id, handle: agent.handle, path })
-  return computerNote ? { ...created, warning: `Made without its own computer. ${computerNote}` } : created
+  const created = ok(`${agent.display_name} is ready`, {
+    agentId: agent.id,
+    handle: agent.handle,
+    path,
+  })
+  return computerNote
+    ? { ...created, warning: `Made without its own computer. ${computerNote}` }
+    : created
 }
 
 /** The bot's page: change its name and system prompt. The handle stays, so @mentions keep working. */
@@ -465,11 +493,19 @@ export async function updateBotBasicsAction(input: {
   if (!agent || agent.org_id !== check.access.org.id) return fail("Bot not found")
   const { error } = await admin
     .from("agents")
-    .update({ display_name: displayName, system_prompt: systemPrompt, updated_at: new Date().toISOString() })
+    .update({
+      display_name: displayName,
+      system_prompt: systemPrompt,
+      updated_at: new Date().toISOString(),
+    })
     .eq("id", agent.id)
   if (error) return fail(errorMessage(error))
   // The bot's own chat is named after it.
-  await admin.from("rooms").update({ name: displayName }).eq("agent_dm_agent_id", agent.id).eq("kind", "dm")
+  await admin
+    .from("rooms")
+    .update({ name: displayName })
+    .eq("agent_dm_agent_id", agent.id)
+    .eq("kind", "dm")
   await audit({
     orgId: check.access.org.id,
     actorId: check.access.user.id,
@@ -563,12 +599,17 @@ const WORKS_ON_LABEL: Record<WorksOn, string> = {
   off: "Off",
   auto: "Auto",
   this_computer: "This computer",
-  local_vm: "Local VM",
+  local_vm: "Private desktop",
   boat: "Boat",
-  vps: "Your own VPS",
+  vps: "your own VPS",
+  e2b: "E2B",
 }
 
-/** Where this bot's desktop lives. Auto never creates or wakes a Boat; the bot calls select_computer. */
+/**
+ * Where this bot's desktop lives. Auto never creates or wakes a Boat; the bot calls select_computer.
+ * Picking a cloud desktop (Boat, VPS, E2B) also turns on the bot's computer tools, since those run
+ * the commands there; the workspace pays that provider, so no Cloud plan computer is used.
+ */
 export async function setAgentWorksOnAction(input: {
   orgSlug: string
   agentId: string
@@ -579,24 +620,38 @@ export async function setAgentWorksOnAction(input: {
   if ("error" in check) return fail(check.error)
   if (!isWorksOn(input.worksOn)) return fail("Pick where this bot works")
   const admin = createAdminClient()
-  const { data: agent } = await admin.from("agents").select("id, org_id, params").eq("id", input.agentId).maybeSingle()
+  const { data: agent } = await admin
+    .from("agents")
+    .select("id, org_id, params, kind, capabilities")
+    .eq("id", input.agentId)
+    .maybeSingle()
   if (!agent || agent.org_id !== check.access.org.id) return fail("Agent not found")
   const params = { ...((agent.params as Record<string, unknown>) ?? {}) }
   params.worksOn = input.worksOn
   const computer = { ...((params.computer as Record<string, unknown>) ?? {}) }
   if (typeof input.thisComputer === "boolean") computer.thisComputer = input.thisComputer
   params.computer = computer
-  const { error } = await admin.from("agents").update({ params }).eq("id", agent.id)
+  const update: Record<string, unknown> = { params }
+  const caps = parseCapabilities(agent.capabilities)
+  const turnedOnTools = isCloudDesktop(input.worksOn) && agent.kind === "llm" && !caps.computer
+  if (turnedOnTools) update.capabilities = { ...caps, computer: { profile: "standard" } }
+  const { error } = await admin.from("agents").update(update).eq("id", agent.id)
   if (error) return fail(errorMessage(error))
   await audit({
     orgId: check.access.org.id,
     actorId: check.access.user.id,
     action: "agent.works_on",
     target: agent.id,
-    metadata: { worksOn: input.worksOn, thisComputer: computer.thisComputer === true },
+    metadata: {
+      worksOn: input.worksOn,
+      thisComputer: computer.thisComputer === true,
+      turnedOnTools,
+    },
   })
   revalidateOrg(input.orgSlug)
-  return ok(`Works on ${WORKS_ON_LABEL[input.worksOn]}`)
+  return ok(
+    `Works on ${WORKS_ON_LABEL[input.worksOn]}${turnedOnTools ? ". Computer tools are on." : ""}`,
+  )
 }
 
 const WHEN_MAC_OFF = new Set(["auto", "server", "wait", "fail"])
@@ -611,7 +666,11 @@ export async function setAgentWhenMacOffAction(input: {
   if ("error" in check) return fail(check.error)
   if (!WHEN_MAC_OFF.has(input.whenMacOff)) return fail("Pick what happens when your Mac is off")
   const admin = createAdminClient()
-  const { data: agent } = await admin.from("agents").select("id, org_id, handle, params").eq("id", input.agentId).maybeSingle()
+  const { data: agent } = await admin
+    .from("agents")
+    .select("id, org_id, handle, params")
+    .eq("id", input.agentId)
+    .maybeSingle()
   if (!agent || agent.org_id !== check.access.org.id) return fail("Agent not found")
   const params = { ...((agent.params as Record<string, unknown>) ?? {}) }
   if (input.whenMacOff === "auto") delete params.whenMacOff
@@ -620,4 +679,180 @@ export async function setAgentWhenMacOffAction(input: {
   if (error) return fail(errorMessage(error))
   revalidateOrg(input.orgSlug)
   return ok("Saved")
+}
+
+const CAPABILITY_KEYS = [
+  "canvas",
+  "tasks",
+  "sandbox",
+  "webSearch",
+  "document",
+  "github",
+  "postgres",
+  "mcp",
+  "secrets",
+  "memory",
+  "subagents",
+  "cron",
+  "connectors",
+] as const satisfies readonly (keyof AgentCapabilities)[]
+
+/**
+ * The bot sidebar: which tools this bot may use. Turning a computer on creates its
+ * `agent_computers` row when the plan allows one. Invited bots keep their own tools.
+ */
+export async function setAgentCapabilitiesAction(input: {
+  orgSlug: string
+  agentId: string
+  capabilities: unknown
+}): Promise<ActionResult> {
+  const check = await adminOrgAccess(input.orgSlug)
+  if ("error" in check) return fail(check.error)
+  const next = parseCapabilities(input.capabilities)
+  const admin = createAdminClient()
+  const { data: agent } = await admin
+    .from("agents")
+    .select("id, org_id, handle, kind, capabilities")
+    .eq("id", input.agentId)
+    .maybeSingle()
+  if (!agent || agent.org_id !== check.access.org.id) return fail("Bot not found")
+  if (agent.kind !== "llm") return fail("Invited bots bring their own tools")
+  const prev = parseCapabilities(agent.capabilities)
+
+  if (next.computer) {
+    const { data: existing } = await admin
+      .from("agent_computers")
+      .select("agent_id")
+      .eq("agent_id", agent.id)
+      .maybeSingle()
+    if (!existing) {
+      const gate = await planGate(check.access.org.id, "computers")
+      if (!gate.ok) return fail(gate.message)
+      const { error: insertError } = await admin.from("agent_computers").insert({
+        agent_id: agent.id,
+        org_id: check.access.org.id,
+        profile: next.computer.profile,
+        status: "none",
+        volume: `saaya-bot-${agent.id}`,
+      })
+      if (insertError && insertError.code !== "23505") return fail(errorMessage(insertError))
+    } else if (!prev.computer || prev.computer.profile !== next.computer.profile) {
+      const { error: profileError } = await admin
+        .from("agent_computers")
+        .update({ profile: next.computer.profile })
+        .eq("agent_id", agent.id)
+      if (profileError) return fail(errorMessage(profileError))
+    }
+  }
+
+  const { error } = await admin
+    .from("agents")
+    .update({ capabilities: next, updated_at: new Date().toISOString() })
+    .eq("id", agent.id)
+  if (error) return fail(errorMessage(error))
+  const changed: string[] = CAPABILITY_KEYS.filter((key) => prev[key] !== next[key])
+  if (JSON.stringify(prev.computer) !== JSON.stringify(next.computer)) changed.push("computer")
+  await audit({
+    orgId: check.access.org.id,
+    actorId: check.access.user.id,
+    action: "agent.capabilities_changed",
+    target: agent.handle,
+    metadata: { changed },
+  })
+  revalidateOrg(input.orgSlug)
+  return ok("Saved")
+}
+
+function isMascotShape(value: unknown): value is SayaShape {
+  return typeof value === "string" && (SAYA_SHAPES as readonly string[]).includes(value)
+}
+
+function isMascotTone(value: unknown): value is SayaTone {
+  return typeof value === "string" && value in SAYA_TONES
+}
+
+const MASCOT_MOODS = ["idle", "happy", "sleep", "busy", "alert", "thinking"] as const
+
+function isMascotMood(value: unknown): value is (typeof MASCOT_MOODS)[number] {
+  return typeof value === "string" && (MASCOT_MOODS as readonly string[]).includes(value)
+}
+
+/** The bot sidebar: shape, colour and expression, stored on `params.mascot` without touching the rest. */
+export async function setAgentLookAction(input: {
+  orgSlug: string
+  agentId: string
+  shape: string
+  tone: string
+  mood?: string
+}): Promise<ActionResult> {
+  const check = await adminOrgAccess(input.orgSlug)
+  if ("error" in check) return fail(check.error)
+  if (!isMascotShape(input.shape) || !isMascotTone(input.tone))
+    return fail("Pick a shape and a colour")
+  if (input.mood !== undefined && !isMascotMood(input.mood)) return fail("Pick an expression")
+  const admin = createAdminClient()
+  const { data: agent } = await admin
+    .from("agents")
+    .select("id, org_id, handle, params")
+    .eq("id", input.agentId)
+    .maybeSingle()
+  if (!agent || agent.org_id !== check.access.org.id) return fail("Bot not found")
+  const params = { ...((agent.params as Record<string, unknown>) ?? {}) }
+  const previous =
+    params.mascot && typeof params.mascot === "object"
+      ? (params.mascot as Record<string, unknown>)
+      : {}
+  const mood = input.mood ?? (isMascotMood(previous.mood) ? previous.mood : undefined)
+  params.mascot = { shape: input.shape, tone: input.tone, ...(mood ? { mood } : {}) }
+  const { error } = await admin
+    .from("agents")
+    .update({ params, updated_at: new Date().toISOString() })
+    .eq("id", agent.id)
+  if (error) return fail(errorMessage(error))
+  await audit({
+    orgId: check.access.org.id,
+    actorId: check.access.user.id,
+    action: "agent.look_changed",
+    target: agent.handle,
+    metadata: { shape: input.shape, tone: input.tone, mood: mood ?? "idle" },
+  })
+  revalidateOrg(input.orgSlug)
+  return ok("Saved")
+}
+
+/** The bot sidebar: default keeps today's voice. Conversational asks for short replies. */
+export async function setAgentReplyStyleAction(input: {
+  orgSlug: string
+  agentId: string
+  replyStyle: string
+}): Promise<ActionResult> {
+  const check = await adminOrgAccess(input.orgSlug)
+  if ("error" in check) return fail(check.error)
+  if (input.replyStyle !== "default" && input.replyStyle !== "conversational") {
+    return fail("Pick a reply style")
+  }
+  const admin = createAdminClient()
+  const { data: agent } = await admin
+    .from("agents")
+    .select("id, org_id, handle, params")
+    .eq("id", input.agentId)
+    .maybeSingle()
+  if (!agent || agent.org_id !== check.access.org.id) return fail("Bot not found")
+  const params = { ...((agent.params as Record<string, unknown>) ?? {}) }
+  if (input.replyStyle === "default") delete params.replyStyle
+  else params.replyStyle = "conversational"
+  const { error } = await admin
+    .from("agents")
+    .update({ params, updated_at: new Date().toISOString() })
+    .eq("id", agent.id)
+  if (error) return fail(errorMessage(error))
+  await audit({
+    orgId: check.access.org.id,
+    actorId: check.access.user.id,
+    action: "agent.reply_style",
+    target: agent.handle,
+    metadata: { replyStyle: input.replyStyle },
+  })
+  revalidateOrg(input.orgSlug)
+  return ok(input.replyStyle === "conversational" ? "Short replies" : "Full replies")
 }

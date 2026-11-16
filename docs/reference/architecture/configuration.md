@@ -89,6 +89,16 @@ Apply changes in prod with `./deploy/deploy.sh reload` (no rebuild) — a plain 
 | `SMOLVM_IMAGE` | — | registry ref or `docker save` tarball of `saaya/computer` |
 | `E2B_TEMPLATE` / `E2B_MAX_RUNNING` | `base` / `20` | cloud-computer backend settings |
 | `E2B_API_KEY` | — | enables the e2b backend |
+
+Cloud desktops picked per bot under Works on (orchestrator; the keys themselves are normally saved per workspace in Settings → AI providers):
+
+| Variable | Default | Meaning |
+| :--- | :--- | :--- |
+| `E2B_API_KEY` | — | Also the fallback key for the E2B cloud desktop when a workspace saved none; web shows it as "Included with this server" |
+| `SAYABOT_E2B_TEMPLATE` | `desktop` | E2B template for a bot's cloud sandbox |
+| `SAYABOT_BOAT_TOKEN` / `SAYABOT_BOAT_API` | — / `https://boat.dev/api/v1` | Cloud relay Boat token (used when a workspace has no key) and API base |
+| `SAYABOT_VPS_IMAGE` | `ubuntu:24.04` | Image for each bot's container on a self-hosted VPS |
+| `SAYABOT_SSH_DIR` | `~/.sayabot` | Where the orchestrator keeps `known_hosts` for VPS hosts saved by address (host keys pinned on first use) |
 | `COMPUTE_ENABLED` | unset | orchestrator env flag (`v === "true"` transform) |
 | `COMPUTERD_PROXY_KEY` | internal secret | see Secrets above |
 

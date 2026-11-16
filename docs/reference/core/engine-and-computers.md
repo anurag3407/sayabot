@@ -82,9 +82,10 @@ export const updatePlanSchema = z.object({ items: z.array(planItemSchema) })
 ### Surfaces and availability
 
 ```typescript
-export const WORKS_ON = ["off", "auto", "this_computer", "local_vm", "boat", "vps"] as const
+export const WORKS_ON = ["off", "auto", "this_computer", "local_vm", "boat", "vps", "e2b"] as const
 export type WorksOn = (typeof WORKS_ON)[number]
 export type BoatState = "running" | "sleeping" | "absent"
+export const CLOUD_DESKTOPS = ["boat", "vps", "e2b"] as const // isCloudDesktop(value) guards it
 
 export interface ComputerAvailability {
   thisComputer: boolean          // Mac screen/apps allowed for this bot (off until a person enables it)
@@ -92,7 +93,9 @@ export interface ComputerAvailability {
   boatConfigured: boolean        // boat.dev key or Cloud relay token is set
   boatState: BoatState
   vpsReady: boolean              // Docker-over-SSH desktop is up (Sayabot never stops a VPS)
-  startVpsAutomatically: boolean // when false, Auto will not create the VPS container
+  startVpsAutomatically: boolean // when false, Auto (and select_computer on an Auto bot) will not create the VPS container
+  e2bConfigured: boolean         // the workspace's own E2B key, or the server's E2B_API_KEY, is set
+  e2bReady: boolean              // this bot already has an E2B sandbox (params.computer.e2bId); connecting resumes it
 }
 
 export type ComputerAction = "use" | "wake" | "provision" | "none"
@@ -104,7 +107,7 @@ export interface ComputerDecision {
 }
 ```
 
-Helpers for reading bot params defensively: `worksOnFromParams(params)` returns `params.worksOn` if valid, else `"auto"`; `availabilityFromParams(params)` re-derives a `ComputerAvailability` from the loose `params.computer` record (unknown `boatState` falls back to `"absent"`, every flag defaults `false`); `isWorksOn(value)` is the type guard.
+Helpers for reading bot params defensively: `worksOnFromParams(params)` returns `params.worksOn` if valid, else `"auto"`; `availabilityFromParams(params)` re-derives a `ComputerAvailability` from the loose `params.computer` record (unknown `boatState` falls back to `"absent"`, every flag defaults `false`; `e2bReady` also needs a string `e2bId`); `isWorksOn(value)` is the type guard.
 
 ### `resolveComputer(worksOn, available, selected?)` — the placement algorithm (`computers.ts:110`)
 
@@ -123,22 +126,24 @@ flowchart TD
     F -- no --> H[place worksOn surface, fromAuto = true]
 ```
 
-- **`pickReady(available)`** (`computers.ts:132`) — Auto's preference order when nothing was selected: `this_computer` → ready `local_vm` → `boat` running → ready `vps` → `off` with reason *"No desktop is ready. Call select_computer to choose one. Auto does not create or wake a Boat."*
-- **`place(surface, available, fromAuto)`** (`computers.ts:144`) — resolves one concrete surface:
+- **`pickReady(available)`** — Auto's preference order when nothing was selected: `this_computer` → ready `local_vm` → `boat` running → ready `vps` → `off` with reason *"No desktop is ready. Call select_computer to choose one. Auto does not create or wake a Boat."* Auto never picks `e2b` on its own: connecting would resume a paused sandbox.
+- **`place(surface, available, fromAuto, pinned)`** — resolves one concrete surface. `pinned` is true when the bot's `worksOn` *is* that surface (a person chose it):
   - `this_computer`: `use` only if `available.thisComputer`; otherwise off — *"This computer is off for this bot until it is turned on."*
   - `local_vm`: `use` when ready; `provision` when an explicit `select_computer` asked; `none` when Auto found nothing ready.
   - `boat`: `none` when not configured and state is `absent` (*"No Boat key is set in Settings → Computers."*); `use` when running; when explicitly asked — `wake` if sleeping, `provision` if absent; **Auto never wakes or creates a Boat**.
-  - `vps`: `use` when ready; `provision` only when explicitly asked *and* `startVpsAutomatically` is true; otherwise *"Sayabot does not start your server."*
+  - `vps`: `use` when ready; `provision` when the bot is pinned to `vps` (the person's choice is consent to start its container) or when an explicit `select_computer` asked *and* `startVpsAutomatically` is true; otherwise *"The VPS desktop is not ready. Sayabot does not start your server."*
+  - `e2b`: `use` when `e2bReady`; `none` without a key (*"No E2B key is set in Settings → AI providers."*); `provision` when pinned or explicitly asked; Auto never creates one.
 - A pinned bot (e.g. `worksOn: "boat"`) cannot be moved by `select_computer` to another surface — the decision is refused with the bot's surface named in `reason`.
 
 ### Mac screen safety
 
-`macScreenAllowed(params)` (`computers.ts:44`) is the gate for tools that touch the Mac's screen and apps: it is false for `boat`, `local_vm`, `vps`, and `off` regardless of flags, and otherwise defers to `availabilityFromParams(params).thisComputer`. Only `this_computer` (or `auto` with the flag on) can see the user's screen, and the flag only exists because a person turned it on for that bot.
+`macScreenAllowed(params)` (`computers.ts:44`) is the gate for tools that touch the Mac's screen and apps: it is false for `boat`, `local_vm`, `vps`, `e2b`, and `off` regardless of flags, and otherwise defers to `availabilityFromParams(params).thisComputer`. Only `this_computer` (or `auto` with the flag on) can see the user's screen, and the flag only exists because a person turned it on for that bot.
 
 ### Agent-facing guidance and homes
 
-- `desktopGuidance(worksOn)` (`computers.ts:51`) renders the system-prompt paragraph describing the desktop: Auto reuses but never creates/wakes, `select_computer` chooses `this_computer` / `local_vm` / `boat` / `vps`, a Boat sleeps after 10 idle minutes and keeps files in `/home/user` and `/tmp`, background `computer_shell` keeps it awake up to two hours, and the VPS server is never turned off.
-- `desktopHome(worksOn)` (`computers.ts:64`) — `"/home/user"` for `boat`, `"/home/bot"` for everything else (local VM and VPS included).
+- `desktopGuidance(worksOn)` (`computers.ts:51`) renders the system-prompt paragraph describing the desktop: Auto reuses but never creates/wakes, `select_computer` chooses `this_computer` / `local_vm` / `boat` / `vps` / `e2b`, a Boat sleeps after 10 idle minutes and keeps files in `/home/user` and `/tmp`, background `computer_shell` keeps it awake up to two hours, the VPS is one container per bot with files in `/home/bot` and the server is never turned off, and an E2B sandbox pauses when idle and resumes with its files in `/home/user`.
+- `desktopHome(worksOn)` — `"/home/user"` for `boat` and `e2b`, `"/home/bot"` for everything else (local VM and VPS included).
+- `rememberSelectedDesktop` also records an opened E2B sandbox (`applied.e2bId` → `e2bReady`, `params.computer.e2bId`) so the next tool in the same turn can use it.
 
 ### Boat credentials
 
@@ -166,5 +171,9 @@ Three constants and one predicate govern when a Boat goes to sleep:
 `boatShouldSleep(input)` (`computers.ts:223`) stays awake (`false`) when: someone is `watching` the screen; a background command started less than 2 h ago; or the next routine that uses this Boat falls within ±30 minutes (so a run that just started keeps its desktop). Otherwise it sleeps once `now - lastUsedAt >= BOAT_IDLE_MS` — with `lastUsedAt === null` meaning immediately eligible.
 
 `computers.test.ts` exercises the full decision matrix, including "Auto reuses a running Boat but refuses to wake a sleeping one", "pinned bots can't be moved", `boatCredential` precedence, and every sleep-policy branch.
+
+## Reply style (`reply-style.ts`)
+
+`replyStyleFromParams(params)` reads `params.replyStyle`. Only `"conversational"` is special; anything else, including a missing key, is `"default"`. `replyStyleInstruction(style)` returns null for the default, so a bot that never picked a style gets the same system prompt as before. Conversational asks for short plain replies and one follow-up question. Both the engine prompt (`apps/orchestrator/src/engine/context.ts`) and the runner prompt (`apps/orchestrator/src/runner/context.ts`) append that line after the bot's own instructions.
 
 Related docs: [./turns.md](./turns.md), [./redact-and-breakers.md](./redact-and-breakers.md), [../../tools-and-sandboxes.md](../../tools-and-sandboxes.md)

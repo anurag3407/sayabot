@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation"
 import { useState, useTransition, type ComponentType, type ReactNode } from "react"
 import {
   Box,
-  Check,
   CircleOff,
   Cloud,
   Monitor,
@@ -17,6 +16,7 @@ import {
   Zap,
 } from "lucide-react"
 import { setAgentWorksOnAction } from "@/lib/actions/agents"
+import { WorksOnPicker } from "@/components/agents/works-on-picker"
 import { ToolCallsList } from "@/components/room/tool-call-card"
 import { Mascot } from "@/components/ui/mascot"
 import { showToast } from "@/components/ui/toast"
@@ -37,13 +37,14 @@ export interface RoomRoutine {
 
 type Icon = ComponentType<{ className?: string }>
 
-/** Plain words for where a bot works. The stored values stay those of lib/works-on. */
+/** The screen preview's icon for each Works on value. The picker itself is WorksOnPicker. */
 const PLACES: { value: string; label: string; hint: string; icon: Icon }[] = [
   { value: "auto", label: "Auto", hint: "Uses whatever is ready", icon: Sparkles },
   { value: "boat", label: "Cloud desktop", hint: "Hosted, sleeps when idle", icon: Cloud },
   { value: "local_vm", label: "Private desktop", hint: "Sealed box on your Mac", icon: Box },
   { value: "this_computer", label: "This computer", hint: "Your screen and apps", icon: Monitor },
   { value: "vps", label: "Your server", hint: "Docker on a VPS you own", icon: Server },
+  { value: "e2b", label: "E2B sandbox", hint: "Cloud Linux, pauses when idle", icon: Cloud },
   { value: "off", label: "No desktop", hint: "Chat and tools only", icon: CircleOff },
 ]
 
@@ -189,38 +190,14 @@ function ScreenTab({
       <div className="rounded-2xl border border-line bg-panel/60 p-4">
         <p className="text-[15px] font-medium text-text">Works on</p>
         <p className="mt-0.5 text-[13px] text-faint">Choose where {agent.displayName} works.</p>
-        <div className="mt-3 grid grid-cols-2 gap-2" role="radiogroup" aria-label="Where this bot works">
-          {PLACES.map((item) => {
-            const selected = item.value === current.worksOn
-            return (
-              <button
-                key={item.value}
-                type="button"
-                role="radio"
-                aria-checked={selected}
-                disabled={!canAdmin || pending}
-                onClick={() =>
-                  selected ? undefined : save({ worksOn: item.value, thisComputer: current.thisComputer })
-                }
-                className={cn(
-                  "rounded-xl border px-3 py-2.5 text-left transition-colors disabled:cursor-not-allowed",
-                  selected
-                    ? "border-accent/70 bg-accent-soft/60"
-                    : "border-line hover:border-line-strong hover:bg-raised/60 disabled:hover:border-line disabled:hover:bg-transparent",
-                )}
-              >
-                <span className="flex items-center gap-2 text-[13.5px] font-medium text-text">
-                  {selected ? (
-                    <Check className="h-4 w-4 text-accent" />
-                  ) : (
-                    <item.icon className="h-4 w-4 text-muted" />
-                  )}
-                  {item.label}
-                </span>
-                <span className="mt-0.5 block truncate text-[12px] text-faint">{item.hint}</span>
-              </button>
-            )
-          })}
+        <div className="mt-3">
+          <WorksOnPicker
+            orgSlug={orgSlug}
+            worksOn={current.worksOn}
+            canAdmin={canAdmin}
+            disabled={!canAdmin || pending}
+            onChange={(worksOn) => save({ worksOn, thisComputer: current.thisComputer })}
+          />
         </div>
         {!canAdmin ? (
           <p className="mt-2 text-[12px] text-faint">Only workspace admins can change this.</p>

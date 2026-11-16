@@ -2,7 +2,15 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react"
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+  type ReactNode,
+} from "react"
 import {
   Archive,
   ArchiveRestore,
@@ -57,8 +65,7 @@ interface SidebarUser {
   isGuest?: boolean
 }
 
-const popover =
-  "surface-pop pop-in absolute z-50 overflow-hidden rounded-2xl p-1.5"
+const popover = "surface-pop pop-in absolute z-50 overflow-hidden rounded-2xl p-1.5"
 
 const popoverItem =
   "flex w-full items-center gap-2.5 truncate rounded-xl px-2.5 py-2 text-left text-[13.5px] text-muted transition-colors hover:bg-raised hover:text-text disabled:opacity-50"
@@ -151,7 +158,10 @@ function RowFace({ item }: { item: ChatListItem }) {
     <span className="relative grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-raised text-[14px] font-medium text-muted">
       {item.kind === "public" ? "#" : item.name.slice(0, 1).toUpperCase()}
       {item.agentNames[0] ? (
-        <Mascot seed={item.agentNames[0]} className="absolute -bottom-1 -right-1 h-[18px] w-[18px]" />
+        <Mascot
+          seed={item.agentNames[0]}
+          className="absolute -bottom-1 -right-1 h-[18px] w-[18px]"
+        />
       ) : null}
     </span>
   )
@@ -200,16 +210,25 @@ function ThreadRow({
         <RowFace item={item} />
         <span className="min-w-0 flex-1">
           <span className="flex items-baseline gap-2">
-            <span className={cn("truncate text-[14px] text-text", unread ? "font-semibold" : "font-medium")}>
+            <span
+              className={cn(
+                "truncate text-[14px] text-text",
+                unread ? "font-semibold" : "font-medium",
+              )}
+            >
               {item.name}
             </span>
-            {item.pinned ? <Pin className="h-3 w-3 shrink-0 self-center text-faint" aria-label="Pinned" /> : null}
+            {item.pinned ? (
+              <Pin className="h-3 w-3 shrink-0 self-center text-faint" aria-label="Pinned" />
+            ) : null}
             <span className="ml-auto shrink-0 text-[11.5px] text-faint md:group-hover:opacity-0 md:group-focus-within:opacity-0">
               {shortTime(item.lastAt)}
             </span>
           </span>
           <span className="mt-px flex items-center gap-2">
-            <span className={cn("min-w-0 truncate text-[12.5px]", unread ? "text-muted" : "text-faint")}>
+            <span
+              className={cn("min-w-0 truncate text-[12.5px]", unread ? "text-muted" : "text-faint")}
+            >
               {item.lastMessage ?? (item.isBotDm ? "Say hello" : "No messages yet")}
             </span>
             {item.mentionCount > 0 ? (
@@ -217,7 +236,10 @@ function ThreadRow({
                 {item.mentionCount}
               </span>
             ) : unread && !muted ? (
-              <span className="ml-auto h-2 w-2 shrink-0 rounded-full bg-accent" aria-label={`${item.unreadCount} unread`} />
+              <span
+                className="ml-auto h-2 w-2 shrink-0 rounded-full bg-accent"
+                aria-label={`${item.unreadCount} unread`}
+              />
             ) : muted ? (
               <BellOff className="ml-auto h-3 w-3 shrink-0 text-faint" aria-label="Muted" />
             ) : null}
@@ -233,7 +255,7 @@ function ThreadRow({
       >
         <div className={cn(popover, "right-0 top-8 w-56")}>
           {item.isBotDm && item.agentId ? (
-            <Link href={`/${orgSlug}/agents/${item.agentId}`} onClick={onNavigate} className={popoverItem}>
+            <Link href={`${href}?configure=1`} onClick={onNavigate} className={popoverItem}>
               <Bot className="h-4 w-4 text-faint" />
               Edit bot
             </Link>
@@ -254,25 +276,49 @@ function ThreadRow({
             onClick={() => onAction(item.pinned ? "unpin" : "pin")}
             className={popoverItem}
           >
-            {item.pinned ? <PinOff className="h-4 w-4 text-faint" /> : <Pin className="h-4 w-4 text-faint" />}
+            {item.pinned ? (
+              <PinOff className="h-4 w-4 text-faint" />
+            ) : (
+              <Pin className="h-4 w-4 text-faint" />
+            )}
             {item.pinned ? "Unpin" : "Pin to top"}
           </button>
-          <button type="button" disabled={pending} onClick={() => onAction("mark_unread")} className={popoverItem}>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => onAction("mark_unread")}
+            className={popoverItem}
+          >
             <MailOpen className="h-4 w-4 text-faint" />
             Mark as unread
           </button>
           {muted ? (
-            <button type="button" disabled={pending} onClick={() => onAction("unmute")} className={popoverItem}>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => onAction("unmute")}
+              className={popoverItem}
+            >
               <BellRing className="h-4 w-4 text-faint" />
               Unmute
             </button>
           ) : (
             <>
-              <button type="button" disabled={pending} onClick={() => onAction("mute", "8h")} className={popoverItem}>
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => onAction("mute", "8h")}
+                className={popoverItem}
+              >
                 <BellOff className="h-4 w-4 text-faint" />
                 Mute for 8 hours
               </button>
-              <button type="button" disabled={pending} onClick={() => onAction("mute", "always")} className={popoverItem}>
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => onAction("mute", "always")}
+                className={popoverItem}
+              >
                 <BellOff className="h-4 w-4 text-faint" />
                 Mute until I unmute
               </button>
@@ -299,7 +345,15 @@ function ThreadRow({
 }
 
 /** A bot you have not talked to yet: one tap opens its chat. */
-function NewBotRow({ bot, orgSlug, onNavigate }: { bot: BotLink; orgSlug: string; onNavigate?: () => void }) {
+function NewBotRow({
+  bot,
+  orgSlug,
+  onNavigate,
+}: {
+  bot: BotLink
+  orgSlug: string
+  onNavigate?: () => void
+}) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -335,10 +389,17 @@ function NewBotRow({ bot, orgSlug, onNavigate }: { bot: BotLink; orgSlug: string
           <span className="flex items-center gap-2">
             <span className="truncate text-[14px] font-medium text-text">{bot.displayName}</span>
             {bot.kind === "external" ? (
-              <span className="shrink-0 rounded-md bg-raised px-1.5 py-px text-[10.5px] text-muted">MCP</span>
+              <span className="shrink-0 rounded-md bg-raised px-1.5 py-px text-[10.5px] text-muted">
+                MCP
+              </span>
             ) : null}
           </span>
-          <span className={cn("mt-px block truncate text-[12.5px]", error ? "text-danger" : "text-faint")}>
+          <span
+            className={cn(
+              "mt-px block truncate text-[12.5px]",
+              error ? "text-danger" : "text-faint",
+            )}
+          >
             {pending ? "Opening…" : (error ?? "Say hi")}
           </span>
         </span>
@@ -348,7 +409,13 @@ function NewBotRow({ bot, orgSlug, onNavigate }: { bot: BotLink; orgSlug: string
 }
 
 /** Which workspace you are in, as a small pill at the top. */
-function WorkspaceSwitcher({ org, orgs }: { org: { slug: string; name: string }; orgs: OrgSummary[] }) {
+function WorkspaceSwitcher({
+  org,
+  orgs,
+}: {
+  org: { slug: string; name: string }
+  orgs: OrgSummary[]
+}) {
   const seen = new Set<string>()
   const list = orgs.filter((item) => {
     if (seen.has(item.id)) return false
@@ -399,7 +466,8 @@ function WorkspaceSwitcher({ org, orgs }: { org: { slug: string; name: string };
 }
 
 function AccountRow({ base, user, role }: { base: string; user: SidebarUser; role: OrgRole }) {
-  const { updateReady, applyUpdate, checkForUpdates, checking, appVersion, desktop } = useAppUpdate()
+  const { updateReady, applyUpdate, checkForUpdates, checking, appVersion, desktop } =
+    useAppUpdate()
   return (
     <DetailsMenu
       className="relative min-w-0 flex-1"
@@ -410,7 +478,10 @@ function AccountRow({ base, user, role }: { base: string; user: SidebarUser; rol
           <span className="relative shrink-0">
             <Avatar name={user.displayName} src={user.avatarUrl} kind="human" size="md" />
             {updateReady ? (
-              <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-ok shadow-[0_0_0_2px_var(--color-ink)]" aria-label="Update ready" />
+              <span
+                className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-ok shadow-[0_0_0_2px_var(--color-ink)]"
+                aria-label="Update ready"
+              />
             ) : null}
           </span>
           <span className="truncate text-[14px] font-medium text-text">{user.displayName}</span>
@@ -429,7 +500,9 @@ function AccountRow({ base, user, role }: { base: string; user: SidebarUser; rol
             className="mb-1 flex w-full items-center justify-center gap-1.5 rounded-xl bg-ok/15 px-2.5 py-2 text-[13px] font-medium text-ok hover:bg-ok/25"
           >
             <RefreshCw className="h-3.5 w-3.5" />
-            {desktop?.status === "available" ? `Install Sayabot ${desktop.latest}` : "Reload for the new version"}
+            {desktop?.status === "available"
+              ? `Install Sayabot ${desktop.latest}`
+              : "Reload for the new version"}
           </button>
         ) : null}
         <div className="h-px bg-line" />
@@ -451,7 +524,12 @@ function AccountRow({ base, user, role }: { base: string; user: SidebarUser; rol
             <span className="flex-1">Get the apps</span>
             <span className="text-[11px] text-faint">{appVersion ? `v${appVersion}` : ""}</span>
           </Link>
-          <button type="button" onClick={() => void checkForUpdates()} disabled={checking} className={popoverItem}>
+          <button
+            type="button"
+            onClick={() => void checkForUpdates()}
+            disabled={checking}
+            className={popoverItem}
+          >
             <RefreshCw className={cn("h-4 w-4 text-faint", checking && "animate-spin")} />
             {checking ? "Checking…" : "Check for updates"}
           </button>
@@ -524,7 +602,13 @@ export function AppSidebar({
   // ⌘N / Ctrl+N: new bot.
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key.toLowerCase() !== "n" || !(event.metaKey || event.ctrlKey) || event.shiftKey || event.altKey) return
+      if (
+        event.key.toLowerCase() !== "n" ||
+        !(event.metaKey || event.ctrlKey) ||
+        event.shiftKey ||
+        event.altKey
+      )
+        return
       // The sidebar is mounted twice (desktop and phone drawer); only the visible one answers.
       if (!searchInput.current?.offsetParent) return
       event.preventDefault()
@@ -544,13 +628,21 @@ export function AppSidebar({
     [needle],
   )
 
-  const live = useMemo(() => chats.filter((item) => !item.archived && matches(item)), [chats, matches])
-  const archived = useMemo(() => chats.filter((item) => item.archived && matches(item)), [chats, matches])
+  const live = useMemo(
+    () => chats.filter((item) => !item.archived && matches(item)),
+    [chats, matches],
+  )
+  const archived = useMemo(
+    () => chats.filter((item) => item.archived && matches(item)),
+    [chats, matches],
+  )
   const pinned = live.filter((item) => item.pinned)
   const botChats = live.filter((item) => item.isBotDm && !item.pinned)
   const groupChats = live.filter((item) => !item.isBotDm && !item.pinned)
 
-  const dmAgentIds = new Set(chats.filter((item) => item.isBotDm && item.agentId).map((item) => item.agentId))
+  const dmAgentIds = new Set(
+    chats.filter((item) => item.isBotDm && item.agentId).map((item) => item.agentId),
+  )
   const newBots = bots.filter(
     (bot) => !dmAgentIds.has(bot.id) && (!needle || bot.displayName.toLowerCase().includes(needle)),
   )
@@ -564,7 +656,10 @@ export function AppSidebar({
       }
       router.refresh()
       if (action === "archive") {
-        showToast({ message: "Chat archived", action: { label: "Undo", onClick: () => act(roomId, "unarchive") } })
+        showToast({
+          message: "Chat archived",
+          action: { label: "Undo", onClick: () => act(roomId, "unarchive") },
+        })
       }
     })
   }
@@ -623,7 +718,9 @@ export function AppSidebar({
             <Link href={`${base}/agents/new`} onClick={onNavigate} className={popoverItem}>
               <Bot className="h-4 w-4 text-faint" />
               <span className="flex-1">New bot</span>
-              <kbd className="rounded-md border border-line-strong px-1.5 font-sans text-[10.5px] text-faint">⌘N</kbd>
+              <kbd className="rounded-md border border-line-strong px-1.5 font-sans text-[10.5px] text-faint">
+                ⌘N
+              </kbd>
             </Link>
             <Link href={`${base}/chats/new`} onClick={onNavigate} className={popoverItem}>
               <Users className="h-4 w-4 text-faint" />
@@ -708,7 +805,11 @@ export function AppSidebar({
         ) : null}
 
         {groupChats.length || !needle ? (
-          <Section id="groups" label="Group chats" action={sectionAction(`${base}/chats/new`, "New group chat")}>
+          <Section
+            id="groups"
+            label="Group chats"
+            action={sectionAction(`${base}/chats/new`, "New group chat")}
+          >
             <ul className="space-y-0.5">{groupChats.map(row)}</ul>
             {!groupChats.length && !needle ? (
               <Link

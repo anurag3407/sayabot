@@ -6,6 +6,7 @@ import { finishOnboardingAction, setupWorkspaceAction } from "@/lib/actions/onbo
 import { Button } from "@/components/ui/button"
 import { Field, HelpText, Input } from "@/components/ui/field"
 import { InlineAlert } from "@/components/ui/empty"
+import { WorkspaceSkeleton } from "@/components/ui/skeleton"
 
 const DEFAULT_ROOM = "General"
 
@@ -89,26 +90,26 @@ export function OnboardingWizard({
 
   const nameOk = workspaceName.trim().length >= 2 && workspaceName.trim().length <= 60
 
-  if (initialWorkspace) {
+  if (pending || (initialWorkspace && !error)) {
+    return (
+      <WorkspaceSkeleton
+        label={initialWorkspace ? "Opening your workspace" : "Creating your workspace"}
+      />
+    )
+  }
+
+  if (initialWorkspace && error) {
     return (
       <main id="main-content" className="grid min-h-dvh place-items-center px-6">
         <div className="w-full max-w-md space-y-4 text-center">
-          {error ? (
-            <>
-              <InlineAlert tone="danger">{error}</InlineAlert>
-              <Button
-                variant="primary"
-                size="lg"
-                onClick={() => openRoom(initialWorkspace.slug, initialWorkspace.roomId)}
-              >
-                Open workspace
-              </Button>
-            </>
-          ) : (
-            <p role="status" className="font-mono text-[13px] text-muted">
-              Opening your workspace…
-            </p>
-          )}
+          <InlineAlert tone="danger">{error}</InlineAlert>
+          <Button
+            variant="primary"
+            size="lg"
+            onClick={() => openRoom(initialWorkspace.slug, initialWorkspace.roomId)}
+          >
+            Open workspace
+          </Button>
         </div>
       </main>
     )
@@ -143,8 +144,8 @@ export function OnboardingWizard({
           </Field>
           <HelpText>A first chat called General is created for you.</HelpText>
           {error ? <InlineAlert tone="danger">{error}</InlineAlert> : null}
-          <Button type="submit" variant="primary" size="lg" disabled={pending || !nameOk}>
-            {pending ? "Creating…" : "Create workspace"}
+          <Button type="submit" variant="primary" size="lg" disabled={!nameOk}>
+            Create workspace
           </Button>
         </form>
       </div>

@@ -45,6 +45,17 @@ export interface DesktopBridge {
   /** Token history from coding-tool logs on this Mac. */
   getLocalUsage: (days: number) => Promise<{ available: boolean; events: unknown[] }>
   onSessionUpdate: (callback: (session: AuthSession | null) => void) => () => void
+  /**
+   * The workspace page refreshed the login. Store that copy so the file and the cookies match.
+   * Older apps do not have this.
+   */
+  saveLiveSession?: (session: {
+    accessToken: string
+    refreshToken: string
+    email: string
+    userId: string
+    isGuest: boolean
+  }) => Promise<{ ok: boolean }>
 }
 
 const bridge: DesktopBridge = {
@@ -84,6 +95,7 @@ const bridge: DesktopBridge = {
       ipcRenderer.removeListener("auth:session-updated", listener)
     }
   },
+  saveLiveSession: (session) => ipcRenderer.invoke("auth:save-live-session", session),
 }
 
 contextBridge.exposeInMainWorld("sayabotDesktop", bridge)

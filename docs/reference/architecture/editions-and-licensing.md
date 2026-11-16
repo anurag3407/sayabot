@@ -116,7 +116,7 @@ Commercial-licensed, and inert unless four env vars exist — `billingConfigured
 | `admitServerTurn()` (`apps/orchestrator/src/plans.ts:36`) | always allowed | `bump_server_turns()` per month + limit message |
 | `planGate()` (`apps/web/src/lib/plan-limits.ts:89`) | always ok | per-kind checks + upgrade prompts |
 | `apps/web/src/ee/billing/**` | never reached | checkout, portal, webhook plan sync |
-| Billing UI (`ee/billing/billing-view.tsx`) | hidden | Plan & billing settings page |
+| Billing UI (`ee/billing/billing-view.tsx`) | hidden | Plan & billing settings page. Every highlight is checked and labeled Coming soon; other plans show a disabled Coming soon button and do not open checkout. Mac agents and self-hosted servers are unaffected. |
 | `NEXT_PUBLIC_SAYABOT_EDITION` build arg | `self-hosted` | `cloud` (baked into the browser bundle) |
 
 ### Enforcement timeline for one server reply

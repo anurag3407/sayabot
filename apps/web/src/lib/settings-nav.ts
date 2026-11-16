@@ -55,7 +55,7 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
       {
         segment: "computers",
         label: "Computers",
-        description: "The Boat key for this app, your VPS, and this Mac's screen.",
+        description: "Cloud desktops (Boat key, E2B), your own VPS, and this Mac's screen.",
         icon: "computers",
         adminOnly: false,
       },
@@ -74,7 +74,7 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
       {
         segment: "keys",
         label: "AI providers",
-        description: "Agent apps on this computer, plans you sign in to, and API keys that power your agents.",
+        description: "Agent apps, plans and API keys your agents think with, plus the cloud desktops and server they work on.",
         icon: "keys",
         adminOnly: true,
       },

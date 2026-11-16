@@ -2,13 +2,20 @@
 
 Three pieces of the computer layer live beside the Boat code: the Docker-over-SSH driver that turns a person's own server into a desktop surface (`computers/vps.ts`), the idle scan that stops forgotten Boat desktops after 10 minutes while never touching a VPS (`computers/sleep.ts`), and the orchestrator-side HTTP client that talks to `computerd`/`agentd` for the local-VM surface (`computer/client.ts`). The VPS path deliberately has no client class — it shells out to `ssh`; the sleep path is a scheduled maintenance pass; the client path is the one every local-VM tool call and the memory mirror use.
 
-Source files: `apps/orchestrator/src/computers/vps.ts`, `apps/orchestrator/src/computers/sleep.ts`, `apps/orchestrator/src/computer/client.ts`
+Source files: `apps/orchestrator/src/computers/vps.ts`, `apps/orchestrator/src/computers/open-vps.ts`, `apps/orchestrator/src/computers/sleep.ts`, `apps/orchestrator/src/computer/client.ts`
 
 ---
 
-## 🖥️ VPS desktops (`computers/vps.ts`)
+## 🖥️ VPS desktops (`computers/vps.ts`, `computers/open-vps.ts`)
 
-A "VPS" is the person's own server, referenced by an **SSH config alias** saved in `org_computer_settings.vps_ssh_alias` (`packages/db/src/schema/computer-settings.ts:16-17`). Sayabot never logs into the server directly; it only ever runs two kinds of remote commands, and both are prefixed with `ssh -o BatchMode=yes <alias>` so key-based auth is mandatory and no interactive prompt can hang a turn. The alias must match `SSH_NAME = /^[A-Za-z0-9_.:@-]+$/` (`vps.ts:4`) — anything else throws `"Use the SSH config name of your server"`. The remote side is always the single desktop container:
+A "VPS" is the person's own Linux server with Docker. Settings → AI providers → Computers and browser saves it one of two ways in `org_computer_settings`:
+
+| Way | Columns | How Sayabot connects |
+| :--- | :--- | :--- |
+| Address and key | `vps_host`, `vps_user`, `vps_port`, sealed `vps_key_*` | `ssh -i <0600 temp file> -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=<SAYABOT_SSH_DIR or ~/.sayabot>/known_hosts -p <port> user@host` |
+| SSH config name | `vps_ssh_alias` | `ssh <alias>`, using the orchestrator machine's own `~/.ssh/config` and agent; no key stored |
+
+`vpsTargetFromSettings(row, kek)` (`open-vps.ts`) turns the row into a `VpsTarget` — `{ kind: "host", host, user, port, privateKey }` (host wins; user defaults to `root`, port to 22; a key that will not decrypt becomes `null`) or `{ kind: "alias", alias }` — and `vpsTargetForOrg(orgId)` reads it for one workspace. Every ssh call starts with `-o BatchMode=yes -o ConnectTimeout=15 -o LogLevel=ERROR`, so key-based auth is mandatory and no prompt can hang a turn. `validateVpsTarget` refuses aliases outside `/^[A-Za-z0-9_.:@-]+$/` (*"Use the SSH config name of your server"*), hosts or aliases starting with `-`, bad user names and ports outside 1–65535. For a host target the private key is written to a fresh `mkdtemp` directory with mode 0600 for that one call and removed in `finally`; the server's host key is pinned on first use, so a changed host key is refused later.
 
 For orientation, the three surfaces these files serve differ sharply in transport and ownership:
 
@@ -17,41 +24,35 @@ For orientation, the three surfaces these files serve differ sharply in transpor
 | `local_vm` | `ComputerClient` HTTP → computerd → agentd | `/home/bot` | computerd idle scan (10 min) |
 | `boat` | `BoatClient` REST → boat.dev | `/home/user` + `/tmp` | `sleepIdleBoats` scan (10 min idle, routine-aware) |
 | `vps` | `ssh` + `docker exec` | `/home/bot` | Nobody — Sayabot never stops the server |
+| `e2b` | E2B SDK → e2b.dev ([./e2b.md](./e2b.md)) | `/home/user` | E2B itself pauses it after 10 idle minutes |
 
+### One container per bot
 
-```typescript
-const CONTAINER = "sayabot-desktop"   // vps.ts:5
-```
+`vpsContainerName(agentId)` is `sayabot-bot-<agentId>` (the id must match `/^[A-Za-z0-9_.-]{1,80}$/`), with a Docker volume of the same name at `/home/bot`. Bots never share a container, so files, processes and secret identity stay apart.
 
-### Lifecycle command: `vpsDesktopArgv(alias, decision)` (`vps.ts:15-26`)
-
-Maps a `ComputerDecision` (from `resolveComputer`, see [../../core/engine-and-computers.md](../../core/engine-and-computers.md)) onto a remote Docker command:
+### Lifecycle command: `vpsDesktopRemote(agentId, decision)`
 
 | `decision.action` | Remote command |
 | :--- | :--- |
-| `provision` | `docker run -d --name sayabot-desktop --restart unless-stopped -v sayabot-desktop:/home/bot sayabot-desktop:latest` |
-| anything else (`use`/`wake`) | `docker inspect -f "{{.State.Running}}" sayabot-desktop` |
+| `provision` / `wake` | `docker start <name> >/dev/null 2>&1 \|\| docker run -d --name <name> --restart unless-stopped -v <name>:/home/bot -w /home/bot <image> sleep infinity` |
+| `use` | `docker inspect -f '{{.State.Running}}' <name>` |
 
-Design constraints enforced in code, not convention:
+`<image>` is `SAYABOT_VPS_IMAGE` or `ubuntu:24.04`; `docker run` pulls it when the server does not have it, so `runVpsDesktop(target, agentId, decision)` allows 300 s. The remote string is refused if it contains `shutdown`, `poweroff`, `reboot` or `halt` (*"Sayabot does not turn that server off"*). `--restart unless-stopped` brings containers back after a server reboot. After a successful provision the select_computer apply callback stores `params.computer.vpsReady = true` on the bot.
 
-- **The server is never stopped** (`vps.ts:24`): the flattened argv is scanned for `\b(shutdown|poweroff|reboot|halt)\b` and refuses with `"Sayabot does not turn that server off"`. The module comments repeat the invariant ("The command never stops the server", "The server itself is not shut down, rebooted, or halted").
-- **The volume keeps the workspace** — `sayabot-desktop:/home/bot` survives recreating the container (`vps.ts:12-13`).
-- `--restart unless-stopped` means a provisioned container comes back after a server reboot on its own; a `wake` decision therefore only *inspects* whether it is running.
+Placement: a bot **pinned** to `vps` (Works on → Cloud desktop → Self-hosted VPS) may start its container when it calls `select_computer`; a bot on Auto may do so only when `vps_start_automatically` is on (see [../../core/engine-and-computers.md](../../core/engine-and-computers.md)).
 
-### Execution: `vpsExecArgv` and `runVpsShell` (`vps.ts:32-48`)
+### Execution: `vpsExecRemote`, `runVpsShell`, `runOnVps`
 
-`vpsExecArgv(alias, command)` builds `["ssh", "-o", "BatchMode=yes", alias, "docker exec -i sayabot-desktop sh -lc '<command>'"]` — SSH only starts `docker exec`. The command must be non-empty and contain no `\0` or `\n` (it is single-quoted with the shared `shellQuote` helper, but newlines would break the docker one-shot form).
+`vpsExecRemote(agentId, command)` builds `docker exec -i -w /home/bot <name> sh -lc '<command>'` (single-quoted with `shellQuote`; empty commands and `\0` are refused, newlines are allowed). `runVpsShell(target, agentId, command, timeoutMs = 60_000)` runs it through `runOnVps`, which spawns `ssh` and returns `VpsResult = { ok, output, stdout }`:
 
-`runVpsShell(alias, command, timeoutMs = 60_000)` spawns the argv and returns `{ ok, output }`; it never throws — invalid input becomes `{ ok: false, output: <message> }` so the tool loop can report it as a normal failure. The shared `runArgv` runner (`vps.ts:50-72`) is the transport for both entry points:
+- `stdout` is capped at 2 MiB and is what file reads (`fs_read`, `fs_edit`, `computer_list`) use, so ssh or shell warnings never leak into file contents;
+- `output` is stdout plus stderr (stderr capped at 64 KB), for people and shell results;
+- `ok` is exit code 0 without a timeout; a timeout kills ssh and appends `(timed out after Ns)`;
+- nothing throws — invalid input or spawn errors come back as `{ ok: false, output }`.
 
-- spawn with stdio `["ignore", "pipe", "pipe"]`;
-- combined stdout + stderr collected into one `output` string **capped at 500 chars** (`.slice(0, 500)` on every chunk);
-- `setTimeout(timeoutMs)` kills the child on overrun;
-- `ok` is `code === 0`; spawn errors (missing binary, ssh failure) resolve as `{ ok: false, output: error.message }`.
+### Connection check
 
-`runVpsDesktop(alias, decision)` (`vps.ts:74-83`) is the lifecycle twin: same runner, fixed 60 s timeout, used by the `select_computer` apply callback to provision or verify the container. Unlike Boat and local VMs, VPS placement cannot be started by Auto: `resolveComputer` refuses `vps`/`provision` unless `startVpsAutomatically` was enabled by an admin (`packages/core/src/computers.ts:171-180`, default `false` in the schema at `computer-settings.ts:18-19`).
-
-Note the surface's file semantics: VPS paths reuse the Boat command builders (`boatReadCommand` etc.) through `runVpsShell` — see the routing table in [../tools/tool-computer.md](../tools/tool-computer.md) — and the desktop home is `/home/bot`, not the Boat's `/home/user` (`desktopHome`, `packages/core/src/computers.ts:63-66`).
+`POST /internal/computers/vps/check { orgId }` (`internal/routes.ts`, behind the internal secret) runs `VPS_CHECK_REMOTE` = `docker version --format '{{.Server.Version}}'` with a 25 s timeout and answers `{ ok: true, docker }` or `{ ok: false, error }` with a plain hint for "SSH works but this login cannot use Docker" and "Docker is not installed". The web "Check connection" button calls it, so the check runs from the machine that will run the bots' commands.
 
 ## 😴 The Boat sleep scan (`computers/sleep.ts`)
 
@@ -157,7 +158,7 @@ The `hash` on a `FilePage` (and the `previousHash` returned by `editFile`) is th
 
 ## 🧪 Tests
 
-- `apps/orchestrator/src/computers/vps.test.ts` — `vpsDesktopArgv` starts the desktop container over SSH, refuses shutdown-style commands, and `vpsExecArgv` wraps commands in `docker exec` while leaving the server up (`vps.test.ts:5-35`).
+- `apps/orchestrator/src/computers/vps.test.ts` — per-bot container names, `vpsDesktopRemote` start-or-run without shutdown words, `vpsExecRemote` quoting, `vpsSshPrefix` for an alias and for host + user + port + key (and refusals of option-injection hosts, bad users and ports), and `vpsTargetFromSettings` preferring a host over the alias.
 - `apps/orchestrator/src/computers/sleep.test.ts` — `idleBoatIds` sleeps an idle Boat but keeps one with an upcoming routine or a running background command (`sleep.test.ts:7-18`); the `boatShouldSleep` constants themselves are covered in `packages/core/src/computers.test.ts`.
 - `apps/orchestrator/src/computers/boat.test.ts` / `boat-shell.test.ts` / `apply-boat.test.ts` — the Boat client, shell builders and decision applier ([./boat.md](./boat.md)).
 - `computer/client.ts` has no dedicated test file in-repo; its behaviour is exercised indirectly by the tool-layer tests and the mirror tests that stub `writeFile`/`exec`.

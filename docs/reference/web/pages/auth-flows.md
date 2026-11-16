@@ -64,11 +64,13 @@ The single GET handler for every provider redirect, email link, and OTP link (`s
 A page for implicit-flow links that carry tokens in the URL **fragment** (which never reaches the server). `CompleteAuth` (`src/components/auth/complete-auth.tsx`) runs once in the browser:
 
 - Reads errors from query or hash; renders a "Sign-in Incomplete" card with a back-to-login link on failure.
+- While that runs, the page shows `WorkspaceSkeleton` (a sidebar and a room with no data yet) instead of a blank screen.
 - `access_token` + `refresh_token` in the hash → `supabase.auth.setSession(...)`, then `window.location.replace` to `next`, else the first org (queried client-side from `org_members`/`orgs`) or `/onboarding`.
+- `DesktopSessionSync` (`src/components/desktop-session-sync.tsx`), mounted from the root layout, runs only inside the Mac app. On every auth state change it copies the browser session into the app's `sayabot-session.json` through `sayabotDesktop.saveLiveSession`, so the file does not keep a refresh token the page has already replaced.
 - `code` or `token_hash` in the query → forwards everything to `/auth/callback`.
 - No tokens: falls back to an existing browser session with the same destination logic, else errors.
 
-While working it shows the animated "Opening Sayabot Workspace" card with the Pip mascot.
+While it is working, `WorkspaceSkeleton` covers the page. A failed sign-in still shows the error card.
 
 ---
 

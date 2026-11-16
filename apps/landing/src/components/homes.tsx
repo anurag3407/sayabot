@@ -4,7 +4,7 @@ import { useRef, type ComponentType } from "react"
 import type { SayaMood, SayaShape, SayaTone } from "@sayabot/core/mascot"
 import { LINKS } from "@/lib/links"
 import { useInView, useSequence } from "@/lib/motion"
-import { ArrowRight, CloudIcon, LaptopIcon, ServerIcon } from "./icons"
+import { ArrowRight, CheckIcon, CloudIcon, LaptopIcon, ServerIcon } from "./icons"
 import { Reveal } from "./reveal"
 import { Saya } from "./saya"
 
@@ -21,7 +21,9 @@ type Home = {
   id: "mac" | "cloud" | "server"
   title: string
   body: string
-  cta: { label: string; href: string; external?: boolean }
+  cta?: { label: string; href: string; external?: boolean }
+  /** Listed on the card as part of the plan, not available yet. */
+  soon?: string[]
   place: { name: string; detail: string; Icon: ComponentType<{ className?: string }> }
   /** Pill label by day and by night. */
   pill: [string, string]
@@ -69,10 +71,16 @@ const HOMES: Home[] = [
   {
     id: "cloud",
     title: "On Sayabot Cloud",
-    body: "We host it, nothing to set up. Agents get their own computers, and routines keep running with your laptop shut.",
-    cta: { label: "Start free on the web", href: LINKS.signup, external: true },
-    place: { name: "Sayabot Cloud", detail: "Stays on all day", Icon: CloudIcon },
-    pill: ["Awake 24/7", "Awake 24/7"],
+    body: "We host it, nothing to set up. Every part below is in the plan, and none of it is on yet.",
+    soon: [
+      "Agents that keep going with the laptop shut",
+      "Their own computers",
+      "Routines and connectors around the clock",
+      "Server replies on Free, Pro and Team",
+      "Rooms shared with your team",
+    ],
+    place: { name: "Sayabot Cloud", detail: "Coming soon", Icon: CloudIcon },
+    pill: ["Coming soon", "Coming soon"],
     sleeps: false,
     overnight: {
       name: "Price watcher",
@@ -182,8 +190,8 @@ export function Homes() {
             Where your agents live.
           </h2>
           <p className="lede">
-            The same agents and the same app, in three homes. Mix them freely: a Mac agent and a
-            cloud agent can work in the same room.
+            The Mac app and a server you host work today. Sayabot Cloud is the same product, hosted
+            by us, and it is coming soon.
           </p>
         </Reveal>
 
@@ -237,13 +245,25 @@ export function Homes() {
 
                 <h3>{home.title}</h3>
                 <p>{home.body}</p>
-                <a
-                  className="home-link"
-                  href={home.cta.href}
-                  {...(home.cta.external ? { target: "_blank", rel: "noreferrer" } : {})}
-                >
-                  {home.cta.label} <ArrowRight />
-                </a>
+                {home.soon ? (
+                  <ul className="home-soon">
+                    {home.soon.map((line) => (
+                      <li key={line}>
+                        <CheckIcon />
+                        <span>{line}</span>
+                        <em>Coming soon</em>
+                      </li>
+                    ))}
+                  </ul>
+                ) : home.cta ? (
+                  <a
+                    className="home-link"
+                    href={home.cta.href}
+                    {...(home.cta.external ? { target: "_blank", rel: "noreferrer" } : {})}
+                  >
+                    {home.cta.label} <ArrowRight />
+                  </a>
+                ) : null}
               </Reveal>
             )
           })}

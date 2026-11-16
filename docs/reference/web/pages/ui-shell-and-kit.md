@@ -96,7 +96,7 @@ The brand identity renderer: `Mascot({ seed, shape, color, mood, lit, figure, sh
 `LiveMascot` wraps `Mascot` so its eyes follow the pointer (one rAF-throttled `pointermove` listener shared by every instance, only with a fine pointer) and it smiles on hover; pass `live` for the idle motion, while the landing page uses `float`. `useInView` is an `IntersectionObserver` boolean. The home empty state (`ia/chats-view.tsx`) shows your first two bots flanking Nova as live mascots.
 
 ### `mascot-loader.tsx` — `MascotLoader`
-The Sayabot loader (`role="status"`, `aria-live="polite"`): Pip, Nova and Moss stand on glow pools and pass the lit lamp down the line every 720 ms (the one holding it hops), while a step line ("Waking up your bots…") rotates every 2.2 s above a sweeping accent bar (`loader-sweep`). `compact` shrinks it. Backs `/auth/complete` ("Opening your workspace") and the `(workspace)/[org]` `loading.tsx`; static under reduced motion.
+The Sayabot loader (`role="status"`, `aria-live="polite"`): Pip, Nova and Moss stand on glow pools and pass the lit lamp down the line every 720 ms (the one holding it hops), while a step line ("Waking up your bots…") rotates every 2.2 s above a sweeping accent bar (`loader-sweep`). `compact` shrinks it. Static under reduced motion. Opening a workspace uses `WorkspaceSkeleton` instead.
 
 ### `status.tsx` — `StatusBadge`, `Kbd`
 `StatusBadge({ status, label })` is a mono chip whose color comes from `statusTone()` (`lib/format.ts`): ok for `complete/done/approved`, warn for `streaming/running/pending_approval`, danger for `error/rejected`, accent for `halted`, muted otherwise; underscores become spaces. `Kbd` is a small styled `<kbd>`.
@@ -104,8 +104,8 @@ The Sayabot loader (`role="status"`, `aria-live="polite"`): Pip, Nova and Moss s
 ### `empty.tsx` — `EmptyState`, `InlineAlert`
 `EmptyState({ title, body, action })` is a left-bordered text block (used by search, files, inbox). `InlineAlert({ tone })` renders neutral/success/warning/danger notices (`danger` gets `role="alert"`).
 
-### `skeleton.tsx` — `Skeleton`, `PageSkeleton`, `RoomSkeleton`
-Pulsing placeholders; `RoomSkeleton` (`role="status"`) backs the room `loading.tsx`. `PageSkeleton` remains available; the `(workspace)/[org]` `loading.tsx` now shows a compact `MascotLoader`.
+### `skeleton.tsx` — `Skeleton`, `PageSkeleton`, `RoomSkeleton`, `WorkspaceSkeleton`, `SetupSkeleton`
+Pulsing placeholders. `RoomSkeleton` (`role="status"`) backs the room `loading.tsx`. `PageSkeleton` backs `(workspace)/[org]/loading.tsx` and the list routes (tasks, inbox, files, agents, meetings, routines, marketplace, search, analytics, account, new chat, new agent). `WorkspaceSkeleton` is the full shell (sidebar plus a room) shown while a workspace is created or opened: onboarding submit, resuming onboarding, `/new-workspace` submit, and `/auth/complete`. `SetupSkeleton` backs `onboarding/loading.tsx` and `new-workspace/loading.tsx`.
 
 ### `toast.tsx` — `showToast`, `Toaster`
 A custom-event bus (`mesh:toast`): any code can `showToast({ message, tone?, action?, durationMs? })` without context. `Toaster` (mounted once in the root layout) listens, keeps at most 4 visible, auto-dismisses after 5 s (or per `durationMs`), renders top-right cards with tone borders and an optional action link/button, and is `aria-live="polite"`. Actions carry `{ label, href? , onClick? }` — used for the archive **Undo**.

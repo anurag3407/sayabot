@@ -4,10 +4,12 @@ import {
   desktopCapturer,
   dialog,
   ipcMain,
+  powerSaveBlocker,
   screen,
   systemPreferences,
 } from "electron"
 import * as fs from "node:fs"
+import { readJsonFile, removeJsonFile, writeJsonAtomic } from "./durable-json"
 import * as os from "node:os"
 import * as path from "node:path"
 import {
@@ -77,28 +79,22 @@ export interface HeartbeatReply {
 
 const HOST_FILE = "sayabot-host.json"
 const HEARTBEAT_MS = 2_500
+/** A stalled request must not freeze the heartbeat: that is what skips claiming a queued job. */
+const REQUEST_MS = 12_000
 
 function hostFile(): string {
   return path.join(app.getPath("userData"), HOST_FILE)
 }
 
 export function loadHostAuth(serverUrl: string): HostAuth | null {
-  try {
-    const saved = JSON.parse(fs.readFileSync(hostFile(), "utf-8")) as HostAuth
-    return saved.serverUrl === serverUrl ? saved : null
-  } catch {
-    return null
-  }
+  const saved = readJsonFile<HostAuth>(hostFile())
+  return saved?.serverUrl === serverUrl ? saved : null
 }
 
 function saveHostAuth(auth: HostAuth | null): void {
   try {
-    if (auth)
-      fs.writeFileSync(hostFile(), JSON.stringify(auth, null, 2), {
-        encoding: "utf-8",
-        mode: 0o600,
-      })
-    else if (fs.existsSync(hostFile())) fs.unlinkSync(hostFile())
+    if (auth) writeJsonAtomic(hostFile(), auth, 0o600)
+    else removeJsonFile(hostFile())
   } catch (err) {
     console.error("[host] could not save host auth", err)
   }
@@ -213,8 +209,14 @@ export class DesktopHost {
   private rescanSeen: string | null = null
   private forceScan = false
   private storage: LocalStorageReport | null = null
+  /** Set when a measurement finished and has not been sent up yet. */
+  private storagePending = false
+  /** Disk walk runs beside the heartbeat so a large folder cannot delay claiming a job. */
+  private measuring: Promise<void> | null = null
   private lastStorageScan = 0
   private lastHandoff = 0
+  /** Keeps macOS from suspending this process (App Nap) while it has to claim jobs. */
+  private stayAwake: number | null = null
   lastReply: HeartbeatReply | null = null
 
   constructor(private deps: HostDeps) {
@@ -269,9 +271,11 @@ export class DesktopHost {
     if (!this.auth) {
       if (this.timer) clearInterval(this.timer)
       this.timer = null
+      this.allowSleep()
       return
     }
     if (this.timer) return
+    this.keepAwake()
     this.timer = setInterval(() => void this.heartbeat(), HEARTBEAT_MS)
     void this.heartbeat()
   }
@@ -279,9 +283,23 @@ export class DesktopHost {
   stop(): void {
     if (this.timer) clearInterval(this.timer)
     this.timer = null
+    this.allowSleep()
     this.injector.stop()
     this.captureWindow?.destroy()
     this.captureWindow = null
+  }
+
+  /** Heartbeats have to keep firing while the window is in the background, or jobs sit unclaimed. */
+  private keepAwake(): void {
+    if (this.stayAwake !== null && powerSaveBlocker.isStarted(this.stayAwake)) return
+    this.stayAwake = powerSaveBlocker.start("prevent-app-suspension")
+  }
+
+  private allowSleep(): void {
+    if (this.stayAwake !== null && powerSaveBlocker.isStarted(this.stayAwake)) {
+      powerSaveBlocker.stop(this.stayAwake)
+    }
+    this.stayAwake = null
   }
 
   forget(): void {
@@ -342,6 +360,7 @@ export class DesktopHost {
     try {
       const res = await fetch(`${this.auth.serverUrl}${pathname}`, {
         headers: { "x-host-id": this.auth.hostId, "x-host-token": this.auth.hostToken },
+        signal: AbortSignal.timeout(REQUEST_MS),
       })
       return res.ok ? ((await res.json()) as T) : null
     } catch {
@@ -361,6 +380,7 @@ export class DesktopHost {
           "x-host-token": this.auth.hostToken,
         },
         body: JSON.stringify(body),
+        signal: AbortSignal.timeout(REQUEST_MS),
       })
       if (res.status === 401) {
         // Removed on the web (or token rotated elsewhere): register again next start.
@@ -452,11 +472,23 @@ export class DesktopHost {
       }
       const localAgents = this.scanned ?? undefined
       this.scanned = null
-      let storage: LocalStorageReport | undefined
-      if (Date.now() - this.lastStorageScan > 10 * 60_000) {
+      // Same idea as the app scan above: measure on the side, send the result with a later beat.
+      if (!this.measuring && Date.now() - this.lastStorageScan > 10 * 60_000) {
         this.lastStorageScan = Date.now()
-        this.storage = await measureLocalStorage().catch(() => this.storage)
-        storage = this.storage ?? undefined
+        this.measuring = measureLocalStorage()
+          .then((report) => {
+            this.storage = report
+            this.storagePending = true
+          })
+          .catch(() => undefined)
+          .finally(() => {
+            this.measuring = null
+          })
+      }
+      let storage: LocalStorageReport | undefined
+      if (this.storagePending && this.storage) {
+        storage = this.storage
+        this.storagePending = false
       }
       const reply = await this.post<HeartbeatReply>("/api/desktop/heartbeat", {
         permissions: permissionState(),

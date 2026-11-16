@@ -30,16 +30,19 @@ export function selectComputerTool(opts: SelectComputerOptions): ToolSpec {
   return {
     name: "select_computer",
     description:
-      "Choose the desktop for this turn: this_computer, local_vm, boat, or vps. Auto only reuses a desktop that is already running. Calling this with boat wakes or creates one. The agent keeps running where it already runs; this only moves its screen.",
+      "Choose the desktop for this turn: this_computer, local_vm, boat, vps, or e2b. Auto only reuses a desktop that is already running. Calling this with boat wakes or creates one; with vps it starts this bot's container on the person's server; with e2b it creates or resumes this bot's E2B cloud sandbox. The agent keeps running where it already runs; this only moves its screen and shell.",
     schema: z.object({
-      surface: z.enum(["this_computer", "local_vm", "boat", "vps"]),
+      surface: z.enum(["this_computer", "local_vm", "boat", "vps", "e2b"]),
     }),
     dangerous: false,
     execute: async (input: { surface: WorksOn }) => {
       const surface = isWorksOn(input.surface) ? input.surface : "off"
       const decision = resolveComputer(opts.worksOn, opts.available, surface)
       const carried =
-        (decision.surface === "boat" || decision.surface === "vps" || decision.surface === "local_vm") &&
+        (decision.surface === "boat" ||
+          decision.surface === "vps" ||
+          decision.surface === "e2b" ||
+          decision.surface === "local_vm") &&
         decision.action !== "none"
           ? await opts.apply?.(decision)
           : undefined

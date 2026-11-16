@@ -4,7 +4,12 @@ import { useCallback, useEffect, useRef, useState, useTransition } from "react"
 import { Check, ChevronDown, ChevronUp } from "lucide-react"
 import { setRoomAgentModelAction } from "@/lib/actions/agents"
 import { showToast } from "@/components/ui/toast"
-import { choiceLabel, ModelPickerPanel, RailIcon, type ModelValue } from "@/components/agents/model-picker-panel"
+import {
+  choiceLabel,
+  ModelPickerPanel,
+  RailIcon,
+  type ModelValue,
+} from "@/components/agents/model-picker-panel"
 import { cn } from "@/lib/format"
 import { MODEL_PICKER_EVENT } from "@/lib/recovery-hint"
 import type { PickerGroup } from "@/lib/model-catalog"
@@ -97,13 +102,19 @@ export function RoomModelPicker({
   orgSlug,
   roomId,
   placement = "down",
+  listen = true,
 }: {
   orgSlug: string
   roomId: string
-  /** "up" opens above the button, for the composer at the bottom of the chat. */
-  placement?: "down" | "up"
+  /** "up" opens above the button, "down" below it, "inline" in the bot settings sidebar. */
+  placement?: "down" | "up" | "inline"
+  /** The composer listens for "switch model". A second picker in the sidebar should not. */
+  listen?: boolean
 }) {
-  const { lists, loading, error, reload, reloadIfStale, patch, forget } = useRoomModels(orgSlug, roomId)
+  const { lists, loading, error, reload, reloadIfStale, patch, forget } = useRoomModels(
+    orgSlug,
+    roomId,
+  )
   const [open, setOpen] = useState(false)
   const [botId, setBotId] = useState<string | null>(null)
   const [scope, setScope] = useState<Scope>("chat")
@@ -112,10 +123,11 @@ export function RoomModelPicker({
 
   // "Switch model" on a failed reply opens this picker.
   useEffect(() => {
+    if (!listen) return
     const openPicker = () => setOpen(true)
     window.addEventListener(MODEL_PICKER_EVENT, openPicker)
     return () => window.removeEventListener(MODEL_PICKER_EVENT, openPicker)
-  }, [])
+  }, [listen])
 
   useEffect(() => {
     if (!open) return
@@ -143,7 +155,9 @@ export function RoomModelPicker({
   // The model, and "· Mac" when it runs on the person's own computer.
   const onMac = effectiveGroup?.section === "mac" || effectiveGroup?.section === "local"
   const buttonLabel =
-    effective && groups.length ? `${choiceLabel(groups, effective).split(" · ")[0]}${onMac ? " · Mac" : ""}` : "Model"
+    effective && groups.length
+      ? `${choiceLabel(groups, effective).split(" · ")[0]}${onMac ? " · Mac" : ""}`
+      : "Model"
 
   function save(next: ModelValue | null) {
     if (!bot) return
@@ -198,7 +212,9 @@ export function RoomModelPicker({
               onClick={() => setBotId(b.id)}
               className={cn(
                 "shrink-0 rounded-full px-3 py-1 text-[12px]",
-                b.id === bot.id ? "bg-raised font-medium text-text" : "text-muted hover:bg-raised hover:text-text",
+                b.id === bot.id
+                  ? "bg-raised font-medium text-text"
+                  : "text-muted hover:bg-raised hover:text-text",
               )}
             >
               @{b.handle}
@@ -212,8 +228,12 @@ export function RoomModelPicker({
         onClick={() => save(null)}
         className="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-raised disabled:cursor-default disabled:hover:bg-transparent"
       >
-        <span className="shrink-0 text-[14px] font-semibold text-text">Use {bot.displayName}&apos;s model</span>
-        <span className="min-w-0 flex-1 truncate text-[13px] text-faint">{groups.length ? choiceLabel(groups, bot.bot) : ""}</span>
+        <span className="shrink-0 text-[14px] font-semibold text-text">
+          Use {bot.displayName}&apos;s model
+        </span>
+        <span className="min-w-0 flex-1 truncate text-[13px] text-faint">
+          {groups.length ? choiceLabel(groups, bot.bot) : ""}
+        </span>
         {!bot.chat ? <Check className="h-4 w-4 shrink-0 text-text" aria-label="In use" /> : null}
       </button>
       <div className="px-4 pb-3">
@@ -244,7 +264,9 @@ export function RoomModelPicker({
             ? "This chat only. It keeps this model when the bot's model changes."
             : `Changes ${bot.displayName}'s model everywhere, and this chat follows it.`}
         </p>
-        {!lists?.canEdit ? <p className="mt-1 text-[12px] text-warn">Only workspace admins can change models.</p> : null}
+        {!lists?.canEdit ? (
+          <p className="mt-1 text-[12px] text-warn">Only workspace admins can change models.</p>
+        ) : null}
       </div>
     </div>
   ) : null
@@ -260,16 +282,26 @@ export function RoomModelPicker({
         className={cn(
           placement === "up"
             ? "flex h-8 items-center gap-1.5 rounded-full px-2.5 text-[13px] text-muted transition-colors hover:bg-white/[0.06] hover:text-text aria-expanded:bg-white/[0.06] aria-expanded:text-text"
-            : "flex h-9 items-center gap-2 rounded-xl px-3 text-[13.5px] font-medium text-text transition-colors hover:bg-panel aria-expanded:bg-panel",
+            : placement === "inline"
+              ? "flex h-10 w-full items-center gap-2 rounded-xl bg-raised px-3 text-left text-[13.5px] font-medium text-text"
+              : "flex h-9 items-center gap-2 rounded-xl px-3 text-[13.5px] font-medium text-text transition-colors hover:bg-panel aria-expanded:bg-panel",
           pending && "opacity-70",
         )}
       >
         {effectiveGroup ? <RailIcon group={effectiveGroup} size={16} /> : null}
-        <span className="max-w-[160px] truncate">{buttonLabel}</span>
+        <span
+          className={cn("truncate", placement === "inline" ? "min-w-0 flex-1" : "max-w-[160px]")}
+        >
+          {buttonLabel}
+        </span>
         {bot?.chat ? (
-          <span className="h-1.5 w-1.5 rounded-full bg-accent" title="This chat has its own model" aria-hidden="true" />
+          <span
+            className="h-1.5 w-1.5 rounded-full bg-accent"
+            title="This chat has its own model"
+            aria-hidden="true"
+          />
         ) : null}
-        {open === (placement === "down") ? (
+        {open === (placement !== "up") ? (
           <ChevronUp className="h-3.5 w-3.5 text-faint" aria-hidden="true" />
         ) : (
           <ChevronDown className="h-3.5 w-3.5 text-faint" aria-hidden="true" />
@@ -281,10 +313,12 @@ export function RoomModelPicker({
           role="dialog"
           aria-label="Choose a model for this chat"
           className={cn(
-            "surface-pop pop-in absolute z-50 flex w-[min(94vw,560px)] flex-col overflow-hidden rounded-2xl",
-            placement === "up"
-              ? "bottom-full left-0 mb-2 h-[560px] max-h-[68vh]"
-              : "right-0 top-11 h-[640px] max-h-[82vh]",
+            "surface-pop pop-in flex flex-col overflow-hidden rounded-2xl",
+            placement === "inline"
+              ? "relative mt-2 h-[420px] max-h-[70vh] w-full"
+              : placement === "up"
+                ? "absolute bottom-full left-0 z-50 mb-2 h-[560px] max-h-[68vh] w-[min(94vw,560px)]"
+                : "absolute right-0 top-11 z-50 h-[640px] max-h-[82vh] w-[min(94vw,560px)]",
           )}
         >
           {!lists && loading ? (

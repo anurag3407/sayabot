@@ -43,122 +43,141 @@ export async function listRooms(orgId: string): Promise<RoomListItem[]> {
     .eq("org_id", orgId)
     .order("kind", { ascending: true })
     .order("name", { ascending: true })
-  return ((data ?? []) as {
-    id: string
-    name: string
-    kind: RoomListItem["kind"]
-    turn_mode: RoomListItem["turnMode"]
-  }[]).map((r) => ({ id: r.id, name: r.name, kind: r.kind, turnMode: r.turn_mode }))
+  return (
+    (data ?? []) as {
+      id: string
+      name: string
+      kind: RoomListItem["kind"]
+      turn_mode: RoomListItem["turnMode"]
+    }[]
+  ).map((r) => ({ id: r.id, name: r.name, kind: r.kind, turnMode: r.turn_mode }))
 }
 
 export async function loadRoomPageData(access: RoomAccess): Promise<RoomPageData> {
   const supabase = await createSupabaseServerClient()
   const roomId = access.room.id
-  const [messagesRes, toolsRes, roomAgentsRes, canvasesRes, membersRes, sessionRes, threadRowsRes, activeMeetingRes, nextMeetingRes, scheduleRes, readRes, roomMembersRes] =
-    await Promise.all([
-      supabase
-        .from("messages")
-        .select(
-          "id, room_id, thread_root_id, sender_type, sender_id, content, status, mentions, run_id, metadata, created_at",
-        )
-        .eq("room_id", roomId)
-        .is("thread_root_id", null)
-        .order("created_at", { ascending: false })
-        .limit(80),
-      supabase
-        .from("tool_calls")
-        .select(
-          "id, run_id, room_id, message_id, tool_name, args, result, status, approved_by, resolved_at, error, created_at",
-        )
-        .eq("room_id", roomId)
-        .order("created_at", { ascending: false })
-        .limit(120),
-      supabase
-        .from("room_agents")
-        .select(
-          "position, agents!inner(id, org_id, handle, display_name, kind, provider_key_id, model, system_prompt, params, tool_ids, webhook_url, created_at)",
-        )
-        .eq("room_id", roomId)
-        .order("position", { ascending: true }),
-      supabase
-        .from("canvases")
-        .select("id, room_id, kind, title, language, snapshot_text, updated_at")
-        .eq("room_id", roomId)
-        .order("created_at", { ascending: true }),
-      supabase
-        .from("org_members")
-        .select("user_id, role, profiles!inner(display_name, avatar_url)")
-        .eq("org_id", access.org.id),
-      supabase
-        .from("turn_sessions")
-        .select("id, thread_root_id, state, queue")
-        .eq("room_id", roomId)
-        .eq("state", "active")
-        .is("thread_root_id", null)
-        .order("created_at", { ascending: false })
-        .limit(1),
-      supabase
-        .from("messages")
-        .select("thread_root_id")
-        .eq("room_id", roomId)
-        .not("thread_root_id", "is", null)
-        .limit(1_000),
-      supabase
-        .from("meetings")
-        .select("*")
-        .eq("room_id", roomId)
-        .eq("status", "active")
-        .order("starts_at", { ascending: false })
-        .limit(1),
-      supabase
-        .from("meetings")
-        .select("*")
-        .eq("room_id", roomId)
-        .eq("status", "scheduled")
-        .gte("ends_at", new Date().toISOString())
-        .order("starts_at", { ascending: true })
-        .limit(1),
-      supabase.from("room_schedules").select("*").eq("room_id", roomId).maybeSingle(),
-      supabase
-        .from("room_reads")
-        .select("last_read_at")
-        .eq("room_id", roomId)
-        .eq("user_id", access.user.id)
-        .maybeSingle(),
-      supabase.from("room_members").select("user_id").eq("room_id", roomId),
-    ])
+  const [
+    messagesRes,
+    toolsRes,
+    roomAgentsRes,
+    canvasesRes,
+    membersRes,
+    sessionRes,
+    threadRowsRes,
+    activeMeetingRes,
+    nextMeetingRes,
+    scheduleRes,
+    readRes,
+    roomMembersRes,
+  ] = await Promise.all([
+    supabase
+      .from("messages")
+      .select(
+        "id, room_id, thread_root_id, sender_type, sender_id, content, status, mentions, run_id, metadata, created_at",
+      )
+      .eq("room_id", roomId)
+      .is("thread_root_id", null)
+      .order("created_at", { ascending: false })
+      .limit(80),
+    supabase
+      .from("tool_calls")
+      .select(
+        "id, run_id, room_id, message_id, tool_name, args, result, status, approved_by, resolved_at, error, created_at",
+      )
+      .eq("room_id", roomId)
+      .order("created_at", { ascending: false })
+      .limit(120),
+    supabase
+      .from("room_agents")
+      .select(
+        "position, agents!inner(id, org_id, handle, display_name, kind, provider_key_id, model, system_prompt, params, tool_ids, webhook_url, capabilities, created_at)",
+      )
+      .eq("room_id", roomId)
+      .order("position", { ascending: true }),
+    supabase
+      .from("canvases")
+      .select("id, room_id, kind, title, language, snapshot_text, updated_at")
+      .eq("room_id", roomId)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("org_members")
+      .select("user_id, role, profiles!inner(display_name, avatar_url)")
+      .eq("org_id", access.org.id),
+    supabase
+      .from("turn_sessions")
+      .select("id, thread_root_id, state, queue")
+      .eq("room_id", roomId)
+      .eq("state", "active")
+      .is("thread_root_id", null)
+      .order("created_at", { ascending: false })
+      .limit(1),
+    supabase
+      .from("messages")
+      .select("thread_root_id")
+      .eq("room_id", roomId)
+      .not("thread_root_id", "is", null)
+      .limit(1_000),
+    supabase
+      .from("meetings")
+      .select("*")
+      .eq("room_id", roomId)
+      .eq("status", "active")
+      .order("starts_at", { ascending: false })
+      .limit(1),
+    supabase
+      .from("meetings")
+      .select("*")
+      .eq("room_id", roomId)
+      .eq("status", "scheduled")
+      .gte("ends_at", new Date().toISOString())
+      .order("starts_at", { ascending: true })
+      .limit(1),
+    supabase.from("room_schedules").select("*").eq("room_id", roomId).maybeSingle(),
+    supabase
+      .from("room_reads")
+      .select("last_read_at")
+      .eq("room_id", roomId)
+      .eq("user_id", access.user.id)
+      .maybeSingle(),
+    supabase.from("room_members").select("user_id").eq("room_id", roomId),
+  ])
 
-  const rawMessages = ((messagesRes.data ?? []) as {
-    id: string
-    room_id: string
-    thread_root_id: string | null
-    sender_type: MessageView["senderType"]
-    sender_id: string | null
-    content: string
-    status: MessageView["status"]
-    mentions: string[]
-    run_id: string | null
-    metadata: Record<string, unknown>
-    created_at: string
-  }[]).reverse()
-
-  const roomAgents: RoomAgentView[] = ((roomAgentsRes.data ?? []) as unknown as {
-    position: number
-    agents: {
+  const rawMessages = (
+    (messagesRes.data ?? []) as {
       id: string
-      org_id: string
-      handle: string
-      display_name: string
-      kind: AgentView["kind"]
-      provider_key_id: string | null
-      model: string | null
-      system_prompt: string
-      params: Record<string, unknown>
-      tool_ids: string[]
-      webhook_url: string | null
+      room_id: string
+      thread_root_id: string | null
+      sender_type: MessageView["senderType"]
+      sender_id: string | null
+      content: string
+      status: MessageView["status"]
+      mentions: string[]
+      run_id: string | null
+      metadata: Record<string, unknown>
       created_at: string
-    }
-  }[]).map((row) => ({
+    }[]
+  ).reverse()
+
+  const roomAgents: RoomAgentView[] = (
+    (roomAgentsRes.data ?? []) as unknown as {
+      position: number
+      agents: {
+        id: string
+        org_id: string
+        handle: string
+        display_name: string
+        kind: AgentView["kind"]
+        provider_key_id: string | null
+        model: string | null
+        system_prompt: string
+        params: Record<string, unknown>
+        tool_ids: string[]
+        webhook_url: string | null
+        capabilities: unknown
+        created_at: string
+      }
+    }[]
+  ).map((row) => ({
     position: row.position,
     agent: {
       id: row.agents.id,
@@ -172,15 +191,18 @@ export async function loadRoomPageData(access: RoomAccess): Promise<RoomPageData
       params: row.agents.params ?? {},
       toolIds: row.agents.tool_ids ?? [],
       webhookUrl: row.agents.webhook_url,
+      capabilities: row.agents.capabilities,
       createdAt: row.agents.created_at,
     },
   }))
 
-  const members: MemberView[] = ((membersRes.data ?? []) as unknown as {
-    user_id: string
-    role: MemberView["role"]
-    profiles: { display_name: string; avatar_url: string | null }
-  }[]).map((row) => ({
+  const members: MemberView[] = (
+    (membersRes.data ?? []) as unknown as {
+      user_id: string
+      role: MemberView["role"]
+      profiles: { display_name: string; avatar_url: string | null }
+    }[]
+  ).map((row) => ({
     userId: row.user_id,
     displayName: row.profiles.display_name,
     avatarUrl: row.profiles.avatar_url,
@@ -199,7 +221,9 @@ export async function loadRoomPageData(access: RoomAccess): Promise<RoomPageData
   if (extraAgentIds.length) {
     const { data: extraAgents } = await supabase
       .from("agents")
-      .select("id, org_id, handle, display_name, kind, provider_key_id, model, system_prompt, params, tool_ids, webhook_url, created_at")
+      .select(
+        "id, org_id, handle, display_name, kind, provider_key_id, model, system_prompt, params, tool_ids, webhook_url, capabilities, created_at",
+      )
       .in("id", extraAgentIds)
     for (const row of extraAgents ?? []) {
       agentMap.set(row.id, {
@@ -214,6 +238,7 @@ export async function loadRoomPageData(access: RoomAccess): Promise<RoomPageData
         params: row.params ?? {},
         toolIds: row.tool_ids ?? [],
         webhookUrl: row.webhook_url,
+        capabilities: row.capabilities,
         createdAt: row.created_at,
       })
     }
@@ -256,7 +281,7 @@ export async function loadRoomPageData(access: RoomAccess): Promise<RoomPageData
       senderName:
         m.sender_type === "system"
           ? "system"
-          : agent?.displayName ?? human?.displayName ?? extraHuman?.displayName ?? "unknown",
+          : (agent?.displayName ?? human?.displayName ?? extraHuman?.displayName ?? "unknown"),
       senderHandle: agent?.handle ?? null,
     }
   })
@@ -269,20 +294,22 @@ export async function loadRoomPageData(access: RoomAccess): Promise<RoomPageData
     if (human.avatarUrl) memberAvatars[id] = human.avatarUrl
   }
 
-  const toolCalls: ToolCallView[] = ((toolsRes.data ?? []) as unknown as {
-    id: string
-    run_id: string | null
-    room_id: string
-    message_id: string | null
-    tool_name: string
-    args: Record<string, unknown>
-    result: unknown
-    status: ToolCallView["status"]
-    approved_by: string | null
-    resolved_at: string | null
-    error: string | null
-    created_at: string
-  }[]).map((row) => ({
+  const toolCalls: ToolCallView[] = (
+    (toolsRes.data ?? []) as unknown as {
+      id: string
+      run_id: string | null
+      room_id: string
+      message_id: string | null
+      tool_name: string
+      args: Record<string, unknown>
+      result: unknown
+      status: ToolCallView["status"]
+      approved_by: string | null
+      resolved_at: string | null
+      error: string | null
+      created_at: string
+    }[]
+  ).map((row) => ({
     id: row.id,
     runId: row.run_id,
     roomId: row.room_id,
@@ -297,15 +324,17 @@ export async function loadRoomPageData(access: RoomAccess): Promise<RoomPageData
     createdAt: row.created_at,
   }))
 
-  const canvases: CanvasView[] = ((canvasesRes.data ?? []) as {
-    id: string
-    room_id: string
-    kind: CanvasView["kind"]
-    title: string
-    language: string | null
-    snapshot_text: string
-    updated_at: string
-  }[]).map((row) => ({
+  const canvases: CanvasView[] = (
+    (canvasesRes.data ?? []) as {
+      id: string
+      room_id: string
+      kind: CanvasView["kind"]
+      title: string
+      language: string | null
+      snapshot_text: string
+      updated_at: string
+    }[]
+  ).map((row) => ({
     id: row.id,
     roomId: row.room_id,
     kind: row.kind,
@@ -316,7 +345,12 @@ export async function loadRoomPageData(access: RoomAccess): Promise<RoomPageData
   }))
 
   const sessionRow = (sessionRes.data ?? [])[0] as
-    | { id: string; thread_root_id: string | null; state: string; queue: { agentId: string; role: string }[] }
+    | {
+        id: string
+        thread_root_id: string | null
+        state: string
+        queue: { agentId: string; role: string }[]
+      }
     | undefined
   const activeSession: SessionView | null = sessionRow
     ? {
@@ -402,23 +436,25 @@ export async function listRoomAgents(roomId: string): Promise<RoomAgentView[]> {
     )
     .eq("room_id", roomId)
     .order("position", { ascending: true })
-  return ((data ?? []) as unknown as {
-    position: number
-    agents: {
-      id: string
-      org_id: string
-      handle: string
-      display_name: string
-      kind: AgentView["kind"]
-      provider_key_id: string | null
-      model: string | null
-      system_prompt: string
-      params: Record<string, unknown>
-      tool_ids: string[]
-      webhook_url: string | null
-      created_at: string
-    }
-  }[]).map((row) => ({
+  return (
+    (data ?? []) as unknown as {
+      position: number
+      agents: {
+        id: string
+        org_id: string
+        handle: string
+        display_name: string
+        kind: AgentView["kind"]
+        provider_key_id: string | null
+        model: string | null
+        system_prompt: string
+        params: Record<string, unknown>
+        tool_ids: string[]
+        webhook_url: string | null
+        created_at: string
+      }
+    }[]
+  ).map((row) => ({
     position: row.position,
     agent: {
       id: row.agents.id,
@@ -449,20 +485,22 @@ async function loadOrgAgents(orgId: string): Promise<AgentView[]> {
     )
     .eq("org_id", orgId)
     .order("handle")
-  return ((data ?? []) as {
-    id: string
-    org_id: string
-    handle: string
-    display_name: string
-    kind: AgentView["kind"]
-    provider_key_id: string | null
-    model: string | null
-    system_prompt: string
-    params: Record<string, unknown>
-    tool_ids: string[]
-    webhook_url: string | null
-    created_at: string
-  }[]).map((row) => ({
+  return (
+    (data ?? []) as {
+      id: string
+      org_id: string
+      handle: string
+      display_name: string
+      kind: AgentView["kind"]
+      provider_key_id: string | null
+      model: string | null
+      system_prompt: string
+      params: Record<string, unknown>
+      tool_ids: string[]
+      webhook_url: string | null
+      created_at: string
+    }[]
+  ).map((row) => ({
     id: row.id,
     orgId: row.org_id,
     handle: row.handle,
@@ -485,14 +523,16 @@ export async function listProviderKeys(orgId: string): Promise<ProviderKeyView[]
     .select("id, provider, base_url, label, last4, created_at")
     .eq("org_id", orgId)
     .order("created_at")
-  return ((data ?? []) as {
-    id: string
-    provider: string
-    base_url: string | null
-    label: string
-    last4: string
-    created_at: string
-  }[]).map((row) => ({
+  return (
+    (data ?? []) as {
+      id: string
+      provider: string
+      base_url: string | null
+      label: string
+      last4: string
+      created_at: string
+    }[]
+  ).map((row) => ({
     id: row.id,
     provider: row.provider,
     baseUrl: row.base_url,
@@ -506,22 +546,26 @@ export async function listVectorProviders(orgId: string): Promise<VectorProvider
   const supabase = await createSupabaseServerClient()
   const { data } = await supabase
     .from("vector_providers_public")
-    .select("id, org_id, kind, provider, label, endpoint_url, last4, config, is_active, created_at, updated_at")
+    .select(
+      "id, org_id, kind, provider, label, endpoint_url, last4, config, is_active, created_at, updated_at",
+    )
     .eq("org_id", orgId)
     .order("created_at")
-  return ((data ?? []) as {
-    id: string
-    org_id: string
-    kind: "vector_db" | "embedding"
-    provider: string
-    label: string
-    endpoint_url: string | null
-    last4: string
-    config: Record<string, unknown> | null
-    is_active: boolean
-    created_at: string
-    updated_at: string
-  }[]).map((row) => ({
+  return (
+    (data ?? []) as {
+      id: string
+      org_id: string
+      kind: "vector_db" | "embedding"
+      provider: string
+      label: string
+      endpoint_url: string | null
+      last4: string
+      config: Record<string, unknown> | null
+      is_active: boolean
+      created_at: string
+      updated_at: string
+    }[]
+  ).map((row) => ({
     id: row.id,
     orgId: row.org_id,
     kind: row.kind,
@@ -543,17 +587,19 @@ export async function listMcpServers(orgId: string): Promise<McpServerView[]> {
     .select("id, org_id, room_id, name, transport, url, dangerous_tools, enabled, created_at")
     .eq("org_id", orgId)
     .order("name")
-  return ((data ?? []) as {
-    id: string
-    org_id: string
-    room_id: string | null
-    name: string
-    transport: "http" | "sse"
-    url: string
-    dangerous_tools: string[]
-    enabled: boolean
-    created_at: string
-  }[]).map((row) => ({
+  return (
+    (data ?? []) as {
+      id: string
+      org_id: string
+      room_id: string | null
+      name: string
+      transport: "http" | "sse"
+      url: string
+      dangerous_tools: string[]
+      enabled: boolean
+      created_at: string
+    }[]
+  ).map((row) => ({
     id: row.id,
     orgId: row.org_id,
     roomId: row.room_id,
@@ -613,16 +659,18 @@ export async function listAgentApiKeys(orgId: string): Promise<AgentApiKeyView[]
     .select("id, agent_id, prefix, label, scopes, revoked_at, last_used_at, created_at")
     .in("agent_id", ids)
     .order("created_at", { ascending: false })
-  return ((data ?? []) as {
-    id: string
-    agent_id: string
-    prefix: string
-    label: string
-    scopes: string[]
-    revoked_at: string | null
-    last_used_at: string | null
-    created_at: string
-  }[]).map((row) => ({
+  return (
+    (data ?? []) as {
+      id: string
+      agent_id: string
+      prefix: string
+      label: string
+      scopes: string[]
+      revoked_at: string | null
+      last_used_at: string | null
+      created_at: string
+    }[]
+  ).map((row) => ({
     id: row.id,
     agentId: row.agent_id,
     prefix: row.prefix,
@@ -642,16 +690,18 @@ export async function listWebhookDeliveries(orgId: string): Promise<WebhookDeliv
     .eq("org_id", orgId)
     .order("created_at", { ascending: false })
     .limit(50)
-  return ((data ?? []) as {
-    id: string
-    agent_id: string | null
-    message_id: string | null
-    attempt: number
-    status_code: number | null
-    response_ms: number | null
-    error: string | null
-    created_at: string
-  }[]).map((row) => ({
+  return (
+    (data ?? []) as {
+      id: string
+      agent_id: string | null
+      message_id: string | null
+      attempt: number
+      status_code: number | null
+      response_ms: number | null
+      error: string | null
+      created_at: string
+    }[]
+  ).map((row) => ({
     id: row.id,
     agentId: row.agent_id,
     messageId: row.message_id,
@@ -671,15 +721,17 @@ export async function listAuditLogs(orgId: string): Promise<AuditLogView[]> {
     .eq("org_id", orgId)
     .order("created_at", { ascending: false })
     .limit(100)
-  return ((data ?? []) as {
-    id: string
-    actor_type: string
-    actor_id: string | null
-    action: string
-    target: string | null
-    metadata: Record<string, unknown>
-    created_at: string
-  }[]).map((row) => ({
+  return (
+    (data ?? []) as {
+      id: string
+      actor_type: string
+      actor_id: string | null
+      action: string
+      target: string | null
+      metadata: Record<string, unknown>
+      created_at: string
+    }[]
+  ).map((row) => ({
     id: row.id,
     actorType: row.actor_type,
     actorId: row.actor_id,
@@ -697,13 +749,15 @@ export async function listPricing(): Promise<PricingView[]> {
     .select("provider, model, input_per_mtok, output_per_mtok, updated_at")
     .order("provider")
     .order("model")
-  return ((data ?? []) as {
-    provider: string
-    model: string
-    input_per_mtok: number | string
-    output_per_mtok: number | string
-    updated_at: string
-  }[]).map((row) => ({
+  return (
+    (data ?? []) as {
+      provider: string
+      model: string
+      input_per_mtok: number | string
+      output_per_mtok: number | string
+      updated_at: string
+    }[]
+  ).map((row) => ({
     provider: row.provider,
     model: row.model,
     inputPerMtok: Number(row.input_per_mtok),
@@ -716,27 +770,27 @@ export async function listRoomMemberRows(
   roomId: string,
 ): Promise<{ userId: string; role: RoomRole }[]> {
   const supabase = await createSupabaseServerClient()
-  const { data } = await supabase
-    .from("room_members")
-    .select("user_id, role")
-    .eq("room_id", roomId)
+  const { data } = await supabase.from("room_members").select("user_id, role").eq("room_id", roomId)
   return ((data ?? []) as { user_id: string; role: RoomRole }[]).map((row) => ({
     userId: row.user_id,
     role: row.role,
   }))
 }
 
-export async function listMemberViews(orgId: string): Promise<MemberView[]> {  const supabase = await createSupabaseServerClient()
+export async function listMemberViews(orgId: string): Promise<MemberView[]> {
+  const supabase = await createSupabaseServerClient()
   const { data } = await supabase
     .from("org_members")
     .select("user_id, role, profiles!inner(display_name, avatar_url)")
     .eq("org_id", orgId)
     .order("created_at")
-  return ((data ?? []) as unknown as {
-    user_id: string
-    role: MemberView["role"]
-    profiles: { display_name: string; avatar_url: string | null }
-  }[]).map((row) => ({
+  return (
+    (data ?? []) as unknown as {
+      user_id: string
+      role: MemberView["role"]
+      profiles: { display_name: string; avatar_url: string | null }
+    }[]
+  ).map((row) => ({
     userId: row.user_id,
     displayName: row.profiles.display_name,
     avatarUrl: row.profiles.avatar_url,
@@ -748,24 +802,28 @@ export async function listWorkspaceConnectors(orgId: string): Promise<WorkspaceC
   const supabase = await createSupabaseServerClient()
   const { data } = await supabase
     .from("workspace_connectors_public")
-    .select("id, org_id, source, name, status, auth_type, last4, config, last_synced_at, error_message, created_at, updated_at")
+    .select(
+      "id, org_id, source, name, status, auth_type, last4, config, last_synced_at, error_message, created_at, updated_at",
+    )
     .eq("org_id", orgId)
     .order("created_at", { ascending: true })
 
-  return ((data ?? []) as {
-    id: string
-    org_id: string
-    source: string
-    name: string
-    status: string
-    auth_type: string
-    last4: string
-    config: Record<string, unknown> | null
-    last_synced_at: string | null
-    error_message: string | null
-    created_at: string
-    updated_at: string
-  }[]).map((r) => ({
+  return (
+    (data ?? []) as {
+      id: string
+      org_id: string
+      source: string
+      name: string
+      status: string
+      auth_type: string
+      last4: string
+      config: Record<string, unknown> | null
+      last_synced_at: string | null
+      error_message: string | null
+      created_at: string
+      updated_at: string
+    }[]
+  ).map((r) => ({
     id: r.id,
     orgId: r.org_id,
     source: r.source,
@@ -788,7 +846,8 @@ export async function listAgentConnectorGrants(
   const supabase = await createSupabaseServerClient()
   const { data } = await supabase
     .from("agent_connector_grants")
-    .select(`
+    .select(
+      `
       id,
       org_id,
       agent_id,
@@ -809,33 +868,36 @@ export async function listAgentConnectorGrants(
         created_at,
         updated_at
       )
-    `)
+    `,
+    )
     .eq("org_id", orgId)
     .eq("agent_id", agentId)
     .order("created_at", { ascending: true })
 
-  return ((data ?? []) as unknown as {
-    id: string
-    org_id: string
-    agent_id: string
-    connector_id: string
-    scope_config: Record<string, unknown> | null
-    created_at: string
-    connector: {
+  return (
+    (data ?? []) as unknown as {
       id: string
       org_id: string
-      source: string
-      name: string
-      status: string
-      auth_type: string
-      last4: string
-      config: Record<string, unknown> | null
-      last_synced_at: string | null
-      error_message: string | null
+      agent_id: string
+      connector_id: string
+      scope_config: Record<string, unknown> | null
       created_at: string
-      updated_at: string
-    } | null
-  }[]).map((r) => ({
+      connector: {
+        id: string
+        org_id: string
+        source: string
+        name: string
+        status: string
+        auth_type: string
+        last4: string
+        config: Record<string, unknown> | null
+        last_synced_at: string | null
+        error_message: string | null
+        created_at: string
+        updated_at: string
+      } | null
+    }[]
+  ).map((r) => ({
     id: r.id,
     orgId: r.org_id,
     agentId: r.agent_id,

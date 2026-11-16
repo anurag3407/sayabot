@@ -8,7 +8,7 @@ Source files: `apps/desktop/src/host.ts`, `src/host-auth.ts` (registration owner
 
 ## 🔑 Registration (`register`, `src/host.ts:239`)
 
-Registration is `POST /api/desktop/register` with the **user's** bearer token, body `{ name: hostname (`.local` stripped), platform, version: app.getVersion(), refreshToken }`. When a previous registration exists for the same server, its `x-host-id`/`x-host-token` headers are sent so the server keeps that computer row (`src/host.ts:242-245`). The response `{ hostId, hostToken, session? }` is saved to `sayabot-host.json` (mode 0o600); if the server returns refreshed user tokens, `deps.onSessionUpdate` persists them into the session file (`src/host.ts:267-269`).
+Registration is `POST /api/desktop/register` with the **user's** bearer token, body `{ name: hostname (`.local` stripped), platform, version: app.getVersion(), refreshToken }`. When a previous registration exists for the same server, its `x-host-id`/`x-host-token` headers are sent so the server keeps that computer row (`src/host.ts:242-245`). The response `{ hostId, hostToken, session? }` is saved atomically to `sayabot-host.json` (mode 0o600, previous copy kept as `.bak`); if the server returns refreshed user tokens, `deps.onSessionUpdate` persists them into the session file.
 
 ### Whose registration is it? (`src/host-auth.ts`)
 
@@ -22,13 +22,13 @@ Heartbeats land on the account that **registered** the computer, so a stale regi
 
 `start()` (`src/host.ts:191`) deduplicates concurrent connects through a `starting` promise and is safe to call on every login change. When the resulting `hostId` differs from the previous one, the agents and storage scans are reset so the new computer row is populated immediately (`src/host.ts:208-212`). `forget()` (`src/host.ts:232`) stops the host and deletes the saved registration (used on sign-out, 401, and account switches).
 
-## 💓 Heartbeat (`heartbeat`, `src/host.ts:364`)
+## 💓 Heartbeat (`heartbeat`, `src/host.ts`)
 
-`HEARTBEAT_MS` is **2,500 ms** (`src/host.ts:58`); a `beating` guard prevents overlap. Each beat is `POST /api/desktop/heartbeat` with:
+`HEARTBEAT_MS` is **2,500 ms**; a `beating` guard prevents overlap. Each beat is `POST /api/desktop/heartbeat` with:
 
 - **`permissions`** — `permissionState()` (`src/host.ts`): macOS screen-recording status and accessibility (`isTrustedAccessibilityClient`). On Windows, screen is `granted` unless `getMediaAccessStatus("screen")` is `denied` or `restricted`, and accessibility is `granted` (injection uses the interactive session). Other platforms stay `"unknown"`.
 - **`localAgents`** — re-scanned at most every **60 s** via the injected `detectLocalAgents` (see [local-agents-and-injector.md](./local-agents-and-injector.md)); the server keeps the last list in between.
-- **`storage`** — re-measured at most every **10 min** via `measureLocalStorage` (see [overview.md](./overview.md)).
+- **`storage`** — re-measured at most every **10 min** via `measureLocalStorage`, off the heartbeat so the walk cannot delay a claim (see [overview.md](./overview.md)).
 
 The reply (`HeartbeatReply`, `src/host.ts:49-55`) carries everything the computer needs to act:
 
@@ -44,13 +44,13 @@ The reply (`HeartbeatReply`, `src/host.ts:49-55`) carries everything the compute
 
 `lastReply` is kept public for `host:get-status`. `deps.onHeartbeat` drives the workers in `main.ts`: the runner's `maybeRun(queuedJobs, settings.runnerEnabled)`, the vault's `maybeRun(secretJobs)`, and local MCP's `maybeRun(mcpCalls)` — each one job at a time.
 
-One beat, end to end (`src/host.ts:364-398`):
+One beat, end to end:
 
 ```
 every 2,500 ms (skipped if the previous beat is still in flight)
-├─ scan agents?        (> 60 s since last)  → deps.detectLocalAgents()  → localAgents
-├─ measure storage?    (> 10 min since last) → measureLocalStorage()     → storage
-├─ POST /api/desktop/heartbeat { permissions, localAgents?, storage? }
+├─ scan agents?        (> 60 s since last)  → deps.detectLocalAgents() in the background → localAgents on a later beat
+├─ measure storage?    (> 10 min since last) → measureLocalStorage() in the background → storage on a later beat
+├─ POST /api/desktop/heartbeat { permissions, localAgents?, storage? }  (aborts after 12 s)
 ├─ save reply to lastReply, fire deps.onHeartbeat(reply)   (runner / vault / local MCP)
 ├─ void maybeCloudHandoff()                                 (throttled to 10 min)
 └─ for each reply.sessions[] not in `handled` → mark handled → handleSession(...)
@@ -68,7 +68,9 @@ every 2,500 ms (skipped if the previous beat is still in flight)
 
 ### Authenticated transport (`get`/`post`, `src/host.ts:285-315`)
 
-Every call sends `x-host-id` + `x-host-token` headers. A `401` on `post` calls `forget()` and returns `null` — the computer was removed on the web or its token rotated elsewhere, so it re-registers on next start (`src/host.ts:306-309`). All network failures degrade to `null`; callers treat that as "nothing to do".
+Every call sends `x-host-id` + `x-host-token` headers and aborts after 12 seconds, so one stalled request cannot freeze the heartbeat (and with it, job claims). A `401` on `post` calls `forget()` and returns `null` — the computer was removed on the web or its token rotated elsewhere, so it re-registers on next start. All network failures degrade to `null`; callers treat that as "nothing to do".
+
+While the host loop is running, `powerSaveBlocker.start("prevent-app-suspension")` keeps macOS from suspending the process under App Nap. Without that, a backgrounded Sayabot stops heartbeating and a queued job expires as "didn't pick this up" even though the app is still open. `stop()` and a failed connect release the blocker.
 
 ---
 

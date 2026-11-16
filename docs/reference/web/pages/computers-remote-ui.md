@@ -42,9 +42,9 @@ One card per computer:
   - **Remove this computer** — `removeHostAction` (soft revoke).
 - Every setting change calls `updateHostSettingsAction` with the patch, toasts "Saved" / error, and `router.refresh()`.
 
-### `WorkspaceComputers`
+### Cloud desktops and your server
 
-Workspace-wide card "Boat and your VPS": one Boat key for the whole app (billed by Boat; a Cloud relay token is used only when empty), and the VPS this workspace may use ("Docker over SSH. Sayabot never turns that server off."). For admins it renders a form: password input for the Boat key (`boat_…` / `box_…`), a "Remove the saved Boat key" checkbox, the VPS SSH config name, an "Auto may start the desktop container on that server" checkbox, and Save → `saveWorkspaceComputersAction`. Non-admins see the current state ("Boat key ending <last4>" or "No Boat key yet") read-only.
+Above the Macs list, the page renders `ComputerProviders` (`src/components/providers/computer-providers.tsx`) with the `ComputerProvidersView` from `loadComputerProviders(orgId)` — the same block as Settings → AI providers → Computers and browser, documented in [settings-ui.md](./settings-ui.md#-ai-providers-keys). Non-admins see the status pills only. The Macs follow under "Your Macs".
 
 ### Empty state
 
@@ -53,16 +53,16 @@ Workspace-wide card "Boat and your VPS": one Boat key for the whole app (billed 
 ## 🔧 Host Settings Actions (`lib/actions/desktop.ts`)
 
 - **`updateHostSettingsAction`** — gated by `ownHost()`: org access + `host.user_id === me` ("Only the person who set up this computer can change it"). Merges the patch into `settings`; `localDefault: true` requires `pickDefaultApp(localAgents)` to find a signed-in CLI (else fails "Sign in to Claude Code, Codex, Gemini CLI or OpenCode on this computer first") and sets `runnerEnabled: true`. Sharing beyond "only me" **or** enabling the runner ties the host to the workspace by writing `org_id` (cleared back to `null` otherwise, `desktop.ts:47-49`). Audited as `desktop.settings_changed` with the full settings in metadata; revalidates the computers page.
-- **`saveWorkspaceComputersAction`** — admin-only; delegates to `computerSettingsUpdate` and upserts `org_computer_settings`; audit metadata records only booleans (`boat`, `clearBoat`, `vps`) — never the key.
 - **`removeHostAction`** — owner-only; sets `revoked_at` (soft revoke; the row and its history remain) and returns `"<name> removed"`.
 
-## 🔐 Sealed Boat Key (`lib/computer-settings.ts`)
+## 🔐 Sealed provider keys (`lib/computer-settings.ts`)
 
-`computerSettingsUpdate(input)` is a pure server-side builder used by the action above:
+`computerProviderUpdate(input)` is the pure builder behind `saveComputerProviderAction` (see [settings-ui.md](./settings-ui.md#-ai-providers-keys)). It returns only the chosen provider's columns plus `org_id`/`updated_at`, so an upsert leaves the other providers alone:
 
-- Boat token must match `/^(boat|box)_[A-Za-z0-9_-]{8,}$/` ("A Boat key starts with boat_ or box_"); SSH alias must match `/^[A-Za-z0-9_.:@-]+$/`, trimmed to 80 chars.
-- Output row always carries `org_id`, `vps_ssh_alias`, `vps_start_automatically`, `updated_at`.
-- `clearBoat` nulls `boat_ciphertext/iv/tag/last4`; a new token is sealed with `encryptSecret(token, kek)` (AES-256-GCM from `@sayabot/llm`) into those three columns plus `boat_last4 = last4(token)` (`computer-settings.ts:38-44`). The row never contains the plaintext key.
+- `boat`: token must match `/^(boat|box)_[A-Za-z0-9_-]{8,}$/`; sealed into `boat_ciphertext/iv/tag` + `boat_last4`. `e2b`: token must match `/^e2b_[A-Za-z0-9_-]{8,}$/`; sealed into `e2b_*`. `clear` nulls the four columns.
+- `vps` by address: `parseSshAddress` reads `ssh -p 2222 user@host`, `user@host:2222`, `user@host` or `host` (user defaults to `root`, port to 22) into `vps_host/vps_user/vps_port` and nulls the alias. A pasted private key must be a whole `-----BEGIN … PRIVATE KEY-----` block without a passphrase (`checkPrivateKey`) and is sealed into `vps_key_*`; an empty key field keeps the saved one.
+- `vps` by SSH config name: `/^[A-Za-z0-9_.:@-]+$/`, not starting with `-`, max 80 chars; clears host, user, port and any saved key.
+- `vps_start_automatically` is written on every VPS save. The row never contains a plaintext key.
 
 ## 🎥 Remote Desktop Page (`remote/[hostId]/page.tsx`)
 

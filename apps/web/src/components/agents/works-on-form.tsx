@@ -4,8 +4,8 @@ import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
 import { setAgentWorksOnAction } from "@/lib/actions/agents"
 import { WORKS_ON_OPTIONS } from "@/lib/works-on"
+import { WorksOnPicker } from "@/components/agents/works-on-picker"
 import { Button } from "@/components/ui/button"
-import { Select } from "@/components/ui/field"
 import { showToast } from "@/components/ui/toast"
 
 export function WorksOnForm({
@@ -27,7 +27,8 @@ export function WorksOnForm({
   const [screen, setScreen] = useState(thisComputer)
 
   if (!canEdit) {
-    return <p className="text-xs text-muted-foreground">Works on {worksOn.replaceAll("_", " ")}</p>
+    const label = WORKS_ON_OPTIONS.find(([value]) => value === worksOn)?.[1] ?? worksOn.replaceAll("_", " ")
+    return <p className="text-xs text-muted-foreground">Works on {label}</p>
   }
 
   return (
@@ -47,16 +48,8 @@ export function WorksOnForm({
         })
       }}
     >
-      <label className="block text-xs text-muted-foreground" htmlFor="works-on">
-        Works on
-      </label>
-      <Select id="works-on" value={surface} onChange={(event) => setSurface(event.target.value)}>
-        {WORKS_ON_OPTIONS.map(([value, label]) => (
-          <option key={value} value={value}>
-            {label}
-          </option>
-        ))}
-      </Select>
+      <p className="block text-xs text-muted-foreground">Works on</p>
+      <WorksOnPicker orgSlug={orgSlug} worksOn={surface} canAdmin={canEdit} disabled={pending} onChange={setSurface} />
       <p className="text-xs text-muted-foreground">{WORKS_ON_OPTIONS.find(([value]) => value === surface)?.[2]}</p>
       <label className="flex items-center gap-2 text-xs text-muted-foreground">
         <input type="checkbox" checked={screen} onChange={(event) => setScreen(event.target.checked)} />

@@ -2,20 +2,25 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
-import { ChevronRight, Laptop } from "lucide-react"
+import { useActionState, useEffect, useRef, useState } from "react"
+import { Blocks, ChevronRight, Laptop, Loader2, Plug, RefreshCw, Wrench } from "lucide-react"
 import { saveProviderKey } from "@/lib/actions/keys"
+import { ACCOUNT_PROVIDERS } from "@/lib/ai-accounts"
 import { MAC_ACCESS_LABEL } from "@sayabot/core"
 import { LOCAL_STATUS_LABEL, type LocalAgentReport, type LocalAgentsResponse } from "@/lib/local-agents-shared"
 import { InviteBotDialog } from "@/components/room/invite-bot-dialog"
 import { ManageAccountsModal } from "@/components/room/model-picker"
 import { ProviderIcon } from "@/components/room/model-picker/provider-icons"
 import { DeleteKeyButton, TestKeyButton } from "@/components/settings/key-actions"
-import { ActionForm } from "@/components/ui/action-form"
-import { Field, Input, Select } from "@/components/ui/field"
+import { Input, Select } from "@/components/ui/field"
 import { Button } from "@/components/ui/button"
+import { InlineAlert } from "@/components/ui/empty"
+import { showToast } from "@/components/ui/toast"
 import { cn, effectiveProvider } from "@/lib/format"
-import type { ProviderKeyView } from "@/lib/types"
+import type { ComputerProvidersView } from "@/lib/computer-providers-shared"
+import type { ActionResult, ProviderKeyView } from "@/lib/types"
+import { ComputerProviders } from "./computer-providers"
+import { ProviderCard, ProviderList, ProviderSection, StatusPill } from "./provider-card"
 
 interface ProviderInfo {
   id: string
@@ -26,23 +31,17 @@ interface ProviderInfo {
   placeholder?: string
 }
 
-const PROVIDERS: ProviderInfo[] = [
-  { id: "anthropic", name: "Anthropic", blurb: "Claude models", keyUrl: "https://console.anthropic.com/settings/keys", placeholder: "sk-ant-…" },
-  { id: "openai", name: "OpenAI", blurb: "GPT models", keyUrl: "https://platform.openai.com/api-keys", placeholder: "sk-…" },
-  { id: "google", name: "Google", blurb: "Gemini models", keyUrl: "https://aistudio.google.com/apikey", placeholder: "AIza…" },
-  { id: "openrouter", name: "OpenRouter", blurb: "400+ models, many free", keyUrl: "https://openrouter.ai/keys", placeholder: "sk-or-…" },
-  { id: "groq", name: "Groq", blurb: "Very fast open models", keyUrl: "https://console.groq.com/keys", placeholder: "gsk_…" },
-  { id: "cerebras", name: "Cerebras", blurb: "Very fast open models", keyUrl: "https://cloud.cerebras.ai", placeholder: "csk-…" },
-  { id: "copilot", name: "GitHub Copilot", blurb: "Models in your Copilot plan" },
-  { id: "cloudflare", name: "Cloudflare", blurb: "Workers AI and AI Gateway", needsBaseUrl: true },
-  {
-    id: "openai-compatible",
-    name: "Your own server",
-    blurb: "Ollama, LM Studio, vLLM or any OpenAI-compatible API",
-    needsBaseUrl: true,
-    placeholder: "Leave empty if it has none",
-  },
-]
+/** Every provider that takes a key or an address, from the one list the accounts dialog uses too. */
+const PROVIDERS: ProviderInfo[] = ACCOUNT_PROVIDERS.filter(
+  (spec) => spec.kind === "key" || spec.kind === "openrouter" || spec.kind === "custom",
+).map((spec) => ({
+  id: spec.id,
+  name: spec.name,
+  blurb: spec.blurb,
+  keyUrl: spec.keyUrl,
+  needsBaseUrl: spec.kind === "custom",
+  placeholder: spec.id === "openai-compatible" ? "Key, if your server needs one" : spec.keyHint,
+}))
 
 const STATUS_TONE: Record<string, string> = {
   ready: "bg-ok/10 text-ok",
@@ -59,7 +58,16 @@ function Tile({ icon }: { icon: string }) {
   )
 }
 
-function LocalAgents({ orgSlug, rooms }: { orgSlug: string; rooms: { id: string; name: string }[] }) {
+function LocalAgents({
+  orgSlug,
+  rooms,
+  refreshKey,
+}: {
+  orgSlug: string
+  rooms: { id: string; name: string }[]
+  /** Bumped by "Check again" to look for agent apps once more. */
+  refreshKey: number
+}) {
   const [state, setState] = useState<LocalAgentsResponse | null>(null)
   const [inviting, setInviting] = useState<LocalAgentReport | null>(null)
   const [roomId, setRoomId] = useState(rooms[0]?.id ?? "")
@@ -67,6 +75,7 @@ function LocalAgents({ orgSlug, rooms }: { orgSlug: string; rooms: { id: string;
 
   useEffect(() => {
     let cancelled = false
+    setState(null)
     fetch("/api/providers/local", { cache: "no-store" })
       .then((res) => (res.ok ? (res.json() as Promise<LocalAgentsResponse>) : { available: false, agents: [] }))
       .then((data) => !cancelled && setState(data))
@@ -74,7 +83,7 @@ function LocalAgents({ orgSlug, rooms }: { orgSlug: string; rooms: { id: string;
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [refreshKey])
 
   if (!state) {
     return <p className="rounded-xl border border-line bg-panel p-4 text-[13px] text-faint">Looking for agent apps on this computer…</p>
@@ -242,7 +251,12 @@ function order(status: string): number {
   return status === "ready" ? 0 : status === "signed_out" ? 1 : status === "installed" ? 2 : 3
 }
 
-function ProviderRow({
+function nextLabel(info: ProviderInfo, keys: ProviderKeyView[]): string {
+  return keys.length ? `${info.name} ${keys.length + 1}` : `My ${info.name}`
+}
+
+/** One API key provider: paste a key, get one, save. Saved keys list below with test and remove. */
+function ApiKeyRow({
   info,
   orgSlug,
   keys,
@@ -253,124 +267,156 @@ function ProviderRow({
   keys: ProviderKeyView[]
   agentCounts: Record<string, number>
 }) {
-  const [open, setOpen] = useState(false)
+  const [state, formAction, pending] = useActionState<ActionResult | null, FormData>(saveProviderKey, null)
+  const ref = useRef<HTMLFormElement>(null)
+  const router = useRouter()
+  useEffect(() => {
+    if (!state?.ok) return
+    ref.current?.reset()
+    showToast({ tone: "success", message: state.message ?? "Key saved" })
+    router.refresh()
+  }, [state, router])
   const used = keys.reduce((n, k) => n + (agentCounts[k.id] ?? 0), 0)
-  const connected = keys.length > 0
+  const status = keys.length ? (
+    <StatusPill tone="ok">
+      {keys.length === 1 ? "Ready" : `${keys.length} keys`} · {used ? `${used} ${used === 1 ? "bot" : "bots"}` : "no bots yet"}
+    </StatusPill>
+  ) : (
+    <StatusPill tone="idle">Not set up</StatusPill>
+  )
+  const isServer = Boolean(info.needsBaseUrl)
   return (
-    <li>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-raised"
-      >
-        <Tile icon={info.id} />
-        <div className="min-w-0 flex-1">
-          <p className="text-[14px] font-medium text-text">{info.name}</p>
-          <p className="truncate text-[12px] text-faint">
-            {connected
-              ? `${keys.length === 1 ? keys[0]!.label : `${keys.length} accounts`} · ${used ? `${used} ${used === 1 ? "agent" : "agents"}` : "no agents yet"}`
-              : info.blurb}
-          </p>
-        </div>
-        {connected ? <span className="rounded-full bg-ok/10 px-2.5 py-1 text-[12px] text-ok">Connected</span> : null}
-        <ChevronRight className={cn("h-4 w-4 shrink-0 text-faint transition-transform", open && "rotate-90")} />
-      </button>
-      {open ? (
-        <div className="space-y-4 border-t border-line bg-ink px-4 py-4">
-          {keys.length ? (
-            <ul className="space-y-2">
-              {keys.map((key) => (
-                <li key={key.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-line bg-panel px-3 py-2">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[13px] text-text">{key.label}</p>
-                    <p className="text-[11px] text-faint">
-                      •••• {key.last4}
-                      {key.baseUrl ? ` · ${key.baseUrl}` : ""} · {agentCounts[key.id] ?? 0} agents
-                    </p>
-                  </div>
-                  <TestKeyButton orgSlug={orgSlug} keyId={key.id} provider={effectiveProvider(key.provider, key.baseUrl)} />
-                  <DeleteKeyButton orgSlug={orgSlug} keyId={key.id} />
-                </li>
-              ))}
-            </ul>
-          ) : null}
-          <ActionForm action={saveProviderKey} submitLabel={keys.length ? "Add another account" : `Connect ${info.name}`} resetOnSuccess>
-            <input type="hidden" name="orgSlug" value={orgSlug} />
-            <input type="hidden" name="provider" value={info.id} />
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Name it" htmlFor={`label-${info.id}`}>
-                <Input id={`label-${info.id}`} name="label" required maxLength={60} defaultValue={keys.length ? "" : `My ${info.name}`} />
-              </Field>
-              <Field label="API key" htmlFor={`key-${info.id}`} hint="saved encrypted, never shown again">
-                <Input
-                  id={`key-${info.id}`}
-                  name="apiKey"
-                  type="password"
-                  autoComplete="off"
-                  required={info.id !== "openai-compatible"}
-                  placeholder={info.placeholder ?? "Paste it here"}
-                />
-              </Field>
-            </div>
-            {info.needsBaseUrl ? (
-              <Field label="Server address" htmlFor={`base-${info.id}`}>
-                <Input id={`base-${info.id}`} name="baseUrl" placeholder="http://localhost:11434/v1" required={info.id === "openai-compatible"} />
-              </Field>
-            ) : null}
+    <ProviderCard
+      icon={<ProviderIcon provider={info.id} size={18} />}
+      title={isServer ? info.name : `${info.name} API key`}
+      subtitle={info.blurb}
+      status={status}
+    >
+      {keys.length ? (
+        <ul className="mb-3 space-y-2">
+          {keys.map((key) => (
+            <li key={key.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-line bg-ink px-3 py-2">
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] text-text">{key.label}</p>
+                <p className="truncate text-[11px] text-faint">
+                  {key.last4 ? `•••• ${key.last4}` : "no key"}
+                  {key.baseUrl ? ` · ${key.baseUrl}` : ""} · {agentCounts[key.id] ?? 0} bots
+                </p>
+              </div>
+              <TestKeyButton orgSlug={orgSlug} keyId={key.id} provider={effectiveProvider(key.provider, key.baseUrl)} />
+              <DeleteKeyButton orgSlug={orgSlug} keyId={key.id} />
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      <form ref={ref} action={formAction} className="space-y-2">
+        <input type="hidden" name="orgSlug" value={orgSlug} />
+        <input type="hidden" name="provider" value={info.id} />
+        <input type="hidden" name="label" value={nextLabel(info, keys)} />
+        {isServer ? (
+          <Input
+            name="baseUrl"
+            placeholder={info.id === "cloudflare" ? "https://api.cloudflare.com/client/v4/accounts/<id>/ai/v1" : "http://localhost:1234/v1"}
+            required={info.id === "openai-compatible"}
+            aria-label={`${info.name} address`}
+            spellCheck={false}
+          />
+        ) : null}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <Input
+            name="apiKey"
+            type="password"
+            autoComplete="off"
+            spellCheck={false}
+            required={info.id !== "openai-compatible"}
+            placeholder={info.placeholder ?? (keys.length ? "Paste another key" : "Paste your key")}
+            aria-label={`${info.name} key`}
+            className="sm:flex-1"
+          />
+          <div className="flex items-center gap-2">
             {info.keyUrl ? (
-              <a href={info.keyUrl} target="_blank" rel="noreferrer" className="text-[12px] text-muted hover:text-text hover:underline">
-                Get a {info.name} key ↗
+              <a href={info.keyUrl} target="_blank" rel="noreferrer" className="px-1 text-[12.5px] text-muted hover:text-text hover:underline">
+                Get a key ↗
               </a>
             ) : null}
-          </ActionForm>
+            <Button size="sm" variant="primary" type="submit" disabled={pending}>
+              {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+              Save
+            </Button>
+          </div>
         </div>
-      ) : null}
-    </li>
+        {state && !state.ok ? <InlineAlert tone="danger">{state.error}</InlineAlert> : null}
+      </form>
+    </ProviderCard>
   )
 }
+
+const SECTIONS = [
+  ["providers", "Providers"],
+  ["ai-providers", "AI providers"],
+  ["model-servers", "Your own model servers"],
+  ["computers", "Computers and browser"],
+  ["apps", "Apps and tools"],
+] as const
 
 export function ProvidersView({
   orgSlug,
   keys,
   agentCounts,
   rooms,
+  computers,
 }: {
   orgSlug: string
   keys: ProviderKeyView[]
   agentCounts: Record<string, number>
   rooms: { id: string; name: string }[]
+  computers: ComputerProvidersView
 }) {
   const [accountsOpen, setAccountsOpen] = useState(false)
+  const [refreshKey, setRefreshKey] = useState(0)
   const router = useRouter()
   const keysFor = (id: string) => keys.filter((k) => effectiveProvider(k.provider, k.baseUrl) === id)
-  const connected = PROVIDERS.filter((p) => keysFor(p.id).length > 0)
-  const others = PROVIDERS.filter((p) => keysFor(p.id).length === 0)
+  const apiProviders = PROVIDERS.filter((p) => !p.needsBaseUrl)
+  const servers = PROVIDERS.filter((p) => p.needsBaseUrl)
+  // Ready first, the way people scan for what is already working.
+  const ordered = [...apiProviders].sort((a, b) => Number(keysFor(b.id).length > 0) - Number(keysFor(a.id).length > 0))
 
   return (
     <div className="space-y-8">
       <div>
         <h2 className="text-[18px] font-semibold text-text">AI providers</h2>
         <p className="mt-1 text-[13px] text-muted">
-          What your agents think with. Use agent apps already signed in on this computer, or connect an account.
+          What your bots think with, and the computers they work on.
         </p>
+        <nav aria-label="Sections" className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
+          {SECTIONS.map(([id, label]) => (
+            <a
+              key={id}
+              href={`#${id}`}
+              className="shrink-0 rounded-full border border-line px-3 py-1 text-[12px] text-muted transition-colors hover:border-line-strong hover:text-text"
+            >
+              {label}
+            </a>
+          ))}
+        </nav>
       </div>
 
-      <section aria-labelledby="local-heading">
-        <h3 id="local-heading" className="mb-2 text-[14px] font-medium text-text">
-          On this computer
-        </h3>
-        <LocalAgents orgSlug={orgSlug} rooms={rooms} />
-      </section>
-
-      <section aria-labelledby="subs-heading">
-        <h3 id="subs-heading" className="mb-2 text-[14px] font-medium text-text">
-          Sign in with a plan you pay for
-        </h3>
+      <ProviderSection
+        id="providers"
+        title="Providers"
+        description="Agent apps signed in on this computer answer on your own subscription, with no API key."
+        action={
+          <Button size="sm" variant="ghost" onClick={() => setRefreshKey((n) => n + 1)}>
+            <RefreshCw className="h-3.5 w-3.5" />
+            Check again
+          </Button>
+        }
+      >
+        <LocalAgents orgSlug={orgSlug} rooms={rooms} refreshKey={refreshKey} />
         <button
           type="button"
           onClick={() => setAccountsOpen(true)}
-          className="flex w-full items-center gap-3 rounded-xl border border-line bg-panel px-4 py-3 text-left hover:bg-raised"
+          className="mt-2 flex w-full items-center gap-3 rounded-xl border border-line bg-panel px-4 py-3 text-left hover:bg-raised"
         >
           <span className="flex -space-x-2">
             <Tile icon="openai" />
@@ -378,36 +424,64 @@ export function ProvidersView({
             <Tile icon="openrouter" />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-[14px] font-medium text-text">ChatGPT, GitHub Copilot, OpenRouter</p>
-            <p className="text-[12px] text-faint">Sign in once and use the models in your plan</p>
+            <p className="text-[14px] font-medium text-text">Sign in with a plan you pay for</p>
+            <p className="text-[12px] text-faint">ChatGPT, GitHub Copilot, OpenRouter: sign in once and use the models in your plan</p>
           </div>
           <ChevronRight className="h-4 w-4 text-faint" />
         </button>
-      </section>
+      </ProviderSection>
 
-      {connected.length ? (
-        <section aria-labelledby="connected-heading">
-          <h3 id="connected-heading" className="mb-2 text-[14px] font-medium text-text">
-            Connected
-          </h3>
-          <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-panel">
-            {connected.map((info) => (
-              <ProviderRow key={info.id} info={info} orgSlug={orgSlug} keys={keysFor(info.id)} agentCounts={agentCounts} />
-            ))}
-          </ul>
-        </section>
-      ) : null}
-
-      <section aria-labelledby="other-heading">
-        <h3 id="other-heading" className="mb-2 text-[14px] font-medium text-text">
-          {connected.length ? "Other providers" : "Connect with an API key"}
-        </h3>
-        <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-panel">
-          {others.map((info) => (
-            <ProviderRow key={info.id} info={info} orgSlug={orgSlug} keys={[]} agentCounts={agentCounts} />
+      <ProviderSection id="ai-providers" title="AI providers" description="Keys for the models your bots run on.">
+        <ProviderList>
+          {ordered.map((info) => (
+            <ApiKeyRow key={info.id} info={info} orgSlug={orgSlug} keys={keysFor(info.id)} agentCounts={agentCounts} />
           ))}
-        </ul>
-      </section>
+        </ProviderList>
+      </ProviderSection>
+
+      <ProviderSection
+        id="model-servers"
+        title="Your own model servers"
+        description="LM Studio, Ollama, vLLM and servers that speak the OpenAI API."
+      >
+        <ProviderList>
+          {servers.map((info) => (
+            <ApiKeyRow key={info.id} info={info} orgSlug={orgSlug} keys={keysFor(info.id)} agentCounts={agentCounts} />
+          ))}
+        </ProviderList>
+      </ProviderSection>
+
+      <ProviderSection
+        id="computers"
+        title="Computers and browser"
+        description="Cloud desktops, your own server and website logins. Pick one per bot under Works on."
+      >
+        <ComputerProviders orgSlug={orgSlug} view={computers} canEdit />
+      </ProviderSection>
+
+      <ProviderSection id="apps" title="Apps and tools" description="Connected apps and research.">
+        <ProviderList>
+          {(
+            [
+              ["connectors", "Connected apps", "Gmail, Slack, GitHub, Drive and more", Plug],
+              ["tools", "Tools and MCP servers", "Web search, MCP servers and built-in tools", Wrench],
+              ["bots", "Your own bots", "Bring a bot you run yourself into rooms", Blocks],
+            ] as const
+          ).map(([segment, title, subtitle, Icon]) => (
+            <ProviderCard
+              key={segment}
+              icon={<Icon className="h-4 w-4" />}
+              title={title}
+              subtitle={subtitle}
+              status={
+                <Link href={`/${orgSlug}/settings/${segment}`} className="text-[12.5px] font-medium text-accent hover:underline">
+                  Open →
+                </Link>
+              }
+            />
+          ))}
+        </ProviderList>
+      </ProviderSection>
 
       <ManageAccountsModal
         orgSlug={orgSlug}

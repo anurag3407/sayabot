@@ -19,11 +19,12 @@ vi.mock("./llm", () => ({
   },
 }))
 
-const { macPlan, whenMacOff } = await import("./local")
+const { macClaimWait, macPlan, whenMacOff } = await import("./local")
 type Agent = Parameters<typeof macPlan>[0]
 
 const config = { hostId: "11111111-1111-1111-1111-111111111111", app: "claude-code" as const }
-const agent = (params: Record<string, unknown> = {}) => ({ ownerUserId: "u1", params: { runner: config, ...params } }) as unknown as Agent
+const agent = (params: Record<string, unknown> = {}) =>
+  ({ ownerUserId: "u1", params: { runner: config, ...params } }) as unknown as Agent
 const host = (lastSeenAt: Date | null, extra: Record<string, unknown> = {}) => [
   { userId: "u1", revokedAt: null, settings: { runnerEnabled: true }, lastSeenAt, ...extra },
 ]
@@ -67,5 +68,26 @@ describe("macPlan: a bot pinned to a Mac", () => {
     expect(whenMacOff({ whenMacOff: "server" })).toBe("server")
     expect(whenMacOff({ whenMacOff: "nope" })).toBe("auto")
     expect(whenMacOff(null)).toBe("auto")
+  })
+})
+
+describe("macClaimWait", () => {
+  it("gives an online Mac the first minute, then keeps the job while heartbeats continue", () => {
+    expect(macClaimWait({ elapsedMs: 30_000, waiting: false, online: true })).toBe("wait")
+    expect(macClaimWait({ elapsedMs: 90_000, waiting: false, online: true })).toBe("wait")
+    expect(macClaimWait({ elapsedMs: 15 * 60_000 + 1, waiting: false, online: true })).toBe(
+      "unclaimed",
+    )
+  })
+
+  it("stops once a Mac that looked open goes quiet", () => {
+    expect(macClaimWait({ elapsedMs: 90_000, waiting: false, online: false })).toBe("unclaimed")
+  })
+
+  it("waits out the full quarter hour for a Mac that was already offline", () => {
+    expect(macClaimWait({ elapsedMs: 90_000, waiting: true, online: false })).toBe("wait")
+    expect(macClaimWait({ elapsedMs: 15 * 60_000 + 1, waiting: true, online: false })).toBe(
+      "offline",
+    )
   })
 })

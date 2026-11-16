@@ -76,7 +76,7 @@ The update replaces **the copy that is running**: the bundle path is derived fro
 
 ### The script (`macUpdateInstallScript`, `src/mac-install.ts:44`)
 
-`stageMacUpdate` (`src/mac-install.ts:141`) writes the generated bash script (mode 0o755) into a fresh `sayabot-update-*` temp dir; `runDetached` spawns `bash <script>` detached/unref'd; `main.ts` then quits via `quitForUpdate` (`src/main.ts:481`) — a normal `app.quit()` with a 5-second force `app.exit(0)` in case something holds the quit up.
+`stageMacUpdate` (`src/mac-install.ts:141`) writes the generated bash script (mode 0o755) into a fresh `sayabot-update-*` temp dir; `runDetached` spawns `bash <script>` detached/unref'd; `main.ts` then quits via `quitForUpdate`. That first asks the open page for its current login and writes it to `sayabot-session.json`, then flushes Chromium's cookie store (`session.defaultSession.flushStorageData` and `cookies.flushStore`) so the SQLite cookie database is not left half-written. It then calls `app.quit()`, and force-exits with `app.exit(0)` after 8 seconds if something holds the quit up.
 
 The script, with `set -uo pipefail` and everything logged to `~/Library/Logs/Sayabot/update.log`:
 

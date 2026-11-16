@@ -390,6 +390,44 @@
   transform: translateX(4px);
 }
 
+.home-soon {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.home-soon li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--text);
+}
+
+.home-soon svg {
+  width: 14px;
+  height: 14px;
+  margin-top: 3px;
+  flex-shrink: 0;
+  color: var(--text);
+}
+
+.home-soon em {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 560;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--faint);
+  padding-top: 2px;
+}
+
 @media (max-width: 1080px) {
   .home-row {
     padding: 0 14px;

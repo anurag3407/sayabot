@@ -1,6 +1,6 @@
 # Computers, Devices & Desktop Schemas
 
-This reference documents the Drizzle schemas that track Sayabot's client and compute surface: persistent agent computers (`agent_computers`), workspace computer settings including the Boat key and VPS alias (`org_computer_settings`, `cloud_home_copies`), mobile device pairings and push tokens (`device_pairings`, `mobile_push_tokens`), and the desktop app ecosystem (`desktop_hosts`, `remote_sessions`, `local_runner_jobs`, `desktop_secret_jobs`, `desktop_mcp_calls`). Every table is org- or user-scoped and protected by the RLS policies in `packages/db/sql/0002_rls.sql` and later SQL migrations.
+This reference documents the Drizzle schemas that track Sayabot's client and compute surface: persistent agent computers (`agent_computers`), workspace computer settings including the Boat and E2B keys and the VPS target (`org_computer_settings`, `cloud_home_copies`), mobile device pairings and push tokens (`device_pairings`, `mobile_push_tokens`), and the desktop app ecosystem (`desktop_hosts`, `remote_sessions`, `local_runner_jobs`, `desktop_secret_jobs`, `desktop_mcp_calls`). Every table is org- or user-scoped and protected by the RLS policies in `packages/db/sql/0002_rls.sql` and later SQL migrations.
 
 Source files: `packages/db/src/schema/computers.ts`, `packages/db/src/schema/computer-settings.ts`, `packages/db/src/schema/devices.ts`, `packages/db/src/schema/desktop.ts`, `packages/db/src/schema/enums.ts` (computer enums)
 
@@ -38,7 +38,7 @@ Indexes (`packages/db/src/schema/computers.ts:37-40`):
 
 ## Workspace Computer Settings (`org_computer_settings`)
 
-Defined at `packages/db/src/schema/computer-settings.ts:8`. One row per workspace: the "Boat" key (the workspace's shared computer credential, sealed with `MESH_KEK`) and an optional VPS that can host this workspace's bots. Sayabot never stops the VPS itself.
+Defined at `packages/db/src/schema/computer-settings.ts:8`. One row per workspace: the Boat key and the E2B key (each sealed with `MESH_KEK`) and an optional VPS that can host this workspace's bots, reached by an SSH config alias or by host, user, port and a sealed private key. Sayabot never stops the VPS itself. Each Save in Settings → AI providers upserts only one provider's columns, so the others are left as they were.
 
 | Column | SQL type | Constraints / Default | Description |
 | :--- | :--- | :--- | :--- |
@@ -47,7 +47,13 @@ Defined at `packages/db/src/schema/computer-settings.ts:8`. One row per workspac
 | `boat_iv` | `text` | nullable | Base64 IV for the Boat key. |
 | `boat_tag` | `text` | nullable | Base64 GCM auth tag for the Boat key. |
 | `boat_last4` | `text` | nullable | Last four characters for UI display. |
-| `vps_ssh_alias` | `text` | nullable | SSH config alias of the workspace VPS. |
+| `e2b_ciphertext` / `e2b_iv` / `e2b_tag` | `text` | nullable | AES-256-GCM envelope of the E2B API key (migration 0039). |
+| `e2b_last4` | `text` | nullable | Last four characters of the E2B key for the UI. |
+| `vps_ssh_alias` | `text` | nullable | SSH config alias of the workspace VPS, on the orchestrator machine. Used when no `vps_host` is set. |
+| `vps_host` | `text` | nullable | Direct SSH host (name, IP or Tailscale name). Wins over the alias. |
+| `vps_user` | `text` | nullable | SSH login for `vps_host` (orchestrator falls back to `root`). |
+| `vps_port` | `integer` | nullable | SSH port for `vps_host` (falls back to 22). |
+| `vps_key_ciphertext` / `vps_key_iv` / `vps_key_tag` | `text` | nullable | AES-256-GCM envelope of the SSH private key for `vps_host`. Opened only for one ssh call, written to a 0600 temp file and deleted after. |
 | `vps_start_automatically` | `boolean` | NOT NULL, default `false` | When true, `auto` placement may create this bot's container on the VPS. Off until an admin enables it. |
 | `updated_at` | `timestamptz` | NOT NULL, default `now()` | Last update time. |
 
@@ -244,7 +250,7 @@ Index: `desktop_mcp_calls_host_idx` on `(host_id, status)` (`packages/db/src/sch
 ## Lifecycle notes
 
 - Computers: `agent_computers.status` transitions are driven by `computerd`; `over_quota` is set when a provision request would exceed `org_quotas.max_computers` / `max_running_computers` / `max_disk_mb_total`.
-- Placement: `org_computer_settings.vps_start_automatically` gates whether the auto placement strategy may schedule a bot's container onto the workspace VPS identified by `vps_ssh_alias`.
+- Placement: `org_computer_settings.vps_start_automatically` gates whether a bot set to Auto may start its container on the workspace VPS. A bot pinned to `vps` starts its own container without it.
 - Desktop claim routes: `local_runner_jobs`, `desktop_secret_jobs`, and `desktop_mcp_calls` all follow the same queue pattern — orchestrator inserts with `status = "queued"`, the desktop app polls by `(host_id, status)`, claims, then writes results and `finished_at`.
 
 ---

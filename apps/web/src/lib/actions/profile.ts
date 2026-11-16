@@ -23,7 +23,8 @@ export async function updateProfileAction(
     const dataUrl = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(photo)
     const remoteUrl = /^https:\/\/[^\s"'<>]{1,500}$/.test(photo)
     if (!dataUrl && !remoteUrl) return fail("Use a PNG, JPEG or WebP image")
-    if (dataUrl && photo.length > 300_000) return fail("That image is too large. Pick a smaller one.")
+    if (dataUrl && photo.length > 300_000)
+      return fail("That image is too large. Pick a smaller one.")
   }
   const admin = createAdminClient()
   const { data: profile } = await admin
@@ -47,4 +48,46 @@ export async function updateProfileAction(
   if (error) return fail(errorMessage(error))
   revalidatePath("/", "layout")
   return ok("Profile saved")
+}
+
+/** The bot sidebar: when this person gets an alert. Does not change their name or photo. */
+export async function setAlertModeAction(mode: string): Promise<ActionResult> {
+  const user = await requireUser("/")
+  if (mode !== "all" && mode !== "mentions" && mode !== "off")
+    return fail("Choose a notification option")
+  const admin = createAdminClient()
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("preferences")
+    .eq("id", user.id)
+    .maybeSingle()
+  const preferences = {
+    ...((profile?.preferences as Record<string, unknown>) ?? {}),
+    notifications: mode,
+  }
+  const { error } = await admin.from("profiles").update({ preferences }).eq("id", user.id)
+  if (error) return fail(errorMessage(error))
+  revalidatePath("/", "layout")
+  return ok(
+    mode === "off" ? "Alerts off" : mode === "mentions" ? "Alerts for mentions" : "Alerts on",
+  )
+}
+
+/** The bot sidebar: whether alerts play a sound. Does not change the name or photo. */
+export async function setAlertSoundAction(on: boolean): Promise<ActionResult> {
+  const user = await requireUser("/")
+  const admin = createAdminClient()
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("preferences")
+    .eq("id", user.id)
+    .maybeSingle()
+  const preferences = {
+    ...((profile?.preferences as Record<string, unknown>) ?? {}),
+    sound: on,
+  }
+  const { error } = await admin.from("profiles").update({ preferences }).eq("id", user.id)
+  if (error) return fail(errorMessage(error))
+  revalidatePath("/", "layout")
+  return ok(on ? "Sound on" : "Sound off")
 }

@@ -36,7 +36,7 @@ The **overview page** (`settings/page.tsx`) reuses the same list as link cards w
 
 ## 👤 Profile & Alerts (`profile`)
 
-`ProfileForm` (`profile-form.tsx`) posts to `updateProfileAction` (`src/lib/actions/profile.ts`): display name, avatar (upload/replace/remove via `readAvatarFile` client-side processing), notification mode (`all` / `mentions` / `off` radio) and sound toggle. The page explains that renaming changes your @handle but not past messages; a "Browser alerts" section hosts `EnableAlerts` (push permission button); "Your workspaces" lists memberships with roles plus a New-workspace button; "Sign-in & security" offers Change password (`/forgot-password`) and a `signOutAction` form.
+`ProfileForm` (`profile-form.tsx`) posts to `updateProfileAction` (`src/lib/actions/profile.ts`): display name, avatar (upload/replace/remove via `readAvatarFile` client-side processing), notification mode (`all` / `mentions` / `off` radio) and sound toggle. The bot sidebar writes the same notification mode through `setAlertModeAction`, and the sound flag through `setAlertSoundAction`, without touching the name or photo. The page explains that renaming changes your @handle but not past messages; a "Browser alerts" section hosts `EnableAlerts` (push permission button); "Your workspaces" lists memberships with roles plus a New-workspace button; "Sign-in & security" offers Change password (`/forgot-password`) and a `signOutAction` form.
 
 ## 📱 Phones (`phones`)
 
@@ -44,7 +44,7 @@ The **overview page** (`settings/page.tsx`) reuses the same list as link cards w
 
 ## 💻 Computers (`computers`)
 
-The page loads `listComputers(userId, orgId, role)` (`src/lib/computers.ts`) plus `org_computer_settings` (`boat_last4`, `vps_ssh_alias`, `vps_start_automatically`) and renders `ComputersView` (`src/components/computers/computers-view.tsx`): the person's desktop hosts and Boat/VPS configuration (see the computers view component for details; remote viewing lives in `remote-viewer.tsx`).
+The page loads `listComputers(userId, orgId, role)` (`src/lib/computers.ts`) plus `loadComputerProviders(orgId)` and renders `ComputersView` (`src/components/computers/computers-view.tsx`): the shared `ComputerProviders` block (Boat, E2B, VPS; editable by admins) and then the person's Macs (see [computers-remote-ui.md](./computers-remote-ui.md); remote viewing lives in `remote-viewer.tsx`).
 
 ## 🗄️ Storage (`storage`)
 
@@ -52,7 +52,7 @@ Calls the `storage_summary` Postgres RPC and renders `StorageView` (`storage-vie
 
 ## 💳 Plan & Billing (`billing`, cloud only)
 
-404s on self-hosted (`edition() !== "cloud"`). Reads `workspacePlan` + `workspaceUsage` and renders `BillingView` (`src/ee/billing/billing-view.tsx`) with usage rows (Server replies this month, Agents, People, Agent computers) against `PLANS[plan].limits`. Handles `?upgraded=<plan>` / `?canceled=1` banners and `past_due` warnings ("The last payment didn't go through…"). The plan description differentiates Free ("Server replies reset on <next month start>. Agents that run on your Mac are unlimited on every plan."), cancel-at-period-end ("ends on <date>; after that the workspace moves to Free.") and renewing plans. The Stripe checkout/portal actions live in `src/ee/billing/`.
+404s on self-hosted (`edition() !== "cloud"`). Reads `workspacePlan` + `workspaceUsage` and renders `BillingView` (`src/ee/billing/billing-view.tsx`) with usage rows (Server replies this month, Agents, People, Agent computers) against `PLANS[plan].limits`. Handles `?upgraded=<plan>` / `?canceled=1` banners and `past_due` warnings ("The last payment didn't go through…"). The plan description differentiates Free ("Server replies reset on <next month start>. Agents that run on your Mac are unlimited on every plan."), cancel-at-period-end ("ends on <date>; after that the workspace moves to Free.") and renewing plans. Plan cards list every highlight with a check and a **Coming soon** label, and a warning says Sayabot Cloud is coming soon while agents on your Mac and a server you host work today. Other plans show a disabled "Coming soon" button and do not open checkout. "Manage billing" stays available for a workspace that is already paying. The Stripe checkout/portal actions live in `src/ee/billing/`.
 
 ## 💲 Pricing & Budgets (`pricing`)
 
@@ -60,7 +60,23 @@ Lists `listPricing()` rows; each `PricingRow` (`pricing-row.tsx`) is an inline f
 
 ## 🤖 AI Providers (`keys`)
 
-Renders `ProvidersView` — documented fully in the [model system](./model-system.md): local agent detection, plan sign-ins via the Manage Accounts modal, connected key rows with `TestKeyButton` / `DeleteKeyButton` (`key-actions.tsx`), and per-provider `saveProviderKey` forms. `TestKeyButton` optionally takes a model id for `openai-compatible` providers; the test calls `testProviderKey` which makes a real provider call.
+Renders `ProvidersView` (`src/components/providers/providers-view.tsx`; model details in the [model system](./model-system.md)). The page loads provider keys, agents (for per-key bot counts), rooms and `loadComputerProviders(orgId)`. The view is one scrolling page with a row of anchor chips and five sections, each a `ProviderSection` of `ProviderCard` rows (`provider-card.tsx`: icon, title, subtitle, status pill, controls, footnote):
+
+| Section (anchor) | Contents |
+| :--- | :--- |
+| Providers (`#providers`) | Agent apps signed in on this computer (`LocalAgents`, from `/api/providers/local`), a **Check again** button that re-runs the lookup, "More providers" install hints, and "Sign in with a plan you pay for" → `ManageAccountsModal` (ChatGPT, Copilot, OpenRouter). |
+| AI providers (`#ai-providers`) | One `ApiKeyRow` per `ACCOUNT_PROVIDERS` entry of kind `key` or `openrouter` (OpenRouter, Anthropic, OpenAI, Gemini, DeepSeek, xAI Grok, Kimi, Qwen, MiniMax, Groq, Cerebras…), ready ones first: "Paste your key", "Get a key ↗", **Save** → `saveProviderKey` with an automatic label (`My <name>`, then `<name> 2`…). Saved keys list above the field with `TestKeyButton` / `DeleteKeyButton`. |
+| Your own model servers (`#model-servers`) | The `custom` providers (Cloudflare, OpenAI-compatible servers such as LM Studio, Ollama, vLLM): an address field plus an optional key. |
+| Computers and browser (`#computers`) | `ComputerProviders`: **Boat API key**, **E2B API key** (Save, Check, Remove; status "Saved · ends <last4>", "Included with this server" when the server env has a key, or "Not set up"), **Self-hosted VPS** (tabs "Address and key" — SSH address plus a private-key textarea — or "SSH config name"; "Bots set to Auto may also start their container here"; Save, Check connection, Remove), and **1Password** → Vault. |
+| Apps and tools (`#apps`) | Links to Connected apps, Tools and MCP servers, and Your own bots. |
+
+`TestKeyButton` optionally takes a model id for `openai-compatible` providers; the test calls `testProviderKey` which makes a real provider call.
+
+**Computer provider actions** (`src/lib/actions/computer-providers.ts`):
+
+- `saveComputerProviderAction({ orgSlug, provider: "boat" | "e2b" | "vps", token?, clear?, address?, alias?, privateKey?, clearKey?, startAutomatically? })` — admin only; builds the row with `computerProviderUpdate` ([computers-remote-ui.md](./computers-remote-ui.md#-sealed-provider-keys-libcomputer-settingsts)), upserts `org_computer_settings` on `org_id`, then clears stale readiness on the workspace's bots (`vpsReady` after a VPS change; `e2bId`/`e2bReady` after an E2B change) so the next `select_computer` opens a fresh container or sandbox. Audit `computers.provider_changed` with the provider, whether a key was given and the VPS host — never a key. Revalidates `/settings/keys` and `/settings/computers`.
+- `checkComputerProviderAction({ orgSlug, provider })` — VPS: `POST /internal/computers/vps/check` on the orchestrator (runs `docker version` over SSH from the machine that will run the bots); E2B: `GET https://api.e2b.dev/v2/sandboxes?limit=1` with the saved (or server) key, 401/403 → "E2B refused this key"; Boat keys are checked on first use.
+- `getComputerProvidersAction(orgSlug)` — any member; the secret-free `ComputerProvidersView` (`boat`/`e2b`: `last4`, `included`; `vps`: `address`, `alias`, `hasKey`, `startAutomatically`) used by the Works on picker.
 
 ## 🧰 Tools & MCP (`tools`, admin)
 

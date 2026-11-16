@@ -13,7 +13,7 @@ const ITEMS = [
   },
   {
     q: "Where does the work actually run?",
-    a: "On your Mac while the app is awake, on Sayabot Cloud with the laptop shut, or on a server you host. The agent, its files and its schedule are the same in all three. Files stay inside /home/bot.",
+    a: "On your Mac while the app is awake, or on a server you host. Sayabot Cloud, where agents keep going with the laptop shut, is coming soon. Files stay inside /home/bot.",
   },
   {
     q: "Which models can I give it?",

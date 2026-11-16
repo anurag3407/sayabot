@@ -2,7 +2,7 @@
 
 This catalog documents every database migration in `packages/db`: the four Drizzle-generated migrations in `packages/db/migrations/` (the declarative schema snapshot pipeline) and the 35 hand-written SQL scripts in `packages/db/sql/` (functions, triggers, RLS, realtime, and RPCs that Drizzle cannot express). `src/migrate.ts` runs both phases in order — Drizzle first, then every `sql/*.sql` file in sorted filename order — and the SQL phase re-applies on every run, so each script is written to be idempotent.
 
-Source files: `packages/db/migrations/0000_conscious_natasha_romanoff.sql` through `0003_gigantic_the_call.sql`, `packages/db/sql/0001_functions.sql` through `0038_agent_last_seen.sql`, `packages/db/src/migrate.ts`
+Source files: `packages/db/migrations/0000_conscious_natasha_romanoff.sql` through `0003_gigantic_the_call.sql`, `packages/db/sql/0001_functions.sql` through `0039_computer_providers.sql`, `packages/db/src/migrate.ts`
 
 ---
 
@@ -272,6 +272,10 @@ Creates `agent_reads` (PK `(agent_id, room_id)`, `last_read_at`, `updated_at`) w
 ### `0038_agent_last_seen.sql` — when an invited app last called in
 
 - `agents.last_seen_at timestamptz` (nullable). The orchestrator stamps it on every authenticated bot call (API key or OAuth access token), at most every 30 seconds. Room settings shows "open now" from it, and the coordinator posts "app isn't open" when a turn is handed to an app that hasn't called in for 15 minutes. Idempotent (`add column if not exists`).
+
+### `0039_computer_providers.sql` — E2B key and a direct SSH target
+
+- `org_computer_settings` gains the sealed E2B key (`e2b_ciphertext`/`e2b_iv`/`e2b_tag`/`e2b_last4`) and a direct VPS target (`vps_host`, `vps_user`, `vps_port`, sealed private key `vps_key_ciphertext`/`vps_key_iv`/`vps_key_tag`). The alias column stays for SSH-config setups. Idempotent (`add column if not exists`); the table's service-role-only RLS from 0034 covers the new columns.
 
 ---
 

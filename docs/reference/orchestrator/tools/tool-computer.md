@@ -1,6 +1,6 @@
 # Computer Tools
 
-The `computer` capability gives an agent a persistent desktop — a local VM (`smolvm`/Docker via computerd, `/home/bot`), a Boat (the person's own Linux desktop), a VPS, or the Mac itself — and the largest built-in tool family in the orchestrator: shell execution with live streaming, hash-guarded file editing, ripgrep/glob search, git helpers, TypeScript code intelligence, and (on the `browser` profile) a full CDP-driven headless Chromium suite. All tools route through one dispatcher that resolves the turn's surface with `resolveComputer` and refuses to wake a sleeping desktop — only `select_computer` may do that.
+The `computer` capability gives an agent a persistent desktop — a local VM (`smolvm`/Docker via computerd, `/home/bot`), a Boat (a hosted boat.dev desktop), the person's own VPS (one Docker container per bot over SSH), an E2B cloud sandbox, or the Mac itself — and the largest built-in tool family in the orchestrator: shell execution with live streaming, hash-guarded file editing, ripgrep/glob search, git helpers, TypeScript code intelligence, and (on the `browser` profile) a full CDP-driven headless Chromium suite. All tools route through one dispatcher that resolves the turn's surface with `resolveComputer` and refuses to wake a sleeping desktop — only `select_computer` may do that.
 
 Source files: `apps/orchestrator/src/tools/builtins/computer.ts`, `apps/orchestrator/src/tools/builtins/select-computer.ts`, `apps/orchestrator/src/computer/client.ts`, `packages/core/src/commands.ts`
 
@@ -12,9 +12,9 @@ Registered for every agent regardless of capabilities (`src/tools/index.ts:289-3
 
 | Parameter | Type | Description |
 | :--- | :--- | :--- |
-| `surface` | enum `this_computer \| local_vm \| boat \| vps` | The desktop to use for this turn |
+| `surface` | enum `this_computer \| local_vm \| boat \| vps \| e2b` | The desktop to use for this turn |
 
-- `dangerous: false`. Executes `resolveComputer(worksOn, available, surface)` from `@sayabot/core`; when the decision requires action (`wake`/`provision`/VPS run), the `apply` callback registered by `buildTools` performs it (`index.ts:293-329`): provisioning a local VM (`getComputerClient().ensure(agentId, orgId, "standard")` + persisting `params.computer.localVmReady`/`volume` on the agent row), running VPS setup via `runVpsDesktop`, or opening a Boat via `openSelectedBoat`.
+- `dangerous: false`. Executes `resolveComputer(worksOn, available, surface)` from `@sayabot/core`; when the decision requires action (`wake`/`provision`/VPS run), the `apply` callback registered by `buildTools` performs it (`index.ts:293-329`): provisioning a local VM (`getComputerClient().ensure(agentId, orgId, "standard")` + persisting `params.computer.localVmReady`/`volume` on the agent row), starting the bot's VPS container via `runVpsDesktop(target, agentId, decision)` (and persisting `params.computer.vpsReady`), creating or resuming its E2B sandbox via `openSelectedE2b` (persisting `params.computer.e2bId`/`e2bReady`), or opening a Boat via `openSelectedBoat`. See [../computers/e2b.md](../computers/e2b.md) and [../computers/vps-and-client.md](../computers/vps-and-client.md).
 - Returns `{ ok, surface, action, reason?, ...carried }` — e.g. `{ ok: true, surface: "boat", action: "wake" }` (`select-computer.test.ts:10-14`).
 - The woken desktop is remembered on the shared turn params (`rememberSelectedDesktop`, `select-computer.ts:46`), so the next `computer_shell` call uses it.
 
@@ -26,12 +26,13 @@ Each tool first calls `resolveComputer(args.worksOn, args.available)` and dispat
 | :--- | :--- | :--- |
 | `local_vm` (action `use`) | `useLocalVm()` guard → `client.*` HTTP calls to computerd | The main path; `/home/bot` inside the VM. |
 | `boat` (action `use`) | `runBoatShell` / `boatReadCommand` / `boatWriteCommand` / `boatListCommand` / `boatClickCommand` (`src/computers/boat-shell`) | Person's own desktop; shell tools only, no `fs_patch`/code intelligence. `computer_list` uses `/home/user` as default home (`computer.ts:566`). |
-| `vps` (action `use`) | `boatReadCommand` etc. via `runVpsShell(alias, cmd)` | Requires `vpsSshAlias` from Settings → Computers (`computer.ts:143`). |
+| `vps` (action `use`) | `boatReadCommand` etc. through `readyServer().run` → `runVpsShell(target, agentId, cmd)` | Needs the `VpsTarget` built by `vpsTargetFromSettings` (alias, or host + user + port + sealed key) from Settings → AI providers. Runs in the bot's own `sayabot-bot-<agentId>` container, home `/home/bot`. File reads use stdout only. |
+| `e2b` (action `use`) | same builders through `readyServer().run` → `runE2bShell`; `computer_shell` calls `runE2bShell` directly (supports `background: true`) | One E2B sandbox per bot, home `/home/user`. `computer_screenshot`/`computer_click` work when the template has a display. |
 | `this_computer` | most tools return `{ ok: false, error: "This bot uses the Mac's screen and apps, not a container." }` (`computer.ts:133-134`) | Screen/app control lives in the desktop bridge, not here. |
 
 `useLocalVm()` (`computer.ts:65-93`) is the local-VM guard used by every non-shell tool: it calls `client.ensure(agentId, orgId, profile)` only when the decision is already `local_vm/use`, and returns a structured error telling the agent which tool to use instead (including the hint to call `select_computer`).
 
-`computer_shell` on a Boat accepts `background: true` which keeps the Boat awake for up to two hours (`computer.ts:98`); background mode is rejected on all other surfaces (`computer.ts:127-131`).
+`computer_shell` on a Boat or an E2B sandbox accepts `background: true`, which starts the command, returns at once and keeps that desktop awake for up to two hours; background mode is rejected on all other surfaces.
 
 ## 🖥️ Tool catalog — standard profile
 
@@ -131,8 +132,8 @@ Common parameters: `path`, `projectRoot` (optional; defaults to nearest `tsconfi
 
 | Tool | Parameters | Behavior |
 | :--- | :--- | :--- |
-| `computer_screenshot` | `{}` | Captures the Boat screen via `captureBoatScreen`; errors if the Boat is not already awake. |
-| `computer_click` | `x`, `y` (int 0–32767), `button` (`left\|middle\|right`, default `left`), `count` (1–3, default 1) | Clicks a pixel point via `boatClickCommand`; out-of-screen points return an error. |
+| `computer_screenshot` | `{}` | Captures the Boat screen via `captureBoatScreen`, or the E2B display via `captureE2bScreen`; errors if the Boat is not already awake. |
+| `computer_click` | `x`, `y` (int 0–32767), `button` (`left\|middle\|right`, default `left`), `count` (1–3, default 1) | Clicks a pixel point via `boatClickCommand` on a Boat or E2B sandbox; out-of-screen points return an error. |
 
 ## 🌐 Browser profile tools (`computer.ts:699-881`)
 

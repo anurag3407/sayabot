@@ -20,6 +20,8 @@ const idle: ComputerAvailability = {
   boatState: "sleeping",
   vpsReady: false,
   startVpsAutomatically: false,
+  e2bConfigured: false,
+  e2bReady: false,
 }
 
 describe("resolveComputer", () => {
@@ -62,8 +64,37 @@ describe("resolveComputer", () => {
 
   it("reuses a ready VPS and never starts the server on its own", () => {
     expect(resolveComputer("auto", { ...idle, vpsReady: true }).surface).toBe("vps")
-    expect(resolveComputer("vps", idle).action).toBe("none")
-    expect(resolveComputer("vps", { ...idle, startVpsAutomatically: true }).action).toBe("provision")
+    expect(resolveComputer("auto", idle, "vps").action).toBe("none")
+    expect(resolveComputer("auto", { ...idle, startVpsAutomatically: true }, "vps").action).toBe("provision")
+  })
+
+  it("starts the container when a person pinned the bot to their VPS", () => {
+    expect(resolveComputer("vps", idle).action).toBe("provision")
+    expect(resolveComputer("vps", idle, "vps").action).toBe("provision")
+    expect(resolveComputer("vps", { ...idle, vpsReady: true }).action).toBe("use")
+  })
+
+  it("creates an E2B sandbox only when asked, and only with a key", () => {
+    expect(resolveComputer("e2b", idle).reason).toContain("E2B key")
+    expect(resolveComputer("e2b", { ...idle, e2bConfigured: true }).action).toBe("provision")
+    expect(resolveComputer("auto", { ...idle, e2bConfigured: true }, "e2b").action).toBe("provision")
+    expect(resolveComputer("e2b", { ...idle, e2bConfigured: true, e2bReady: true })).toEqual({
+      surface: "e2b",
+      action: "use",
+      reason: "",
+    })
+    // Auto never picks an E2B sandbox on its own: connecting would resume a paused one.
+    expect(resolveComputer("auto", { ...idle, e2bConfigured: true, e2bReady: true }).surface).toBe("off")
+  })
+
+  it("keeps an E2B sandbox visible to the next tool in the same turn", () => {
+    const available = { ...idle, e2bConfigured: true }
+    const params: Record<string, unknown> = {}
+    rememberSelectedDesktop(available, params, { surface: "e2b", action: "provision", reason: "" }, { ok: true, e2bId: "sbx-1" })
+    expect(available.e2bReady).toBe(true)
+    expect(params.computer).toMatchObject({ e2bId: "sbx-1", e2bReady: true })
+    expect(desktopHome("e2b")).toBe("/home/user")
+    expect(macScreenAllowed({ worksOn: "e2b", computer: { thisComputer: true } })).toBe(false)
   })
 
   it("does not let select_computer leave a bot that is pinned to one desktop", () => {

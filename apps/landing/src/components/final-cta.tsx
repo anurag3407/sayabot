@@ -28,8 +28,13 @@ export function FinalCta() {
         </p>
         <div className="final-ctas">
           <DownloadButton align="center" />
-          <a className="btn btn-ghost" href={LINKS.app}>
-            Open the web app <ArrowRight className="arrow" />
+          <a
+            className="btn btn-ghost"
+            href={LINKS.selfHost}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Self-host <ArrowRight className="arrow" />
           </a>
         </div>
 

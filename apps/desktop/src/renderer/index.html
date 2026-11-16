@@ -276,6 +276,16 @@
     .choice:hover { border-color: rgba(157, 140, 255, 0.5); background: rgba(157, 140, 255, 0.06); }
     .choice:active { transform: scale(0.995); }
     .choice:disabled { opacity: 0.6; cursor: default; }
+    .choice-soon { cursor: default; }
+    .choice-soon:hover { border-color: var(--card-border); background: var(--raised); }
+    .choice-soon:active { transform: none; }
+    .soon-list { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+    .soon-list li {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      font-size: 12px; line-height: 1.35; color: var(--text);
+    }
+    .soon-list li span:first-child { display: flex; align-items: flex-start; gap: 6px; }
+    .soon-mark { color: var(--accent); flex-shrink: 0; margin-top: 1px; }
     .choice-icon {
       flex-shrink: 0; width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center;
       background: var(--accent-glow); color: var(--accent);
@@ -323,15 +333,22 @@
         <h1>Welcome to Sayabot</h1>
         <p class="subtitle">Agents that work with you, on your Mac. Where would you like to use it?</p>
         <div class="choice-list">
-          <button id="choose-cloud" class="choice" type="button">
+          <div class="choice choice-soon">
             <span class="choice-icon">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"></path></svg>
             </span>
             <span>
-              <span class="choice-title">Sayabot Cloud <span class="choice-badge">Recommended</span></span>
-              <span class="choice-sub" id="guest-choice-sub">Start in seconds, no account needed. Your agents run on this computer with the apps you already use; save your account whenever you like.</span>
+              <span class="choice-title">Sayabot Cloud <span class="choice-badge">Coming soon</span></span>
+              <span class="choice-sub">Hosted for you. Every part below is in the plan, and none of it is on yet. This Mac app and a server you host work today.</span>
+              <ul class="soon-list">
+                <li><span><svg class="soon-mark" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>Agents that keep going with the laptop shut</span><span class="choice-badge">Coming soon</span></li>
+                <li><span><svg class="soon-mark" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>Agent computers</span><span class="choice-badge">Coming soon</span></li>
+                <li><span><svg class="soon-mark" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>Routines and connectors around the clock</span><span class="choice-badge">Coming soon</span></li>
+                <li><span><svg class="soon-mark" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>Server replies on Free, Pro and Team</span><span class="choice-badge">Coming soon</span></li>
+                <li><span><svg class="soon-mark" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>Rooms shared with your team</span><span class="choice-badge">Coming soon</span></li>
+              </ul>
             </span>
-          </button>
+          </div>
           <button id="choose-own" class="choice" type="button">
             <span class="choice-icon">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="7" rx="2"></rect><rect x="2" y="14" width="20" height="7" rx="2"></rect><line x1="6" y1="6.5" x2="6.01" y2="6.5"></line><line x1="6" y1="17.5" x2="6.01" y2="17.5"></line></svg>
@@ -481,7 +498,6 @@
     const unauthCrew = document.getElementById("unauth-crew");
     const choiceStep = document.getElementById("choice-step");
     const serverStep = document.getElementById("server-step");
-    const chooseCloud = document.getElementById("choose-cloud");
     const chooseOwn = document.getElementById("choose-own");
     const choiceError = document.getElementById("choice-error");
     const serverInput = document.getElementById("server-input");
@@ -537,21 +553,6 @@
       guestBtn.classList.toggle("hidden", !(guest && guest.guestAllowed));
 
     }
-
-    chooseCloud.addEventListener("click", async () => {
-      choiceError.classList.add("hidden");
-      chooseCloud.disabled = true;
-      chooseOwn.disabled = true;
-      const result = await bridge.chooseServer(null);
-      chooseCloud.disabled = false;
-      chooseOwn.disabled = false;
-      if (!result.ok) {
-        choiceError.textContent = result.error;
-        choiceError.classList.remove("hidden");
-        return;
-      }
-      await afterServerChosen(result);
-    });
 
     chooseOwn.addEventListener("click", () => showServerStep(""));
 

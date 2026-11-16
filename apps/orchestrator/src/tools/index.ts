@@ -15,8 +15,10 @@ import type { ToolSet } from "ai"
 import { and, eq, isNull, or } from "drizzle-orm"
 import { z } from "zod"
 import { canvasPatchTool, canvasReadTool, canvasWriteTool } from "../canvas/tools"
+import { openSelectedE2b } from "../computers/e2b"
 import { openSelectedBoat } from "../computers/open-boat"
-import { runVpsDesktop } from "../computers/vps"
+import { vpsTargetFromSettings } from "../computers/open-vps"
+import { runVpsDesktop, type VpsTarget } from "../computers/vps"
 import { desktopOnline, runMcpOnDesktop } from "../connectors/desktop-bridge"
 import type { ConnectorSource } from "../connectors/types"
 import { getComputerClient } from "../computer/client"
@@ -261,13 +263,20 @@ export async function buildTools(args: BuildToolsArgs): Promise<BuiltTools> {
 
   const stored = availabilityFromParams(args.agent.params)
   let available = stored
-  let vpsSshAlias: string | null = null
+  let vps: VpsTarget | null = null
   try {
     const [settings] = await getDb()
       .select({
         boat: orgComputerSettings.boatCiphertext,
+        e2b: orgComputerSettings.e2bCiphertext,
         startVps: orgComputerSettings.vpsStartAutomatically,
         alias: orgComputerSettings.vpsSshAlias,
+        host: orgComputerSettings.vpsHost,
+        user: orgComputerSettings.vpsUser,
+        port: orgComputerSettings.vpsPort,
+        keyCiphertext: orgComputerSettings.vpsKeyCiphertext,
+        keyIv: orgComputerSettings.vpsKeyIv,
+        keyTag: orgComputerSettings.vpsKeyTag,
       })
       .from(orgComputerSettings)
       .where(eq(orgComputerSettings.orgId, args.orgId))
@@ -278,10 +287,11 @@ export async function buildTools(args: BuildToolsArgs): Promise<BuiltTools> {
       ...stored,
       boatConfigured: stored.boatConfigured || ownBoat || includedBoat,
       startVpsAutomatically: stored.startVpsAutomatically || settings?.startVps === true,
+      e2bConfigured: Boolean(settings?.e2b) || Boolean(process.env.E2B_API_KEY),
     }
-    vpsSshAlias = settings?.alias ?? null
+    vps = vpsTargetFromSettings(settings, getEnv().MESH_KEK)
   } catch {
-    // The placement table is optional until migration 0034 is applied.
+    // The placement table is optional until migrations 0034/0039 are applied.
   }
 
   const placementParams = (args.agent.params as Record<string, unknown> | null) ?? {}
@@ -310,14 +320,25 @@ export async function buildTools(args: BuildToolsArgs): Promise<BuiltTools> {
           return { ok: true, volume }
         }
         if (decision.surface === "vps") {
-          const [settings] = await getDb()
-            .select({ alias: orgComputerSettings.vpsSshAlias })
-            .from(orgComputerSettings)
-            .where(eq(orgComputerSettings.orgId, args.orgId))
-            .limit(1)
-          if (!settings?.alias) return { ok: false, error: "No VPS is set in Settings → Computers." }
-          const ran = await runVpsDesktop(settings.alias, decision)
-          return { ok: ran.ok, output: ran.output }
+          if (!vps) return { ok: false, error: "No VPS is set in Settings → AI providers." }
+          const ran = await runVpsDesktop(vps, args.agent.id, decision)
+          if (ran.ok) {
+            const params = (args.agent.params as Record<string, unknown> | null) ?? {}
+            const computer =
+              params.computer && typeof params.computer === "object" ? (params.computer as Record<string, unknown>) : {}
+            await getDb()
+              .update(agents)
+              .set({ params: { ...params, computer: { ...computer, vpsReady: true } } })
+              .where(eq(agents.id, args.agent.id))
+          }
+          return { ok: ran.ok, output: ran.output.slice(0, 2_000) }
+        }
+        if (decision.surface === "e2b") {
+          return openSelectedE2b({
+            orgId: args.orgId,
+            agentId: args.agent.id,
+            params: (args.agent.params as Record<string, unknown> | null) ?? null,
+          })
         }
         return openSelectedBoat({
           orgId: args.orgId,
@@ -369,7 +390,7 @@ export async function buildTools(args: BuildToolsArgs): Promise<BuiltTools> {
           worksOn: worksOnFromParams(args.agent.params),
           available,
           params: placementParams,
-          vpsSshAlias,
+          vps,
         })
       : []),
     ...(caps.computer && isV2

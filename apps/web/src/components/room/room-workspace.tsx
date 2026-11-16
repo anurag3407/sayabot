@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Group, Panel, Separator, useDefaultLayout } from "react-resizable-panels"
 import { ChatPanel } from "@/components/room/chat-panel"
 import { CanvasPanel } from "@/components/room/canvas-panel"
@@ -12,12 +12,29 @@ import { EnableAlerts, RoomActivity } from "@/components/room/room-activity"
 import { RoomMeetingBar } from "@/components/room/room-meeting-bar"
 import { InviteBotDialog } from "@/components/room/invite-bot-dialog"
 import { InvitePeople, RoomInviteNudge } from "@/components/room/invite-people"
+import {
+  AgentConfigPanel,
+  type AgentUsageView,
+  type AlertMode,
+  type ConnectedAppView,
+  type MemoryNoteView,
+  type OrgSkillView,
+} from "@/components/room/agent-config-panel"
 import { RoomSidePanel, type RoomRoutine, type SideTab } from "@/components/room/side-panel"
+import { mascotProps } from "@/lib/agent-look"
 import { PresenceLine } from "@/components/ui/avatar"
 import { DetailsMenu } from "@/components/ui/details-menu"
 import { Mascot } from "@/components/ui/mascot"
 import { RoomSkeleton } from "@/components/ui/skeleton"
-import { Bot, Ellipsis, FileText, PanelRight, Pencil, SlidersHorizontal, UserPlus } from "lucide-react"
+import {
+  Bot,
+  Ellipsis,
+  FileText,
+  PanelRight,
+  Pencil,
+  SlidersHorizontal,
+  UserPlus,
+} from "lucide-react"
 import { cn } from "@/lib/format"
 import type { RoomPageData } from "@/lib/types"
 
@@ -45,9 +62,7 @@ const layoutStorage = {
 }
 
 function canvasHasContent(data: RoomPageData): boolean {
-  return data.canvases.some(
-    (canvas) => canvas.snapshotText.replace(/^#.*$/m, "").trim().length > 0,
-  )
+  return data.canvases.some((canvas) => canvas.snapshotText.replace(/^#.*$/m, "").trim().length > 0)
 }
 
 export function RoomWorkspace({
@@ -57,6 +72,13 @@ export function RoomWorkspace({
   initialThreadId = null,
   setup = null,
   routines = [],
+  initialConfigure = false,
+  skills = [],
+  apps = [],
+  usage = {},
+  alerts = "all",
+  sound = true,
+  memoryNotes = [],
 }: {
   data: RoomPageData
   initialCanvasId?: string | null
@@ -64,12 +86,28 @@ export function RoomWorkspace({
   initialThreadId?: string | null
   setup?: SetupState | null
   routines?: RoomRoutine[]
+  /** Open the bot settings sidebar, from a chat-list "Edit bot" link. */
+  initialConfigure?: boolean
+  skills?: OrgSkillView[]
+  apps?: ConnectedAppView[]
+  usage?: Record<string, AgentUsageView>
+  alerts?: AlertMode
+  sound?: boolean
+  memoryNotes?: MemoryNoteView[]
 }) {
   // Unknown until the first client render, so the layout is only ever mounted once.
   const [isDesktop, setIsDesktop] = useState<boolean | null>(null)
   const [view, setView] = useState<View>(initialCanvasId ? "panel" : "chat")
   const [panelOpen, setPanelOpen] = useState(Boolean(initialCanvasId) || canvasHasContent(data))
   const [tab, setTab] = useState<SideTab>("canvas")
+  const [configAgentId, setConfigAgentId] = useState<string | null>(null)
+  const lastMode = useRef<SideTab | "agent">(
+    initialCanvasId || canvasHasContent(data)
+      ? "canvas"
+      : data.room.kind === "dm"
+        ? "agent"
+        : "canvas",
+  )
   const [addBotOpen, setAddBotOpen] = useState(false)
   const [threadRootId, setThreadRootId] = useState<string | null>(initialThreadId)
   const { defaultLayout, onLayoutChanged } = useDefaultLayout({
@@ -86,21 +124,56 @@ export function RoomWorkspace({
     return () => query.removeEventListener("change", apply)
   }, [])
 
+  const appliedPanelRoom = useRef<string | null>(null)
   useEffect(() => {
-    if (initialCanvasId) return
+    if (isDesktop === null || initialCanvasId) return
+    if (appliedPanelRoom.current === data.room.id) return
+    appliedPanelRoom.current = data.room.id
+    let stored: string | null = null
     try {
-      const stored = window.localStorage.getItem(`${PANEL_KEY}:${data.room.id}`)
-      if (stored === "closed") setPanelOpen(false)
-      else if (stored === "screen" || stored === "activity" || stored === "canvas" || stored === "routines") {
-        setTab(stored)
-        setPanelOpen(true)
-      }
+      stored = window.localStorage.getItem(`${PANEL_KEY}:${data.room.id}`)
     } catch {
-      // Falls back to opening the canvas only when it has something in it.
+      stored = null
     }
-  }, [data.room.id, initialCanvasId])
+    const firstAgent = data.roomAgents[0]?.agent.id ?? null
+    if (initialConfigure && firstAgent) {
+      setConfigAgentId(firstAgent)
+      if (isDesktop) setPanelOpen(true)
+      else setView("panel")
+      return
+    }
+    if (stored === "closed") {
+      setPanelOpen(false)
+      setConfigAgentId(null)
+      return
+    }
+    if (stored === "agent" && firstAgent && isDesktop) {
+      lastMode.current = "agent"
+      setConfigAgentId(firstAgent)
+      setPanelOpen(true)
+      return
+    }
+    if (
+      stored === "screen" ||
+      stored === "activity" ||
+      stored === "canvas" ||
+      stored === "routines"
+    ) {
+      lastMode.current = stored
+      setTab(stored)
+      setConfigAgentId(null)
+      setPanelOpen(true)
+      return
+    }
+    if (!stored && isDesktop && data.room.kind === "dm" && firstAgent && !canvasHasContent(data)) {
+      lastMode.current = "agent"
+      setConfigAgentId(firstAgent)
+      setPanelOpen(true)
+    }
+  }, [isDesktop, data, initialCanvasId, initialConfigure])
 
-  function remember(next: SideTab | "closed") {
+  function remember(next: SideTab | "agent" | "closed") {
+    if (next !== "closed") lastMode.current = next
     try {
       window.localStorage.setItem(`${PANEL_KEY}:${data.room.id}`, next)
     } catch {
@@ -109,8 +182,16 @@ export function RoomWorkspace({
   }
 
   function openPanel(next: SideTab) {
+    setConfigAgentId(null)
     setTab(next)
     remember(next)
+    if (isDesktop) setPanelOpen(true)
+    else setView("panel")
+  }
+
+  function openConfig(id: string) {
+    setConfigAgentId(id)
+    remember("agent")
     if (isDesktop) setPanelOpen(true)
     else setView("panel")
   }
@@ -135,7 +216,7 @@ export function RoomWorkspace({
   })
 
   const root = threadRootId
-    ? realtime.messages.find((message) => message.id === threadRootId) ?? null
+    ? (realtime.messages.find((message) => message.id === threadRootId) ?? null)
     : null
 
   const presence = realtime.presence.length
@@ -220,7 +301,44 @@ export function RoomWorkspace({
   const panelShowing = isDesktop ? panelOpen : view === "panel"
   const waiting = realtime.toolCalls.filter((call) => call.status === "pending_approval").length
 
-  const sidePanel = (
+  function showPanel() {
+    if (lastMode.current === "agent") {
+      const id = configAgentId ?? dmAgent?.id ?? data.roomAgents[0]?.agent.id
+      if (id) {
+        openConfig(id)
+        return
+      }
+    }
+    openPanel(lastMode.current === "agent" ? tab : lastMode.current)
+  }
+
+  const configAgent = data.roomAgents.find((item) => item.agent.id === configAgentId)?.agent
+  const sidePanel = configAgent ? (
+    <AgentConfigPanel
+      orgSlug={data.org.slug}
+      roomId={data.room.id}
+      agents={data.roomAgents.map((item) => item.agent)}
+      agentId={configAgent.id}
+      onAgentChange={openConfig}
+      canEdit={data.canAdmin}
+      routines={routines}
+      toolCalls={realtime.toolCalls}
+      canvasCount={data.canvases.length}
+      executionMode={data.room.executionMode}
+      pendingApprovals={waiting}
+      skills={skills}
+      apps={apps}
+      usage={usage}
+      alerts={alerts}
+      sound={sound}
+      memoryNotes={memoryNotes}
+      onClose={() => {
+        setConfigAgentId(null)
+        closePanel()
+      }}
+      onOpenWorkspace={(next) => openPanel(next)}
+    />
+  ) : (
     <RoomSidePanel
       tab={tab}
       onTabChange={(next) => {
@@ -251,17 +369,35 @@ export function RoomWorkspace({
 
         <div className="flex min-w-0 items-center gap-1 rounded-full border border-line bg-panel/80 py-1 pl-1 pr-1.5">
           {dmAgent ? (
-            <Mascot
-              seed={dmAgent.displayName}
-              mood={realtime.turnState?.activeAgentId ? "busy" : "idle"}
-              lit={Boolean(realtime.turnState?.activeAgentId)}
-              live
-              className="h-8 w-8 shrink-0"
-            />
+            <button
+              type="button"
+              onClick={() => openConfig(dmAgent.id)}
+              aria-label={`Configure ${dmAgent.displayName}`}
+              className="shrink-0 rounded-full"
+            >
+              <Mascot
+                {...mascotProps(dmAgent.displayName, dmAgent.params)}
+                mood={realtime.turnState?.activeAgentId ? "busy" : "idle"}
+                lit={Boolean(realtime.turnState?.activeAgentId)}
+                live
+                className="h-8 w-8"
+              />
+            </button>
           ) : data.roomAgents.length ? (
             <span className="flex shrink-0 -space-x-2.5 pl-0.5">
               {data.roomAgents.slice(0, 3).map(({ agent }) => (
-                <Mascot key={agent.id} seed={agent.displayName} className="h-7 w-7 rounded-full ring-2 ring-panel" />
+                <button
+                  key={agent.id}
+                  type="button"
+                  onClick={() => openConfig(agent.id)}
+                  aria-label={`Configure ${agent.displayName}`}
+                  className="rounded-full"
+                >
+                  <Mascot
+                    {...mascotProps(agent.displayName, agent.params)}
+                    className="h-7 w-7 rounded-full ring-2 ring-panel"
+                  />
+                </button>
               ))}
             </span>
           ) : (
@@ -272,20 +408,47 @@ export function RoomWorkspace({
               {roomPrefix}
             </span>
           )}
-          <h1
-            className="max-w-[40vw] truncate pl-1 text-[15px] font-semibold tracking-[-0.01em] md:max-w-[260px]"
-            data-testid="room-title"
-          >
-            {data.room.name}
-          </h1>
-          <Link
-            href={aboutHref}
-            aria-label={dmAgent ? `Edit ${dmAgent.displayName}` : "Chat settings"}
-            title={dmAgent ? "Edit bot" : "Chat settings"}
-            className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-faint transition-colors hover:bg-raised hover:text-text"
-          >
-            <Pencil className="h-3.5 w-3.5" />
-          </Link>
+          {dmAgent ? (
+            <button
+              type="button"
+              onClick={() => openConfig(dmAgent.id)}
+              className="max-w-[40vw] truncate pl-1 text-left text-[15px] font-semibold tracking-[-0.01em] md:max-w-[260px]"
+              data-testid="room-title"
+            >
+              {data.room.name}
+            </button>
+          ) : (
+            <h1
+              className="max-w-[40vw] truncate pl-1 text-[15px] font-semibold tracking-[-0.01em] md:max-w-[260px]"
+              data-testid="room-title"
+            >
+              {data.room.name}
+            </h1>
+          )}
+          {dmAgent ? (
+            <button
+              type="button"
+              onClick={() => openConfig(dmAgent.id)}
+              aria-pressed={Boolean(configAgent)}
+              aria-label={`Edit ${dmAgent.displayName}`}
+              title="Edit bot"
+              className={cn(
+                "grid h-7 w-7 shrink-0 place-items-center rounded-full text-faint transition-colors hover:bg-raised hover:text-text",
+                configAgent && "bg-raised text-text",
+              )}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+          ) : (
+            <Link
+              href={aboutHref}
+              aria-label="Chat settings"
+              title="Chat settings"
+              className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-faint transition-colors hover:bg-raised hover:text-text"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </Link>
+          )}
           {realtime.turnState?.activeAgentId ? (
             <span className="hidden shrink-0 items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-0.5 text-[12px] text-accent sm:flex">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
@@ -312,9 +475,15 @@ export function RoomWorkspace({
           <button
             type="button"
             aria-pressed={panelShowing}
-            aria-label="Side panel"
-            title={panelShowing ? "Hide panel" : "Screen, activity, canvas"}
-            onClick={() => (panelShowing ? closePanel() : openPanel(tab))}
+            aria-label={configAgent ? "Bot settings" : "Side panel"}
+            title={
+              panelShowing
+                ? "Hide panel"
+                : lastMode.current === "agent"
+                  ? "Bot settings"
+                  : "Screen, activity, canvas"
+            }
+            onClick={() => (panelShowing ? closePanel() : showPanel())}
             className={cn(iconButton, "relative", panelShowing && "bg-panel text-text")}
           >
             <PanelRight className="h-[18px] w-[18px]" />
@@ -329,10 +498,32 @@ export function RoomWorkspace({
             summary={<Ellipsis className="h-[18px] w-[18px]" />}
           >
             <div className="absolute right-0 top-full z-50 mt-1 w-56 rounded-2xl border border-line-strong bg-panel p-1.5 shadow-[0_18px_48px_rgba(0,0,0,0.55)]">
-              <Link href={aboutHref} className={menuItem}>
-                {dmAgent ? <Bot className="h-4 w-4 text-faint" /> : <SlidersHorizontal className="h-4 w-4 text-faint" />}
-                {dmAgent ? "Edit bot" : "Chat settings"}
-              </Link>
+              {dmAgent ? (
+                <button type="button" className={menuItem} onClick={() => openConfig(dmAgent.id)}>
+                  <Bot className="h-4 w-4 text-faint" />
+                  Edit bot
+                </button>
+              ) : (
+                <Link href={aboutHref} className={menuItem}>
+                  <SlidersHorizontal className="h-4 w-4 text-faint" />
+                  Chat settings
+                </Link>
+              )}
+              {!dmAgent && data.roomAgents[0] ? (
+                <button
+                  type="button"
+                  className={menuItem}
+                  onClick={() => {
+                    const first = data.roomAgents[0]
+                    if (first) openConfig(first.agent.id)
+                  }}
+                >
+                  <Bot className="h-4 w-4 text-faint" />
+                  {data.roomAgents.length === 1
+                    ? `Configure ${data.roomAgents[0].agent.displayName}`
+                    : "Configure a bot"}
+                </button>
+              ) : null}
               {data.canAdmin ? (
                 <button type="button" className={menuItem} onClick={() => setAddBotOpen(true)}>
                   <UserPlus className="h-4 w-4 text-faint" />
@@ -369,11 +560,7 @@ export function RoomWorkspace({
 
       {inviteProps && data.roomMemberIds.length <= 1 ? <RoomInviteNudge {...inviteProps} /> : null}
 
-      <RoomMeetingBar
-        orgSlug={data.org.slug}
-        meeting={data.meeting}
-        schedule={data.roomSchedule}
-      />
+      <RoomMeetingBar orgSlug={data.org.slug} meeting={data.meeting} schedule={data.roomSchedule} />
 
       <RoomActivity
         orgSlug={data.org.slug}

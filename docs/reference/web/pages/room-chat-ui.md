@@ -1,8 +1,8 @@
 # Room Chat UI
 
-The room screen at `/(workspace)/[org]/r/[roomId]` is the heart of Sayabot: a chat feed where humans and agents take turns, with live token streaming, tool-call approval cards, threads, a composer with mentions and offline outbox, and a resizable side panel hosting the canvas, screen/activity and routines tabs. Everything live flows through one Supabase Realtime channel per room (`useRoomRealtime`), fed by initial server-rendered data.
+The room screen at `/(workspace)/[org]/r/[roomId]` is the heart of Sayabot: a chat feed where humans and agents take turns, with live token streaming, tool-call approval cards, threads, a composer with mentions and offline outbox, and a resizable side panel. That pane is either the bot settings sidebar or the workspace tabs (canvas, screen, activity, routines). Everything live flows through one Supabase Realtime channel per room (`useRoomRealtime`), fed by initial server-rendered data.
 
-Source files: `apps/web/src/app/(workspace)/[org]/r/[roomId]/page.tsx`, `apps/web/src/components/room/room-workspace.tsx`, `chat-panel.tsx`, `composer.tsx`, `message-item.tsx`, `message-actions.tsx`, `thread-sheet.tsx`, `turn-strip.tsx`, `tool-call-card.tsx`, `starter-card.tsx`, `setup-checklist.tsx`, `room-meeting-bar.tsx`, `use-room-realtime.ts`, `apps/web/src/components/markdown.tsx`, `apps/web/src/components/chat/*`, `apps/web/src/lib/message-map.ts`, `apps/web/src/lib/message-send.ts`
+Source files: `apps/web/src/app/(workspace)/[org]/r/[roomId]/page.tsx`, `apps/web/src/components/room/room-workspace.tsx`, `agent-config-panel.tsx`, `side-panel.tsx`, `chat-panel.tsx`, `composer.tsx`, `message-item.tsx`, `message-actions.tsx`, `thread-sheet.tsx`, `turn-strip.tsx`, `tool-call-card.tsx`, `starter-card.tsx`, `setup-checklist.tsx`, `room-meeting-bar.tsx`, `use-room-realtime.ts`, `apps/web/src/components/markdown.tsx`, `apps/web/src/components/chat/*`, `apps/web/src/lib/message-map.ts`, `apps/web/src/lib/message-send.ts`, `apps/web/src/lib/agent-look.ts`
 
 ---
 
@@ -14,16 +14,42 @@ Source files: `apps/web/src/app/(workspace)/[org]/r/[roomId]/page.tsx`, `apps/we
 2. `loadRoomPageData(access)` (in `src/lib/queries.ts`) fetches messages, tool calls, canvases, room agents, members, avatars, thread counts, the active session, meeting and schedule.
 3. `loadRoomRoutines(orgId, roomId)` (`page.tsx:21`) reads up to 20 `routines` rows posting into this room, rendering cron expressions with `humanReadableCron` for the side panel's Routines tab.
 4. **Setup checklist state**: only for non-DM rooms with zero agents, it computes `SetupState { canManage, hasModel, hasAgent, roomHasAgent, hasMessage }` from provider keys, org agents, and whether any human message exists (`page.tsx:69`).
-5. Query params: `?canvas=<id>` pre-opens the side panel on that canvas, `?m=<messageId>` focuses a message, `?thread=1&m=<id>` opens that thread.
+5. Query params: `?canvas=<id>` pre-opens the side panel on that canvas, `?configure=1` opens the bot settings sidebar (the chat-list "Edit bot" link), `?m=<messageId>` focuses a message, `?thread=1&m=<id>` opens that thread.
 
 `generateMetadata` titles the tab with the room name.
 
 `RoomWorkspace` (`room-workspace.tsx`) owns the layout. It is a client component receiving `RoomPageData` and holding:
 
 - **Split panes** — `react-resizable-panels` (`Group`/`Panel`/`Separator`) with chat at 60% min 380px and the side panel at 40% min 340px, persisted via a localStorage-backed `layoutStorage` (the library's default breaks SSR). `isDesktop` starts `null` until `matchMedia("(min-width: 768px)")` resolves, rendering a skeleton so the layout mounts exactly once.
-- **Panel state per room** — `localStorage["sayabot:panel:<roomId>"]` remembers the last tab (`canvas | screen | activity | routines`) or `closed`. Default: the panel opens when a canvas has real content (`canvasHasContent`, `room-workspace.tsx:48`).
-- **Header** — presence line (left), a pill with room mascots / `#`-prefix, room name, "Working" badge when `turnState.activeAgentId` is set, invite button, the panel toggle (with a red dot when approvals are pending), and a `DetailsMenu` with settings / add-bot / open-canvas / `EnableAlerts`.
-- **Children**: `RoomMeetingBar`, `RoomActivity` (screen + activity tabs' backing logic), the resizable chat + `RoomSidePanel`, and the `ThreadSheet` dialog.
+- **Panel state per room** — `localStorage["sayabot:panel:<roomId>"]` remembers `canvas | screen | activity | routines | agent | closed`. `agent` is the bot settings sidebar. On a direct chat with a bot, when nothing is stored and the canvas is empty, the settings sidebar opens on desktop. `?canvas=` still wins. The choice is applied once per room visit so a later refresh does not jump the open section.
+- **Header** — presence line (left), a pill with room mascots / `#`-prefix, room name, "Working" badge when `turnState.activeAgentId` is set, invite button, the panel toggle (with a red dot when approvals are pending), and a `DetailsMenu` with edit-bot / settings / add-bot / open-canvas / `EnableAlerts`. On a bot chat the mascot, the name, the pencil, and "Edit bot" open the settings sidebar in place. In a group chat each mascot opens that bot, and the menu has "Configure a bot". The chat-list "Edit bot" link goes to `?configure=1` on the chat, not the full bot page.
+- **Children**: `RoomMeetingBar`, `RoomActivity` (screen + activity tabs' backing logic), the resizable chat plus either `AgentConfigPanel` or `RoomSidePanel`, and the `ThreadSheet` dialog.
+
+## 🎛️ Bot settings sidebar (`agent-config-panel.tsx`)
+
+Opening a bot (the chat pill, the pencil, "Edit bot", or `?configure=1`) puts `AgentConfigPanel` in the right pane. A search box filters the sections. One section is open at a time; a search hit expands every match. Escape clears the search, then closes the pane.
+
+| Section | What it edits |
+| :--- | :--- |
+| Overview | Setup checklist, "Set up with the bot" (sends a short `@handle` prompt via `sendMessage`), name, schedules, where it works |
+| Identity | Display name (`updateBotBasicsAction` on blur) and mascot shape, expression and colour (`setAgentLookAction` → `params.mascot`, drawn with `mascotProps`) |
+| Soul | Standing instructions (the system prompt, 20,000 characters) and reply style (`setAgentReplyStyleAction` → `params.replyStyle`: `default` or `conversational`) |
+| Skills | Org skills from `skills`, plus `saveOrgSkillAction` to add one. The bot loads it by name; it is not a composer shortcut |
+| Tools | Boolean capabilities (search, documents, canvas, tasks, terminal, GitHub, database, apps, connectors, helpers, schedules, secrets) |
+| Memory | `capabilities.memory`, plus this bot's notes from `memories` (add with `rememberAction`, pin, remove) |
+| Library | What it remembers, skills, where it works, and pages in this chat |
+| Routines | Schedules that post in this chat. Create posts to `POST /api/workspaces/:org/routines` for this bot and room (`daily at 9am` style). Run logs link to `/cron` |
+| Computer | `WorksOnPicker` (Auto, Cloud desktop with a Boat / Self-hosted VPS / E2B switch, Private desktop, This computer, Off) saving through `setAgentWorksOnAction`, and the persistent computer (`capabilities.computer`, profile `standard` or `browser`) |
+| Access | Working folder from `desktopHome(worksOn)`, a button that opens the screen, the `connectors` capability, connector grants, and for external bots the webhook address plus an API key (`issueAgentApiKey`, shown once, with copy) |
+| Model | The chat model picker (`RoomModelPicker`, this copy does not listen for the composer shortcut) and effort chips (`setAgentModelAction`) |
+| Permissions | This chat's execution mode (`setRoomExecutionModeAction`) |
+| Alerts | This person's notification mode (`setAlertModeAction`: all, mentions, off), the sound toggle (`setAlertSoundAction`), and the browser permission prompt. There is no per-bot voice |
+| History | The latest tool calls, then Activity |
+| Usage | Last 30 days from `usage_rollup` for this bot, plus a link to `/analytics` |
+
+Workspace admins can change the bot. Anyone in the chat can change the execution mode and their own alerts. Invited bots (`kind: "external"`) keep their own tools, memory, and model, and they are the only bots that can issue an API key from this pane. "Canvas" in the header returns to `RoomSidePanel`. Delete stays on `/agents/[agentId]`.
+
+`loadRoomPageData` selects `agents.capabilities` so the toggles show the saved flags rather than the defaults. The room page also loads org skills, connector grants for the bots in the chat, a 30-day `usage_rollup` for those bots, and their memory notes (title and pin only).
 
 ## 📡 Realtime Hook (`use-room-realtime.ts`)
 

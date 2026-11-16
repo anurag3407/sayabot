@@ -68,7 +68,7 @@ Called from `app/api/billing/webhook/route.ts` after signature verification (see
 `BillingView({ orgSlug, plan, paying, configured, usage })` (`billing-view.tsx:59`) is the client component for the Plan & billing settings page:
 
 - **Usage meters**: each `UsageRow { label, used, limit, hint? }` renders a progress bar via the `Meter` component (`billing-view.tsx:20`) — amber at ≥ 80% of the limit, red at 100%; `limit: null` renders "· unlimited".
-- **Plan cards** iterate `PLAN_ORDER` / `PLANS` from `@sayabot/core`, showing name, `priceLabel` ("/ month"), tagline, and highlights. The current plan is marked "your plan"; higher plans get an "Upgrade to …" button; lower ones show "Switch to …" which routes through the portal (disabled unless `paying`).
+- **Plan cards** iterate `PLAN_ORDER` / `PLANS` from `@sayabot/core`, showing name, `priceLabel` ("/ month"), tagline, and highlights. Every highlight stays checked (it is part of the plan) and is labeled **Coming soon**. A warning above the cards says Sayabot Cloud is coming soon, and that agents on your Mac and a server you host work today. The current plan is marked "your plan" with a disabled "Current plan" button. Other plans show a disabled "Coming soon" button and do not open checkout. Someone already paying can still open "Manage billing" for the Stripe portal.
 - All buttons call the server actions inside `startTransition` and `window.location.assign(result.data.url)` on success; failures render in an `InlineAlert`.
 - When Stripe env vars are missing, a warning banner says billing isn't set up on this server (`billing-view.tsx:105`).
 

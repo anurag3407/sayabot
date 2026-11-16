@@ -12,7 +12,7 @@ Source files: `apps/web/src/app/onboarding/page.tsx`, `apps/web/src/components/o
 
 1. `requireUser("/onboarding")` — must be signed in (the middleware also treats this path as non-public).
 2. `listUserOrgs(user.id)` + reads `profiles.preferences.onboarding` (`{ orgSlug, roomId }`) directly from the `profiles` table.
-3. **Resume logic**: if a saved onboarding exists and the org slug is still among the user's orgs, it is passed as `initialWorkspace`. The wizard then calls `finishOnboardingAction` and opens the room (`wizard.tsx:35`). If the user has orgs but nothing in progress, redirect to the first org (`/${orgs[0].slug}`).
+3. **Resume logic**: if a saved onboarding exists and the org slug is still among the user's orgs, it is passed as `initialWorkspace`. The wizard then calls `finishOnboardingAction` and opens the room. While that runs, and while a new workspace is being created, the form is replaced by `WorkspaceSkeleton` (the sidebar and a room, with no real data yet). If the user has orgs but nothing in progress, redirect to the first org (`/${orgs[0].slug}`).
 4. `getProfile(current)` derives `userName` — the placeholder `"member"` (every guest account starts with it) maps to an empty first name, so the greeting is plain "This is the name your team sees."
 
 Props handed to `OnboardingWizard`: `userName`, `initialWorkspace`.
@@ -66,7 +66,7 @@ Returns `ok("Room ready", { path: "/<org>/r/<room>", queued })`.
 
 ## 🏢 `/new-workspace`
 
-`src/app/new-workspace/page.tsx` is the lightweight path for existing users (linked from the profile page's workspace list). It only requires a signed-in user and renders an `ActionForm` (`src/components/ui/action-form.tsx`) bound to `createOrg` from `src/lib/actions/orgs.ts` with a single `name` field (2–60 chars, "You can rename it later."). Unlike onboarding it creates only the workspace — rooms, schedules, canvases, and agents are set up afterwards in the app. Note it does **not** refuse users who already have workspaces; multiple workspaces per account are allowed here, while `setupWorkspaceAction` intentionally stays one-per-account for the guided flow.
+`src/app/new-workspace/page.tsx` is the lightweight path for existing users (linked from the profile page's workspace list). It only requires a signed-in user and renders `NewWorkspaceForm` (`src/components/onboarding/new-workspace-form.tsx`), bound to `createOrg` from `src/lib/actions/orgs.ts` with a single `name` field (2–60 chars, "You can rename it later."). While the workspace is being created the form is replaced by `WorkspaceSkeleton`. `onboarding/loading.tsx` and `new-workspace/loading.tsx` show `SetupSkeleton` until the form itself is ready. Unlike onboarding it creates only the workspace — rooms, schedules, canvases, and agents are set up afterwards in the app. Note it does **not** refuse users who already have workspaces; multiple workspaces per account are allowed here, while `setupWorkspaceAction` intentionally stays one-per-account for the guided flow.
 
 ---
 

@@ -20,7 +20,7 @@ Source files: `apps/desktop/src/main.ts`, `src/preload.ts`, `src/remote-preload.
 
 ### Session keeping
 
-`refreshSessionIfNeeded` (`src/main.ts:686`) decodes the access token's JWT payload and refreshes when it expires within 10 minutes, via `POST /api/desktop/refresh` with the refresh token. A `401` clears the session locally (revoked/merged login); a successful refresh persists the new tokens, restarts the host, and returns the updated session. A background `setInterval` runs it **every 15 minutes** (`src/main.ts:757-759`) so tokens never expire.
+`refreshSessionIfNeeded` decodes the access token's JWT payload and refreshes when it expires within 10 minutes, via `POST /api/desktop/refresh` with the refresh token. Calls share one in-flight promise so two refreshes cannot present the same token. A `401` does **not** delete the session file and does **not** start a new guest: the workspace window's cookies are often the newer login, and deleting the file was what made the next launch look like an empty account. A successful refresh persists the new tokens (atomic write, previous file kept as `.bak`) and restarts the host. Every 15 minutes the app copies the open page's session into the file (`DesktopSessionSync` in the web app). It refreshes the file itself only when no browser cookie session exists. On launch, if those cookies exist, the workspace opens without putting the file's refresh token in the URL.
 
 ### Guest mode
 
@@ -38,7 +38,7 @@ Source files: `apps/desktop/src/main.ts`, `src/preload.ts`, `src/remote-preload.
 
 Two content modes share this window:
 
-- **Controller page** — `loadLocalHtml` (`src/main.ts:290`) loads `dist/renderer/index.html`, falling back to `src/renderer/index.html` when running from source. The page is the start screen: server choice, guest start, sign-in card, and runner status (it calls the `sayabotDesktop` bridge). It uses the app's graphite + iris palette and shows the live mascot trio (`renderer/mascots/{pip,nova,moss}-live.svg`, exported by `pnpm --filter @sayabot/web brand:mascots`) in place of a static logo; the trio hops while a guest workspace is being set up or browser sign-in is pending. The text links are real `<button>`s and errors are `role="alert"`.
+- **Controller page** — `loadLocalHtml` (`src/main.ts:290`) loads `dist/renderer/index.html`, falling back to `src/renderer/index.html` when running from source. The page is the start screen: server choice, guest start, sign-in card, and runner status (it calls the `sayabotDesktop` bridge). Sayabot Cloud is shown with every hosted feature checked and labeled **Coming soon**; that card is not a button and does not call `chooseServer`. **My own server** is the working choice and opens the address form. The Mac app itself (local agents, sign-in against that server) is unchanged. It uses the app's graphite + iris palette and shows the live mascot trio (`renderer/mascots/{pip,nova,moss}-live.svg`, exported by `pnpm --filter @sayabot/web brand:mascots`) in place of a static logo; the trio hops while a guest workspace is being set up or browser sign-in is pending. The text links are real `<button>`s and errors are `role="alert"`.
 - **Workspace** — `openWorkspaceInWindow` (`src/main.ts:761`) refreshes the session and loads `<serverUrl>/auth/complete#access_token=…&refresh_token=…`, so the web app picks up the login from the URL hash with no password entry. On launch, an existing session opens the workspace directly (`src/main.ts:668-676`).
 
 Menu items "Return to Controller" (⌘H) and "Open Workspace in Window" (⌘W) flip between the two; `changeServerFromMenu` (`src/main.ts:299`) signs out, tears down host/runner/vault/MCP singletons, resets `serverChosen`, and reloads the controller. `app:restart` IPC does **not** relaunch the app — it reloads the workspace page ignoring cache (`src/main.ts:996-998`).
@@ -90,8 +90,8 @@ Three JSON files live in Electron's `userData` directory (`getUserDataDir`, `src
 | File | Written by | Contents |
 | :--- | :--- | :--- |
 | `sayabot-config.json` | `loadConfig`/`saveConfig` (`src/main.ts:242-262`) | `serverUrl` (default `https://sayabot.sayalabs.in`), `enableLocalRunner` (default true), `guestDeclined`, `serverChosen`, `serverName`, `serverGuestMode` |
-| `sayabot-session.json` | `loadSession`/`saveSession` (`src/main.ts:264-288`) | access/refresh tokens, email, user id, server URL, `isGuest`; `saveSession(null)` deletes the file |
-| `sayabot-host.json` | `saveHostAuth` (`src/host.ts:73-80`) | the computer registration: `hostId`, `hostToken`, `serverUrl`, `userId` — written with **mode 0o600** |
+| `sayabot-session.json` | `loadSession`/`saveSession` | access/refresh tokens, email, user id, server URL, `isGuest`. Writes are atomic (`durable-json.ts`: temp file, fsync, rename) and the previous good copy is `sayabot-session.json.bak`. A torn write falls back to the backup. `saveSession(null)` deletes both. The workspace page copies its live session here via `auth:save-live-session`. |
+| `sayabot-host.json` | `saveHostAuth` | the computer registration: `hostId`, `hostToken`, `serverUrl`, `userId` — written atomically with **mode 0o600**, with a `.bak` beside it |
 
 The host token is the long-lived computer credential (see [host.md](./host.md)); everything the server needs for account identity travels as bearer tokens over HTTPS, and no plaintext of Sayabot's own secrets is stored on disk beyond these session files.
 
@@ -116,7 +116,7 @@ The host token is the long-lived computer credential (see [host.md](./host.md));
 
 ## 📦 Disk Usage Report (`src/storage.ts`)
 
-`measureLocalStorage` (`src/storage.ts:51`) feeds the heartbeat's storage field. `folderSize` walks iteratively, skips symlinks, and caps at `MAX_ENTRIES` (200,000) entries — hitting the cap marks the result `approximate: true` so a huge folder can't stall the app. It measures:
+`measureLocalStorage` (`src/storage.ts:51`) feeds the heartbeat's storage field. The walk runs beside the heartbeat and its result goes up on a later beat, so measuring disk use cannot delay claiming a job. `folderSize` walks iteratively, skips symlinks, and caps at `MAX_ENTRIES` (200,000) entries — hitting the cap marks the result `approximate: true`. It measures:
 
 - **`appData`** — Electron's `userData` folder.
 - **`agents`** — each directory under `~/Sayabot/agents/` (the local runner's per-agent working folders, up to 100), sized individually and sorted largest first.

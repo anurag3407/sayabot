@@ -42,8 +42,11 @@ describe("Plan & billing page", () => {
     expect(t).toContain("Replies from agents running on your Mac don't count.")
     expect(t).toContain("0 · unlimited")
     expect(t).toContain("Current plan")
-    expect(t).toContain("Upgrade to Pro")
-    expect(t).toContain("Upgrade to Team")
+    expect(t).toContain("Sayabot Cloud is coming soon")
+    expect(t).toContain("300 server replies a month")
+    expect(t).toContain("Coming soon")
+    expect(t).not.toContain("Upgrade to Pro")
+    expect(t).not.toContain("Upgrade to Team")
     expect(t).not.toContain("Manage billing")
     // 250/300 is past 80%: the bar warns.
     expect(html).toContain("bg-warn")
@@ -62,8 +65,9 @@ describe("Plan & billing page", () => {
         }),
       ),
     )
-    expect(t).toContain("Switch to Free")
-    expect(t).toContain("Upgrade to Team")
+    expect(t).toContain("Coming soon")
+    expect(t).not.toContain("Switch to Free")
+    expect(t).not.toContain("Upgrade to Team")
     expect(t).toContain("Manage billing")
   })
 

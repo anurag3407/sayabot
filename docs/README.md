@@ -2,7 +2,7 @@
 
 Welcome to the **Sayabot** documentation. Sayabot is an open-source, full-stack autonomous remote agent platform and real-time collaboration workspace where human teams and AI agents share rooms, execute deterministic turns, collaborate on live canvases, and operate persistent Linux computers.
 
-Whether you are setting up Sayabot for the first time, designing custom autonomous agents, connecting external tools via MCP, or deploying to production, this hub provides comprehensive, step-by-step guides — plus a **per-feature reference library** (`docs/reference/`, 156 docs) generated from a full read of the codebase.
+Whether you are setting up Sayabot for the first time, designing custom autonomous agents, connecting external tools via MCP, or deploying to production, this hub provides comprehensive, step-by-step guides — plus a **per-feature reference library** (`docs/reference/`, 157 docs) generated from a full read of the codebase.
 
 ---
 
@@ -164,7 +164,8 @@ Task-oriented guides live at the top level of `docs/`. The **reference library**
 | [memory/tools](reference/orchestrator/memory/tools.md) | `remember`/`recall`/`open_loop`/`reflect`/`graph_walk`/`forget` |
 | [memory/modules](reference/orchestrator/memory/modules.md) | 9 memory modules: beliefs, dream, graph, retrieval, salience, … |
 | [computers/boat](reference/orchestrator/computers/boat.md) | Boat-hosted Linux desktops: client, provisioning, shell layer |
-| [computers/vps-and-client](reference/orchestrator/computers/vps-and-client.md) | Docker-over-SSH VPS, sleep policy, computerd client |
+| [computers/vps-and-client](reference/orchestrator/computers/vps-and-client.md) | Docker-over-SSH VPS (alias or host + sealed key, one container per bot), sleep policy, computerd client |
+| [computers/e2b](reference/orchestrator/computers/e2b.md) | E2B cloud sandbox per bot: key, create/resume, shell, screen |
 
 ### Landing Site — `docs/reference/landing/`
 

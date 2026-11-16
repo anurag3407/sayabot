@@ -1,4 +1,13 @@
-import { debateRoleInstruction, desktopGuidance, desktopHome, parseCapabilities, worksOnFromParams, type TurnRole } from "@sayabot/core"
+import {
+  debateRoleInstruction,
+  desktopGuidance,
+  desktopHome,
+  parseCapabilities,
+  replyStyleFromParams,
+  replyStyleInstruction,
+  worksOnFromParams,
+  type TurnRole,
+} from "@sayabot/core"
 import { getProviderCapabilities } from "@sayabot/llm"
 import type { ModelMessage, SystemModelMessage, UserModelMessage } from "ai"
 import type { AgentRow, ContextMessage, RoomRow } from "../runner/context"
@@ -120,9 +129,10 @@ export function buildEngineContext(args: BuildEngineContextArgs): EngineContextR
   const caps = getProviderCapabilities(args.provider as any)
   const agentCaps = parseCapabilities(args.agent.capabilities)
 
-  const cacheOption = args.provider === "anthropic" && caps.supportsPromptCache
-    ? { [args.provider]: { cacheControl: { type: "ephemeral" as const } } }
-    : undefined
+  const cacheOption =
+    args.provider === "anthropic" && caps.supportsPromptCache
+      ? { [args.provider]: { cacheControl: { type: "ephemeral" as const } } }
+      : undefined
 
   // 1. System 1 (Frozen): Engine rules + agent identity + instructions
   const system1Parts = [
@@ -147,6 +157,10 @@ export function buildEngineContext(args: BuildEngineContextArgs): EngineContextR
   if (args.agent.systemPrompt?.trim()) {
     system1Parts.push(`Your Instructions:\n${args.agent.systemPrompt.trim()}`)
   }
+  const replyStyle = replyStyleInstruction(
+    replyStyleFromParams(args.agent.params as Record<string, unknown> | null),
+  )
+  if (replyStyle) system1Parts.push(replyStyle)
 
   if (agentCaps.computer) {
     const worksOn = worksOnFromParams(args.agent.params as Record<string, unknown> | null)
@@ -241,7 +255,8 @@ export function buildEngineContext(args: BuildEngineContextArgs): EngineContextR
       runHistory[lastIdx] = {
         ...lastMsg,
         providerOptions: {
-          ...((lastMsg as Record<string, unknown>).providerOptions as Record<string, unknown> ?? {}),
+          ...(((lastMsg as Record<string, unknown>).providerOptions as Record<string, unknown>) ??
+            {}),
           ...cacheOption,
         },
       } as ModelMessage
@@ -306,8 +321,7 @@ export function buildEngineContext(args: BuildEngineContextArgs): EngineContextR
 
   if (args.volatileTail.operatorNotes && args.volatileTail.operatorNotes.length > 0) {
     tailParts.push(
-      "Operator Notes:\n" +
-        args.volatileTail.operatorNotes.map((n) => `[Note]: ${n}`).join("\n"),
+      "Operator Notes:\n" + args.volatileTail.operatorNotes.map((n) => `[Note]: ${n}`).join("\n"),
     )
   }
 
@@ -364,7 +378,10 @@ export function applyRollingCacheBreakpoint(
     if (idx === lastIdx) {
       return {
         ...msg,
-        providerOptions: { ...rest, [provider]: { ...otherProviderOptions, cacheControl: { type: "ephemeral" } } },
+        providerOptions: {
+          ...rest,
+          [provider]: { ...otherProviderOptions, cacheControl: { type: "ephemeral" } },
+        },
       } as ModelMessage
     }
     if (!existing || !("cacheControl" in providerData)) return msg

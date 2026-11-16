@@ -1,11 +1,9 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { computerSettingsUpdate } from "@/lib/computer-settings"
-import { getOrgAccess, isOrgAdmin } from "@/lib/auth"
+import { getOrgAccess } from "@/lib/auth"
 import { audit, fail, ok } from "@/lib/actions/shared"
 import { pickDefaultApp } from "@/lib/desktop-hosts"
-import { getKek } from "@/lib/env"
 import { createAdminClient } from "@/lib/supabase/admin"
 import type { ActionResult } from "@/lib/types"
 
@@ -53,46 +51,6 @@ export async function updateHostSettingsAction(input: {
     action: "desktop.settings_changed",
     target: check.host.id,
     metadata: settings,
-  })
-  revalidatePath(`/${input.orgSlug}/settings/computers`)
-  return ok("Saved")
-}
-
-/**
- * One Boat key for the whole app, plus the VPS this workspace may use.
- * The key is sealed. A Cloud relay token is never written here, and a saved key wins over it.
- */
-export async function saveWorkspaceComputersAction(input: {
-  orgSlug: string
-  boatToken?: string
-  clearBoat?: boolean
-  vpsSshAlias?: string
-  vpsStartAutomatically?: boolean
-}): Promise<ActionResult> {
-  const access = await getOrgAccess(input.orgSlug)
-  if (!access) return fail("Workspace not found")
-  if (!isOrgAdmin(access.role)) return fail("Only an admin can change computers")
-  const built = computerSettingsUpdate({
-    orgId: access.org.id,
-    boatToken: input.boatToken,
-    clearBoat: input.clearBoat,
-    vpsSshAlias: input.vpsSshAlias,
-    vpsStartAutomatically: input.vpsStartAutomatically,
-    kek: getKek(),
-  })
-  if (!built.ok) return fail(built.error)
-  const { error } = await createAdminClient().from("org_computer_settings").upsert(built.row)
-  if (error) return fail("Could not save computer settings")
-  await audit({
-    orgId: access.org.id,
-    actorId: access.user.id,
-    action: "computers.settings_changed",
-    target: access.org.id,
-    metadata: {
-      boat: Boolean(built.row.boat_ciphertext),
-      clearBoat: Boolean(input.clearBoat),
-      vps: Boolean(built.row.vps_ssh_alias),
-    },
   })
   revalidatePath(`/${input.orgSlug}/settings/computers`)
   return ok("Saved")

@@ -49,6 +49,10 @@ Single-use and permanent join links stored in `workspace_invites` with codes fro
 
 `updateProfileAction(_prev, formData)` (`profile.ts:9`) — self-service: display name 1–60, notification mode `all | mentions | off`, sound flag, and an optional avatar that must be a `data:image/(png|jpeg|webp);base64,` URL ≤ 300 KB or an https URL (`profile.ts:23`). Merges `preferences` (notifications + sound) and updates `profiles`; revalidates the root layout. No audit entry (own profile).
 
+`setAlertModeAction(mode)` (`profile.ts`) writes only `preferences.notifications` (`all | mentions | off`) for the signed-in person. The bot sidebar uses it so changing alerts does not require a display name or photo. Revalidates the root layout. No audit entry.
+
+`setAlertSoundAction(on)` writes only `preferences.sound`. The sidebar disables the toggle while notifications are off. Revalidates the root layout. No audit entry.
+
 ---
 
 ## 📝 Owner facts (`actions/facts.ts` + `lib/facts.ts`)

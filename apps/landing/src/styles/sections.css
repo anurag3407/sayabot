@@ -2410,6 +2410,8 @@
 }
 
 .final-ctas {
+  position: relative;
+  z-index: 4;
   display: flex;
   flex-wrap: wrap;
   justify-content: center;

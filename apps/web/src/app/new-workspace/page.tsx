@@ -1,8 +1,6 @@
 import type { Metadata } from "next"
 import { requireUser } from "@/lib/auth"
-import { createOrg } from "@/lib/actions/orgs"
-import { ActionForm } from "@/components/ui/action-form"
-import { Field, HelpText, Input } from "@/components/ui/field"
+import { NewWorkspaceForm } from "@/components/onboarding/new-workspace-form"
 import Link from "next/link"
 
 export const metadata: Metadata = { title: "New workspace" }
@@ -23,20 +21,7 @@ export default async function NewWorkspacePage() {
           workspaces.
         </p>
         <div className="mt-6">
-          <ActionForm action={createOrg} submitLabel="Create workspace" pendingLabel="Creating…">
-            <Field label="workspace name" htmlFor="workspace-name">
-              <Input
-                id="workspace-name"
-                name="name"
-                required
-                minLength={2}
-                maxLength={60}
-                autoFocus
-                placeholder="Acme design team"
-              />
-            </Field>
-            <HelpText>You can rename it later.</HelpText>
-          </ActionForm>
+          <NewWorkspaceForm />
         </div>
       </div>
     </main>

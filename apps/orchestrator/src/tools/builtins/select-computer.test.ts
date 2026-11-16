@@ -8,6 +8,8 @@ const sleeping = {
   boatState: "sleeping" as const,
   vpsReady: false,
   startVpsAutomatically: false,
+  e2bConfigured: false,
+  e2bReady: false,
 }
 
 describe("select_computer", () => {
@@ -31,5 +33,20 @@ describe("select_computer", () => {
     expect(woke.boatId).toBe("box-9")
     expect(available.boatState).toBe("running")
     expect((params.computer as { boatId: string }).boatId).toBe("box-9")
+  })
+
+  it("creates an E2B sandbox for a bot pinned to e2b and shares it with the next tool", async () => {
+    const available = { ...sleeping, e2bConfigured: true }
+    const params: Record<string, unknown> = {}
+    const tool = selectComputerTool({
+      worksOn: "e2b",
+      available,
+      params,
+      apply: async (decision) => ({ ok: true, e2bId: `sbx-${decision.action}` }),
+    })
+    const opened = (await tool.execute({ surface: "e2b" })) as { ok: boolean; e2bId: string; action: string }
+    expect(opened).toMatchObject({ ok: true, action: "provision", e2bId: "sbx-provision" })
+    expect(available.e2bReady).toBe(true)
+    expect((params.computer as { e2bId: string }).e2bId).toBe("sbx-provision")
   })
 })

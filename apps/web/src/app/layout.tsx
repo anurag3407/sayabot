@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next"
 import "@fontsource-variable/geist"
 import "@fontsource-variable/geist-mono"
 import "./globals.css"
+import { DesktopSessionSync } from "@/components/desktop-session-sync"
 import { Toaster } from "@/components/ui/toast"
 import { SummaryFocusGuard } from "@/components/summary-focus-guard"
 import { PwaUpdatePrompt } from "@/components/pwa-update-prompt"
@@ -50,6 +51,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Toaster />
         <SummaryFocusGuard />
         <PwaUpdatePrompt />
+        <DesktopSessionSync />
       </body>
     </html>
   )

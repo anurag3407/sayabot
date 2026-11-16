@@ -165,6 +165,24 @@ const POLL_MS = 1_200
 /** How long a job may wait in the queue for an offline Mac to come back ("wait for my Mac"). */
 const MAX_WAIT_MS = 15 * 60_000
 const START_GRACE_MS = 60_000
+
+/**
+ * A job the Mac has not claimed yet.
+ * The first minute is only a grace period. After that a Mac that is still heartbeating keeps
+ * the job: one stalled beat must not fail a turn the computer can still take. Give up when
+ * that Mac goes quiet, or after 15 minutes.
+ */
+export function macClaimWait(input: {
+  elapsedMs: number
+  /** The turn started by waiting for a Mac that was already offline. */
+  waiting: boolean
+  /** A heartbeat landed within the online window. */
+  online: boolean
+}): "wait" | "unclaimed" | "offline" {
+  if (input.elapsedMs <= START_GRACE_MS && !input.waiting) return "wait"
+  if (input.elapsedMs <= MAX_WAIT_MS && (input.waiting || input.online)) return "wait"
+  return input.waiting ? "offline" : "unclaimed"
+}
 /**
  * A run on the owner's Mac has no time limit: it uses their computer and their own app
  * subscription, so it costs the server nothing but this light poll. It ends when the app
@@ -319,6 +337,8 @@ export async function runLocalTurn(
   const started = Date.now()
   let lastAlive = Date.now()
   let hostCheckedAt = 0
+  // True until a heartbeat check says otherwise. This path only runs when the Mac started online.
+  let stillOnline = true
   let sent = waitingNote
   let seq = waitingNote ? 1 : 0
   try {
@@ -346,13 +366,27 @@ export async function runLocalTurn(
       }
       if (state.status === "done") return finish(sent === waitingNote ? "" : sent, "complete", null)
       if (state.status === "failed") return finish(sent === waitingNote ? "" : sent, "error", state.error ?? "It failed on the computer")
-      if (state.status === "queued" && !waiting && Date.now() - started > START_GRACE_MS) {
-        await db.update(localRunnerJobs).set({ status: "cancelled", finishedAt: new Date() }).where(eq(localRunnerJobs.id, job.id))
-        return finish("", "error", `${host.name} didn't pick this up. Open Sayabot for Mac there and retry, or pick another model with "Switch model".`, "mac_offline")
-      }
-      if (state.status === "queued" && Date.now() - started > MAX_WAIT_MS) {
-        await db.update(localRunnerJobs).set({ status: "cancelled", finishedAt: new Date() }).where(eq(localRunnerJobs.id, job.id))
-        return finish("", "error", `${host.name} stayed offline for 15 minutes. Open Sayabot for Mac there and retry, or pick another model with "Switch model".`, "mac_offline")
+      if (state.status === "queued" && Date.now() - started > START_GRACE_MS) {
+        if (!waiting && Date.now() - hostCheckedAt > HOST_CHECK_MS) {
+          hostCheckedAt = Date.now()
+          const [seen] = await db
+            .select({ lastSeenAt: desktopHosts.lastSeenAt })
+            .from(desktopHosts)
+            .where(eq(desktopHosts.id, host.id))
+            .limit(1)
+          stillOnline = Boolean(seen && hostOnline(seen.lastSeenAt))
+        }
+        const decision = macClaimWait({
+          elapsedMs: Date.now() - started,
+          waiting,
+          online: !waiting && stillOnline,
+        })
+        if (decision !== "wait") {
+          await db.update(localRunnerJobs).set({ status: "cancelled", finishedAt: new Date() }).where(eq(localRunnerJobs.id, job.id))
+          const quiet = `${host.name} didn't pick this up. Open Sayabot for Mac there and retry, or pick another model with "Switch model".`
+          const gone = `${host.name} stayed offline for 15 minutes. Open Sayabot for Mac there and retry, or pick another model with "Switch model".`
+          return finish("", "error", decision === "offline" ? gone : quiet, "mac_offline")
+        }
       }
       // Running: no time limit, but notice a Mac that quit, slept or lost the network mid-run.
       if (state.status === "running" && Date.now() - hostCheckedAt > HOST_CHECK_MS) {

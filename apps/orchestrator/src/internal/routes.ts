@@ -13,6 +13,8 @@ import { and, eq, isNull, or, gt } from "drizzle-orm"
 import { Hono } from "hono"
 import { streamSSE } from "hono/streaming"
 import { z } from "zod"
+import { vpsTargetForOrg } from "../computers/open-vps"
+import { runOnVps, VPS_CHECK_REMOTE } from "../computers/vps"
 import { getDb, getPool } from "../db"
 import { getEnv } from "../env"
 import { enqueueTaskWake } from "../jobs"
@@ -386,6 +388,31 @@ internalRoutes.post("/internal/computer/state", async (c) => {
   }
 
   return c.json({ ok: true })
+})
+
+// ── Computers: check the workspace's saved VPS ──────────────────────────────
+
+/**
+ * Settings → AI providers "Check" for the VPS. Runs only `docker version` over SSH from this
+ * orchestrator, the same machine that will run the bots' commands, so the answer is honest.
+ */
+internalRoutes.post("/internal/computers/vps/check", async (c) => {
+  const body = (await c.req.json().catch(() => null)) as { orgId?: unknown } | null
+  const orgId = typeof body?.orgId === "string" ? body.orgId : ""
+  if (!/^[0-9a-f-]{36}$/i.test(orgId)) return c.json({ error: "invalid body" }, 400)
+  const target = await vpsTargetForOrg(orgId).catch(() => null)
+  if (!target) return c.json({ ok: false, error: "No VPS is saved yet." })
+  const ran = await runOnVps(target, VPS_CHECK_REMOTE, 25_000)
+  const output = ran.output.trim().slice(0, 400)
+  if (!ran.ok) {
+    const hint = /permission denied.*docker/i.test(output)
+      ? "SSH works, but this login cannot use Docker. Add it to the docker group."
+      : /command not found|not found/i.test(output)
+        ? "SSH works, but Docker is not installed on that server."
+        : output || "Could not reach the server over SSH."
+    return c.json({ ok: false, error: hint })
+  }
+  return c.json({ ok: true, docker: output.split("\n").pop() ?? output })
 })
 
 // ── Bot Computer: Get granted env placeholders ──────────────────────────────
