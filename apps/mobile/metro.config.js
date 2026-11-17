@@ -24,6 +24,20 @@ const coreMascot = path.resolve(monorepoRoot, "packages/core/src/mascot.ts")
 const upstreamResolve = config.resolver.resolveRequest
 config.resolver.resolveRequest = (context, moduleName, platform) => {
   if (moduleName === "@sayabot/core/mascot") return { type: "sourceFile", filePath: coreMascot }
+  if (moduleName === "react") {
+    return (upstreamResolve ?? context.resolveRequest)(
+      context,
+      path.resolve(projectRoot, "node_modules/react"),
+      platform
+    )
+  }
+  if (moduleName === "react-native") {
+    return (upstreamResolve ?? context.resolveRequest)(
+      context,
+      path.resolve(projectRoot, "node_modules/react-native"),
+      platform
+    )
+  }
   return (upstreamResolve ?? context.resolveRequest)(context, moduleName, platform)
 }
 

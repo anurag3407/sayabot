@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { Group, Panel, Separator, useDefaultLayout } from "react-resizable-panels"
 import { ChatPanel } from "@/components/room/chat-panel"
 import { CanvasPanel } from "@/components/room/canvas-panel"
@@ -15,6 +15,7 @@ import { InvitePeople, RoomInviteNudge } from "@/components/room/invite-people"
 import {
   AgentConfigPanel,
   type AgentUsageView,
+  type IdentityPreview,
   type AlertMode,
   type ConnectedAppView,
   type MemoryNoteView,
@@ -101,6 +102,10 @@ export function RoomWorkspace({
   const [panelOpen, setPanelOpen] = useState(Boolean(initialCanvasId) || canvasHasContent(data))
   const [tab, setTab] = useState<SideTab>("canvas")
   const [configAgentId, setConfigAgentId] = useState<string | null>(null)
+  const [identityPreview, setIdentityPreview] = useState<IdentityPreview | null>(null)
+  const onIdentityPreview = useCallback((preview: IdentityPreview | null) => {
+    setIdentityPreview(preview)
+  }, [])
   const lastMode = useRef<SideTab | "agent">(
     initialCanvasId || canvasHasContent(data)
       ? "canvas"
@@ -337,6 +342,7 @@ export function RoomWorkspace({
         closePanel()
       }}
       onOpenWorkspace={(next) => openPanel(next)}
+      onIdentityPreview={onIdentityPreview}
     />
   ) : (
     <RoomSidePanel
@@ -376,9 +382,8 @@ export function RoomWorkspace({
               className="shrink-0 rounded-full"
             >
               <Mascot
-                {...mascotProps(dmAgent.displayName, dmAgent.params)}
-                mood={realtime.turnState?.activeAgentId ? "busy" : "idle"}
-                lit={Boolean(realtime.turnState?.activeAgentId)}
+                {...mascotFor(dmAgent, identityPreview)}
+                {...(realtime.turnState?.activeAgentId ? { mood: "busy" as const, lit: true } : {})}
                 live
                 className="h-8 w-8"
               />
@@ -394,7 +399,7 @@ export function RoomWorkspace({
                   className="rounded-full"
                 >
                   <Mascot
-                    {...mascotProps(agent.displayName, agent.params)}
+                    {...mascotFor(agent, identityPreview)}
                     className="h-7 w-7 rounded-full ring-2 ring-panel"
                   />
                 </button>
@@ -415,7 +420,11 @@ export function RoomWorkspace({
               className="max-w-[40vw] truncate pl-1 text-left text-[15px] font-semibold tracking-[-0.01em] md:max-w-[260px]"
               data-testid="room-title"
             >
-              {data.room.name}
+              {identityPreview?.agentId === dmAgent.id &&
+              identityPreview.name.trim() &&
+              identityPreview.name.trim() !== dmAgent.displayName
+                ? identityPreview.name.trim()
+                : data.room.name}
             </button>
           ) : (
             <h1
@@ -632,4 +641,24 @@ export function RoomWorkspace({
       />
     </div>
   )
+}
+
+function mascotFor(
+  agent: { id: string; displayName: string; params: Record<string, unknown> },
+  preview: IdentityPreview | null,
+) {
+  if (!preview || preview.agentId !== agent.id) return mascotProps(agent.displayName, agent.params)
+  const current =
+    agent.params.mascot && typeof agent.params.mascot === "object"
+      ? (agent.params.mascot as Record<string, unknown>)
+      : {}
+  return mascotProps(agent.displayName, {
+    ...agent.params,
+    mascot: {
+      ...current,
+      ...(preview.look.shape ? { shape: preview.look.shape } : {}),
+      ...(preview.look.tone ? { tone: preview.look.tone } : {}),
+      ...(preview.look.mood ? { mood: preview.look.mood } : {}),
+    },
+  })
 }

@@ -62,7 +62,7 @@ const t = SAYA_TONES.blue
 
 ## Consumers
 
-- Web: `apps/web/src/components/ui/mascot.tsx` (seeded `Mascot`, maps the app moods `happy/sleep/busy/alert` onto `done/sleeping/working/waiting`) and `landing/mesh-mark.tsx` (`SayabotMark`).
+- Web: `apps/web/src/components/ui/mascot.tsx` (seeded `Mascot`, `resolveMascotLook` for the cast-or-`sayaPick` face, maps the app moods `happy/sleep/busy/alert` onto `done/sleeping/working/waiting`) and `landing/mesh-mark.tsx` (`SayabotMark`).
 - Landing: `apps/landing/src/components/saya.tsx`, `final-cta.tsx`.
 - Mobile: `apps/mobile/src/ui/Mascot.tsx`. `metro.config.js` aliases the `@sayabot/core/mascot` subpath to the source file because Expo 52's Metro ignores package `exports`.
 - Brand exports: `apps/web/scripts/export-mascots.ts` (`brand:mascots`) and `export-icons.ts` (`brand:icons`).

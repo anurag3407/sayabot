@@ -55,6 +55,18 @@ const CAST: Record<string, { shape: SayaShape; tone: SayaTone; rare?: boolean }>
   Block: { shape: "block", tone: "orange" },
 }
 
+/** The face a name draws before anyone picks a shape or a colour. */
+export function resolveMascotLook(seed: string): {
+  shape: SayaShape
+  tone: SayaTone
+  cast: boolean
+} {
+  const known = CAST[seed]
+  if (known) return { shape: known.shape, tone: known.tone, cast: true }
+  const picked = sayaPick(seed)
+  return { shape: picked.shape, tone: picked.tone, cast: false }
+}
+
 /** A four-point sparkle centred on (x, y). */
 function sparkle(x: number, y: number, size: number) {
   return `M${x} ${y - size}Q${x} ${y} ${x + size} ${y}Q${x} ${y} ${x} ${y + size}Q${x} ${y} ${x - size} ${y}Q${x} ${y} ${x} ${y - size}Z`
@@ -108,9 +120,10 @@ export function Mascot({
 }) {
   const id = useId().replace(/[^a-zA-Z0-9]/g, "")
   const known = CAST[seed]
-  const picked = sayaPick(seed)
-  const bodyShape = shape ?? known?.shape ?? picked.shape
-  const tone = SAYA_TONES[known?.tone ?? (shape ? SAYA_SHAPE_INFO[shape].tone : picked.tone)]
+  const resolved = resolveMascotLook(seed)
+  const bodyShape = shape ?? resolved.shape
+  const tone =
+    SAYA_TONES[resolved.cast ? resolved.tone : shape ? SAYA_SHAPE_INFO[shape].tone : resolved.tone]
   const base = color ?? tone.base
   const shade = color ? `color-mix(in oklab, ${color} 68%, #1a0f24)` : tone.shade
   const eye = color ? `color-mix(in oklab, ${color} 18%, #fff)` : tone.eye

@@ -75,5 +75,5 @@ export async function saveOrgSkillAction(input: {
     metadata: { skillId: data.id },
   })
   revalidateOrg(input.orgSlug)
-  return ok(`/${slug} is ready`, { slug, skillId: data.id })
+  return ok(`${title} is ready. The bot loads it by name.`, { slug, skillId: data.id })
 }

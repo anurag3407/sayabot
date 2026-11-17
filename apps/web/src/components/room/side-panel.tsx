@@ -32,6 +32,7 @@ export interface RoomRoutine {
   enabled: boolean
   nextRunAt: string | null
   lastStatus: string | null
+  agentId: string | null
   agentName: string | null
 }
 
@@ -134,14 +135,16 @@ function ScreenTab({
             <>
               <CircleOff className="h-6 w-6 text-faint" />
               <p className="max-w-[280px] text-[13px] leading-relaxed text-muted">
-                {agent.displayName} has no desktop yet. Pick a place below and it can open websites and apps for you.
+                {agent.displayName} has no desktop yet. Pick a place below and it can open websites
+                and apps for you.
               </p>
             </>
           ) : (
             <>
               <PlaceIcon className="h-6 w-6 text-muted" />
               <p className="max-w-[300px] text-[13px] leading-relaxed text-muted">
-                When {agent.displayName} uses its computer you can watch here live, and take over any time.
+                When {agent.displayName} uses its computer you can watch here live, and take over
+                any time.
               </p>
               <Link
                 href={`/${orgSlug}/agents/${agent.id}`}
@@ -161,8 +164,8 @@ function ScreenTab({
             <div className="min-w-0">
               <p className="text-[14px] font-medium text-text">Allow control of this computer</p>
               <p className="mt-1 text-[13px] leading-relaxed text-muted">
-                {agent.displayName} will see your screen and use your apps. Your Mac also asks for Screen
-                Recording and Accessibility in System Settings → Privacy &amp; Security.
+                {agent.displayName} will see your screen and use your apps. Your Mac also asks for
+                Screen Recording and Accessibility in System Settings → Privacy &amp; Security.
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
@@ -232,7 +235,8 @@ function ActivityTab({
       <div className="px-4 py-12 text-center">
         <Zap className="mx-auto h-6 w-6 text-faint" />
         <p className="mx-auto mt-3 max-w-[280px] text-[13px] leading-relaxed text-faint">
-          Every step a bot takes shows up here: searches, files, its computer. Anything risky waits for your OK first.
+          Every step a bot takes shows up here: searches, files, its computer. Anything risky waits
+          for your OK first.
         </p>
       </div>
     )
@@ -242,7 +246,9 @@ function ActivityTab({
     <div>
       {waiting.length ? (
         <p className="mb-1 text-[13px] font-medium text-accent">
-          {waiting.length === 1 ? "1 step is waiting for you" : `${waiting.length} steps are waiting for you`}
+          {waiting.length === 1
+            ? "1 step is waiting for you"
+            : `${waiting.length} steps are waiting for you`}
         </p>
       ) : null}
       <ToolCallsList
@@ -265,10 +271,15 @@ function RoutinesTab({ orgSlug, routines }: { orgSlug: string; routines: RoomRou
             <li key={routine.id} className="rounded-xl border border-line bg-panel/60 px-3.5 py-3">
               <div className="flex items-center gap-2">
                 <span
-                  className={cn("h-2 w-2 shrink-0 rounded-full", routine.enabled ? "bg-ok" : "bg-faint")}
+                  className={cn(
+                    "h-2 w-2 shrink-0 rounded-full",
+                    routine.enabled ? "bg-ok" : "bg-faint",
+                  )}
                   aria-label={routine.enabled ? "On" : "Paused"}
                 />
-                <span className="min-w-0 flex-1 truncate text-[14px] font-medium text-text">{routine.name}</span>
+                <span className="min-w-0 flex-1 truncate text-[14px] font-medium text-text">
+                  {routine.name}
+                </span>
                 {routine.lastStatus === "error" ? (
                   <span className="shrink-0 text-[11.5px] text-danger">Last run failed</span>
                 ) : null}
@@ -287,7 +298,8 @@ function RoutinesTab({ orgSlug, routines }: { orgSlug: string; routines: RoomRou
         <div className="rounded-2xl border border-dashed border-line-strong px-4 py-8 text-center">
           <p className="text-[14px] font-medium text-text">No routines in this chat</p>
           <p className="mx-auto mt-1 max-w-[280px] text-[13px] leading-relaxed text-faint">
-            Just ask in the chat, like &ldquo;every weekday at 9, send me the news in my field&rdquo;.
+            Just ask in the chat, like &ldquo;every weekday at 9, send me the news in my
+            field&rdquo;.
           </p>
         </div>
       )}
@@ -341,7 +353,11 @@ export function RoomSidePanel({
   return (
     <div className="flex h-full min-h-0 flex-col bg-ink">
       <div className="flex shrink-0 items-center gap-2 px-3 py-2.5">
-        <div className="flex min-w-0 flex-1 gap-0.5 overflow-x-auto rounded-full bg-panel p-1 [scrollbar-width:none]" role="tablist" aria-label="Panel">
+        <div
+          className="flex min-w-0 flex-1 gap-0.5 overflow-x-auto rounded-full bg-panel p-1 [scrollbar-width:none]"
+          role="tablist"
+          aria-label="Panel"
+        >
           {tabs.map((item) => (
             <button
               key={item.id}
@@ -351,7 +367,9 @@ export function RoomSidePanel({
               onClick={() => onTabChange(item.id)}
               className={cn(
                 "relative flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] transition-colors",
-                shown === item.id ? "bg-raised font-medium text-text shadow-[0_0_0_1px_var(--color-line-strong)]" : "text-muted hover:text-text",
+                shown === item.id
+                  ? "bg-raised font-medium text-text shadow-[0_0_0_1px_var(--color-line-strong)]"
+                  : "text-muted hover:text-text",
               )}
             >
               {item.label}
@@ -378,7 +396,9 @@ export function RoomSidePanel({
         <div className="min-h-0 flex-1 overflow-hidden border-t border-line">{canvas}</div>
       ) : (
         <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6 pt-2">
-          {shown === "screen" ? <ScreenTab orgSlug={orgSlug} agents={agents} canAdmin={canAdmin} /> : null}
+          {shown === "screen" ? (
+            <ScreenTab orgSlug={orgSlug} agents={agents} canAdmin={canAdmin} />
+          ) : null}
           {shown === "activity" ? (
             <ActivityTab
               orgSlug={orgSlug}

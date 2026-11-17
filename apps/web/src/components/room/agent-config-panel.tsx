@@ -33,7 +33,6 @@ import {
   desktopHome,
   parseCapabilities,
   replyStyleFromParams,
-  sayaPick,
   worksOnFromParams,
   type AgentCapabilities,
   type ReplyStyle,
@@ -57,7 +56,7 @@ import { sendMessage } from "@/lib/actions/messages"
 import { setRoomExecutionModeAction } from "@/lib/actions/room-state"
 import { AGENT_MOODS, readAgentLook, type AgentLook, type AgentMood } from "@/lib/agent-look"
 import { EnableAlerts } from "@/components/room/room-activity"
-import { Mascot } from "@/components/ui/mascot"
+import { Mascot, resolveMascotLook } from "@/components/ui/mascot"
 import { showToast } from "@/components/ui/toast"
 import { RoomModelPicker } from "@/components/room/model-picker/room-model-picker"
 import { WORKS_ON_OPTIONS } from "@/lib/works-on"
@@ -65,6 +64,12 @@ import { WorksOnPicker } from "@/components/agents/works-on-picker"
 import { cn } from "@/lib/format"
 import type { AgentView, RoomExecutionMode, ToolCallView } from "@/lib/types"
 import type { RoomRoutine } from "@/components/room/side-panel"
+
+export interface IdentityPreview {
+  agentId: string
+  name: string
+  look: AgentLook
+}
 
 export interface OrgSkillView {
   id: string
@@ -141,7 +146,7 @@ const SECTIONS: { id: SectionId; label: string; icon: LucideIcon; keywords: stri
     icon: Wrench,
     keywords: "search canvas terminal github database apps capabilities",
   },
-  { id: "memory", label: "Memory", icon: Brain, keywords: "remember notes facts pin" },
+  { id: "memory", label: "Memory", icon: Brain, keywords: "remember notes facts pin upkeep" },
   {
     id: "library",
     label: "Library",
@@ -170,9 +175,9 @@ const SECTIONS: { id: SectionId; label: string; icon: LucideIcon; keywords: stri
   },
   {
     id: "alerts",
-    label: "Alerts",
+    label: "Voice & alerts",
     icon: Bell,
-    keywords: "notifications voice mentions",
+    keywords: "notifications voice mentions sound",
   },
   { id: "history", label: "History", icon: History, keywords: "activity steps tool calls" },
   { id: "usage", label: "Usage", icon: Cpu, keywords: "tokens cost spend" },
@@ -186,7 +191,7 @@ const TOOLS: { key: Flag; label: string; detail: string }[] = [
   { key: "sandbox", label: "Terminal", detail: "Run commands in its sandbox" },
   { key: "github", label: "GitHub", detail: "Work in repos it has been granted" },
   { key: "postgres", label: "Database", detail: "Query a database it has been granted" },
-  { key: "mcp", label: "Connected apps", detail: "Use the apps turned on for this workspace" },
+  { key: "mcp", label: "Apps", detail: "Use MCP apps turned on for this workspace" },
   {
     key: "connectors",
     label: "Connectors",
@@ -279,6 +284,7 @@ export function AgentConfigPanel({
   memoryNotes,
   onClose,
   onOpenWorkspace,
+  onIdentityPreview,
 }: {
   orgSlug: string
   roomId: string
@@ -299,6 +305,7 @@ export function AgentConfigPanel({
   memoryNotes: MemoryNoteView[]
   onClose: () => void
   onOpenWorkspace: (tab: "canvas" | "activity" | "screen") => void
+  onIdentityPreview?: (preview: IdentityPreview | null) => void
 }) {
   const router = useRouter()
   const agent = agents.find((item) => item.id === agentId) ?? agents[0]
@@ -384,6 +391,33 @@ export function AgentConfigPanel({
     return () => window.removeEventListener("keydown", onKey)
   }, [onClose, query])
 
+  const previewLook =
+    agent && pickedLook?.id === agent.id
+      ? pickedLook.look
+      : agent
+        ? readAgentLook(agent.params)
+        : null
+  const lookShape = previewLook?.shape ?? null
+  const lookTone = previewLook?.tone ?? null
+  const lookMood = previewLook?.mood ?? null
+
+  useEffect(() => {
+    if (!onIdentityPreview) return
+    if (!agent) {
+      onIdentityPreview(null)
+      return
+    }
+    onIdentityPreview({
+      agentId: agent.id,
+      name: name.trim() || agent.displayName,
+      look: { shape: lookShape, tone: lookTone, mood: lookMood },
+    })
+  }, [onIdentityPreview, agent, name, lookShape, lookTone, lookMood])
+
+  useEffect(() => {
+    return () => onIdentityPreview?.(null)
+  }, [onIdentityPreview])
+
   const needle = query.trim().toLowerCase()
   const visible = useMemo(
     () =>
@@ -405,8 +439,9 @@ export function AgentConfigPanel({
   const bot = agent
   const savedLook = readAgentLook(bot.params)
   const look = pickedLook?.id === bot.id ? pickedLook.look : savedLook
-  const shape = look.shape ?? sayaPick(bot.displayName).shape
-  const tone = look.tone ?? SAYA_SHAPE_INFO[shape].tone
+  const face = visibleFace(bot.displayName, look)
+  const shape = face.shape
+  const tone = face.tone
   const llm = bot.kind === "llm"
   const busy =
     savingBasics ||
@@ -419,7 +454,7 @@ export function AgentConfigPanel({
   const agentRoutines = [...extraRoutines, ...routines].filter(
     (routine, index, all) =>
       all.findIndex((item) => item.id === routine.id) === index &&
-      (!routine.agentName || routine.agentName === bot.displayName),
+      (routine.agentId === bot.id || routine.agentId === null),
   )
   const worksLabel = WORKS_ON_OPTIONS.find((option) => option[0] === place.worksOn)?.[1] ?? "Auto"
   const recent = toolCalls.slice(0, 6)
@@ -435,8 +470,11 @@ export function AgentConfigPanel({
   function saveBasics(nextName = name, nextPrompt = prompt) {
     if (!canEdit) return
     const trimmed = nextName.trim()
-    if (!trimmed || (trimmed === bot.displayName && nextPrompt.trim() === bot.systemPrompt.trim()))
+    if (!trimmed) {
+      setName(bot.displayName)
       return
+    }
+    if (trimmed === bot.displayName && nextPrompt.trim() === bot.systemPrompt.trim()) return
     setError(null)
     startBasics(async () => {
       const result = await updateBotBasicsAction({
@@ -642,7 +680,8 @@ export function AgentConfigPanel({
           enabled: true,
           nextRunAt: payload.routine?.next_run_at ?? null,
           lastStatus: null,
-          agentName: bot.displayName,
+          agentId: bot.id,
+          agentName: name.trim() || bot.displayName,
         },
         ...current,
       ])
@@ -775,7 +814,7 @@ export function AgentConfigPanel({
     {
       id: "identity",
       label: "Give it a name and a look",
-      done: name.trim().length > 0,
+      done: name.trim().length > 0 && Boolean(look.shape || look.tone),
     },
     { id: "soul", label: "Write its standing instructions", done: prompt.trim().length > 40 },
     {
@@ -846,21 +885,45 @@ export function AgentConfigPanel({
             <p className="mt-0.5 text-[12.5px] text-faint">@{bot.handle}</p>
           </Card>
           <Card>
-            <p className="text-[13px] font-medium text-muted">Does</p>
-            <p className="mt-1 text-[14px] text-text">
-              {agentRoutines.length
-                ? agentRoutines
-                    .map((routine) => routine.name)
-                    .slice(0, 2)
-                    .join(", ")
-                : "Nothing scheduled or learned yet."}
-            </p>
+            <button
+              type="button"
+              onClick={() => go(agentRoutines.length ? "routines" : "skills")}
+              className="w-full text-left"
+            >
+              <p className="text-[13px] font-medium text-muted">Does</p>
+              <p className="mt-1 text-[14px] text-text">
+                {(() => {
+                  if (agentRoutines.length) {
+                    return agentRoutines
+                      .map((routine) => routine.name)
+                      .slice(0, 2)
+                      .join(", ")
+                  }
+                  const known = new Set(skills.map((skill) => skill.slug))
+                  const learned = [
+                    ...savedSkills.filter((skill) => !known.has(skill.slug)),
+                    ...skills,
+                  ]
+                  return learned.length
+                    ? learned
+                        .map((skill) => skill.title)
+                        .slice(0, 2)
+                        .join(", ")
+                    : "Nothing scheduled or learned yet."
+                })()}
+              </p>
+            </button>
           </Card>
           <Card>
-            <p className="text-[13px] font-medium text-muted">Can reach</p>
-            <p className="mt-1 text-[14px] leading-relaxed text-text">
-              Works on: {worksLabel}. Availability is checked when a task starts.
-            </p>
+            <button type="button" onClick={() => go("access")} className="w-full text-left">
+              <p className="text-[13px] font-medium text-muted">Can reach</p>
+              <p className="mt-1 text-[14px] leading-relaxed text-text">
+                Works on: {worksLabel}.
+                {apps.some((app) => app.agentId === bot.id)
+                  ? ` ${apps.filter((app) => app.agentId === bot.id).length} connected apps.`
+                  : " Availability is checked when a task starts."}
+              </p>
+            </button>
           </Card>
         </div>
       )
@@ -871,9 +934,7 @@ export function AgentConfigPanel({
         <div className="space-y-4">
           <div className="flex justify-center py-2">
             <Mascot
-              seed={bot.displayName}
-              shape={look.shape ?? undefined}
-              color={look.tone ? SAYA_TONES[look.tone].base : undefined}
+              {...faceProps(bot.displayName, look)}
               mood={look.mood ?? "idle"}
               live
               className="h-24 w-24"
@@ -904,13 +965,18 @@ export function AgentConfigPanel({
             <p className="mt-1.5 text-[12.5px] text-faint">
               @{bot.handle} stays, so mentions keep working.
             </p>
+            {error ? (
+              <p role="alert" className="mt-1.5 text-[13px] text-danger">
+                {error}
+              </p>
+            ) : null}
           </div>
           <div>
             <p className="mb-2 text-[12px] font-medium tracking-wide text-faint">SHAPE</p>
             <div className="grid grid-cols-4 gap-2">
               {SAYA_SHAPES.map((item) => {
-                const selected = (look.shape ?? shape) === item && Boolean(look.shape)
-                const previewTone = look.tone ?? SAYA_SHAPE_INFO[item].tone
+                const selected = shape === item
+                const previewTone = look.tone ?? tone
                 return (
                   <button
                     key={item}
@@ -918,7 +984,7 @@ export function AgentConfigPanel({
                     disabled={!canEdit || savingLook}
                     aria-pressed={selected}
                     title={SAYA_SHAPE_INFO[item].name}
-                    onClick={() => saveLook(item, look.tone ?? SAYA_SHAPE_INFO[item].tone)}
+                    onClick={() => saveLook(item, look.tone ?? tone)}
                     className={cn(
                       "grid place-items-center rounded-2xl bg-ink py-2",
                       selected ? "ring-2 ring-accent" : "ring-1 ring-line hover:ring-line-strong",
@@ -948,7 +1014,7 @@ export function AgentConfigPanel({
                     aria-label={item}
                     aria-pressed={selected}
                     title={item}
-                    onClick={() => saveLook(look.shape ?? shape, look.tone ?? tone, item)}
+                    onClick={() => saveLook(shape, tone, item)}
                     className={cn(
                       "grid place-items-center rounded-xl bg-ink py-1.5",
                       selected ? "ring-2 ring-accent" : "ring-1 ring-line hover:ring-line-strong",
@@ -956,8 +1022,8 @@ export function AgentConfigPanel({
                   >
                     <Mascot
                       seed={bot.displayName}
-                      shape={look.shape ?? shape}
-                      color={SAYA_TONES[look.tone ?? tone].base}
+                      shape={shape}
+                      color={SAYA_TONES[tone].base}
                       mood={item}
                       className="h-8 w-8"
                     />
@@ -970,7 +1036,7 @@ export function AgentConfigPanel({
             <p className="mb-2 text-[12px] font-medium tracking-wide text-faint">COLOR</p>
             <div className="flex flex-wrap gap-2">
               {SAYA_TONE_NAMES.map((item) => {
-                const selected = tone === item && Boolean(look.tone)
+                const selected = tone === item
                 return (
                   <button
                     key={item}
@@ -978,7 +1044,7 @@ export function AgentConfigPanel({
                     disabled={!canEdit || savingLook}
                     aria-label={item}
                     aria-pressed={selected}
-                    onClick={() => saveLook(look.shape ?? shape, item)}
+                    onClick={() => saveLook(shape, item)}
                     className={cn(
                       "h-8 w-8 rounded-full",
                       selected
@@ -1005,6 +1071,7 @@ export function AgentConfigPanel({
             value={prompt}
             disabled={!canEdit || savingBasics}
             onChange={(event) => setPrompt(event.target.value)}
+            onBlur={() => saveBasics()}
             rows={8}
             maxLength={20000}
             placeholder="Who this bot is, and what it never does."
@@ -1034,7 +1101,11 @@ export function AgentConfigPanel({
           ) : (
             <p className="text-[12.5px] text-faint">Only a workspace admin can edit this bot.</p>
           )}
-          <div className="rounded-2xl border border-line bg-panel/50 p-3.5">
+          <div
+            className="rounded-2xl border border-line bg-panel/50 p-3.5"
+            role="radiogroup"
+            aria-label="Reply style"
+          >
             <p className="text-[14px] font-medium text-text">Reply style</p>
             <p className="mt-0.5 text-[12.5px] text-faint">How this bot writes back to you.</p>
             {(
@@ -1046,22 +1117,37 @@ export function AgentConfigPanel({
                   "Short, plain replies, often with one follow-up question.",
                 ],
               ] as const
-            ).map(([value, label, detail]) => (
-              <label key={value} className="mt-3 flex cursor-pointer gap-2.5">
-                <input
-                  type="radio"
-                  name="reply-style"
-                  className="mt-1"
-                  checked={replyStyle === value}
+            ).map(([value, label, detail]) => {
+              const selected = replyStyle === value
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
                   disabled={!canEdit || !llm || savingStyle}
-                  onChange={() => saveReplyStyle(value)}
-                />
-                <span>
-                  <span className="block text-[14px] text-text">{label}</span>
-                  <span className="block text-[12.5px] leading-relaxed text-faint">{detail}</span>
-                </span>
-              </label>
-            ))}
+                  onClick={() => saveReplyStyle(value)}
+                  className={cn(
+                    "mt-2 flex w-full items-start gap-2.5 rounded-xl px-3 py-2.5 text-left",
+                    selected ? "bg-raised ring-1 ring-accent" : "hover:bg-raised",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full border",
+                      selected ? "border-accent" : "border-line-strong",
+                    )}
+                    aria-hidden
+                  >
+                    {selected ? <span className="h-2 w-2 rounded-full bg-accent" /> : null}
+                  </span>
+                  <span>
+                    <span className="block text-[14px] text-text">{label}</span>
+                    <span className="block text-[12.5px] leading-relaxed text-faint">{detail}</span>
+                  </span>
+                </button>
+              )
+            })}
           </div>
         </div>
       )
@@ -1084,7 +1170,7 @@ export function AgentConfigPanel({
               <ul className="mt-3 divide-y divide-line">
                 {learned.map((skill) => (
                   <li key={skill.id} className="py-2.5">
-                    <p className="font-mono text-[13px] text-text">/{skill.slug}</p>
+                    <p className="text-[14px] text-text">{skill.title}</p>
                     <p className="text-[12.5px] text-faint">{skill.description}</p>
                   </li>
                 ))}
@@ -1258,6 +1344,18 @@ export function AgentConfigPanel({
               ) : null}
             </Card>
           ) : null}
+          <Card>
+            <p className="text-[15px] font-medium text-text">Upkeep</p>
+            <p className="mt-1 text-[13px] leading-relaxed text-muted">
+              Every few hours, expired episode notes are pruned and withdrawn notes are removed.
+              That runs for the whole workspace.
+            </p>
+            {caps.computer ? (
+              <p className="mt-2 text-[13px] leading-relaxed text-muted">
+                A copy is also written on this bot&apos;s computer at /home/bot/.saaya/memory/.
+              </p>
+            ) : null}
+          </Card>
           <Link
             href={`/${orgSlug}/settings/storage`}
             className="inline-flex text-[13px] text-accent hover:underline"
@@ -1721,8 +1819,7 @@ export function AgentConfigPanel({
                 </p>
                 {bot.webhookUrl ? (
                   <p className="mt-2 break-all text-[12.5px] text-muted">
-                    Sayabot calls{" "}
-                    <span className="font-mono text-text">{bot.webhookUrl}</span>
+                    Sayabot calls <span className="font-mono text-text">{bot.webhookUrl}</span>
                   </p>
                 ) : null}
                 {issuedKey ? (
@@ -1775,7 +1872,7 @@ export function AgentConfigPanel({
     if (id === "alerts") {
       return (
         <Card>
-          <p className="text-[15px] font-semibold text-text">Alerts</p>
+          <p className="text-[15px] font-semibold text-text">Voice & alerts</p>
           <p className="mt-1 text-[13px] leading-relaxed text-muted">
             When you get notified. This follows you across the workspace. This bot does not have its
             own voice.
@@ -1875,9 +1972,12 @@ export function AgentConfigPanel({
   return (
     <div className="flex h-full min-h-0 flex-col bg-ink" data-testid="bot-config-panel">
       <div className="flex shrink-0 items-center gap-2 px-3 pb-1 pt-3">
-        <h2 className="min-w-0 flex-1 truncate text-[16px] font-semibold tracking-[-0.01em]">
-          {bot.displayName}
-        </h2>
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <Mascot {...faceProps(bot.displayName, look)} className="h-7 w-7 shrink-0" />
+          <h2 className="min-w-0 truncate text-[16px] font-semibold tracking-[-0.01em]">
+            {name.trim() || bot.displayName}
+          </h2>
+        </div>
         <button
           type="button"
           onClick={() => onOpenWorkspace("canvas")}
@@ -1916,8 +2016,11 @@ export function AgentConfigPanel({
                 item.id === bot.id ? "bg-raised text-text" : "text-muted hover:bg-panel",
               )}
             >
-              <Mascot {...mascotFace(item)} className="h-5 w-5" />
-              {item.displayName}
+              <Mascot
+                {...(item.id === bot.id ? faceProps(bot.displayName, look) : mascotFace(item))}
+                className="h-5 w-5"
+              />
+              {item.id === bot.id ? name.trim() || item.displayName : item.displayName}
             </button>
           ))}
         </div>
@@ -1958,12 +2061,21 @@ export function AgentConfigPanel({
                   type="button"
                   aria-expanded={expanded}
                   onClick={() => {
+                    const opening = needle || !expanded
                     if (needle) {
                       setQuery("")
                       setOpen(section.id)
-                      return
+                    } else {
+                      setOpen(expanded ? null : section.id)
                     }
-                    setOpen(expanded ? null : section.id)
+                    if (opening) {
+                      requestAnimationFrame(() => {
+                        refs.current[section.id]?.scrollIntoView({
+                          block: "nearest",
+                          behavior: "smooth",
+                        })
+                      })
+                    }
                   }}
                   className="flex w-full items-center gap-2.5 px-3 py-3 text-left hover:bg-panel/60"
                 >
@@ -1997,12 +2109,23 @@ export function AgentConfigPanel({
   )
 }
 
-function mascotFace(agent: AgentView) {
-  const look = readAgentLook(agent.params)
+function visibleFace(seed: string, look: AgentLook): { shape: SayaShape; tone: SayaTone } {
+  const fallback = resolveMascotLook(seed)
+  const shape = look.shape ?? fallback.shape
+  const tone =
+    look.tone ?? (look.shape && !fallback.cast ? SAYA_SHAPE_INFO[shape].tone : fallback.tone)
+  return { shape, tone }
+}
+
+function faceProps(seed: string, look: AgentLook) {
   return {
-    seed: agent.displayName,
+    seed,
     ...(look.shape ? { shape: look.shape } : {}),
     ...(look.tone ? { color: SAYA_TONES[look.tone].base } : {}),
     ...(look.mood ? { mood: look.mood } : {}),
   }
+}
+
+function mascotFace(agent: AgentView) {
+  return faceProps(agent.displayName, readAgentLook(agent.params))
 }

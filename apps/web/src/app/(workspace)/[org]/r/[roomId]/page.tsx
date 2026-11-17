@@ -32,14 +32,14 @@ async function loadRoomRoutines(orgId: string, roomId: string): Promise<RoomRout
   const { data } = await supabase
     .from("routines")
     .select(
-      "id, name, schedule_expr, schedule_kind, enabled, next_run_at, last_status, agents ( display_name )",
+      "id, name, schedule_expr, schedule_kind, enabled, next_run_at, last_status, agent_id, agent:agents!routines_agent_id_fkey ( display_name )",
     )
     .eq("org_id", orgId)
     .eq("room_id", roomId)
     .order("created_at", { ascending: false })
     .limit(20)
   return (data ?? []).map((row) => {
-    const agent = Array.isArray(row.agents) ? row.agents[0] : row.agents
+    const agent = Array.isArray(row.agent) ? row.agent[0] : row.agent
     return {
       id: row.id as string,
       name: row.name as string,
@@ -47,6 +47,7 @@ async function loadRoomRoutines(orgId: string, roomId: string): Promise<RoomRout
       enabled: row.enabled as boolean,
       nextRunAt: (row.next_run_at as string | null) ?? null,
       lastStatus: (row.last_status as string | null) ?? null,
+      agentId: (row.agent_id as string | null) ?? null,
       agentName: (agent as { display_name?: string } | null)?.display_name ?? null,
     }
   })
