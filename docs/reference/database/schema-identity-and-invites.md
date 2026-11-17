@@ -1,8 +1,8 @@
 # Identity & Invites Schemas
 
-This reference documents the tenancy roots of Sayabot — `profiles` (users), `orgs` (workspaces), and `org_members` (membership with roles) — plus every table that gets outsiders **into** a workspace or room: room invite links (`room_invites`), the bot "ask to join" flow (`bot_invites`), workspace-level email/link invites (`workspace_invites`), the OAuth client machinery bots use to obtain tokens (`oauth_clients` / `oauth_codes` / `oauth_tokens`), and the desktop guest-account merge tickets (`account_merge_tickets`). Secrets never appear here in plaintext: every credential-shaped column stores only a hash (`code_hash`, `token_hash`, `poll_token_hash`).
+This reference documents the tenancy roots of Sayabot — `profiles` (users), `orgs` (workspaces), and `org_members` (membership with roles) — plus every table that gets outsiders **into** a workspace or room: room invite links (`room_invites`), the bot "ask to join" flow (`bot_invites`), workspace invite links (`workspace_invites`) and the admin approval queue (`workspace_join_requests`), the OAuth client machinery bots use to obtain tokens (`oauth_clients` / `oauth_codes` / `oauth_tokens`), and the desktop guest-account merge tickets (`account_merge_tickets`). Secrets never appear here in plaintext: every credential-shaped column stores only a hash (`code_hash`, `token_hash`, `poll_token_hash`).
 
-Source files: `packages/db/src/schema/identity.ts`, `packages/db/src/schema/invites.ts`, `packages/db/src/schema/enums.ts`, `packages/db/sql/0002_rls.sql`, `packages/db/sql/0009_bot_platform.sql`, `packages/db/sql/0020_bot_invites.sql`, `packages/db/sql/0023_workspace_invites.sql`, `packages/db/sql/0031_guest_account_merge.sql`
+Source files: `packages/db/src/schema/identity.ts`, `packages/db/src/schema/invites.ts`, `packages/db/src/schema/enums.ts`, `packages/db/sql/0002_rls.sql`, `packages/db/sql/0009_bot_platform.sql`, `packages/db/sql/0020_bot_invites.sql`, `packages/db/sql/0023_workspace_invites.sql`, `packages/db/sql/0031_guest_account_merge.sql`, `packages/db/sql/0040_workspace_join_requests.sql`
 
 ---
 
@@ -194,7 +194,7 @@ Indexes: `bot_invites_room_idx` on `(room_id, status)` and `bot_invites_org_idx`
 
 ## Workspace invites (`workspace_invites`)
 
-Defined at `packages/db/src/schema/invites.ts:147` (created `packages/db/sql/0023_workspace_invites.sql`). The three ways into a workspace per the doc comment (`invites.ts:143-146`): a tracked **email invite**, a **single-use link** expiring 24 hours after creation, or a **permanent link** anyone holding it can use.
+Defined at `packages/db/src/schema/invites.ts` (created `packages/db/sql/0023_workspace_invites.sql`). New invites are a **single-use link** (24 hours) or a **permanent link**. Opening one files a `workspace_join_requests` row; a workspace admin approves before the person is a member. `kind: "email"` rows are older invitations, kept so they can still be revoked. No new email invites are created.
 
 | Column | SQL type | Constraints / Default | Description |
 | :--- | :--- | :--- | :--- |
@@ -218,7 +218,15 @@ Indexes: `workspace_invites_org_idx` on `(org_id, kind)` (`invites.ts:168`).
 
 **RLS** (`packages/db/sql/0023_workspace_invites.sql:29-31`): RLS enabled, all access revoked from `anon`/`authenticated`/`public`, `grant all` to `service_role`.
 
-**Used by**: `apps/web/src/lib/actions/workspace-invites.ts` (create/list/redeem/revoke); redemption also upserts `room_reads` for the auto-joined rooms (`workspace-invites.ts:206`).
+**Used by**: `apps/web/src/lib/actions/workspace-invites.ts` (create/revoke) and `apps/web/src/lib/workspace-invites.ts` (the settings list). Redeeming a link no longer inserts `org_members`; approval does, and then upserts `room_members` and `room_reads`.
+
+## Workspace join requests (`workspace_join_requests`)
+
+Defined at `packages/db/src/schema/invites.ts` (created `packages/db/sql/0040_workspace_join_requests.sql`). One row per person per invite link. Status is `pending`, `approved`, or `declined`. Asking again after a decline reopens the same row (`unique (invite_id, user_id)`). `role` is `member` or `admin`, copied from the link. `room_ids` are the rooms they join on approval.
+
+**RLS**: enabled, all access revoked from `anon` / `authenticated` / `public`, `grant all` to `service_role`.
+
+**Used by**: `requestJoinAction` and `decideJoinRequestAction` in `apps/web/src/lib/actions/workspace-invites.ts`. The settings page and the Inbox list pending rows.
 
 ---
 

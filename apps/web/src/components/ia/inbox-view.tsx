@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useCallback, useState, useTransition } from "react"
 import { decideBotInviteAction } from "@/lib/actions/bot-invites"
+import { decideJoinRequestAction } from "@/lib/actions/workspace-invites"
 import { ApprovalCard } from "@/components/room/tool-call-card"
 import { AskCard, when } from "@/components/ia/ask-card"
 import { FactsPanel } from "@/components/ia/facts-panel"
@@ -20,6 +21,7 @@ import type {
   OwnerFactView,
   TaskView,
 } from "@/lib/types"
+import type { JoinRequestView } from "@/lib/workspace-invites"
 
 function JoinCard({
   request,
@@ -43,7 +45,10 @@ function JoinCard({
         setError(result.error ?? "Could not save your answer")
         return
       }
-      showToast({ tone: approve ? "success" : "neutral", message: result.message ?? (approve ? "Approved" : "Declined") })
+      showToast({
+        tone: approve ? "success" : "neutral",
+        message: result.message ?? (approve ? "Approved" : "Declined"),
+      })
       onDecided()
     })
   }
@@ -60,15 +65,18 @@ function JoinCard({
             {request.appLabel ? `${request.appLabel} · ` : ""}
             {when(request.requestedAt)}
           </p>
-          {request.about ? <p className="mt-2 text-[14px] text-muted">&ldquo;{request.about}&rdquo;</p> : null}
+          {request.about ? (
+            <p className="mt-2 text-[14px] text-muted">&ldquo;{request.about}&rdquo;</p>
+          ) : null}
           {request.rejectedAttempts > 0 ? (
             <p className="mt-2 text-[12px] text-warn">
-              Someone else also tried this link and was turned away. Only approve if you pasted it into this agent
-              yourself.
+              Someone else also tried this link and was turned away. Only approve if you pasted it
+              into this agent yourself.
             </p>
           ) : (
             <p className="mt-2 text-[12px] text-faint">
-              Once approved it can read and post in #{request.roomName} and take tasks there. Nothing else.
+              Once approved it can read and post in #{request.roomName} and take tasks there.
+              Nothing else.
             </p>
           )}
           {error ? <p className="mt-2 text-[13px] text-danger">{error}</p> : null}
@@ -90,13 +98,88 @@ function JoinCard({
   )
 }
 
-function SectionTitle({ id, title, count, hint }: { id: string; title: string; count?: number; hint?: string }) {
+function PersonCard({
+  request,
+  orgSlug,
+  onDecided,
+}: {
+  request: JoinRequestView
+  orgSlug: string
+  onDecided: () => void
+}) {
+  const [pending, startTransition] = useTransition()
+  const [error, setError] = useState<string | null>(null)
+
+  function decide(approve: boolean) {
+    setError(null)
+    startTransition(async () => {
+      const result = await decideJoinRequestAction({ orgSlug, requestId: request.id, approve })
+      if (!result.ok) {
+        setError(result.error ?? "Could not save your answer")
+        return
+      }
+      showToast({
+        tone: approve ? "success" : "neutral",
+        message: result.message ?? (approve ? "Approved" : "Declined"),
+      })
+      onDecided()
+    })
+  }
+
+  return (
+    <li className="rounded-xl border border-accent/40 bg-panel p-4 sm:p-5">
+      <div className="flex items-start gap-3">
+        <Avatar name={request.name} kind="human" size="lg" />
+        <div className="min-w-0 flex-1">
+          <p className="text-[15px] font-medium text-text">
+            {request.name} wants to join this workspace
+          </p>
+          <p className="text-[12px] text-faint">
+            {request.email ? `${request.email} · ` : ""}
+            <span className="capitalize">{request.role}</span>
+            {request.roomCount
+              ? ` · ${request.roomCount} ${request.roomCount === 1 ? "room" : "rooms"}`
+              : ""}
+            {" · "}
+            {when(request.createdAt)}
+          </p>
+          <p className="mt-2 text-[12px] text-faint">
+            They opened an invite link. Approving lets them in as a {request.role}.
+          </p>
+          {error ? <p className="mt-2 text-[13px] text-danger">{error}</p> : null}
+          <div className="mt-3 flex gap-2">
+            <Button variant="primary" disabled={pending} onClick={() => decide(true)}>
+              Approve
+            </Button>
+            <Button variant="outline" disabled={pending} onClick={() => decide(false)}>
+              Decline
+            </Button>
+          </div>
+        </div>
+      </div>
+    </li>
+  )
+}
+
+function SectionTitle({
+  id,
+  title,
+  count,
+  hint,
+}: {
+  id: string
+  title: string
+  count?: number
+  hint?: string
+}) {
   return (
     <div className="mb-3">
       <h2 id={id} className="flex items-center gap-2 text-[16px] font-medium text-text">
         {title}
         {count ? (
-          <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[12px] font-medium text-accent">{count}</span>
+          <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[12px] font-medium text-accent">
+            {count}
+          </span>
         ) : null}
       </h2>
       {hint ? <p className="mt-0.5 text-[13px] text-faint">{hint}</p> : null}
@@ -114,6 +197,7 @@ export function InboxView({
   adminRoomIds,
   viewerId,
   joinRequests = [],
+  peopleRequests = [],
   facts = [],
   rooms = [],
 }: {
@@ -127,6 +211,7 @@ export function InboxView({
   /** The signed-in person; approvals from someone's Mac are only theirs to answer. */
   viewerId?: string | null
   joinRequests?: BotJoinRequestView[]
+  peopleRequests?: JoinRequestView[]
   facts?: OwnerFactView[]
   rooms?: { id: string; name: string }[]
 }) {
@@ -135,7 +220,7 @@ export function InboxView({
   useWorkspaceChange(["tool_calls", "tasks"], refresh)
   const adminRooms = new Set(adminRoomIds)
   const canApproveAny = orgAdmin || adminRooms.size > 0
-  const needsYou = joinRequests.length + requests.length + approvals.length
+  const needsYou = peopleRequests.length + joinRequests.length + requests.length + approvals.length
 
   // Newest activity first; one agent's questions sit together.
   const sortedRequests = [...requests].sort((a, b) => {
@@ -157,9 +242,33 @@ export function InboxView({
 
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="min-w-0 space-y-10">
+            {peopleRequests.length ? (
+              <section aria-labelledby="people-join-heading">
+                <SectionTitle
+                  id="people-join-heading"
+                  title="People asking to join"
+                  count={peopleRequests.length}
+                />
+                <ul className="space-y-3">
+                  {peopleRequests.map((request) => (
+                    <PersonCard
+                      key={request.id}
+                      request={request}
+                      orgSlug={orgSlug}
+                      onDecided={refresh}
+                    />
+                  ))}
+                </ul>
+              </section>
+            ) : null}
+
             {joinRequests.length ? (
               <section aria-labelledby="join-heading">
-                <SectionTitle id="join-heading" title="Agents asking to join" count={joinRequests.length} />
+                <SectionTitle
+                  id="join-heading"
+                  title="Agents asking to join"
+                  count={joinRequests.length}
+                />
                 <ul className="space-y-3">
                   {joinRequests.map((request) => (
                     <JoinCard
@@ -216,7 +325,8 @@ export function InboxView({
                   {approvals.map((item) => (
                     <li key={item.toolCall.id}>
                       <p className="mb-1.5 text-[12px] text-faint">
-                        {item.agentName ?? item.agentHandle ?? "An agent"} in {item.roomName} · {when(item.toolCall.createdAt)}
+                        {item.agentName ?? item.agentHandle ?? "An agent"} in {item.roomName} ·{" "}
+                        {when(item.toolCall.createdAt)}
                       </p>
                       <ApprovalCard
                         call={item.toolCall}
@@ -242,7 +352,10 @@ export function InboxView({
                 />
                 <ul className="space-y-2">
                   {agedStuck.map((task) => (
-                    <li key={task.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-danger/30 bg-panel p-4">
+                    <li
+                      key={task.id}
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-danger/30 bg-panel p-4"
+                    >
                       <div className="min-w-0">
                         <p className="text-[14px] font-medium text-text">{task.title}</p>
                         <p className="mt-0.5 text-[12px] text-faint">
@@ -265,7 +378,9 @@ export function InboxView({
 
             <details className="group">
               <summary className="cursor-pointer list-none text-[14px] text-muted hover:text-text">
-                <span className="mr-1 inline-block transition-transform group-open:rotate-90">›</span>
+                <span className="mr-1 inline-block transition-transform group-open:rotate-90">
+                  ›
+                </span>
                 Done in the last 7 days ({done.length})
               </summary>
               {done.length === 0 ? (
@@ -273,9 +388,16 @@ export function InboxView({
               ) : (
                 <ul className="mt-3 divide-y divide-line rounded-xl border border-line">
                   {done.map((item) => (
-                    <li key={`${item.kind}-${item.id}`} className="flex items-baseline gap-2 px-4 py-2.5">
-                      <span className="min-w-0 flex-1 truncate text-[13px] text-muted">{item.label}</span>
-                      <span className="shrink-0 text-[12px] text-faint">{when(item.resolvedAt)}</span>
+                    <li
+                      key={`${item.kind}-${item.id}`}
+                      className="flex items-baseline gap-2 px-4 py-2.5"
+                    >
+                      <span className="min-w-0 flex-1 truncate text-[13px] text-muted">
+                        {item.label}
+                      </span>
+                      <span className="shrink-0 text-[12px] text-faint">
+                        {when(item.resolvedAt)}
+                      </span>
                     </li>
                   ))}
                 </ul>
@@ -283,7 +405,9 @@ export function InboxView({
             </details>
 
             {!canApproveAny ? (
-              <InlineAlert tone="neutral">You can see everything here. A room or workspace admin decides.</InlineAlert>
+              <InlineAlert tone="neutral">
+                You can see everything here. A room or workspace admin decides.
+              </InlineAlert>
             ) : null}
           </div>
 

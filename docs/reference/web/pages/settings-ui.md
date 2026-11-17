@@ -139,7 +139,7 @@ Two lanes, **Storage** and **Embeddings**, each show the active provider (or the
 
 - **Workspace** — rename via `renameWorkspaceAction` (`src/lib/actions/orgs.ts`).
 - **Members** — list with role; per-member `MemberRoleForm` (`src/components/admin/member-role-form.tsx`) and `RemoveMemberButton` (self excluded); `allowOwner` only for the owner role.
-- **`InvitePeopleCard`** (`invite-people-card.tsx`) — three tabs: **email** (`inviteMember`), **link** (single-use) and **permanent**, the latter two via `createInviteLinkAction` / `revokeInviteAction` (`src/lib/actions/workspace-invites.ts`) with role select (member/admin), copyable URL, expiry display ("Never expires" or "Expires <date>"), and the pending-invite list.
+- **`InvitePeopleCard`** (`invite-people-card.tsx`) — two tabs, **Invite link** (single-use, 24 hours) and **Perma link**, both via `createInviteLinkAction` / `revokeInviteAction`. Role select is member or admin. Optional room checkboxes are copied onto the link and applied when an admin approves. There is no email field. **Waiting for approval** lists `loadJoinRequests` with Approve / Decline (`decideJoinRequestAction`). **Shared links** lists `loadPendingInvites` with copy and revoke, including any older email invites that were never used.
 - **SAML SSO** — enable/disable via `updateSso`, only when the server has SSO set up (`ssoEnabled()`), otherwise a warning.
 - **Audit log** — last 100 entries from `listAuditLogs` as a table (time, action, target, actor type:id-prefix, expandable metadata JSON).
 

@@ -37,9 +37,7 @@ async function readableRooms(orgId: string): Promise<RoomRow[]> {
   const supabase = await createSupabaseServerClient()
   const { data } = await supabase
     .from("rooms")
-    .select(
-      "id, name, kind, turn_mode, agent_dm_user_id, agent_dm_agent_id, timezone",
-    )
+    .select("id, name, kind, turn_mode, agent_dm_user_id, agent_dm_agent_id, timezone")
     .eq("org_id", orgId)
   return (data ?? []) as RoomRow[]
 }
@@ -51,7 +49,10 @@ export async function loadChatList(access: OrgAccess): Promise<{
 }> {
   const supabase = await createSupabaseServerClient()
   const rooms = await readableRooms(access.org.id)
-  if (!rooms.length) return { items: [], inboxCount: 0, rooms: [] }
+  if (!rooms.length) {
+    const people = access.role === "member" ? 0 : await countPeopleJoinRequests(access.org.id)
+    return { items: [], inboxCount: people, rooms: [] }
+  }
   const roomIds = rooms.map((room) => room.id)
   const [readsRes, roomAgentsRes, messagesRes, approvalsRes, requestsRes] = await Promise.all([
     supabase
@@ -83,13 +84,15 @@ export async function loadChatList(access: OrgAccess): Promise<{
   ])
 
   const reads = new Map(
-    ((readsRes.data ?? []) as {
-      room_id: string
-      last_read_at: string
-      pinned: boolean
-      muted_until: string | null
-      archived: boolean
-    }[]).map((row) => [row.room_id, row]),
+    (
+      (readsRes.data ?? []) as {
+        room_id: string
+        last_read_at: string
+        pinned: boolean
+        muted_until: string | null
+        archived: boolean
+      }[]
+    ).map((row) => [row.room_id, row]),
   )
   const agentNames = new Map<string, string[]>()
   for (const row of (roomAgentsRes.data ?? []) as unknown as {
@@ -110,8 +113,18 @@ export async function loadChatList(access: OrgAccess): Promise<{
     mentions: string[] | null
   }[]
 
-  const agentSenderIds = [...new Set(messages.filter((m) => m.sender_type === "agent" && m.sender_id).map((m) => m.sender_id!))]
-  const humanSenderIds = [...new Set(messages.filter((m) => m.sender_type === "human" && m.sender_id && m.sender_id !== access.user.id).map((m) => m.sender_id!))]
+  const agentSenderIds = [
+    ...new Set(
+      messages.filter((m) => m.sender_type === "agent" && m.sender_id).map((m) => m.sender_id!),
+    ),
+  ]
+  const humanSenderIds = [
+    ...new Set(
+      messages
+        .filter((m) => m.sender_type === "human" && m.sender_id && m.sender_id !== access.user.id)
+        .map((m) => m.sender_id!),
+    ),
+  ]
   const [agentsData, profilesData] = await Promise.all([
     agentSenderIds.length
       ? supabase.from("agents").select("id, handle, display_name").in("id", agentSenderIds)
@@ -121,7 +134,11 @@ export async function loadChatList(access: OrgAccess): Promise<{
       : Promise.resolve({ data: [] }),
   ])
   const senderNames = new Map<string, string>()
-  for (const row of (agentsData.data ?? []) as { id: string; handle: string; display_name: string }[]) {
+  for (const row of (agentsData.data ?? []) as {
+    id: string
+    handle: string
+    display_name: string
+  }[]) {
     senderNames.set(row.id, `@${row.handle}`)
   }
   for (const row of (profilesData.data ?? []) as { id: string; display_name: string }[]) {
@@ -139,14 +156,18 @@ export async function loadChatList(access: OrgAccess): Promise<{
       if (new Date(message.created_at).getTime() <= lastRead) continue
       if (message.sender_type === "human" && message.sender_id === access.user.id) continue
       unread++
-      if ((message.mentions ?? []).includes(ownHandle) && message.sender_id !== access.user.id) mentions++
+      if ((message.mentions ?? []).includes(ownHandle) && message.sender_id !== access.user.id)
+        mentions++
     }
     const last = roomMessages[0]
     let lastSender: string | null = null
     if (last) {
       if (last.sender_type === "system") lastSender = "system"
       else if (last.sender_type === "human" && last.sender_id === access.user.id) lastSender = "You"
-      else lastSender = (last.sender_id && senderNames.get(last.sender_id)) ?? (last.sender_type === "human" ? "Someone" : "Agent")
+      else
+        lastSender =
+          (last.sender_id && senderNames.get(last.sender_id)) ??
+          (last.sender_type === "human" ? "Someone" : "Agent")
     }
     return {
       id: room.id,
@@ -176,7 +197,8 @@ export async function loadChatList(access: OrgAccess): Promise<{
   ).filter((r) => !r.expires_at || r.expires_at > nowIso)
   const distinctQuestions = new Set(activeRequests.map((r) => r.fold_key || r.id)).size
   const joinRequests = await countBotJoinRequests(roomIds)
-  const inboxCount = (approvalsRes.count ?? 0) + distinctQuestions + joinRequests
+  const people = access.role === "member" ? 0 : await countPeopleJoinRequests(access.org.id)
+  const inboxCount = (approvalsRes.count ?? 0) + distinctQuestions + joinRequests + people
   return { items, inboxCount, rooms }
 }
 
@@ -200,20 +222,22 @@ export async function loadMeetings(access: OrgAccess): Promise<{
       .order("starts_at", { ascending: true })
       .limit(150),
   ])
-  const schedules = ((schedulesRes.data ?? []) as {
-    room_id: string
-    timezone: string
-    morning_start_minutes: number
-    morning_end_minutes: number
-    evening_start_minutes: number
-    evening_end_minutes: number
-    checkins_enabled: boolean
-    checkin_interval_minutes: number
-    checkin_start_minutes: number
-    checkin_end_minutes: number
-    checkin_duration_minutes: number
-    last_checkin_at: string | null
-  }[]).map((row) => ({
+  const schedules = (
+    (schedulesRes.data ?? []) as {
+      room_id: string
+      timezone: string
+      morning_start_minutes: number
+      morning_end_minutes: number
+      evening_start_minutes: number
+      evening_end_minutes: number
+      checkins_enabled: boolean
+      checkin_interval_minutes: number
+      checkin_start_minutes: number
+      checkin_end_minutes: number
+      checkin_duration_minutes: number
+      last_checkin_at: string | null
+    }[]
+  ).map((row) => ({
     roomId: row.room_id,
     timezone: row.timezone,
     morningStartMinutes: row.morning_start_minutes,
@@ -227,7 +251,9 @@ export async function loadMeetings(access: OrgAccess): Promise<{
     checkinDurationMinutes: row.checkin_duration_minutes,
     lastCheckinAt: row.last_checkin_at ?? null,
   }))
-  const meetings = ((meetingsRes.data ?? []) as MeetingRow[]).map((row) => mapMeeting(row, roomsById.get(row.room_id)?.name ?? "room"))
+  const meetings = ((meetingsRes.data ?? []) as MeetingRow[]).map((row) =>
+    mapMeeting(row, roomsById.get(row.room_id)?.name ?? "room"),
+  )
   return { rooms, schedules, meetings }
 }
 
@@ -313,15 +339,23 @@ export async function loadTasks(access: OrgAccess): Promise<TaskView[]> {
       ? supabase
           .from("task_comments")
           .select("id, task_id, author_type, author_id, content, created_at")
-          .in("task_id", taskRows.map((task) => task.id))
+          .in(
+            "task_id",
+            taskRows.map((task) => task.id),
+          )
           .order("created_at", { ascending: true })
           .limit(500)
       : Promise.resolve({ data: [] }),
     taskRows.length
       ? supabase
           .from("task_events")
-          .select("id, task_id, actor_type, actor_id, from_status, to_status, reason, outcome_kind, outcome_ref, metadata, created_at")
-          .in("task_id", taskRows.map((task) => task.id))
+          .select(
+            "id, task_id, actor_type, actor_id, from_status, to_status, reason, outcome_kind, outcome_ref, metadata, created_at",
+          )
+          .in(
+            "task_id",
+            taskRows.map((task) => task.id),
+          )
           .order("created_at", { ascending: true })
           .limit(1000)
       : Promise.resolve({ data: [] }),
@@ -329,7 +363,10 @@ export async function loadTasks(access: OrgAccess): Promise<TaskView[]> {
       ? supabase
           .from("agent_runs")
           .select("task_id, cost_usd")
-          .in("task_id", taskRows.map((task) => task.id))
+          .in(
+            "task_id",
+            taskRows.map((task) => task.id),
+          )
       : Promise.resolve({ data: [] }),
   ])
 
@@ -352,7 +389,7 @@ export async function loadTasks(access: OrgAccess): Promise<TaskView[]> {
         row.author_type === "agent" && row.author_id
           ? `@${agentsById.get(row.author_id)?.handle ?? "agent"}`
           : row.author_id
-            ? memberNames.get(row.author_id) ?? "Someone"
+            ? (memberNames.get(row.author_id) ?? "Someone")
             : "System",
       content: row.content,
       createdAt: row.created_at,
@@ -384,7 +421,7 @@ export async function loadTasks(access: OrgAccess): Promise<TaskView[]> {
         row.actor_type === "agent" && row.actor_id
           ? `@${agentsById.get(row.actor_id)?.handle ?? "agent"}`
           : row.actor_id
-            ? memberNames.get(row.actor_id) ?? "Someone"
+            ? (memberNames.get(row.actor_id) ?? "Someone")
             : "System",
       fromStatus: row.from_status,
       toStatus: row.to_status,
@@ -398,7 +435,10 @@ export async function loadTasks(access: OrgAccess): Promise<TaskView[]> {
   }
 
   const taskStats = new Map<string, { runs: number; cost: number }>()
-  for (const run of (runsRes.data ?? []) as { task_id: string | null; cost_usd: number | string | null }[]) {
+  for (const run of (runsRes.data ?? []) as {
+    task_id: string | null
+    cost_usd: number | string | null
+  }[]) {
     if (!run.task_id) continue
     const curr = taskStats.get(run.task_id) ?? { runs: 0, cost: 0 }
     curr.runs += 1
@@ -421,7 +461,9 @@ export async function loadTasks(access: OrgAccess): Promise<TaskView[]> {
       description: row.description,
       status: row.status,
       assigneeUserId: row.assignee_user_id,
-      assigneeName: row.assignee_user_id ? memberNames.get(row.assignee_user_id) ?? "Someone" : null,
+      assigneeName: row.assignee_user_id
+        ? (memberNames.get(row.assignee_user_id) ?? "Someone")
+        : null,
       assigneeAgentId: row.assignee_agent_id,
       assigneeHandle: agent?.handle ?? null,
       requestedByAgentId: row.requested_by_agent_id,
@@ -471,7 +513,9 @@ export async function loadInbox(access: OrgAccess): Promise<{
   const [approvalsRes, doneToolsRes, tasks] = await Promise.all([
     supabase
       .from("tool_calls")
-      .select("id, run_id, room_id, message_id, tool_name, args, result, status, approved_by, resolved_at, error, created_at")
+      .select(
+        "id, run_id, room_id, message_id, tool_name, args, result, status, approved_by, resolved_at, error, created_at",
+      )
       .in("room_id", roomIds)
       .eq("status", "pending_approval")
       .order("created_at", { ascending: false })
@@ -506,7 +550,12 @@ export async function loadInbox(access: OrgAccess): Promise<{
 
   const nowIso = new Date().toISOString()
   const requests = tasks
-    .filter((task) => task.kind === "request" && task.status !== "done" && (!task.expiresAt || task.expiresAt > nowIso))
+    .filter(
+      (task) =>
+        task.kind === "request" &&
+        task.status !== "done" &&
+        (!task.expiresAt || task.expiresAt > nowIso),
+    )
     .map((task) => ({ task }))
 
   // Group open requests into decision packets by room
@@ -538,13 +587,15 @@ export async function loadInbox(access: OrgAccess): Promise<{
   })
 
   const done: InboxDoneView[] = [
-    ...((doneToolsRes.data ?? []) as {
-      id: string
-      room_id: string
-      tool_name: string
-      status: string
-      resolved_at: string | null
-    }[]).map((row) => ({
+    ...(
+      (doneToolsRes.data ?? []) as {
+        id: string
+        room_id: string
+        tool_name: string
+        status: string
+        resolved_at: string | null
+      }[]
+    ).map((row) => ({
       id: row.id,
       kind: "approval" as const,
       label: `${row.tool_name} in ${roomNames.get(row.room_id) ?? "room"}`,
@@ -566,6 +617,16 @@ export async function loadInbox(access: OrgAccess): Promise<{
 }
 
 /** bot_invites is server-only, so it is read with the service role, scoped to rooms the person can read. */
+async function countPeopleJoinRequests(orgId: string): Promise<number> {
+  const { count, error } = await createAdminClient()
+    .from("workspace_join_requests")
+    .select("id", { count: "exact", head: true })
+    .eq("org_id", orgId)
+    .eq("status", "pending")
+  if (error) return 0
+  return count ?? 0
+}
+
 async function countBotJoinRequests(roomIds: string[]): Promise<number> {
   if (!roomIds.length) return 0
   const { count } = await createAdminClient()
@@ -583,22 +644,29 @@ export async function loadBotJoinRequests(access: OrgAccess): Promise<BotJoinReq
   const roomNames = new Map(rooms.map((room) => [room.id, room.name]))
   const { data } = await createAdminClient()
     .from("bot_invites")
-    .select("id, room_id, name, request_name, request_app, request_about, requested_at, rejected_attempts")
-    .in("room_id", rooms.map((room) => room.id))
+    .select(
+      "id, room_id, name, request_name, request_app, request_about, requested_at, rejected_attempts",
+    )
+    .in(
+      "room_id",
+      rooms.map((room) => room.id),
+    )
     .eq("status", "pending")
     .gt("expires_at", new Date().toISOString())
     .order("requested_at", { ascending: false })
     .limit(50)
-  return ((data ?? []) as {
-    id: string
-    room_id: string
-    name: string | null
-    request_name: string | null
-    request_app: string | null
-    request_about: string | null
-    requested_at: string | null
-    rejected_attempts: unknown[] | null
-  }[]).map((row) => ({
+  return (
+    (data ?? []) as {
+      id: string
+      room_id: string
+      name: string | null
+      request_name: string | null
+      request_app: string | null
+      request_about: string | null
+      requested_at: string | null
+      rejected_attempts: unknown[] | null
+    }[]
+  ).map((row) => ({
     inviteId: row.id,
     roomId: row.room_id,
     roomName: roomNames.get(row.room_id) ?? "room",
@@ -612,7 +680,10 @@ export async function loadBotJoinRequests(access: OrgAccess): Promise<BotJoinReq
 
 export async function loadOwnerFacts(access: OrgAccess): Promise<OwnerFactView[]> {
   const supabase = await createSupabaseServerClient()
-  const [rooms, agents] = await Promise.all([readableRooms(access.org.id), listOrgAgents(access.org.id)])
+  const [rooms, agents] = await Promise.all([
+    readableRooms(access.org.id),
+    listOrgAgents(access.org.id),
+  ])
   const roomNames = new Map(rooms.map((room) => [room.id, room.name]))
   const handles = new Map(agents.map((agent) => [agent.id, agent.handle]))
   const { data } = await supabase
@@ -621,17 +692,19 @@ export async function loadOwnerFacts(access: OrgAccess): Promise<OwnerFactView[]
     .eq("org_id", access.org.id)
     .order("updated_at", { ascending: false })
     .limit(300)
-  return ((data ?? []) as {
-    id: string
-    key: string
-    label: string
-    value: string
-    room_id: string | null
-    source: OwnerFactView["source"]
-    source_agent_id: string | null
-    note: string | null
-    updated_at: string
-  }[]).map((row) => ({
+  return (
+    (data ?? []) as {
+      id: string
+      key: string
+      label: string
+      value: string
+      room_id: string | null
+      source: OwnerFactView["source"]
+      source_agent_id: string | null
+      note: string | null
+      updated_at: string
+    }[]
+  ).map((row) => ({
     id: row.id,
     key: row.key,
     label: row.label,
@@ -653,18 +726,23 @@ export async function loadFiles(access: OrgAccess): Promise<FileView[]> {
   const { data } = await supabase
     .from("canvases")
     .select("id, room_id, kind, title, language, snapshot_text, updated_at")
-    .in("room_id", rooms.map((room) => room.id))
+    .in(
+      "room_id",
+      rooms.map((room) => room.id),
+    )
     .order("updated_at", { ascending: false })
     .limit(200)
-  return ((data ?? []) as {
-    id: string
-    room_id: string
-    kind: FileView["kind"]
-    title: string
-    language: string | null
-    snapshot_text: string
-    updated_at: string
-  }[]).map((row) => ({
+  return (
+    (data ?? []) as {
+      id: string
+      room_id: string
+      kind: FileView["kind"]
+      title: string
+      language: string | null
+      snapshot_text: string
+      updated_at: string
+    }[]
+  ).map((row) => ({
     id: row.id,
     roomId: row.room_id,
     roomName: roomNames.get(row.room_id) ?? "room",
@@ -687,7 +765,10 @@ export async function loadBotChats(access: OrgAccess): Promise<BotChatView[]> {
   const { data } = await supabase
     .from("messages")
     .select("id, room_id, sender_id, content, mentions, created_at")
-    .in("room_id", rooms.map((room) => room.id))
+    .in(
+      "room_id",
+      rooms.map((room) => room.id),
+    )
     .eq("sender_type", "agent")
     .order("created_at", { ascending: false })
     .limit(300)
@@ -703,7 +784,8 @@ export async function loadBotChats(access: OrgAccess): Promise<BotChatView[]> {
     const sender = row.sender_id ? agentsById.get(row.sender_id) : null
     if (!sender) continue
     const mentioned = (row.mentions ?? []).filter(
-      (mention) => handles.has(mention.toLowerCase()) && mention.toLowerCase() !== sender.handle.toLowerCase(),
+      (mention) =>
+        handles.has(mention.toLowerCase()) && mention.toLowerCase() !== sender.handle.toLowerCase(),
     )
     if (!mentioned.length) continue
     const list = byRoom.get(row.room_id) ?? []
@@ -730,7 +812,11 @@ export async function loadBotChats(access: OrgAccess): Promise<BotChatView[]> {
 
 export async function loadRoomSchedule(roomId: string): Promise<RoomScheduleView | null> {
   const supabase = await createSupabaseServerClient()
-  const { data } = await supabase.from("room_schedules").select("*").eq("room_id", roomId).maybeSingle()
+  const { data } = await supabase
+    .from("room_schedules")
+    .select("*")
+    .eq("room_id", roomId)
+    .maybeSingle()
   if (!data) return null
   return {
     roomId: data.room_id,
@@ -775,7 +861,10 @@ export async function searchMessages(
   const { data } = await supabase
     .from("messages")
     .select("id, room_id, thread_root_id, sender_type, sender_id, content, created_at")
-    .in("room_id", rooms.map((room) => room.id))
+    .in(
+      "room_id",
+      rooms.map((room) => room.id),
+    )
     .neq("sender_type", "system")
     .ilike("content", pattern)
     .order("created_at", { ascending: false })

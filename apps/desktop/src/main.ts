@@ -442,13 +442,22 @@ function handleDeepLink(urlStr: string): void {
   }
 }
 
-// Register protocol handler for macOS
-if (process.defaultApp) {
-  if (process.argv.length >= 2) {
-    app.setAsDefaultProtocolClient("sayabot", process.execPath, [path.resolve(process.argv[1])])
+// A menu-check launch must not take the installed app's single-instance lock.
+// Unset, this does nothing and the packaged app keeps its normal name.
+if (process.env.SAYABOT_MENU_CHECK === "1") {
+  app.setName("SayabotMenuCheck")
+}
+
+// Register protocol handler for macOS. Skip during a menu check so this
+// process does not become the handler for sayabot://.
+if (process.env.SAYABOT_MENU_CHECK !== "1") {
+  if (process.defaultApp) {
+    if (process.argv.length >= 2) {
+      app.setAsDefaultProtocolClient("sayabot", process.execPath, [path.resolve(process.argv[1])])
+    }
+  } else {
+    app.setAsDefaultProtocolClient("sayabot")
   }
-} else {
-  app.setAsDefaultProtocolClient("sayabot")
 }
 
 // Single instance enforcement
@@ -645,77 +654,134 @@ function updateMenuItem(): MenuItemConstructorOptions {
   }
 }
 
-function buildAppMenu() {
-  const template: MenuItemConstructorOptions[] = [
-    {
-      label: "Sayabot",
-      submenu: [
-        { label: "About Sayabot", role: "about" },
-        updateMenuItem(),
-        { type: "separator" },
-        {
-          label: "Return to Controller",
-          accelerator: "CmdOrCtrl+H",
-          click: () => loadLocalHtml(),
-        },
-        {
-          label: "Open Workspace in Window",
-          accelerator: "CmdOrCtrl+W",
-          click: () => {
-            void openWorkspaceInWindow()
+/** True while the menu is being rebuilt, so navigation from setApplicationMenu cannot recurse. */
+let rebuildingMenu = false
+
+export function appMenuTemplate(): MenuItemConstructorOptions[] {
+  const canGoBack = Boolean(
+    mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents.canGoBack(),
+  )
+  const canGoForward = Boolean(
+    mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents.canGoForward(),
+  )
+  return [
+      {
+        label: "Sayabot",
+        submenu: [
+          { label: "About Sayabot", role: "about" },
+          updateMenuItem(),
+          { type: "separator" },
+          {
+            label: "Return to Controller",
+            click: () => loadLocalHtml(),
           },
-        },
-        {
-          // Guests: sign in (or sign up) in the browser and bring the guest data along.
-          label: "Sign In to Existing Account…",
-          click: () => void signInFromMenu(),
-        },
-        {
-          label: "Change Server…",
-          click: () => void changeServerFromMenu(),
-        },
-        { type: "separator" },
-        { role: "hide" },
-        { role: "hideOthers" },
-        { role: "unhide" },
-        { type: "separator" },
-        { role: "quit" },
-      ],
-    },
-    {
-      label: "Edit",
-      submenu: [
-        { role: "undo" },
-        { role: "redo" },
-        { type: "separator" },
-        { role: "cut" },
-        { role: "copy" },
-        { role: "paste" },
-        { role: "selectAll" },
-      ],
-    },
-    {
-      label: "View",
-      submenu: [
-        { role: "reload" },
-        { role: "forceReload" },
-        { role: "toggleDevTools" },
-        { type: "separator" },
-        { role: "resetZoom" },
-        { role: "zoomIn" },
-        { role: "zoomOut" },
-        { type: "separator" },
-        { role: "togglefullscreen" },
-      ],
-    },
-    {
-      label: "Window",
+          {
+            label: "Open Workspace in Window",
+            click: () => {
+              void openWorkspaceInWindow()
+            },
+          },
+          {
+            // Guests: sign in (or sign up) in the browser and bring the guest data along.
+            label: "Sign In to Existing Account…",
+            click: () => void signInFromMenu(),
+          },
+          {
+            label: "Change Server…",
+            click: () => void changeServerFromMenu(),
+          },
+          { type: "separator" },
+          { role: "hide" },
+          { role: "hideOthers" },
+          { role: "unhide" },
+          { type: "separator" },
+          { role: "quit" },
+        ],
+      },
+      {
+        label: "Edit",
+        submenu: [
+          { role: "undo" },
+          { role: "redo" },
+          { type: "separator" },
+          { role: "cut" },
+          { role: "copy" },
+          { role: "paste" },
+          { role: "selectAll" },
+        ],
+      },
+      {
+        label: "History",
+        submenu: [
+          {
+            label: "Back",
+            accelerator: process.platform === "darwin" ? "Command+[" : "Alt+Left",
+            enabled: canGoBack,
+            click: () => {
+              if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents.canGoBack()) {
+                mainWindow.webContents.goBack()
+              }
+            },
+          },
+          {
+            label: "Forward",
+            accelerator: process.platform === "darwin" ? "Command+]" : "Alt+Right",
+            enabled: canGoForward,
+            click: () => {
+              if (
+                mainWindow &&
+                !mainWindow.isDestroyed() &&
+                mainWindow.webContents.canGoForward()
+              ) {
+                mainWindow.webContents.goForward()
+              }
+            },
+          },
+        ],
+      },
+      {
+        label: "View",
+        submenu: [
+          { role: "reload" },
+          { role: "forceReload" },
+          { role: "toggleDevTools" },
+          { type: "separator" },
+          { role: "resetZoom" },
+          { role: "zoomIn" },
+          { role: "zoomOut" },
+          { type: "separator" },
+          { role: "togglefullscreen" },
+        ],
+      },
+      {
+        label: "Window",
       submenu: [{ role: "minimize" }, { role: "zoom" }, { role: "close" }],
     },
   ]
+}
 
-  const menu = Menu.buildFromTemplate(template)
-  Menu.setApplicationMenu(menu)
+function buildAppMenu() {
+  if (rebuildingMenu) return
+  rebuildingMenu = true
+  try {
+    const template = appMenuTemplate()
+    const menu = Menu.buildFromTemplate(template)
+    Menu.setApplicationMenu(menu)
+    if (process.env.SAYABOT_MENU_CHECK === "1") {
+      const parts: string[] = []
+      const collect = (items: MenuItemConstructorOptions[]) => {
+        for (const item of items) {
+          const label = item.label ?? item.role ?? ""
+          if (label) parts.push(item.accelerator ? `${label} ${item.accelerator}` : label)
+          if (Array.isArray(item.submenu)) collect(item.submenu)
+        }
+      }
+      collect(template)
+      console.log(`MENU_CHECK ${parts.join(" | ")}`)
+    }
+  } finally {
+    rebuildingMenu = false
+  }
 }
 
 function createWindow() {
@@ -739,6 +805,13 @@ function createWindow() {
   })
 
   buildAppMenu()
+
+  mainWindow.webContents.on("did-navigate", () => {
+    buildAppMenu()
+  })
+  mainWindow.webContents.on("did-navigate-in-page", () => {
+    buildAppMenu()
+  })
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url)

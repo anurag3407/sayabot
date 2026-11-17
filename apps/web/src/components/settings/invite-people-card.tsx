@@ -1,17 +1,19 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { inviteMember } from "@/lib/actions/orgs"
-import { createInviteLinkAction, revokeInviteAction } from "@/lib/actions/workspace-invites"
-import { ActionForm } from "@/components/ui/action-form"
+import {
+  createInviteLinkAction,
+  decideJoinRequestAction,
+  revokeInviteAction,
+} from "@/lib/actions/workspace-invites"
 import { Button } from "@/components/ui/button"
-import { Input, Select } from "@/components/ui/field"
+import { Select } from "@/components/ui/field"
 import { CheckIcon, CopyIcon } from "@/components/ui/icons"
 import { showToast } from "@/components/ui/toast"
 import { cn } from "@/lib/format"
-import type { PendingInviteView } from "@/lib/workspace-invites"
+import type { JoinRequestView, PendingInviteView } from "@/lib/workspace-invites"
 
-type Tab = "email" | "link" | "permanent"
+type Tab = "link" | "permanent"
 
 function expiry(iso: string | null): string {
   if (!iso) return "Never expires"
@@ -43,38 +45,57 @@ function CopyLink({ url }: { url: string }) {
   )
 }
 
-/** OpenBot-style "Invite people": email, a single-use link, or a permanent link, plus what's pending. */
+/** Share a link. Whoever opens it asks to join, and a workspace admin approves them. */
 export function InvitePeopleCard({
   orgSlug,
-  isOwner,
   rooms,
   pending,
+  requests,
 }: {
   orgSlug: string
-  isOwner: boolean
   rooms: { id: string; name: string; kind: string }[]
   pending: PendingInviteView[]
+  requests: JoinRequestView[]
 }) {
-  const [tab, setTab] = useState<Tab>("email")
+  const [tab, setTab] = useState<Tab>("link")
   const [role, setRole] = useState<"member" | "admin">("member")
+  const [roomIds, setRoomIds] = useState<string[]>([])
   const [made, setMade] = useState<{ url: string; expiresAt: string | null } | null>(null)
   const [busy, startTransition] = useTransition()
 
   function makeLink(kind: "link" | "permanent") {
     startTransition(async () => {
-      const result = await createInviteLinkAction({ orgSlug, kind, role })
+      const result = await createInviteLinkAction({ orgSlug, kind, role, roomIds })
       if (!result.ok || !result.data) {
         showToast({ tone: "danger", message: result.error ?? "Could not make the link" })
         return
       }
-      setMade({ url: result.data.url as string, expiresAt: (result.data.expiresAt as string | null) ?? null })
+      setMade({
+        url: result.data.url as string,
+        expiresAt: (result.data.expiresAt as string | null) ?? null,
+      })
+    })
+  }
+
+  function decide(requestId: string, approve: boolean) {
+    startTransition(async () => {
+      const result = await decideJoinRequestAction({ orgSlug, requestId, approve })
+      showToast({
+        tone: result.ok ? (approve ? "success" : "neutral") : "danger",
+        message: result.ok
+          ? (result.message ?? (approve ? "Approved" : "Declined"))
+          : (result.error ?? "Could not save that"),
+      })
     })
   }
 
   function revoke(id: string) {
     startTransition(async () => {
       const result = await revokeInviteAction({ orgSlug, inviteId: id })
-      showToast({ tone: result.ok ? "neutral" : "danger", message: result.ok ? "Revoked" : (result.error ?? "Could not revoke") })
+      showToast({
+        tone: result.ok ? "neutral" : "danger",
+        message: result.ok ? "Revoked" : (result.error ?? "Could not revoke"),
+      })
     })
   }
 
@@ -85,13 +106,17 @@ export function InvitePeopleCard({
           <div className="max-w-md">
             <h3 className="text-[15px] font-medium text-text">Invite people</h3>
             <p className="mt-1 text-[13px] text-muted">
-              Single-use links expire after 24 hours. A permanent link never expires and works for anyone who has it.
+              Share a link. They sign in and ask to join. A workspace admin approves them before
+              they can see anything.
             </p>
           </div>
-          <div role="tablist" aria-label="How to invite" className="flex rounded-lg border border-line bg-ink p-1">
+          <div
+            role="tablist"
+            aria-label="How to invite"
+            className="flex rounded-lg border border-line bg-ink p-1"
+          >
             {(
               [
-                ["email", "Email"],
                 ["link", "Invite link"],
                 ["permanent", "Perma link"],
               ] as const
@@ -115,70 +140,122 @@ export function InvitePeopleCard({
           </div>
         </div>
 
-        <div className="mt-4 rounded-xl border border-line bg-panel p-4">
-          {tab === "email" ? (
-            <ActionForm action={inviteMember} submitLabel="Send invite" pendingLabel="Sending…" resetOnSuccess>
-              <input type="hidden" name="orgSlug" value={orgSlug} />
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Input name="email" type="email" required placeholder="person@company.com" aria-label="Email" className="flex-1" />
-                <Select name="role" defaultValue="member" aria-label="Role" className="sm:w-36">
-                  <option value="member">Member</option>
-                  <option value="admin">Admin</option>
-                  {isOwner ? <option value="owner">Owner</option> : null}
-                </Select>
+        <div className="mt-4 space-y-3 rounded-xl border border-line bg-panel p-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <Select
+              value={role}
+              onChange={(event) => setRole(event.target.value as "member" | "admin")}
+              aria-label="Role"
+              className="sm:w-36"
+            >
+              <option value="member">Member</option>
+              <option value="admin">Admin</option>
+            </Select>
+            <Button variant="primary" disabled={busy} onClick={() => makeLink(tab)}>
+              {busy ? "Making…" : tab === "link" ? "Create single-use link" : "Get permanent link"}
+            </Button>
+          </div>
+          {rooms.length ? (
+            <details className="text-[13px]">
+              <summary className="cursor-pointer text-muted hover:text-text">
+                Also add them to rooms once approved
+              </summary>
+              <div className="mt-2 max-h-40 space-y-1 overflow-y-auto rounded-lg border border-line bg-ink p-2">
+                {rooms.map((room) => (
+                  <label
+                    key={room.id}
+                    className="flex items-center justify-between gap-2 text-[13px] text-muted"
+                  >
+                    <span className="truncate">#{room.name}</span>
+                    <input
+                      type="checkbox"
+                      checked={roomIds.includes(room.id)}
+                      onChange={(event) =>
+                        setRoomIds((current) =>
+                          event.target.checked
+                            ? [...current, room.id]
+                            : current.filter((id) => id !== room.id),
+                        )
+                      }
+                      className="h-3.5 w-3.5 accent-[var(--color-accent)]"
+                    />
+                  </label>
+                ))}
               </div>
-              {rooms.length ? (
-                <details className="text-[13px]">
-                  <summary className="cursor-pointer text-muted hover:text-text">Also add them to rooms</summary>
-                  <div className="mt-2 max-h-40 space-y-1 overflow-y-auto rounded-lg border border-line bg-ink p-2">
-                    {rooms.map((room) => (
-                      <label key={room.id} className="flex items-center justify-between gap-2 text-[13px] text-muted">
-                        <span className="truncate">#{room.name}</span>
-                        <input type="checkbox" name="roomIds" value={room.id} className="h-3.5 w-3.5 accent-[var(--color-accent)]" />
-                      </label>
-                    ))}
-                  </div>
-                </details>
-              ) : null}
-            </ActionForm>
+            </details>
+          ) : null}
+          {made ? (
+            <>
+              <CopyLink url={made.url} />
+              <p className="text-[12px] text-faint">
+                {tab === "link"
+                  ? `Works once, after an admin approves. ${expiry(made.expiresAt)}.`
+                  : "Anyone with it can ask to join, until you revoke it. Each person waits for approval."}
+              </p>
+            </>
           ) : (
-            <div className="space-y-3">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <Select value={role} onChange={(event) => setRole(event.target.value as "member" | "admin")} aria-label="Role" className="sm:w-36">
-                  <option value="member">Member</option>
-                  <option value="admin">Admin</option>
-                </Select>
-                <Button variant="primary" disabled={busy} onClick={() => makeLink(tab)}>
-                  {busy ? "Making…" : tab === "link" ? "Create single-use link" : "Get permanent link"}
-                </Button>
-              </div>
-              {made ? (
-                <>
-                  <CopyLink url={made.url} />
-                  <p className="text-[12px] text-faint">
-                    {tab === "link" ? `Works once. ${expiry(made.expiresAt)}.` : "Works for anyone who has it until you revoke it."}
-                  </p>
-                </>
-              ) : (
-                <p className="text-[12px] text-faint">
-                  {tab === "link"
-                    ? "Send it to one person. They sign in or sign up, then they're in."
-                    : "Good for a team channel. Revoke it any time below."}
-                </p>
-              )}
-            </div>
+            <p className="text-[12px] text-faint">
+              {tab === "link"
+                ? "Send it to one person. They ask to join, then an admin approves them."
+                : "Good for a team channel. Each person still waits for an admin."}
+            </p>
           )}
         </div>
       </div>
 
       <div>
         <div className="flex items-baseline justify-between">
-          <h3 className="text-[15px] font-medium text-text">Pending invitations</h3>
-          <span className="text-[13px] text-faint">{pending.length} pending</span>
+          <h3 className="text-[15px] font-medium text-text">Waiting for approval</h3>
+          <span className="text-[13px] text-faint">{requests.length} waiting</span>
+        </div>
+        {requests.length === 0 ? (
+          <p className="mt-3 rounded-xl border border-dashed border-line p-6 text-center text-[14px] text-faint">
+            No one is waiting. Share a link and they will show up here.
+          </p>
+        ) : (
+          <ul className="mt-3 divide-y divide-line overflow-hidden rounded-xl border border-line bg-panel">
+            {requests.map((request) => (
+              <li key={request.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[14px] text-text">{request.name}</p>
+                  <p className="text-[12px] text-faint">
+                    {request.email ? `${request.email} · ` : ""}
+                    <span className="capitalize">{request.role}</span>
+                    {request.roomCount
+                      ? ` · ${request.roomCount} ${request.roomCount === 1 ? "room" : "rooms"}`
+                      : ""}
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="primary"
+                  disabled={busy}
+                  onClick={() => decide(request.id, true)}
+                >
+                  Approve
+                </Button>
+                <Button
+                  size="sm"
+                  variant="quiet"
+                  disabled={busy}
+                  onClick={() => decide(request.id, false)}
+                >
+                  Decline
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div>
+        <div className="flex items-baseline justify-between">
+          <h3 className="text-[15px] font-medium text-text">Shared links</h3>
+          <span className="text-[13px] text-faint">{pending.length} open</span>
         </div>
         {pending.length === 0 ? (
           <p className="mt-3 rounded-xl border border-dashed border-line p-6 text-center text-[14px] text-faint">
-            No pending invitations.
+            No open links. Create one above and copy it.
           </p>
         ) : (
           <ul className="mt-3 divide-y divide-line overflow-hidden rounded-xl border border-line bg-panel">
@@ -187,9 +264,14 @@ export function InvitePeopleCard({
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[14px] text-text">{invite.label}</p>
                   <p className="text-[12px] text-faint">
-                    <span className="capitalize">{invite.role}</span> · {invite.kind === "email" ? "Hasn't signed in yet" : expiry(invite.expiresAt)}
-                    {invite.kind === "permanent" && invite.uses ? ` · used ${invite.uses} ${invite.uses === 1 ? "time" : "times"}` : ""}
-                    {invite.roomCount ? ` · ${invite.roomCount} ${invite.roomCount === 1 ? "room" : "rooms"}` : ""}
+                    <span className="capitalize">{invite.role}</span> ·{" "}
+                    {invite.kind === "email" ? "Hasn't signed in yet" : expiry(invite.expiresAt)}
+                    {invite.kind === "permanent" && invite.uses
+                      ? ` · used ${invite.uses} ${invite.uses === 1 ? "time" : "times"}`
+                      : ""}
+                    {invite.roomCount
+                      ? ` · ${invite.roomCount} ${invite.roomCount === 1 ? "room" : "rooms"}`
+                      : ""}
                   </p>
                 </div>
                 {invite.url ? (

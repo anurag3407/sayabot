@@ -5,6 +5,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core"
 import { agents } from "./agents"
@@ -139,10 +140,12 @@ export const botInvites = pgTable(
 )
 
 export type WorkspaceInviteKind = "email" | "link" | "permanent"
+export type WorkspaceJoinStatus = "pending" | "approved" | "declined"
 
 /**
- * Ways into a workspace: an email invite (tracked until the person first signs in), a
- * single-use link that expires after 24 hours, or a permanent link anyone holding it can use.
+ * Shareable ways into a workspace. New invites are a single-use link (24 hours) or a permanent
+ * link. `email` rows are older invitations kept so they can still be revoked. Opening a link
+ * does not join; it files a `workspace_join_requests` row an admin approves.
  */
 export const workspaceInvites = pgTable(
   "workspace_invites",
@@ -166,4 +169,34 @@ export const workspaceInvites = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("workspace_invites_org_idx").on(t.orgId, t.kind)],
+)
+
+/**
+ * One person asking to use an invite link. An admin approves before they become a member.
+ * One row per link per person; asking again after a decline reopens the same row.
+ */
+export const workspaceJoinRequests = pgTable(
+  "workspace_join_requests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => orgs.id, { onDelete: "cascade" }),
+    inviteId: uuid("invite_id")
+      .notNull()
+      .references(() => workspaceInvites.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    status: text("status").$type<WorkspaceJoinStatus>().notNull().default("pending"),
+    role: text("role").notNull().default("member"),
+    roomIds: uuid("room_ids").array().notNull().default([]),
+    decidedBy: uuid("decided_by").references(() => profiles.id, { onDelete: "set null" }),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("workspace_join_requests_org_idx").on(t.orgId, t.status),
+    uniqueIndex("workspace_join_requests_invite_user_idx").on(t.inviteId, t.userId),
+  ],
 )

@@ -2,7 +2,7 @@
 
 This catalog documents every database migration in `packages/db`: the four Drizzle-generated migrations in `packages/db/migrations/` (the declarative schema snapshot pipeline) and the 35 hand-written SQL scripts in `packages/db/sql/` (functions, triggers, RLS, realtime, and RPCs that Drizzle cannot express). `src/migrate.ts` runs both phases in order — Drizzle first, then every `sql/*.sql` file in sorted filename order — and the SQL phase re-applies on every run, so each script is written to be idempotent.
 
-Source files: `packages/db/migrations/0000_conscious_natasha_romanoff.sql` through `0003_gigantic_the_call.sql`, `packages/db/sql/0001_functions.sql` through `0039_computer_providers.sql`, `packages/db/src/migrate.ts`
+Source files: `packages/db/migrations/0000_conscious_natasha_romanoff.sql` through `0003_gigantic_the_call.sql`, `packages/db/sql/0001_functions.sql` through `0040_workspace_join_requests.sql`, `packages/db/src/migrate.ts`
 
 ---
 
@@ -277,6 +277,12 @@ Creates `agent_reads` (PK `(agent_id, room_id)`, `last_read_at`, `updated_at`) w
 
 - `org_computer_settings` gains the sealed E2B key (`e2b_ciphertext`/`e2b_iv`/`e2b_tag`/`e2b_last4`) and a direct VPS target (`vps_host`, `vps_user`, `vps_port`, sealed private key `vps_key_ciphertext`/`vps_key_iv`/`vps_key_tag`). The alias column stays for SSH-config setups. Idempotent (`add column if not exists`); the table's service-role-only RLS from 0034 covers the new columns.
 
+### `0040_workspace_join_requests.sql` — link share waits for an admin
+
+- `workspace_join_requests` table: one row per person per `workspace_invites` link (`unique (invite_id, user_id)`), `status` CHECK `pending`/`approved`/`declined`, `role` CHECK `member`/`admin`, `room_ids`, `decided_by` / `decided_at`. Opening a link inserts `pending`; a workspace admin approves before `org_members` is written. Asking again after a decline updates the same row.
+- Index `workspace_join_requests_org_idx` on `(org_id, status)`.
+- RLS locked to `service_role` (`0040_workspace_join_requests.sql`).
+
 ---
 
 ## Dependency and ordering summary
@@ -293,6 +299,7 @@ Creates `agent_reads` (PK `(agent_id, room_id)`, `last_read_at`, `updated_at`) w
 | `0031` after Supabase `auth` schema | `merge_guest_into_user` reads `auth.users`. |
 | `0032`/`0035` after `0024` | Extend `local_runner_jobs`. |
 | `0033` after `0002` | Member-read policies use `org_members`. |
+| `0040` after `0023` | `workspace_join_requests.invite_id` references `workspace_invites`. |
 | `0035` after Drizzle 0000 | Extends `room_agents`. |
 | `0029` standalone | `ALTER TYPE ... ADD VALUE` cannot run in a transaction, so the file contains only that statement. |
 

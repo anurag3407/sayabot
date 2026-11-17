@@ -1,6 +1,6 @@
 # Email System
 
-The web app sends transactional email — verification codes, magic-link sign-ins, password resets, and workspace/room invitations — through the Resend API. Delivery lives in one client (`lib/email/client.ts`), themed HTML/text templates render through a shared dark-mode shell, and `lib/email/index.ts` exports the dispatch helpers other modules call. Without `RESEND_API_KEY` nothing is sent: emails are logged and suppressed instead of failing the calling action.
+The web app sends transactional email — verification codes, magic-link sign-ins, password resets, and a Supabase auth invite when one is emitted — through the Resend API. Delivery lives in one client (`lib/email/client.ts`), themed HTML/text templates render through a shared dark-mode shell, and `lib/email/index.ts` exports the dispatch helpers other modules call. Without `RESEND_API_KEY` nothing is sent: emails are logged and suppressed instead of failing the calling action.
 
 Source files: `apps/web/src/lib/email/client.ts`, `apps/web/src/lib/email/index.ts`, `apps/web/src/lib/email/templates/base.ts`, `apps/web/src/lib/email/templates/auth.ts`, `apps/web/src/lib/email/templates/invites.ts`
 
@@ -15,7 +15,7 @@ Source files: `apps/web/src/lib/email/client.ts`, `apps/web/src/lib/email/index.
   - API errors and unexpected throws are logged with the `[email]` prefix and returned as `{ ok: false, error }` — `sendEmail` **never throws**.
   - Success returns `{ ok: true, id }` (the Resend message id).
 
-Because failures are returned rather than thrown, callers decide whether an email problem blocks the action: `inviteMember` / `inviteToRoom` in `lib/actions/orgs.ts` wrap their `sendWorkspaceInviteEmail` / `sendRoomInviteEmail` calls in try/catch and only `console.error` — membership was already created, so a mail outage must not fail the invite (`orgs.ts:182`, `orgs.ts:312`).
+Workspace and room invitations no longer send mail. `inviteMember` and `inviteToRoom` refuse and tell the caller to share a link. `sendWorkspaceInviteEmail` remains for the Supabase auth hook's `invite` action type only.
 
 ---
 
@@ -74,7 +74,7 @@ Both include the raw URL as a last-resort link and an "ignore this email" note i
 | `RESEND_API_KEY` | Enables sending; without it all email is suppressed with a warning | — |
 | `RESEND_FROM_EMAIL` | Overrides the `From` header | `"Sayalabs <auth@sayalabs.in>"` |
 
-Emails are sent directly from server actions and route handlers (no queue): the Supabase invite actions, the custom `/api/auth/send-email` endpoint, and any future flow can call `sendEmail`/the helpers and rely on the result object instead of exceptions. There is no retry or batching — a suppressed or failed email is the caller's problem, which is why invite flows treat mail as best-effort.
+Emails are sent directly from server actions and route handlers (no queue): the custom `/api/auth/send-email` endpoint (verification, magic link, password reset, and a Supabase-emitted auth invite) calls `sendEmail` and relies on the result object instead of exceptions. There is no retry or batching. Product invitations do not send mail.
 
 ---
 
@@ -82,8 +82,8 @@ Emails are sent directly from server actions and route handlers (no queue): the 
 
 | Caller | Dispatch call | Notes |
 | :--- | :--- | :--- |
-| `inviteMember` (`lib/actions/orgs.ts`) | `sendWorkspaceInviteEmail` | Only for brand-new accounts; wrapped in try/catch so mail failure never fails the invite. |
-| `inviteToRoom` (`lib/actions/orgs.ts`) | `sendRoomInviteEmail` | Same best-effort semantics. |
+| `inviteMember` / `inviteToRoom` (`lib/actions/orgs.ts`) | none | Both refuse. People join from a shared link after an admin approves. |
+| `POST /api/auth/send-email` `invite` | `sendWorkspaceInviteEmail` | Only when Supabase itself emits an auth invite. The product does not call `inviteUserByEmail`. |
 | `POST /api/auth/send-email` (Supabase Auth hook) | all three auth helpers | Maps Supabase's `email_action_type`: `signup`/`email_change` → verification (with the 6-digit `token`), `magiclink`/`login` → sign-in code, `recovery` → reset, `invite` → workspace invite rendered for "Sayalabs" as member. |
 | Mobile pairing / bot joins | none by design | Those flows exchange codes and MCP URLs in-app; no email is sent. |
 
@@ -104,7 +104,7 @@ The code boxes render the 6-digit value in 34 px monospace with 8 px letter-spac
 
 - `sendEmail` returns `{ ok: false, error: "RESEND_API_KEY not configured" }` when the key is missing and logs `[email] RESEND_API_KEY is not set. Suppressed email to <recipients>: { subject }`.
 - API errors log `[email] Resend API error:` and unexpected throws log `[email] Unexpected error delivering email:` — both return the error string instead of throwing.
-- Callers that must survive mail outages (the invite actions) log and continue: the membership rows are already committed, and `revokeInviteAction` can undo an unused email invite later.
+- Product invitations do not send mail, so a mail outage cannot block a join. A leftover unused email invite can still be removed with `revokeInviteAction`.
 
 ---
 

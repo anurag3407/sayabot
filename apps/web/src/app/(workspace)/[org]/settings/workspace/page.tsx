@@ -3,7 +3,7 @@ import { requireOrgAdmin } from "@/lib/auth"
 import { listAuditLogs, listMemberViews, listRooms } from "@/lib/queries"
 import { renameWorkspaceAction, updateSso } from "@/lib/actions/orgs"
 import { InvitePeopleCard } from "@/components/settings/invite-people-card"
-import { loadPendingInvites } from "@/lib/workspace-invites"
+import { loadJoinRequests, loadPendingInvites } from "@/lib/workspace-invites"
 import { ssoEnabled } from "@/lib/env"
 import { ActionForm } from "@/components/ui/action-form"
 import { Field, Input, Select } from "@/components/ui/field"
@@ -15,151 +15,160 @@ import { fullTime, pretty } from "@/lib/format"
 
 export const metadata: Metadata = { title: "General & members" }
 
-export default async function WorkspaceSettingsPage({ params }: { params: Promise<{ org: string }> }) {
+export default async function WorkspaceSettingsPage({
+  params,
+}: {
+  params: Promise<{ org: string }>
+}) {
   const { org: orgSlug } = await params
   const access = await requireOrgAdmin(orgSlug)
-  const [members, logs, rooms, pendingInvites] = await Promise.all([
+  const [members, logs, rooms, pendingInvites, joinRequests] = await Promise.all([
     listMemberViews(access.org.id),
     listAuditLogs(access.org.id),
     listRooms(access.org.id),
     loadPendingInvites(access.org.id),
+    loadJoinRequests(access.org.id),
   ])
   const isOwner = access.role === "owner"
   const invitableRooms = rooms.filter((room) => room.kind !== "dm")
 
   return (
     <>
-    <Section title="Workspace" description="The name everyone in this workspace sees." className="border-t-0 pt-0">
-      <ActionForm action={renameWorkspaceAction} submitLabel="Save name">
-        <input type="hidden" name="orgSlug" value={orgSlug} />
-        <Field label="workspace name" htmlFor="workspace-name">
-          <Input
-            id="workspace-name"
-            name="name"
-            required
-            minLength={2}
-            maxLength={60}
-            defaultValue={access.org.name}
-            className="max-w-md"
-          />
-        </Field>
-      </ActionForm>
-    </Section>
-
-    <Section
-      title="Members"
-      description={`${members.length} ${members.length === 1 ? "person" : "people"} in this workspace.`}
-    >
-      <ul className="divide-y divide-line border-y border-line">
-        {members.map((member) => (
-          <li key={member.userId} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-2.5">
-            <span className="min-w-0 flex-1 truncate text-[13px] text-text">
-              {member.displayName}
-            </span>
-            <span className="font-mono text-[11px] text-faint">{member.role}</span>
-            <MemberRoleForm
-              orgSlug={orgSlug}
-              userId={member.userId}
-              role={member.role}
-              allowOwner={isOwner}
-            />
-            {member.userId !== access.user.id ? (
-              <RemoveMemberButton
-                orgSlug={orgSlug}
-                userId={member.userId}
-                name={member.displayName}
-              />
-            ) : null}
-          </li>
-        ))}
-      </ul>
-
-      <div className="mt-6 border-t border-line pt-6">
-        <InvitePeopleCard
-          orgSlug={orgSlug}
-          isOwner={isOwner}
-          rooms={invitableRooms.map((r) => ({ id: r.id, name: r.name, kind: r.kind }))}
-          pending={pendingInvites}
-        />
-      </div>
-    </Section>
-
-    <Section
-      title="SAML SSO"
-      description="Single sign-on must first be set up by whoever runs this server."
-    >
-      {!ssoEnabled() ? (
-        <InlineAlert tone="warning">
-          Single sign-on is not available on this server yet. Ask your server administrator to
-          set it up.
-        </InlineAlert>
-      ) : (
-        <ActionForm action={updateSso} submitLabel="Save SSO flag">
+      <Section
+        title="Workspace"
+        description="The name everyone in this workspace sees."
+        className="border-t-0 pt-0"
+      >
+        <ActionForm action={renameWorkspaceAction} submitLabel="Save name">
           <input type="hidden" name="orgSlug" value={orgSlug} />
-          <Field label="state" htmlFor="sso-state">
-            <Select
-              id="sso-state"
-              name="enabled"
-              defaultValue={access.org.ssoEnabled ? "true" : "false"}
-            >
-              <option value="false">disabled</option>
-              <option value="true">enabled</option>
-            </Select>
+          <Field label="workspace name" htmlFor="workspace-name">
+            <Input
+              id="workspace-name"
+              name="name"
+              required
+              minLength={2}
+              maxLength={60}
+              defaultValue={access.org.name}
+              className="max-w-md"
+            />
           </Field>
         </ActionForm>
-      )}
-    </Section>
+      </Section>
 
-    <Section
-      title="Audit log"
-      description="The last 100 sensitive actions: keys, members, room settings, tool approvals and API keys."
-    >
-      {logs.length === 0 ? (
-        <EmptyState
-          title="No audit entries yet"
-          body="Entries appear when an admin changes a key, a role or a room setting, or decides on an agent action."
-        />
-      ) : (
-        <div className="overflow-x-auto border-y border-line">
-          <table className="w-full border-collapse text-left">
-            <thead>
-              <tr className="border-b border-line font-mono text-[11px] text-faint">
-                <th className="py-2 pr-3 font-normal">time</th>
-                <th className="py-2 pr-3 font-normal">action</th>
-                <th className="py-2 pr-3 font-normal">target</th>
-                <th className="py-2 pr-3 font-normal">actor</th>
-                <th className="py-2 font-normal">metadata</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line">
-              {logs.map((log) => (
-                <tr key={log.id} className="align-top">
-                  <td className="whitespace-nowrap py-2 pr-3 font-mono text-[11px] text-faint">
-                    {fullTime(log.createdAt)}
-                  </td>
-                  <td className="py-2 pr-3 font-mono text-[12px] text-text">{log.action}</td>
-                  <td className="max-w-[180px] truncate py-2 pr-3 font-mono text-[11px] text-muted">
-                    {log.target ?? "-"}
-                  </td>
-                  <td className="py-2 pr-3 font-mono text-[11px] text-faint">
-                    {log.actorType}
-                    {log.actorId ? `:${log.actorId.slice(0, 8)}` : ""}
-                  </td>
-                  <td className="max-w-[260px] py-2 font-mono text-[11px] leading-relaxed text-faint">
-                    <details>
-                      <summary className="cursor-pointer hover:text-text">view</summary>
-                      <pre className="mt-1 whitespace-pre-wrap break-all">
-                        {pretty(log.metadata)}
-                      </pre>
-                    </details>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      <Section
+        title="Members"
+        description={`${members.length} ${members.length === 1 ? "person" : "people"} in this workspace.`}
+      >
+        <ul className="divide-y divide-line border-y border-line">
+          {members.map((member) => (
+            <li key={member.userId} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-2.5">
+              <span className="min-w-0 flex-1 truncate text-[13px] text-text">
+                {member.displayName}
+              </span>
+              <span className="font-mono text-[11px] text-faint">{member.role}</span>
+              <MemberRoleForm
+                orgSlug={orgSlug}
+                userId={member.userId}
+                role={member.role}
+                allowOwner={isOwner}
+              />
+              {member.userId !== access.user.id ? (
+                <RemoveMemberButton
+                  orgSlug={orgSlug}
+                  userId={member.userId}
+                  name={member.displayName}
+                />
+              ) : null}
+            </li>
+          ))}
+        </ul>
+
+        <div className="mt-6 border-t border-line pt-6">
+          <InvitePeopleCard
+            orgSlug={orgSlug}
+            rooms={invitableRooms.map((r) => ({ id: r.id, name: r.name, kind: r.kind }))}
+            pending={pendingInvites}
+            requests={joinRequests}
+          />
         </div>
-      )}
-    </Section>
+      </Section>
+
+      <Section
+        title="SAML SSO"
+        description="Single sign-on must first be set up by whoever runs this server."
+      >
+        {!ssoEnabled() ? (
+          <InlineAlert tone="warning">
+            Single sign-on is not available on this server yet. Ask your server administrator to set
+            it up.
+          </InlineAlert>
+        ) : (
+          <ActionForm action={updateSso} submitLabel="Save SSO flag">
+            <input type="hidden" name="orgSlug" value={orgSlug} />
+            <Field label="state" htmlFor="sso-state">
+              <Select
+                id="sso-state"
+                name="enabled"
+                defaultValue={access.org.ssoEnabled ? "true" : "false"}
+              >
+                <option value="false">disabled</option>
+                <option value="true">enabled</option>
+              </Select>
+            </Field>
+          </ActionForm>
+        )}
+      </Section>
+
+      <Section
+        title="Audit log"
+        description="The last 100 sensitive actions: keys, members, room settings, tool approvals and API keys."
+      >
+        {logs.length === 0 ? (
+          <EmptyState
+            title="No audit entries yet"
+            body="Entries appear when an admin changes a key, a role or a room setting, or decides on an agent action."
+          />
+        ) : (
+          <div className="overflow-x-auto border-y border-line">
+            <table className="w-full border-collapse text-left">
+              <thead>
+                <tr className="border-b border-line font-mono text-[11px] text-faint">
+                  <th className="py-2 pr-3 font-normal">time</th>
+                  <th className="py-2 pr-3 font-normal">action</th>
+                  <th className="py-2 pr-3 font-normal">target</th>
+                  <th className="py-2 pr-3 font-normal">actor</th>
+                  <th className="py-2 font-normal">metadata</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {logs.map((log) => (
+                  <tr key={log.id} className="align-top">
+                    <td className="whitespace-nowrap py-2 pr-3 font-mono text-[11px] text-faint">
+                      {fullTime(log.createdAt)}
+                    </td>
+                    <td className="py-2 pr-3 font-mono text-[12px] text-text">{log.action}</td>
+                    <td className="max-w-[180px] truncate py-2 pr-3 font-mono text-[11px] text-muted">
+                      {log.target ?? "-"}
+                    </td>
+                    <td className="py-2 pr-3 font-mono text-[11px] text-faint">
+                      {log.actorType}
+                      {log.actorId ? `:${log.actorId.slice(0, 8)}` : ""}
+                    </td>
+                    <td className="max-w-[260px] py-2 font-mono text-[11px] leading-relaxed text-faint">
+                      <details>
+                        <summary className="cursor-pointer hover:text-text">view</summary>
+                        <pre className="mt-1 whitespace-pre-wrap break-all">
+                          {pretty(log.metadata)}
+                        </pre>
+                      </details>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Section>
     </>
   )
 }

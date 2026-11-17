@@ -82,7 +82,7 @@ The gate used by the agent/invite/computer actions (see the other action referen
 - `workspaceUsage(orgId)` (`plan-limits.ts:50`) — counts what plans limit: `server_turns` from `org_usage_monthly` for `usageMonth()`, plus head-counts of `agents`, `org_members`, and `agent_computers` in the org.
 - `planGate(orgId, kind)` (`plan-limits.ts:88`) — cloud-only. Kinds (`LimitKind` from `@sayabot/core`): `serverTurnsPerMonth`, `agents`, `members`, `computers` (mapped to usage keys at `plan-limits.ts:74`). Runs `checkLimit("cloud", plan, kind, used)`; when denied it builds a ready-to-show message: `limitMessage(kind, plan, limit)` plus either "Upgrade to \<name\> in Settings → Plan & billing." (`upgradeFor` finds the cheapest sufficient plan) or "This is the largest plan; contact us for more." — and returns `{ ok: false, message, plan, upgradeTo }`.
 
-Callers across the actions: `planGate(orgId, "agents")` before creating agents/bots and bot keys, `"members"` when accepting invite links, `"computers"` when a bot wants the computer capability.
+Callers across the actions: `planGate(orgId, "agents")` before creating agents/bots and bot keys, `"members"` when an admin approves a join request, `"computers"` when a bot wants the computer capability.
 
 ---
 
@@ -127,7 +127,7 @@ Everything billing reads and writes lives in one row per workspace (upsert keyed
 | :--- | :--- | :--- |
 | `createAgent` / `createBotAction` (`actions/agents.ts`) | `planGate(orgId, "agents")` | Action fails with the plan message. |
 | `createBotAction` computer capability | `planGate(orgId, "computers")` | Bot is still created; `capabilities.computer` dropped and `warning` attached. |
-| `acceptInviteAction` (`actions/workspace-invites.ts`) | `planGate(orgId, "members")` | "`<org>` is full on its current plan. Ask an admin to upgrade it in Settings → Plan & billing." |
+| `decideJoinRequestAction` (`actions/workspace-invites.ts`) | `planGate(orgId, "members")` | "`<org>` is full on its current plan. Ask an admin to upgrade it in Settings → Plan & billing." The seat is checked when the admin approves, not when the person asks. |
 | `createRoomBotKey` (`actions/invites.ts`) | `planGate(orgId, "agents")` | Room key creation refused. |
 
 The gate message is composed once in `planGate`: `limitMessage(kind, plan, limit)` (what the plan includes) plus either the upgrade pointer (`upgradeFor` finds the cheapest plan that admits `used + 1`) or "This is the largest plan; contact us for more." — with `data.plan` and `data.upgradeTo` attached for UI affordances.

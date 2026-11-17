@@ -139,7 +139,7 @@ All token generation in one place; hashes are **SHA-256 hex** (`hashAgentApiKey`
 | `generatePollToken()` | `bp_<32-byte base64url>` + hash | Handed to the bot that asked to join; proves it is the same bot when it collects its key (see [invites-pairing-and-remote.md](./invites-pairing-and-remote.md)) |
 | `generatePairingCode(alphabet?, length?)` | 8 chars from `23456789ABCDEFGHJKMNPQRSTUVWXYZ` | Phone pairing; rejection-sampled (`byte >= 256 - 256 % len` skipped) so there is **no modulo bias** |
 | `generateDeviceToken()` | `sd_<32-byte base64url>` + hash | Long-lived secret a paired phone keeps to check it hasn't been removed |
-| `generateJoinCode()` | `j_<18-byte base64url>` | Workspace invite link (`/join/<code>`) — holding it grants membership, so it is long |
+| `generateJoinCode()` | `j_<18-byte base64url>` | Workspace invite link (`/join/<code>`). Opening it asks to join; a workspace admin approves. The code is long because it is a grant. |
 
 `agentKeyPrefix(token)` returns the first 16 characters (the lookup/display prefix stored alongside the hash).
 
