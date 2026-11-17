@@ -58,8 +58,10 @@ export default function SecurityPage() {
       </DocSection>
       <DocSection title="Reporting">
         <p>
-          Report a suspected problem to the operator of this deployment. Include the affected room,
-          account and time, but do not include live secrets.
+          A problem on this deployment goes to whoever operates it. Include the affected room,
+          account and time, but do not include live secrets. A vulnerability in the Sayabot
+          software itself goes to sayalabs.studio@gmail.com. Please follow SECURITY.md in the
+          repository and do not open a public issue.
         </p>
       </DocSection>
       <DocSection title="No certification claim">

@@ -4,6 +4,8 @@ Welcome to the **Sayabot** documentation. Sayabot is an open-source, full-stack 
 
 Whether you are setting up Sayabot for the first time, designing custom autonomous agents, connecting external tools via MCP, or deploying to production, this hub provides comprehensive, step-by-step guides — plus a **per-feature reference library** (`docs/reference/`, 157 docs) generated from a full read of the codebase.
 
+Project policies live at the repository root: [Code of Conduct](../CODE_OF_CONDUCT.md), [Security policy](../SECURITY.md), [Contributing](../CONTRIBUTING.md), and [Licensing](../LICENSING.md). Vulnerability reports go to sayalabs.studio@gmail.com.
+
 ---
 
 ## 📚 Documentation Index

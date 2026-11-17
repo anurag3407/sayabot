@@ -8,7 +8,7 @@ We welcome contributions from developers, researchers, designers, and documentat
 
 ## Code of Conduct
 
-We are committed to providing a welcoming, inclusive, and harassment-free experience for everyone. Please be respectful, constructive, and kind in all issues, pull requests, and discussions.
+We are committed to providing a welcoming, inclusive, and harassment-free experience for everyone. Please be respectful, constructive, and kind in all issues, pull requests, and discussions. The full text is [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). To report a problem, email sayalabs.studio@gmail.com. Security vulnerabilities go to the same address through [SECURITY.md](SECURITY.md), not a public issue.
 
 ---
 
