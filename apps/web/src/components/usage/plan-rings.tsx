@@ -103,7 +103,8 @@ export function tightest(limits: PlanLimits): PlanWindow | null {
 }
 
 export function describeLimits(limits: PlanLimits): string {
-  if (limits.error || !limits.windows.length) return `${limits.label}: ${limits.error ?? "no reading"}`
+  if (limits.error || !limits.windows.length)
+    return `${limits.label}: ${limits.error ?? "no reading"}`
   return `${limits.label}: ${limits.windows
     .map((window) => {
       const reset = resetsIn(window.resetsAt)
@@ -119,30 +120,57 @@ const providerIconId = (provider: PlanLimits["provider"]) =>
  * One ring per window, nested: the outer ring is the first window (usually 5-hour), the inner
  * one the second (usually weekly). The coloured arc is what's left.
  */
-export function PlanRing({ limits, size = 44 }: { limits: PlanLimits; size?: number }) {
+export function PlanRing({
+  limits,
+  size = 44,
+  glyph = 0.36,
+  stroke,
+}: {
+  limits: PlanLimits
+  size?: number
+  /** Icon size as a fraction of the ring. */
+  glyph?: number
+  stroke?: number
+}) {
   const windows = limits.windows.slice(0, 2)
-  const stroke = Math.max(3, Math.round(size / 13))
+  const line = stroke ?? Math.max(3, Math.round(size / 13))
   const gap = 2
   const center = size / 2
 
   return (
-    <span className="relative inline-grid shrink-0 place-items-center" style={{ width: size, height: size }}>
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true" className="-rotate-90">
+    <span
+      className="relative inline-grid shrink-0 place-items-center"
+      style={{ width: size, height: size }}
+    >
+      <svg
+        width={size}
+        height={size}
+        viewBox={`0 0 ${size} ${size}`}
+        aria-hidden="true"
+        className="-rotate-90"
+      >
         {windows.length ? (
           windows.map((window, index) => {
-            const radius = center - stroke / 2 - index * (stroke + gap)
+            const radius = center - line / 2 - index * (line + gap)
             const circumference = 2 * Math.PI * radius
             const remaining = left(window)
             return (
               <g key={window.label}>
-                <circle cx={center} cy={center} r={radius} fill="none" stroke="var(--color-raised)" strokeWidth={stroke} />
+                <circle
+                  cx={center}
+                  cy={center}
+                  r={radius}
+                  fill="none"
+                  stroke="var(--color-raised)"
+                  strokeWidth={line}
+                />
                 <circle
                   cx={center}
                   cy={center}
                   r={radius}
                   fill="none"
                   stroke={toneColor(remaining)}
-                  strokeWidth={stroke}
+                  strokeWidth={line}
                   strokeLinecap="round"
                   strokeDasharray={`${(remaining / 100) * circumference} ${circumference}`}
                   className="transition-[stroke-dasharray] duration-700 ease-out"
@@ -154,22 +182,30 @@ export function PlanRing({ limits, size = 44 }: { limits: PlanLimits; size?: num
           <circle
             cx={center}
             cy={center}
-            r={center - stroke / 2}
+            r={center - line / 2}
             fill="none"
             stroke="var(--color-line-strong)"
-            strokeWidth={stroke}
+            strokeWidth={line}
             strokeDasharray="3 4"
           />
         )}
       </svg>
-      <span className={cn("absolute grid place-items-center text-text", !windows.length && "opacity-50")}>
-        <ProviderIcon provider={providerIconId(limits.provider)} size={Math.round(size * 0.36)} />
+      <span
+        className={cn(
+          "absolute grid place-items-center text-text",
+          !windows.length && "opacity-50",
+        )}
+      >
+        <ProviderIcon provider={providerIconId(limits.provider)} size={Math.round(size * glyph)} />
       </span>
     </span>
   )
 }
 
-/** The fuel gauges in the top-right corner: one small ring per plan, tap for the Usage page. */
+/**
+ * Plan gauges for the sidebar header. One square, icon only: the mark sits in the box and a thin
+ * ring on that mark shows what's left. Tap opens Usage.
+ */
 export function TopBarPlanRings({ usageHref }: { usageHref: string }) {
   const { supported, limits } = usePlanLimits()
   const shown = (limits ?? []).filter((item) => item.windows.length > 0)
@@ -180,10 +216,12 @@ export function TopBarPlanRings({ usageHref }: { usageHref: string }) {
       href={usageHref}
       aria-label={`Plan limits. ${summary.join(". ")}. Open Usage.`}
       title={summary.join("\n")}
-      className="fade-in flex h-8 items-center gap-1 rounded-full px-1.5 transition-colors hover:bg-white/[0.06] [-webkit-app-region:no-drag]"
+      className="fade-in flex h-9 shrink-0 items-center rounded-xl px-0.5 text-text transition-colors hover:bg-white/5 [-webkit-app-region:no-drag]"
     >
       {shown.map((item) => (
-        <PlanRing key={item.provider} limits={item} size={26} />
+        <span key={item.provider} className="grid h-7 w-7 place-items-center">
+          <PlanRing limits={item} size={22} glyph={0.5} stroke={1.5} />
+        </span>
       ))}
     </Link>
   )
@@ -209,7 +247,8 @@ export function PlanLimitsSection() {
         <div>
           <h2 className="text-[15px] font-semibold text-text">Plan limits</h2>
           <p className="mt-0.5 text-[12.5px] text-faint">
-            How much of your Claude, Codex and Antigravity plans is left, read with this Mac&apos;s sign-ins.
+            How much of your Claude, Codex and Antigravity plans is left, read with this Mac&apos;s
+            sign-ins.
           </p>
         </div>
         <button
@@ -231,7 +270,11 @@ export function PlanLimitsSection() {
             <div className="min-w-0 flex-1">
               <p className="text-[14px] font-medium text-text">
                 {item.label}
-                {item.plan ? <span className="ml-1.5 text-[12px] font-normal capitalize text-faint">{item.plan}</span> : null}
+                {item.plan ? (
+                  <span className="ml-1.5 text-[12px] font-normal capitalize text-faint">
+                    {item.plan}
+                  </span>
+                ) : null}
               </p>
               {item.windows.length ? (
                 <ul className="mt-1 space-y-1">
@@ -239,7 +282,9 @@ export function PlanLimitsSection() {
                     const reset = resetsIn(window.resetsAt)
                     return (
                       <li key={window.label} className="text-[12.5px] leading-snug">
-                        <span className="font-medium text-text tabular-nums">{Math.round(left(window))}% left</span>
+                        <span className="font-medium text-text tabular-nums">
+                          {Math.round(left(window))}% left
+                        </span>
                         <span className="text-muted"> · {window.label}</span>
                         {reset ? <span className="text-faint"> · resets {reset}</span> : null}
                       </li>
@@ -247,10 +292,14 @@ export function PlanLimitsSection() {
                   })}
                 </ul>
               ) : (
-                <p className="mt-1 text-[12.5px] leading-snug text-faint">{item.error ?? "No reading yet."}</p>
+                <p className="mt-1 text-[12.5px] leading-snug text-faint">
+                  {item.error ?? "No reading yet."}
+                </p>
               )}
               {item.windows.length && item.provider === "codex" ? (
-                <p className="mt-1.5 text-[11.5px] text-faint">As Codex last saw it, {minutesAgo(item.observedAt)}.</p>
+                <p className="mt-1.5 text-[11.5px] text-faint">
+                  As Codex last saw it, {minutesAgo(item.observedAt)}.
+                </p>
               ) : null}
             </div>
           </div>

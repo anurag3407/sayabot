@@ -10,7 +10,7 @@ import {
 } from "@/lib/actions/bot-invites"
 import { createRoomBotKey } from "@/lib/actions/invites"
 import {
-  AnthropicMark,
+  ClaudeMark,
   CursorMark,
   GoogleMark,
   HermesMark,
@@ -42,10 +42,10 @@ interface AppChoice {
 
 const APPS: AppChoice[] = [
   { id: "hermes", label: "Hermes", icon: <HermesMark size={14} /> },
-  { id: "claude-code", label: "Claude Code", icon: <AnthropicMark size={14} /> },
+  { id: "claude-code", label: "Claude Code", icon: <ClaudeMark size={14} /> },
   { id: "codex", label: "Codex", icon: <OpenAIMark size={14} /> },
   { id: "cursor", label: "Cursor", icon: <CursorMark size={14} /> },
-  { id: "claude", label: "Claude app", icon: <AnthropicMark size={14} /> },
+  { id: "claude", label: "Claude app", icon: <ClaudeMark size={14} /> },
   { id: "chatgpt", label: "ChatGPT", icon: <OpenAIMark size={14} /> },
   { id: "antigravity", label: "Gemini", icon: <GoogleMark size={14} /> },
   { id: "generic", label: "Something else", icon: <BotIcon width={14} height={14} /> },
@@ -93,7 +93,9 @@ function Step({
         {state === "done" ? <CheckIcon width={12} height={12} /> : n}
       </span>
       <div className="min-w-0 flex-1 pb-1">
-        <p className={cn("text-[14px] leading-snug", state === "todo" ? "text-faint" : "text-text")}>
+        <p
+          className={cn("text-[14px] leading-snug", state === "todo" ? "text-faint" : "text-text")}
+        >
           {title}
           {state === "active" ? (
             <span className="ml-2 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-accent align-middle" />
@@ -128,7 +130,11 @@ export function InviteBotDialog({
   const [pasted, setPasted] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
-  const [manual, setManual] = useState<{ prompt?: string; snippet?: string; handle?: string } | null>(null)
+  const [manual, setManual] = useState<{
+    prompt?: string
+    snippet?: string
+    handle?: string
+  } | null>(null)
   const { copied, copy } = useCopy()
   const dialogRef = useRef<HTMLDivElement>(null)
 
@@ -220,7 +226,11 @@ export function InviteBotDialog({
       form.append("orgSlug", orgSlug)
       form.append("roomId", roomId)
       form.append("client", app ?? "generic")
-      const handle = name.trim().toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "")
+      const handle = name
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9-]+/g, "-")
+        .replace(/^-+|-+$/g, "")
       if (handle) form.append("handle", handle)
       const result = await createRoomBotKey(null, form)
       if (!result.ok || !result.data) {
@@ -236,7 +246,8 @@ export function InviteBotDialog({
   const stepAsk: "done" | "active" | "todo" = asked ? "done" : pasted ? "active" : "todo"
   const stepApprove: "done" | "active" | "todo" =
     state === "approved" || state === "joined" ? "done" : state === "pending" ? "active" : "todo"
-  const stepJoin: "done" | "active" | "todo" = state === "joined" ? "done" : state === "approved" ? "active" : "todo"
+  const stepJoin: "done" | "active" | "todo" =
+    state === "joined" ? "done" : state === "approved" ? "active" : "todo"
   const requester = invite?.requestName || botName
 
   return (
@@ -339,14 +350,22 @@ export function InviteBotDialog({
                   className="flex items-center justify-between gap-3 rounded-lg border border-line bg-ink px-3 py-2.5 text-[13px] text-muted hover:border-line-strong hover:text-text"
                 >
                   <span>
-                    <span className="block font-medium text-text">Don&apos;t have one? Create a new agent</span>
+                    <span className="block font-medium text-text">
+                      Don&apos;t have one? Create a new agent
+                    </span>
                     Pick a ready-made agent or build your own, powered by your AI account.
                   </span>
                   <span aria-hidden>→</span>
                 </a>
 
                 <div className="flex flex-col gap-2 sm:flex-row-reverse sm:items-center">
-                  <Button variant="primary" size="lg" disabled={pending} onClick={createLink} className="sm:min-w-44">
+                  <Button
+                    variant="primary"
+                    size="lg"
+                    disabled={pending}
+                    onClick={createLink}
+                    className="sm:min-w-44"
+                  >
                     {pending ? "Making link…" : "Get invite link"}
                   </Button>
                   <Button variant="quiet" size="sm" onClick={() => setView("manual")}>
@@ -374,7 +393,11 @@ export function InviteBotDialog({
                 ) : null}
 
                 <ol className="space-y-4">
-                  <Step n={1} state={pasted || asked ? "done" : "active"} title={`Paste this into ${botName}'s chat`}>
+                  <Step
+                    n={1}
+                    state={pasted || asked ? "done" : "active"}
+                    title={`Paste this into ${botName}'s chat`}
+                  >
                     {!asked ? (
                       <div className="mt-2 rounded-lg border border-line bg-ink p-3">
                         <p className="whitespace-pre-wrap break-words text-[13px] leading-relaxed text-muted">
@@ -388,7 +411,11 @@ export function InviteBotDialog({
                               if (await copy("message", invite.message)) setPasted(true)
                             }}
                           >
-                            {copied === "message" ? <CheckIcon width={13} height={13} /> : <CopyIcon width={13} height={13} />}
+                            {copied === "message" ? (
+                              <CheckIcon width={13} height={13} />
+                            ) : (
+                              <CopyIcon width={13} height={13} />
+                            )}
                             {copied === "message" ? "Copied" : "Copy message"}
                           </Button>
                           <Button
@@ -402,7 +429,8 @@ export function InviteBotDialog({
                           </Button>
                         </div>
                         <p className="mt-2 text-[12px] text-faint">
-                          No password is in this message. The link works once, for one app, until you approve it.
+                          No password is in this message. The link works once, for one app, until
+                          you approve it.
                         </p>
                       </div>
                     ) : null}
@@ -411,7 +439,11 @@ export function InviteBotDialog({
                   <Step
                     n={2}
                     state={stepAsk}
-                    title={asked ? `${requester} asked to join` : `${botName} opens the link and asks to join`}
+                    title={
+                      asked
+                        ? `${requester} asked to join`
+                        : `${botName} opens the link and asks to join`
+                    }
                   >
                     {invite.rejectedAttempts > 0 ? (
                       <p className="mt-1 text-[12px] text-warn">
@@ -427,20 +459,34 @@ export function InviteBotDialog({
                       <div className="mt-2 rounded-lg border border-accent/40 bg-accent-soft p-3">
                         <p className="text-[14px] text-text">
                           <span className="font-medium">{invite.requestName}</span>
-                          {invite.requestAppLabel ? <span className="text-muted"> · {invite.requestAppLabel}</span> : null}
+                          {invite.requestAppLabel ? (
+                            <span className="text-muted"> · {invite.requestAppLabel}</span>
+                          ) : null}
                         </p>
                         {invite.requestAbout ? (
-                          <p className="mt-1 text-[13px] text-muted">&ldquo;{invite.requestAbout}&rdquo;</p>
+                          <p className="mt-1 text-[13px] text-muted">
+                            &ldquo;{invite.requestAbout}&rdquo;
+                          </p>
                         ) : null}
                         <p className="mt-2 text-[12px] text-faint">
-                          Only approve if you just pasted the link into this agent. It can then read and post in
-                          #{roomName} and take tasks there, nothing else.
+                          Only approve if you just pasted the link into this agent. It can then read
+                          and post in #{roomName} and take tasks there, nothing else.
                         </p>
                         <div className="mt-3 flex gap-2">
-                          <Button variant="primary" size="sm" disabled={pending} onClick={() => decide(true)}>
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            disabled={pending}
+                            onClick={() => decide(true)}
+                          >
                             Approve
                           </Button>
-                          <Button variant="outline" size="sm" disabled={pending} onClick={() => decide(false)}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={pending}
+                            onClick={() => decide(false)}
+                          >
                             Decline
                           </Button>
                         </div>
@@ -451,7 +497,9 @@ export function InviteBotDialog({
                   <Step
                     n={4}
                     state={stepJoin}
-                    title={state === "joined" ? "Connected" : `${requester} connects and says hello`}
+                    title={
+                      state === "joined" ? "Connected" : `${requester} connects and says hello`
+                    }
                   />
                 </ol>
 
@@ -469,7 +517,11 @@ export function InviteBotDialog({
                   ) : (
                     <span />
                   )}
-                  <Button variant={state === "joined" ? "primary" : "secondary"} size="sm" onClick={close}>
+                  <Button
+                    variant={state === "joined" ? "primary" : "secondary"}
+                    size="sm"
+                    onClick={close}
+                  >
                     {state === "joined" ? "Done" : "Close, I'll approve it later"}
                   </Button>
                 </div>
@@ -505,8 +557,8 @@ export function InviteBotDialog({
                       ))}
                     </div>
                     <div className="rounded-lg border border-warn/30 bg-warn/10 p-3 text-[12px] leading-relaxed text-muted">
-                      This message contains the agent&apos;s private key. Paste it only into {botName}&apos;s own
-                      chat, never into a group or shared doc.
+                      This message contains the agent&apos;s private key. Paste it only into{" "}
+                      {botName}&apos;s own chat, never into a group or shared doc.
                     </div>
                     {error ? (
                       <p role="alert" className="text-[13px] text-danger">
@@ -515,7 +567,11 @@ export function InviteBotDialog({
                     ) : null}
                     <div className="flex flex-col gap-2 sm:flex-row-reverse">
                       <Button variant="primary" disabled={pending || !app} onClick={makeManual}>
-                        {pending ? "Setting up…" : app ? `Make setup message for ${appLabel}` : "Pick its app first"}
+                        {pending
+                          ? "Setting up…"
+                          : app
+                            ? `Make setup message for ${appLabel}`
+                            : "Pick its app first"}
                       </Button>
                       <Button variant="ghost" onClick={() => setView("form")}>
                         Back
@@ -525,26 +581,38 @@ export function InviteBotDialog({
                 ) : (
                   <>
                     <p className="text-[13px] text-muted">
-                      Registered as <span className="font-medium text-text">@{manual.handle}</span>. Copy this into
-                      its chat. It is shown once.
+                      Registered as <span className="font-medium text-text">@{manual.handle}</span>.
+                      Copy this into its chat. It is shown once.
                     </p>
                     {manual.prompt ? (
                       <div className="rounded-lg border border-line bg-ink p-3">
                         <p className="max-h-48 overflow-y-auto whitespace-pre-wrap break-words text-[12px] leading-relaxed text-muted">
                           {manual.prompt}
                         </p>
-                        <Button className="mt-3" variant="primary" size="sm" onClick={() => copy("prompt", manual.prompt!)}>
+                        <Button
+                          className="mt-3"
+                          variant="primary"
+                          size="sm"
+                          onClick={() => copy("prompt", manual.prompt!)}
+                        >
                           {copied === "prompt" ? "Copied" : "Copy setup message"}
                         </Button>
                       </div>
                     ) : null}
                     {manual.snippet ? (
                       <details className="rounded-lg border border-line p-3">
-                        <summary className="cursor-pointer text-[13px] text-muted">Config for developers</summary>
+                        <summary className="cursor-pointer text-[13px] text-muted">
+                          Config for developers
+                        </summary>
                         <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-all font-mono text-[11px] text-muted">
                           {manual.snippet}
                         </pre>
-                        <Button className="mt-2" variant="ghost" size="sm" onClick={() => copy("snippet", manual.snippet!)}>
+                        <Button
+                          className="mt-2"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => copy("snippet", manual.snippet!)}
+                        >
                           {copied === "snippet" ? "Copied" : "Copy config"}
                         </Button>
                       </details>

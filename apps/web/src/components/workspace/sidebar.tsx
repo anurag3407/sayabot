@@ -40,6 +40,7 @@ import {
   Zap,
 } from "lucide-react"
 import { useAppUpdate } from "@/components/update-notification"
+import { TopBarPlanRings } from "@/components/usage/plan-rings"
 import { signOutAction } from "@/lib/actions/auth"
 import { openBotDmAction, setChatPreferenceAction } from "@/lib/actions/room-state"
 import { Avatar } from "@/components/ui/avatar"
@@ -708,6 +709,7 @@ export function AppSidebar({
         <div className="min-w-0 flex-1 [-webkit-app-region:no-drag]">
           <WorkspaceSwitcher org={org} orgs={orgs} />
         </div>
+        <TopBarPlanRings usageHref={`${base}/analytics`} />
         <DetailsMenu
           className="shrink-0 [-webkit-app-region:no-drag]"
           summaryLabel="New bot or group chat"

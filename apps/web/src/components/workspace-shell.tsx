@@ -23,7 +23,6 @@ import { useWorkspaceActivity } from "@/components/use-workspace-activity"
 import { cn } from "@/lib/format"
 import { CloseIcon, MenuIcon } from "@/components/ui/icons"
 import { PlanUsageBanner } from "@/components/plan-usage-banner"
-import { TopBarPlanRings } from "@/components/usage/plan-rings"
 import type { ChatListItem, OrgRole, OrgSummary } from "@/lib/types"
 
 type NavIcon = ComponentType<{ className?: string }>
@@ -179,7 +178,9 @@ export function WorkspaceShell({
         setPaletteOpen((open) => !open)
       }
       // ⌘[ goes back, like every Mac app. Not while typing, where it indents.
-      const typing = (event.target as HTMLElement | null)?.closest("input, textarea, [contenteditable]")
+      const typing = (event.target as HTMLElement | null)?.closest(
+        "input, textarea, [contenteditable]",
+      )
       if (event.metaKey && event.key === "[" && !typing) {
         event.preventDefault()
         router.back()
@@ -234,12 +235,10 @@ export function WorkspaceShell({
           </aside>
 
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-            {/* The top bar: back on the left, plan gauges on the right. In the Mac app it is
-                also the strip you drag the window by. */}
-            <div className="hidden h-11 shrink-0 items-center gap-1 pr-3 md:flex">
+            {/* Back, and in the Mac app the strip you drag the window by. Plan gauges sit in
+                the sidebar so they share that surface instead of floating above this pane. */}
+            <div className="hidden h-11 shrink-0 items-center md:flex">
               <BackButton home={home} />
-              <span className="flex-1" />
-              <TopBarPlanRings usageHref={`${home}/analytics`} />
             </div>
             <main
               id="main-content"

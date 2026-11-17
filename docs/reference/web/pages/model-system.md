@@ -132,7 +132,7 @@ Rendered on `/settings/keys`; receives `keys` (ProviderKeyView[]), `agentCounts`
 
 `MODEL_SUGGESTIONS` maps provider → starter model ids (the field stays free text; used by the create-agent datalist, key-less fallback lists and `defaultModel(provider)`), covering openai, anthropic, google, groq, cerebras, openrouter (with `:free` ids), copilot, cloudflare and `openai-compatible` (empty).
 
-Provider marks (`provider-icons.tsx`) are inline SVG components — `OpenAIMark`, `AnthropicMark`, `GoogleMark`, `CopilotMark`, `OpenRouterMark`, `OpenCodeMark`, `MiniMaxMark`, `QwenMark`, `KimiMark`, `GrokMark`, and more — selected by string id.
+Provider marks (`provider-icons.tsx`) are inline SVG components — `OpenAIMark`, `ClaudeMark` (Claude's spark, used for `claude` / `claude-code` / `anthropic`), `AnthropicMark` (the company monogram, not shown for Claude), `GoogleMark`, `CopilotMark`, `OpenRouterMark`, `OpenCodeMark`, `MiniMaxMark`, `QwenMark`, `KimiMark`, `GrokMark`, and more — selected by string id.
 
 ## 🧩 Effort helpers (`model-picker-panel.tsx`)
 
