@@ -1,3 +1,4 @@
+import { appendThinking, closeThinking, type ThinkingFold } from "@sayabot/core"
 import { stepCountIs, streamText, type LanguageModel, type LanguageModelUsage, type ToolSet } from "ai"
 
 export interface StreamAgentOptions {
@@ -28,10 +29,25 @@ export interface StreamAgentResult {
  * Single place that owns the AI SDK streaming contract. Text is forwarded as it
  * arrives; tool execution happens inside streamText's step loop.
  */
+function chunkText(part: { text?: string; delta?: string }): string {
+  if (typeof part.text === "string" && part.text) return part.text
+  if (typeof part.delta === "string" && part.delta) return part.delta
+  return ""
+}
+
 export async function streamAgentText(options: StreamAgentOptions): Promise<StreamAgentResult> {
   const started = Date.now()
   let ttftMs: number | null = null
   let text = ""
+  let fold: ThinkingFold = { open: false }
+  const push = async (kind: "thinking" | "answer", chunk: string) => {
+    const next = appendThinking(fold, kind, chunk)
+    fold = next.fold
+    if (!next.delta) return
+    if (ttftMs === null) ttftMs = Date.now() - started
+    text += next.delta
+    await options.onDelta(next.delta)
+  }
   try {
     const result = streamText({
       model: options.model,
@@ -46,10 +62,14 @@ export async function streamAgentText(options: StreamAgentOptions): Promise<Stre
         ? { maxOutputTokens: options.maxOutputTokens }
         : {}),
     })
-    for await (const delta of result.textStream) {
-      if (ttftMs === null) ttftMs = Date.now() - started
-      text += delta
-      await options.onDelta(delta)
+    for await (const part of result.fullStream) {
+      if (part.type === "reasoning-delta") await push("thinking", chunkText(part))
+      else if (part.type === "text-delta") await push("answer", chunkText(part))
+    }
+    const closed = closeThinking(fold)
+    if (closed.delta) {
+      text += closed.delta
+      await options.onDelta(closed.delta)
     }
     // totalUsage sums every step of the tool loop; usage alone is only the last step.
     const [usage, finishReason, steps] = await Promise.all([

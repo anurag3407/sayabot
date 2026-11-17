@@ -118,7 +118,7 @@ sequenceDiagram
    - `run_transcripts` insert: `{ runId, messages: [], compactedThroughIdx: 0, plan: null, version: 1 }`.
 5. **Run registration + heartbeat**: `registerRun(run.id, room.id, { agentId, engine: "v2" })` and a `setInterval` that updates `agent_runs.heartbeat_at` every 10 seconds (cleared in `finalize`). Stale heartbeats are what `recoverStaleRuns()` detects after a crash.
 6. **Scrubber**: `createRunScrubber([resolved.apiKey])` from `@sayabot/core` builds a per-run scrub function that removes the provider API key from all text; it wraps every delta, the final message content, tool outputs, transcript persistence, and errors.
-7. **Streaming plumbing**: `send(event)` serializes broadcasts through a promise `chain`; `flush()` redacts the pending buffer (`redactSecrets(runScrubber(buffer))`) and emits `{ type: "message.delta", messageId, seq, delta }` with a monotonically increasing `seq`.
+7. **Streaming plumbing**: `send(event)` serializes broadcasts through a promise `chain`; `flush()` redacts the pending buffer (`redactSecrets(runScrubber(buffer))`) and emits `{ type: "message.delta", messageId, seq, delta }` with a monotonically increasing `seq`. `reasoning-delta` parts are not written as answer text. `appendThinking` (`@sayabot/core`) folds them into a `<think>` block in that same delta stream; the chat splits the block back out into a line you click to read. See [Thinking blocks](../../core/thinking.md).
 
 ### Tool initialization
 

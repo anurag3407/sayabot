@@ -187,10 +187,15 @@ select {
   font-size: 0.9375rem;
   line-height: 1.65;
   color: var(--color-text);
+  min-width: 0;
   max-width: 100%;
+  overflow-wrap: break-word;
 }
 
-.streamdown > p {
+.streamdown > p,
+.streamdown > ul,
+.streamdown > ol,
+.streamdown > blockquote {
   max-width: 72ch;
 }
 
@@ -269,6 +274,22 @@ select {
   border-radius: var(--radius-md);
   font-family: var(--font-mono);
   font-size: 0.82rem;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* Keep code, diagrams and tables inside the bubble. Their download buttons are
+   absolutely positioned and otherwise paint over the next paragraph. */
+.streamdown [data-streamdown="code-block"],
+.streamdown [data-streamdown="mermaid-block"] {
+  position: relative;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.streamdown [data-streamdown="code-block-body"],
+.streamdown [data-streamdown="table-wrapper"] {
+  max-width: 100%;
 }
 
 .streamdown pre code {
@@ -279,6 +300,7 @@ select {
 
 .streamdown table {
   width: 100%;
+  max-width: 100%;
   border-collapse: collapse;
   font-size: 0.86em;
 }

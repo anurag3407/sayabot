@@ -23,6 +23,17 @@ describe("parseClaudeLine (claude -p --output-format stream-json)", () => {
     expect(
       parseClaudeLine(line({ type: "stream_event", event: { type: "message_start" } })).delta,
     ).toBe("\n\n")
+    expect(
+      parseClaudeLine(
+        line({
+          type: "stream_event",
+          event: {
+            type: "content_block_delta",
+            delta: { type: "thinking_delta", thinking: "hmm" },
+          },
+        }),
+      ).thinking,
+    ).toBe("hmm")
   })
 
   it("turns tool_use into a started step and tool_result into a finished one", () => {

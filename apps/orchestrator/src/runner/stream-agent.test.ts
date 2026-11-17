@@ -52,6 +52,44 @@ describe("streamAgentText", () => {
     expect(result.usage?.outputTokens).toBe(2)
   })
 
+  it("folds reasoning into a think block ahead of the answer", async () => {
+    const model = new MockLanguageModelV3({
+      provider: "mock",
+      modelId: "mock-model",
+      doStream: {
+        stream: simulateReadableStream({
+          chunks: [
+            { type: "stream-start" as const, warnings: [] },
+            { type: "reasoning-start" as const, id: "r1" },
+            { type: "reasoning-delta" as const, id: "r1", delta: "Look it up." },
+            { type: "reasoning-end" as const, id: "r1" },
+            { type: "text-start" as const, id: "t1" },
+            { type: "text-delta" as const, id: "t1", delta: "Found it." },
+            { type: "text-end" as const, id: "t1" },
+            {
+              type: "finish" as const,
+              finishReason: { unified: "stop" as const, raw: "stop" },
+              usage,
+            },
+          ],
+          chunkDelayInMs: null,
+          initialDelayInMs: null,
+        }),
+      },
+    })
+    const deltas: string[] = []
+    const result = await streamAgentText({
+      model,
+      system: "test",
+      prompt: "hi",
+      onDelta: (delta) => {
+        deltas.push(delta)
+      },
+    })
+    expect(deltas.join("")).toBe("<think>\nLook it up.\n</think>\n\nFound it.")
+    expect(result.text).toBe("<think>\nLook it up.\n</think>\n\nFound it.")
+  })
+
   it("executes a tool call and continues the step loop", async () => {
     let echoed = ""
     const model = new MockLanguageModelV3({

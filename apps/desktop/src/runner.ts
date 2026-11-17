@@ -21,12 +21,16 @@ import { localServerUrl } from "./local-models"
 import {
   allowedByRules,
   allowRuleFor,
+  appendThinking,
+  closeThinking,
+  formatReply,
   isReadOnlyStep,
   parseClaudeLine,
   parseCodexLine,
   tokenUsage,
   type Activity,
   type StreamUpdate,
+  type ThinkingFold,
 } from "./mac-stream"
 
 /**
@@ -394,6 +398,8 @@ export class LocalRunner {
       })
       this.child = child
       let live = ""
+      let thought = ""
+      let fold: ThinkingFold = { open: false }
       let lastMessage = ""
       let done: StreamUpdate["done"] | null = null
       let stderr = ""
@@ -407,11 +413,25 @@ export class LocalRunner {
         for (const line of lines) {
           if (!line.trim()) continue
           const update = parseLine(line)
-          if (update.delta) live += update.delta
+          if (update.thinking) {
+            thought += update.thinking
+            const next = appendThinking(fold, "thinking", update.thinking)
+            fold = next.fold
+            live += next.delta
+          }
+          if (update.delta) {
+            const next = appendThinking(fold, "answer", update.delta)
+            fold = next.fold
+            live += next.delta
+          }
           if (update.message) {
             lastMessage = update.message
             // Codex sends whole messages only; Claude also streams them as deltas.
-            if (!isClaude) live = live ? `${live}\n\n${update.message}` : update.message
+            if (!isClaude) {
+              const next = appendThinking(fold, "answer", (live ? "\n\n" : "") + update.message)
+              fold = next.fold
+              live += next.delta
+            }
           }
           if (update.activity.length) pending.push(...update.activity)
           if (update.done) done = update.done
@@ -457,8 +477,11 @@ export class LocalRunner {
       await flush()
       if (cancelled) return
 
+      const closed = closeThinking(fold)
+      if (closed.delta) live += closed.delta
       const finished = done as StreamUpdate["done"] | null
-      const final = (finished?.text || lastMessage || live).trim()
+      const reported = (finished?.text || lastMessage || "").trim()
+      const final = reported ? formatReply(thought, reported) : live.trim()
       if (finished?.error || (code !== 0 && !final)) {
         const error = finished?.error
           ? finished.error.slice(0, 500)
@@ -602,6 +625,7 @@ export class LocalRunner {
       NO_COLOR: "1",
     }
     let output = ""
+    let fold: ThinkingFold = { open: false }
     let cancelled = false
     let sessionId: string | null = null
     const sessionRules = [...(job.allow ?? [])]
@@ -618,7 +642,16 @@ export class LocalRunner {
       onNotification: (method, params) => {
         if (method !== "session/update") return
         const update = acpUpdate(params)
-        if (update.delta) output = (output + update.delta).slice(-200_000)
+        if (update.thinking) {
+          const next = appendThinking(fold, "thinking", update.thinking)
+          fold = next.fold
+          output = (output + next.delta).slice(-200_000)
+        }
+        if (update.delta) {
+          const next = appendThinking(fold, "answer", update.delta)
+          fold = next.fold
+          output = (output + next.delta).slice(-200_000)
+        }
         if (update.activity.length) pending.push(...update.activity)
       },
       onRequest: async (method, params) => {
@@ -700,6 +733,8 @@ export class LocalRunner {
       )) as { stopReason?: unknown } | null
       await flush()
       if (cancelled) return
+      const closed = closeThinking(fold)
+      if (closed.delta) output += closed.delta
       const final = output.trim()
       const stopReason = typeof result?.stopReason === "string" ? result.stopReason : "end_turn"
       if (final) await this.finish(job, completionBody(job, final, result, acpModel(result)))

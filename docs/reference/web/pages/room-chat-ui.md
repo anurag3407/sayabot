@@ -123,7 +123,11 @@ Retry eligibility: system `halted` messages retry only when `metadata.reason` is
 - **Human messages** — right-aligned bubbles (`mine` when `senderId === selfId`), no avatar column.
 - **Agent messages** — avatar + name, panel-tinted bubble, `InspectTraceButton` (opens the run inspector drawer), `CopyButton`, per-message `ToolCallsList`, reply-in-thread button, live vote tally (`VoteTally` reads `metadata.vote { question, options, ballots }`, animating bars and showing per-agent reasons), collapsible tool warnings, error banner + `FailureActions`, and the `replySourceLabel` footnote (e.g. "answered from your Mac" via `src/lib/runs-on.ts`).
 
-Streaming shows a "Live" tag, a `streaming-caret`, or a three-dot "Thinking" bubble when no content has arrived yet.
+Streaming shows a "Live" tag, a `streaming-caret`, or a three-dot bubble when no content has arrived yet.
+
+Agent replies run through `splitThinking` (`@sayabot/core`) before they render. Text inside `<think>`, `<thinking>`, `<reasoning>`, `<thought>`, `<antthinking>`, or `<|think|>` is not part of the bubble. It sits on one quiet line above the answer — **Thinking** while the block is still open, **Thought** once it has closed. Clicking the line expands the reasoning (`ThinkingLine` in `components/chat/thinking-line.tsx`). Copy uses the answer, and the reasoning only when the reply has no answer yet. Human messages are left untouched, so a person can paste those tags.
+
+The bubble is `inline-block min-w-0 max-w-full` and scrolls sideways rather than painting over the next message.
 
 `FailureActions` (`message-actions.tsx:11`) is the recovery UX: a "Details" trace button, a "Retry" button (only when `retryHelps(metadata.errorKind)` — retrying a too-big or rejected-key failure is pointless) calling `retryMessageAction`, and a `recoveryHint`-driven CTA that either dispatches `MODEL_PICKER_EVENT` (opens the room model picker) or links to settings.
 
@@ -145,7 +149,7 @@ A right-side native `<dialog>` (max 560px) for one thread root. On open it fetch
 
 Messages render through **Streamdown** (streaming-safe markdown) with mode `streaming | static`, `parseIncompleteMarkdown`, and plugins:
 
-- `@streamdown/code` (syntax highlighting), `@streamdown/math` (KaTeX with single-dollar math enabled), `@streamdown/mermaid` with a full dark theme config (`markdown.tsx:15`).
+- `@streamdown/code` (syntax highlighting), `@streamdown/math` (KaTeX with single-dollar math enabled), `@streamdown/mermaid` with a full dark theme config (`markdown.tsx`). Code blocks, Mermaid diagrams and tables are capped to the bubble (`globals.css`): their download buttons are absolutely positioned and otherwise paint over the following paragraph. Paragraphs, lists and quotes measure at most 72ch. Links and long tokens wrap. Images and PDF cards are block-level and `max-w-full`.
 - **Custom element overrides**: `a` renders `PdfViewer` for PDF URLs/data-URIs (`isPdfUrl` in `pdf-viewer.tsx:20`), inline `<video>`/`<audio>` players for media file extensions, and external links with `target=_blank` + `noopener noreferrer` + an external-link icon; `img` renders `PdfViewer` or `ImageWithLightbox`; `blockquote` starting with `[!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]`, `[!CAUTION]` becomes a `Callout` (`callout.tsx` — `parseAlert` checks the first text node and returns the typed config); `table` gets a scroll wrapper.
 - **`MermaidErrorFallback`** (`chat/mermaid-error.tsx`) — shows a spinner while streaming, otherwise a "Mermaid Syntax Error" card with Retry, the error text, and a view/copy-code drawer.
 - **`ImageWithLightbox`** (`chat/image-lightbox.tsx`) — lazy image with hover zoom button, fullscreen lightbox with 50–300% zoom controls, download, Esc/backdrop close, and a graceful "Image failed to load" chip.

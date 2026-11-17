@@ -86,7 +86,7 @@ Steps accumulate in a `pending: Activity[]` buffer flushed every **700 ms** (`EV
 
 Pure functions, no I/O. `parseClaudeLine` (`src/mac-stream.ts:50`) handles Claude Code's `--output-format stream-json --include-partial-messages` lines:
 
-- `stream_event` → `content_block_delta`/`text_delta` becomes a `delta`; `message_start` becomes a `"\n\n"` paragraph separator after tool steps.
+- `stream_event` → `content_block_delta`/`text_delta` becomes a `delta`; `thinking_delta` becomes `thinking` (folded into a `<think>` block by the runner, not shown as the answer); `message_start` becomes a `"\n\n"` paragraph separator after tool steps.
 - `assistant` → text blocks join into `message`; `tool_use` blocks become `started` activity keyed by block id.
 - `user` → `tool_result` blocks become `finished` activity (`ok: is_error !== true`).
 - `result` → `done: { text, error }`; failed when `is_error` or `subtype !== "success"`.
@@ -95,6 +95,8 @@ Pure functions, no I/O. `parseClaudeLine` (`src/mac-stream.ts:50`) handles Claud
 
 - `item.started` / `item.completed` → items map to Claude-style names via `codexStep`: `command_execution` → `Bash`, `mcp_tool_call` → `mcp__<server>__<tool>`, `file_change` → `Edit` (with a change list), `web_search` → `WebSearch`. Items that only ever arrive completed (file changes, searches) emit start + finish together; `codexResult` derives `ok` from status/exit codes and clips output to the **last** 4,000 chars.
 - `agent_message` items become `message`; `turn.completed` → clean `done`; `turn.failed`/`error` → `done` with the message — except self-retry noise (`Reconnecting...`) which is ignored.
+
+ACP `agent_thought_chunk` updates are `thinking` on `acpUpdate` (`src/acp.ts`). The runner folds both Claude `thinking` and ACP thoughts with `appendThinking` in `mac-stream.ts` (a copy of the `@sayabot/core` helper, because this package's `tsc` build cannot import that TypeScript source) so the room receives one reply string and the chat can open the reasoning on click. See [Thinking blocks](../core/thinking.md).
 
 ## 📜 "Always Allow" Rules (`allowRuleFor` / `allowedByRules`, `src/mac-stream.ts:221-264`)
 

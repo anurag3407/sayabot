@@ -125,7 +125,7 @@ export function Markdown({
             href={href}
             target={isExternal ? "_blank" : undefined}
             rel={isExternal ? "noopener noreferrer" : undefined}
-            className="inline-flex items-center gap-0.5 hover:underline"
+            className="break-words [overflow-wrap:anywhere] hover:underline"
             {...props}
           >
             {children}

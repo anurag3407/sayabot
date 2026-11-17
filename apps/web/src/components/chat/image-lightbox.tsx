@@ -39,7 +39,7 @@ export function ImageWithLightbox({ src, alt, className, ...props }: ImageProps)
 
   return (
     <>
-      <span className="group relative my-3 inline-block cursor-zoom-in overflow-hidden rounded-xl border border-line bg-panel transition-all hover:border-line-strong">
+      <span className="group relative my-3 block max-w-full cursor-zoom-in overflow-hidden rounded-xl border border-line bg-panel transition-all hover:border-line-strong">
         <img
           src={src}
           alt={alt || "Image preview"}

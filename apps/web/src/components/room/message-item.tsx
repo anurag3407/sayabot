@@ -3,6 +3,8 @@
 import { Avatar } from "@/components/ui/avatar"
 import { CopyButton } from "@/components/copy-button"
 import { Markdown } from "@/components/markdown"
+import { ThinkingLine } from "@/components/chat/thinking-line"
+import { splitThinking } from "@sayabot/core"
 import { InlineAlert } from "@/components/ui/empty"
 import { ReplyIcon } from "@/components/ui/icons"
 import { FailureActions, PokeBotButton } from "@/components/room/message-actions"
@@ -100,6 +102,9 @@ export function MessageItem({
 
   const mine = !isAgent && selfId !== null && message.senderId === selfId
   const quietTime = "text-[11px] text-faint md:opacity-0 md:transition-opacity md:group-hover:opacity-100"
+  const folded = isAgent ? splitThinking(message.content) : null
+  const answer = folded ? folded.answer : message.content
+  const showThinking = Boolean(folded && (folded.thinking || folded.open))
 
   return (
     <article
@@ -159,7 +164,7 @@ export function MessageItem({
                 agentName={message.senderName}
               />
             ) : null}
-            <CopyButton text={message.content} />
+            <CopyButton text={answer || folded?.thinking || message.content} />
             {!inThread && onOpenThread ? (
               <button
                 type="button"
@@ -172,10 +177,13 @@ export function MessageItem({
           </span>
         </header>
 
-        {message.content ? (
+        {showThinking && folded ? (
+          <ThinkingLine text={folded.thinking} streaming={streaming && folded.open} />
+        ) : null}
+        {answer ? (
           <div
             className={cn(
-              "mt-1 inline-block max-w-full rounded-[22px] px-4 py-2.5 text-[15px]",
+              "mt-1 inline-block min-w-0 max-w-full overflow-x-auto rounded-[22px] px-4 py-2.5 text-[15px] [overflow-wrap:anywhere]",
               isAgent ? "rounded-tl-md bg-panel" : "bg-raised",
               mine && "ml-auto rounded-tl-[22px] rounded-tr-md",
             )}
@@ -185,13 +193,13 @@ export function MessageItem({
                 {message.metadata.command === "goal" ? "Goal" : "Side note"}
               </span>
             ) : null}
-            <Markdown content={message.content} streaming={streaming} />
+            <Markdown content={answer} streaming={streaming} />
             {streaming ? <span className="streaming-caret" aria-hidden="true" /> : null}
           </div>
         ) : null}
-        {isAgent && !streaming && message.content && replySourceLabel(message.metadata) ? (
+        {isAgent && !streaming && answer && replySourceLabel(message.metadata) ? (
           <p className="mt-1 pl-1 text-[11px] text-faint">{replySourceLabel(message.metadata)}</p>
-        ) : streaming && !message.content ? (
+        ) : streaming && !answer && !showThinking ? (
           <p className="mt-1 inline-flex items-center gap-1.5 rounded-[22px] rounded-tl-md bg-panel px-4 py-3 text-[14px] text-faint" aria-label="Thinking">
             <span className="thinking-dot" />
             <span className="thinking-dot [animation-delay:150ms]" />

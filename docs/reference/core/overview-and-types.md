@@ -12,7 +12,7 @@ Source files: `packages/core/src/index.ts`, `packages/core/src/types.ts`, `packa
 
 | Import path | Resolves to | Contents |
 | :--- | :--- | :--- |
-| `@sayabot/core` | `src/index.ts` | The 29-module public surface (below) |
+| `@sayabot/core` | `src/index.ts` | The 30-module public surface (below) |
 | `@sayabot/core/mascot` | `src/mascot.ts` | Saya mascot geometry only (also in the root index). Lets the landing site and mobile import it without the rest of core — see [./mascot.md](./mascot.md) |
 | `@sayabot/core/server` | `src/server/index.ts` | Server-only helpers: agent key derivation, SSRF checks, webhook payload signing — see [./platform-utilities.md](./platform-utilities.md) |
 | `@sayabot/core/scanner` | `src/scanner/index.ts` | Local CLI usage scanner — see [./scanner.md](./scanner.md) |
@@ -21,12 +21,12 @@ The `scanner` and `server` subtrees are intentionally **not** re-exported from t
 
 ## 🧾 The root export surface (`index.ts`)
 
-`packages/core/src/index.ts` is a flat list of 29 wildcard re-exports, in rough groups:
+`packages/core/src/index.ts` is a flat list of 30 wildcard re-exports, in rough groups:
 
 | Group | Modules |
 | :--- | :--- |
 | **Types & wire format** | `types`, `clients` |
-| **Turn pipeline** | `mentions`, `turns`, `repetition`, `breakers`, `patch`, `fold-key`, `asks` |
+| **Turn pipeline** | `mentions`, `turns`, `repetition`, `breakers`, `patch`, `fold-key`, `asks`, `thinking` |
 | **Security** | `redact`, `hosts` |
 | **Scheduling & money** | `schedule`, `cron`, `cost` |
 | **Agent config** | `capabilities`, `commands`, `engine`, `computers`, `reply-style` |
@@ -50,6 +50,7 @@ Every root export and where it is documented:
 | `patch` | Canvas patch planning from instructions | [./patch-and-fold-key.md](./patch-and-fold-key.md) |
 | `fold-key` | Question fold keys for answer folding | [./patch-and-fold-key.md](./patch-and-fold-key.md) |
 | `asks` | Structured bot→human questions and owner facts | [./asks.md](./asks.md) |
+| `thinking` | Fold model reasoning into `<think>` blocks and split it back out for the chat | [./thinking.md](./thinking.md) |
 | `redact` | Secret redaction before storage/model input | [./redact-and-breakers.md](./redact-and-breakers.md) |
 | `hosts` | Secret broker host patterns | [./invites-pairing-and-remote.md](./invites-pairing-and-remote.md) |
 | `commands` | Destructive shell-command classifier | [./commands.md](./commands.md) |

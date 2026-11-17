@@ -58,6 +58,7 @@ Task-oriented guides live at the top level of `docs/`. The **reference library**
 | [turns](reference/core/turns.md) | Turn planning state machine: mentions / debate / moderated, sessions |
 | [capabilities-and-mentions](reference/core/capabilities-and-mentions.md) | 14 capability flags, tool gating, mention parsing |
 | [asks](reference/core/asks.md) | Ask/response protocol, fact keys, answer application |
+| [thinking](reference/core/thinking.md) | Fold model reasoning into a click-to-open chat line |
 | [commands](reference/core/commands.md) | Destructive-command classifier feeding the approval gate |
 | [cron-and-schedule](reference/core/cron-and-schedule.md) | Cron parsing, natural-language shorthands, schedule windows |
 | [cost-and-plan-limits](reference/core/cost-and-plan-limits.md) | Cost math, model pricing tables, provider plan-limit parsers |

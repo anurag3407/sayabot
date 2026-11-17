@@ -147,7 +147,7 @@ export function PdfViewer({
   return (
     <div
       className={cn(
-        "my-3 w-full rounded-xl border border-line bg-panel text-text shadow-sm transition-all",
+        "my-3 w-full max-w-full overflow-hidden rounded-xl border border-line bg-panel text-text shadow-sm transition-all",
         className,
       )}
       data-testid="pdf-viewer-card"
@@ -179,7 +179,7 @@ export function PdfViewer({
         </div>
 
         {/* Right: Actions */}
-        <div className="flex items-center gap-1">
+        <div className="flex max-w-full flex-wrap items-center gap-1">
           {/* Page controls (only when expanded) */}
           {!collapsed && (
             <div className="mr-1 hidden items-center gap-1 rounded-md border border-line bg-raised px-1 sm:flex">

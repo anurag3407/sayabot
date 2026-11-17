@@ -173,6 +173,8 @@ export function effortRequest(
 
 export interface AcpUpdate {
   delta?: string
+  /** Reasoning to fold into a `<think>` block, not into the answer. */
+  thinking?: string
   activity: Activity[]
 }
 
@@ -210,6 +212,10 @@ export function acpUpdate(params: unknown): AcpUpdate {
     case "agent_message_chunk": {
       const text = contentText(update.content)
       return text ? { delta: text, activity: [] } : { activity: [] }
+    }
+    case "agent_thought_chunk": {
+      const text = contentText(update.content)
+      return text ? { thinking: text, activity: [] } : { activity: [] }
     }
     case "tool_call": {
       const key = nonempty(update.toolCallId)

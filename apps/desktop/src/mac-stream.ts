@@ -8,9 +8,44 @@ export type Activity =
   | { type: "started"; key: string; toolName: string; args: Record<string, unknown> }
   | { type: "finished"; key: string; ok: boolean; result?: string }
 
+/**
+ * Same fold as `appendThinking` in `@sayabot/core`. Copied here because the desktop `tsc` build
+ * emits plain CommonJS and cannot import the TypeScript source of that package.
+ */
+export interface ThinkingFold {
+  open: boolean
+}
+
+export function appendThinking(
+  fold: ThinkingFold,
+  kind: "thinking" | "answer",
+  text: string,
+): { fold: ThinkingFold; delta: string } {
+  if (!text) return { fold, delta: "" }
+  if (kind === "thinking") {
+    return { fold: { open: true }, delta: fold.open ? text : `<think>\n${text}` }
+  }
+  return { fold: { open: false }, delta: fold.open ? `\n</think>\n\n${text}` : text }
+}
+
+export function closeThinking(fold: ThinkingFold): { fold: ThinkingFold; delta: string } {
+  if (!fold.open) return { fold, delta: "" }
+  return { fold: { open: false }, delta: "\n</think>\n\n" }
+}
+
+export function formatReply(thinking: string, answer: string): string {
+  const thought = thinking.trim()
+  const body = answer.trim()
+  if (!thought) return body
+  if (!body) return `<think>\n${thought}\n</think>`
+  return `<think>\n${thought}\n</think>\n\n${body}`
+}
+
 export interface StreamUpdate {
   /** Text to append to the live reply. */
   delta?: string
+  /** Reasoning to fold into a `<think>` block, not into the answer. */
+  thinking?: string
   /** A finished assistant message (used when no deltas came). */
   message?: string
   activity: Activity[]
@@ -84,6 +119,13 @@ export function parseClaudeLine(line: string): StreamUpdate {
       typeof delta.text === "string"
     ) {
       return { delta: delta.text, activity: [] }
+    }
+    if (
+      event.type === "content_block_delta" &&
+      delta.type === "thinking_delta" &&
+      typeof delta.thinking === "string"
+    ) {
+      return { thinking: delta.thinking, activity: [] }
     }
     // A new assistant message after a tool step: keep the paragraphs apart.
     if (event.type === "message_start") return { delta: "\n\n", activity: [] }

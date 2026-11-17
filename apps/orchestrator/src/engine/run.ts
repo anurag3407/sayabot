@@ -1,7 +1,10 @@
 import {
+  appendThinking,
+  closeThinking,
   createRunScrubber,
   parseCapabilities,
   redactSecrets,
+  type ThinkingFold,
 } from "@sayabot/core"
 import {
   agentRuns,
@@ -714,23 +717,10 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
       })
 
       let newStep = false
-      for await (const part of streamResult.fullStream) {
-        if (part.type === "start-step") {
-          newStep = true
-          continue
-        }
-        if (part.type !== "text-delta" || !part.text) continue
-        const delta = part.text
+      let thinkFold: ThinkingFold = { open: false }
+      const absorb = (delta: string) => {
+        if (!delta) return
         if (ttftMs === null) ttftMs = Date.now() - startedAt
-        if (newStep) {
-          newStep = false
-          // Separate prose from consecutive steps ("Let me check." + "Found it.").
-          if (needsStepSeparator(passText, delta)) {
-            buffer += "\n\n"
-            fullRaw += "\n\n"
-            passText += "\n\n"
-          }
-        }
         buffer += delta
         fullRaw += delta
         passText += delta
@@ -747,6 +737,30 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
             .catch(() => {})
         }
       }
+      for await (const part of streamResult.fullStream) {
+        if (part.type === "start-step") {
+          newStep = true
+          continue
+        }
+        if (part.type === "reasoning-delta" && part.text) {
+          const next = appendThinking(thinkFold, "thinking", part.text)
+          thinkFold = next.fold
+          absorb(next.delta)
+          continue
+        }
+        if (part.type !== "text-delta" || !part.text) continue
+        let delta = part.text
+        if (newStep) {
+          newStep = false
+          // Separate prose from consecutive steps ("Let me check." + "Found it.").
+          if (!thinkFold.open && needsStepSeparator(passText, delta)) delta = `\n\n${delta}`
+        }
+        const next = appendThinking(thinkFold, "answer", delta)
+        thinkFold = next.fold
+        absorb(next.delta)
+      }
+      const closed = closeThinking(thinkFold)
+      absorb(closed.delta)
       flush()
 
       if (errorBox.error) throw errorBox.error

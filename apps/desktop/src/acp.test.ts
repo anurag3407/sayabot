@@ -91,7 +91,7 @@ describe("acpUpdate", () => {
       acpUpdate({
         update: { sessionUpdate: "agent_thought_chunk", content: { type: "text", text: "hmm" } },
       }),
-    ).toEqual({ activity: [] })
+    ).toEqual({ thinking: "hmm", activity: [] })
   })
 
   it("names steps by kind, so a titled shell step is still Bash", () => {

@@ -137,7 +137,7 @@ export interface StreamAgentResult {
 "Single place that owns the AI SDK streaming contract. Text is forwarded as it arrives; tool execution happens inside streamText's step loop." Implementation notes:
 
 - `streamText({ ..., stopWhen: stepCountIs(options.maxSteps ?? 20) })`; optional `temperature`/`topP`/`maxOutputTokens` only when defined.
-- Iterates `result.textStream`, capturing `ttftMs` at the first delta and awaiting `onDelta` per token.
+- Iterates `result.fullStream`. `text-delta` is forwarded as answer text. `reasoning-delta` is folded into a `<think>` block via `appendThinking` (`@sayabot/core`) and forwarded through the same `onDelta`, so the chat can hide it behind a click. An open block is closed before the call returns. `ttftMs` is captured on the first forwarded chunk.
 - Metrics come from `result.totalUsage` (sums every step of the tool loop — `usage` alone is only the last step), `result.finishReason`, and `result.steps.length`.
 - **Never throws**: catch-path returns `{ usage: null, steps: 0, error }` with `aborted` true when the signal aborted or the error is an `AbortError` (in which case `error: null`).
 

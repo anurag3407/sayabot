@@ -195,13 +195,13 @@ export function ToolCallCard({ call }: { call: ToolCallView }) {
       data-tool-call-id={call.id}
       data-status={call.status}
     >
-      <summary className="flex cursor-pointer list-none flex-wrap items-center gap-2 px-3 py-2 hover:bg-raised md:py-1.5">
+      <summary className="flex min-w-0 cursor-pointer list-none flex-wrap items-center gap-2 px-3 py-2 hover:bg-raised md:py-1.5">
         {readMacMarker(call.args) ? (
-          <span className="min-w-0 truncate text-[12.5px] text-text">
+          <span className="min-w-0 flex-1 truncate text-[12.5px] text-text">
             {describeMacStep(call.toolName, call.args)}
           </span>
         ) : (
-          <span className="font-mono text-[12px] text-text">{call.toolName}</span>
+          <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-text">{call.toolName}</span>
         )}
         <StatusBadge status={call.status} />
         <span className="ml-auto font-mono text-[11px] text-faint">
@@ -265,7 +265,7 @@ export function ToolCallsList({
 }) {
   if (!calls.length) return null
   return (
-    <div className="mt-3 space-y-2">
+    <div className="mt-3 min-w-0 max-w-full space-y-2">
       {calls.map((call) =>
         call.status === "pending_approval" ? (
           <ApprovalCard
