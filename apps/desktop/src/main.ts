@@ -301,6 +301,25 @@ function loadConfig(): DesktopConfig {
   return { serverUrl: DEFAULT_SERVER_URL, enableLocalRunner: true }
 }
 
+/** True only after Sayabot → Change Server…, until this Mac is used again or a server is saved. */
+let serverSetupRequested = false
+
+/**
+ * First launch uses Sayabot on this Mac. A server address is entered later from Change Server.
+ * `serverChosen: false` is an unfinished older prompt, so it is cleared the same way.
+ */
+function useThisMacOnFirstLaunch(): void {
+  const config = loadConfig()
+  if (config.serverChosen === true) return
+  saveConfig({
+    ...config,
+    serverUrl: normalizeServerUrl(config.serverUrl) ?? DEFAULT_SERVER_URL,
+    serverChosen: true,
+    serverName: "This Mac",
+    serverGuestMode: true,
+  })
+}
+
 function saveConfig(config: DesktopConfig): void {
   try {
     writeJsonAtomic(path.join(getUserDataDir(), CONFIG_FILE), config, 0o644)
@@ -331,7 +350,7 @@ function loadLocalHtml() {
   mainWindow.loadFile(targetHtml)
 }
 
-/** Back to the start screen's "Sayabot Cloud or my own server" choice. */
+/** Opens the server address form. A relaunch with no new address keeps using this Mac. */
 async function changeServerFromMenu(): Promise<void> {
   const config = loadConfig()
   if (loadSession()) {
@@ -353,7 +372,8 @@ async function changeServerFromMenu(): Promise<void> {
   runner = null
   vaults = null
   localMcp = null
-  saveConfig({ ...config, serverChosen: false })
+  serverSetupRequested = true
+  saveConfig({ ...config, serverChosen: true })
   if (!mainWindow || mainWindow.isDestroyed()) createWindow()
   else loadLocalHtml()
   mainWindow?.show()
@@ -1162,10 +1182,17 @@ ipcMain.handle("auth:guest-status", () => {
   // Sayabot Cloud always allows starting without an account; a self-hosted server says so itself.
   const guestAllowed = config.serverGuestMode !== false
   return {
-    needsServerChoice: !signedIn && !config.serverChosen,
-    autoStart: !signedIn && Boolean(config.serverChosen) && !config.guestDeclined && guestAllowed,
+    needsServerChoice: serverSetupRequested && !signedIn,
+    autoStart:
+      !signedIn && !serverSetupRequested && !config.guestDeclined && guestAllowed,
     guestAllowed,
   }
+})
+
+ipcMain.handle("config:cancel-server-setup", () => {
+  serverSetupRequested = false
+  const config = loadConfig()
+  saveConfig({ ...config, serverChosen: true, guestDeclined: false })
 })
 
 ipcMain.handle("config:server-info", () => {
@@ -1187,6 +1214,7 @@ ipcMain.handle("config:choose-server", async (_event, input: string | null) => {
   if (!info.ok) {
     // Sayabot Cloud being briefly unreachable shouldn't block choosing it.
     if (!input) {
+      serverSetupRequested = false
       await useServer({
         ok: true,
         url: DEFAULT_SERVER_URL,
@@ -1198,6 +1226,7 @@ ipcMain.handle("config:choose-server", async (_event, input: string | null) => {
     }
     return info
   }
+  serverSetupRequested = false
   await useServer(input ? info : { ...info, name: "Sayabot Cloud" })
   return {
     ok: true,
@@ -1365,6 +1394,7 @@ app.whenReady().then(() => {
     const deepLinkArg = process.argv.find((arg) => arg.startsWith("sayabot://"))
     if (deepLinkArg) pendingDeepLinkUrl = deepLinkArg
   }
+  useThisMacOnFirstLaunch()
   createWindow()
   startHost()
 

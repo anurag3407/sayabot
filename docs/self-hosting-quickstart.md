@@ -47,9 +47,9 @@ Re-run `./deploy/install.sh` any time to change an answer. It keeps your existin
 
 ## 3. Connect the apps
 
-- **Mac**: install Sayabot for Mac, then open `https://sayabot.yourcompany.com/download` and click
-  **Open in Sayabot for Mac**. Or, on the app's first screen, choose **My own server** and type
-  your address.
+- **Mac**: install Sayabot for Mac. It opens on this Mac without asking for a server. Then open
+  `https://sayabot.yourcompany.com/download` and click **Open in Sayabot for Mac**, or choose
+  **Sayabot → Change Server…** and type your address.
 - **Phone**: on the sign-in screen, tap **Server** and enter your address. Or scan the
   pairing code from **Settings → Phones** in the web app; the phone switches to your server
   on its own.

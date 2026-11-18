@@ -24,7 +24,7 @@ Source files: `apps/desktop/src/main.ts`, `src/preload.ts`, `src/remote-preload.
 
 ### Guest mode
 
-`createGuestSession` (`src/main.ts:829`) implements [Desktop guest mode](../../desktop-guest-mode.md): it fetches `GET /api/desktop/guest` for `{ enabled, supabaseUrl, anonKey }`, then signs up an **anonymous Supabase user** directly from the Mac (so the Mac's own IP is rate-limited) with no email/password and `data: { signup_source: "desktop_guest" }`. The returned tokens become an `AuthSession` with `isGuest: true`. `auth:guest-status` (`src/main.ts:872`) tells the controller page whether to auto-start a guest (`serverChosen` && !`guestDeclined` && guest allowed), needs a server choice, or should show sign-in. `auth:start-guest` (`src/main.ts:912`) deduplicates concurrent starts through `guestInFlight`. Guests sign in later via `signInFromMenu` (`src/main.ts:793`), which asks `POST /api/account/merge` for a merge-link URL so the guest workspace travels into the real account.
+`createGuestSession` (`src/main.ts`) implements [Desktop guest mode](../../desktop-guest-mode.md): it fetches `GET /api/desktop/guest` for `{ enabled, supabaseUrl, anonKey }`, then signs up an **anonymous Supabase user** directly from the Mac (so the Mac's own IP is rate-limited) with no email/password and `data: { signup_source: "desktop_guest" }`. The returned tokens become an `AuthSession` with `isGuest: true`. Before the first window, `useThisMacOnFirstLaunch` sets `serverChosen` when it is not already true (including an unfinished `false` from the old prompt), with `serverName: "This Mac"`, so a new Mac auto-starts a guest. `auth:guest-status` auto-starts when there is no session, server setup is not open, guest was not declined, and the server allows guests. `needsServerChoice` is true only while the in-memory `serverSetupRequested` flag is set by **Change Server…**. `config:cancel-server-setup` clears that flag. `auth:start-guest` deduplicates concurrent starts through `guestInFlight`. Guests sign in later via `signInFromMenu`, which asks `POST /api/account/merge` for a merge-link URL so the guest workspace travels into the real account.
 
 ---
 
@@ -38,10 +38,10 @@ Source files: `apps/desktop/src/main.ts`, `src/preload.ts`, `src/remote-preload.
 
 Two content modes share this window:
 
-- **Controller page** — `loadLocalHtml` (`src/main.ts:290`) loads `dist/renderer/index.html`, falling back to `src/renderer/index.html` when running from source. The page is the start screen: server choice, guest start, sign-in card, and runner status (it calls the `sayabotDesktop` bridge). Sayabot Cloud is shown with every hosted feature checked and labeled **Coming soon**; that card is not a button and does not call `chooseServer`. **My own server** is the working choice and opens the address form. The Mac app itself (local agents, sign-in against that server) is unchanged. It uses the app's graphite + iris palette and shows the live mascot trio (`renderer/mascots/{pip,nova,moss}-live.svg`, exported by `pnpm --filter @sayabot/web brand:mascots`) in place of a static logo; the trio hops while a guest workspace is being set up or browser sign-in is pending. The text links are real `<button>`s and errors are `role="alert"`.
+- **Controller page** — `loadLocalHtml` (`src/main.ts`) loads `dist/renderer/index.html`, falling back to `src/renderer/index.html` when running from source. First launch does not ask Sayabot Cloud vs your own server. `useThisMacOnFirstLaunch` marks this Mac as chosen and the page starts a guest workspace. The server address form opens only from **Change Server…** (or the sign-in card's Change server link). The page also holds guest start, the sign-in card, and runner status (it calls the `sayabotDesktop` bridge). It uses the app's graphite + iris palette and shows the live mascot trio (`renderer/mascots/{pip,nova,moss}-live.svg`, exported by `pnpm --filter @sayabot/web brand:mascots`) in place of a static logo; the trio hops while a guest workspace is being set up or browser sign-in is pending. The text links are real `<button>`s and errors are `role="alert"`.
 - **Workspace** — `openWorkspaceInWindow` (`src/main.ts:761`) refreshes the session and loads `<serverUrl>/auth/complete#access_token=…&refresh_token=…`, so the web app picks up the login from the URL hash with no password entry. On launch, an existing session opens the workspace directly (`src/main.ts:668-676`).
 
-Menu items "Return to Controller" (⌘H) and "Open Workspace in Window" (⌘W) flip between the two; `changeServerFromMenu` (`src/main.ts:299`) signs out, tears down host/runner/vault/MCP singletons, resets `serverChosen`, and reloads the controller. `app:restart` IPC does **not** relaunch the app — it reloads the workspace page ignoring cache (`src/main.ts:996-998`).
+Menu items "Return to Controller" and "Open Workspace in Window" flip between the two; `changeServerFromMenu` signs out, tears down host/runner/vault/MCP singletons, sets `serverSetupRequested`, and reloads the controller on the address form. Quitting without saving an address leaves the next launch on this Mac. `app:restart` IPC does **not** relaunch the app — it reloads the workspace page ignoring cache.
 
 ---
 
@@ -58,7 +58,8 @@ The preload exposes one object, `window.sayabotDesktop` (`DesktopBridge`, `src/p
 | `getGuestStatus()` | `auth:guest-status` | `{ autoStart, needsServerChoice, guestAllowed }` |
 | `getServerInfo()` | `config:server-info` | `{ url, name, isCloud, chosen }` |
 | `checkServer(input)` | `config:check-server` | runs `checkServer` (see below) |
-| `chooseServer(input)` | `config:choose-server` | checks + `useServer`; null means Sayabot Cloud (`src/main.ts:898`) |
+| `chooseServer(input)` | `config:choose-server` | checks + `useServer`; null means Sayabot Cloud |
+| `cancelServerSetup()` | `config:cancel-server-setup` | closes the address form and continues on this Mac |
 | `startGuest()` | `auth:start-guest` | creates the anonymous session |
 | `signOut()` | `auth:sign-out` | sets `guestDeclined`, clears session, `host?.forget()`, clears web storage (`src/main.ts:935`) |
 | `getServerUrl()` / `setServerUrl(url)` | `config:get-server-url` / `config:set-server-url` | normalized via `normalizeServerUrl` |

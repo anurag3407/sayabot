@@ -10,7 +10,8 @@ and RLS all work exactly like a normal account. Later the person can sign in to 
 
 ```
 First launch (no session, not signed out before)
-  └─ controller page → main: auth:start-guest
+  └─ useThisMacOnFirstLaunch → controller page → main: auth:start-guest
+     A server address is entered later from Sayabot → Change Server…
        ├─ GET  {server}/api/desktop/guest           → { enabled, supabaseUrl, anonKey }
        └─ POST {supabaseUrl}/auth/v1/signup  {}      → anonymous session (from this Mac's IP)
             └─ session saved (isGuest: true) → host registers → /auth/complete → /onboarding

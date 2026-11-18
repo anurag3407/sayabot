@@ -22,6 +22,8 @@ export interface DesktopBridge {
   getServerInfo: () => Promise<{ url: string; name: string; isCloud: boolean; chosen: boolean }>
   checkServer: (input: string) => Promise<ServerCheck>
   chooseServer: (input: string | null) => Promise<ServerCheck>
+  /** Leaves the server address form and continues on this Mac. */
+  cancelServerSetup: () => Promise<void>
   /** Opens Sayabot without an account; on success the main process opens the workspace. */
   startGuest: () => Promise<{ ok: boolean; error?: string }>
   signOut: () => Promise<void>
@@ -65,6 +67,7 @@ const bridge: DesktopBridge = {
   getServerInfo: () => ipcRenderer.invoke("config:server-info"),
   checkServer: (input) => ipcRenderer.invoke("config:check-server", input),
   chooseServer: (input) => ipcRenderer.invoke("config:choose-server", input),
+  cancelServerSetup: () => ipcRenderer.invoke("config:cancel-server-setup"),
   startGuest: () => ipcRenderer.invoke("auth:start-guest"),
   signOut: () => ipcRenderer.invoke("auth:sign-out"),
   getServerUrl: () => ipcRenderer.invoke("config:get-server-url"),

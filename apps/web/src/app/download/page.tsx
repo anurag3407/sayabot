@@ -91,8 +91,10 @@ export default async function DownloadPage() {
                   </div>
                 </div>
                 <p className="mt-3 text-xs leading-relaxed text-faint">
-                  On your phone or a fresh Mac install, choose <strong>My own server</strong> and
-                  enter <span className="font-mono text-neutral-300">{host}</span>.
+                  On your phone, choose <strong>My own server</strong> and enter{" "}
+                  <span className="font-mono text-neutral-300">{host}</span>. On a Mac, use Open
+                  in Sayabot above — a fresh install starts on this Mac, and Change Server is
+                  where you enter this address later.
                 </p>
               </div>
             </div>
