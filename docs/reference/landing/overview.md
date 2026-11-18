@@ -21,6 +21,16 @@ Build-time env (both optional):
 | `NEXT_PUBLIC_APP_URL` | `https://sayabot.sayalabs.in` | Web app links (`/login`, `/signup`, `/privacy`, `/terms`, `/security`) |
 | `NEXT_PUBLIC_SITE_URL` | `https://sayabot.com` | `metadataBase` for Open Graph URLs |
 
+## Deployment & CI/CD
+
+`apps/landing` is hosted on **Cloudflare Pages** at `https://bot.sayalabs.in` (project `sayabot`, CNAME `bot.sayalabs.in -> sayabot.pages.dev`).
+
+- **Automated CI/CD**: Managed by `.github/workflows/landing-deploy.yml`. On push to `main` touching `apps/landing/**`, `packages/core/**`, or `pnpm-lock.yaml`, GitHub Actions builds the static export (`out/`) and deploys via Wrangler using repository secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
+- **Manual deploy**:
+  ```bash
+  CLOUDFLARE_API_TOKEN="..." CLOUDFLARE_ACCOUNT_ID="..." npx wrangler pages deploy apps/landing/out --project-name=sayabot --branch=main
+  ```
+
 ## Links (`src/lib/links.ts`)
 
 `LINKS` holds every outbound destination (web app, GitHub repo, latest release page, sponsor, self-hosting guide, docs, issues, licensing). `DOWNLOADS` maps `macArm`, `macIntel`, `winX64`, `winArm`, `android` to `https://github.com/anurag3407/sayabot/releases/latest/download/<file>` (`Sayabot-arm64.dmg`, `Sayabot-x64.dmg`, `Sayabot-Setup-x64.exe`, `Sayabot-Setup-arm64.exe`, `Sayabot.apk`) with a label, detail line and platform. Change a destination there, once.
