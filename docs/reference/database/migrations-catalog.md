@@ -1,6 +1,6 @@
 # Migrations Catalog
 
-This catalog documents every database migration in `packages/db`: the four Drizzle-generated migrations in `packages/db/migrations/` (the declarative schema snapshot pipeline) and the 35 hand-written SQL scripts in `packages/db/sql/` (functions, triggers, RLS, realtime, and RPCs that Drizzle cannot express). `src/migrate.ts` runs both phases in order — Drizzle first, then every `sql/*.sql` file in sorted filename order — and the SQL phase re-applies on every run, so each script is written to be idempotent.
+This catalog documents every database migration in `packages/db`: the four Drizzle-generated migrations in `packages/db/migrations/` (the declarative schema snapshot pipeline) and the 40 hand-written SQL scripts in `packages/db/sql/` (functions, triggers, RLS, realtime, and RPCs that Drizzle cannot express). `src/migrate.ts` runs both phases in order — Drizzle first, then every `sql/*.sql` file in sorted filename order — and the SQL phase re-applies on every run, so each script is written to be idempotent.
 
 Source files: `packages/db/migrations/0000_conscious_natasha_romanoff.sql` through `0003_gigantic_the_call.sql`, `packages/db/sql/0001_functions.sql` through `0040_workspace_join_requests.sql`, `packages/db/src/migrate.ts`
 

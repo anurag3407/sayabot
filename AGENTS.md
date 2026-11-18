@@ -38,7 +38,7 @@ sayabot/
 │   └── desktop/                 # Electron / desktop wrapper for local workstation management & canvas windows
 ├── packages/
 │   ├── core/                    # Shared types, capabilities parser, secret redactor, fold keys, turn state machine
-│   ├── db/                      # Drizzle ORM schemas, migration runner, seed script, raw SQL migrations (0001-0025)
+│   ├── db/                      # Drizzle ORM schemas, migration runner, seed script, raw SQL migrations (0001-0040)
 │   └── llm/                     # Multi-provider LLM abstraction (Anthropic, OpenAI, DeepSeek, Gemini, Ollama), AES-256-GCM crypto
 ├── deploy/
 │   ├── docker/                  # Dockerfiles for web, orchestrator, computerd, egress
@@ -66,7 +66,7 @@ sayabot/
 | `apps/mobile`       | `@sayabot/mobile`       | Mobile app: Expo / React Native client supporting push notifications, background task sync, room chats, and canvas preview.                                                                         |
 | `apps/desktop`      | `@sayabot/desktop`      | Desktop app: Electron companion for pairing workstation resources and managing local developer tools.                                                                                               |
 | `packages/core`     | `@sayabot/core`         | Core business primitives: Capabilities parser (`parseCapabilities`), secret redactor (`redactSecrets`), turn tokens, mention extractors, ask/response protocol.                                     |
-| `packages/db`       | `@sayabot/db`           | Database layer: Drizzle schemas, PostgreSQL client (`createDb`), migration engine (`packages/db/src/migrate.ts`), seeds, and SQL migration files (`0001` - `0025`).                                 |
+| `packages/db`       | `@sayabot/db`           | Database layer: Drizzle schemas, PostgreSQL client (`createDb`), migration engine (`packages/db/src/migrate.ts`), seeds, and SQL migration files (`0001` - `0040`).                                 |
 | `packages/llm`      | `@sayabot/llm`          | AI client & crypto: LLM adapters (Claude, GPT, DeepSeek, Gemini), AES-256-GCM envelope crypto (`encryptSecret`, `decryptSecret`, `sealSecret`, `openSecret`), MCP client gateway.                   |
 
 ---

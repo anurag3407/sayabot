@@ -12,7 +12,11 @@ Project policies live at the repository root: [Code of Conduct](../CODE_OF_CONDU
 
 ```
 docs/
-├── README.md                      # This documentation hub
+├── README.md                                 # This documentation hub
+├── PROJECT_DOCUMENTATION.md                  # Comprehensive master architectural & technical documentation
+├── AI_Pillars_RAG_MCP_GenAI_Agents_Guide.pdf # RAG, MCP, Gen AI & AI Agents guide with usage & architecture
+├── Sayabot_A_Simple_Guide.pdf                # Single-page non-technical introduction (book page style)
+├── Sayabot_Executive_Summary.pdf             # Publication-grade one-page executive summary PDF
 ├── getting-started.md             # Complete step-by-step setup from scratch
 ├── self-hosting.md                # Complete self-hosting manual (VPS, Cloudflare, Tailscale, Homelab)
 ├── architecture.md                # Monorepo anatomy, turn coordinator & data flow

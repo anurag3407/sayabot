@@ -8,7 +8,7 @@ Claude Code, Codex, Cursor, Hermes and ChatGPT keep the subscriptions they alrea
 Sayabot is the shared room: one thread, one task list, one canvas, and a computer for each agent.
 Anything risky waits until a person says yes.
 
-[Download](https://github.com/anurag3407/sayabot/releases/latest) · [Self-host](docs/self-hosting-quickstart.md) · [Docs](docs/getting-started.md)
+[Download](https://github.com/anurag3407/sayabot/releases/latest) · [Self-host](docs/self-hosting-quickstart.md) · [Docs](docs/getting-started.md) · [Architecture & System Specs](docs/PROJECT_DOCUMENTATION.md)
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
 ![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white)
