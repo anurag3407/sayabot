@@ -816,30 +816,179 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  position: relative;
 }
 
 .phone {
   position: relative;
   display: flex;
   flex-direction: column;
-  width: min(100%, 380px);
-  height: 720px;
-  padding: 14px 16px 16px;
-  border-radius: 52px;
-  border: 1px solid var(--line-2);
-  background: #0d0d10;
+  width: min(100%, 375px);
+  height: 740px;
+  border-radius: 54px;
+  background: #000000;
+  padding: 12px;
+  box-sizing: border-box;
+
+  /* Space Black / Titanium frame with chamfered specular rims */
   box-shadow:
-    0 0 0 8px #141418,
-    0 0 0 9px rgba(255, 255, 255, 0.08),
-    0 60px 120px -40px rgba(0, 0, 0, 0.9);
+    0 0 0 1px rgba(255, 255, 255, 0.14),
+    0 0 0 3px #1c1c22,
+    0 0 0 5px #2d2d37,
+    0 0 0 6.5px #111115,
+    0 20px 50px -10px rgba(0, 0, 0, 0.95),
+    0 40px 90px -20px rgba(0, 0, 0, 0.85);
 }
 
-.phone-notch {
-  width: 110px;
-  height: 30px;
-  margin: 0 auto;
-  border-radius: 99px;
-  background: #1b1b20;
+/* Chassis antenna bands */
+.phone::before {
+  content: "";
+  position: absolute;
+  top: 76px;
+  bottom: 76px;
+  left: -6.5px;
+  right: -6.5px;
+  border-top: 3px solid #0f0f14;
+  border-bottom: 3px solid #0f0f14;
+  border-left: 0;
+  border-right: 0;
+  pointer-events: none;
+}
+
+/* Side physical buttons */
+.phone-buttons-left,
+.phone-buttons-right {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  pointer-events: none;
+}
+
+.phone-buttons-left {
+  right: 100%;
+}
+
+.phone-buttons-right {
+  left: 100%;
+}
+
+.phone-btn {
+  display: block;
+  width: 4px;
+  background: #2e2e38;
+  box-shadow:
+    inset -1px 0 1px rgba(0, 0, 0, 0.7),
+    inset 1px 0 1px rgba(255, 255, 255, 0.22),
+    inset 0 1px 1px rgba(255, 255, 255, 0.18),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.5);
+}
+
+/* Action button */
+.phone-btn-action {
+  margin-top: 110px;
+  height: 28px;
+  border-top-left-radius: 2.5px;
+  border-bottom-left-radius: 2.5px;
+}
+
+/* Volume Up button */
+.phone-btn-vol-up {
+  margin-top: 16px;
+  height: 52px;
+  border-top-left-radius: 2.5px;
+  border-bottom-left-radius: 2.5px;
+}
+
+/* Volume Down button */
+.phone-btn-vol-down {
+  margin-top: 12px;
+  height: 52px;
+  border-top-left-radius: 2.5px;
+  border-bottom-left-radius: 2.5px;
+}
+
+/* Power / Siri button */
+.phone-btn-power {
+  margin-top: 175px;
+  height: 82px;
+  border-top-right-radius: 2.5px;
+  border-bottom-right-radius: 2.5px;
+  box-shadow:
+    inset 1px 0 1px rgba(0, 0, 0, 0.7),
+    inset -1px 0 1px rgba(255, 255, 255, 0.22),
+    inset 0 1px 1px rgba(255, 255, 255, 0.18),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.5);
+}
+
+/* Ear-piece speaker slit in top bezel */
+.phone-speaker {
+  position: absolute;
+  top: 7px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 50px;
+  height: 3px;
+  border-radius: 3px;
+  background: #141418;
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.95);
+  z-index: 6;
+}
+
+/* Dynamic Island */
+.phone-island {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 118px;
+  height: 31px;
+  border-radius: 20px;
+  background: #000000;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 11px;
+  box-sizing: border-box;
+  box-shadow: 0 0 1px 1px rgba(255, 255, 255, 0.05);
+}
+
+.phone-sensor {
+  width: 6.5px;
+  height: 6.5px;
+  border-radius: 50%;
+  background: #090a14;
+  margin-right: 12px;
+  box-shadow: inset 0 0 1px rgba(255, 255, 255, 0.15);
+}
+
+.phone-camera {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 35%, #5a5c9f 0%, transparent 50%),
+    radial-gradient(circle at 65% 75%, #2a2b54 0%, transparent 55%),
+    #080918;
+  box-shadow:
+    inset 0 0 2px rgba(255, 255, 255, 0.35),
+    inset 0 0 4px #4c4da3,
+    0 0 1px rgba(0, 0, 0, 0.9);
+}
+
+/* Screen inside bezel */
+.phone-screen {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  border-radius: 43px;
+  background: #09090c;
+  padding: 48px 14px 10px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
 }
 
 .phone-head {
@@ -847,13 +996,13 @@
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  padding: 24px 0 8px;
+  padding: 10px 0 8px;
   animation: msg-in 0.5s var(--spring) both;
 }
 
 .phone-face {
-  width: 76px;
-  height: 76px;
+  width: 72px;
+  height: 72px;
 }
 
 .phone-name {
@@ -869,8 +1018,8 @@
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  gap: 10px;
-  padding: 10px 2px;
+  gap: 9px;
+  padding: 6px 2px;
 }
 
 .phone-time {
@@ -885,7 +1034,7 @@
   border-radius: 18px;
   border-bottom-left-radius: 6px;
   background: var(--raised-2);
-  font-size: 14.5px;
+  font-size: 14px;
   line-height: 1.45;
   animation: msg-in 0.55s var(--spring) both;
   animation-delay: var(--d);
@@ -901,14 +1050,24 @@
 }
 
 .phone-input {
-  height: 46px;
+  height: 44px;
   display: flex;
   align-items: center;
   padding: 0 18px;
   border-radius: 99px;
   background: var(--raised);
   color: var(--faint);
-  font-size: 14px;
+  font-size: 13.5px;
+}
+
+.phone-home-bar {
+  width: 130px;
+  height: 4.5px;
+  margin: 12px auto 2px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.45);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  flex-shrink: 0;
 }
 
 .phone-note {
@@ -923,7 +1082,10 @@
     gap: 48px;
   }
   .phone {
-    height: 640px;
+    height: 670px;
+  }
+  .phone-screen {
+    padding-top: 42px;
   }
 }
 

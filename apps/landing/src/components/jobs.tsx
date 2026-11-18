@@ -227,24 +227,42 @@ export function Jobs() {
 
         <div className="phone-wrap">
           <div className="phone" aria-label={`Example chat with the ${job.label} agent`}>
-            <div className="phone-notch" />
-            <div className="phone-head" key={`head-${job.id}`}>
-              <Saya shape={job.shape} mood="done" live follow className="phone-face" />
-              <span className="phone-name">{job.label}</span>
+            <div className="phone-buttons-left" aria-hidden="true">
+              <span className="phone-btn phone-btn-action" />
+              <span className="phone-btn phone-btn-vol-up" />
+              <span className="phone-btn phone-btn-vol-down" />
             </div>
-            <div className="phone-thread" key={job.id}>
-              <span className="phone-time">Today {job.runs.match(/\d+:\d+/)?.[0] ?? "9:00"}</span>
-              {job.chat.map((line, index) => (
-                <div
-                  key={index}
-                  className={`phone-msg ${line.from === "you" ? "is-you" : ""}`}
-                  style={{ "--d": `${0.3 + index * 0.9}s` } as CSSProperties}
-                >
-                  {line.text}
-                </div>
-              ))}
+            <div className="phone-buttons-right" aria-hidden="true">
+              <span className="phone-btn phone-btn-power" />
             </div>
-            <div className="phone-input">Ask {job.label}</div>
+
+            <div className="phone-speaker" aria-hidden="true" />
+
+            <div className="phone-island" aria-hidden="true">
+              <span className="phone-sensor" />
+              <span className="phone-camera" />
+            </div>
+
+            <div className="phone-screen">
+              <div className="phone-head" key={`head-${job.id}`}>
+                <Saya shape={job.shape} mood="done" live follow className="phone-face" />
+                <span className="phone-name">{job.label}</span>
+              </div>
+              <div className="phone-thread" key={job.id}>
+                <span className="phone-time">Today {job.runs.match(/\d+:\d+/)?.[0] ?? "9:00"}</span>
+                {job.chat.map((line, index) => (
+                  <div
+                    key={index}
+                    className={`phone-msg ${line.from === "you" ? "is-you" : ""}`}
+                    style={{ "--d": `${0.3 + index * 0.9}s` } as CSSProperties}
+                  >
+                    {line.text}
+                  </div>
+                ))}
+              </div>
+              <div className="phone-input">Ask {job.label}</div>
+              <div className="phone-home-bar" aria-hidden="true" />
+            </div>
           </div>
           <p className="phone-note">Illustrative chat with made-up data.</p>
         </div>
