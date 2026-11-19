@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { LINKS } from "@/lib/links"
 import { GitHubIcon } from "./icons"
+import { LaunchBanner } from "./launch-banner"
 import { Saya } from "./saya"
 
 const ITEMS = [
@@ -25,6 +26,7 @@ export function Nav() {
 
   return (
     <header className={`nav ${scrolled ? "nav-scrolled" : ""}`}>
+      <LaunchBanner />
       <div className="wrap nav-inner">
         <a href="#top" className="nav-brand" aria-label="Sayabot home">
           <Saya shape="ghost" follow className="nav-mark" />

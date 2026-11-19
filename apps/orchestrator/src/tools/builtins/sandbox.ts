@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process"
+import { isDestructiveCommand } from "@sayabot/core"
 import { z } from "zod"
 import { getEnv } from "../../env"
 import type { ToolSpec } from "../audited"
@@ -162,23 +163,38 @@ async function executeLocalProcess(
         LC_ALL: "en_US.UTF-8",
       },
       stdio: ["pipe", "pipe", "pipe"],
+      detached: true,
     })
 
+    const killGroup = (sig: NodeJS.Signals) => {
+      try {
+        if (child.pid) process.kill(-child.pid, sig)
+      } catch {
+        child.kill(sig)
+      }
+    }
+
+    const MAX_STDOUT = 50_000
+    const MAX_STDERR = 10_000
     let stdout = ""
     let stderr = ""
 
     child.stdout.on("data", (data) => {
-      stdout += data.toString()
+      if (stdout.length < MAX_STDOUT) {
+        stdout += data.toString().slice(0, MAX_STDOUT - stdout.length)
+      }
     })
     child.stderr.on("data", (data) => {
-      stderr += data.toString()
+      if (stderr.length < MAX_STDERR) {
+        stderr += data.toString().slice(0, MAX_STDERR - stderr.length)
+      }
     })
 
     const timer = setTimeout(() => {
-      child.kill("SIGKILL")
+      killGroup("SIGKILL")
       resolve({
-        stdout: stdout.slice(0, 50_000),
-        stderr: (stderr + "\nExecution timed out").slice(0, 10_000),
+        stdout,
+        stderr: (stderr + "\nExecution timed out").slice(0, MAX_STDERR),
         exitCode: 124,
         backend: "local",
         executionTimeMs: Date.now() - started,
@@ -187,7 +203,8 @@ async function executeLocalProcess(
 
     const onAbort = () => {
       clearTimeout(timer)
-      child.kill("SIGKILL")
+      signal?.removeEventListener("abort", onAbort)
+      killGroup("SIGKILL")
       reject(new Error("Execution aborted by user"))
     }
     signal?.addEventListener("abort", onAbort, { once: true })
@@ -196,8 +213,8 @@ async function executeLocalProcess(
       clearTimeout(timer)
       signal?.removeEventListener("abort", onAbort)
       resolve({
-        stdout: stdout.slice(0, 50_000),
-        stderr: stderr.slice(0, 10_000),
+        stdout,
+        stderr: stderr.slice(0, MAX_STDERR),
         exitCode: code ?? 0,
         backend: "local",
         executionTimeMs: Date.now() - started,
@@ -366,7 +383,11 @@ export function sandboxTool(optionsOrOrgId?: { orgId?: string; agentId?: string 
         .describe("Target execution environment. Defaults to organization configured backend."),
       timeoutSeconds: z.number().int().min(1).max(60).optional(),
     }),
-    dangerous: false,
+    dangerous: (input) => {
+      const cmd = typeof input.cmd === "string" ? input.cmd : typeof input.code === "string" ? input.code : ""
+      const backend = input.backend as SandboxBackend | undefined
+      return backend === "local" || backend === "ssh" || isDestructiveCommand(cmd)
+    },
     execute: async (
       input: {
         language: "python" | "javascript" | "bash"
@@ -415,7 +436,11 @@ export function terminalExecTool(optionsOrOrgId?: { orgId?: string; agentId?: st
         .describe("Target execution environment"),
       timeoutSeconds: z.number().int().min(1).max(120).default(30).optional(),
     }),
-    dangerous: false,
+    dangerous: (input) => {
+      const cmd = typeof input.cmd === "string" ? input.cmd : typeof input.code === "string" ? input.code : ""
+      const backend = input.backend as SandboxBackend | undefined
+      return backend === "local" || backend === "ssh" || isDestructiveCommand(cmd)
+    },
     execute: async (
       input: {
         cmd: string

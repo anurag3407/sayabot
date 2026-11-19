@@ -1,0 +1,33 @@
+# Sayabot
+
+> Sayabot is an open-source autonomous remote AI agent platform and multiplayer collaboration workspace. Human teams and AI agents share persistent rooms, execute deterministic turns with PostgreSQL advisory locks, collaborate on real-time canvases, operate isolated Linux Docker computers (computerd), and connect external knowledge sources via fine-grained workspace connectors and MCP.
+
+## Overview & Architecture
+
+- [Sayabot Home](https://sayabot.tech): Official homepage, product overview, interactive demo, and download hub.
+- [GitHub Repository](https://github.com/anurag3407/sayabot): Source code under AGPL-3.0, issue tracking, and roadmap discussions.
+- [Architecture Guide](https://github.com/anurag3407/sayabot/tree/main/docs): Monorepo directory map, multi-agent turns, and security model.
+- [Self-Hosting Quickstart](https://github.com/anurag3407/sayabot/blob/main/docs/self-hosting-quickstart.md): Docker Compose production deployment instructions for self-hosters.
+- [AGENTS.md Developer Spec](https://github.com/anurag3407/sayabot/blob/main/AGENTS.md): High-priority operational manual for autonomous AI coding agents.
+
+## Platform Downloads
+
+- [Sayabot for macOS (Apple Silicon)](https://github.com/anurag3407/sayabot/releases/latest/download/Sayabot-arm64.dmg): Native macOS desktop application for Apple Silicon (M1/M2/M3/M4).
+- [Sayabot for macOS (Intel)](https://github.com/anurag3407/sayabot/releases/latest/download/Sayabot-x64.dmg): Native macOS desktop application for Intel 64-bit processors.
+- [Sayabot for Windows (x64)](https://github.com/anurag3407/sayabot/releases/latest/download/Sayabot-Setup-x64.exe): Windows installer for x64 workstations.
+- [Sayabot for Windows (ARM64)](https://github.com/anurag3407/sayabot/releases/latest/download/Sayabot-Setup-arm64.exe): Windows installer for Snapdragon and ARM64 machines.
+- [Sayabot for Android](https://github.com/anurag3407/sayabot/releases/latest/download/Sayabot.apk): Mobile companion APK for on-the-go notifications and danger approvals.
+- [Sayabot Web Application](https://sayabot.sayalabs.in/login): Hosted browser console for room chat, Monaco canvas, and agent settings.
+
+## Security & Sandbox Verification
+
+- [Computer Daemon & Sandboxing](https://github.com/anurag3407/sayabot/tree/main/apps/computerd): Hardened Alpine/Ubuntu Docker containers bounded strictly to /home/bot and /tmp.
+- [PostgreSQL Advisory Locks](https://github.com/anurag3407/sayabot/blob/main/AGENTS.md#rule-2-never-bypass-room-postgresql-advisory-locks-during-turn-execution): Connection-scoped turn serialization preventing state clobbering.
+- [Envelope Encryption Vault](https://github.com/anurag3407/sayabot/blob/main/packages/llm/src/crypto.ts): AES-256-GCM envelope encryption with MESH_KEK for zero plaintext credentials.
+- [Audited Tool Approvals](https://github.com/anurag3407/sayabot/blob/main/AGENTS.md#rule-4-dangerous-tools-dangerous-true-must-pass-through-human-approval-gates): Asynchronous human approval gates for destructive operations.
+
+## Connectors & Ecosystem
+
+- [Model Context Protocol (MCP)](https://github.com/anurag3407/sayabot/tree/main/packages/llm): Connect tools, dev servers, and external databases via standard MCP.
+- [Sayalabs Studio](https://sayalabs.in): Founding design studio and core development team for Sayabot.
+- [Licensing & Terms](https://github.com/anurag3407/sayabot/blob/main/LICENSING.md): AGPL-3.0 open-source licensing terms and commercial enterprise guidelines.

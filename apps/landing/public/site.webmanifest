@@ -1,0 +1,30 @@
+{
+  "name": "Sayabot · Autonomous Remote AI Agents",
+  "short_name": "Sayabot",
+  "description": "Open-source remote AI agents with persistent Linux compute sandboxes, deterministic multi-agent turns, and human danger approval gates.",
+  "start_url": "/",
+  "id": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#08080a",
+  "theme_color": "#08080a",
+  "categories": ["developer", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "type": "image/png",
+      "sizes": "180x180"
+    },
+    {
+      "src": "/favicon.ico",
+      "type": "image/x-icon",
+      "sizes": "48x48"
+    }
+  ]
+}

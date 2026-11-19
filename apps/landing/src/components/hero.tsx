@@ -203,7 +203,7 @@ export function Hero() {
         </p>
       </div>
 
-      <div className="lineup" ref={stage}>
+      <div className="lineup" ref={stage} id="mascots">
         <div className="lineup-word" aria-hidden>
           sayabot
         </div>

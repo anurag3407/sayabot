@@ -1,0 +1,50 @@
+# Sayabot: Full System & Architectural Knowledge
+
+> Sayabot is an open-source, full-stack autonomous remote agent platform and multiplayer collaboration workspace. Human teams and AI agents share persistent rooms, execute deterministic turns, collaborate on real-time canvases, operate isolated Linux computers (computerd), and connect external knowledge sources via fine-grained workspace connectors and MCP.
+> Domain: https://sayabot.tech
+> Repository: https://github.com/anurag3407/sayabot
+> License: AGPL-3.0
+
+## 1. System Overview & Core Philosophy
+
+Sayabot solves the autonomy vs. safety dilemma for AI agents. Rather than running locally with unconstrained shell permissions or in opaque cloud servers, Sayabot gives each agent:
+1. A persistent Linux computer in a hardened Docker container mounted at `/home/bot`.
+2. A deterministic turn coordinator backed by PostgreSQL session advisory locks.
+3. AES-256-GCM envelope encryption (`MESH_KEK`) preventing plaintext secret exposure.
+4. Human-in-the-loop approval gates for any destructive or external operation (`dangerous: true`).
+5. Multi-platform clients: macOS (Apple Silicon & Intel), Windows (x64 & ARM64), Android APK, and modern web application.
+
+## 2. Monorepo Topology
+
+- `apps/landing`: Static public marketing site (Next.js static export at https://sayabot.tech).
+- `apps/web`: Next.js 16 App Router UI, React 19, Yjs collaborative Monaco canvas, connector OAuth flows.
+- `apps/orchestrator`: Hono HTTP & SSE engine, Turn Coordinator, Agent Loop V2 (planner, critic, subagents), tool execution, connectors, cron scheduler.
+- `apps/computerd`: Computer sandbox daemon managing persistent Docker containers (`saaya-bot-${agentId}`) with `agentd` socket server.
+- `apps/egress`: Hardened SSRF-safe outbound fetch proxy enforcing RFC 1918 blocklists and DNS rebinding defenses.
+- `apps/mobile`: React Native / Expo client supporting push notifications, background task sync, room chats, and canvas preview.
+- `apps/desktop`: Electron companion app for pairing workstation resources and managing local developer tools.
+- `packages/core`: Shared primitives, capabilities parser, secret redactor, fold keys, turn state machine, mascot geometry.
+- `packages/db`: Drizzle ORM schemas, migration runner, SQL migrations, and row-level security policies.
+- `packages/llm`: Multi-provider LLM abstraction (Anthropic Claude, OpenAI GPT, DeepSeek, Google Gemini, Ollama), AES-256-GCM crypto, MCP gateway.
+
+## 3. The Five Golden Architectural Rules
+
+1. Never hardcode or leak secrets: AES-256-GCM MESH_KEK envelope encryption for all credentials.
+2. Never bypass room PostgreSQL advisory locks during turn execution: withRoomLock(roomId, fn) serializes turns to prevent race conditions.
+3. Database changes must follow Drizzle schemas and SQL migrations: Drizzle ORM schemas in packages/db/src/schema/ paired with SQL migrations in packages/db/sql/.
+4. Dangerous tools must pass through human approval gates: operations that write/delete outside sandbox, run unrestricted bash, or dispatch external actions wait for operator authorization.
+5. Persistent sandboxes run in Docker containers bounded strictly to /home/bot and /tmp.
+
+## 4. Supported Platforms & Direct Downloads
+
+- macOS (Apple Silicon): https://github.com/anurag3407/sayabot/releases/latest/download/Sayabot-arm64.dmg
+- macOS (Intel): https://github.com/anurag3407/sayabot/releases/latest/download/Sayabot-x64.dmg
+- Windows (x64): https://github.com/anurag3407/sayabot/releases/latest/download/Sayabot-Setup-x64.exe
+- Windows (ARM64): https://github.com/anurag3407/sayabot/releases/latest/download/Sayabot-Setup-arm64.exe
+- Android (APK): https://github.com/anurag3407/sayabot/releases/latest/download/Sayabot.apk
+- Web Application: https://sayabot.sayalabs.in/login
+
+## 5. Contact & Creators
+
+Sayabot is developed by Sayalabs Studio (https://sayalabs.in) led by Anurag Mishra (https://github.com/anurag3407).
+For support, issues, or contributions, visit https://github.com/anurag3407/sayabot.

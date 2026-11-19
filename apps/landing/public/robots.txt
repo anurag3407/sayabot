@@ -1,0 +1,57 @@
+# Robots.txt for https://sayabot.tech
+# Sayabot — Open-source remote AI agent platform
+
+User-agent: *
+Allow: /
+
+# Explicit AI Search & Engine Crawlers (Allowed for GEO / AI Citation indexing)
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: Amazonbot
+Allow: /
+
+User-agent: FacebookBot
+Allow: /
+
+# Training Data Scrapers (Controlled)
+User-agent: Bytespider
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+# Standard Search Engines
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: DuckDuckBot
+Allow: /
+
+User-agent: Applebot
+Allow: /
+
+# Sitemap and Host directives
+Sitemap: https://sayabot.tech/sitemap.xml
+Host: https://sayabot.tech
