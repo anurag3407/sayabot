@@ -9,6 +9,9 @@ const nextConfig: NextConfig = {
   images: { unoptimized: true },
   trailingSlash: false,
   transpilePackages: ["@sayabot/core"],
+  experimental: {
+    agentUpgrade: "security",
+  },
 }
 
 export default nextConfig

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react"
-import { Animated, Easing, type StyleProp, StyleSheet, View, type ViewStyle } from "react-native"
+import { Animated, Easing, type StyleProp, View, type ViewStyle } from "react-native"
 import Svg, {
   Defs,
   Ellipse,
@@ -11,9 +11,7 @@ import Svg, {
   Stop,
 } from "react-native-svg"
 import {
-  RARE_MASCOT,
   SAYA_BADGE,
-  SAYA_CAST,
   SAYA_EYE_STROKE,
   SAYA_INK,
   SAYA_SAAYA_OFFSET,
@@ -22,7 +20,6 @@ import {
   SAYA_ZZ_STROKE,
   resolveMascotLook,
   sayaGeometry,
-  sayaPick,
   type SayaMood,
   type SayaShape,
   type SayaTone,
@@ -100,7 +97,6 @@ export function Mascot({
   rare,
   style,
 }: MascotProps) {
-  const theme = useTheme()
   const instanceId = useRef(`sm_${++mascotCounter}`).current
 
   const resolved = resolveMascotLook(seed)

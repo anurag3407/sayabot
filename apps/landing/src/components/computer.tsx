@@ -23,8 +23,9 @@ export function Computer() {
               Every agent gets a computer.
             </h2>
             <p className="lede">
-              A sandboxed Linux machine per agent, with a <code className="code">/home/bot</code> that
-              survives restarts. Run them on your Mac, over SSH, or in isolated Docker containers.
+              A sandboxed Linux machine per agent, with a <code className="code">/home/bot</code>{" "}
+              that survives restarts. Run them on your Mac, over SSH, or in isolated Docker
+              containers.
             </p>
           </Reveal>
         </div>
@@ -36,8 +37,8 @@ export function Computer() {
               <span className="sandbox-tag">Execution Runtimes</span>
               <h3 className="sandbox-card-title">Dedicated sandboxes</h3>
               <p className="sandbox-card-sub">
-                Your Mac, any remote Linux box over SSH, or ephemeral Docker sandboxes bounded strictly
-                to <code className="code">/home/bot</code>.
+                Your Mac, any remote Linux box over SSH, or ephemeral Docker sandboxes bounded
+                strictly to <code className="code">/home/bot</code>.
               </p>
             </div>
 
@@ -59,7 +60,9 @@ export function Computer() {
                       <span className="sandbox-item-role">Engineer</span>
                       <span className="sandbox-item-engine">Claude Code</span>
                     </div>
-                    <span className="sandbox-item-detail">Refactored auth migration, opened PR #84</span>
+                    <span className="sandbox-item-detail">
+                      Refactored auth migration, opened PR #84
+                    </span>
                   </div>
                 </div>
                 <div className="sandbox-item">
@@ -72,7 +75,9 @@ export function Computer() {
                       <span className="sandbox-item-role">Coordinator</span>
                       <span className="sandbox-item-engine">Codex</span>
                     </div>
-                    <span className="sandbox-item-detail">Staged staging deploy, waiting on approval</span>
+                    <span className="sandbox-item-detail">
+                      Staged staging deploy, waiting on approval
+                    </span>
                   </div>
                 </div>
               </div>
@@ -108,7 +113,13 @@ export function Computer() {
                 </div>
                 <div className="sandbox-item">
                   <div className="sandbox-saya-wrap">
-                    <Saya shape="ledger" mood="thinking" live follow className="sandbox-saya-face" />
+                    <Saya
+                      shape="ledger"
+                      mood="thinking"
+                      live
+                      follow
+                      className="sandbox-saya-face"
+                    />
                   </div>
                   <div className="sandbox-item-text">
                     <div className="sandbox-item-top">
@@ -116,7 +127,9 @@ export function Computer() {
                       <span className="sandbox-item-role">Finance</span>
                       <span className="sandbox-item-engine">Claude Code</span>
                     </div>
-                    <span className="sandbox-item-detail">Reconciling 14 March receipts via broker</span>
+                    <span className="sandbox-item-detail">
+                      Reconciling 14 March receipts via broker
+                    </span>
                   </div>
                 </div>
               </div>
@@ -129,8 +142,8 @@ export function Computer() {
               <span className="sandbox-tag">Model Independence</span>
               <h3 className="sandbox-card-title">Any agent engine</h3>
               <p className="sandbox-card-sub">
-                Plug in Claude Code, Codex, Cursor, Gemini CLI, Copilot and 40+ more over MCP with the
-                credentials you already have.
+                Plug in Claude Code, Codex, Cursor, Gemini CLI, Copilot and 40+ more over MCP with
+                the credentials you already have.
               </p>
             </div>
 

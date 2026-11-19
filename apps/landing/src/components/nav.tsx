@@ -7,6 +7,7 @@ import { Saya } from "./saya"
 
 const ITEMS = [
   { href: "#agents", label: "Agents" },
+  { href: "#mascots", label: "Mascots" },
   { href: "#how", label: "How it works" },
   { href: "#computer", label: "Computers" },
   { href: "#features", label: "Features" },

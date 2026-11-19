@@ -194,12 +194,7 @@ export function Hero() {
 
         <div className="hero-ctas">
           <DownloadButton />
-          <a
-            className="btn btn-ghost"
-            href={LINKS.selfHost}
-            target="_blank"
-            rel="noreferrer"
-          >
+          <a className="btn btn-ghost" href={LINKS.selfHost} target="_blank" rel="noreferrer">
             Self-host <ArrowRight className="arrow" />
           </a>
         </div>

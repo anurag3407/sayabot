@@ -11,10 +11,8 @@ import {
   SAYA_ZZ_STROKE,
   resolveMascotLook,
   sayaGeometry,
-  sayaPick,
   type SayaMood,
   type SayaShape,
-  type SayaTone,
 } from "@sayabot/core"
 
 export type MascotShape = SayaShape
