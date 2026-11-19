@@ -15,6 +15,8 @@ describe("bot invites", () => {
   it("builds a paste message with the link and no secret", () => {
     const msg = botInviteMessage({ roomName: "Job hunt", url: "https://x.test/bot/bi_abc" })
     expect(msg).toContain('"Job hunt"')
+    expect(msg).toContain("curl")
+    expect(msg).toContain("no browser or login required")
     expect(msg.trim().endsWith("https://x.test/bot/bi_abc")).toBe(true)
     expect(msg).not.toMatch(/mesh_ak_|bp_/)
   })

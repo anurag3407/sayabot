@@ -74,6 +74,9 @@ export async function createBotInviteAction(input: {
 }): Promise<ActionResult> {
   const check = await adminRoomAccess(input.orgSlug, input.roomId)
   if ("error" in check) return fail(check.error)
+  if (check.access.room.kind === "dm") {
+    return fail("You cannot add another bot to a direct message. Create a group chat room instead.")
+  }
   const name = input.name?.trim().slice(0, 60) || null
   const app = input.app ? normalizeClient(input.app).id : null
   const { data, error } = await createAdminClient()
@@ -154,7 +157,11 @@ export async function decideBotInviteAction(input: {
 
   const agentGate = await planGate(row.org_id, "agents")
   if (!agentGate.ok) return fail(agentGate.message)
-  const displayName = row.name || row.request_name || "Bot"
+  const isGenericPlaceholder =
+    Boolean(row.name &&
+      (row.name === "Something else" ||
+        row.name === normalizeClient(row.app ?? "generic").label))
+  const displayName = (!isGenericPlaceholder && row.name) || row.request_name || row.name || "Bot"
   const handle = await uniqueHandle(row.org_id, displayName)
   const { data: agent, error: agentError } = await admin
     .from("agents")

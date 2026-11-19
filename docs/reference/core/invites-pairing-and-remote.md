@@ -64,7 +64,7 @@ export type BotInviteState =
 
 ### `botInviteMessage(ctx)` (`bot-invite.ts:33`)
 
-The paste message for the owner's bot chat — room name (fallback `"my room"`), the instruction to open the link and ask to join, and the URL. **It contains no secret**; `bot-invite.test.ts` asserts the text never matches `mesh_ak_` or `bp_`.
+The paste message for the owner's bot chat — room name (fallback `"my room"`), explicit instructions for AI agents to fetch the endpoint using `curl` or their HTTP tool (clarifying that it is a machine-readable API endpoint and no browser or login is required), and the URL. **It contains no secret**; `bot-invite.test.ts` asserts the text never matches `mesh_ak_` or `bp_`.
 
 ### `handleFromName(name, fallback = "bot")` (`bot-invite.ts:43`)
 

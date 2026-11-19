@@ -185,7 +185,7 @@ export function InviteBotDialog({
       const result = await createBotInviteAction({
         orgSlug,
         roomId,
-        name: name.trim() || appLabel,
+        name: name.trim() || undefined,
         app: app ?? undefined,
       })
       if (!result.ok || !result.data?.invite) {

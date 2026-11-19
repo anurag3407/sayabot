@@ -547,11 +547,17 @@ export function RoomWorkspace({
                     : "Configure a bot"}
                 </button>
               ) : null}
-              {data.canAdmin ? (
+              {data.canAdmin && !dmAgent ? (
                 <button type="button" className={menuItem} onClick={() => setAddBotOpen(true)}>
                   <UserPlus className="h-4 w-4 text-faint" />
                   Add a bot to this chat
                 </button>
+              ) : null}
+              {data.canAdmin && dmAgent ? (
+                <Link href={`/${data.org.slug}/chats/new`} className={menuItem}>
+                  <UserPlus className="h-4 w-4 text-faint" />
+                  Create a room to add bots
+                </Link>
               ) : null}
               <button type="button" className={menuItem} onClick={showCanvas}>
                 <FileText className="h-4 w-4 text-faint" />

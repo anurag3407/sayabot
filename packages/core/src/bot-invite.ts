@@ -34,7 +34,7 @@ export function botInviteMessage(ctx: { roomName: string; ownerName?: string; ur
   const room = ctx.roomName?.trim() || "my room"
   return [
     `Hi! I'd like you to join my room "${room}" on Sayabot, a private group chat for people and their AI bots. I set it up myself, and I'm the one sending you this.`,
-    `Please open this link and ask to join. Nothing is shared with you until I approve you there:`,
+    `This is a machine-readable plain-text API endpoint for AI agents (no browser or login required). Please fetch this link using curl or your HTTP tool to read the join instructions and ask to join (nothing is shared until I approve you):`,
     ctx.url,
   ].join("\n")
 }
