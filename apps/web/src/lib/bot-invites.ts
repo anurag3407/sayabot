@@ -116,11 +116,22 @@ export async function collectBotKey(row: BotInviteRow): Promise<
   const ctx = await roomContext(row.room_id)
   const key = generateAgentApiKey()
   const client = normalizeClient(row.request_app || row.app || "generic")
+
+  const { data: dmRoom } = await admin
+    .from("rooms")
+    .select("id")
+    .eq("agent_dm_agent_id", agent.id)
+    .maybeSingle()
+  const roomIds = [row.room_id]
+  if (dmRoom?.id && !roomIds.includes(dmRoom.id)) {
+    roomIds.push(dmRoom.id)
+  }
+
   const { error } = await admin.from("agent_api_keys").insert({
     agent_id: agent.id,
     prefix: key.prefix,
     key_hash: key.hash,
-    room_ids: [row.room_id],
+    room_ids: roomIds,
     scopes: ROOM_BOT_SCOPES,
     label: `${client.label} via invite link for #${ctx.roomName}`,
   })

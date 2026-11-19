@@ -4,14 +4,9 @@ import { useEffect, useState } from "react"
 import { DOWNLOADS, LINKS } from "@/lib/links"
 import {
   AppleIcon,
-  WindowsIcon,
-  AndroidIcon,
-  GlobeIcon,
   ServerIcon,
   GitHubIcon,
   ChevronDown,
-  LockIcon,
-  TerminalIcon,
   SparkIcon,
   ArrowUpRight,
 } from "./icons"

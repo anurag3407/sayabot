@@ -283,7 +283,8 @@ export function createApp() {
     const parsed = searchProviderCreditsSchema.safeParse(body)
     if (!parsed.success) return c.json({ error: "invalid body", details: parsed.error.issues }, 400)
     try {
-      let { provider, apiKey, baseUrl } = parsed.data
+      const { provider } = parsed.data
+      let { apiKey, baseUrl } = parsed.data
       if (parsed.data.orgId && (!apiKey && provider !== "duckduckgo" && provider !== "searxng" && provider !== "whoogle")) {
         const stored = await resolveToolCredential({ orgId: parsed.data.orgId, tool: "web_search" })
         if (stored) {
