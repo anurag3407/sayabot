@@ -39,8 +39,8 @@ export function postgresInspectorTool(orgId: string, agentId?: string): ToolSpec
         void client.end().catch(() => {})
       }
       signal?.addEventListener("abort", abort, { once: true })
-      await client.connect()
       try {
+        await client.connect()
         await client.query("begin transaction read only")
         await client.query("set local statement_timeout = '10s'")
         const result = await client.query({ text: query, rowMode: "array" })

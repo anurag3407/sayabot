@@ -166,6 +166,7 @@ botRoutes.post("/v1/rooms/:roomId/messages/stream", async (c) => {
     }
   }
 
+  const MAX_STREAM_CHARS = 100_000
   let failure: string | null = null
   try {
     while (true) {
@@ -175,6 +176,11 @@ botRoutes.post("/v1/rooms/:roomId/messages/stream", async (c) => {
       for (const delta of parsed.deltas) {
         rawContent += delta
         buffer += delta
+      }
+      if (rawContent.length > MAX_STREAM_CHARS) {
+        failure = `message exceeded maximum stream length (${MAX_STREAM_CHARS} characters)`
+        await reader.cancel().catch(() => {})
+        break
       }
       if (parsed.deltas.length) flush()
       const now = Date.now()
@@ -192,8 +198,10 @@ botRoutes.post("/v1/rooms/:roomId/messages/stream", async (c) => {
     }
     const tail = parser.finish()
     for (const delta of tail.deltas) {
-      rawContent += delta
-      buffer += delta
+      if (rawContent.length + delta.length <= MAX_STREAM_CHARS) {
+        rawContent += delta
+        buffer += delta
+      }
     }
   } catch (error) {
     failure = error instanceof Error ? error.message : String(error)

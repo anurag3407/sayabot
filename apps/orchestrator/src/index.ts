@@ -4,6 +4,7 @@ import { getEnv } from "./env"
 import { createApp } from "./http"
 import { enqueueRoomMessage, startJobs, stopJobs } from "./jobs"
 import { setCollabEnqueue } from "./collab"
+import { emitVaultChanged } from "./vault-events"
 import { startMeetingScheduler, stopMeetingScheduler } from "./scheduler/meetings"
 import { startMemoryScheduler } from "./memory/scheduler"
 import { startDiscordGateway } from "./connectors/discord-gateway"
@@ -37,6 +38,9 @@ control.on("notification", (message) => {
     if (message.channel === "mesh_stop_run" && payload.runId) {
       abortRun(payload.runId)
     }
+    if (message.channel === "vault_changed") {
+      emitVaultChanged(message.payload || "{}")
+    }
   } catch {
     // ignore malformed control notifications
   }
@@ -44,6 +48,7 @@ control.on("notification", (message) => {
 control.on("error", (error) => console.error("[control] listener error", error))
 await control.query("LISTEN mesh_room_interrupt")
 await control.query("LISTEN mesh_stop_run")
+await control.query("LISTEN vault_changed")
 
 await startJobs()
 void import("./engine/resume").then(({ recoverStaleRuns }) =>

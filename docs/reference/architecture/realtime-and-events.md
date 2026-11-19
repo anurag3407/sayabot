@@ -143,7 +143,7 @@ Web clients connect to `NEXT_PUBLIC_COLLAB_URL` (prod: `wss://<domain>/collab`, 
 
 The reverse direction is also streamed: an external bot can POST to `POST /v1/rooms/:roomId/messages/stream` with `application/x-ndjson` or `text/event-stream` and write its reply incrementally. `BotStreamParser` (`apps/orchestrator/src/bot/stream-parser.ts`) buffers partial lines, parses `data:` prefixed lines for SSE (`[DONE]` ends the stream), and treats each NDJSON line as a delta. The route inserts the `messages` row as `streaming` up front, broadcasts redacted `message.delta` events as chunks arrive, persists the growing content to the database about once a second, then finalizes with `message.done` and calls `notifyBotReply()` so a coordinator waiting on this agent wakes immediately (`apps/orchestrator/src/bot/routes.ts:106-229`).
 
-The orchestrator's only *outbound* SSE endpoint is `/internal/egress/stream` (`apps/orchestrator/src/internal/routes.ts:299-341`): an internal-secret-authenticated stream that forwards PostgreSQL `vault_changed` notifications to every egress instance, with 15-second heartbeats.
+The orchestrator's only *outbound* SSE endpoint is `/internal/egress/stream` (`apps/orchestrator/src/internal/routes.ts:299-341`): an internal-secret-authenticated stream that fans out PostgreSQL `vault_changed` notifications via an in-memory `vaultEmitter` (`vault-events.ts`) fed by the central control connection, forwarding cache invalidations to every connected egress instance without consuming dedicated database pool connections, with 15-second heartbeats.
 
 ## 🔔 Beyond the room: LISTEN/NOTIFY control channels
 

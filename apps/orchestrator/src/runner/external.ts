@@ -30,11 +30,19 @@ export interface ExternalTurnResult {
   deferred?: boolean
 }
 
-function abortPromise(signal: AbortSignal): Promise<null> {
-  return new Promise((resolve) => {
+function abortPromise(signal: AbortSignal): { promise: Promise<null>; cleanup: () => void } {
+  let onAbort: (() => void) | undefined
+  const promise = new Promise<null>((resolve) => {
     if (signal.aborted) return resolve(null)
-    signal.addEventListener("abort", () => resolve(null), { once: true })
+    onAbort = () => resolve(null)
+    signal.addEventListener("abort", onAbort, { once: true })
   })
+  return {
+    promise,
+    cleanup: () => {
+      if (onAbort) signal.removeEventListener("abort", onAbort)
+    },
+  }
 }
 
 /**
@@ -105,8 +113,14 @@ export async function runExternalTurn(args: ExternalTurnArgs): Promise<ExternalT
     }
   }
 
-  const reply = await Promise.race([replyPromise, abortPromise(controller.signal)])
-  unregisterRun(run.id)
+  const helper = abortPromise(controller.signal)
+  let reply: Awaited<typeof replyPromise> | null = null
+  try {
+    reply = await Promise.race([replyPromise, helper.promise])
+  } finally {
+    helper.cleanup()
+    unregisterRun(run.id)
+  }
   const latencyMs = Date.now() - started
 
   if (controller.signal.aborted) {

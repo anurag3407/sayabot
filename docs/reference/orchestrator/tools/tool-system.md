@@ -150,8 +150,8 @@ Danger column: `safe` = never blocks, `dynamic` = approval only for certain args
 | `git_push` | `computer` | dangerous | Push commits to the remote through the Secret Broker proxy. |
 | `browser_open` / `browser_snapshot` / `browser_click` / `browser_type` / `browser_extract` / `browser_screenshot` | `computer` (profile `browser`) | safe | CDP headless-Chromium automation. |
 | `browser_exec` / `browser_cdp` / `browser_dialog` / `browser_vault` | `computer` (profile `browser`) | safe | Scripted page code, raw CDP commands, dialog handling, vault autofill. |
-| `code_sandbox` | `sandbox` (and `!computer`) | safe | Ephemeral Python/JS/Bash execution across 6 backends. |
-| `terminal_exec` | `sandbox` (and `!computer`) | safe | Shell command in the configured terminal backend. |
+| `code_sandbox` | `sandbox` (and `!computer`) | dynamic (`local`, `ssh`, destructive) | Ephemeral Python/JS/Bash execution across 6 backends; human approval for host/ssh/destructive commands. |
+| `terminal_exec` | `sandbox` (and `!computer`) | dynamic (`local`, `ssh`, destructive) | Shell command in the configured terminal backend; human approval for host/ssh/destructive commands. |
 | `web_search` | `webSearch` | safe | Multi-provider web search with DuckDuckGo fallback. |
 | `web_fetch` | `webSearch` | safe | SSRF-hardened page fetch → Markdown/text. |
 | `document_extract` | `document !== false` | safe | PDF/document/table extraction via Docling/Marker/Mistral/Vision. |

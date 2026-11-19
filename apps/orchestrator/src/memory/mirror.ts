@@ -5,6 +5,7 @@ import { getMemoryService } from "./service"
 const ROOT = "/home/bot/.saaya/memory"
 
 /** Last mirrored content hash per agent, so unchanged memory costs no computer calls. */
+const MAX_MIRROR_HASHES = 500
 const lastMirrorHash = new Map<string, string>()
 
 export type MirrorClient = Pick<ComputerClient, "writeFile" | "exec">
@@ -61,6 +62,10 @@ export async function syncMemoryMirror(args: {
   })
   for (const [path, content] of Object.entries(files)) {
     await args.client.writeFile(args.agentId, { path, content, allowOverwriteLarge: true })
+  }
+  if (lastMirrorHash.size >= MAX_MIRROR_HASHES) {
+    const oldest = lastMirrorHash.keys().next().value
+    if (oldest) lastMirrorHash.delete(oldest)
   }
   lastMirrorHash.set(args.agentId, hash)
   return "written"

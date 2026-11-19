@@ -124,6 +124,8 @@ export async function runCliProcess(args: {
   let stderr = ""
   let pending = ""
   const visible = () => streamed || lastMessage
+  let deadline: NodeJS.Timeout | undefined
+  let kill: (() => void) | undefined
 
   try {
     const child = spawn(binary, command.args, {
@@ -131,9 +133,13 @@ export async function runCliProcess(args: {
       env: cliEnvironment(binary, process.env, grant?.env ?? {}),
       stdio: ["pipe", "pipe", "pipe"],
     })
-    const kill = () => child.kill("SIGTERM")
+    kill = () => {
+      try {
+        child.kill("SIGTERM")
+      } catch {}
+    }
     args.signal?.addEventListener("abort", kill, { once: true })
-    const deadline = setTimeout(kill, args.timeoutMs ?? MAX_RUNTIME_MS)
+    deadline = setTimeout(kill, args.timeoutMs ?? MAX_RUNTIME_MS)
 
     child.stdout.setEncoding("utf8")
     child.stdout.on("data", (chunk: string) => {
@@ -172,8 +178,6 @@ export async function runCliProcess(args: {
         resolve(-1)
       })
     })
-    clearTimeout(deadline)
-    args.signal?.removeEventListener("abort", kill)
 
     const text = (finalText ?? visible()).trim()
     if (args.signal?.aborted) {
@@ -188,8 +192,11 @@ export async function runCliProcess(args: {
       : reason
     return { ok: false, text, error, aborted: false, model: usedModel, usage }
   } catch (error) {
+    kill?.()
     return { ...fail(error instanceof Error ? error.message : String(error)), text: visible() }
   } finally {
+    if (deadline) clearTimeout(deadline)
+    if (kill && args.signal) args.signal.removeEventListener("abort", kill)
     await grant?.release()
   }
 }

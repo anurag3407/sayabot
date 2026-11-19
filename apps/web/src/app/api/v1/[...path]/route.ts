@@ -347,6 +347,7 @@ async function forward(request: Request, path: string[]) {
     headers,
     redirect: "manual",
     cache: "no-store",
+    signal: request.signal,
   }
   if (request.method !== "GET" && request.method !== "HEAD") {
     init.body = request.body

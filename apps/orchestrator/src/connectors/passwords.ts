@@ -118,6 +118,11 @@ function runCli(bin: string, args: string[], env: Record<string, string>, signal
       err = (err + chunk.toString("utf8")).slice(-1_000)
     })
     const onAbort = () => child.kill("SIGTERM")
+    if (signal?.aborted) {
+      onAbort()
+      reject(signal.reason ?? new Error("Aborted"))
+      return
+    }
     signal?.addEventListener("abort", onAbort, { once: true })
     child.on("error", (error) => {
       signal?.removeEventListener("abort", onAbort)

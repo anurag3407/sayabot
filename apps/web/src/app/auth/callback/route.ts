@@ -5,6 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { listUserOrgs } from "@/lib/auth"
 import { safeNextPath } from "@/lib/safe-next"
+import { getPublicOrigin } from "@/lib/public-origin"
 
 const EMAIL_TYPES = new Set<EmailOtpType>([
   "signup",
@@ -159,11 +160,7 @@ export async function GET(request: Request) {
   const errorDescription = url.searchParams.get("error_description") || url.searchParams.get("error")
 
   // Determine origin safely for redirects behind proxies/tunnels
-  const forwardedHost = request.headers.get("x-forwarded-host")
-  const forwardedProto = request.headers.get("x-forwarded-proto") || (url.protocol.replace(":", "") || "http")
-  const origin = forwardedHost
-    ? `${forwardedProto}://${forwardedHost}`
-    : (process.env.NEXT_PUBLIC_SITE_URL || url.origin)
+  const origin = getPublicOrigin(request)
 
   if (errorDescription) {
     console.error("[auth] OAuth provider returned error:", errorDescription)

@@ -1,3 +1,4 @@
+import { createHash, timingSafeEqual } from "node:crypto"
 import { decryptSecret, unwrapConnectorSecret } from "@sayabot/llm"
 import { getInternalSecret, getKek, getOrchestratorUrl } from "@/lib/env"
 import { createAdminClient } from "@/lib/supabase/admin"
@@ -33,10 +34,10 @@ async function connector(connectorId: string, platform: string): Promise<{ row: 
 }
 
 function same(a: string, b: string): boolean {
-  if (a.length !== b.length) return false
-  let diff = 0
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i)
-  return diff === 0
+  if (!a || !b) return false
+  const hashA = createHash("sha256").update(a).digest()
+  const hashB = createHash("sha256").update(b).digest()
+  return timingSafeEqual(hashA, hashB)
 }
 
 /**

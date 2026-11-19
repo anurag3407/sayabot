@@ -18,14 +18,29 @@ export interface ResolvedGrant {
 
 const grantCache = new Map<string, { grant: ResolvedGrant; expiresAt: number }>()
 const identityCache = new Map<string, { identity: { agentId: string; orgId: string }; expiresAt: number }>()
+const secretIdentityCache = new Map<string, { identity: { agentId: string; orgId: string }; expiresAt: number }>()
+
+const MAX_CACHE_SIZE = 1000
+
+function pruneExpired<T extends { expiresAt: number }>(map: Map<string, T>) {
+  const now = Date.now()
+  for (const [k, v] of map.entries()) {
+    if (v.expiresAt <= now) map.delete(k)
+  }
+  if (map.size > MAX_CACHE_SIZE) {
+    let toDelete = Math.floor(MAX_CACHE_SIZE * 0.2)
+    for (const k of map.keys()) {
+      map.delete(k)
+      if (--toDelete <= 0) break
+    }
+  }
+}
 
 export function flushGrantCache() {
   grantCache.clear()
   identityCache.clear()
   secretIdentityCache.clear()
 }
-
-const secretIdentityCache = new Map<string, { identity: { agentId: string; orgId: string }; expiresAt: number }>()
 
 /** Parses `Proxy-Authorization: Basic base64(user:secret)` and returns the secret. */
 export function proxySecretFrom(header: string | string[] | undefined): string | null {
@@ -52,6 +67,7 @@ export async function resolveAgentIdentityBySecret(secret: string): Promise<{ ag
     })
     if (res.ok) {
       const data = (await res.json()) as { agentId: string; orgId: string }
+      pruneExpired(secretIdentityCache)
       secretIdentityCache.set(secret, { identity: data, expiresAt: Date.now() + 60_000 })
       return data
     }
@@ -82,6 +98,7 @@ export async function resolveAgentIdentity(containerIp: string): Promise<{ agent
     })
     if (res.ok) {
       const data = (await res.json()) as { agentId: string; orgId: string }
+      pruneExpired(identityCache)
       identityCache.set(containerIp, { identity: data, expiresAt: Date.now() + 30_000 })
       return data
     }
@@ -113,6 +130,7 @@ export async function resolvePlaceholder(agentId: string, placeholder: string): 
   }
 
   const grant = (await res.json()) as ResolvedGrant
+  pruneExpired(grantCache)
   grantCache.set(cacheKey, { grant, expiresAt: Date.now() + 30_000 })
   return grant
 }

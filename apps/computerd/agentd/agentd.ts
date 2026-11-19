@@ -127,7 +127,7 @@ async function handleRequest(client: Socket, jsonStr: string) {
         gid: process.getgid && process.getgid() === 0 ? 10001 : undefined,
       })
 
-      // Kill the whole process group on timeout so test runners/servers spawned
+      // Kill the whole process group on timeout or client disconnect so test runners/servers spawned
       // by the command don't outlive it.
       let timedOut = false
       const killGroup = (signal: NodeJS.Signals) => {
@@ -137,6 +137,12 @@ async function handleRequest(client: Socket, jsonStr: string) {
           child.kill(signal)
         }
       }
+      const onClientDisconnect = () => {
+        killGroup("SIGTERM")
+      }
+      client.on("close", onClientDisconnect)
+      client.on("end", onClientDisconnect)
+
       let forceKill: NodeJS.Timeout | undefined
       const timeout = setTimeout(() => {
         timedOut = true
@@ -147,6 +153,8 @@ async function handleRequest(client: Socket, jsonStr: string) {
 
       child.on("error", (error) => {
         clearTimeout(timeout)
+        client.removeListener("close", onClientDisconnect)
+        client.removeListener("end", onClientDisconnect)
         client.write(JSON.stringify({ error: error.message }) + "\n")
       })
       child.stdin.on("error", () => {})
@@ -169,6 +177,8 @@ async function handleRequest(client: Socket, jsonStr: string) {
       child.on("close", (code, signal) => {
         clearTimeout(timeout)
         if (forceKill) clearTimeout(forceKill)
+        client.removeListener("close", onClientDisconnect)
+        client.removeListener("end", onClientDisconnect)
         for (const t of ["out", "err"] as const) {
           const d = decoders[t].end()
           if (d && totalBytes < MAX_OUTPUT_BYTES) client.write(JSON.stringify({ t, d }) + "\n")

@@ -11,6 +11,7 @@ export async function broadcast(roomId: string, event: RoomEvent): Promise<void>
   try {
     const response = await fetch(`${base}/realtime/v1/api/broadcast`, {
       method: "POST",
+      signal: AbortSignal.timeout(5000),
       headers: {
         "content-type": "application/json",
         apikey: env.SUPABASE_SERVICE_ROLE_KEY,

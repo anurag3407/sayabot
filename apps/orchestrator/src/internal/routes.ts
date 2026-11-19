@@ -18,6 +18,7 @@ import { runOnVps, VPS_CHECK_REMOTE } from "../computers/vps"
 import { getDb, getPool } from "../db"
 import { getEnv } from "../env"
 import { enqueueTaskWake } from "../jobs"
+import { vaultEmitter } from "../vault-events"
 import { broadcast } from "../realtime"
 import { waitForApproval } from "../tools/approvals"
 
@@ -300,26 +301,16 @@ internalRoutes.post("/internal/egress/usage", async (c) => {
 
 internalRoutes.get("/internal/egress/stream", (c) => {
   return streamSSE(c, async (stream) => {
-    let client: any = null
-    const cleanup = () => {
-      if (client) {
-        client.release()
-        client = null
-      }
+    const onVaultChanged = (payload: string) => {
+      void stream.writeSSE({
+        event: "vault_changed",
+        data: payload || "{}",
+      })
     }
 
-    try {
-      client = await getPool().connect()
-      client.on("notification", (msg: any) => {
-        if (msg.channel === "vault_changed") {
-          void stream.writeSSE({
-            event: "vault_changed",
-            data: msg.payload || "{}",
-          })
-        }
-      })
-      await client.query("LISTEN vault_changed")
+    vaultEmitter.on("vault_changed", onVaultChanged)
 
+    try {
       // Send initial heartbeat
       await stream.writeSSE({
         event: "connected",
@@ -337,7 +328,7 @@ internalRoutes.get("/internal/egress/stream", (c) => {
     } catch {
       // client disconnected
     } finally {
-      cleanup()
+      vaultEmitter.off("vault_changed", onVaultChanged)
     }
   })
 })

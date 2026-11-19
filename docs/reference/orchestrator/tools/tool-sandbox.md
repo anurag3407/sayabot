@@ -28,7 +28,7 @@ The exported `SANDBOX_BACKENDS` catalog (used by settings UIs and asserted in te
 | `backend` | enum `local \| docker \| modal \| daytona \| ssh \| serverless_vm` | optional | Target environment; defaults to the org-configured backend, then `local` |
 | `timeoutSeconds` | int 1–60 | optional | Per-run timeout |
 
-- `dangerous: false` — this tool never waits for approval; isolation is provided by the backend, not the gate.
+- `dangerous: (input) => input.backend === "local" || input.backend === "ssh" || isDestructiveCommand(...)` — executes without approval only in fully isolated container/microVM backends for non-destructive commands. Any execution on the host OS (`local`), remote SSH host (`ssh`), or involving destructive patterns (`rm -rf`, `mkfs`, fork bombs, DROP TABLE) triggers human approval per AGENTS.md Rule 4.
 - Credential resolution: `resolveToolCredential({ orgId, agentId, tool: "terminal_sandbox" })` (`sandbox.ts:379-381`); the config's `provider` selects the default backend, `apiKey`/`baseUrl` feed the remote backends.
 - Returns the `ExecutionResult` described below.
 
@@ -41,7 +41,7 @@ The exported `SANDBOX_BACKENDS` catalog (used by settings UIs and asserted in te
 | `backend` | same enum as `code_sandbox` | optional | Target environment |
 | `timeoutSeconds` | int 1–120 | `30` | Timeout |
 
-Same credential path as `code_sandbox` but always executes with `language: "bash"` (`sandbox.ts:439`).
+Same credential path and dynamic `dangerous` human approval evaluation as `code_sandbox`, always executing with `language: "bash"` (`sandbox.ts:439`).
 
 ## ⚙️ Dispatcher — `runSandboxExecution` (`sandbox.ts:314-348`)
 

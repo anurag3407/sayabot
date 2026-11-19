@@ -159,13 +159,23 @@ export function toAuditedTools(specs: ToolSpec[], runtime: ToolRuntime): ToolSet
               .catch((error) => console.warn("[inbound] approval notice not delivered", error))
           }
           const signal = options.abortSignal
-          const decision = await Promise.race([
-            waitForApproval(row.id, runtime.approvalTimeoutMs),
-            new Promise<"rejected">((resolve) => {
-              if (signal?.aborted) return resolve("rejected")
-              signal?.addEventListener("abort", () => resolve("rejected"), { once: true })
-            }),
-          ])
+          let onAbort: (() => void) | undefined
+          const abortPromise = new Promise<"rejected">((resolve) => {
+            if (signal?.aborted) return resolve("rejected")
+            onAbort = () => resolve("rejected")
+            signal?.addEventListener("abort", onAbort, { once: true })
+          })
+          let decision: "approved" | "rejected"
+          try {
+            decision = await Promise.race([
+              waitForApproval(row.id, runtime.approvalTimeoutMs),
+              abortPromise,
+            ])
+          } finally {
+            if (signal && onAbort) {
+              signal.removeEventListener("abort", onAbort)
+            }
+          }
           resolveApprovalWaiter(row.id, "rejected")
           await broadcast(runtime.roomId, {
             type: "tool.approval_resolved",

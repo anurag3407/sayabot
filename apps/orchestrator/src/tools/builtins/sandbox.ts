@@ -251,6 +251,10 @@ async function executeE2bSandbox(
   // Dynamic import of E2B so environments without it don't crash
   const { Sandbox } = await import("@e2b/code-interpreter")
   const sandbox = await Sandbox.create({ apiKey: key, timeoutMs })
+  if (signal?.aborted) {
+    await sandbox.kill().catch(() => {})
+    throw signal.reason ?? new Error("Aborted")
+  }
 
   const abort = () => {
     void sandbox.kill().catch(() => {})

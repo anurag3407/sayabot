@@ -150,12 +150,14 @@ export function useSecretTool(args: { agentId: string; orgId: string }): ToolSpe
             : JSON.stringify(input.request.body)
       }
 
-      // 6. Execute request
+      // 6. Execute request with strict SSRF defense (no auto-redirects) and timeout
+      const activeSignal = signal ?? AbortSignal.timeout(30_000)
       const response = await fetch(targetUrl, {
         method: input.request.method,
         headers: reqHeaders,
         body: reqBody,
-        signal,
+        signal: activeSignal,
+        redirect: "error",
       })
 
       // Update last_used_at on grant and secret
@@ -168,8 +170,41 @@ export function useSecretTool(args: { agentId: string; orgId: string }): ToolSpe
         .set({ lastUsedAt: new Date() })
         .where(eq(vaultSecrets.id, row.grant.secretId))
 
-      const respText = await response.text()
-      const scrubber = createRunScrubber([secretString])
+      // Read response body with byte ceiling to prevent heap exhaustion / OOM
+      const MAX_RESPONSE_BYTES = 2_000_000 // 2 MB cap
+      let respText = ""
+      let hitByteCeiling = false
+      if (response.body) {
+        const reader = response.body.getReader()
+        const decoder = new TextDecoder()
+        let bytesRead = 0
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          bytesRead += value.byteLength
+          if (bytesRead > MAX_RESPONSE_BYTES) {
+            hitByteCeiling = true
+            const remaining = Math.max(0, MAX_RESPONSE_BYTES - (bytesRead - value.byteLength))
+            if (remaining > 0) {
+              respText += decoder.decode(value.subarray(0, remaining), { stream: false })
+            }
+            await reader.cancel().catch(() => {})
+            break
+          }
+          respText += decoder.decode(value, { stream: true })
+        }
+        respText += decoder.decode()
+      } else {
+        respText = await response.text()
+      }
+
+      const secretsToScrub = new Set<string>([secretString, rawSecret])
+      if (typeof parsedSecret === "object" && parsedSecret !== null) {
+        for (const v of Object.values(parsedSecret)) {
+          if (typeof v === "string" && v.length >= 6) secretsToScrub.add(v)
+        }
+      }
+      const scrubber = createRunScrubber(Array.from(secretsToScrub))
       const scrubbedBody = scrubber(respText)
 
       // Filter response headers to safe allowlisted subset
@@ -189,7 +224,7 @@ export function useSecretTool(args: { agentId: string; orgId: string }): ToolSpe
         }
       })
 
-      const isTruncated = scrubbedBody.length > 200_000
+      const isTruncated = hitByteCeiling || scrubbedBody.length > 200_000
       const bodyOutput = isTruncated ? scrubbedBody.slice(0, 200_000) : scrubbedBody
 
       return {

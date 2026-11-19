@@ -138,7 +138,22 @@ function safeOpenAiEndpoint(endpointUrl?: string | null): string {
 }
 
 const CACHE_TTL_MS = 60_000
+const MAX_EMBEDDER_CACHE = 200
 const embedderCache = new Map<string, { at: number; embedder: Embedder | null }>()
+
+function pruneEmbedderCache() {
+  const now = Date.now()
+  for (const [k, v] of embedderCache.entries()) {
+    if (now - v.at >= CACHE_TTL_MS) embedderCache.delete(k)
+  }
+  if (embedderCache.size > MAX_EMBEDDER_CACHE) {
+    let toDelete = Math.floor(MAX_EMBEDDER_CACHE * 0.2)
+    for (const k of embedderCache.keys()) {
+      embedderCache.delete(k)
+      if (--toDelete <= 0) break
+    }
+  }
+}
 
 /** The org's active embedding provider, or null when none is configured or supported. */
 export async function getOrgEmbedder(db: Db, orgId: string): Promise<Embedder | null> {
@@ -176,6 +191,7 @@ export async function getOrgEmbedder(db: Db, orgId: string): Promise<Embedder | 
     console.warn("[memory] embedding provider unavailable:", redactSecrets(String(error)).text)
     embedder = null
   }
+  pruneEmbedderCache()
   embedderCache.set(orgId, { at: Date.now(), embedder })
   return embedder
 }

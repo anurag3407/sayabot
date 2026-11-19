@@ -165,9 +165,17 @@ const proxyServer = createServer(async (req: IncomingMessage, res: ServerRespons
     const pinnedIp = safeIps[0]!
     const isIpv6 = pinnedIp.includes(":")
 
-    // 2. Read request body
+    // 2. Read request body with size ceiling to prevent heap exhaustion
+    const MAX_REQUEST_BODY = 10 * 1024 * 1024 // 10 MB cap
     const bodyChunks: Buffer[] = []
+    let bodyBytes = 0
     for await (const chunk of req) {
+      bodyBytes += chunk.length
+      if (bodyBytes > MAX_REQUEST_BODY) {
+        res.writeHead(413, { "content-type": "text/plain" })
+        res.end("saaya: request body exceeds 10MB limit")
+        return
+      }
       bodyChunks.push(Buffer.from(chunk))
     }
     let bodyBuffer = Buffer.concat(bodyChunks)
@@ -256,9 +264,21 @@ const proxyServer = createServer(async (req: IncomingMessage, res: ServerRespons
         servername: host,
       },
       (upstreamRes) => {
-        // Collect and scrub response
+        // Collect and scrub response with byte ceiling to prevent memory exhaustion
+        const MAX_RESPONSE_BODY = 20 * 1024 * 1024 // 20 MB cap
         const respChunks: Buffer[] = []
-        upstreamRes.on("data", (c) => respChunks.push(Buffer.from(c)))
+        let respBytes = 0
+        let respTruncated = false
+
+        upstreamRes.on("data", (c) => {
+          respBytes += c.length
+          if (respBytes > MAX_RESPONSE_BODY) {
+            respTruncated = true
+            upstreamRes.destroy()
+            return
+          }
+          respChunks.push(Buffer.from(c))
+        })
         upstreamRes.on("end", () => {
           const respBuffer = Buffer.concat(respChunks)
           const respHeaders = { ...upstreamRes.headers }
@@ -279,11 +299,19 @@ const proxyServer = createServer(async (req: IncomingMessage, res: ServerRespons
             respHeaders["content-length"] = String(finalBody.length)
           }
 
+          if (respTruncated) {
+            respHeaders["content-length"] = String(finalBody.length)
+          }
+
           res.writeHead(upstreamRes.statusCode || 200, respHeaders)
           res.end(finalBody)
         })
       },
     )
+
+    req.on("close", () => {
+      clientReq.destroy()
+    })
 
     clientReq.on("error", (err) => {
       res.writeHead(502, { "content-type": "text/plain" })
@@ -325,12 +353,28 @@ proxyServer.on("connect", async (req: IncomingMessage, clientSocket: Socket, hea
       clientSocket.pipe(targetSocket)
     })
 
+    const cleanup = () => {
+      try { targetSocket.destroy() } catch {}
+      try { clientSocket.destroy() } catch {}
+    }
+
+    clientSocket.setTimeout(60_000, cleanup)
+    targetSocket.setTimeout(60_000, cleanup)
+
+    clientSocket.on("close", cleanup)
+    clientSocket.on("end", cleanup)
+    targetSocket.on("close", cleanup)
+    targetSocket.on("end", cleanup)
+
     targetSocket.on("error", (err) => {
-      clientSocket.end(`HTTP/1.1 502 Bad Gateway\r\n\r\n${err.message}`)
+      try {
+        clientSocket.end(`HTTP/1.1 502 Bad Gateway\r\n\r\n${err.message}`)
+      } catch {}
+      cleanup()
     })
 
     clientSocket.on("error", () => {
-      targetSocket.destroy()
+      cleanup()
     })
   } catch (err: any) {
     clientSocket.end(`HTTP/1.1 403 Forbidden\r\n\r\n${err.message}`)

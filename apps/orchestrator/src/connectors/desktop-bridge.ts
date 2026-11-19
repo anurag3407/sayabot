@@ -7,15 +7,24 @@ import { getEnv } from "../env"
 const WAIT_MS = 25_000
 
 async function sleep(ms: number, signal?: AbortSignal) {
-  await new Promise((resolve, reject) => {
-    const timer = setTimeout(resolve, ms)
-    const onAbort = () => {
-      clearTimeout(timer)
-      reject(signal?.reason ?? new Error("aborted"))
-    }
-    if (signal?.aborted) onAbort()
-    else signal?.addEventListener("abort", onAbort, { once: true })
-  })
+  if (signal?.aborted) throw signal.reason ?? new Error("aborted")
+  let timer: ReturnType<typeof setTimeout> | undefined
+  let onAbort: (() => void) | undefined
+  try {
+    await new Promise<void>((resolve, reject) => {
+      timer = setTimeout(resolve, ms)
+      if (signal) {
+        onAbort = () => {
+          clearTimeout(timer)
+          reject(signal.reason ?? new Error("aborted"))
+        }
+        signal.addEventListener("abort", onAbort, { once: true })
+      }
+    })
+  } finally {
+    if (timer) clearTimeout(timer)
+    if (signal && onAbort) signal.removeEventListener("abort", onAbort)
+  }
 }
 
 /** The desktop app heartbeats every 2.5s; a minute of silence means the lid is shut or it quit. */
