@@ -8,7 +8,7 @@ import "@/styles/sections.css"
 import "@/styles/homes.css"
 import "@/styles/story.css"
 
-const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://sayabot.com"
+const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://sayabot.tech"
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE),

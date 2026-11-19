@@ -19,11 +19,11 @@ Build-time env (both optional):
 | Variable | Default | Used for |
 | :-- | :-- | :-- |
 | `NEXT_PUBLIC_APP_URL` | `https://sayabot.sayalabs.in` | Web app links (`/login`, `/signup`, `/privacy`, `/terms`, `/security`) |
-| `NEXT_PUBLIC_SITE_URL` | `https://sayabot.com` | `metadataBase` for Open Graph URLs |
+| `NEXT_PUBLIC_SITE_URL` | `https://sayabot.tech` | `metadataBase` for Open Graph URLs |
 
 ## Deployment & CI/CD
 
-`apps/landing` is hosted on **Cloudflare Pages** at `https://bot.sayalabs.in` (project `sayabot`, CNAME `bot.sayalabs.in -> sayabot.pages.dev`).
+`apps/landing` is hosted on **Cloudflare Pages** at `https://sayabot.tech` (project `sayabot`, custom domains `sayabot.tech`, `www.sayabot.tech`, and `bot.sayalabs.tech`).
 
 - **Automated CI/CD**: Managed by `.github/workflows/landing-deploy.yml`. On push to `main` touching `apps/landing/**`, `packages/core/**`, or `pnpm-lock.yaml`, GitHub Actions builds the static export (`out/`) and deploys via Wrangler using repository secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
 - **Manual deploy**:
