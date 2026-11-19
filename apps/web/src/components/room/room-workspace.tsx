@@ -33,9 +33,12 @@ import {
   FileText,
   PanelRight,
   Pencil,
+  Phone,
   SlidersHorizontal,
   UserPlus,
+  Volume2,
 } from "lucide-react"
+import { CallModal, VoiceSettingsDialog } from "@/components/voice"
 import { cn } from "@/lib/format"
 import type { RoomPageData } from "@/lib/types"
 
@@ -114,6 +117,8 @@ export function RoomWorkspace({
         : "canvas",
   )
   const [addBotOpen, setAddBotOpen] = useState(false)
+  const [callOpen, setCallOpen] = useState(false)
+  const [voiceSettingsOpen, setVoiceSettingsOpen] = useState(false)
   const [threadRootId, setThreadRootId] = useState<string | null>(initialThreadId)
   const { defaultLayout, onLayoutChanged } = useDefaultLayout({
     id: "room-split",
@@ -483,6 +488,15 @@ export function RoomWorkspace({
           ) : null}
           <button
             type="button"
+            aria-label="Start voice call"
+            title="Start voice call (Take-turns audio)"
+            onClick={() => setCallOpen(true)}
+            className={cn(iconButton, "hover:text-accent hover:bg-accent-soft")}
+          >
+            <Phone className="h-[18px] w-[18px]" />
+          </button>
+          <button
+            type="button"
             aria-pressed={panelShowing}
             aria-label={configAgent ? "Bot settings" : "Side panel"}
             title={
@@ -542,6 +556,14 @@ export function RoomWorkspace({
               <button type="button" className={menuItem} onClick={showCanvas}>
                 <FileText className="h-4 w-4 text-faint" />
                 Open canvas
+              </button>
+              <button
+                type="button"
+                className={menuItem}
+                onClick={() => setVoiceSettingsOpen(true)}
+              >
+                <Volume2 className="h-4 w-4 text-faint" />
+                Voice settings
               </button>
               {data.canAdmin && dmAgent ? (
                 <Link href={`/${data.org.slug}/r/${data.room.id}/settings`} className={menuItem}>
@@ -638,6 +660,24 @@ export function RoomWorkspace({
         mergeHistory={realtime.mergeHistory}
         onTyping={realtime.trackTyping}
         onClose={() => setThreadRootId(null)}
+      />
+
+      <CallModal
+        isOpen={callOpen}
+        onClose={() => setCallOpen(false)}
+        orgSlug={data.org.slug}
+        roomId={data.room.id}
+        roomName={data.room.name}
+        agent={dmAgent ?? (data.roomAgents[0]?.agent ?? null)}
+        messages={realtime.messages}
+        toolCalls={realtime.toolCalls}
+        turnState={realtime.turnState}
+      />
+
+      <VoiceSettingsDialog
+        isOpen={voiceSettingsOpen}
+        onClose={() => setVoiceSettingsOpen(false)}
+        roomId={data.room.id}
       />
     </div>
   )

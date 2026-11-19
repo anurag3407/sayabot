@@ -63,6 +63,7 @@ Task-oriented guides live at the top level of `docs/`. The **reference library**
 | [overview-and-types](reference/core/overview-and-types.md) | Package export surface, `types.ts` vocabulary, dependency map |
 | [turns](reference/core/turns.md) | Turn planning state machine: mentions / debate / moderated, sessions |
 | [capabilities-and-mentions](reference/core/capabilities-and-mentions.md) | 14 capability flags, tool gating, mention parsing |
+| [speech-text](reference/core/speech-text.md) | Spoken normalization, markdown stripping, TTFB utterance chunking |
 | [asks](reference/core/asks.md) | Ask/response protocol, fact keys, answer application |
 | [thinking](reference/core/thinking.md) | Fold model reasoning into a click-to-open chat line |
 | [commands](reference/core/commands.md) | Destructive-command classifier feeding the approval gate |
@@ -100,6 +101,7 @@ Task-oriented guides live at the top level of `docs/`. The **reference library**
 | Doc | Covers |
 | :-- | :-- |
 | [overview](reference/llm/overview.md) | Package role, 17-provider abstraction, model-resolution paths |
+| [tts](reference/llm/tts.md) | Multi-provider TTS (ElevenLabs, Fish Audio, OpenAI, Gemini, Grok, Chatterbox, System) & STT |
 | [crypto](reference/llm/crypto.md) | `encryptSecret`/`sealSecret` envelope format, KEK validation |
 | [registry-and-models](reference/llm/registry-and-models.md) | Provider adapters, model catalog pipeline, effort ladders, snapshots |
 | [plan-usage](reference/llm/plan-usage.md) | Claude/Codex quota windows, credential reading, caches |
@@ -144,6 +146,7 @@ Task-oriented guides live at the top level of `docs/`. The **reference library**
 | [tool-verification](reference/orchestrator/tools/tool-verification.md) | `verify_workspace`, `workspace_detect`, `report_findings` |
 | [tool-web](reference/orchestrator/tools/tool-web.md) | `web_search` (10 providers) + `web_fetch` SSRF pipeline |
 | [tool-workspace](reference/orchestrator/tools/tool-workspace.md) | `workspace_fork`/`workspace_inspect` |
+| [tool-voice-note](reference/orchestrator/tools/tool-voice-note.md) | `send_voice_note` audio synthesis and interactive voice bubble generator |
 
 **Platform services — `platform/`**
 
@@ -190,6 +193,7 @@ Task-oriented guides live at the top level of `docs/`. The **reference library**
 | [auth-flows](reference/web/pages/auth-flows.md) | Login/signup/OTP, OAuth, guest→account merge, desktop/mobile handoff |
 | [onboarding](reference/web/pages/onboarding.md) | Workspace name form, then the first room |
 | [room-chat-ui](reference/web/pages/room-chat-ui.md) | Room page, chat panel, composer, messages, threads, approvals UI |
+| [voice-ui](reference/web/pages/voice-ui.md) | Take-turns audio call, streaming TTS prefetch, voice notes, dictation |
 | [room-settings-ui](reference/web/pages/room-settings-ui.md) | Name-only room creation; room settings: agents (ready-made, existing, your app), where each runs, lead agent, tools, people |
 | [canvas-ui](reference/web/pages/canvas-ui.md) | Yjs/Monaco collaborative canvas, presence, versions, restore |
 | [model-system](reference/web/pages/model-system.md) | Model catalog, pickers, accounts, provider keys |

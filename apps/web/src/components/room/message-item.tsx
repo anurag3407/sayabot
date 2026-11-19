@@ -10,6 +10,7 @@ import { ReplyIcon } from "@/components/ui/icons"
 import { FailureActions, PokeBotButton } from "@/components/room/message-actions"
 import { ToolCallsList } from "@/components/room/tool-call-card"
 import { InspectTraceButton } from "@/components/trace/inspect-trace-button"
+import { SpeakButton, VoiceNoteBubble } from "@/components/voice"
 import { clockTime, cn, fullTime } from "@/lib/format"
 import { replySourceLabel } from "@/lib/runs-on"
 import type { MessageView, ToolCallView } from "@/lib/types"
@@ -164,6 +165,9 @@ export function MessageItem({
                 agentName={message.senderName}
               />
             ) : null}
+            {!streaming && (answer || message.content) ? (
+              <SpeakButton messageId={message.id} text={answer || message.content} />
+            ) : null}
             <CopyButton text={answer || folded?.thinking || message.content} />
             {!inThread && onOpenThread ? (
               <button
@@ -205,6 +209,16 @@ export function MessageItem({
             <span className="thinking-dot [animation-delay:150ms]" />
             <span className="thinking-dot [animation-delay:300ms]" />
           </p>
+        ) : null}
+
+        {message.metadata.voiceNote && typeof message.metadata.voiceNote === "object" ? (
+          <VoiceNoteBubble
+            audioUrl={String((message.metadata.voiceNote as Record<string, unknown>).audioUrl || "")}
+            durationMs={typeof (message.metadata.voiceNote as Record<string, unknown>).durationMs === "number" ? ((message.metadata.voiceNote as Record<string, unknown>).durationMs as number) : undefined}
+            text={typeof (message.metadata.voiceNote as Record<string, unknown>).text === "string" ? ((message.metadata.voiceNote as Record<string, unknown>).text as string) : undefined}
+            provider={typeof (message.metadata.voiceNote as Record<string, unknown>).provider === "string" ? ((message.metadata.voiceNote as Record<string, unknown>).provider as string) : undefined}
+            voice={typeof (message.metadata.voiceNote as Record<string, unknown>).voice === "string" ? ((message.metadata.voiceNote as Record<string, unknown>).voice as string) : undefined}
+          />
         ) : null}
 
         {message.metadata.vote ? <VoteTally vote={message.metadata.vote as VoteMeta} /> : null}

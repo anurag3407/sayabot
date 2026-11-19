@@ -9,6 +9,7 @@ import { abortRun, activeRunIds } from "./active-runs"
 import { canUserReadRoom } from "./authz"
 import { resolveApprovalWaiter } from "./tools/approvals"
 import { interruptRoom } from "./coordinator/interrupt"
+import { ttsRoutes } from "./tts/routes"
 import { botRoutes } from "./bot/routes"
 import { mcpRoutes } from "./mcp/server"
 import { localJobRoutes } from "./internal/local-jobs"
@@ -399,6 +400,7 @@ export function createApp() {
   app.route("/", mcpRoutes)
   app.route("/", internalRoutes)
   app.route("/", localJobRoutes)
+  app.route("/v1/tts", ttsRoutes)
 
   app.onError((error, c) => {
     console.error("[http] unhandled error", error)

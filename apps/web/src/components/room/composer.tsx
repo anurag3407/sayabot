@@ -17,6 +17,7 @@ import { DetailsMenu } from "@/components/ui/details-menu"
 import { Field, Input, Select, Textarea } from "@/components/ui/field"
 import { showToast } from "@/components/ui/toast"
 import { RoomModelPicker } from "@/components/room/model-picker/room-model-picker"
+import { DictationButton } from "@/components/voice"
 import {
   AlarmClock,
   ArrowUp,
@@ -1018,6 +1019,14 @@ export function Composer({
           {showQuickActions ? (
             <ExecutionModeMenu orgSlug={orgSlug} roomId={roomId} initial={executionMode} />
           ) : null}
+          <DictationButton
+            onTranscript={(dictatedText) => {
+              const next = value ? `${value.trim()} ${dictatedText}` : dictatedText
+              updateValue(next)
+              textareaRef.current?.focus()
+            }}
+            disabled={pending}
+          />
           <button
             type="button"
             data-testid="send-message"

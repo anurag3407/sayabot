@@ -45,6 +45,7 @@ import { webFetchTool } from "./builtins/web-fetch"
 import { verificationTools } from "./builtins/verification"
 import { workspaceTools } from "./builtins/workspace"
 import { documentTools } from "./builtins/document"
+import { sendVoiceNoteTool } from "./builtins/voice-note"
 
 export interface BuildToolsArgs {
   roomId: string
@@ -410,6 +411,15 @@ export async function buildTools(args: BuildToolsArgs): Promise<BuiltTools> {
     ...(caps.cron
       ? [
           cronjobTool({
+            orgId: args.orgId,
+            agentId: args.agent.id,
+            roomId: args.roomId,
+          }),
+        ]
+      : []),
+    ...(caps.voice !== false
+      ? [
+          sendVoiceNoteTool({
             orgId: args.orgId,
             agentId: args.agent.id,
             roomId: args.roomId,

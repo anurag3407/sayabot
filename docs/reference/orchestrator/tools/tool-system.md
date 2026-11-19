@@ -58,6 +58,7 @@ Assembly order:
 | `computer` | `false` | the 17 standard computer tools; profile `browser` adds the 10 browser tools (`index.ts:363-374`) |
 | `computer` + engine V2 | — | `verify_workspace`, `workspace_detect`, `report_findings`, `workspace_fork`, `workspace_inspect` (`index.ts:375-380`) |
 | `secrets` | `false` | `use_secret` (`index.ts:381`) |
+| `voice` | `true` | `send_voice_note` (`index.ts:382`) |
 | `memory` | `true` | `remember`, `recall`, `open_loop`, `reflect`, `graph_walk`, `forget` (`index.ts:382-388`) |
 | `cron` | `true` | `cronjob` (`index.ts:389-397`) |
 | engine V2 + `runId` | — | `update_plan`, `load_skill`, `search_skills`, `inspect_skill`, `install_skill`, `propose_skill`, `publish_skill` (`index.ts:398-403`) |

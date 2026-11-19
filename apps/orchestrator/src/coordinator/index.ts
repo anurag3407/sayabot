@@ -49,6 +49,7 @@ import { startAgentTurn } from "../engine"
 import { resolveAgentModel } from "../runner/llm"
 import { deliverSideNote, interruptRoom } from "./interrupt"
 import { GOAL_MAX_ROUNDS, goalDirective, goalOf, goalOutcome, isSideNote } from "./goal"
+import { attachReplyVoiceNoteIfNeeded } from "../tts/reply-note"
 
 export interface CoordinatorDeps {
   enqueueWebhook: (data: WebhookJobData) => Promise<void>
@@ -741,6 +742,7 @@ export async function processRoomMessage(
         const message = await loadMessage(result.messageId)
         if (message) {
           lastTrigger = message
+          await attachReplyVoiceNoteIfNeeded(agentRow, message.id, result.content)
           const recent = await recentBotReplies(roomId, trigger.threadRootId, message.id)
           const repetition = detectRepetition(result.content, recent)
           if (repetition.repeating) {
