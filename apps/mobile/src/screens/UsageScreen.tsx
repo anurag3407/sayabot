@@ -110,7 +110,7 @@ export function UsageScreen() {
       <Group title="By agent">
         {(data?.agents ?? []).map((a) => (
           <View key={a.id} style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: space.lg, paddingVertical: 10 }}>
-            <Mascot seed={a.handle} size={28} />
+            <Mascot seed={a.handle} size={30} shadow={true} />
             <View style={{ flex: 1, gap: 4 }}>
               <Text variant="callout">{a.name}</Text>
               <View style={{ height: 5, borderRadius: 3, backgroundColor: theme.raised, overflow: "hidden" }}>

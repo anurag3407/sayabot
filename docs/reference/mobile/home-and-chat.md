@@ -24,7 +24,7 @@ Source files: `src/screens/HomeScreen.tsx`, `src/screens/ChatScreen.tsx`, `src/h
 
 - Org name with a chevron when the user belongs to more than one workspace; tapping opens a "Workspaces" `Sheet` listing `data.orgs` with the current one marked; choosing one calls `applySettings({ orgSlug })` which cascades everywhere (`HomeScreen.tsx:183-193`, `430-445`).
 - "N things need you" banner (questions + approvals from `data.needsYou`) navigating to `InboxTab` (`HomeScreen.tsx:199-238`).
-- Horizontal agent strip: each agent is a `Mascot` avatar with a working ring, tapping opens `AgentProfile`; a dashed "Add" tile opens the web app's `/{orgSlug}/agents` page via `Linking.openURL` (`HomeScreen.tsx:240-277`, `261`).
+- Horizontal agent strip: each agent is a live `Mascot` avatar card with ambient floor shadow, floating bob animation, and an active turn status badge when running; tapping opens `AgentProfile`; a dashed "Add" tile opens the web app's `/{orgSlug}/agents` page via `Linking.openURL` (`HomeScreen.tsx:240-310`).
 - A compact "Chats" title fades in over a blurred bar once the large title scrolls away (animated from scroll offset 40→70) (`HomeScreen.tsx:176`, `323-343`).
 
 ### Chat rows and actions

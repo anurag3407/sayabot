@@ -111,6 +111,67 @@ export const SAYA_SHAPE_INFO: Record<SayaShape, { name: string; role: string; to
   block: { name: "Block", role: "Engineer", tone: "orange" },
 }
 
+/** The rare mascot: prism shell and sparkles reserved for the orchestrator. */
+export const RARE_MASCOT = "Nova"
+
+/** The canonical named cast is art-directed. Everyone else gets a stable generated look. */
+export const SAYA_CAST: Record<string, { shape: SayaShape; tone: SayaTone; rare?: boolean }> = {
+  Saya: { shape: "ghost", tone: "lilac" },
+  [RARE_MASCOT]: { shape: "ghost", tone: "lilac", rare: true },
+  "Claude Code": { shape: "bubble", tone: "orange" },
+  Codex: { shape: "block", tone: "blue" },
+  Hermes: { shape: "peak", tone: "pink" },
+  Cursor: { shape: "ledger", tone: "teal" },
+  Pip: { shape: "hoot", tone: "yellow" },
+  Moss: { shape: "sprout", tone: "green" },
+  Juno: { shape: "peak", tone: "yellow" },
+  Tofu: { shape: "bloom", tone: "blue" },
+  Nori: { shape: "block", tone: "teal" },
+  Bean: { shape: "bubble", tone: "coral" },
+  Olive: { shape: "sprout", tone: "teal" },
+  Miso: { shape: "ledger", tone: "coral" },
+  Peak: { shape: "peak", tone: "coral" },
+  Ledger: { shape: "ledger", tone: "blue" },
+  Bubble: { shape: "bubble", tone: "yellow" },
+  Hoot: { shape: "hoot", tone: "teal" },
+  Bloom: { shape: "bloom", tone: "pink" },
+  Sprout: { shape: "sprout", tone: "green" },
+  Block: { shape: "block", tone: "orange" },
+}
+
+/** The face a name draws before anyone picks a shape or a colour. */
+export function resolveMascotLook(seed: string): {
+  shape: SayaShape
+  tone: SayaTone
+  cast: boolean
+  rare?: boolean
+} {
+  if (!seed) return { shape: "ghost", tone: "lilac", cast: false }
+  // Direct match
+  const direct = SAYA_CAST[seed]
+  if (direct) return { shape: direct.shape, tone: direct.tone, cast: true, rare: direct.rare }
+
+  // Normalized match (case-insensitive, hyphens/underscores/spaces)
+  const norm = seed.trim().toLowerCase().replace(/[-_]/g, " ")
+  for (const [key, val] of Object.entries(SAYA_CAST)) {
+    if (key.toLowerCase() === norm) {
+      return { shape: val.shape, tone: val.tone, cast: true, rare: val.rare }
+    }
+  }
+
+  // Common agent name heuristics
+  if (norm.includes("claude")) return { shape: "bubble", tone: "orange", cast: true }
+  if (norm.includes("codex") || norm.includes("gpt")) return { shape: "block", tone: "blue", cast: true }
+  if (norm.includes("cursor")) return { shape: "ledger", tone: "teal", cast: true }
+  if (norm.includes("hermes")) return { shape: "peak", tone: "pink", cast: true }
+  if (norm.includes("gemini")) return { shape: "bloom", tone: "blue", cast: true }
+  if (norm.includes("chief") || norm.includes("staff")) return { shape: "peak", tone: "coral", cast: true }
+  if (norm.includes("saya")) return { shape: "ghost", tone: "lilac", cast: true }
+
+  const picked = sayaPick(seed)
+  return { shape: picked.shape, tone: picked.tone, cast: false }
+}
+
 const r2 = (n: number) => Math.round(n * 100) / 100
 
 /** Clockwise rounded rectangle. Every subpath is clockwise so unions fill under nonzero. */

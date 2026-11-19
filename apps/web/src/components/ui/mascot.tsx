@@ -1,12 +1,15 @@
 import { useId, type CSSProperties, type ReactNode, type Ref } from "react"
 import {
+  RARE_MASCOT,
   SAYA_BADGE,
+  SAYA_CAST,
   SAYA_EYE_STROKE,
   SAYA_INK,
   SAYA_SAAYA_OFFSET,
   SAYA_SHAPE_INFO,
   SAYA_TONES,
   SAYA_ZZ_STROKE,
+  resolveMascotLook,
   sayaGeometry,
   sayaPick,
   type SayaMood,
@@ -27,45 +30,8 @@ const MOOD: Record<MascotMood, SayaMood> = {
   thinking: "thinking",
 }
 
-/** The rare one. Its prism shell and sparkles are reserved for the orchestrator. */
-export const RARE_MASCOT = "Nova"
-
-/** The named cast is art-directed. Everyone else gets a stable generated look. */
-const CAST: Record<string, { shape: SayaShape; tone: SayaTone; rare?: boolean }> = {
-  Saya: { shape: "ghost", tone: "lilac" },
-  [RARE_MASCOT]: { shape: "ghost", tone: "lilac", rare: true },
-  "Claude Code": { shape: "bubble", tone: "orange" },
-  Codex: { shape: "block", tone: "blue" },
-  Hermes: { shape: "peak", tone: "pink" },
-  Cursor: { shape: "ledger", tone: "teal" },
-  Pip: { shape: "hoot", tone: "yellow" },
-  Moss: { shape: "sprout", tone: "green" },
-  Juno: { shape: "peak", tone: "yellow" },
-  Tofu: { shape: "bloom", tone: "blue" },
-  Nori: { shape: "block", tone: "teal" },
-  Bean: { shape: "bubble", tone: "coral" },
-  Olive: { shape: "sprout", tone: "teal" },
-  Miso: { shape: "ledger", tone: "coral" },
-  Peak: { shape: "peak", tone: "coral" },
-  Ledger: { shape: "ledger", tone: "blue" },
-  Bubble: { shape: "bubble", tone: "yellow" },
-  Hoot: { shape: "hoot", tone: "teal" },
-  Bloom: { shape: "bloom", tone: "pink" },
-  Sprout: { shape: "sprout", tone: "green" },
-  Block: { shape: "block", tone: "orange" },
-}
-
-/** The face a name draws before anyone picks a shape or a colour. */
-export function resolveMascotLook(seed: string): {
-  shape: SayaShape
-  tone: SayaTone
-  cast: boolean
-} {
-  const known = CAST[seed]
-  if (known) return { shape: known.shape, tone: known.tone, cast: true }
-  const picked = sayaPick(seed)
-  return { shape: picked.shape, tone: picked.tone, cast: false }
-}
+export { RARE_MASCOT, resolveMascotLook }
+const CAST = SAYA_CAST
 
 /** A four-point sparkle centred on (x, y). */
 function sparkle(x: number, y: number, size: number) {

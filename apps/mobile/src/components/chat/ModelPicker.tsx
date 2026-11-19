@@ -257,7 +257,7 @@ export function ModelPicker({
                     backgroundColor: on ? theme.accentSoft : theme.raised,
                   }}
                 >
-                  <Mascot seed={b.handle} size={28} />
+                  <Mascot seed={b.handle} size={28} shadow={true} />
                   <Text variant="subhead" weight="600">
                     {b.displayName}
                   </Text>

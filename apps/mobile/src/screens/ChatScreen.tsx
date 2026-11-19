@@ -144,7 +144,14 @@ function MessageRow({
       </Animated.View>
       {!mine ? (
         <View style={{ width: 36, marginRight: 6, justifyContent: "flex-end" }}>
-          {item.last && isAgent ? <Mascot seed={m.senderHandle ?? m.senderName ?? "agent"} size={28} working={m.status === "streaming"} /> : null}
+          {item.last && isAgent ? (
+            <Mascot
+              seed={m.senderHandle ?? m.senderName ?? "agent"}
+              size={28}
+              working={m.status === "streaming"}
+              shadow={true}
+            />
+          ) : null}
         </View>
       ) : null}
       <View style={{ maxWidth: "80%" }}>
@@ -168,8 +175,8 @@ function MessageRow({
             borderBottomLeftRadius: !mine && item.last ? 6 : 20,
             paddingHorizontal: 14,
             paddingVertical: 9,
-            borderWidth: !mine && !theme.dark ? StyleSheet.hairlineWidth : 0,
-            borderColor: theme.line,
+            borderWidth: !mine ? StyleSheet.hairlineWidth : 0,
+            borderColor: theme.lineStrong,
             opacity: sending ? 0.7 : 1,
           }}
         >
@@ -317,7 +324,7 @@ export function ChatScreen({ route, navigation }: any) {
         <View style={{ height: 56, flexDirection: "row", alignItems: "center", paddingHorizontal: 6, gap: 6 }}>
           <IconButton label="Back" tint="transparent" icon={<ChevronLeft size={26} color={theme.text} />} onPress={() => navigation.goBack()} />
           {headAgent ? (
-            <Mascot seed={headAgent.handle} size={34} working={working} />
+            <Mascot seed={headAgent.handle} size={36} working={working} shadow={true} live={true} />
           ) : (
             <View style={{ width: 40, height: 40, borderRadius: 14, backgroundColor: theme.raised, alignItems: "center", justifyContent: "center" }}>
               <Hash size={18} color={theme.muted} />
@@ -369,7 +376,7 @@ export function ChatScreen({ route, navigation }: any) {
             ListFooterComponent={
               !messages.length ? (
                 <View style={{ alignItems: "center", padding: space.xxl, gap: 8, transform: [{ scaleY: -1 }] }}>
-                  {headAgent ? <Mascot seed={headAgent.handle} size={56} /> : null}
+                  {headAgent ? <Mascot seed={headAgent.handle} size={64} shadow={true} live={true} /> : null}
                   <Text variant="headline" center>
                     Say hello
                   </Text>

@@ -17,6 +17,7 @@ import { SafeAreaView } from "react-native-safe-area-context"
 import { Bell, CheckCircle2 } from "lucide-react-native"
 import { useInbox, type InboxQuestion } from "../hooks/useInbox"
 import { useSettings } from "../hooks/useSettings"
+import { Mascot } from "../ui/Mascot"
 import { useTheme, type Theme } from "../ui/theme"
 
 function when(iso: string): string {
@@ -67,15 +68,22 @@ export function QuestionCard({
     }
   }
 
+  const agentSeed = question.agentHandle || question.agentName || "agent"
+
   return (
     <View style={styles.card}>
-      <Text style={styles.cardTitle}>
-        {question.agentName} {question.items.length > 1 ? "needs a few answers" : "has a question"}
-      </Text>
-      <Text style={styles.meta}>
-        {when(question.updatedAt)} · {question.roomName}
-        {question.askedCount > 1 ? ` · asked ${question.askedCount} times` : ""}
-      </Text>
+      <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
+        <Mascot seed={agentSeed} size={42} waiting={true} shadow={true} live={true} />
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={styles.cardTitle}>
+            {question.agentName} {question.items.length > 1 ? "needs a few answers" : "has a question"}
+          </Text>
+          <Text style={styles.meta}>
+            {when(question.updatedAt)} · {question.roomName}
+            {question.askedCount > 1 ? ` · asked ${question.askedCount} times` : ""}
+          </Text>
+        </View>
+      </View>
       <Text style={styles.question}>{question.title}</Text>
       {question.description ? (
         <TouchableOpacity onPress={() => setExpanded((v) => !v)} activeOpacity={0.8}>
@@ -226,48 +234,59 @@ export function InboxScreen() {
 
 function makeStyles(t: Theme) {
   return StyleSheet.create({
-  container: { flex: 1 },
-  header: { paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: t.line },
-  title: { color: t.text, fontSize: 22, fontWeight: "700" },
-  subtitle: { color: t.muted, fontSize: 13, marginTop: 2 },
-  list: { padding: 12, gap: 12, paddingBottom: 40 },
-  card: { backgroundColor: t.card, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: t.line },
-  cardTitle: { color: t.text, fontSize: 15, fontWeight: "600" },
-  meta: { color: t.faint, fontSize: 12, marginTop: 2 },
-  question: { color: t.text, fontSize: 15, marginTop: 10, lineHeight: 21 },
-  body: { color: t.muted, fontSize: 14, marginTop: 6, lineHeight: 20 },
-  more: { color: t.accent, fontSize: 13, marginTop: 4, fontWeight: "600" },
-  item: { backgroundColor: t.raised, borderRadius: 12, padding: 10, marginTop: 10 },
-  answered: { flexDirection: "row", gap: 8, backgroundColor: t.raised, borderRadius: 12, padding: 10, marginTop: 10 },
-  itemQ: { color: t.text, fontSize: 14 },
-  itemA: { color: t.text, fontSize: 14, fontWeight: "600", marginTop: 2 },
-  hint: { color: t.faint, fontSize: 12, marginTop: 2 },
-  chips: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 8 },
-  chip: { borderWidth: 1, borderColor: t.line, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
-  chipOn: { backgroundColor: t.accent, borderColor: t.accent },
-  chipText: { color: t.muted, fontSize: 13 },
-  chipTextOn: { color: t.onAccent, fontWeight: "600" },
-  input: {
-    backgroundColor: t.bg,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: t.line,
-    color: t.text,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-    fontSize: 14,
-    marginTop: 8,
-  },
-  note: { minHeight: 60, textAlignVertical: "top", marginTop: 12 },
-  switchRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 10, gap: 10 },
-  switchLabel: { color: t.muted, fontSize: 13, flex: 1 },
-  send: { backgroundColor: t.accent, borderRadius: 12, paddingVertical: 12, alignItems: "center", marginTop: 12 },
-  sendOff: { opacity: 0.45 },
-  sendText: { color: t.onAccent, fontWeight: "700", fontSize: 15 },
-  error: { color: t.danger, fontSize: 13, marginTop: 8 },
-  ok: { color: t.accent, fontSize: 13, marginTop: 8 },
-  empty: { alignItems: "center", marginTop: 80, gap: 8, paddingHorizontal: 32 },
-  emptyTitle: { color: t.text, fontSize: 17, fontWeight: "600" },
-  emptyBody: { color: t.muted, fontSize: 14, textAlign: "center" },
-})
+    container: { flex: 1 },
+    header: { paddingHorizontal: 18, paddingVertical: 16, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: t.line },
+    title: { color: t.text, fontSize: 24, fontWeight: "700", letterSpacing: -0.4 },
+    subtitle: { color: t.muted, fontSize: 13, marginTop: 3 },
+    list: { padding: 14, gap: 14, paddingBottom: 40 },
+    card: {
+      backgroundColor: t.card,
+      borderRadius: 18,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: t.line,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: t.dark ? 0.35 : 0.08,
+      shadowRadius: 8,
+      elevation: 2,
+    },
+    cardTitle: { color: t.text, fontSize: 15, fontWeight: "700" },
+    meta: { color: t.muted, fontSize: 12, marginTop: 2 },
+    question: { color: t.text, fontSize: 15, marginTop: 12, lineHeight: 22, fontWeight: "600" },
+    body: { color: t.muted, fontSize: 14, marginTop: 6, lineHeight: 20 },
+    more: { color: t.accent, fontSize: 13, marginTop: 4, fontWeight: "600" },
+    item: { backgroundColor: t.raised, borderRadius: 14, padding: 12, marginTop: 10, borderWidth: StyleSheet.hairlineWidth, borderColor: t.line },
+    answered: { flexDirection: "row", gap: 8, backgroundColor: t.raised, borderRadius: 14, padding: 12, marginTop: 10, borderWidth: StyleSheet.hairlineWidth, borderColor: t.line },
+    itemQ: { color: t.text, fontSize: 14, fontWeight: "500" },
+    itemA: { color: t.text, fontSize: 14, fontWeight: "700", marginTop: 2 },
+    hint: { color: t.faint, fontSize: 12, marginTop: 2 },
+    chips: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 8 },
+    chip: { borderWidth: 1, borderColor: t.lineStrong, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 7, backgroundColor: t.raised },
+    chipOn: { backgroundColor: t.accent, borderColor: t.accent },
+    chipText: { color: t.muted, fontSize: 13, fontWeight: "500" },
+    chipTextOn: { color: t.onAccent, fontWeight: "700" },
+    input: {
+      backgroundColor: t.bg,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: t.lineStrong,
+      color: t.text,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      fontSize: 14,
+      marginTop: 8,
+    },
+    note: { minHeight: 64, textAlignVertical: "top", marginTop: 12 },
+    switchRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 12, gap: 10 },
+    switchLabel: { color: t.muted, fontSize: 13, flex: 1 },
+    send: { backgroundColor: t.accent, borderRadius: 999, paddingVertical: 13, alignItems: "center", marginTop: 14 },
+    sendOff: { opacity: 0.45 },
+    sendText: { color: t.onAccent, fontWeight: "700", fontSize: 15 },
+    error: { color: t.danger, fontSize: 13, marginTop: 8 },
+    ok: { color: t.accent, fontSize: 13, marginTop: 8 },
+    empty: { alignItems: "center", marginTop: 80, gap: 8, paddingHorizontal: 32 },
+    emptyTitle: { color: t.text, fontSize: 18, fontWeight: "700" },
+    emptyBody: { color: t.muted, fontSize: 14, textAlign: "center", lineHeight: 20 },
+  })
 }

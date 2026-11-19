@@ -37,10 +37,10 @@ export function OnboardingScreen() {
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center", gap: 14 }}>
         {current === "hello" ? (
           <>
-            <View style={{ flexDirection: "row", marginBottom: 8 }}>
-              <Mascot seed="hermes" size={72} />
-              <Mascot seed="scout" size={72} working />
-              <Mascot seed="writer" size={72} />
+            <View style={{ flexDirection: "row", marginBottom: 12, gap: 8, alignItems: "center", justifyContent: "center" }}>
+              <Mascot seed="Hermes" size={76} shadow={true} live={true} />
+              <Mascot seed="Claude Code" size={76} working={true} shadow={true} live={true} />
+              <Mascot seed="Codex" size={76} shadow={true} live={true} />
             </View>
             <Text variant="largeTitle" center>
               Your AI team, in your pocket

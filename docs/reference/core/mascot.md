@@ -37,6 +37,9 @@ type SayaTone = "lilac" | "coral" | "blue" | "yellow" | "teal" | "pink" | "green
 | :-- | :-- |
 | `sayaGeometry(shape, mood = "idle"): SayaGeometry` | `{ shell, detail, visor: {x,y,w,h,r}, eyesFill, eyesLine, dots, badge, bang, zz }`. Absent parts are `null` |
 | `sayaPick(seed)` | Stable `{ shape, tone }` for any seed (an agent's name or handle) |
+| `resolveMascotLook(seed)` | Canonical look resolution checking `SAYA_CAST` (case-insensitive & agent aliases) before falling back to `sayaPick` |
+| `SAYA_CAST` | Art-directed dictionary of canonical cast members (`Saya`, `Claude Code`, `Codex`, `Hermes`, `Cursor`, etc.) |
+| `RARE_MASCOT` | The orchestrator mascot name (`"Nova"`, prism shell and sparkles) |
 | `sayaHash(seed)` | The FNV-1a hash behind `sayaPick` |
 | `sayaCircle(cx, cy, r)` / `sayaRoundedRect(x, y, w, h, r)` | Clockwise path helpers used by the shells |
 | `SAYA_SHAPES`, `SAYA_MOODS`, `SAYA_TONE_NAMES` | Ordered lists |

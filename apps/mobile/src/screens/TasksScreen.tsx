@@ -119,7 +119,7 @@ export function TasksScreen({ navigation, route }: any) {
                 </Text>
               </View>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingLeft: 30 }}>
-                {agent ? <Mascot seed={agent.handle} size={20} working={item.status === "in_progress"} /> : null}
+                {agent ? <Mascot seed={agent.handle} size={22} working={item.status === "in_progress"} shadow={true} /> : null}
                 <Text variant="caption" tone="muted" numberOfLines={1} style={{ flex: 1 }}>
                   {[agent ? agent.name : "Any agent", room ? `#${room.name}` : null, STATUS_LABEL[item.status], item.updatedAt ? shortTime(item.updatedAt) : null]
                     .filter(Boolean)
@@ -164,7 +164,7 @@ export function TasksScreen({ navigation, route }: any) {
             ) : null}
             {detail.assigneeAgentId && agents.get(detail.assigneeAgentId) ? (
               <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                <Mascot seed={agents.get(detail.assigneeAgentId)!.handle} size={32} />
+                <Mascot seed={agents.get(detail.assigneeAgentId)!.handle} size={36} shadow={true} live={true} />
                 <Text variant="callout">{agents.get(detail.assigneeAgentId)!.name} is on it</Text>
               </View>
             ) : (
@@ -269,7 +269,7 @@ function NewTaskSheet({
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
         <Chip label="Any agent" selected={who === null} onPress={() => setWho(null)} />
         {roomAgents.map((a) => (
-          <Chip key={a.id} label={a.name} selected={who === a.id} icon={<Mascot seed={a.handle} size={18} />} onPress={() => setWho(a.id)} />
+          <Chip key={a.id} label={a.name} selected={who === a.id} icon={<Mascot seed={a.handle} size={20} shadow={true} />} onPress={() => setWho(a.id)} />
         ))}
       </View>
       <View style={{ flexDirection: "row", gap: 8, marginTop: space.lg }}>

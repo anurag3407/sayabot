@@ -30,24 +30,56 @@ function ChatAvatar({ chat, agents }: { chat: HomeChat; agents: Map<string, Home
   const theme = useTheme()
   const ids = chat.agentIds.filter((id) => agents.has(id))
   if (chat.kind === "dm" && ids[0]) {
-    return <Mascot seed={agents.get(ids[0])!.handle} size={46} working={chat.workingAgentId === ids[0]} />
+    return (
+      <Mascot
+        seed={agents.get(ids[0])!.handle}
+        size={46}
+        working={chat.workingAgentId === ids[0]}
+        shadow={true}
+      />
+    )
   }
   if (ids.length >= 2) {
     return (
-      <View style={{ width: 54, height: 54 }}>
+      <View style={{ width: 56, height: 56, alignItems: "center", justifyContent: "center" }}>
         <View style={{ position: "absolute", left: 0, top: 0 }}>
-          <Mascot seed={agents.get(ids[0]!)!.handle} size={32} />
+          <Mascot seed={agents.get(ids[0]!)!.handle} size={34} shadow={true} />
         </View>
         <View style={{ position: "absolute", right: 0, bottom: 0 }}>
-          <Mascot seed={agents.get(ids[1]!)!.handle} size={32} working={Boolean(chat.workingAgentId)} />
+          <Mascot
+            seed={agents.get(ids[1]!)!.handle}
+            size={34}
+            working={Boolean(chat.workingAgentId)}
+            shadow={true}
+          />
         </View>
       </View>
     )
   }
-  if (ids.length === 1) return <Mascot seed={agents.get(ids[0]!)!.handle} size={46} working={Boolean(chat.workingAgentId)} />
+  if (ids.length === 1) {
+    return (
+      <Mascot
+        seed={agents.get(ids[0]!)!.handle}
+        size={46}
+        working={Boolean(chat.workingAgentId)}
+        shadow={true}
+      />
+    )
+  }
   return (
-    <View style={{ width: 54, height: 54, alignItems: "center", justifyContent: "center" }}>
-      <View style={{ width: 46, height: 46, borderRadius: 16, backgroundColor: theme.raised, alignItems: "center", justifyContent: "center" }}>
+    <View style={{ width: 56, height: 56, alignItems: "center", justifyContent: "center" }}>
+      <View
+        style={{
+          width: 46,
+          height: 46,
+          borderRadius: 16,
+          backgroundColor: theme.raised,
+          borderWidth: 1,
+          borderColor: theme.line,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
         <Hash size={20} color={theme.muted} />
       </View>
     </View>
@@ -88,10 +120,12 @@ function ChatRow({
       style={({ pressed }) => ({
         flexDirection: "row",
         alignItems: "center",
-        gap: 12,
+        gap: 14,
         paddingHorizontal: space.lg,
-        paddingVertical: 10,
+        paddingVertical: 12,
         backgroundColor: pressed ? theme.raised : "transparent",
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: theme.line,
       })}
     >
       <ChatAvatar chat={chat} agents={agents} />
@@ -206,40 +240,73 @@ export function HomeScreen({ navigation, route }: any) {
           style={({ pressed }) => ({
             marginHorizontal: space.lg,
             marginBottom: space.lg,
-            padding: space.lg,
-            borderRadius: radius.lg,
-            backgroundColor: theme.accentSoft,
+            padding: 14,
+            borderRadius: radius.xl,
+            backgroundColor: theme.card,
+            borderWidth: 1,
+            borderColor: theme.warnSoft,
             flexDirection: "row",
             alignItems: "center",
             gap: 12,
             opacity: pressed ? 0.85 : 1,
+            shadowColor: theme.accent,
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.12,
+            shadowRadius: 8,
+            elevation: 2,
           })}
         >
-          <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: theme.accent, alignItems: "center", justifyContent: "center" }}>
-            <Bell size={18} color={theme.onAccent} />
+          <View
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              backgroundColor: theme.accentSoft,
+              borderWidth: 1,
+              borderColor: theme.accent,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Bell size={18} color={theme.accent} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text variant="headline">
+            <Text variant="headline" weight="700">
               {needs} {needs === 1 ? "thing needs" : "things need"} you
             </Text>
-            <Text variant="footnote" tone="muted">
+            <Text variant="footnote" tone="muted" style={{ marginTop: 2 }}>
               {[
-                data?.needsYou.questions ? `${data.needsYou.questions} ${data.needsYou.questions === 1 ? "question" : "questions"}` : null,
+                data?.needsYou.questions
+                  ? `${data.needsYou.questions} ${data.needsYou.questions === 1 ? "question" : "questions"}`
+                  : null,
                 data?.needsYou.approvals ? `${data.needsYou.approvals} waiting for your OK` : null,
               ]
                 .filter(Boolean)
                 .join(" · ")}
             </Text>
           </View>
-          <Text variant="subhead" tone="accent" weight="700">
-            Open
-          </Text>
+          <View
+            style={{
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: radius.pill,
+              backgroundColor: theme.accent,
+            }}
+          >
+            <Text variant="caption" tone="onAccent" weight="700">
+              Review
+            </Text>
+          </View>
         </Pressable>
       ) : null}
 
       {(data?.agents.length ?? 0) > 0 ? (
-        <View style={{ marginBottom: space.md }}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: space.md, gap: 4 }}>
+        <View style={{ marginBottom: space.lg }}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: space.md, gap: 8 }}
+          >
             {(data?.agents ?? []).map((agent) => (
               <Pressable
                 key={agent.id}
@@ -249,26 +316,88 @@ export function HomeScreen({ navigation, route }: any) {
                 }}
                 accessibilityRole="button"
                 accessibilityLabel={`${agent.name}${agent.workingRoomId ? ", working" : ""}`}
-                style={{ width: 72, alignItems: "center", gap: 4 }}
+                style={({ pressed }) => ({
+                  width: 76,
+                  alignItems: "center",
+                  paddingVertical: 8,
+                  paddingHorizontal: 4,
+                  borderRadius: 18,
+                  backgroundColor: pressed ? theme.raised : "transparent",
+                  gap: 4,
+                })}
               >
-                <Mascot seed={agent.handle} size={52} working={Boolean(agent.workingRoomId)} />
-                <Text variant="caption" tone="muted" numberOfLines={1}>
+                <Mascot
+                  seed={agent.handle}
+                  size={52}
+                  working={Boolean(agent.workingRoomId)}
+                  shadow={true}
+                  live={true}
+                />
+                <Text
+                  variant="caption"
+                  tone={agent.workingRoomId ? "accent" : "text"}
+                  weight={agent.workingRoomId ? "700" : "600"}
+                  numberOfLines={1}
+                >
                   {agent.name}
                 </Text>
+                {agent.workingRoomId ? (
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 4,
+                      paddingHorizontal: 6,
+                      paddingVertical: 1,
+                      borderRadius: 8,
+                      backgroundColor: theme.accentSoft,
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 5,
+                        height: 5,
+                        borderRadius: 3,
+                        backgroundColor: theme.accent,
+                      }}
+                    />
+                    <Text variant="caption" tone="accent" weight="700" style={{ fontSize: 10 }}>
+                      turn
+                    </Text>
+                  </View>
+                ) : null}
               </Pressable>
             ))}
             <Pressable
               onPress={() => void Linking.openURL(`${currentWebApiUrl()}/${orgSlug}/agents`)}
               accessibilityRole="button"
               accessibilityLabel="Add an agent"
-              style={{ width: 72, alignItems: "center", gap: 4 }}
+              style={({ pressed }) => ({
+                width: 76,
+                alignItems: "center",
+                paddingVertical: 8,
+                paddingHorizontal: 4,
+                borderRadius: 18,
+                backgroundColor: pressed ? theme.raised : "transparent",
+                gap: 4,
+              })}
             >
-              <View style={{ width: 60, height: 60, alignItems: "center", justifyContent: "center" }}>
-                <View style={{ width: 52, height: 52, borderRadius: 26, borderWidth: 1.5, borderStyle: "dashed", borderColor: theme.lineStrong, alignItems: "center", justifyContent: "center" }}>
-                  <Plus size={20} color={theme.muted} />
-                </View>
+              <View
+                style={{
+                  width: 54,
+                  height: 54,
+                  borderRadius: 27,
+                  backgroundColor: theme.card,
+                  borderWidth: 1.5,
+                  borderStyle: "dashed",
+                  borderColor: theme.lineStrong,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Plus size={20} color={theme.muted} />
               </View>
-              <Text variant="caption" tone="faint">
+              <Text variant="caption" tone="faint" weight="600">
                 Add
               </Text>
             </Pressable>
@@ -354,7 +483,7 @@ export function HomeScreen({ navigation, route }: any) {
             renderItem={({ item }) =>
               item.type === "agent" ? (
                 <Row
-                  icon={<Mascot seed={item.a.handle} size={26} />}
+                  icon={<Mascot seed={item.a.handle} size={28} shadow={true} />}
                   iconBg="transparent"
                   title={item.a.name}
                   subtitle={`@${item.a.handle} · ${item.a.model}`}
@@ -574,7 +703,7 @@ function NewChatSheet({
                   key={agent.id}
                   label={agent.name}
                   selected={on}
-                  icon={<Mascot seed={agent.handle} size={18} />}
+                  icon={<Mascot seed={agent.handle} size={20} shadow={true} />}
                   onPress={() => setPicked((p) => (on ? p.filter((id) => id !== agent.id) : [...p, agent.id]))}
                 />
               )

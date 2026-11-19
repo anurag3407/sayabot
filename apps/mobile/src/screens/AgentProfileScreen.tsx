@@ -28,7 +28,7 @@ export function AgentProfileScreen({ route, navigation }: any) {
       </View>
       <ScrollView contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: insets.bottom + 40 }}>
         <View style={{ alignItems: "center", gap: 6, marginBottom: space.xl }}>
-          <Mascot seed={agent.handle} size={96} working={Boolean(agent.workingRoomId)} />
+          <Mascot seed={agent.handle} size={104} working={Boolean(agent.workingRoomId)} shadow={true} live={true} />
           <Text variant="title" center>
             {agent.name}
           </Text>
@@ -63,7 +63,7 @@ export function AgentProfileScreen({ route, navigation }: any) {
             trigger={({ label, canEdit, open }) => (
               <Group title="Thinks with">
                 <Row
-                  icon={<Mascot seed={agent.handle} size={22} />}
+                  icon={<Mascot seed={agent.handle} size={22} shadow={true} />}
                   iconBg="transparent"
                   title={label === "Model" ? agent.model : label}
                   subtitle={canEdit === false ? "Only workspace admins can change this" : "Tap to change the model"}
