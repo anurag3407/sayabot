@@ -71,6 +71,45 @@ export async function testWebSearchInOrchestrator(payload: {
   }
 }
 
+export interface SearchProviderCreditsResult {
+  ok: boolean
+  provider: string
+  credits?: string
+  remaining?: number
+  total?: number
+  plan?: string
+  resetDate?: string
+  details?: string
+  error?: string
+}
+
+export async function fetchSearchProviderCreditsInOrchestrator(payload: {
+  orgId?: string
+  provider: string
+  apiKey?: string
+  baseUrl?: string
+}): Promise<SearchProviderCreditsResult> {
+  try {
+    const response = await fetch(`${getOrchestratorUrl()}/internal/tools/search-provider-credits`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-internal-secret": getInternalSecret(),
+      },
+      body: JSON.stringify(payload),
+      cache: "no-store",
+      signal: AbortSignal.timeout(15_000),
+    })
+    const data = (await response.json().catch(() => null)) as SearchProviderCreditsResult | null
+    if (!response.ok || !data) {
+      return { ok: false, provider: payload.provider, error: data?.error || `Failed to fetch credits (${response.status})` }
+    }
+    return data
+  } catch (err) {
+    return { ok: false, provider: payload.provider, error: err instanceof Error ? err.message : String(err) }
+  }
+}
+
 export async function testDocumentOcrInOrchestrator(payload: {
   orgId?: string
   provider?: string

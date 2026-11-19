@@ -10,6 +10,7 @@ import {
   CalendarClock,
   Check,
   ChevronDown,
+  Cloud,
   Cpu,
   Folder,
   History,
@@ -45,6 +46,7 @@ import {
   setAgentLookAction,
   setAgentModelAction,
   setAgentReplyStyleAction,
+  setAgentStorageProviderAction,
   setAgentWorksOnAction,
   updateBotBasicsAction,
 } from "@/lib/actions/agents"
@@ -197,6 +199,11 @@ const TOOLS: { key: Flag; label: string; detail: string }[] = [
     label: "Connectors",
     detail: "Search Drive, Slack, and the other connectors",
   },
+  {
+    key: "storage",
+    label: "Cloud storage",
+    detail: "Upload, download and persist files in Supabase or S3",
+  },
   { key: "subagents", label: "Helpers", detail: "Hand a side task to a helper" },
   { key: "cron", label: "Schedules", detail: "Run routines on a timer" },
   { key: "secrets", label: "Secrets", detail: "Use vault secrets it has been granted" },
@@ -321,6 +328,10 @@ export function AgentConfigPanel({
   )
   const [alertMode, setAlertMode] = useState<AlertMode>(alerts)
   const [soundOn, setSoundOn] = useState(sound)
+  const [storageProvider, setStorageProvider] = useState<string>(
+    () => ((agent?.params as Record<string, unknown> | undefined)?.storageProvider as string) || "default",
+  )
+  const [savingStorageProvider, startStorageProvider] = useTransition()
   const [commandName, setCommandName] = useState("")
   const [commandDetail, setCommandDetail] = useState("")
   const [commandBody, setCommandBody] = useState("")
@@ -362,6 +373,7 @@ export function AgentConfigPanel({
     setPlace(readWorksOn(agent.params))
     setEffort(readEffort(agent.params))
     setReplyStyle(replyStyleFromParams(agent.params))
+    setStorageProvider(((agent.params as Record<string, unknown> | undefined)?.storageProvider as string) || "default")
     setIssuedKey(null)
     setError(null)
   }, [agent])
@@ -534,6 +546,28 @@ export function AgentConfigPanel({
         return
       }
       router.refresh()
+    })
+  }
+
+  function handleStorageProviderChange(nextProvider: string) {
+    if (!bot) return
+    const prev = storageProvider
+    setStorageProvider(nextProvider)
+    startStorageProvider(async () => {
+      const res = await setAgentStorageProviderAction({
+        orgSlug,
+        agentId: bot.id,
+        storageProvider: nextProvider,
+      })
+      if (!res.ok) {
+        setStorageProvider(prev)
+        showToast({ tone: "danger", message: res.error ?? "Failed to save storage provider" })
+      } else {
+        showToast({
+          tone: "success",
+          message: nextProvider === "default" ? "Using workspace default storage" : "Assigned cloud storage provider",
+        })
+      }
     })
   }
 
@@ -1236,22 +1270,70 @@ export function AgentConfigPanel({
         )
       }
       return (
-        <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line">
-          {TOOLS.map((tool) => (
-            <li key={tool.key} className="flex items-center gap-3 bg-panel/50 px-3.5 py-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-[14px] text-text">{tool.label}</p>
-                <p className="text-[12.5px] text-faint">{tool.detail}</p>
+        <div className="space-y-4">
+          <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line">
+            {TOOLS.map((tool) => (
+              <li key={tool.key} className="flex items-center gap-3 bg-panel/50 px-3.5 py-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[14px] text-text">{tool.label}</p>
+                  <p className="text-[12.5px] text-faint">{tool.detail}</p>
+                </div>
+                <Toggle
+                  checked={Boolean(caps[tool.key])}
+                  label={tool.label}
+                  disabled={!canEdit || savingCaps}
+                  onChange={(on) => saveCaps({ ...caps, [tool.key]: on })}
+                />
+              </li>
+            ))}
+          </ul>
+
+          {caps.storage ? (
+            <Card className="space-y-3.5 border-accent/25 bg-accent/[0.03]">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <Cloud className="h-4 w-4 text-accent" />
+                    <p className="text-[14px] font-semibold text-text">Cloud storage</p>
+                  </div>
+                  <p className="mt-0.5 text-[12px] text-muted">
+                    Choose which cloud storage provider this agent reads and writes files to.
+                  </p>
+                </div>
+                <span className="rounded-full bg-accent/15 px-2 py-0.5 font-mono text-[10.5px] font-medium text-accent">
+                  {storageProvider === "default" ? "Workspace default" : storageProvider}
+                </span>
               </div>
-              <Toggle
-                checked={Boolean(caps[tool.key])}
-                label={tool.label}
-                disabled={!canEdit || savingCaps}
-                onChange={(on) => saveCaps({ ...caps, [tool.key]: on })}
-              />
-            </li>
-          ))}
-        </ul>
+
+              <div>
+                <label className="block text-[11px] font-mono uppercase tracking-wider text-faint mb-1.5">
+                  Assigned Storage
+                </label>
+                <select
+                  value={storageProvider}
+                  disabled={!canEdit || savingStorageProvider}
+                  onChange={(e) => handleStorageProviderChange(e.target.value)}
+                  className="w-full rounded-xl border border-line bg-surface px-3 py-2 text-[13px] text-text focus:border-accent focus:outline-none"
+                >
+                  <option value="default">Workspace Default (Auto)</option>
+                  <optgroup label="Available Storage Connectors">
+                    <option value="supabase">Supabase Storage</option>
+                    <option value="cloudflare_r2">Cloudflare R2</option>
+                    <option value="backblaze_b2">Backblaze B2</option>
+                    <option value="huggingface">Hugging Face Hub</option>
+                    <option value="s3_storage">Custom S3 / MinIO</option>
+                  </optgroup>
+                </select>
+                <p className="mt-1.5 text-[11px] text-muted">
+                  Connect new storage providers or configure buckets in{" "}
+                  <Link href={`/${orgSlug}/settings/storage`} className="text-accent hover:underline font-medium">
+                    Settings → Storage
+                  </Link>.
+                </p>
+              </div>
+            </Card>
+          ) : null}
+        </div>
       )
     }
 

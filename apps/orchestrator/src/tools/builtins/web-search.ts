@@ -24,9 +24,12 @@ export type WebSearchProvider =
   | "tavily"
   | "brave"
   | "searxng"
+  | "whoogle"
   | "serper"
   | "exa"
   | "tinyfish"
+  | "context"
+  | "context_dev"
   | "firecrawl"
   | "perplexity"
   | "bing"
@@ -60,6 +63,15 @@ export const SEARCH_PROVIDERS: ProviderMeta[] = [
     docsUrl: "https://tinyfish.ai",
   },
   {
+    id: "context",
+    name: "Context.dev",
+    description: "Live web search, citation extraction, and markdown conversion designed for AI agents.",
+    badge: "AI Search",
+    requiresKey: true,
+    keyPlaceholder: "ctx_… (from context.dev)",
+    docsUrl: "https://context.dev",
+  },
+  {
     id: "tavily",
     name: "Tavily",
     description: "AI-native search engine built for agents with synthesis and clean extracted context.",
@@ -86,6 +98,16 @@ export const SEARCH_PROVIDERS: ProviderMeta[] = [
     requiresUrl: true,
     keyPlaceholder: "Optional API token",
     docsUrl: "https://docs.searxng.org",
+  },
+  {
+    id: "whoogle",
+    name: "Whoogle Search",
+    description: "Self-hosted private Google search proxy with zero ads or tracking. Run via Docker.",
+    badge: "Self-Hosted",
+    requiresKey: false,
+    requiresUrl: true,
+    keyPlaceholder: "Optional Basic Auth",
+    docsUrl: "https://github.com/benbusby/whoogle-search",
   },
   {
     id: "serper",
@@ -296,6 +318,77 @@ async function searchSearXNG(
   }))
 }
 
+async function searchWhoogle(
+  query: string,
+  count: number,
+  baseUrl?: string,
+  apiKey?: string,
+  signal?: AbortSignal,
+): Promise<SearchResultItem[]> {
+  const base = (baseUrl || "http://localhost:5000").replace(/\/+$/, "")
+  await assertSafeWebhookUrl(base, false)
+  const url = `${base}/search?q=${encodeURIComponent(query)}`
+  const headers: Record<string, string> = {
+    Accept: "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+  }
+  if (apiKey) headers.Authorization = apiKey.startsWith("Basic ") ? apiKey : `Bearer ${apiKey}`
+  const response = await fetch(url, { headers, signal })
+  if (!response.ok) {
+    throw new Error(`Whoogle instance returned HTTP ${response.status} at ${base}`)
+  }
+  const text = await response.text()
+  try {
+    const json = JSON.parse(text)
+    if (Array.isArray(json.results)) {
+      return json.results.slice(0, count).map((r: any) => ({
+        title: r.title || "",
+        url: r.url || r.link || "",
+        description: r.content || r.snippet || "",
+      }))
+    }
+  } catch {}
+
+  const results: SearchResultItem[] = []
+  const linkRegex = /<a[^>]+href="([^"]+)"[^>]*>[\s\S]*?<h3[^>]*>([\s\S]*?)<\/h3>[\s\S]*?<\/a>[\s\S]*?(?:<div[^>]*class="[^"]*snippet[^"]*"[^>]*>([\s\S]*?)<\/div>|<p[^>]*>([\s\S]*?)<\/p>)?/gi
+  let match: RegExpExecArray | null
+  while ((match = linkRegex.exec(text)) !== null && results.length < count) {
+    let href = match[1] || ""
+    const title = decodeHtmlEntities((match[2] || "").replace(/<[^>]+>/g, "").trim())
+    const snippet = decodeHtmlEntities((match[3] || match[4] || "").replace(/<[^>]+>/g, "").trim())
+    if (href.startsWith("/url?q=")) {
+      try {
+        const parsed = new URL(href, "http://localhost")
+        href = parsed.searchParams.get("q") || href
+      } catch {}
+    }
+    if (href.startsWith("http://") || href.startsWith("https://")) {
+      results.push({
+        title,
+        url: href,
+        description: snippet,
+      })
+    }
+  }
+
+  if (results.length === 0) {
+    const simpleRegex = /<a[^>]+href="(https?:\/\/[^"]+)"[^>]*>([\s\S]*?)<\/a>/gi
+    while ((match = simpleRegex.exec(text)) !== null && results.length < count) {
+      const href = match[1] || ""
+      const title = decodeHtmlEntities((match[2] || "").replace(/<[^>]+>/g, "").trim())
+      if (title.length > 5 && !href.includes("google.com") && !href.includes("whoogle")) {
+        results.push({
+          title,
+          url: href,
+          description: "",
+        })
+      }
+    }
+  }
+
+  return results
+}
+
 async function searchSerper(
   query: string,
   count: number,
@@ -386,6 +479,58 @@ async function searchTinyFish(
     url: r.url ?? "",
     description: r.snippet ?? "",
   }))
+}
+
+async function searchContextDev(
+  query: string,
+  count: number,
+  apiKey: string,
+  signal?: AbortSignal,
+): Promise<{ results: SearchResultItem[]; answer?: string }> {
+  let response = await fetch("https://api.context.dev/v1/search", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "X-API-Key": apiKey,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({
+      query,
+      numResults: count,
+      responseMode: "compact",
+    }),
+    signal,
+  }).catch(() => null)
+
+  if (!response || !response.ok) {
+    response = await fetch(`https://api.context.dev/v1/search?query=${encodeURIComponent(query)}&limit=${count}`, {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "X-API-Key": apiKey,
+        Accept: "application/json",
+      },
+      signal,
+    })
+  }
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => "")
+    throw new Error(`Context.dev search failed (${response.status}): ${text.slice(0, 200)}`)
+  }
+
+  const data = (await response.json()) as any
+  const rawResults: any[] = data.results ?? data.data ?? (Array.isArray(data) ? data : [])
+  const results: SearchResultItem[] = rawResults.slice(0, count).map((r: any) => ({
+    title: r.title ?? r.name ?? "",
+    url: r.url ?? r.link ?? "",
+    description: r.description ?? r.snippet ?? r.markdown?.slice(0, 300) ?? r.text?.slice(0, 300) ?? "",
+  }))
+
+  return {
+    results,
+    answer: data.answer ?? data.summary,
+  }
 }
 
 async function searchFirecrawl(
@@ -518,6 +663,10 @@ export async function executeWebSearch(args: {
         results = await searchSearXNG(args.query, count, args.baseUrl, apiKey, args.signal)
         break
       }
+      case "whoogle": {
+        results = await searchWhoogle(args.query, count, args.baseUrl, apiKey, args.signal)
+        break
+      }
       case "serper": {
         if (!apiKey) throw new Error("Serper API key is missing. Configure it in Settings → Tools.")
         results = await searchSerper(args.query, count, apiKey, args.signal)
@@ -529,8 +678,16 @@ export async function executeWebSearch(args: {
         break
       }
       case "tinyfish": {
-        if (!apiKey) throw new Error("TinyFish API key is missing. Configure it in Settings → Tools.")
+        if (!apiKey) throw new Error("TinyFish API key is missing. Configure it in Settings → Search.")
         results = await searchTinyFish(args.query, count, apiKey, args.signal)
+        break
+      }
+      case "context":
+      case "context_dev": {
+        if (!apiKey) throw new Error("Context.dev API key is missing. Configure it in Settings → Search.")
+        const res = await searchContextDev(args.query, count, apiKey, args.signal)
+        results = res.results
+        answer = res.answer
         break
       }
       case "firecrawl": {
@@ -622,5 +779,381 @@ export function webSearchTool(
 
       return result
     },
+  }
+}
+
+// ── Credit & Balance Checking ────────────────────────────────────────────────
+
+export interface ProviderCreditInfo {
+  ok: boolean
+  provider: string
+  credits?: string
+  remaining?: number
+  total?: number
+  plan?: string
+  resetDate?: string
+  details?: string
+  error?: string
+}
+
+export async function fetchProviderCredits(args: {
+  provider: string
+  apiKey?: string
+  baseUrl?: string
+  signal?: AbortSignal
+}): Promise<ProviderCreditInfo> {
+  const provider = (args.provider || "duckduckgo").toLowerCase()
+  const apiKey = args.apiKey || ""
+  const baseUrl = args.baseUrl
+
+  switch (provider) {
+    case "duckduckgo": {
+      return {
+        ok: true,
+        provider: "duckduckgo",
+        plan: "Free / Public",
+        credits: "Unlimited",
+        details: "Zero credentials required. Direct keyless web search access.",
+      }
+    }
+
+    case "whoogle": {
+      const base = (baseUrl || "http://localhost:5000").replace(/\/+$/, "")
+      try {
+        await assertSafeWebhookUrl(base, false)
+        const res = await fetch(`${base}/`, {
+          signal: args.signal || AbortSignal.timeout(5000),
+          headers: { "User-Agent": "Sayabot/1.0" },
+        })
+        if (!res.ok && res.status !== 401 && res.status !== 403) {
+          return {
+            ok: false,
+            provider: "whoogle",
+            error: `Whoogle returned HTTP ${res.status} at ${base}`,
+          }
+        }
+        return {
+          ok: true,
+          provider: "whoogle",
+          plan: "Self-Hosted / Local Docker",
+          credits: "Local (Unlimited)",
+          details: `Connected to Whoogle instance at ${base}. Run with: docker run -d -p 5000:5000 benbusby/whoogle-search`,
+        }
+      } catch (e) {
+        return {
+          ok: false,
+          provider: "whoogle",
+          error: `Could not reach Whoogle instance at ${base}: ${(e as Error).message}`,
+        }
+      }
+    }
+
+    case "searxng": {
+      const base = (baseUrl || "https://searx.be").replace(/\/+$/, "")
+      try {
+        await assertSafeWebhookUrl(base, false)
+        const res = await fetch(`${base}/stats`, {
+          signal: args.signal || AbortSignal.timeout(5000),
+          headers: { Accept: "application/json" },
+        }).catch(() => fetch(`${base}/`, { signal: args.signal || AbortSignal.timeout(5000) }))
+        if (!res || !res.ok) {
+          return {
+            ok: false,
+            provider: "searxng",
+            error: `SearXNG instance at ${base} responded with error`,
+          }
+        }
+        return {
+          ok: true,
+          provider: "searxng",
+          plan: "Self-Hosted / Metasearch",
+          credits: "Unlimited",
+          details: `Connected to SearXNG instance at ${base}. Metasearch queries are unlimited.`,
+        }
+      } catch (e) {
+        return {
+          ok: false,
+          provider: "searxng",
+          error: `Could not reach SearXNG instance at ${base}: ${(e as Error).message}`,
+        }
+      }
+    }
+
+    case "serper": {
+      if (!apiKey) return { ok: false, provider: "serper", error: "Missing Serper API key." }
+      try {
+        const res = await fetch("https://google.serper.dev/account", {
+          method: "POST",
+          headers: {
+            "X-API-KEY": apiKey,
+            "Content-Type": "application/json",
+          },
+          signal: args.signal || AbortSignal.timeout(8000),
+        })
+        if (!res.ok) {
+          const errText = await res.text().catch(() => "")
+          return { ok: false, provider: "serper", error: `Serper error (${res.status}): ${errText.slice(0, 100)}` }
+        }
+        const data = (await res.json()) as { credits?: number; rateLimit?: number }
+        const credits = data.credits ?? 0
+        return {
+          ok: true,
+          provider: "serper",
+          plan: "Pay-as-you-go / Developer",
+          credits: `${credits.toLocaleString()} queries remaining`,
+          remaining: credits,
+          details: `Rate limit: ${data.rateLimit ?? 50} req/sec`,
+        }
+      } catch (e) {
+        return { ok: false, provider: "serper", error: (e as Error).message }
+      }
+    }
+
+    case "firecrawl": {
+      if (!apiKey) return { ok: false, provider: "firecrawl", error: "Missing Firecrawl API key." }
+      try {
+        const res = await fetch("https://api.firecrawl.dev/v1/team/credit-usage", {
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+          },
+          signal: args.signal || AbortSignal.timeout(8000),
+        })
+        if (!res.ok) {
+          const errText = await res.text().catch(() => "")
+          return { ok: false, provider: "firecrawl", error: `Firecrawl error (${res.status}): ${errText.slice(0, 100)}` }
+        }
+        const data = (await res.json()) as {
+          success?: boolean
+          data?: { remaining_credits?: number; total_credits?: number }
+        }
+        const remaining = data.data?.remaining_credits ?? 0
+        const total = data.data?.total_credits
+        return {
+          ok: true,
+          provider: "firecrawl",
+          plan: "Active Firecrawl Team",
+          credits: total ? `${remaining.toLocaleString()} / ${total.toLocaleString()} credits` : `${remaining.toLocaleString()} credits remaining`,
+          remaining,
+          total,
+          details: "Verified Firecrawl credentials & credit balance",
+        }
+      } catch (e) {
+        return { ok: false, provider: "firecrawl", error: (e as Error).message }
+      }
+    }
+
+    case "brave": {
+      const key = apiKey || getEnv().BRAVE_SEARCH_API_KEY
+      if (!key) return { ok: false, provider: "brave", error: "Missing Brave Search API key." }
+      try {
+        const res = await fetch("https://api.search.brave.com/res/v1/web/search?q=test&count=1", {
+          headers: {
+            Accept: "application/json",
+            "x-subscription-token": key,
+          },
+          signal: args.signal || AbortSignal.timeout(8000),
+        })
+        if (!res.ok) {
+          const errText = await res.text().catch(() => "")
+          return { ok: false, provider: "brave", error: `Brave Search error (${res.status}): ${errText.slice(0, 100)}` }
+        }
+        const remainingHeader = res.headers.get("x-ratelimit-remaining")
+        const limitHeader = res.headers.get("x-ratelimit-limit")
+        const remaining = remainingHeader ? parseInt(remainingHeader, 10) : undefined
+        return {
+          ok: true,
+          provider: "brave",
+          plan: "Brave Search (2,000 free/mo)",
+          credits: remaining !== undefined ? `${remaining.toLocaleString()} queries remaining in window` : "Active (2,000 queries/mo free)",
+          remaining,
+          details: limitHeader ? `Rate limit: ${limitHeader}` : "Verified active Brave subscription token",
+        }
+      } catch (e) {
+        return { ok: false, provider: "brave", error: (e as Error).message }
+      }
+    }
+
+    case "context":
+    case "context_dev": {
+      if (!apiKey) return { ok: false, provider: "context", error: "Missing Context.dev API key." }
+      try {
+        const res = await fetch("https://api.context.dev/v1/usage", {
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "X-API-Key": apiKey,
+          },
+          signal: args.signal || AbortSignal.timeout(8000),
+        }).catch(() => null)
+
+        if (res && res.ok) {
+          const data = (await res.json().catch(() => ({}))) as any
+          const remaining = data.remaining ?? data.credits ?? data.balance
+          return {
+            ok: true,
+            provider: "context",
+            plan: data.plan ?? "Context.dev Agent Search",
+            credits: remaining ? `${remaining} credits` : "Active (Standard Tier)",
+            remaining: typeof remaining === "number" ? remaining : undefined,
+            details: "Verified Context.dev API key and active quota",
+          }
+        }
+
+        const testRes = await fetch("https://api.context.dev/v1/search?query=test&limit=1", {
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "X-API-Key": apiKey,
+          },
+          signal: args.signal || AbortSignal.timeout(8000),
+        })
+        if (!testRes.ok) {
+          const errText = await testRes.text().catch(() => "")
+          return { ok: false, provider: "context", error: `Context.dev returned (${testRes.status}): ${errText.slice(0, 100)}` }
+        }
+        const remHeader = testRes.headers.get("x-ratelimit-remaining") || testRes.headers.get("x-credits-remaining")
+        return {
+          ok: true,
+          provider: "context",
+          plan: "Context.dev AI Search",
+          credits: remHeader ? `${remHeader} credits remaining` : "Active API Key",
+          details: "Verified active Context.dev key for AI web search and citations",
+        }
+      } catch (e) {
+        return { ok: false, provider: "context", error: (e as Error).message }
+      }
+    }
+
+    case "tinyfish": {
+      if (!apiKey) return { ok: false, provider: "tinyfish", error: "Missing TinyFish API key." }
+      try {
+        const res = await fetch("https://api.search.tinyfish.ai/?q=test", {
+          headers: {
+            "X-API-Key": apiKey,
+            Accept: "application/json",
+          },
+          signal: args.signal || AbortSignal.timeout(8000),
+        })
+        if (!res.ok) {
+          const errText = await res.text().catch(() => "")
+          return { ok: false, provider: "tinyfish", error: `TinyFish error (${res.status}): ${errText.slice(0, 100)}` }
+        }
+        const remHeader = res.headers.get("x-ratelimit-remaining")
+        return {
+          ok: true,
+          provider: "tinyfish",
+          plan: "TinyFish Community / Developer",
+          credits: remHeader ? `${remHeader} requests remaining in window` : "Active (Free Tier)",
+          details: "Verified active TinyFish browser-rendered search key",
+        }
+      } catch (e) {
+        return { ok: false, provider: "tinyfish", error: (e as Error).message }
+      }
+    }
+
+    case "tavily": {
+      if (!apiKey) return { ok: false, provider: "tavily", error: "Missing Tavily API key." }
+      try {
+        const res = await fetch("https://api.tavily.com/search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ api_key: apiKey, query: "ping", max_results: 1 }),
+          signal: args.signal || AbortSignal.timeout(8000),
+        })
+        if (!res.ok) {
+          const errText = await res.text().catch(() => "")
+          return { ok: false, provider: "tavily", error: `Tavily error (${res.status}): ${errText.slice(0, 100)}` }
+        }
+        return {
+          ok: true,
+          provider: "tavily",
+          plan: "Tavily AI Search (1,000 free/mo on Free tier)",
+          credits: "Active API Key",
+          details: "Verified Tavily AI search key is working and operational",
+        }
+      } catch (e) {
+        return { ok: false, provider: "tavily", error: (e as Error).message }
+      }
+    }
+
+    case "exa": {
+      if (!apiKey) return { ok: false, provider: "exa", error: "Missing Exa API key." }
+      try {
+        const res = await fetch("https://api.exa.ai/search", {
+          method: "POST",
+          headers: {
+            "x-api-key": apiKey,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ query: "ping", num_results: 1 }),
+          signal: args.signal || AbortSignal.timeout(8000),
+        })
+        if (!res.ok) {
+          const errText = await res.text().catch(() => "")
+          return { ok: false, provider: "exa", error: `Exa error (${res.status}): ${errText.slice(0, 100)}` }
+        }
+        return {
+          ok: true,
+          provider: "exa",
+          plan: "Exa Neural Search (1,000 free/mo)",
+          credits: "Active API Key",
+          details: "Verified Exa neural semantic search API key is active",
+        }
+      } catch (e) {
+        return { ok: false, provider: "exa", error: (e as Error).message }
+      }
+    }
+
+    case "perplexity": {
+      if (!apiKey) return { ok: false, provider: "perplexity", error: "Missing Perplexity API key." }
+      try {
+        const res = await fetch("https://api.perplexity.ai/models", {
+          headers: { Authorization: `Bearer ${apiKey}` },
+          signal: args.signal || AbortSignal.timeout(8000),
+        })
+        if (!res.ok) {
+          const errText = await res.text().catch(() => "")
+          return { ok: false, provider: "perplexity", error: `Perplexity error (${res.status}): ${errText.slice(0, 100)}` }
+        }
+        return {
+          ok: true,
+          provider: "perplexity",
+          plan: "Perplexity Sonar Online",
+          credits: "Active Account",
+          details: "Verified Perplexity API key with access to Sonar search models",
+        }
+      } catch (e) {
+        return { ok: false, provider: "perplexity", error: (e as Error).message }
+      }
+    }
+
+    case "bing": {
+      if (!apiKey) return { ok: false, provider: "bing", error: "Missing Bing API key." }
+      try {
+        const res = await fetch("https://api.bing.microsoft.com/v7.0/search?q=test&count=1", {
+          headers: { "Ocp-Apim-Subscription-Key": apiKey },
+          signal: args.signal || AbortSignal.timeout(8000),
+        })
+        if (!res.ok) {
+          const errText = await res.text().catch(() => "")
+          return { ok: false, provider: "bing", error: `Bing error (${res.status}): ${errText.slice(0, 100)}` }
+        }
+        return {
+          ok: true,
+          provider: "bing",
+          plan: "Microsoft Azure Cognitive Services",
+          credits: "Active Key",
+          details: "Verified Bing Web Search v7 subscription key",
+        }
+      } catch (e) {
+        return { ok: false, provider: "bing", error: (e as Error).message }
+      }
+    }
+
+    default: {
+      return {
+        ok: false,
+        provider,
+        error: `Unknown search provider: ${provider}`,
+      }
+    }
   }
 }

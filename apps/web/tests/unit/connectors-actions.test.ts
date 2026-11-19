@@ -181,4 +181,120 @@ describe("Workspace Connectors Server Actions", () => {
     expect(res.ok).toBe(true)
     expect(res.message).toBe("Connector access revoked from agent")
   })
+
+  it("saves a valid Supabase storage connector", async () => {
+    let insertedData: any = null
+    mockAdmin.from.mockImplementation((table: string) => {
+      if (table === "workspace_connectors") {
+        return {
+          insert: vi.fn((data) => {
+            insertedData = data
+            return {
+              select: vi.fn().mockReturnValue({
+                single: vi.fn().mockResolvedValue({ data: { id: "conn-supa-1" }, error: null }),
+              }),
+            }
+          }),
+        }
+      }
+      return {}
+    })
+
+    const form = new FormData()
+    form.append("orgSlug", "test-org")
+    form.append("source", "supabase")
+    form.append("name", "Supabase Storage")
+    form.append("token", "eyJh-test-service-key-12345")
+    form.append("projectUrl", "https://xyzcompany.supabase.co")
+    form.append("bucket", "sayabot-storage")
+
+    const res = await saveWorkspaceConnector(null, form)
+    expect(res.ok).toBe(true)
+    expect(insertedData.source).toBe("supabase")
+    expect(insertedData.config.projectUrl).toBe("https://xyzcompany.supabase.co")
+    expect(insertedData.config.bucket).toBe("sayabot-storage")
+  })
+
+  it("saves a Cloudflare R2 storage connector", async () => {
+    let insertedData: any = null
+    mockAdmin.from.mockImplementation((table: string) => {
+      if (table === "workspace_connectors") {
+        return {
+          insert: vi.fn((data) => {
+            insertedData = data
+            return {
+              select: vi.fn().mockReturnValue({
+                single: vi.fn().mockResolvedValue({ data: { id: "conn-r2-1" }, error: null }),
+              }),
+            }
+          }),
+        }
+      }
+      return {}
+    })
+
+    const form = new FormData()
+    form.append("orgSlug", "test-org")
+    form.append("source", "cloudflare_r2")
+    form.append("name", "Cloudflare R2")
+    form.append("token", "secret-key-123456789")
+    form.append("accountId", "acc-123456")
+    form.append("accessKeyId", "key-987654")
+    form.append("bucket", "artifacts-bucket")
+
+    const res = await saveWorkspaceConnector(null, form)
+    expect(res.ok).toBe(true)
+    expect(insertedData.source).toBe("cloudflare_r2")
+    expect(insertedData.config.accountId).toBe("acc-123456")
+    expect(insertedData.config.endpoint).toBe("https://acc-123456.r2.cloudflarestorage.com")
+  })
+
+  it("saves an agent storage grant with allowedPrefixes and readOnly", async () => {
+    let insertedGrant: any = null
+    mockAdmin.from.mockImplementation((table: string) => {
+      if (table === "workspace_connectors") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: { id: "conn-supa-1", name: "Supabase Storage", source: "supabase" },
+                }),
+              }),
+            }),
+          }),
+        }
+      }
+      if (table === "agent_connector_grants") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                eq: vi.fn().mockReturnValue({
+                  maybeSingle: vi.fn().mockResolvedValue({ data: null }),
+                }),
+              }),
+            }),
+          }),
+          insert: vi.fn((data) => {
+            insertedGrant = data
+            return { error: null }
+          }),
+        }
+      }
+      return {}
+    })
+
+    const form = new FormData()
+    form.append("orgSlug", "test-org")
+    form.append("agentId", "agent-1")
+    form.append("connectorId", "conn-supa-1")
+    form.append("allowedPrefixes", "reports/, artifacts/daily")
+    form.append("readOnly", "1")
+
+    const res = await saveAgentConnectorGrant(null, form)
+    expect(res.ok).toBe(true)
+    expect(insertedGrant.scope_config.allowedPrefixes).toEqual(["reports/", "artifacts/daily"])
+    expect(insertedGrant.scope_config.readOnly).toBe(true)
+  })
 })

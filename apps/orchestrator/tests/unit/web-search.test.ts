@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { executeWebSearch, SEARCH_PROVIDERS } from "../../src/tools/builtins/web-search"
+import { executeWebSearch, fetchProviderCredits, SEARCH_PROVIDERS } from "../../src/tools/builtins/web-search"
 import { cleanHtmlToMarkdown, fetchSafeWebPage, formatUntrustedWebContent } from "../../src/tools/builtins/web-fetch"
 
 describe("Multi-provider web search engine", () => {
@@ -10,19 +10,52 @@ describe("Multi-provider web search engine", () => {
     vi.restoreAllMocks()
   })
 
-  it("exposes all 10 supported providers with metadata", () => {
+  it("exposes all 12 supported providers with metadata", () => {
     const ids = SEARCH_PROVIDERS.map((p) => p.id)
     expect(ids).toContain("duckduckgo")
     expect(ids).toContain("tavily")
     expect(ids).toContain("brave")
     expect(ids).toContain("searxng")
+    expect(ids).toContain("whoogle")
     expect(ids).toContain("serper")
     expect(ids).toContain("exa")
     expect(ids).toContain("tinyfish")
+    expect(ids).toContain("context")
     expect(ids).toContain("firecrawl")
     expect(ids).toContain("perplexity")
     expect(ids).toContain("bing")
-    expect(SEARCH_PROVIDERS.length).toBe(10)
+    expect(SEARCH_PROVIDERS.length).toBe(12)
+  })
+
+  it("executes Context.dev search and maps results", async () => {
+    const mockContext = {
+      results: [
+        {
+          title: "Context.dev Search Result",
+          url: "https://context.dev/docs",
+          description: "Live web research API for AI agents.",
+        },
+      ],
+      answer: "Context.dev indexes live web intelligence.",
+    }
+
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => mockContext,
+    } as unknown as Response)
+
+    const res = await executeWebSearch({
+      query: "context api",
+      count: 2,
+      provider: "context",
+      apiKey: "ctx_test_key",
+    })
+
+    expect(res.provider).toBe("context")
+    expect(res.results.length).toBe(1)
+    expect(res.results[0].title).toBe("Context.dev Search Result")
+    expect(res.results[0].url).toBe("https://context.dev/docs")
+    expect(res.answer).toBe("Context.dev indexes live web intelligence.")
   })
 
   it("parses DuckDuckGo HTML results cleanly with URL unescaping", async () => {
@@ -199,6 +232,45 @@ describe("Multi-provider web search engine", () => {
 
     expect(res.fallback).toBe(true)
     expect(res.warning).toContain("private address")
+  })
+
+  it("fetches DuckDuckGo credits with unlimited plan", async () => {
+    const info = await fetchProviderCredits({ provider: "duckduckgo" })
+    expect(info.ok).toBe(true)
+    expect(info.provider).toBe("duckduckgo")
+    expect(info.credits).toBe("Unlimited")
+    expect(info.plan).toContain("Free")
+  })
+
+  it("fetches Serper remaining credits accurately", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ credits: 2450, rateLimit: 50 }),
+    } as unknown as Response)
+
+    const info = await fetchProviderCredits({ provider: "serper", apiKey: "serper_test_key" })
+    expect(info.ok).toBe(true)
+    expect(info.provider).toBe("serper")
+    expect(info.remaining).toBe(2450)
+    expect(info.credits).toContain("2,450 queries remaining")
+    expect(info.details).toContain("50 req/sec")
+  })
+
+  it("fetches Firecrawl credit usage with remaining and total balance", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: { remaining_credits: 450, total_credits: 500 },
+      }),
+    } as unknown as Response)
+
+    const info = await fetchProviderCredits({ provider: "firecrawl", apiKey: "fc_test_key" })
+    expect(info.ok).toBe(true)
+    expect(info.provider).toBe("firecrawl")
+    expect(info.remaining).toBe(450)
+    expect(info.total).toBe(500)
+    expect(info.credits).toBe("450 / 500 credits")
   })
 })
 

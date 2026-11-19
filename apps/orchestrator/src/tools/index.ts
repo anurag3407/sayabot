@@ -46,6 +46,7 @@ import { verificationTools } from "./builtins/verification"
 import { workspaceTools } from "./builtins/workspace"
 import { documentTools } from "./builtins/document"
 import { sendVoiceNoteTool } from "./builtins/voice-note"
+import { storageTools } from "./builtins/storage"
 
 export interface BuildToolsArgs {
   roomId: string
@@ -262,6 +263,22 @@ export async function buildTools(args: BuildToolsArgs): Promise<BuiltTools> {
     }
   }
 
+  let storageSpecs: ToolSpec[] = []
+  if (caps.storage) {
+    try {
+      const preferredProvider = (args.agent.params as Record<string, unknown> | undefined)
+        ?.storageProvider as string | undefined
+      storageSpecs = await storageTools({
+        orgId: args.orgId,
+        agentId: args.agent.id,
+        roomId: args.roomId,
+        preferredProvider,
+      })
+    } catch {
+      // Storage fallback
+    }
+  }
+
   const stored = availabilityFromParams(args.agent.params)
   let available = stored
   let vps: VpsTarget | null = null
@@ -350,6 +367,7 @@ export async function buildTools(args: BuildToolsArgs): Promise<BuiltTools> {
       },
     }),
     ...connectorSpecs,
+    ...storageSpecs,
     ...(caps.canvas
       ? [
           canvasReadTool({ roomId: args.roomId, agentId: args.agent.id }),

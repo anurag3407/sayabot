@@ -1,39 +1,47 @@
 # Web Tools (`web_search`, `web_fetch`)
 
-With the `webSearch` capability, agents get two research tools: `web_search` queries one of ten pluggable providers (configurable per org in Settings → Tools, with DuckDuckGo as the zero-config fallback) and `web_fetch` retrieves a page as clean Markdown/text through an SSRF-hardened fetch pipeline with DNS pinning, redirect re-validation, and prompt-injection fencing. Both are `dangerous: false` and hit only public internet targets.
+With the `webSearch` capability, agents get two research tools: `web_search` queries one of twelve pluggable providers (configurable per org in Settings → Search / Tools, with DuckDuckGo as the zero-config fallback) and `web_fetch` retrieves a page as clean Markdown/text through an SSRF-hardened fetch pipeline with DNS pinning, redirect re-validation, and prompt-injection fencing. Both are `dangerous: false` and hit only public internet targets.
 
 Source files: `apps/orchestrator/src/tools/builtins/web-search.ts`, `apps/orchestrator/src/tools/builtins/web-fetch.ts`, `apps/orchestrator/src/ssrf.ts`, `packages/core/src/server/ssrf.ts:158-183`
 
 ---
 
-## 🔎 `web_search` (`web-search.ts:587-626`)
+## 🔎 `web_search` (`web-search.ts:740-779`)
 
 | Parameter | Type | Default | Description |
  | :--- | :--- | :--- | :--- |
 | `query` | string (1–400) | — | Search query |
 | `count` | int 1–10 | `5` | Number of results |
 
-Provider selection (`web-search.ts:603-612`):
+Provider selection (`web-search.ts`):
 
-1. `resolveToolCredential({ orgId, agentId, tool: "web_search" })` reads the sealed `org_tool_configs` row (`src/tools/secrets.ts:102-104`) — note this tool has no canonical agent-grant env, so it is org-config only.
-2. If no org config: `BRAVE_SEARCH_API_KEY` env (optional, `apps/orchestrator/src/env.ts:19`) selects Brave; otherwise DuckDuckGo.
+1. `resolveToolCredential({ orgId, agentId, tool: "web_search" })` reads the sealed `org_tool_configs` row and resolves individual agent preference (`agent.params.searchProvider`) from `keys[provider]`.
+2. If no org config: `BRAVE_SEARCH_API_KEY` env selects Brave; otherwise DuckDuckGo.
 
-### Providers (`SEARCH_PROVIDERS`, `web-search.ts:45-135`)
+### Providers (`SEARCH_PROVIDERS`, `web-search.ts:48-150`)
 
 | Provider | Key required | Endpoint | Notes |
 | :--- | :--- | :--- | :--- |
 | `duckduckgo` | no | `html.duckduckgo.com/html/?q=` | HTML scraping; default fallback |
 | `tinyfish` | yes (`X-API-Key`) | `api.search.tinyfish.ai/?q=` | Browser-rendered search |
+| `context` | yes (`Authorization: Bearer` / `X-API-Key`) | `api.context.dev/v1/search` | Live agent web search with synthesized answers |
 | `tavily` | yes (`api_key` in body) | `api.tavily.com/search` | `search_depth: "basic"`, `include_answer: true` — returns an `answer` field |
-| `brave` | yes (`x-subscription-token`) | `api.search.brave.com/res/v1/web/search` | Falls back to env `BRAVE_SEARCH_API_KEY` |
-| `searxng` | no (optional bearer) | `<baseUrl>/search?format=json` (default `https://searx.be`) | `baseUrl` validated by `assertSafeWebhookUrl(base, false)` (`web-search.ts:278`) |
+| `brave` | yes (`x-subscription-token`) | `api.search.brave.com/res/v1/web/search` | Falls back to env `BRAVE_SEARCH_API_KEY` (2,000 free queries/mo) |
+| `searxng` | no (optional bearer) | `<baseUrl>/search?format=json` (default `https://searx.be`) | `baseUrl` validated by `assertSafeWebhookUrl(base, false)` |
+| `whoogle` | no (optional auth) | `<baseUrl>/search?q=` (default `http://localhost:5000`) | Self-hosted private Google proxy via Docker |
 | `serper` | yes (`X-API-KEY`) | `google.serper.dev/search` | Google organic results |
 | `exa` | yes (`x-api-key`) | `api.exa.ai/search` | `use_autoprompt: true`, 1,000 chars text |
 | `firecrawl` | yes (bearer) | `api.firecrawl.dev/v1/search` | Description falls back to `markdown` excerpt |
 | `perplexity` | yes (bearer) | `api.perplexity.ai/chat/completions` (`model: "sonar"`) | Returns synthesized `answer` + citations as results |
 | `bing` | yes (`Ocp-Apim-Subscription-Key`) | `api.bing.microsoft.com/v7.0/search` | Azure Cognitive Services |
 
-Missing keys fail with `"<Provider> API key is missing. Configure it in Settings → Tools."` (`web-search.ts:505-550`).
+Missing keys fail with `"<Provider> API key is missing. Configure it in Settings → Search."`.
+
+### Credit & Balance Checking (`fetchProviderCredits`)
+
+Admins can check active balances and remaining quotas across providers via `POST /internal/tools/search-provider-credits`:
+- Queries actual remaining balance for Serper (`/account`), Firecrawl (`/team/credit-usage`), Brave (`x-ratelimit-remaining`), Context.dev (`/usage`), TinyFish, etc.
+- Confirms local instance reachability for Docker/self-hosted engines (Whoogle, SearXNG) and zero-credential status for DuckDuckGo.
 
 ### Fallback chain (`web-search.ts:559-575`)
 

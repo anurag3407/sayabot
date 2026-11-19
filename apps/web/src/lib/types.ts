@@ -192,6 +192,7 @@ export interface OrgToolConfigView {
   provider?: string
   last4?: string
   baseUrl?: string
+  configuredProviders?: string[]
   updatedAt: string
 }
 

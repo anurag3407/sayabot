@@ -28,6 +28,7 @@ const mockAgent: AgentRow = {
     subagents: true,
     cron: true,
     connectors: true,
+    storage: false,
   },
   kind: "llm",
   providerKeyId: null,

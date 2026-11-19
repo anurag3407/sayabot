@@ -14,6 +14,7 @@ export type SettingsIconKey =
   | "vector"
   | "vault"
   | "tools"
+  | "search"
   | "connectors"
   | "bots"
   | "pricing"
@@ -105,6 +106,13 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
   {
     label: "Agents & tools",
     links: [
+      {
+        segment: "search",
+        label: "Search providers",
+        description: "Web search APIs (TinyFish, Context.dev, Tavily, Brave) for agent web research.",
+        icon: "search",
+        adminOnly: true,
+      },
       {
         segment: "tools",
         label: "Tools & MCP",

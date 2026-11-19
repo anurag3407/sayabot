@@ -24,7 +24,7 @@ import { loadMessage } from "./runner/context"
 import { agentCliRunner, runCliOnce } from "./runner/cli"
 import { resolveAgentModel } from "./runner/llm"
 import { applyTaskMutation } from "./collab/tasks-service"
-import { executeWebSearch } from "./tools/builtins/web-search"
+import { executeWebSearch, fetchProviderCredits } from "./tools/builtins/web-search"
 import { executeDocumentExtract, type DocumentOcrProvider } from "./tools/builtins/document"
 import { resolveToolCredential } from "./tools/secrets"
 import { runRoutineNow } from "./scheduler/routines"
@@ -93,6 +93,13 @@ const testWebSearchSchema = z.object({
   apiKey: z.string().optional(),
   baseUrl: z.string().optional(),
   query: z.string().default("test query"),
+})
+
+const searchProviderCreditsSchema = z.object({
+  orgId: z.string().uuid().optional(),
+  provider: z.string().default("duckduckgo"),
+  apiKey: z.string().optional(),
+  baseUrl: z.string().optional(),
 })
 
 const testDocumentOcrSchema = z.object({
@@ -265,6 +272,31 @@ export function createApp() {
         answer: out.answer,
         latencyMs: Date.now() - started,
       })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      return c.json({ ok: false, error: redactSecrets(message).text.slice(0, 500) }, 400)
+    }
+  })
+
+  app.post("/internal/tools/search-provider-credits", async (c) => {
+    const body = await c.req.json().catch(() => null)
+    const parsed = searchProviderCreditsSchema.safeParse(body)
+    if (!parsed.success) return c.json({ error: "invalid body", details: parsed.error.issues }, 400)
+    try {
+      let { provider, apiKey, baseUrl } = parsed.data
+      if (parsed.data.orgId && (!apiKey && provider !== "duckduckgo" && provider !== "searxng" && provider !== "whoogle")) {
+        const stored = await resolveToolCredential({ orgId: parsed.data.orgId, tool: "web_search" })
+        if (stored) {
+          apiKey = apiKey || stored.apiKey
+          baseUrl = baseUrl || stored.baseUrl
+        }
+      }
+      const info = await fetchProviderCredits({
+        provider,
+        apiKey,
+        baseUrl,
+      })
+      return c.json(info)
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       return c.json({ ok: false, error: redactSecrets(message).text.slice(0, 500) }, 400)

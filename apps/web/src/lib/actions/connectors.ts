@@ -2,6 +2,7 @@
 
 import { z } from "zod"
 import { randomBytes } from "node:crypto"
+import { S3Client, HeadBucketCommand, ListObjectsV2Command } from "@aws-sdk/client-s3"
 import { encryptSecret, decryptSecret, last4, unwrapConnectorSecret, wrapConnectorSecret } from "@sayabot/llm"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getAppUrl, getKek } from "@/lib/env"
@@ -28,6 +29,11 @@ const connectorSourceSchema = z.enum([
   "onepassword",
   "bitwarden",
   "protonpass",
+  "supabase",
+  "cloudflare_r2",
+  "backblaze_b2",
+  "s3_storage",
+  "huggingface",
 ])
 
 export async function saveWorkspaceConnector(
@@ -81,6 +87,46 @@ export async function saveWorkspaceConnector(
   if (source === "whatsapp" && !config.phoneNumberId) {
     return fail("Add the WhatsApp phone number ID (WhatsApp Manager → API setup)")
   }
+
+  // Cloud Storage specific fields
+  if (source === "supabase") {
+    const projectUrl = optionalField(formData, "projectUrl")
+    if (projectUrl) config.projectUrl = projectUrl.replace(/\/+$/, "")
+    const bucket = optionalField(formData, "bucket") || "sayabot-storage"
+    config.bucket = bucket
+  }
+  if (source === "cloudflare_r2") {
+    const accountId = optionalField(formData, "accountId")
+    const accessKeyId = optionalField(formData, "accessKeyId")
+    const bucket = optionalField(formData, "bucket")
+    if (accountId) config.accountId = accountId
+    if (accessKeyId) config.accessKeyId = accessKeyId
+    if (bucket) config.bucket = bucket
+    if (accountId) config.endpoint = `https://${accountId}.r2.cloudflarestorage.com`
+  }
+  if (source === "backblaze_b2") {
+    const endpoint = optionalField(formData, "endpoint")
+    const keyId = optionalField(formData, "keyId")
+    const bucket = optionalField(formData, "bucket")
+    if (endpoint) config.endpoint = endpoint.replace(/^https?:\/\//, "")
+    if (keyId) config.keyId = keyId
+    if (bucket) config.bucket = bucket
+  }
+  if (source === "s3_storage") {
+    const endpoint = optionalField(formData, "endpoint")
+    const accessKeyId = optionalField(formData, "accessKeyId")
+    const bucket = optionalField(formData, "bucket")
+    const region = optionalField(formData, "region") || "auto"
+    if (endpoint) config.endpoint = endpoint
+    if (accessKeyId) config.accessKeyId = accessKeyId
+    if (bucket) config.bucket = bucket
+    config.region = region
+  }
+  if (source === "huggingface") {
+    const repoId = optionalField(formData, "repoId")
+    if (repoId) config.repoId = repoId
+  }
+
   const passwordSources = new Set(["onepassword", "bitwarden", "protonpass"])
   const onComputer = formData.get("onComputer") === "on" || source === "protonpass"
   if (passwordSources.has(source)) {
@@ -372,6 +418,71 @@ export async function testWorkspaceConnector(
       }
       if (!res.ok) throw new Error(`WhatsApp: ${data.error?.message ?? `HTTP ${res.status}`}`)
       responseDetail = `Sending as ${data.verified_name ?? "business"} (${data.display_phone_number ?? phoneNumberId})`
+    } else if (connector.source === "supabase") {
+      const cfg = (connector.config ?? {}) as { projectUrl?: string; bucket?: string }
+      const projectUrl = (cfg.projectUrl || process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/+$/, "")
+      const bucket = cfg.bucket || "sayabot-storage"
+      if (!projectUrl) throw new Error("Supabase Project URL is missing")
+      const res = await fetch(`${projectUrl}/storage/v1/bucket`, {
+        headers: { Authorization: `Bearer ${token}`, apikey: token },
+      })
+      if (!res.ok) {
+        const err = await res.text()
+        throw new Error(`Supabase Storage returned HTTP ${res.status}: ${err.slice(0, 100)}`)
+      }
+      responseDetail = `Connected to Supabase bucket "${bucket}" (1 GB Free)`
+    } else if (
+      connector.source === "cloudflare_r2" ||
+      connector.source === "backblaze_b2" ||
+      connector.source === "s3_storage"
+    ) {
+      const cfg = (connector.config ?? {}) as {
+        endpoint?: string
+        accountId?: string
+        accessKeyId?: string
+        keyId?: string
+        bucket?: string
+        region?: string
+      }
+      const rawEndpoint = cfg.endpoint || (cfg.accountId ? `https://${cfg.accountId}.r2.cloudflarestorage.com` : undefined)
+      const endpoint = rawEndpoint?.startsWith("http") ? rawEndpoint : rawEndpoint ? `https://${rawEndpoint}` : undefined
+      const accessKeyId = cfg.accessKeyId || cfg.keyId
+      const bucket = cfg.bucket
+      if (!bucket) throw new Error("Bucket name is required")
+      if (!accessKeyId) throw new Error("Access Key ID / Key ID is required")
+
+      const s3 = new S3Client({
+        endpoint,
+        region: cfg.region || "auto",
+        credentials: {
+          accessKeyId,
+          secretAccessKey: token,
+        },
+      })
+
+      try {
+        await s3.send(new HeadBucketCommand({ Bucket: bucket }))
+      } catch {
+        await s3.send(new ListObjectsV2Command({ Bucket: bucket, MaxKeys: 1 }))
+      }
+
+      const label =
+        connector.source === "cloudflare_r2"
+          ? "Cloudflare R2 (10 GB Free, $0 Egress)"
+          : connector.source === "backblaze_b2"
+            ? "Backblaze B2 (10 GB Free)"
+            : "S3 Storage"
+      responseDetail = `Connected to bucket "${bucket}" on ${label}`
+    } else if (connector.source === "huggingface") {
+      const cfg = (connector.config ?? {}) as { repoId?: string }
+      const res = await fetch("https://huggingface.co/api/whoami-v2", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) {
+        throw new Error(`Hugging Face API returned HTTP ${res.status}`)
+      }
+      const data = (await res.json().catch(() => ({}))) as { name?: string }
+      responseDetail = `Connected to Hugging Face as @${data.name ?? "user"}${cfg.repoId ? ` (${cfg.repoId})` : ""}`
     } else {
       responseDetail = "Connection verified"
     }
@@ -425,12 +536,19 @@ export async function saveAgentConnectorGrant(
   const allowedReposRaw = optionalField(formData, "allowedRepos")
   const allowedRecipientsRaw = optionalField(formData, "allowedRecipients")
   const allowedVaultsRaw = optionalField(formData, "allowedVaults")
+  const allowedPrefixesRaw = optionalField(formData, "allowedPrefixes")
 
   const scopeConfig: Record<string, unknown> = {}
   if (allowedFoldersRaw) {
     scopeConfig.allowedFolders = allowedFoldersRaw
       .split(/[\n,]/)
       .map((s) => s.trim())
+      .filter(Boolean)
+  }
+  if (allowedPrefixesRaw) {
+    scopeConfig.allowedPrefixes = allowedPrefixesRaw
+      .split(/[\n,]/)
+      .map((s) => s.trim().replace(/^\/+/, ""))
       .filter(Boolean)
   }
   if (allowedChannelsRaw) {
@@ -634,4 +752,90 @@ export async function saveConnectorChat(
     return ok(`In Meta, set the callback URL to ${callback} and the verify token to the same secret that's in that URL.`)
   }
   return ok(`Telegram is pointed at this workspace. Messages to the bot start a turn with @${agent.handle}.`)
+}
+
+export async function connectBuiltinSupabaseStorage(
+  orgSlug: string,
+): Promise<ActionResult> {
+  const check = await adminOrgAccess(orgSlug)
+  if ("error" in check) return fail(check.error)
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !serviceKey) {
+    return fail("Default Supabase environment variables are not configured on this server")
+  }
+
+  const bucket = "sayabot-storage"
+  try {
+    await fetch(`${url.replace(/\/+$/, "")}/storage/v1/bucket`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${serviceKey}`,
+        apikey: serviceKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ id: bucket, name: bucket, public: false }),
+    })
+  } catch {
+    // Ignore if already exists
+  }
+
+  const admin = createAdminClient()
+  const encrypted = encryptSecret(serviceKey, getKek())
+  const config = {
+    projectUrl: url,
+    bucket,
+    authMode: "builtin",
+  }
+
+  const { data: existing } = await admin
+    .from("workspace_connectors")
+    .select("id")
+    .eq("org_id", check.access.org.id)
+    .eq("source", "supabase")
+    .maybeSingle()
+
+  let id: string
+  if (existing) {
+    await admin
+      .from("workspace_connectors")
+      .update({
+        name: "Supabase Storage (Workspace Default)",
+        status: "active",
+        ciphertext: encrypted.ciphertext,
+        iv: encrypted.iv,
+        tag: encrypted.tag,
+        last4: last4(serviceKey),
+        config,
+        last_synced_at: new Date().toISOString(),
+        error_message: null,
+      })
+      .eq("id", existing.id)
+    id = existing.id
+  } else {
+    const { data: created, error } = await admin
+      .from("workspace_connectors")
+      .insert({
+        org_id: check.access.org.id,
+        owner_user_id: check.access.user.id,
+        source: "supabase",
+        name: "Supabase Storage (Workspace Default)",
+        status: "active",
+        ciphertext: encrypted.ciphertext,
+        iv: encrypted.iv,
+        tag: encrypted.tag,
+        last4: last4(serviceKey),
+        config,
+        last_synced_at: new Date().toISOString(),
+      })
+      .select("id")
+      .single()
+
+    if (error) return fail(error.message)
+    id = created.id
+  }
+
+  revalidateOrg(orgSlug)
+  return ok("Built-in storage connected", { connectorId: id })
 }

@@ -627,6 +627,7 @@ export async function listOrgToolConfigs(orgId: string): Promise<OrgToolConfigVi
     let provider: string | undefined
     let last4: string | undefined
     let baseUrl: string | undefined
+    let configuredProviders: string[] = []
     if (kek && row.config_enc) {
       try {
         const parsed = JSON.parse(openSecret(row.config_enc, kek))
@@ -634,6 +635,12 @@ export async function listOrgToolConfigs(orgId: string): Promise<OrgToolConfigVi
         baseUrl = parsed.baseUrl
         if (parsed.apiKey) last4 = parsed.apiKey.slice(-4)
         else if (parsed.token) last4 = parsed.token.slice(-4)
+        if (parsed.keys && typeof parsed.keys === "object") {
+          configuredProviders = Object.keys(parsed.keys).filter((k) => Boolean(parsed.keys[k]))
+        }
+        if (provider && !configuredProviders.includes(provider) && (parsed.apiKey || provider === "duckduckgo")) {
+          configuredProviders.push(provider)
+        }
       } catch {}
     }
     return {
@@ -644,6 +651,7 @@ export async function listOrgToolConfigs(orgId: string): Promise<OrgToolConfigVi
       provider,
       last4,
       baseUrl,
+      configuredProviders,
       updatedAt: row.updated_at,
     }
   })

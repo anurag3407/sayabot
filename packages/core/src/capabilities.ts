@@ -15,6 +15,7 @@ export interface AgentCapabilities {
   subagents: boolean
   cron: boolean
   connectors: boolean
+  storage?: boolean
   voice?: boolean
 }
 
@@ -33,6 +34,7 @@ export const DEFAULT_CAPABILITIES: AgentCapabilities = {
   subagents: true,
   cron: true,
   connectors: true,
+  storage: true,
   voice: true,
 }
 
@@ -58,6 +60,7 @@ export const agentCapabilitiesSchema = z.object({
   subagents: z.boolean().default(true),
   cron: z.boolean().default(true),
   connectors: z.boolean().default(true),
+  storage: z.boolean().default(true),
   voice: z.boolean().default(true),
 })
 
@@ -85,6 +88,7 @@ export function parseCapabilities(input: unknown): AgentCapabilities {
     subagents: typeof raw.subagents === "boolean" ? raw.subagents : DEFAULT_CAPABILITIES.subagents,
     cron: typeof raw.cron === "boolean" ? raw.cron : DEFAULT_CAPABILITIES.cron,
     connectors: typeof raw.connectors === "boolean" ? raw.connectors : DEFAULT_CAPABILITIES.connectors,
+    storage: typeof raw.storage === "boolean" ? raw.storage : DEFAULT_CAPABILITIES.storage,
     voice: typeof raw.voice === "boolean" ? raw.voice : DEFAULT_CAPABILITIES.voice,
   }
 

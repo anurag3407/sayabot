@@ -135,6 +135,12 @@ export default async function AgentProfilePage({
               <span>Max Steps: {(agent.params as any)?.maxSteps ?? 6}</span>
               <span>Temp: {(agent.params as any)?.temperature ?? "default"}</span>
             </div>
+            <div className="flex items-center justify-between text-xs font-mono text-muted-foreground">
+              <span>Search: {String((agent.params as any)?.searchProvider || "Workspace Default")}</span>
+              <Link href={`/${orgSlug}/settings/search`} className="text-primary hover:underline font-sans">
+                Search settings →
+              </Link>
+            </div>
             <WorksOnForm
               orgSlug={orgSlug}
               agentId={agent.id}

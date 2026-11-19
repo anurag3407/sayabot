@@ -183,8 +183,8 @@ export function VectorAddForm({
   const choice = choices.find((item) => item.value === provider) ?? null
 
   return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
         {choices.map((item) => {
           const selected = item.value === provider
           return (
@@ -194,17 +194,39 @@ export function VectorAddForm({
               aria-pressed={selected}
               onClick={() => setProvider(item.value)}
               className={cn(
-                "rounded-md border px-3 py-2 text-left transition-colors",
+                "group relative flex flex-col justify-between rounded-xl border p-3.5 text-left transition-all",
                 selected
-                  ? "border-accent bg-accent/10"
-                  : "border-line bg-transparent hover:border-line-strong hover:bg-surface/60",
+                  ? "border-accent bg-accent/[0.08] shadow-[0_0_0_1px_rgba(157,140,255,0.4)]"
+                  : "border-line bg-surface/40 hover:border-line-strong hover:bg-surface/80",
               )}
             >
-              <span className="block text-[13px] font-medium text-text">{item.name}</span>
-              <span className="mt-0.5 block text-[11px] text-muted">
-                {item.detail}
-                <span className="text-faint"> · {AUTH_LABEL[item.auth]}</span>
-              </span>
+              <div>
+                <div className="flex items-center justify-between gap-1.5">
+                  <span className="text-[13.5px] font-semibold text-text group-hover:text-accent transition-colors">
+                    {item.name}
+                  </span>
+                  <span
+                    className={cn(
+                      "rounded-full px-2 py-0.5 font-mono text-[10px] font-medium tracking-wide border",
+                      item.auth === "none"
+                        ? "bg-ok/10 text-ok border-ok/20"
+                        : item.auth === "api_key"
+                          ? "bg-accent/10 text-accent border-accent/25"
+                          : "bg-surface text-muted border-line",
+                    )}
+                  >
+                    {AUTH_LABEL[item.auth]}
+                  </span>
+                </div>
+                <p className="mt-1.5 text-[11.5px] leading-snug text-muted">
+                  {item.detail}
+                </p>
+              </div>
+
+              <div className="mt-2.5 flex items-center justify-between pt-2 border-t border-line/40 text-[11px]">
+                <span className="text-faint">{selected ? "Selected" : "Click to select"}</span>
+                {selected ? <span className="text-accent font-medium">✓ Ready</span> : null}
+              </div>
             </button>
           )
         })}
@@ -214,9 +236,9 @@ export function VectorAddForm({
         <ActionForm
           key={choice.value}
           action={saveVectorProvider}
-          submitLabel={choice.auth === "none" ? `Use ${choice.name}` : "Save"}
+          submitLabel={choice.auth === "none" ? `Use ${choice.name}` : `Save & Activate ${choice.name}`}
           resetOnSuccess
-          className="rounded-md border border-line bg-surface/40 p-3"
+          className="rounded-2xl border border-line bg-surface/40 p-4 space-y-4"
         >
           <input type="hidden" name="orgSlug" value={orgSlug} />
           <input type="hidden" name="kind" value={kind} />

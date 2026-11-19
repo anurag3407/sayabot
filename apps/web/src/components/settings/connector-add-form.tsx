@@ -69,6 +69,41 @@ const CONNECTOR_SOURCES = [
     placeholder: "optional",
     help: "Proton Pass runs through `pass-cli` on a computer with the Sayabot app open. Search returns titles only. Reading a secret waits for approval.",
   },
+  {
+    value: "supabase",
+    label: "Supabase Storage (1 GB Free, No credit card)",
+    tokenLabel: "Supabase Service Role Key (or Secret API Key)",
+    placeholder: "eyJhbGciOi...",
+    help: "Go to Supabase Project Settings → API to get the Project URL and Service Role Key.",
+  },
+  {
+    value: "cloudflare_r2",
+    label: "Cloudflare R2 (10 GB Free, $0 Egress)",
+    tokenLabel: "R2 Secret Access Key",
+    placeholder: "fedcba9876...",
+    help: "Cloudflare Dashboard → R2 → Manage R2 API Tokens.",
+  },
+  {
+    value: "backblaze_b2",
+    label: "Backblaze B2 (10 GB Free, S3-compatible)",
+    tokenLabel: "Application Key (Secret Key)",
+    placeholder: "K004abcdef...",
+    help: "Backblaze Dashboard → Application Keys.",
+  },
+  {
+    value: "huggingface",
+    label: "Hugging Face Hub (Up to 50 GB Free)",
+    tokenLabel: "User Access Token (Write)",
+    placeholder: "hf_...",
+    help: "Hugging Face → Settings → Access Tokens.",
+  },
+  {
+    value: "s3_storage",
+    label: "Custom S3 / MinIO (Self-hosted)",
+    tokenLabel: "Secret Access Key",
+    placeholder: "Secret key",
+    help: "Any standard S3-compatible storage endpoint.",
+  },
 ]
 
 export function ConnectorAddForm({ orgSlug }: { orgSlug: string }) {
@@ -195,6 +230,125 @@ export function ConnectorAddForm({ orgSlug }: { orgSlug: string }) {
           />
           <HelpText>Default organization or user account to search repositories in.</HelpText>
         </Field>
+      )}
+
+      {source === "supabase" && (
+        <>
+          <Field label="Project URL" htmlFor="supa-project-url">
+            <Input
+              id="supa-project-url"
+              name="projectUrl"
+              placeholder="https://xyzcompany.supabase.co"
+              required
+            />
+          </Field>
+          <Field label="Bucket Name (Optional)" htmlFor="supa-bucket-name">
+            <Input
+              id="supa-bucket-name"
+              name="bucket"
+              placeholder="sayabot-storage"
+            />
+            <HelpText>Defaults to sayabot-storage.</HelpText>
+          </Field>
+        </>
+      )}
+
+      {source === "cloudflare_r2" && (
+        <>
+          <Field label="Cloudflare Account ID" htmlFor="r2-acc-id">
+            <Input
+              id="r2-acc-id"
+              name="accountId"
+              placeholder="e.g. a1b2c3d4..."
+              required
+            />
+          </Field>
+          <Field label="Access Key ID" htmlFor="r2-key-id">
+            <Input
+              id="r2-key-id"
+              name="accessKeyId"
+              placeholder="e.g. 987654321..."
+              required
+            />
+          </Field>
+          <Field label="Bucket Name" htmlFor="r2-bucket-name">
+            <Input
+              id="r2-bucket-name"
+              name="bucket"
+              placeholder="e.g. sayabot-artifacts"
+              required
+            />
+          </Field>
+        </>
+      )}
+
+      {source === "backblaze_b2" && (
+        <>
+          <Field label="S3 Endpoint" htmlFor="b2-endpoint-url">
+            <Input
+              id="b2-endpoint-url"
+              name="endpoint"
+              placeholder="e.g. s3.us-west-004.backblazeb2.com"
+              required
+            />
+          </Field>
+          <Field label="Key ID (Access Key)" htmlFor="b2-acc-key">
+            <Input
+              id="b2-acc-key"
+              name="keyId"
+              placeholder="e.g. 0041234..."
+              required
+            />
+          </Field>
+          <Field label="Bucket Name" htmlFor="b2-bucket-name">
+            <Input
+              id="b2-bucket-name"
+              name="bucket"
+              placeholder="e.g. my-sayabot-bucket"
+              required
+            />
+          </Field>
+        </>
+      )}
+
+      {source === "huggingface" && (
+        <Field label="Dataset / Repo ID" htmlFor="hf-repo-name">
+          <Input
+            id="hf-repo-name"
+            name="repoId"
+            placeholder="e.g. username/sayabot-storage"
+            required
+          />
+        </Field>
+      )}
+
+      {source === "s3_storage" && (
+        <>
+          <Field label="S3 Endpoint URL" htmlFor="s3-endpoint-url">
+            <Input
+              id="s3-endpoint-url"
+              name="endpoint"
+              placeholder="e.g. http://minio.local:9000"
+              required
+            />
+          </Field>
+          <Field label="Access Key ID" htmlFor="s3-acc-key">
+            <Input
+              id="s3-acc-key"
+              name="accessKeyId"
+              placeholder="Access Key ID"
+              required
+            />
+          </Field>
+          <Field label="Bucket Name" htmlFor="s3-bucket-name">
+            <Input
+              id="s3-bucket-name"
+              name="bucket"
+              placeholder="e.g. sayabot"
+              required
+            />
+          </Field>
+        </>
       )}
     </ActionForm>
   )

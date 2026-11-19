@@ -9,6 +9,11 @@ export type ConnectorSource =
   | "onepassword"
   | "bitwarden"
   | "protonpass"
+  | "supabase"
+  | "cloudflare_r2"
+  | "backblaze_b2"
+  | "s3_storage"
+  | "huggingface"
 
 /** Sources with native tools in the orchestrator. Jira is reached through the Atlassian app. */
 export const NATIVE_CONNECTOR_SOURCES: ConnectorSource[] = [
@@ -21,6 +26,19 @@ export const NATIVE_CONNECTOR_SOURCES: ConnectorSource[] = [
   "onepassword",
   "bitwarden",
   "protonpass",
+  "supabase",
+  "cloudflare_r2",
+  "backblaze_b2",
+  "s3_storage",
+  "huggingface",
+]
+
+export const STORAGE_CONNECTOR_SOURCES: ConnectorSource[] = [
+  "supabase",
+  "cloudflare_r2",
+  "backblaze_b2",
+  "s3_storage",
+  "huggingface",
 ]
 
 export interface ConnectorDoc {
@@ -62,6 +80,8 @@ export interface ConnectorScopeConfig {
   allowedRecipients?: string[]
   /** Password-manager vault names or ids this agent may read. */
   allowedVaults?: string[]
+  /** Cloud storage bucket prefix/folder path this agent is restricted to, e.g. "reports/" or "agent-data/". */
+  allowedPrefixes?: string[]
   /** No send tools at all, even with approval. */
   readOnly?: boolean
 }

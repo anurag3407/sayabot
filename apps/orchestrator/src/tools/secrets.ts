@@ -1,4 +1,4 @@
-import { agentSecretGrants, orgToolConfigs, vaultSecrets } from "@sayabot/db"
+import { agentSecretGrants, agents, orgToolConfigs, vaultSecrets } from "@sayabot/db"
 import { openSecret } from "@sayabot/llm"
 import { and, eq, isNull, or, gt } from "drizzle-orm"
 import { getDb } from "../db"
@@ -100,5 +100,33 @@ export async function resolveToolCredential(args: {
   }
 
   // Fallback to existing org tool configs
-  return loadOrgToolConfig(args.orgId, args.tool)
+  const baseConfig = await loadOrgToolConfig(args.orgId, args.tool)
+
+  if (args.tool === "web_search" && args.agentId) {
+    try {
+      const [agentRow] = await db
+        .select({ params: agents.params })
+        .from(agents)
+        .where(eq(agents.id, args.agentId))
+        .limit(1)
+
+      const agentProvider = (agentRow?.params as any)?.searchProvider
+      if (agentProvider && agentProvider !== "default") {
+        const keysMap = (baseConfig as any)?.keys as Record<string, string> | undefined
+        const baseUrlsMap = (baseConfig as any)?.baseUrls as Record<string, string> | undefined
+        const customKey = keysMap?.[agentProvider] || (baseConfig?.provider === agentProvider ? baseConfig?.apiKey : undefined)
+        const customBaseUrl = baseUrlsMap?.[agentProvider] || (baseConfig?.provider === agentProvider ? baseConfig?.baseUrl : undefined)
+        return {
+          ...baseConfig,
+          provider: agentProvider,
+          apiKey: customKey || (baseConfig?.provider === agentProvider ? baseConfig?.apiKey : undefined),
+          baseUrl: customBaseUrl || (baseConfig?.provider === agentProvider ? baseConfig?.baseUrl : undefined),
+        }
+      }
+    } catch {
+      // Fall through to baseConfig
+    }
+  }
+
+  return baseConfig
 }

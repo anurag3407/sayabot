@@ -856,3 +856,77 @@ export async function setAgentReplyStyleAction(input: {
   revalidateOrg(input.orgSlug)
   return ok(input.replyStyle === "conversational" ? "Short replies" : "Full replies")
 }
+
+/** The bot sidebar: pick which web search provider this agent uses. */
+export async function setAgentSearchProviderAction(input: {
+  orgSlug: string
+  agentId: string
+  searchProvider: string
+}): Promise<ActionResult> {
+  const check = await adminOrgAccess(input.orgSlug)
+  if ("error" in check) return fail(check.error)
+  const admin = createAdminClient()
+  const { data: agent } = await admin
+    .from("agents")
+    .select("id, org_id, handle, params")
+    .eq("id", input.agentId)
+    .maybeSingle()
+  if (!agent || agent.org_id !== check.access.org.id) return fail("Bot not found")
+  const params = { ...((agent.params as Record<string, unknown>) ?? {}) }
+  if (input.searchProvider && input.searchProvider !== "default") {
+    params.searchProvider = input.searchProvider
+  } else {
+    delete params.searchProvider
+  }
+  const { error } = await admin
+    .from("agents")
+    .update({ params, updated_at: new Date().toISOString() })
+    .eq("id", agent.id)
+  if (error) return fail(errorMessage(error))
+  await audit({
+    orgId: check.access.org.id,
+    actorId: check.access.user.id,
+    action: "agent.search_provider_changed",
+    target: agent.handle,
+    metadata: { searchProvider: input.searchProvider },
+  })
+  revalidateOrg(input.orgSlug)
+  return ok(input.searchProvider === "default" ? "Using workspace default search" : `Using ${input.searchProvider} search`)
+}
+
+/** The bot sidebar: pick which cloud storage provider this agent uses. */
+export async function setAgentStorageProviderAction(input: {
+  orgSlug: string
+  agentId: string
+  storageProvider: string
+}): Promise<ActionResult> {
+  const check = await adminOrgAccess(input.orgSlug)
+  if ("error" in check) return fail(check.error)
+  const admin = createAdminClient()
+  const { data: agent } = await admin
+    .from("agents")
+    .select("id, org_id, handle, params")
+    .eq("id", input.agentId)
+    .maybeSingle()
+  if (!agent || agent.org_id !== check.access.org.id) return fail("Bot not found")
+  const params = { ...((agent.params as Record<string, unknown>) ?? {}) }
+  if (input.storageProvider && input.storageProvider !== "default") {
+    params.storageProvider = input.storageProvider
+  } else {
+    delete params.storageProvider
+  }
+  const { error } = await admin
+    .from("agents")
+    .update({ params, updated_at: new Date().toISOString() })
+    .eq("id", agent.id)
+  if (error) return fail(errorMessage(error))
+  await audit({
+    orgId: check.access.org.id,
+    actorId: check.access.user.id,
+    action: "agent.storage_provider_changed",
+    target: agent.handle,
+    metadata: { storageProvider: input.storageProvider },
+  })
+  revalidateOrg(input.orgSlug)
+  return ok(input.storageProvider === "default" ? "Using workspace default storage" : "Assigned cloud storage provider")
+}

@@ -26,6 +26,7 @@ and passes the **distinct `source` list** into `connectorTools({ orgId, agentId,
 | `telegram` | `telegram_read_messages`, `telegram_send_message` |
 | `whatsapp` | `whatsapp_send_message`, `whatsapp_send_template` |
 | `onepassword` / `bitwarden` / `protonpass` | `<source>_search`, `<source>_read` |
+| `supabase` / `cloudflare_r2` / `backblaze_b2` / `s3_storage` / `huggingface` | `storage_list_files`, `storage_read_file`, `storage_upload_file`, `storage_delete_file` (`dangerous: true`) |
 
 When called without `sources` (e.g. from tests), the default is `["google_drive", "slack", "github"]` (`connectors.ts:358`). Jira is reachable through the Atlassian marketplace app rather than native tools (`connectors/types.ts:13`).
 
@@ -43,7 +44,8 @@ export interface ConnectorScopeConfig {
   allowedRepos?: string[]       // GitHub "owner/name"
   allowedRecipients?: string[]  // WhatsApp numbers, country code first
   allowedVaults?: string[]      // password-manager vault names/ids
-  readOnly?: boolean            // no send tools at all, even with approval
+  allowedPrefixes?: string[]    // cloud storage folder/path prefixes
+  readOnly?: boolean            // no send or mutation tools at all, even with approval
 }
 ```
 

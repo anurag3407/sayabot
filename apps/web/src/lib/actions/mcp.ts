@@ -19,7 +19,11 @@ import {
 } from "@/lib/actions/shared"
 import type { ActionResult } from "@/lib/types"
 
-import { testWebSearchInOrchestrator, testDocumentOcrInOrchestrator } from "@/lib/orchestrator"
+import {
+  testWebSearchInOrchestrator,
+  testDocumentOcrInOrchestrator,
+  fetchSearchProviderCreditsInOrchestrator,
+} from "@/lib/orchestrator"
 
 const transportSchema = z.enum(["http", "sse"])
 const builtinToolSchema = z.enum([
@@ -258,26 +262,43 @@ export async function saveOrgToolConfig(
     const baseUrl = field(formData, "baseUrl")
     if (baseUrl) config.baseUrl = baseUrl
 
+    // Load existing config to retain keys for other providers and allow keeping current key
+    const admin = createAdminClient()
+    const { data: existing } = await admin
+      .from("org_tool_configs")
+      .select("config_enc")
+      .eq("org_id", check.access.org.id)
+      .eq("tool", "web_search")
+      .maybeSingle()
+
+    let existingKeys: Record<string, string> = {}
+    let existingBaseUrls: Record<string, string> = {}
+    if (existing?.config_enc) {
+      try {
+        const old = JSON.parse(openSecret(existing.config_enc, getKek()))
+        if (old.keys && typeof old.keys === "object") existingKeys = { ...old.keys }
+        if (old.baseUrls && typeof old.baseUrls === "object") existingBaseUrls = { ...old.baseUrls }
+        if (old.provider && old.apiKey) existingKeys[old.provider] = old.apiKey
+        if (old.provider && old.baseUrl) existingBaseUrls[old.provider] = old.baseUrl
+      } catch {}
+    }
+
     if (apiKey) {
       config.apiKey = apiKey
-    } else if (provider !== "duckduckgo" && provider !== "searxng") {
-      // Check existing config to allow keeping previous key
-      const admin = createAdminClient()
-      const { data: existing } = await admin
-        .from("org_tool_configs")
-        .select("config_enc")
-        .eq("org_id", check.access.org.id)
-        .eq("tool", "web_search")
-        .maybeSingle()
-      if (existing?.config_enc) {
-        try {
-          const old = JSON.parse(openSecret(existing.config_enc, getKek()))
-          if (old.apiKey) config.apiKey = old.apiKey
-        } catch {}
-      }
-      if (!config.apiKey && provider !== "duckduckgo" && provider !== "searxng") {
-        return fail(`Please enter an API key for ${provider}`)
-      }
+      existingKeys[provider] = apiKey
+    } else if (existingKeys[provider]) {
+      config.apiKey = existingKeys[provider]
+    }
+
+    if (baseUrl) {
+      existingBaseUrls[provider] = baseUrl
+    }
+
+    config.keys = existingKeys as any
+    config.baseUrls = existingBaseUrls as any
+
+    if (!config.apiKey && provider !== "duckduckgo" && provider !== "searxng") {
+      return fail(`Please enter an API key for ${provider}`)
     }
   } else if (tool === "document_extract") {
     const provider = field(formData, "provider") || "docling"
@@ -372,7 +393,7 @@ export async function testWebSearchAction(
 
   const provider = field(formData, "provider") || "duckduckgo"
   let apiKey = field(formData, "apiKey")
-  const baseUrl = field(formData, "baseUrl")
+  let baseUrl = field(formData, "baseUrl")
   const query = field(formData, "query") || "latest artificial intelligence news"
 
   // If apiKey is not provided in form and provider requires key, try reading saved apiKey
@@ -387,7 +408,8 @@ export async function testWebSearchAction(
     if (existing?.config_enc) {
       try {
         const old = JSON.parse(openSecret(existing.config_enc, getKek()))
-        if (old.apiKey) apiKey = old.apiKey
+        apiKey = old.keys?.[provider] || (old.provider === provider ? old.apiKey : undefined)
+        if (!baseUrl) baseUrl = old.baseUrls?.[provider] || (old.provider === provider ? old.baseUrl : undefined)
       } catch {}
     }
   }
@@ -410,6 +432,57 @@ export async function testWebSearchAction(
     latencyMs: result.latencyMs,
     answer: result.answer,
     results: result.results,
+  })
+}
+
+export async function fetchSearchProviderCreditsAction(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const orgSlug = field(formData, "orgSlug")
+  const check = await adminOrgAccess(orgSlug)
+  if ("error" in check) return fail(check.error)
+
+  const provider = field(formData, "provider") || "duckduckgo"
+  let apiKey = field(formData, "apiKey")
+  let baseUrl = field(formData, "baseUrl")
+
+  if (!apiKey && provider !== "duckduckgo" && provider !== "searxng" && provider !== "whoogle") {
+    const admin = createAdminClient()
+    const { data: existing } = await admin
+      .from("org_tool_configs")
+      .select("config_enc")
+      .eq("org_id", check.access.org.id)
+      .eq("tool", "web_search")
+      .maybeSingle()
+    if (existing?.config_enc) {
+      try {
+        const old = JSON.parse(openSecret(existing.config_enc, getKek()))
+        apiKey = old.keys?.[provider] || (old.provider === provider ? old.apiKey : undefined)
+        if (!baseUrl) baseUrl = old.baseUrls?.[provider] || (old.provider === provider ? old.baseUrl : undefined)
+      } catch {}
+    }
+  }
+
+  const result = await fetchSearchProviderCreditsInOrchestrator({
+    orgId: check.access.org.id,
+    provider,
+    apiKey: apiKey || undefined,
+    baseUrl: baseUrl || undefined,
+  })
+
+  if (!result.ok) {
+    return fail(result.error || `Failed to check credits for ${provider}`)
+  }
+
+  return ok(result.details || `Balance: ${result.credits || "Active"}`, {
+    provider: result.provider,
+    credits: result.credits,
+    remaining: result.remaining,
+    total: result.total,
+    plan: result.plan,
+    resetDate: result.resetDate,
+    details: result.details,
   })
 }
 

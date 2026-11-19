@@ -193,7 +193,7 @@ export default async function ToolsPage({ params }: { params: Promise<{ org: str
             <div className="mb-4">
               <p className="text-[13px] font-medium text-text">web_search</p>
               <p className="mt-0.5 font-mono text-[11px] text-faint">
-                Multi-provider web search engine (DuckDuckGo, Tavily, Brave, SearXNG, Serper, Exa, TinyFish, Firecrawl, Perplexity, Bing)
+                Multi-provider web search engine (TinyFish, Context.dev, Tavily, Brave, DuckDuckGo, SearXNG, Serper, Exa, Firecrawl, Perplexity, Bing)
               </p>
             </div>
             <WebSearchConfig orgSlug={orgSlug} savedConfig={webSearch} />

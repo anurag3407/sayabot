@@ -21,6 +21,7 @@ Source files: `apps/web/src/lib/settings-nav.ts`, `apps/web/src/components/setti
 | Workspace | `billing` | Plan & billing | admin, **cloud only** |
 | Workspace | `pricing` | Pricing & budgets | admin |
 | Agents & tools | `tools` | Tools & MCP | admin |
+| Agents & tools | `search` | Search providers | admin |
 | Agents & tools | `connectors` | Connectors | admin |
 | Agents & tools | `bots` | External agents | admin |
 | Agents & tools | `vault` | Secret vault | admin |
@@ -122,6 +123,14 @@ Four `Section`s over `vault_secrets` and `agent_secret_grants`:
 4. **Active Grants** — `$ENV_NAME → @bot (label)` with allowed hosts, truncated placeholder, and `revokeGrant`.
 
 These are the placeholders agents reference (never plaintext), matching the orchestrator's secret broker.
+
+## 🔎 Search Providers (`search`, admin)
+
+A dedicated search engine configuration page (`apps/web/src/app/(workspace)/[org]/settings/search/page.tsx` rendering `WebSearchConfig`):
+- **12 Search Providers**: DuckDuckGo (zero-config, keyless), TinyFish, Context.dev, Tavily, Brave Search (2,000 free queries/mo), SearXNG, Whoogle Search (local Docker proxy via `benbusby/whoogle-search`), Serper (Google), Exa, Firecrawl, Perplexity Sonar, and Microsoft Bing.
+- **Credit & Quota Checker**: "Check Available Credits" button calling `fetchSearchProviderCreditsAction` to query real balances from Serper, Firecrawl, Brave rate-limits, Context.dev, etc., or verify reachability of local Whoogle and SearXNG instances.
+- **Live Search Tester**: Test queries with latency measurement, synthesized answers, and formatted result cards.
+- **Per-Agent Search Selector**: In the room chat agent sidebar (`agent-config-panel.tsx`), users can pick an agent's preferred search provider or inherit workspace default.
 
 ## 🧠 Memory & RAG (`vector`, admin)
 

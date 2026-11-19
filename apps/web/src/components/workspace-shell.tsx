@@ -87,11 +87,11 @@ function BackButton({ home, className }: { home: string; className?: string }) {
       aria-label="Go back"
       title="Back (⌘[)"
       className={cn(
-        "grid h-8 w-8 shrink-0 place-items-center rounded-lg text-muted transition-colors hover:bg-white/[0.06] hover:text-text [-webkit-app-region:no-drag]",
+        "grid h-9 w-9 shrink-0 place-items-center rounded-xl text-muted transition-colors hover:bg-white/5 hover:text-text [-webkit-app-region:no-drag]",
         className,
       )}
     >
-      <ArrowLeft className="h-[17px] w-[17px]" aria-hidden="true" />
+      <ArrowLeft className="h-[18px] w-[18px]" aria-hidden="true" />
     </button>
   )
 }
@@ -228,29 +228,26 @@ export function WorkspaceShell({
         {/* In the Mac app the window has no title bar: the dark gutters are what you drag. */}
         <div className={cn("flex min-h-0 flex-1", desktopApp && "[-webkit-app-region:drag]")}>
           <aside
-            className="hidden w-[284px] shrink-0 bg-void md:flex md:flex-col"
+            className="hidden w-[284px] shrink-0 border-r border-line bg-void md:flex md:flex-col"
             aria-label="Sidebar"
           >
-            <AppSidebar {...sidebarProps} desktopApp={desktopApp} />
+            <AppSidebar
+              {...sidebarProps}
+              desktopApp={desktopApp}
+              headerExtra={<BackButton home={home} />}
+            />
           </aside>
 
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-            {/* Back, and in the Mac app the strip you drag the window by. Plan gauges sit in
-                the sidebar so they share that surface instead of floating above this pane. */}
-            <div className="hidden h-11 shrink-0 items-center md:flex">
-              <BackButton home={home} />
-            </div>
-            <main
-              id="main-content"
-              tabIndex={-1}
-              className={cn(
-                "min-h-0 min-w-0 flex-1 overflow-hidden bg-ink outline-none md:mb-2 md:mr-2 md:rounded-[18px] md:border md:border-white/[0.06] md:shadow-[0_1px_0_rgba(255,255,255,0.03)_inset,0_12px_40px_-20px_rgba(0,0,0,0.8)]",
-                desktopApp && "[-webkit-app-region:no-drag]",
-              )}
-            >
-              {children}
-            </main>
-          </div>
+          <main
+            id="main-content"
+            tabIndex={-1}
+            className={cn(
+              "min-h-0 min-w-0 flex-1 overflow-hidden bg-ink outline-none",
+              desktopApp && "[-webkit-app-region:no-drag]",
+            )}
+          >
+            {children}
+          </main>
         </div>
 
         <CommandPalette

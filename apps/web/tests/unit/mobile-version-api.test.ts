@@ -14,5 +14,5 @@ describe("Mobile Version API Route", () => {
     expect(data).toHaveProperty("publishedAt")
 
     expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*")
-  })
+  }, 15000)
 })

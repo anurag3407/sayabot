@@ -35,6 +35,7 @@ export function AgentConnectorScopeManager({
   const [allowedRepos, setAllowedRepos] = useState("")
   const [allowedRecipients, setAllowedRecipients] = useState("")
   const [allowedVaults, setAllowedVaults] = useState("")
+  const [allowedPrefixes, setAllowedPrefixes] = useState("")
   const [readOnly, setReadOnly] = useState(false)
 
   const selectedConnector = availableConnectors.find((c) => c.id === selectedConnectorId)
@@ -53,6 +54,7 @@ export function AgentConnectorScopeManager({
     if (allowedRepos) formData.append("allowedRepos", allowedRepos)
     if (allowedRecipients) formData.append("allowedRecipients", allowedRecipients)
     if (allowedVaults) formData.append("allowedVaults", allowedVaults)
+    if (allowedPrefixes) formData.append("allowedPrefixes", allowedPrefixes)
     if (readOnly) formData.append("readOnly", "1")
 
     startTransition(async () => {
@@ -64,6 +66,7 @@ export function AgentConnectorScopeManager({
         setAllowedChannels("")
         setAllowedRepos("")
         setAllowedRecipients("")
+        setAllowedPrefixes("")
         setReadOnly(false)
         router.refresh()
       }
@@ -142,17 +145,21 @@ export function AgentConnectorScopeManager({
                     {Array.isArray(scopes.allowedRecipients) && scopes.allowedRecipients.length > 0 && (
                       <span>Numbers: {(scopes.allowedRecipients as string[]).join(", ")}</span>
                     )}
+                    {Array.isArray(scopes.allowedVaults) && scopes.allowedVaults.length > 0 && (
+                      <span>Vaults: {(scopes.allowedVaults as string[]).join(", ")}</span>
+                    )}
+                    {Array.isArray(scopes.allowedPrefixes) && scopes.allowedPrefixes.length > 0 && (
+                      <span>Prefix: {(scopes.allowedPrefixes as string[]).join(", ")}</span>
+                    )}
                     {scopes.readOnly === true && <span>Read only</span>}
                     {scopes.allowedRepos && scopes.allowedRepos.length > 0 && (
                       <span>Repos: {scopes.allowedRepos.join(", ")}</span>
                     )}
-                    {Array.isArray(scopes.allowedVaults) && scopes.allowedVaults.length > 0 && (
-                      <span>Vaults: {(scopes.allowedVaults as string[]).join(", ")}</span>
-                    )}
                     {!scopes.allowedFolders?.length &&
                       !scopes.allowedChannels?.length &&
                       !scopes.allowedRepos?.length &&
-                      !(Array.isArray(scopes.allowedRecipients) && scopes.allowedRecipients.length) && (
+                      !(Array.isArray(scopes.allowedRecipients) && scopes.allowedRecipients.length) &&
+                      !(Array.isArray(scopes.allowedPrefixes) && scopes.allowedPrefixes.length) && (
                         <span className="text-faint">Full workspace access for this connector</span>
                       )}
                   </div>
@@ -275,14 +282,34 @@ export function AgentConnectorScopeManager({
                 <HelpText>Leave blank to allow searching all authorized repos.</HelpText>
               </Field>
             )}
+
+            {selectedConnector &&
+              ["supabase", "cloudflare_r2", "backblaze_b2", "s3_storage", "huggingface"].includes(
+                selectedConnector.source,
+              ) && (
+                <Field label="Allowed Folder / Prefix" htmlFor="grant-prefix">
+                  <Input
+                    id="grant-prefix"
+                    placeholder="e.g. reports/, artifacts/ (Leave blank for full bucket)"
+                    value={allowedPrefixes}
+                    onChange={(e) => setAllowedPrefixes(e.target.value)}
+                  />
+                  <HelpText>Restricts this agent to files starting with this folder prefix.</HelpText>
+                </Field>
+              )}
           </div>
 
-          {selectedConnector && ["slack", "discord", "telegram", "whatsapp"].includes(selectedConnector.source) && (
-            <label className="flex items-center gap-2 text-xs text-muted-foreground">
-              <input type="checkbox" checked={readOnly} onChange={(e) => setReadOnly(e.target.checked)} />
-              Read only: this agent can look, but never send messages
-            </label>
-          )}
+          {selectedConnector &&
+            ["slack", "discord", "telegram", "whatsapp", "supabase", "cloudflare_r2", "backblaze_b2", "s3_storage", "huggingface"].includes(
+              selectedConnector.source,
+            ) && (
+              <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                <input type="checkbox" checked={readOnly} onChange={(e) => setReadOnly(e.target.checked)} />
+                {["supabase", "cloudflare_r2", "backblaze_b2", "s3_storage", "huggingface"].includes(selectedConnector.source)
+                  ? "Read only: agent can download and read files, but never upload or delete"
+                  : "Read only: this agent can look, but never send messages"}
+              </label>
+            )}
 
           {error && <p className="text-xs text-danger">{error}</p>}
 

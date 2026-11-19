@@ -66,6 +66,21 @@ Header: the workspace total (`formatBytes`, `lib/format.ts`), "Measured HH:MM" (
 
 The module header calls this "OpenBot-style storage: one total, a stacked bar, then what takes the space by agent and by chat."
 
+### Cloud Storage Providers (`components/storage/cloud-storage-manager.tsx`)
+
+Rendered at the top of the Storage settings page (`settings/storage/page.tsx`), allowing admins to connect, test, and manage persistent cloud object storage for workspace agents:
+
+- **Supported Providers**:
+  - **Supabase Storage**: Instant 1-click connection using workspace default credentials (`connectBuiltinSupabaseStorage`) or zero-copy Supabase OAuth (`/api/connectors/supabase/oauth`), auto-provisioning the `sayabot-storage` bucket, or manual Service Role Key + Project URL.
+  - **Cloudflare R2**: Free-tier S3-compatible object storage via Access Key ID, Secret Access Key, Account ID, and Bucket (`https://<account_id>.r2.cloudflarestorage.com`).
+  - **Backblaze B2**: S3-compatible storage via Key ID, Application Key, Endpoint, and Bucket.
+  - **Custom S3 / MinIO / Ceph**: Generic S3-compatible endpoints with Region and custom credentials.
+  - **Hugging Face Hub**: Free dataset & model repository file storage via user Access Token (`hf_...`).
+- **Connection Testing**: Each card and connected provider row provides a real-time "Check / Test Connection" button triggering `testWorkspaceConnector`, testing bucket accessibility (`HeadBucket` / `ListObjectsV2` / Supabase REST API) and displaying live status badges.
+- **Agent Storage Configuration**:
+  - **Agent Profile (`agent-connector-scope.tsx`)**: Admins can assign storage connector grants to specific agents, toggling read-only restrictions and scoping access to specific folder prefixes (`allowedPrefixes`).
+  - **Room Agent Sidebar (`agent-config-panel.tsx`)**: Users configure which storage connector each agent uses directly from the room chat tools panel (`setAgentStorageProviderAction`), enabling or switching the agent's cloud storage backend seamlessly.
+
 ## Related docs
 
 - [Canvas UI](./canvas-ui.md) — the canvases the Files page indexes and deep-links into
