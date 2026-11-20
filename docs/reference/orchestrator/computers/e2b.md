@@ -8,8 +8,8 @@ Source files: `apps/orchestrator/src/computers/e2b.ts`, `apps/orchestrator/src/t
 
 ## Setup and credentials
 
-- The admin pastes an E2B key (`e2b_…`) in Settings → AI providers → Computers and browser. It is sealed into `org_computer_settings.e2b_ciphertext/iv/tag` with `MESH_KEK` and only `e2b_last4` is shown again ([../../database/schema-computers-devices-desktop.md](../../database/schema-computers-devices-desktop.md)).
-- `e2bKeyForOrg(orgId)` decrypts it; through `boatCredential(own, process.env.E2B_API_KEY)` the workspace's own key wins and the server's `E2B_API_KEY` is the fallback (`source: "included"`). Neither → _"No E2B key is set in Settings → AI providers."_
+- The admin pastes an E2B key (`e2b_…`) in Settings → Computers. It is sealed into `org_computer_settings.e2b_ciphertext/iv/tag` with `MESH_KEK` and only `e2b_last4` is shown again ([../../database/schema-computers-devices-desktop.md](../../database/schema-computers-devices-desktop.md)).
+- `e2bKeyForOrg(orgId)` decrypts it; through `boatCredential(own, process.env.E2B_API_KEY)` the workspace's own key wins and the server's `E2B_API_KEY` is the fallback (`source: "included"`). Neither → _"No E2B key is set in Settings → Computers."_
 - `buildTools` marks `available.e2bConfigured` when either key exists. A person picks it per bot under Works on → Cloud desktop → E2B (`params.worksOn = "e2b"`), which also turns on the bot's `computer` capability.
 
 | Env var                | Role                                                                                |

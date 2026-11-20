@@ -172,13 +172,13 @@ export function WorksOnPicker({
                 Not set up yet.{" "}
                 {canAdmin ? (
                   <Link
-                    href={`/${orgSlug}/settings/keys#computers`}
+                    href={`/${orgSlug}/settings/computers`}
                     className="font-medium text-accent hover:underline"
                   >
-                    Add it in AI providers →
+                    Add it in Computers →
                   </Link>
                 ) : (
-                  "Ask a workspace admin to add it in AI providers."
+                  "Ask a workspace admin to add it in Computers."
                 )}
               </p>
             )}

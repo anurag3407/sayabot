@@ -44,7 +44,7 @@ One card per computer:
 
 ### Cloud desktops and your server
 
-Above the Macs list, the page renders `ComputerProviders` (`src/components/providers/computer-providers.tsx`) with the `ComputerProvidersView` from `loadComputerProviders(orgId)` — the same block as Settings → AI providers → Computers and browser, documented in [settings-ui.md](./settings-ui.md#-ai-providers-keys). Non-admins see the status pills only. The Macs follow under "Your Macs".
+Above the Macs list, the page renders `ComputerProviders` (`src/components/providers/computer-providers.tsx`) with the `ComputerProvidersView` from `loadComputerProviders(orgId)` (Boat API key, E2B API key, Self-hosted VPS, and 1Password browser logins). Non-admins see the status pills only. The Macs follow under "Your Macs".
 
 ### Empty state
 

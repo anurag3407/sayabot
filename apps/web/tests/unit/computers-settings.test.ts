@@ -22,6 +22,17 @@ function open(row: Record<string, unknown>, prefix: string): string {
 }
 
 describe("Settings → Computers", () => {
+  it("places AI providers above computers and below phones in the Account group", () => {
+    const groups = visibleSettingsGroups(true)
+    const accountGroup = groups.find((g) => g.label === "Account")
+    expect(accountGroup).toBeDefined()
+    const segments = accountGroup?.links.map((link) => link.segment)
+    expect(segments).toEqual(["profile", "phones", "keys", "computers"])
+
+    const workspaceGroup = groups.find((g) => g.label === "Workspace")
+    expect(workspaceGroup?.links.some((link) => link.segment === "keys")).toBe(false)
+  })
+
   it("is one app setting for the Boat key, the VPS, and this Mac", () => {
     const link = visibleSettingsGroups(false)
       .flatMap((group) => group.links)

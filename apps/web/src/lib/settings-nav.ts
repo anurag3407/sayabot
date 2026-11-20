@@ -55,6 +55,14 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
         adminOnly: false,
       },
       {
+        segment: "keys",
+        label: "AI providers",
+        description:
+          "Agent apps, plans and API keys your agents think with.",
+        icon: "keys",
+        adminOnly: true,
+      },
+      {
         segment: "computers",
         label: "Computers",
         description: "Cloud desktops (Boat key, E2B), your own VPS, and this Mac's screen.",
@@ -71,14 +79,6 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
         label: "General & members",
         description: "Workspace name, invites, roles, SSO and the audit log.",
         icon: "workspace",
-        adminOnly: true,
-      },
-      {
-        segment: "keys",
-        label: "AI providers",
-        description:
-          "Agent apps, plans and API keys your agents think with, plus the cloud desktops and server they work on.",
-        icon: "keys",
         adminOnly: true,
       },
       {

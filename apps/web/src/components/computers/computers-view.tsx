@@ -260,8 +260,7 @@ export function ComputersView({
           Cloud desktops and your server
         </h3>
         <p className="mb-2 mt-0.5 text-[12.5px] text-muted">
-          The same settings as AI providers → Computers and browser. Pick one per bot under Works
-          on.
+          Cloud desktops, your own server and website logins. Pick one per bot under Works on.
         </p>
         <ComputerProviders orgSlug={orgSlug} view={providers} canEdit={canEdit} />
       </section>

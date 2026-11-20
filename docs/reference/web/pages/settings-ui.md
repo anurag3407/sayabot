@@ -14,9 +14,9 @@ Source files: `apps/web/src/lib/settings-nav.ts`, `apps/web/src/components/setti
 | :------------- | :----------- | :---------------- | :-------------------- |
 | Account        | `profile`    | Profile & alerts  | everyone              |
 | Account        | `phones`     | Phones            | everyone              |
+| Account        | `keys`       | AI providers      | admin                 |
 | Account        | `computers`  | Computers         | everyone              |
 | Workspace      | `workspace`  | General & members | admin                 |
-| Workspace      | `keys`       | AI providers      | admin                 |
 | Workspace      | `storage`    | Storage           | everyone              |
 | Workspace      | `billing`    | Plan & billing    | admin, **cloud only** |
 | Workspace      | `pricing`    | Pricing & budgets | admin                 |
@@ -61,14 +61,13 @@ Lists `listPricing()` rows; each `PricingRow` (`pricing-row.tsx`) is an inline f
 
 ## 🤖 AI Providers (`keys`)
 
-Renders `ProvidersView` (`src/components/providers/providers-view.tsx`; model details in the [model system](./model-system.md)). The page loads provider keys, agents (for per-key bot counts), rooms and `loadComputerProviders(orgId)`. The view is one scrolling page with a row of anchor chips and five sections, each a `ProviderSection` of `ProviderCard` rows (`provider-card.tsx`: icon, title, subtitle, status pill, controls, footnote):
+Renders `ProvidersView` (`src/components/providers/providers-view.tsx`; model details in the [model system](./model-system.md)). The page loads provider keys, agents (for per-key bot counts), and rooms. The view is one scrolling page with a row of anchor chips and four sections, each a `ProviderSection` of `ProviderCard` rows (`provider-card.tsx`: icon, title, subtitle, status pill, controls, footnote):
 
 | Section (anchor)                          | Contents                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | :---------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Providers (`#providers`)                  | Agent apps signed in on this computer (`LocalAgents`, from `/api/providers/local`), a **Check again** button that re-runs the lookup, "More providers" install hints, and "Sign in with a plan you pay for" → `ManageAccountsModal` (ChatGPT, Copilot, OpenRouter).                                                                                                                                                        |
 | AI providers (`#ai-providers`)            | One `ApiKeyRow` per `ACCOUNT_PROVIDERS` entry of kind `key` or `openrouter` (OpenRouter, Anthropic, OpenAI, Gemini, DeepSeek, xAI Grok, Kimi, Qwen, MiniMax, Groq, Cerebras…), ready ones first: "Paste your key", "Get a key ↗", **Save** → `saveProviderKey` with an automatic label (`My <name>`, then `<name> 2`…). Saved keys list above the field with `TestKeyButton` / `DeleteKeyButton`.                          |
 | Your own model servers (`#model-servers`) | The `custom` providers (Cloudflare, OpenAI-compatible servers such as LM Studio, Ollama, vLLM): an address field plus an optional key.                                                                                                                                                                                                                                                                                     |
-| Computers and browser (`#computers`)      | `ComputerProviders`: **Boat API key**, **E2B API key** (Save, Check, Remove; status "Saved · ends <last4>", "Included with this server" when the server env has a key, or "Not set up"), **Self-hosted VPS** (tabs "Address and key" — SSH address plus a private-key textarea — or "SSH config name"; "Bots set to Auto may also start their container here"; Save, Check connection, Remove), and **1Password** → Vault. |
 | Apps and tools (`#apps`)                  | Links to Connected apps, Tools and MCP servers, and Your own bots.                                                                                                                                                                                                                                                                                                                                                         |
 
 `TestKeyButton` optionally takes a model id for `openai-compatible` providers; the test calls `testProviderKey` which makes a real provider call.

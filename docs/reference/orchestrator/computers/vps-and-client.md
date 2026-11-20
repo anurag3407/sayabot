@@ -8,7 +8,7 @@ Source files: `apps/orchestrator/src/computers/vps.ts`, `apps/orchestrator/src/c
 
 ## 🖥️ VPS desktops (`computers/vps.ts`, `computers/open-vps.ts`)
 
-A "VPS" is the person's own Linux server with Docker. Settings → AI providers → Computers and browser saves it one of two ways in `org_computer_settings`:
+A "VPS" is the person's own Linux server with Docker. Settings → Computers saves it one of two ways in `org_computer_settings`:
 
 | Way             | Columns                                                | How Sayabot connects                                                                                                                                                      |
 | :-------------- | :----------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |

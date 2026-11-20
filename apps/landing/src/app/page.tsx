@@ -15,6 +15,7 @@ import { How } from "@/components/how"
 import { Jobs } from "@/components/jobs"
 import { Memory } from "@/components/memory"
 import { Nav } from "@/components/nav"
+import { Partners } from "@/components/partners"
 import { Tools } from "@/components/tools"
 
 export default function Home() {
@@ -28,6 +29,7 @@ export default function Home() {
             <AgentWindow />
           </div>
         </section>
+        <Partners />
         <Tools />
         <Jobs />
         <How />

@@ -344,7 +344,7 @@ function VpsRow({
   )
 }
 
-/** Settings → AI providers → Computers and browser: Boat, E2B, your own VPS, and website logins. */
+/** Settings → Computers: Boat, E2B, your own VPS, and website logins. */
 export function ComputerProviders({
   orgSlug,
   view,

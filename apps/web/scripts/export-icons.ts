@@ -208,6 +208,33 @@ const adaptive = bare(1024, 0.42)
 const splash = bare(1024, 0.5)
 const glyph = bare(96, 0.7, true)
 
+/** Favicon: Mascot alone on transparent background, scaled to fill the icon without tile. */
+function faviconBare(size = 1024, scale = 0.94): string {
+  const g = sayaGeometry("ghost", "idle")
+  const tone = SAYA_TONES.lilac
+  const s = (size * scale) / 64
+  // Ghost shell: X from 22 to 78 (width 56), Y from 18 to 80 with shadow (height 62)
+  // Center is at X=50, Y=49. Centering on (size/2, size/2):
+  const tx = (size / 2 - 50 * s).toFixed(2)
+  const ty = (size / 2 - 49 * s).toFixed(2)
+  const t = `translate(${tx} ${ty}) scale(${s.toFixed(4)})`
+  const { x, y, w, h, r } = g.visor
+
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">` +
+    `<title>Sayabot</title>` +
+    `<g transform="${t}">` +
+    `<path d="${g.shell}" fill="${tone.shade}" transform="translate(0 ${SAYA_SAAYA_OFFSET})"/>` +
+    `<path d="${g.shell}" fill="${tone.base}"/>` +
+    `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}" fill="${SAYA_INK}"/>` +
+    `<path d="${g.eyesFill}" fill="${tone.eye}"/>` +
+    `</g>` +
+    `</svg>`
+  )
+}
+
+const faviconMark = faviconBare(1024, 0.94)
+
 const ANDROID_DENSITIES = [
   { name: "mdpi", icon: 48, foreground: 108, splash: 288 },
   { name: "hdpi", icon: 72, foreground: 162, splash: 432 },
@@ -242,18 +269,18 @@ re-run it. It also writes every platform's icon files (web, landing, desktop, mo
 
 await Promise.all([
   // web
-  Promise.resolve(svgFile(rounded, out("apps/web/public/icon.svg"))),
+  Promise.resolve(svgFile(faviconMark, out("apps/web/public/icon.svg"))),
   png(rounded, out("apps/web/public/icon-192.png"), 192),
   png(rounded, out("apps/web/public/icon-512.png"), 512),
   png(square, out("apps/web/public/apple-touch-icon.png"), 180),
   png(maskable, out("apps/web/public/maskable-512.png"), 512),
-  ico(rounded, [16, 32, 48]).then((buffer) =>
+  ico(faviconMark, [16, 32, 48]).then((buffer) =>
     writeFileSync(out("apps/web/public/favicon.ico"), buffer),
   ),
   // landing
-  Promise.resolve(svgFile(rounded, out("apps/landing/public/icon.svg"))),
+  Promise.resolve(svgFile(faviconMark, out("apps/landing/public/icon.svg"))),
   png(square, out("apps/landing/public/apple-touch-icon.png"), 180),
-  ico(rounded, [16, 32, 48]).then((buffer) =>
+  ico(faviconMark, [16, 32, 48]).then((buffer) =>
     writeFileSync(out("apps/landing/public/favicon.ico"), buffer),
   ),
   png(ogCard(), out("apps/landing/public/og.png"), [1200, 630]),
@@ -267,7 +294,7 @@ await Promise.all([
   png(square, out("apps/mobile/assets/icon.png"), 1024),
   png(adaptive, out("apps/mobile/assets/adaptive-icon.png"), 1024),
   png(splash, out("apps/mobile/assets/splash-icon.png"), 1024),
-  png(rounded, out("apps/mobile/assets/favicon.png"), 48),
+  png(faviconMark, out("apps/mobile/assets/favicon.png"), 48),
   png(rounded, out("apps/mobile/assets/mark.png"), 256),
   png(glyph, out("apps/mobile/assets/notification-icon.png"), 96),
   ...ANDROID_DENSITIES.flatMap((d) => [

@@ -21,9 +21,7 @@ import { Button } from "@/components/ui/button"
 import { InlineAlert } from "@/components/ui/empty"
 import { showToast } from "@/components/ui/toast"
 import { cn, effectiveProvider } from "@/lib/format"
-import type { ComputerProvidersView } from "@/lib/computer-providers-shared"
 import type { ActionResult, ProviderKeyView } from "@/lib/types"
-import { ComputerProviders } from "./computer-providers"
 import { ProviderCard, ProviderList, ProviderSection, StatusPill } from "./provider-card"
 
 interface ProviderInfo {
@@ -408,7 +406,6 @@ const SECTIONS = [
   ["providers", "Providers"],
   ["ai-providers", "AI providers"],
   ["model-servers", "Your own model servers"],
-  ["computers", "Computers and browser"],
   ["apps", "Apps and tools"],
 ] as const
 
@@ -417,13 +414,12 @@ export function ProvidersView({
   keys,
   agentCounts,
   rooms,
-  computers,
 }: {
   orgSlug: string
   keys: ProviderKeyView[]
   agentCounts: Record<string, number>
   rooms: { id: string; name: string }[]
-  computers: ComputerProvidersView
+  computers?: unknown
 }) {
   const [accountsOpen, setAccountsOpen] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
@@ -442,7 +438,7 @@ export function ProvidersView({
       <div>
         <h2 className="text-[18px] font-semibold text-text">AI providers</h2>
         <p className="mt-1 text-[13px] text-muted">
-          What your bots think with, and the computers they work on.
+          What your bots think with, and how to connect your own models.
         </p>
         <nav aria-label="Sections" className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
           {SECTIONS.map(([id, label]) => (
@@ -523,14 +519,6 @@ export function ProvidersView({
             />
           ))}
         </ProviderList>
-      </ProviderSection>
-
-      <ProviderSection
-        id="computers"
-        title="Computers and browser"
-        description="Cloud desktops, your own server and website logins. Pick one per bot under Works on."
-      >
-        <ComputerProviders orgSlug={orgSlug} view={computers} canEdit />
       </ProviderSection>
 
       <ProviderSection id="apps" title="Apps and tools" description="Connected apps and research.">

@@ -46,7 +46,7 @@ async function forgetReadyDesktops(orgId: string, provider: ComputerProvider): P
   }
 }
 
-/** Saves one provider's row of Settings → AI providers → Computers and browser. Admins only. */
+/** Saves one provider's row of Settings → Computers. Admins only. */
 export async function saveComputerProviderAction(input: {
   orgSlug: string
   provider: ComputerProvider
