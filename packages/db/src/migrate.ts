@@ -2,7 +2,7 @@ import dotenv from "dotenv"
 import { existsSync, readdirSync, readFileSync } from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
-import { createDb, type Db, type DbPool, requireDatabaseUrl } from "./client"
+import { createDb, type DbPool } from "./client"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
