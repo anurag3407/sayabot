@@ -32,29 +32,6 @@ export interface PartnerItem {
 
 export const PARTNER_ITEMS: PartnerItem[] = [
   {
-    id: "boat-dev",
-    name: "boat.dev",
-    badge: "FEATURED PARTNER · CLOUD COMPUTERS",
-    badgeColor: "#9d8cff",
-    description:
-      "Every bot can get its own Linux computer in the cloud, with a desktop you can watch live while it works and take over at any time.",
-    href: "https://boat.dev",
-    linkText: "Visit boat.dev",
-    featured: true,
-    iconType: "cloud",
-  },
-  {
-    id: "modelgo",
-    name: "ModelGo",
-    badge: "INFERENCE PROVIDER SPONSOR",
-    badgeColor: "#22c55e",
-    description:
-      "One API key, every model: text, image, video, audio and more through a single unified API, ready to pick in Sayabot's multi-agent model picker.",
-    href: "https://modelgo.ai",
-    linkText: "Visit ModelGo",
-    iconType: "inference",
-  },
-  {
     id: "github-sponsors",
     name: "Community Backers",
     badge: "OPEN SOURCE BACKERS · GITHUB SPONSORS",
@@ -63,6 +40,7 @@ export const PARTNER_ITEMS: PartnerItem[] = [
       "Sayabot is 100% open source. Community sponsorships directly fund container testing nodes, GPU inference runners, and core protocol research.",
     href: LINKS.sponsor,
     linkText: "Sponsor on GitHub",
+    featured: true,
     iconType: "sponsor",
   },
 ]
