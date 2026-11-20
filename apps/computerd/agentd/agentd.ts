@@ -32,14 +32,15 @@ function signalNumber(signal: NodeJS.Signals): number | undefined {
   return (osConstants.signals as Record<string, number>)[signal]
 }
 
-// Drop privileges immediately if started as root
-if (typeof process.getuid === "function" && process.getuid() === 0) {
-  try {
-    if (typeof process.setgid === "function") process.setgid(10001)
-    if (typeof process.setuid === "function") process.setuid(10001)
-  } catch (err) {
-    console.error("[agentd] Failed to drop root privileges to uid 10001:", err)
-    process.exit(1)
+// Drop privileges if started as standalone root daemon
+export function dropPrivilegesIfRoot() {
+  if (typeof process.getuid === "function" && process.getuid() === 0) {
+    try {
+      if (typeof process.setgid === "function") process.setgid(10001)
+      if (typeof process.setuid === "function") process.setuid(10001)
+    } catch (err) {
+      console.warn("[agentd] Could not drop root privileges to uid 10001:", err)
+    }
   }
 }
 
@@ -475,6 +476,7 @@ export function startEgressRelay(socketPath: string, port = 8080, host = "127.0.
 
 const entry = process.argv[1] ?? ""
 if (/(^|\/)agentd\.(ts|js|mjs)$/.test(entry)) {
+  dropPrivilegesIfRoot()
   startAgentd()
   const ctlSock = process.env.AGENTD_CTL_SOCK
   if (ctlSock && existsSync(dirname(ctlSock))) startAgentd(ctlSock, 0o666)
