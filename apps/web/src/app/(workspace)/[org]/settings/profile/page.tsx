@@ -8,6 +8,7 @@ import { buttonVariants } from "@/components/ui/button"
 import { EnableAlerts } from "@/components/room/room-activity"
 import { ProfileForm } from "@/components/settings/profile-form"
 import { Section } from "@/components/settings/section"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 export const metadata: Metadata = { title: "Profile & alerts" }
 
@@ -34,6 +35,13 @@ export default async function ProfileSettingsPage({ params }: { params: Promise<
           Renaming yourself changes your @handle and the name on your messages. Past messages and
           authorship records are unchanged.
         </p>
+      </Section>
+
+      <Section
+        title="Appearance"
+        description="Choose how Sayabot looks on this computer. System matches your operating system."
+      >
+        <ThemeToggle variant="segmented" />
       </Section>
 
       <Section

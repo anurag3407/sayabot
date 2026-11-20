@@ -18,12 +18,14 @@ import {
   Library,
   Loader2,
   Monitor,
+  RotateCcw,
   Search,
   Shield,
   Sparkles,
   UserRound,
   Wrench,
   X,
+  Zap,
   type LucideIcon,
 } from "lucide-react"
 import {
@@ -49,7 +51,13 @@ import {
   setAgentStorageProviderAction,
   setAgentWorksOnAction,
   updateBotBasicsAction,
+  updateBotPromptAction,
 } from "@/lib/actions/agents"
+import {
+  RUNTIME_PROMPT_PRESETS,
+  QUICK_RUNTIME_RULES,
+  getCuratedBotTemplate,
+} from "@/lib/curated-bot-templates"
 import { issueAgentApiKey } from "@/lib/actions/bots"
 import { setAlertModeAction, setAlertSoundAction } from "@/lib/actions/profile"
 import { saveOrgSkillAction } from "@/lib/actions/skills"
@@ -132,9 +140,9 @@ const SECTIONS: { id: SectionId; label: string; icon: LucideIcon; keywords: stri
   },
   {
     id: "soul",
-    label: "Soul",
+    label: "System Prompt",
     icon: Sparkles,
-    keywords: "standing instructions prompt rules personality reply style conversational",
+    keywords: "system prompt standing instructions rules personality reply style conversational soul runtime",
   },
   {
     id: "skills",
@@ -360,6 +368,8 @@ export function AgentConfigPanel({
   const [savingSchedule, startSchedule] = useTransition()
   const [savingMode, startMode] = useTransition()
   const [settingUp, startSetup] = useTransition()
+  const [savingPrompt, startPrompt] = useTransition()
+  const [quickRuleText, setQuickRuleText] = useState("")
   const refs = useRef<Partial<Record<SectionId, HTMLElement | null>>>({})
   const searchRef = useRef<HTMLInputElement>(null)
   const loadedAgentId = useRef<string | null>(null)
@@ -503,6 +513,54 @@ export function AgentConfigPanel({
       showToast({ message: "Saved" })
       router.refresh()
     })
+  }
+
+  function savePrompt(nextPrompt = prompt) {
+    const trimmed = nextPrompt.trim()
+    if (trimmed === (bot.systemPrompt ?? "").trim()) return
+    setError(null)
+    startPrompt(async () => {
+      const result = await updateBotPromptAction({
+        orgSlug,
+        agentId: bot.id,
+        systemPrompt: trimmed,
+        roomId,
+      })
+      if (!result.ok) {
+        setError(result.error ?? "Could not update prompt")
+        showToast({ tone: "danger", message: result.error ?? "Could not update prompt" })
+        return
+      }
+      bot.systemPrompt = trimmed
+      setPrompt(trimmed)
+      showToast({ tone: "success", message: `System prompt updated for @${bot.handle} · Active on next turn` })
+      router.refresh()
+    })
+  }
+
+  function appendPromptRule(rule: string) {
+    const cleanRule = rule.trim()
+    if (!cleanRule) return
+    const current = prompt.trim()
+    const next = current ? `${current}\n- ${cleanRule}` : `- ${cleanRule}`
+    setPrompt(next)
+  }
+
+  function applyPreset(presetPrompt: string, mode: "append" | "replace") {
+    if (mode === "replace") {
+      setPrompt(presetPrompt)
+    } else {
+      const current = prompt.trim()
+      setPrompt(current ? `${current}\n\n${presetPrompt}` : presetPrompt)
+    }
+  }
+
+  function resetToTemplate() {
+    const match = getCuratedBotTemplate(bot.handle) || getCuratedBotTemplate(bot.displayName)
+    if (match) {
+      setPrompt(match.systemPrompt)
+      showToast({ message: `Loaded ${match.name} template prompt (click Update to save)` })
+    }
   }
 
   function saveCaps(next: AgentCapabilities) {
@@ -850,7 +908,7 @@ export function AgentConfigPanel({
       label: "Give it a name and a look",
       done: name.trim().length > 0 && Boolean(look.shape || look.tone),
     },
-    { id: "soul", label: "Write its standing instructions", done: prompt.trim().length > 40 },
+    { id: "soul", label: "Set system prompt (standing instructions)", done: prompt.trim().length > 40 },
     {
       id: "computer",
       label: "Choose where it works",
@@ -917,6 +975,36 @@ export function AgentConfigPanel({
           <Card>
             <p className="text-[15px] font-medium text-text">{name.trim() || bot.displayName}</p>
             <p className="mt-0.5 text-[12.5px] text-faint">@{bot.handle}</p>
+          </Card>
+          <Card>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="text-[13px] font-semibold text-text">System Prompt</p>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-ok/10 px-2 py-0.5 text-[10.5px] font-medium text-ok">
+                    <span className="h-1.5 w-1.5 rounded-full bg-ok animate-pulse" />
+                    Runtime Active
+                  </span>
+                </div>
+                <p className="mt-2 line-clamp-3 rounded-xl border border-line bg-raised/50 p-2.5 font-mono text-[12px] leading-relaxed text-text">
+                  {prompt.trim() || "No standing instructions set yet."}
+                </p>
+              </div>
+            </div>
+            <div className="mt-3 flex items-center justify-between border-t border-line/60 pt-2.5">
+              <span className="text-[11.5px] text-faint">
+                {prompt.trim()
+                  ? `${prompt.trim().split(/\s+/).filter(Boolean).length} words · ${prompt.trim().length} chars`
+                  : "Empty prompt"}
+              </span>
+              <button
+                type="button"
+                onClick={() => go("soul")}
+                className="inline-flex items-center gap-1 text-[12.5px] font-medium text-accent hover:underline"
+              >
+                Edit runtime prompt →
+              </button>
+            </div>
           </Card>
           <Card>
             <button
@@ -1096,45 +1184,178 @@ export function AgentConfigPanel({
     }
 
     if (id === "soul") {
+      const isDirty = prompt.trim() !== (bot.systemPrompt ?? "").trim()
+      const wordCount = prompt.trim() ? prompt.trim().split(/\s+/).filter(Boolean).length : 0
+      const charCount = prompt.length
+      const templateMatch = getCuratedBotTemplate(bot.handle) || getCuratedBotTemplate(bot.displayName)
+
       return (
-        <div className="space-y-3">
-          <p className="text-[13px] leading-relaxed text-muted">
-            Who this bot is and the rules it never breaks. Put a step-by-step procedure in a skill.
-          </p>
-          <textarea
-            value={prompt}
-            disabled={!canEdit || savingBasics}
-            onChange={(event) => setPrompt(event.target.value)}
-            onBlur={() => saveBasics()}
-            rows={8}
-            maxLength={20000}
-            placeholder="Who this bot is, and what it never does."
-            className={cn(field, "resize-y py-3 leading-relaxed")}
-          />
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <div className="flex items-center gap-2">
+                <p className="text-[14px] font-semibold text-text">Runtime System Prompt</p>
+                {isDirty ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-warn/15 px-2 py-0.5 text-[11px] font-medium text-warn">
+                    <span className="h-1.5 w-1.5 rounded-full bg-warn" />
+                    Unsaved changes
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-ok/15 px-2 py-0.5 text-[11px] font-medium text-ok">
+                    <span className="h-1.5 w-1.5 rounded-full bg-ok animate-pulse" />
+                    Active at runtime
+                  </span>
+                )}
+              </div>
+              <p className="mt-0.5 text-[12.5px] leading-relaxed text-muted">
+                Standing instructions that shape @{bot.handle}&apos;s identity, goals, and rules. Updating this takes effect immediately on its next turn.
+              </p>
+            </div>
+          </div>
+
+          {/* Quick Presets Toolbar */}
+          <div className="rounded-xl border border-line bg-panel/50 p-3">
+            <div className="flex items-center justify-between">
+              <span className="flex items-center gap-1.5 text-[12px] font-medium text-muted">
+                <Zap className="h-3.5 w-3.5 text-accent" />
+                Quick Runtime Presets
+              </span>
+              {templateMatch ? (
+                <button
+                  type="button"
+                  onClick={resetToTemplate}
+                  className="flex items-center gap-1 text-[11.5px] text-faint hover:text-text transition-colors"
+                  title={`Reset to original ${templateMatch.name} template prompt`}
+                >
+                  <RotateCcw className="h-3 w-3" />
+                  Reset to {templateMatch.name}
+                </button>
+              ) : null}
+            </div>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {RUNTIME_PROMPT_PRESETS.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => applyPreset(preset.prompt, "append")}
+                  title={`${preset.tagline}\n(Click to append to prompt)`}
+                  className="inline-flex items-center gap-1 rounded-lg border border-line bg-raised px-2.5 py-1 text-[11.5px] font-medium text-muted hover:border-line-strong hover:text-text transition-colors"
+                >
+                  + {preset.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Prompt Textarea */}
+          <div className="space-y-1.5">
+            <textarea
+              value={prompt}
+              disabled={savingPrompt || savingBasics}
+              onChange={(event) => setPrompt(event.target.value)}
+              rows={10}
+              maxLength={20000}
+              placeholder="Who this bot is, its personality, technical focus, and strict operating rules."
+              className={cn(
+                field,
+                "resize-y py-3 font-mono text-[13px] leading-relaxed",
+                isDirty ? "border-accent/40 focus:border-accent" : "",
+              )}
+            />
+            <div className="flex items-center justify-between px-1 text-[11.5px] text-faint">
+              <span>
+                {wordCount} {wordCount === 1 ? "word" : "words"} · {charCount.toLocaleString()} / 20,000 chars
+              </span>
+              {isDirty ? (
+                <span className="text-warn font-medium">Remember to apply changes below</span>
+              ) : (
+                <span className="text-ok">Bot is using this prompt</span>
+              )}
+            </div>
+          </div>
+
+          {/* Quick Rule Appender */}
+          <div className="space-y-2 rounded-xl border border-line/60 bg-panel/30 p-3">
+            <p className="text-[12px] font-medium text-muted">Append a runtime rule or constraint</p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={quickRuleText}
+                onChange={(e) => setQuickRuleText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault()
+                    if (quickRuleText.trim()) {
+                      appendPromptRule(quickRuleText)
+                      setQuickRuleText("")
+                    }
+                  }
+                }}
+                placeholder="e.g. Always respond in tight bullet points"
+                className={cn(field, "h-9 text-[12.5px]")}
+              />
+              <button
+                type="button"
+                disabled={!quickRuleText.trim()}
+                onClick={() => {
+                  appendPromptRule(quickRuleText)
+                  setQuickRuleText("")
+                }}
+                className="inline-flex h-9 shrink-0 items-center gap-1 rounded-xl bg-raised px-3 text-[12px] font-medium text-text hover:bg-hover disabled:opacity-40"
+              >
+                + Add Rule
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-1 pt-1">
+              {QUICK_RUNTIME_RULES.slice(0, 3).map((rule) => (
+                <button
+                  key={rule}
+                  type="button"
+                  onClick={() => appendPromptRule(rule)}
+                  className="rounded-md border border-line/50 px-2 py-0.5 text-[11px] text-faint hover:border-line-strong hover:text-text transition-colors"
+                >
+                  + {rule.slice(0, 42)}…
+                </button>
+              ))}
+            </div>
+          </div>
+
           {error ? (
             <p role="alert" className="text-[13px] text-danger">
               {error}
             </p>
           ) : null}
-          {canEdit ? (
-            <div className="flex justify-end">
+
+          {/* Action buttons */}
+          <div className="flex items-center justify-between pt-1">
+            {isDirty ? (
               <button
                 type="button"
-                disabled={
-                  savingBasics ||
-                  !name.trim() ||
-                  (name.trim() === bot.displayName && prompt.trim() === bot.systemPrompt.trim())
-                }
-                onClick={() => saveBasics()}
-                className="inline-flex h-9 items-center gap-2 rounded-xl bg-accent px-4 text-[13px] font-semibold text-void disabled:opacity-40"
+                onClick={() => setPrompt(bot.systemPrompt ?? "")}
+                disabled={savingPrompt}
+                className="inline-flex items-center gap-1 text-[12.5px] text-faint hover:text-text transition-colors"
               >
-                {savingBasics ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-                Save
+                <RotateCcw className="h-3.5 w-3.5" />
+                Discard changes
               </button>
-            </div>
-          ) : (
-            <p className="text-[12.5px] text-faint">Only a workspace admin can edit this bot.</p>
-          )}
+            ) : (
+              <span className="text-[12px] text-faint">Changes apply instantly to the next message</span>
+            )}
+
+            <button
+              type="button"
+              disabled={savingPrompt || !isDirty}
+              onClick={() => savePrompt()}
+              className="inline-flex h-9 items-center gap-2 rounded-xl bg-accent px-4 text-[13px] font-semibold text-void hover:opacity-90 disabled:opacity-40 transition-all shadow-sm"
+            >
+              {savingPrompt ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Zap className="h-3.5 w-3.5" />
+              )}
+              Update Runtime Prompt
+            </button>
+          </div>
           <div
             className="rounded-2xl border border-line bg-panel/50 p-3.5"
             role="radiogroup"

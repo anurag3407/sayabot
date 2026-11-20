@@ -3,6 +3,7 @@ import { notFound } from "next/navigation"
 import { requireOrgAccess } from "@/lib/auth"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { NewBotForm } from "@/components/agents/new-bot-form"
+import { getCuratedBotTemplate } from "@/lib/curated-bot-templates"
 
 export const metadata: Metadata = { title: "New bot" }
 
@@ -34,7 +35,13 @@ export default async function NewBotPage({
       : Promise.resolve({ data: null }),
   ])
 
-  const usableTemplate = template && (template.org_id === null || template.org_id === access.org.id) ? template : null
+  const curated = templateParam ? getCuratedBotTemplate(templateParam) : null
+  const usableTemplate =
+    template && (template.org_id === null || template.org_id === access.org.id)
+      ? template
+      : curated
+        ? { id: curated.slug, name: curated.name, system_prompt: curated.systemPrompt }
+        : null
   const inRoom = room && room.org_id === access.org.id && room.kind !== "dm" ? room : null
 
   return (

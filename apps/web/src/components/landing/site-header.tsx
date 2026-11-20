@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
 import { ArrowRight, ArrowUpRight, Menu, X } from "lucide-react"
 import { SayabotMark } from "./sayabot-mark"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 const NAV = [
   { href: "/#collab", label: "Collaboration" },
@@ -55,6 +56,10 @@ export function SiteHeader() {
           </nav>
 
           <div className="flex items-center gap-1.5">
+            <ThemeToggle
+              variant="icon"
+              className="h-9 w-9 border-0 bg-transparent text-muted hover:bg-raised/70 hover:text-text"
+            />
             <Link href="/login" className="hidden h-9 items-center rounded-lg px-3 text-[13px] text-muted transition-colors hover:text-text sm:inline-flex">
               Sign in
             </Link>
@@ -93,6 +98,9 @@ export function SiteHeader() {
               <ArrowUpRight className="h-4 w-4 text-faint" />
             </a>
           ))}
+          <div className="mt-2 border-t border-line pt-2">
+            <ThemeToggle variant="menu-item" />
+          </div>
         </nav>
       )}
     </header>

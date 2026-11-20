@@ -18,7 +18,7 @@ export async function GET(request: Request) {
   const url = new URL(request.url)
   const appUrl = getAppUrl()
   const back = (slug: string | null, params: Record<string, string>) => {
-    const target = new URL(slug ? `/${slug}/marketplace` : "/", appUrl)
+    const target = new URL(slug ? `/${slug}/connectors` : "/", appUrl)
     for (const [key, value] of Object.entries(params)) target.searchParams.set(key, value)
     return NextResponse.redirect(target)
   }

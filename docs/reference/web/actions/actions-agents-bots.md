@@ -61,6 +61,14 @@ The streamlined "new bot" path takes a plain object: `{ orgSlug, name, instructi
 
 Changes only `display_name` (1–60 chars) and `system_prompt` (trimmed, capped at 20,000 chars); the handle stays so @mentions keep working (`agents.ts:444`). The bot's DM room is renamed to match the new display name. Audit `agent.updated`.
 
+### `updateBotPromptAction(input: { orgSlug, agentId, systemPrompt, roomId? })`
+
+Allows room members (`getRoomAccess`) or workspace admins (`adminOrgAccess`) to update an agent's system prompt during runtime on the fly (`agents.ts:526`).
+- Trims and bounds prompt to 20,000 characters.
+- Audits `agent.updated` with `{ fields: ["system_prompt"], runtime: true, roomId }`.
+- Revalidates the workspace org.
+- Pairs with real-time orchestrator turn synchronization: the turn coordinator (`apps/orchestrator/src/coordinator/index.ts`) re-fetches the fresh agent configuration from PostgreSQL on each round, allowing runtime prompt edits to steer the bot immediately on subsequent turns or `/goal` execution rounds without requiring a restart or recreating the bot.
+
 ---
 
 ## 🧭 Model and runner selection

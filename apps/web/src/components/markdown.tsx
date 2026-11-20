@@ -9,10 +9,11 @@ import { isPdfUrl, PdfViewer } from "@/components/chat/pdf-viewer"
 import { MermaidErrorFallback } from "@/components/chat/mermaid-error"
 import { Callout, parseAlert } from "@/components/chat/callout"
 import { ImageWithLightbox } from "@/components/chat/image-lightbox"
+import { useTheme } from "@/components/theme-provider"
 import { ExternalLink } from "lucide-react"
 
 // Create dark-mode configured Mermaid plugin
-const mermaidPlugin = createMermaidPlugin({
+const mermaidPluginDark = createMermaidPlugin({
   config: {
     startOnLoad: false,
     theme: "dark",
@@ -60,6 +61,55 @@ const mermaidPlugin = createMermaidPlugin({
   },
 })
 
+// Create light-mode configured Mermaid plugin
+const mermaidPluginLight = createMermaidPlugin({
+  config: {
+    startOnLoad: false,
+    theme: "default",
+    securityLevel: "loose",
+    fontFamily: "var(--font-mono), monospace",
+    suppressErrorRendering: true,
+    themeVariables: {
+      darkMode: false,
+      background: "#ffffff",
+      mainBkg: "#f8f9fa",
+      primaryColor: "#ededf1",
+      primaryTextColor: "#18181b",
+      primaryBorderColor: "#d2d2db",
+      lineColor: "#6d5ce8",
+      secondaryColor: "#f5f5f7",
+      tertiaryColor: "#e4e4ea",
+      textColor: "#18181b",
+      fontSize: "13px",
+      fontFamily: "var(--font-mono), monospace",
+      nodeBorder: "#d2d2db",
+      clusterBkg: "#f5f5f7",
+      clusterBorder: "#d2d2db",
+      edgeLabelBackground: "#ffffff",
+      actorBkg: "#ffffff",
+      actorBorder: "#d2d2db",
+      actorTextColor: "#18181b",
+      actorLineColor: "#7a7a85",
+      signalColor: "#18181b",
+      signalTextColor: "#18181b",
+      labelBoxBkgColor: "#ffffff",
+      labelBoxBorderColor: "#d2d2db",
+      labelTextColor: "#18181b",
+      loopTextColor: "#18181b",
+      noteBorderColor: "#d2d2db",
+      noteBkgColor: "#f5f5f7",
+      noteTextColor: "#18181b",
+      activationBorderColor: "#6d5ce8",
+      activationBkgColor: "rgba(109, 92, 232, 0.12)",
+      sequenceNumberColor: "#ffffff",
+      git0: "#6d5ce8",
+      git1: "#0550ae",
+      git2: "#2e9a59",
+      git3: "#a06a12",
+    },
+  },
+})
+
 // Create KaTeX math plugin with single dollar math enabled
 const mathPlugin = createMathPlugin({ singleDollarTextMath: true })
 
@@ -67,13 +117,6 @@ const mathPlugin = createMathPlugin({ singleDollarTextMath: true })
 const pdfRenderer: CustomRenderer = {
   language: ["pdf", "pdf-viewer"],
   component: ({ code }) => <PdfViewer url={code.trim()} />,
-}
-
-const plugins = {
-  code,
-  math: mathPlugin,
-  mermaid: mermaidPlugin,
-  renderers: [pdfRenderer],
 }
 
 function isMediaUrl(url: string | null | undefined): { isVideo: boolean; isAudio: boolean } {
@@ -92,6 +135,16 @@ export function Markdown({
   content: string
   streaming?: boolean
 }) {
+  const { resolvedTheme } = useTheme()
+  const plugins = useMemo(
+    () => ({
+      code,
+      math: mathPlugin,
+      mermaid: resolvedTheme === "light" ? mermaidPluginLight : mermaidPluginDark,
+      renderers: [pdfRenderer],
+    }),
+    [resolvedTheme],
+  )
   const components: Components = useMemo(
     () => ({
       a: ({ href, children, ...props }) => {

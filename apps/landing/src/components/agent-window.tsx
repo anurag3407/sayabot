@@ -223,6 +223,29 @@ function UsersIcon({ className }: { className?: string }) {
   )
 }
 
+function CableIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M4 9a2 2 0 0 1-2-2V5h6v2a2 2 0 0 1-2 2Z" />
+      <path d="M3 5V3" />
+      <path d="M7 5V3" />
+      <path d="M19 15a2 2 0 0 1-2-2v-2h6v2a2 2 0 0 1-2 2Z" />
+      <path d="M17 11V9" />
+      <path d="M21 11V9" />
+      <path d="M5 9v3a6 6 0 0 0 6 6h2a6 6 0 0 1 6 6v1" />
+    </svg>
+  )
+}
+
 function StoreIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -666,6 +689,10 @@ export function AgentWindow() {
                   <div className="aw-tool-item">
                     <UsersIcon className="aw-tool-icon" />
                     <span>Team</span>
+                  </div>
+                  <div className="aw-tool-item">
+                    <CableIcon className="aw-tool-icon" />
+                    <span>Connectors</span>
                   </div>
                   <div className="aw-tool-item">
                     <StoreIcon className="aw-tool-icon" />

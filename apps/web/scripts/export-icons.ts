@@ -184,6 +184,14 @@ async function png(svg: string, file: string, size?: number | [number, number]) 
   await pipeline.png().toFile(file)
 }
 
+async function webp(svg: string, file: string, size?: number | [number, number]) {
+  mkdirSync(dirname(file), { recursive: true })
+  let pipeline = sharp(Buffer.from(svg), { density: 288 })
+  if (size)
+    pipeline = Array.isArray(size) ? pipeline.resize(size[0], size[1]) : pipeline.resize(size, size)
+  await pipeline.webp({ lossless: true }).toFile(file)
+}
+
 function svgFile(svg: string, file: string) {
   mkdirSync(dirname(file), { recursive: true })
   writeFileSync(file, `${svg}\n`)
@@ -192,12 +200,21 @@ function svgFile(svg: string, file: string) {
 // ---------- the variants ----------
 
 const rounded = icon({ radius: 229, mascotScale: 0.5 })
+const circle = icon({ radius: 512, mascotScale: 0.5 })
 const square = icon({ mascotScale: 0.5 })
 const mac = icon({ inset: 100, radius: 185, mascotScale: 0.5, shadow: true })
 const maskable = icon({ mascotScale: 0.38 })
-const adaptive = bare(1024, 0.36)
+const adaptive = bare(1024, 0.42)
 const splash = bare(1024, 0.5)
 const glyph = bare(96, 0.7, true)
+
+const ANDROID_DENSITIES = [
+  { name: "mdpi", icon: 48, foreground: 108, splash: 288 },
+  { name: "hdpi", icon: 72, foreground: 162, splash: 432 },
+  { name: "xhdpi", icon: 96, foreground: 216, splash: 576 },
+  { name: "xxhdpi", icon: 144, foreground: 324, splash: 864 },
+  { name: "xxxhdpi", icon: 192, foreground: 432, splash: 1152 },
+]
 
 const brand = out("assets/branding/saya-icon")
 svgFile(rounded, join(brand, "saya-icon-rounded.svg"))
@@ -240,19 +257,25 @@ await Promise.all([
     writeFileSync(out("apps/landing/public/favicon.ico"), buffer),
   ),
   png(ogCard(), out("apps/landing/public/og.png"), [1200, 630]),
-  // desktop
-  png(mac, out("apps/desktop/assets/icon.png"), 1024),
+  // desktop (bare mascot on transparent background so dragged icon has no bg tile)
+  png(bare(1024, 0.82), out("apps/desktop/assets/icon.png"), 1024),
   Promise.resolve(svgFile(rounded, out("apps/desktop/src/renderer/mark.svg"))),
-  ico(mac, [16, 32, 48, 256]).then((buffer) =>
+  ico(bare(1024, 0.82), [16, 32, 48, 256]).then((buffer) =>
     writeFileSync(out("apps/desktop/build/icon.ico"), buffer),
   ),
-  // mobile
+  // mobile (assets and native Android mipmaps)
   png(square, out("apps/mobile/assets/icon.png"), 1024),
   png(adaptive, out("apps/mobile/assets/adaptive-icon.png"), 1024),
   png(splash, out("apps/mobile/assets/splash-icon.png"), 1024),
   png(rounded, out("apps/mobile/assets/favicon.png"), 48),
   png(rounded, out("apps/mobile/assets/mark.png"), 256),
   png(glyph, out("apps/mobile/assets/notification-icon.png"), 96),
+  ...ANDROID_DENSITIES.flatMap((d) => [
+    webp(adaptive, out(`apps/mobile/android/app/src/main/res/mipmap-${d.name}/ic_launcher_foreground.webp`), d.foreground),
+    webp(rounded, out(`apps/mobile/android/app/src/main/res/mipmap-${d.name}/ic_launcher.webp`), d.icon),
+    webp(circle, out(`apps/mobile/android/app/src/main/res/mipmap-${d.name}/ic_launcher_round.webp`), d.icon),
+    png(splash, out(`apps/mobile/android/app/src/main/res/drawable-${d.name}/splashscreen_logo.png`), d.splash),
+  ]),
 ])
 
 console.log("Wrote the Saya icon to web, landing, desktop, mobile and assets/branding/saya-icon")

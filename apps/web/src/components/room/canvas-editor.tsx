@@ -8,6 +8,7 @@ import { MonacoBinding } from "y-monaco"
 import { createSupabaseBrowserClient } from "@/lib/supabase/client"
 import { AvatarStack } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+import { useTheme } from "@/components/theme-provider"
 import { colorForUser, peersFromAwareness, remoteCursorCss, type CanvasPeer } from "@/lib/canvas-presence"
 import type { CanvasView } from "@/lib/types"
 
@@ -41,6 +42,8 @@ export function CanvasEditor({
   const [session, setSession] = useState<{ doc: Y.Doc; provider: HocuspocusProvider } | null>(null)
   const [connection, setConnection] = useState<CanvasConnection>("connecting")
   const [peers, setPeers] = useState<CanvasPeer[]>([])
+  const { resolvedTheme } = useTheme()
+  const editorTheme = resolvedTheme === "light" ? "mesh-light" : "mesh-dark"
   const bindingRef = useRef<MonacoBinding | null>(null)
 
   useEffect(() => {
@@ -125,7 +128,7 @@ export function CanvasEditor({
           height="100%"
           language={languageFor(canvas)}
           path={`canvas-${canvas.id}`}
-          theme="mesh-dark"
+          theme={editorTheme}
           beforeMount={(monaco) => {
             monaco.editor.defineTheme("mesh-dark", {
               base: "vs-dark",
@@ -157,6 +160,38 @@ export function CanvasEditor({
                 "dropdown.background": "#151b17",
                 "scrollbarSlider.background": "#35403766",
                 "minimap.background": "#0b0e0c",
+              },
+            })
+            monaco.editor.defineTheme("mesh-light", {
+              base: "vs",
+              inherit: true,
+              rules: [
+                { token: "comment", foreground: "6e7781", fontStyle: "italic" },
+                { token: "string", foreground: "0a3069" },
+                { token: "keyword", foreground: "cf222e" },
+                { token: "number", foreground: "0550ae" },
+                { token: "type", foreground: "953800" },
+                { token: "delimiter", foreground: "57606a" },
+              ],
+              colors: {
+                "editor.background": "#ffffff",
+                "editor.foreground": "#1f2328",
+                "editorLineNumber.foreground": "#8c959f",
+                "editorLineNumber.activeForeground": "#1f2328",
+                "editor.lineHighlightBackground": "#f6f8fa",
+                "editor.lineHighlightBorder": "#00000000",
+                "editorCursor.foreground": "#6d5ce8",
+                "editor.selectionBackground": "#dbe4ff",
+                "editor.inactiveSelectionBackground": "#e8eefc",
+                "editorIndentGuide.background1": "#d0d7de",
+                "editorIndentGuide.activeBackground1": "#8c959f",
+                "editorGutter.background": "#ffffff",
+                "editorWidget.background": "#ffffff",
+                "editorWidget.border": "#d0d7de",
+                "input.background": "#f6f8fa",
+                "dropdown.background": "#ffffff",
+                "scrollbarSlider.background": "#d0d7de66",
+                "minimap.background": "#ffffff",
               },
             })
           }}

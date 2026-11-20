@@ -616,7 +616,12 @@ export async function processRoomMessage(
       const next = queue.shift()
       if (!next) continue
       const fromLead = leadQueued.delete(next.agentId)
-      const agentRow = roomAgentRows.find(({ agent }) => agent.id === next.agentId)?.agent
+      const [freshAgent] = await getDb()
+        .select()
+        .from(agents)
+        .where(eq(agents.id, next.agentId))
+        .limit(1)
+      const agentRow = freshAgent ?? roomAgentRows.find(({ agent }) => agent.id === next.agentId)?.agent
       if (!agentRow) continue
 
       await setSession(session.id, { botTurnsUsed, queue, state: "active" })

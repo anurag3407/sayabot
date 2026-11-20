@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { redirect } from "next/navigation"
+import { Sparkles } from "lucide-react"
 import { agentModelText } from "@sayabot/core"
 import { isOrgAdmin, requireRoomAccess } from "@/lib/auth"
 import { sayaAiPublic } from "@/lib/env"
@@ -180,50 +181,76 @@ export default async function RoomSettingsPage({
                     const seen = lastSeen.get(agent.id) ?? null
                     const open = seen ? now - new Date(seen).getTime() <= APP_ONLINE_MS : false
                     return (
-                      <li key={agent.id} className="flex flex-wrap items-center gap-2 py-2.5">
-                        <span className="w-5 font-mono text-[11px] text-faint">{position + 1}</span>
-                        <span className="font-mono text-[12px] text-text">@{agent.handle}</span>
-                        <span className="text-[12px] text-muted">{agent.displayName}</span>
-                        {agent.id === leadId ? (
-                          <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[11px] text-accent">
-                            Lead
+                      <li key={agent.id} className="py-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="w-5 font-mono text-[11px] text-faint">{position + 1}</span>
+                          <span className="font-mono text-[12px] font-medium text-text">@{agent.handle}</span>
+                          <span className="text-[12px] text-muted">{agent.displayName}</span>
+                          {agent.id === leadId ? (
+                            <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[11px] font-medium text-accent">
+                              Lead
+                            </span>
+                          ) : null}
+                          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-400">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                            Runtime Prompt
                           </span>
-                        ) : null}
-                        {agent.kind === "external" ? (
-                          <span
-                            className={
-                              open
-                                ? "rounded-full bg-ok/15 px-2 py-0.5 text-[11px] text-ok"
-                                : "rounded-full bg-raised px-2 py-0.5 text-[11px] text-muted"
-                            }
-                            title={
-                              seen ? `Last called in ${relativeTime(seen)}` : "Hasn't connected yet"
-                            }
-                          >
-                            {open
-                              ? "Your app · open now"
-                              : seen
-                                ? `Your app · not open (seen ${relativeTime(seen)})`
-                                : "Your app · not connected yet"}
-                          </span>
-                        ) : (
-                          <span className="font-mono text-[11px] text-faint">
-                            {agentModelText(agent, saya)}
-                          </span>
-                        )}
-                        <div className="ml-auto">
-                          <ActionForm
-                            action={removeAgentFromRoom}
-                            submitLabel="Remove"
-                            submitVariant="danger"
-                            pendingLabel="Removing…"
-                            confirmLabel="Confirm remove"
-                          >
-                            <input type="hidden" name="orgSlug" value={orgSlug} />
-                            <input type="hidden" name="roomId" value={roomId} />
-                            <input type="hidden" name="agentId" value={agent.id} />
-                          </ActionForm>
+                          {agent.kind === "external" ? (
+                            <span
+                              className={
+                                open
+                                  ? "rounded-full bg-ok/15 px-2 py-0.5 text-[11px] text-ok"
+                                  : "rounded-full bg-raised px-2 py-0.5 text-[11px] text-muted"
+                              }
+                              title={
+                                seen ? `Last called in ${relativeTime(seen)}` : "Hasn't connected yet"
+                              }
+                            >
+                              {open
+                                ? "Your app · open now"
+                                : seen
+                                  ? `Your app · not open (seen ${relativeTime(seen)})`
+                                  : "Your app · not connected yet"}
+                            </span>
+                          ) : (
+                            <span className="font-mono text-[11px] text-faint">
+                              {agentModelText(agent, saya)}
+                            </span>
+                          )}
+                          <div className="ml-auto flex items-center gap-2">
+                            <Link
+                              href={`/${orgSlug}/r/${roomId}?configure=${agent.id}#soul`}
+                              className="inline-flex items-center gap-1 rounded-md border border-line bg-raised px-2.5 py-1 text-[11px] font-medium text-text hover:border-line-strong hover:bg-hover transition-colors"
+                              title="Edit system prompt and personality during runtime in the bot sidebar"
+                            >
+                              <Sparkles className="h-3 w-3 text-accent" />
+                              Edit in sidebar
+                            </Link>
+                            <ActionForm
+                              action={removeAgentFromRoom}
+                              submitLabel="Remove"
+                              submitVariant="danger"
+                              pendingLabel="Removing…"
+                              confirmLabel="Confirm remove"
+                            >
+                              <input type="hidden" name="orgSlug" value={orgSlug} />
+                              <input type="hidden" name="roomId" value={roomId} />
+                              <input type="hidden" name="agentId" value={agent.id} />
+                            </ActionForm>
+                          </div>
                         </div>
+                        {agent.systemPrompt?.trim() ? (
+                          <div className="mt-2 ml-7 rounded-lg border border-line/60 bg-raised/40 px-3 py-2 text-[11.5px] font-mono text-muted leading-relaxed line-clamp-2">
+                            <span className="font-sans text-[10px] uppercase font-semibold tracking-wider text-faint block mb-0.5">
+                              Active System Prompt:
+                            </span>
+                            {agent.systemPrompt}
+                          </div>
+                        ) : (
+                          <p className="mt-1 ml-7 text-[11.5px] text-faint italic">
+                            No custom system prompt set (using default persona).
+                          </p>
+                        )}
                       </li>
                     )
                   })}

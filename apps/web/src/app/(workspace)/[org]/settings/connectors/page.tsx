@@ -120,13 +120,13 @@ export default async function ConnectorsSettingsPage({
       <div className="flex flex-col gap-2 rounded-lg border border-border bg-panel p-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-[12px] text-muted">
           Looking for Notion, Jira, Linear, Canva, CRMs or finance apps? Over 200 more apps connect
-          with a single sign-in from the Marketplace.
+          with a single sign-in from Connectors.
         </p>
         <Link
-          href={`/${orgSlug}/marketplace`}
+          href={`/${orgSlug}/connectors`}
           className="shrink-0 text-[12px] font-medium text-accent hover:underline"
         >
-          Open Marketplace →
+          Open Connectors →
         </Link>
       </div>
 

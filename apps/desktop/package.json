@@ -16,6 +16,7 @@
     "package:win:x64": "pnpm build && node scripts/make-ico.mjs && electron-builder --win nsis zip --x64 --publish never",
     "package:win:arm64": "pnpm build && node scripts/make-ico.mjs && electron-builder --win nsis zip --arm64 --publish never",
     "build:usage": "esbuild src/usage/index.ts --bundle --platform=node --target=node20 --format=cjs --outfile=dist/usage.js",
+    "build:dmg-background": "node scripts/generate-dmg-background.mjs",
     "test": "vitest run"
   },
   "devDependencies": {

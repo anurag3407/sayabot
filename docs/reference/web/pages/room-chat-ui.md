@@ -33,7 +33,7 @@ Opening a bot (the chat pill, the pencil, "Edit bot", or `?configure=1`) puts `A
 | :--- | :--- |
 | Overview | Setup checklist, "Set up with the bot" (sends a short `@handle` prompt via `sendMessage`), name, what it does (schedules, else skills), and where it works plus connected apps |
 | Identity | Display name (`updateBotBasicsAction` on blur) and mascot shape, expression and colour (`setAgentLookAction` → `params.mascot`). The highlighted shape and colour are the face on screen, including the name's default from `resolveMascotLook`. Choosing a shape keeps that colour |
-| Soul | Standing instructions (the system prompt, 20,000 characters, saved on blur and with Save) and reply style (`setAgentReplyStyleAction` → `params.replyStyle`: `default` or `conversational`) |
+| Soul | System prompt & instructions (standing instructions up to 20,000 characters with live runtime update via `updateBotPromptAction`, live runtime active indicator badge, quick prompt presets e.g. Concise / Code Reviewer / Debugger / Architect, quick rule appender chips, character/word counters, and instant runtime sync across upcoming turns) and reply style (`setAgentReplyStyleAction` → `params.replyStyle`: `default` or `conversational`) |
 | Skills | Org skills from `skills`, plus `saveOrgSkillAction` to add one. The list shows each skill's title. The bot loads it by name; it is not a composer shortcut |
 | Tools | Boolean capabilities (search, documents, canvas, tasks, terminal, GitHub, database, MCP apps, connectors, helpers, schedules, secrets). Connected apps in Access is the connectors flag, not MCP |
 | Memory | `capabilities.memory`, this bot's notes from `memories` (add with `rememberAction`, pin, remove), and a note that workspace upkeep prunes expired notes. When the bot has a computer, the mirror path `/home/bot/.saaya/memory/` is shown |
@@ -47,7 +47,7 @@ Opening a bot (the chat pill, the pencil, "Edit bot", or `?configure=1`) puts `A
 | History | The latest tool calls, then Activity |
 | Usage | Last 30 days from `usage_rollup` for this bot, plus a link to `/analytics` |
 
-Workspace admins can change the bot. Anyone in the chat can change the execution mode and their own alerts. Invited bots (`kind: "external"`) keep their own tools, memory, and model, and they are the only bots that can issue an API key from this pane. "Canvas" in the header returns to `RoomSidePanel`. Delete stays on `/agents/[agentId]`.
+Workspace admins can change the bot. Anyone in the chat can update the bot's runtime prompt via `updateBotPromptAction`, change the execution mode and their own alerts. Invited bots (`kind: "external"`) keep their own tools, memory, and model, and they are the only bots that can issue an API key from this pane. "Canvas" in the header returns to `RoomSidePanel`. Delete stays on `/agents/[agentId]`.
 
 `loadRoomPageData` selects `agents.capabilities` so the toggles show the saved flags rather than the defaults. The room page also loads org skills, connector grants for the bots in the chat, a 30-day `usage_rollup` for those bots, and their memory notes (title and pin only).
 

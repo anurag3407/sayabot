@@ -35,7 +35,7 @@ One column, top to bottom:
   - **Archived** chats behind a count toggle.
 - **ThreadRow** — name, pinned pin, relative `shortTime`, last message preview ("Say hello" for untouched bot DMs), and badges: accent mention count pill, unread dot (not for muted), or a muted BellOff. Its `DetailsMenu` offers: Edit bot (bot DMs) or Chat settings (`<room>/settings`), Copy link (clipboard + toast), Pin/Unpin, Mark as unread, Mute for 8 hours / Mute until I unmute (or Unmute), Archive/Move back.
 - **Row actions** go through `setChatPreferenceAction({ orgSlug, roomId, action, duration })` in a transition; failure toasts, success `router.refresh()`s, and archiving shows a toast with an **Undo** action (`sidebar.tsx:549-561`).
-- **Tools** drawer (bottom, above the account row): Routines, To-dos, Files, Team (`/agents`), Bot store (`/marketplace`).
+- **Tools** drawer (bottom, above the account row): Routines, To-dos, Files, Team (`/agents`), Connectors (`/connectors`), Bot store (`/bot-store`).
 - **Save your account** — for `user.isGuest`, a bordered row above the account row linking to `/auth/save-account?next=/<org>` (replaces the old top-of-window guest banner and its "Save account" button).
 - **AccountRow** — avatar with a green "update ready" dot when `useAppUpdate().updateReady`; popover shows name/email, an update install button (label switches between "Install Sayabot <version>" for desktop state `available` and "Reload for the new version"), links to Settings, Meetings, Usage, Get the apps (with `appVersion`), Check for updates, Help, and a `signOutAction` form.
 - The top of the sidebar has a soft iris radial color wash, and in the desktop app the 14px header area is drag-enabled with `pl-[84px]` clear of the traffic lights.
@@ -66,6 +66,15 @@ Sayabot Cloud only (fed by `planUsageNotice` in the org layout — admins only, 
 
 ### `button.tsx` — `Button`
 CVA variants: `primary` (accent bg), `secondary` (raised + border, the default), `outline`, `ghost`, `danger`, `quiet`; sizes `sm`/`md`/`lg`/`icon`/`icon-sm` (mobile-first heights, smaller at `md:`). Defaults `type="button"`. Also exports `buttonVariants` for non-button elements.
+
+### Theme System (`theme-provider.tsx`, `theme-toggle.tsx`)
+Sayabot supports seamless switching between dark mode, light mode, and system preference:
+- **`ThemeProvider` & `ThemeScript`** (`components/theme-provider.tsx`): React context exposing `{ theme, resolvedTheme, setTheme, toggleTheme }`. Persists selection in `localStorage` under `sayabot-theme` (`"system" | "dark" | "light"`). An inlined `<ThemeScript />` executes synchronously in `<head>` to prevent Flash of Unstyled Theme (FOUT) before hydration.
+- **`ThemeToggle`** (`components/theme-toggle.tsx`): Tri-mode component with variants:
+  - `icon`: Compact toggle button cycling between themes (used in public headers).
+  - `menu-item`: Interactive segmented item embedded in the workspace sidebar account menu.
+  - `segmented`: Full 3-tab segmented control for system, light, and dark modes (used in `settings/profile`).
+- **Color tokens & Tailwind CSS v4 variables** (`app/globals.css`): Light mode adapts `--color-void` (#f5f5f7), `--color-ink` (#ffffff), `--color-panel` (#ffffff), `--color-raised` (#ededf1), `--color-line` (#e4e4ea), `--color-text` (#18181b), and high-contrast `--color-accent` (#6d5ce8), with dynamic Monaco editor (`mesh-light` vs `mesh-dark`) and Mermaid diagram themes.
 
 ### `avatar.tsx` — `Avatar`, `AvatarStack`, `PresenceLine`
 `Avatar({ name, kind, size, src })`: `kind="system"` renders a bordered `*` glyph; `kind="agent"` renders the seeded `Mascot`; humans render initials (`initials()` from `lib/format.ts`) or the uploaded `src` image in a circle. Sizes sm/md/lg (24/28/40px). `AvatarStack` shows up to `max` (default 5) overlapping avatars with typing-highlight rings and a `+N` overflow. `PresenceLine` renders "X is typing" / "N people are typing" / "just you" / "N others here".
@@ -163,7 +172,7 @@ Clipboard write with `idle/copied/failed` states ("copied" for 1.5 s, "copy fail
 - [Room chat UI](./room-chat-ui.md) — the room view the shell wraps
 - [Settings UI](./settings-ui.md) — the settings nav entries surfaced in the palette's Settings group
 - [Analytics / Usage UI](./analytics-usage-ui.md) — `TopBarPlanRings` and the Usage page they link to
-- [Marketplace](./marketplace.md) — the "Bot store" tool link and brand logos in action
+- [Marketplace & Connectors](./marketplace.md) — the "Connectors" and "Bot store" tool links and brand logos in action
 - [Landing page](./landing-page.md) — the `SayabotMark` and `Mascot` components shared with marketing
 - [lib-reference](./lib-reference.md) — `format.ts` consumers and the rest of `lib/`
 - ../../architecture/realtime-and-events.md — the feed `useWorkspaceActivity` consumes

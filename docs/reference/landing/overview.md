@@ -52,9 +52,15 @@ Build-time env (both optional):
 13. **The day** (`day.tsx`, `#day`): a tablist of a sample day (9:00 morning, 11:40 check-in, 2:15 question, 5:00 evening, 3:00 overnight). Auto-advances every 4.2 s while in view until a row is clicked; reduced motion does not autoplay. The note states morning 9:00 and evening 5:00 are the room defaults.
 14. **Homes** (`homes.tsx` + `styles/homes.css`, `#homes`): "Where your agents live." Three cards (on your Mac, on Sayabot Cloud, on your own server), each a sky scene with a notification panel and a status row. `useSequence([4200, 5200])` loops day → night while in view: the sky fades to stars and the sun sets for the moon; the Mac card's pill turns Asleep and its agents switch to the `sleeping` mood; the Cloud and server cards stay awake and an overnight notification (`3:00 AM`) slides in at the top. The Cloud card lists every hosted feature with a **Coming soon** label and has no signup link; its status pill reads "Coming soon". Mac links to `#download`. The server card links to `LINKS.selfHost`. The FAQ answer for where work runs says the Mac app and a server you host work today, and Sayabot Cloud is coming soon.
 15. **Questions** (`faq.tsx`, `#faq`): six `<details>` rows (timeout, facts, sealed keys, where work runs, models, AGPL self-hosting). The `name="faq"` attribute keeps one row open at a time.
-16. **Downloads** (`downloads.tsx`, `#download`): Mac, Windows, Android and Web cards plus an open-source / self-host panel with the clone commands.
+16. **Downloads** (`downloads.tsx`, `#download`): Mac, Windows, Android and Web cards plus an open-source / self-host panel with the clone commands and deep link to the dedicated `/download` page.
 17. **Final CTA** (`final-cta.tsx`): Saya draws itself in outline (`stroke-dashoffset`), fills, opens its eyes and watches the pointer.
 18. **Footer** (`footer.tsx`): link columns and a giant faded wordmark with Hoot peeking out. Product column includes `#memory` and `#faq`.
+
+## Dedicated Download & Platform Pages (`src/app/download`, `desktop`, `apk`)
+
+- **`/download`** (`src/app/download/page.tsx`): Standalone client download directory with interactive OS cards (Mac Apple Silicon & Intel DMGs, Windows x64 & ARM64 NSIS installers, direct Android release APK with phone QR scan code, and Web application), 1-click curl/PowerShell install commands, complete 4-platform capability matrix, and AGPL self-hosting Docker commands.
+- **`/desktop`** (`src/app/desktop/page.tsx`): Canonical desktop client landing page targeting macOS and Windows installers.
+- **`/apk`** (`src/app/apk/page.tsx`): Dedicated Android mobile companion APK page for direct sideloading and push approval setups.
 
 ## Motion system
 

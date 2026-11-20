@@ -57,6 +57,78 @@
   color-scheme: dark;
 }
 
+:root[data-theme="light"],
+html.light {
+  color-scheme: light;
+
+  /* Surfaces, lightest to darkest: page, app surface, cards, hover */
+  --color-void: #f5f5f7;
+  --color-ink: #ffffff;
+  --color-panel: #ffffff;
+  --color-raised: #ededf1;
+  --color-hover: #e4e4e9;
+  --color-line: #e4e4ea;
+  --color-line-strong: #d2d2db;
+  --color-control: #7a7a85;
+  --color-text: #18181b;
+  --color-muted: #5c5c66;
+  --color-faint: #7a7a85;
+
+  /* Iris: accessible contrast in light mode */
+  --color-accent: #6d5ce8;
+  --color-accent-strong: #5b4bd6;
+  --color-accent-soft: rgba(109, 92, 232, 0.12);
+  --color-ok: #2e9a59;
+  --color-warn: #a06a12;
+  --color-danger: #d64545;
+
+  /* Compatibility tokens for streamdown, shadcn, and components */
+  --color-background: #ffffff;
+  --color-foreground: #18181b;
+  --color-sidebar: #fbfbfd;
+  --color-sidebar-foreground: #18181b;
+  --color-border: #e4e4ea;
+  --color-muted-bg: #ededf1;
+  --color-muted-foreground: #5c5c66;
+  --color-primary: #6d5ce8;
+  --color-primary-foreground: #ffffff;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]):not(.dark) {
+    color-scheme: light;
+
+    --color-void: #f5f5f7;
+    --color-ink: #ffffff;
+    --color-panel: #ffffff;
+    --color-raised: #ededf1;
+    --color-hover: #e4e4e9;
+    --color-line: #e4e4ea;
+    --color-line-strong: #d2d2db;
+    --color-control: #7a7a85;
+    --color-text: #18181b;
+    --color-muted: #5c5c66;
+    --color-faint: #7a7a85;
+
+    --color-accent: #6d5ce8;
+    --color-accent-strong: #5b4bd6;
+    --color-accent-soft: rgba(109, 92, 232, 0.12);
+    --color-ok: #2e9a59;
+    --color-warn: #a06a12;
+    --color-danger: #d64545;
+
+    --color-background: #ffffff;
+    --color-foreground: #18181b;
+    --color-sidebar: #fbfbfd;
+    --color-sidebar-foreground: #18181b;
+    --color-border: #e4e4ea;
+    --color-muted-bg: #ededf1;
+    --color-muted-foreground: #5c5c66;
+    --color-primary: #6d5ce8;
+    --color-primary-foreground: #ffffff;
+  }
+}
+
 /* Default border colour. Layered so border-* utilities can still override it. */
 @layer base {
   *,
@@ -117,7 +189,7 @@ select {
 input,
 textarea,
 select {
-  color-scheme: dark;
+  color-scheme: inherit;
 }
 
 /* iOS Safari zooms the page when a focused field is under 16px. */
@@ -555,6 +627,24 @@ input::placeholder {
   border: 1px solid var(--color-line-strong);
   box-shadow: 0 1px 0 rgb(255 255 255 / 0.04) inset, 0 18px 48px -12px rgb(0 0 0 / 0.6);
   backdrop-filter: blur(14px);
+}
+
+:root[data-theme="light"] .surface-pop,
+html.light .surface-pop {
+  background: color-mix(in oklab, var(--color-panel) 96%, transparent);
+  border: 1px solid var(--color-line-strong);
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.9) inset, 0 14px 36px -8px rgb(0 0 0 / 0.12), 0 2px 6px -1px rgb(0 0 0 / 0.05);
+}
+
+:root[data-theme="light"] dialog::backdrop,
+html.light dialog::backdrop {
+  background: rgb(15 23 42 / 0.32);
+}
+
+:root[data-theme="light"] .streamdown pre,
+html.light .streamdown pre {
+  background: #fbfbfd !important;
+  border-color: var(--color-line);
 }
 
 @keyframes pop-in {

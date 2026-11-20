@@ -136,10 +136,10 @@ export function RoomTools({
       {canManage ? (
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <Link
-            href={`/${orgSlug}/marketplace`}
+            href={`/${orgSlug}/connectors`}
             className="inline-flex h-10 items-center rounded-sm border border-line-strong bg-raised px-3 text-[13px] text-text hover:bg-hover md:h-9"
           >
-            Browse apps
+            Browse connectors
           </Link>
           <Button variant="ghost" onClick={() => setAdding((v) => !v)}>
             {adding ? "Cancel" : "Add by link, just for this room"}

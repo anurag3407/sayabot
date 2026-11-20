@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState, type ComponentType } from "react"
 import {
   ArrowLeft,
   Bot,
+  Cable,
   CalendarClock,
   CheckSquare,
   FolderClosed,
@@ -36,7 +37,8 @@ const ALL_PAGES: { key: string; href: string; label: string; icon: NavIcon }[] =
   { key: "files", href: "/files", label: "Files", icon: FolderClosed },
   { key: "meetings", href: "/meetings", label: "Meetings", icon: Users },
   { key: "agents", href: "/agents", label: "Agents", icon: Bot },
-  { key: "marketplace", href: "/marketplace", label: "Find more agents", icon: Store },
+  { key: "connectors", href: "/connectors", label: "Connectors", icon: Cable },
+  { key: "bot-store", href: "/bot-store", label: "Bot store", icon: Store },
   { key: "search", href: "/search", label: "Search", icon: Search },
 ]
 

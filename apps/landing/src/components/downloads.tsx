@@ -101,6 +101,17 @@ export function Downloads() {
           </Reveal>
         </div>
 
+        <div style={{ textAlign: "center", marginTop: "28px", marginBottom: "32px" }}>
+          <a
+            href="/download"
+            className="btn btn-ghost"
+            style={{ display: "inline-flex", gap: "8px", alignItems: "center", padding: "10px 20px" }}
+          >
+            <span>View complete desktop &amp; mobile installation specs</span>
+            <ArrowUpRight />
+          </a>
+        </div>
+
         <Reveal className="oss card" index={1}>
           <div className="oss-copy">
             <GitHubIcon className="oss-icon" />

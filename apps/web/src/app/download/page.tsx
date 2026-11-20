@@ -43,7 +43,7 @@ export default async function DownloadPage() {
           <p className="font-mono text-xs uppercase tracking-widest text-accent">
             Multi-Device Workspace
           </p>
-          <h1 className="mt-3 text-4xl font-medium tracking-tight sm:text-5xl text-white">
+          <h1 className="mt-3 text-4xl font-medium tracking-tight sm:text-5xl text-text">
             Take your agents anywhere.
           </h1>
           <p className="mt-4 text-base leading-relaxed text-muted">
@@ -60,7 +60,7 @@ export default async function DownloadPage() {
             <div className="flex items-start gap-3">
               <Server className="mt-0.5 h-5 w-5 shrink-0 text-accent" />
               <div className="min-w-0 flex-1">
-                <h2 id="connect-title" className="text-base font-medium text-white">
+                <h2 id="connect-title" className="text-base font-medium text-text">
                   Connect your apps to {instanceName()}
                 </h2>
                 <p className="mt-1 text-sm leading-relaxed text-muted">
@@ -70,21 +70,21 @@ export default async function DownloadPage() {
                 <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
                   <a
                     href={connectLink}
-                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-medium text-black transition-colors hover:bg-neutral-200"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-strong"
                   >
                     <AppleIcon className="h-4 w-4" />
                     Open in Sayabot for Mac
                   </a>
                   <a
                     href={connectLink}
-                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-white/10"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-raised px-4 py-2.5 text-sm font-medium text-text transition-colors hover:bg-panel"
                   >
                     <WindowsIcon className="h-4 w-4" />
                     Open in Sayabot for Windows
                   </a>
-                  <div className="flex min-w-0 items-center gap-2 rounded-xl border border-white/10 bg-black/30 px-3 py-2">
+                  <div className="flex min-w-0 items-center gap-2 rounded-xl border border-line bg-panel px-3 py-2">
                     <span className="font-mono text-[11px] text-faint">server</span>
-                    <span className="min-w-0 truncate font-mono text-[13px] text-neutral-200">
+                    <span className="min-w-0 truncate font-mono text-[13px] text-text">
                       {host}
                     </span>
                     <CopyButton text={server} />
@@ -92,7 +92,7 @@ export default async function DownloadPage() {
                 </div>
                 <p className="mt-3 text-xs leading-relaxed text-faint">
                   On your phone, choose <strong>My own server</strong> and enter{" "}
-                  <span className="font-mono text-neutral-300">{host}</span>. On a Mac, use Open
+                  <span className="font-mono text-text">{host}</span>. On a Mac, use Open
                   in Sayabot above — a fresh install starts on this Mac, and Change Server is
                   where you enter this address later.
                 </p>
@@ -104,26 +104,26 @@ export default async function DownloadPage() {
         {/* Download Cards */}
         <div className="mt-14 grid gap-8 lg:grid-cols-3">
           {/* macOS Card */}
-          <div className="relative rounded-3xl border border-white/10 bg-panel p-8 shadow-xl flex flex-col justify-between overflow-hidden">
+          <div className="relative rounded-3xl border border-line bg-panel p-8 shadow-xl flex flex-col justify-between overflow-hidden">
             <div className="absolute top-0 right-0 -mr-6 -mt-6 h-32 w-32 rounded-full bg-accent/10 blur-2xl" />
 
             <div>
               <div className="flex items-center justify-between">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/5 border border-white/10">
-                  <AppleIcon className="h-7 w-7 text-white" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-raised border border-line">
+                  <AppleIcon className="h-7 w-7 text-text" />
                 </div>
                 <span className="rounded-full bg-accent/10 px-3 py-1 text-xs font-mono text-accent border border-accent/20">
                   macOS 14+
                 </span>
               </div>
 
-              <h2 className="mt-6 text-2xl font-medium text-white">Sayabot for Mac</h2>
+              <h2 className="mt-6 text-2xl font-medium text-text">Sayabot for Mac</h2>
               <p className="mt-2 text-sm text-muted leading-relaxed">
                 Your bots work with the Claude Code or Codex you already use on your Mac. No API key
                 needed, and they ask before doing anything risky.
               </p>
 
-              <ul className="mt-6 space-y-2.5 text-xs text-neutral-300">
+              <ul className="mt-6 space-y-2.5 text-xs text-muted">
                 <li className="flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-accent shrink-0" />
                   <span>Sign in with Google or GitHub in one click</span>
@@ -139,7 +139,7 @@ export default async function DownloadPage() {
               </ul>
             </div>
 
-            <div id="install" className="mt-8 scroll-mt-28 border-t border-white/5 pt-6">
+            <div id="install" className="mt-8 scroll-mt-28 border-t border-line pt-6">
               <MacDownload
                 armUrl={DOWNLOADS.macArm64}
                 intelUrl={DOWNLOADS.macIntel}
@@ -148,26 +148,26 @@ export default async function DownloadPage() {
             </div>
           </div>
 
-          <div className="relative rounded-3xl border border-white/10 bg-panel p-8 shadow-xl flex flex-col justify-between overflow-hidden">
+          <div className="relative rounded-3xl border border-line bg-panel p-8 shadow-xl flex flex-col justify-between overflow-hidden">
             <div className="absolute top-0 right-0 -mr-6 -mt-6 h-32 w-32 rounded-full bg-accent/10 blur-2xl" />
 
             <div>
               <div className="flex items-center justify-between">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/5 border border-white/10">
-                  <WindowsIcon className="h-7 w-7 text-white" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-raised border border-line">
+                  <WindowsIcon className="h-7 w-7 text-text" />
                 </div>
                 <span className="rounded-full bg-accent/10 px-3 py-1 text-xs font-mono text-accent border border-accent/20">
                   Windows 10+
                 </span>
               </div>
 
-              <h2 className="mt-6 text-2xl font-medium text-white">Sayabot for Windows</h2>
+              <h2 className="mt-6 text-2xl font-medium text-text">Sayabot for Windows</h2>
               <p className="mt-2 text-sm text-muted leading-relaxed">
                 The same controller as the Mac app: sign in, run local agents, and share this PC
                 when you allow it.
               </p>
 
-              <ul className="mt-6 space-y-2.5 text-xs text-neutral-300">
+              <ul className="mt-6 space-y-2.5 text-xs text-muted">
                 <li className="flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-accent shrink-0" />
                   <span>Per-user installer, no admin account required</span>
@@ -183,11 +183,11 @@ export default async function DownloadPage() {
               </ul>
             </div>
 
-            <div className="mt-8 scroll-mt-28 border-t border-white/5 pt-6 space-y-3">
+            <div className="mt-8 scroll-mt-28 border-t border-line pt-6 space-y-3">
               <a
                 href={DOWNLOADS.winX64}
                 download="Sayabot-Setup-x64.exe"
-                className="flex items-center justify-center gap-2 w-full rounded-xl bg-white px-5 py-3 text-sm font-medium text-black hover:bg-neutral-200 transition-colors shadow-sm"
+                className="flex items-center justify-center gap-2 w-full rounded-xl bg-accent px-5 py-3 text-sm font-medium text-white hover:bg-accent-strong transition-colors shadow-sm"
               >
                 <ArrowDownToLine className="h-4 w-4" />
                 <span>Download for Windows</span>
@@ -195,13 +195,13 @@ export default async function DownloadPage() {
               <a
                 href={DOWNLOADS.winArm64}
                 download="Sayabot-Setup-arm64.exe"
-                className="block text-center text-[12px] text-muted underline underline-offset-2 hover:text-white"
+                className="block text-center text-[12px] text-muted underline underline-offset-2 hover:text-text"
               >
                 Windows on ARM
               </a>
-              <div className="rounded-xl border border-white/10 bg-black/30 px-3 py-2">
+              <div className="rounded-xl border border-line bg-raised px-3 py-2">
                 <p className="font-mono text-[11px] text-faint">PowerShell</p>
-                <p className="mt-1 break-all font-mono text-[12px] text-neutral-200">
+                <p className="mt-1 break-all font-mono text-[12px] text-text">
                   {installWindows}
                 </p>
                 <div className="mt-2">
@@ -212,25 +212,25 @@ export default async function DownloadPage() {
           </div>
 
           {/* Android Card */}
-          <div className="relative rounded-3xl border border-white/10 bg-panel p-8 shadow-xl flex flex-col justify-between overflow-hidden">
+          <div className="relative rounded-3xl border border-line bg-panel p-8 shadow-xl flex flex-col justify-between overflow-hidden">
             <div className="absolute top-0 right-0 -mr-6 -mt-6 h-32 w-32 rounded-full bg-accent/10 blur-2xl" />
 
             <div>
               <div className="flex items-center justify-between">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/5 border border-white/10">
-                  <AndroidIcon className="h-7 w-7 text-white" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-raised border border-line">
+                  <AndroidIcon className="h-7 w-7 text-text" />
                 </div>
                 <span className="rounded-full bg-accent/10 px-3 py-1 text-xs font-mono text-accent border border-accent/20">
                   Android 10+
                 </span>
               </div>
 
-              <h2 className="mt-6 text-2xl font-medium text-white">Sayabot for Android</h2>
+              <h2 className="mt-6 text-2xl font-medium text-text">Sayabot for Android</h2>
               <p className="mt-2 text-sm text-muted leading-relaxed">
                 Chat with your bots and say yes or no to what they want to do, from your phone.
               </p>
 
-              <ul className="mt-6 space-y-2.5 text-xs text-neutral-300">
+              <ul className="mt-6 space-y-2.5 text-xs text-muted">
                 <li className="flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-accent shrink-0" />
                   <span>Signs into the same account as your Mac</span>
@@ -246,11 +246,11 @@ export default async function DownloadPage() {
               </ul>
             </div>
 
-            <div className="mt-8 pt-6 border-t border-white/5 space-y-3">
+            <div className="mt-8 pt-6 border-t border-line space-y-3">
               <a
                 href={DOWNLOADS.androidApk}
                 download="Sayabot.apk"
-                className="flex items-center justify-center gap-2 w-full rounded-xl bg-white px-5 py-3 text-sm font-medium text-black hover:bg-neutral-200 transition-colors shadow-sm"
+                className="flex items-center justify-center gap-2 w-full rounded-xl bg-accent px-5 py-3 text-sm font-medium text-white hover:bg-accent-strong transition-colors shadow-sm"
               >
                 <ArrowDownToLine className="h-4 w-4" />
                 <span>Download Android APK</span>
@@ -263,10 +263,10 @@ export default async function DownloadPage() {
         </div>
 
         {/* 4-Step How It Works Banner */}
-        <div className="mt-16 rounded-3xl border border-white/10 bg-gradient-to-b from-white/5 to-transparent p-8 sm:p-10">
+        <div className="mt-16 rounded-3xl border border-line bg-raised/40 p-8 sm:p-10">
           <div className="flex items-center gap-3">
             <Mascot seed="Pip" blink lit mood="alert" className="h-10 w-10" />
-            <h3 className="text-xl font-medium text-white">How the Connected Flow Works</h3>
+            <h3 className="text-xl font-medium text-text">How the Connected Flow Works</h3>
           </div>
 
           <div className="mt-8 grid gap-6 sm:grid-cols-4">
@@ -274,7 +274,7 @@ export default async function DownloadPage() {
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/10 border border-accent/20 text-xs font-mono font-medium text-accent">
                 1
               </span>
-              <h4 className="text-sm font-medium text-white">Install the desktop app</h4>
+              <h4 className="text-sm font-medium text-text">Install the desktop app</h4>
               <p className="text-xs text-muted leading-relaxed">
                 On a Mac, paste the Terminal command. On Windows, run the PowerShell command or open
                 the setup exe.
@@ -285,7 +285,7 @@ export default async function DownloadPage() {
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/10 border border-accent/20 text-xs font-mono font-medium text-accent">
                 2
               </span>
-              <h4 className="text-sm font-medium text-white">Sign In with Google</h4>
+              <h4 className="text-sm font-medium text-text">Sign In with Google</h4>
               <p className="text-xs text-muted leading-relaxed">
                 Click Sign In in the Mac app. Your browser opens, and Supabase safely passes back
                 your session tokens.
@@ -296,7 +296,7 @@ export default async function DownloadPage() {
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/10 border border-accent/20 text-xs font-mono font-medium text-accent">
                 3
               </span>
-              <h4 className="text-sm font-medium text-white">Install Phone APK</h4>
+              <h4 className="text-sm font-medium text-text">Install Phone APK</h4>
               <p className="text-xs text-muted leading-relaxed">
                 Install the APK on Android and log in with the exact same Google or GitHub account.
               </p>
@@ -306,7 +306,7 @@ export default async function DownloadPage() {
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/10 border border-accent/20 text-xs font-mono font-medium text-accent">
                 4
               </span>
-              <h4 className="text-sm font-medium text-white">Control 24/7</h4>
+              <h4 className="text-sm font-medium text-text">Control 24/7</h4>
               <p className="text-xs text-muted leading-relaxed">
                 Control tasks on your Mac while it is open, or deploy on your VPS so agents work
                 24/7 even when your Mac sleeps!
@@ -316,10 +316,10 @@ export default async function DownloadPage() {
         </div>
 
         {/* Self-hosting callout */}
-        <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl border border-white/5 bg-white/[0.02] px-6 py-5">
+        <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl border border-line bg-raised/20 px-6 py-5">
           <div className="flex items-center gap-3">
             <Terminal className="h-5 w-5 text-accent shrink-0" />
-            <p className="text-xs text-neutral-300">
+            <p className="text-xs text-text">
               Want to self-host Sayabot backend on your private VPS with Docker?
             </p>
           </div>

@@ -1,10 +1,16 @@
-# Marketplace
+# Connectors & Bot Store
 
-The Marketplace (`/[org]/marketplace`) is where a workspace connects the external apps its agents can use — every entry is a **remote MCP server** — and where it adds ready-made agent templates. It has two tabs: **Apps** (a catalog of a few hundred remote MCP servers, connectable in one or two clicks) and **Agents** (curated agent templates from the `agent_templates` table that deep-link into the agent creation flow).
+Sayabot separates app integrations from ready-made agent discovery into two dedicated workspace destinations in the Tools navigation:
 
-The page is deliberately read-heavy on the server: the database is queried via the Supabase admin client, and only sanitized rows (never a saved URL, since some carry the key in it) reach the client.
+1. **Connectors** (`/[org]/connectors`): Where a workspace connects the external tools and services its agents can use — remote MCP servers, OAuth integrations (Slack, Google Drive, Notion, Linear, Stripe, etc.), and custom servers.
+2. **Bot Store** (`/[org]/bot-store`): Where ready-made bots live. Users browse specialized bot personas (Coder, Researcher, Code Reviewer, Designer, Writer, Data Analyst, Ops, General Assistant), inspect their capabilities and recommended models, and add them directly to their workspace and rooms.
 
-Source files: `apps/web/src/app/(workspace)/[org]/marketplace/page.tsx`, `apps/web/src/components/marketplace/marketplace-view.tsx`, `apps/web/src/lib/marketplace.ts`, `apps/web/src/lib/marketplace-catalog.ts`, `apps/web/src/lib/actions/marketplace.ts`
+The legacy `/[org]/marketplace` route automatically redirects to `/[org]/connectors` (or `/[org]/bot-store` when `tab=agents`), preserving all query params (e.g. `connected`, `tools`, `signin_error`).
+
+Source files:
+- Connectors: `apps/web/src/app/(workspace)/[org]/connectors/page.tsx`, `apps/web/src/components/connectors/connectors-view.tsx`
+- Bot Store: `apps/web/src/app/(workspace)/[org]/bot-store/page.tsx`, `apps/web/src/components/bot-store/bot-store-view.tsx`, `apps/web/src/lib/curated-bot-templates.ts`
+- Shared Catalog: `apps/web/src/lib/marketplace.ts`, `apps/web/src/lib/marketplace-catalog.ts`, `apps/web/src/lib/actions/marketplace.ts`
 
 ---
 

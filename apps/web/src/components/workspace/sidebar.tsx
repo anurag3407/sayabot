@@ -19,6 +19,7 @@ import {
   BellOff,
   BellRing,
   Bot,
+  Cable,
   CheckSquare,
   ChevronDown,
   CircleHelp,
@@ -47,6 +48,7 @@ import { Avatar } from "@/components/ui/avatar"
 import { DetailsMenu } from "@/components/ui/details-menu"
 import { Mascot } from "@/components/ui/mascot"
 import { showToast } from "@/components/ui/toast"
+import { ThemeToggle } from "@/components/theme-toggle"
 import { cn } from "@/lib/format"
 import type { ChatListItem, OrgRole, OrgSummary } from "@/lib/types"
 
@@ -77,7 +79,8 @@ const TOOLS: { key: string; href: string; label: string; icon: typeof Zap }[] = 
   { key: "tasks", href: "/tasks", label: "To-dos", icon: CheckSquare },
   { key: "files", href: "/files", label: "Files", icon: FolderClosed },
   { key: "agents", href: "/agents", label: "Team", icon: Users },
-  { key: "marketplace", href: "/marketplace", label: "Bot store", icon: Store },
+  { key: "connectors", href: "/connectors", label: "Connectors", icon: Cable },
+  { key: "bot-store", href: "/bot-store", label: "Bot store", icon: Store },
 ]
 
 function isMuted(item: ChatListItem): boolean {
@@ -538,6 +541,10 @@ function AccountRow({ base, user, role }: { base: string; user: SidebarUser; rol
             <CircleHelp className="h-4 w-4 text-faint" />
             Help
           </Link>
+        </div>
+        <div className="h-px bg-line" />
+        <div className="py-1">
+          <ThemeToggle variant="menu-item" />
         </div>
         <div className="h-px bg-line" />
         <form action={signOutAction} className="pt-1">

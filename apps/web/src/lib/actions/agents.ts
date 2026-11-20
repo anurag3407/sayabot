@@ -17,6 +17,7 @@ import {
 import { generateWebhookSecret } from "@sayabot/core/server"
 import { sealSecret } from "@sayabot/llm"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { getRoomAccess } from "@/lib/auth"
 import { ensureBotDmRoom } from "@/lib/bot-dm"
 import { planGate } from "@/lib/plan-limits"
 import { getKek } from "@/lib/env"
@@ -515,6 +516,69 @@ export async function updateBotBasicsAction(input: {
   })
   revalidateOrg(input.orgSlug)
   return ok("Saved")
+}
+
+/**
+ * Update the bot's system prompt during runtime.
+ * Allows room members (when in a room) or org admins to dynamically adjust instructions.
+ * Takes effect immediately for upcoming turns without restarting the bot.
+ */
+export async function updateBotPromptAction(input: {
+  orgSlug: string
+  agentId: string
+  systemPrompt: string
+  roomId?: string
+}): Promise<ActionResult> {
+  let orgId: string | null = null
+  let actorId: string | null = null
+
+  if (input.roomId) {
+    const roomAccess = await getRoomAccess(input.orgSlug, input.roomId)
+    if (roomAccess) {
+      orgId = roomAccess.org.id
+      actorId = roomAccess.user.id
+    }
+  }
+
+  if (!orgId) {
+    const check = await adminOrgAccess(input.orgSlug)
+    if ("error" in check) return fail(check.error)
+    orgId = check.access.org.id
+    actorId = check.access.user.id
+  }
+
+  const systemPrompt = input.systemPrompt.trim().slice(0, 20_000)
+  const admin = createAdminClient()
+  const { data: agent } = await admin
+    .from("agents")
+    .select("id, org_id, handle, display_name")
+    .eq("id", input.agentId)
+    .maybeSingle()
+
+  if (!agent || agent.org_id !== orgId) return fail("Bot not found")
+
+  const { error } = await admin
+    .from("agents")
+    .update({
+      system_prompt: systemPrompt,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", agent.id)
+
+  if (error) return fail(errorMessage(error))
+
+  if (actorId && orgId) {
+    await audit({
+      orgId,
+      actorId,
+      action: "agent.updated",
+      target: agent.handle,
+      metadata: { fields: ["system_prompt"], runtime: true, roomId: input.roomId ?? null },
+    })
+  }
+
+  revalidateOrg(input.orgSlug)
+  return ok("System prompt updated and active for runtime", { systemPrompt })
 }
 
 /**

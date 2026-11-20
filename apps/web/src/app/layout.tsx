@@ -6,6 +6,7 @@ import { DesktopSessionSync } from "@/components/desktop-session-sync"
 import { Toaster } from "@/components/ui/toast"
 import { SummaryFocusGuard } from "@/components/summary-focus-guard"
 import { PwaUpdatePrompt } from "@/components/pwa-update-prompt"
+import { ThemeProvider, ThemeScript } from "@/components/theme-provider"
 
 export const metadata: Metadata = {
   title: {
@@ -39,19 +40,24 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" suppressHydrationWarning className="dark" data-theme="dark">
+      <head>
+        <ThemeScript />
+      </head>
       <body className="min-h-dvh bg-void text-text antialiased">
-        <a
-          href="#main-content"
-          className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[110] focus:rounded-sm focus:bg-accent focus:px-3 focus:py-2 focus:text-[13px] focus:text-void"
-        >
-          Skip to content
-        </a>
-        {children}
-        <Toaster />
-        <SummaryFocusGuard />
-        <PwaUpdatePrompt />
-        <DesktopSessionSync />
+        <ThemeProvider>
+          <a
+            href="#main-content"
+            className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[110] focus:rounded-sm focus:bg-accent focus:px-3 focus:py-2 focus:text-[13px] focus:text-void"
+          >
+            Skip to content
+          </a>
+          {children}
+          <Toaster />
+          <SummaryFocusGuard />
+          <PwaUpdatePrompt />
+          <DesktopSessionSync />
+        </ThemeProvider>
       </body>
     </html>
   )

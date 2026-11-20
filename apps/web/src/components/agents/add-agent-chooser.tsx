@@ -68,7 +68,7 @@ export function AddAgentChooser({
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Link
-                    href={`/${orgSlug}/marketplace?tab=agents`}
+                    href={`/${orgSlug}/bot-store`}
                     className="inline-flex h-10 items-center rounded-sm bg-accent px-3 text-[13px] font-medium text-void hover:bg-[var(--color-accent-strong)] md:h-9"
                   >
                     Pick a ready-made one
