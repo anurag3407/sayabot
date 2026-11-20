@@ -1,6 +1,6 @@
 {
   "name": "@sayabot/desktop",
-  "version": "1.0.0",
+  "version": "1.0.31",
   "description": "Sayabot Desktop for macOS and Windows - Autonomous Remote Agent Workspace & Computer Controller",
   "private": true,
   "main": "dist/main.js",

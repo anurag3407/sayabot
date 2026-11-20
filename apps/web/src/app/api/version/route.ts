@@ -43,8 +43,8 @@ async function latestDesktopVersion(): Promise<string> {
   try {
     const res = await fetch(RELEASES_API, {
       headers: { Accept: "application/vnd.github+json" },
-      next: { revalidate: 600 },
-      signal: AbortSignal.timeout(3000),
+      next: { revalidate: 60 },
+      signal: AbortSignal.timeout(4000),
     })
     if (!res.ok) return FALLBACK_DESKTOP_VERSION
     const releases = (await res.json()) as GithubRelease[]
