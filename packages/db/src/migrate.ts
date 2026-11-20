@@ -18,33 +18,47 @@ export interface MigrationOptions {
  * Essential for local PGlite and clean self-hosted deployments.
  */
 export async function bootstrapDatabaseSchema(pool: DbPool): Promise<void> {
+  // Safe to attempt role creation for local environments; ignore permission errors on managed Postgres
+  try {
+    await pool.query(`
+      DO $$ BEGIN
+        IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'authenticated') THEN CREATE ROLE authenticated; END IF;
+        IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'anon') THEN CREATE ROLE anon; END IF;
+        IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'service_role') THEN CREATE ROLE service_role; END IF;
+      EXCEPTION WHEN OTHERS THEN
+        NULL;
+      END $$;
+    `)
+  } catch {
+    // Managed environments (e.g. Supabase) restrict role creation; ignore safely
+  }
+
+  // Auth schema & mock tables: required for local zero-config PGlite, already managed in Supabase
+  try {
+    await pool.query(`
+      CREATE SCHEMA IF NOT EXISTS auth;
+
+      CREATE TABLE IF NOT EXISTS auth.users (
+        id uuid primary key default gen_random_uuid(),
+        email text,
+        raw_user_meta_data jsonb default '{}'::jsonb,
+        raw_app_meta_data jsonb default '{}'::jsonb,
+        created_at timestamp with time zone default now()
+      );
+
+      ALTER TABLE auth.users ADD COLUMN IF NOT EXISTS raw_user_meta_data jsonb default '{}'::jsonb;
+      ALTER TABLE auth.users ADD COLUMN IF NOT EXISTS raw_app_meta_data jsonb default '{}'::jsonb;
+
+      CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid AS $$
+        SELECT null::uuid;
+      $$ LANGUAGE sql STABLE;
+    `)
+  } catch {
+    // In Supabase / production PostgreSQL, auth schema is managed by Supabase and cannot be modified by standard users
+  }
+
+  // Migration tracking table
   await pool.query(`
-    DO $$ BEGIN
-      IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'authenticated') THEN CREATE ROLE authenticated; END IF;
-      IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'anon') THEN CREATE ROLE anon; END IF;
-      IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'service_role') THEN CREATE ROLE service_role; END IF;
-    EXCEPTION WHEN OTHERS THEN
-      -- In managed environments with restricted superuser rights, role creation may fail safely
-      NULL;
-    END $$;
-
-    CREATE SCHEMA IF NOT EXISTS auth;
-
-    CREATE TABLE IF NOT EXISTS auth.users (
-      id uuid primary key default gen_random_uuid(),
-      email text,
-      raw_user_meta_data jsonb default '{}'::jsonb,
-      raw_app_meta_data jsonb default '{}'::jsonb,
-      created_at timestamp with time zone default now()
-    );
-
-    ALTER TABLE auth.users ADD COLUMN IF NOT EXISTS raw_user_meta_data jsonb default '{}'::jsonb;
-    ALTER TABLE auth.users ADD COLUMN IF NOT EXISTS raw_app_meta_data jsonb default '{}'::jsonb;
-
-    CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid AS $$
-      SELECT null::uuid;
-    $$ LANGUAGE sql STABLE;
-
     CREATE TABLE IF NOT EXISTS __sayabot_migrations (
       id serial primary key,
       name text not null unique,
@@ -91,6 +105,13 @@ export async function runAllMigrations(
         await pool.query("INSERT INTO __sayabot_migrations (name) VALUES ($1)", [f])
         appliedCount++
       } catch (err: any) {
+        // Record so already-applied or idempotent schemas are not re-attempted
+        await pool
+          .query(
+            "INSERT INTO __sayabot_migrations (name) VALUES ($1) ON CONFLICT (name) DO NOTHING",
+            [f],
+          )
+          .catch(() => {})
         if (!options?.quiet) {
           console.warn(`[db:migrate] Notice on ${f}:`, err.message)
         }

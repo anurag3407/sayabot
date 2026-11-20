@@ -29,7 +29,12 @@ function ensurePgliteSymlink(): void {
 export function isLocalConnection(connectionString?: string): boolean {
   if (!connectionString) return false
   const s = connectionString.trim().toLowerCase()
-  return s === "local" || s.startsWith("pglite:") || s.startsWith("memory:")
+  return (
+    s === "local" ||
+    s === "memory" ||
+    s.startsWith("pglite:") ||
+    s.startsWith("memory:")
+  )
 }
 
 export function getDefaultLocalDataDir(): string {
