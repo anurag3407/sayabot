@@ -3,6 +3,7 @@ import { redirect } from "next/navigation"
 import "@fontsource-variable/anybody/wdth.css"
 import "@/components/landing/landing.css"
 import { getCurrentUser, listUserOrgs } from "@/lib/auth"
+import { edition } from "@/lib/env"
 import { SmoothScroll } from "@/components/landing/smooth-scroll"
 import { LandingMotion } from "@/components/landing/landing-motion"
 import { SiteHeader } from "@/components/landing/site-header"
@@ -40,6 +41,12 @@ export default async function HomePage() {
   if (user) {
     const orgs = await listUserOrgs(user.id)
     redirect(orgs.length ? `/${orgs[0]!.slug}` : "/onboarding")
+  }
+
+  // Self-hosted servers (default for local and private servers) direct unauthenticated visitors
+  // straight to sign-in / workspace onboarding instead of showing the cloud marketing landing.
+  if (edition() === "self-hosted") {
+    redirect("/login")
   }
 
   return (

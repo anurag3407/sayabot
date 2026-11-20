@@ -10,8 +10,7 @@ and RLS all work exactly like a normal account. Later the person can sign in to 
 
 ```
 First launch (no session, not signed out before)
-  └─ If SAYABOT_SERVER_URL is set: connects to server
-     Otherwise: prompts for self-hosted server address (or connects via sayabot://connect?server=...)
+  └─ Connects to local server on This Mac by default (or uses SAYABOT_SERVER_URL / sayabot://connect?server=...)
        ├─ GET  {server}/api/desktop/guest           → { enabled, supabaseUrl, anonKey }
        └─ POST {supabaseUrl}/auth/v1/signup  {}      → anonymous session (from this Mac's IP)
             └─ session saved (isGuest: true) → host registers → /auth/complete → /onboarding

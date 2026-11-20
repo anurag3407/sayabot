@@ -11,7 +11,7 @@ Source files: `apps/web/src/app/page.tsx`, `apps/web/src/components/landing/*` (
 ## 🏗️ Page Assembly (`app/page.tsx`)
 
 - Metadata: absolute title "Sayabot · Every agent you use, working in one room".
-- Signed-in gate (`page.tsx:38-43`): `getCurrentUser()` → `listUserOrgs()` → `redirect("/<first-org-slug>")`, or `/onboarding` when the user has no workspace.
+- Signed-in gate (`page.tsx:38-47`): `getCurrentUser()` → `listUserOrgs()` → `redirect("/<first-org-slug>")`, or `/onboarding` when the user has no workspace. In self-hosted mode (the default), unauthenticated visitors redirect to `/login` instead of the public cloud marketing landing page.
 - Imports `@fontsource-variable/anybody/wdth.css` (the display font's width axis, animated on the footer wordmark) and the landing stylesheet `landing.css` (its `l-*`, `he-*`, `ch-*` etc. class system is not in Tailwind).
 - Structure: `<SmoothScroll>` (Lenis) wraps `l-page` with a progress bar (`l-progress`), `SiteHeader`, the `StorySpine` chapter rail, `<main>` with 15 sections in order — Hero, ChapterChaos, McpOnboard, WorkspacePreview, ChapterCollab, ChapterTurns, ChapterApprove, Harness, ChapterDay, FeatureGrid, Computers, AndroidControl, Crew, Compare, Pricing, Sponsor, Downloads, Faq, FinalCta — then `LandingFooter` and the `LandingMotion` driver.
 

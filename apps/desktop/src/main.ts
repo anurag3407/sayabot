@@ -292,13 +292,15 @@ function getUserDataDir(): string {
   return app.getPath("userData")
 }
 
-function loadConfig(): DesktopConfig {
+export function loadConfig(): DesktopConfig {
   try {
     const data = readJsonFile<Partial<DesktopConfig>>(path.join(getUserDataDir(), CONFIG_FILE))
     if (data) {
       if (data.serverUrl === "https://sayabot.sayalabs.in") {
         data.serverUrl = DEFAULT_SERVER_URL
-        data.serverChosen = false
+        data.serverChosen = true
+        data.serverName = "This Mac"
+        saveSession(null)
       }
       return { serverUrl: DEFAULT_SERVER_URL, enableLocalRunner: true, ...data }
     }
@@ -312,24 +314,24 @@ function loadConfig(): DesktopConfig {
 let serverSetupRequested = false
 
 /**
- * First launch: if a server URL is provided via SAYABOT_SERVER_URL environment variable,
- * connect to it automatically. Otherwise, prompt the user for their self-hosted server address.
+ * First launch: uses Sayabot on this Mac by default. A server address is entered later from Change Server.
+ * If SAYABOT_SERVER_URL environment variable is provided, connect to it automatically.
  */
-function useThisMacOnFirstLaunch(): void {
+export function useThisMacOnFirstLaunch(): void {
   const config = loadConfig()
   if (config.serverChosen === true) return
-  if (process.env.SAYABOT_SERVER_URL) {
-    saveConfig({
-      ...config,
-      serverUrl: normalizeServerUrl(process.env.SAYABOT_SERVER_URL) ?? DEFAULT_SERVER_URL,
-      serverChosen: true,
-      serverName: "This Mac",
-      serverGuestMode: true,
-    })
-  }
+  const serverUrl =
+    normalizeServerUrl(process.env.SAYABOT_SERVER_URL || config.serverUrl) ?? DEFAULT_SERVER_URL
+  saveConfig({
+    ...config,
+    serverUrl,
+    serverChosen: true,
+    serverName: "This Mac",
+    serverGuestMode: true,
+  })
 }
 
-function saveConfig(config: DesktopConfig): void {
+export function saveConfig(config: DesktopConfig): void {
   try {
     writeJsonAtomic(path.join(getUserDataDir(), CONFIG_FILE), config, 0o644)
   } catch (err) {
@@ -337,11 +339,27 @@ function saveConfig(config: DesktopConfig): void {
   }
 }
 
-function loadSession(): AuthSession | null {
-  return readJsonFile<AuthSession>(path.join(getUserDataDir(), SESSION_FILE))
+export function loadSession(): AuthSession | null {
+  const session = readJsonFile<AuthSession>(path.join(getUserDataDir(), SESSION_FILE))
+  if (!session) return null
+  const config = loadConfig()
+  const configUrl = normalizeServerUrl(config.serverUrl)
+  const sessionUrl = normalizeServerUrl(session.serverUrl)
+  if (
+    session.serverUrl === "https://sayabot.sayalabs.in" &&
+    configUrl !== "https://sayabot.sayalabs.in"
+  ) {
+    saveSession(null)
+    return null
+  }
+  if (configUrl && sessionUrl && configUrl !== sessionUrl) {
+    saveSession(null)
+    return null
+  }
+  return session
 }
 
-function saveSession(session: AuthSession | null): void {
+export function saveSession(session: AuthSession | null): void {
   try {
     const filePath = path.join(getUserDataDir(), SESSION_FILE)
     if (session) writeJsonAtomic(filePath, session, 0o600)
@@ -831,8 +849,27 @@ function createWindow() {
 
   buildAppMenu()
 
-  mainWindow.webContents.on("did-navigate", () => {
+  mainWindow.webContents.on("did-navigate", (_event, url) => {
     buildAppMenu()
+    try {
+      const u = new URL(url)
+      const config = loadConfig()
+      const serverUrl = normalizeServerUrl(config.serverUrl)
+      if (serverUrl && u.origin === new URL(serverUrl).origin) {
+        if (u.pathname === "/" || u.pathname === "/login") {
+          const session = loadSession()
+          if (!session || !session.accessToken) {
+            loadLocalHtml()
+          } else {
+            const cleanUrl = serverUrl.replace(/\/+$/, "")
+            const targetUrl = `${cleanUrl}/auth/complete#access_token=${session.accessToken}&refresh_token=${session.refreshToken}`
+            mainWindow?.loadURL(targetUrl)
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
   })
   mainWindow.webContents.on("did-navigate-in-page", () => {
     buildAppMenu()
@@ -1034,9 +1071,15 @@ setInterval(
 )
 
 async function openWorkspaceInWindow() {
+  const config = loadConfig()
   const saved = loadSession()
   if (!mainWindow) return
   if (!saved) {
+    loadLocalHtml()
+    return
+  }
+  if (normalizeServerUrl(saved.serverUrl) !== normalizeServerUrl(config.serverUrl)) {
+    saveSession(null)
     loadLocalHtml()
     return
   }
@@ -1050,7 +1093,8 @@ async function openWorkspaceInWindow() {
   const refreshed = await refreshSessionIfNeeded()
   const next = refreshed ?? (lastRefreshRejected ? null : saved)
   if (!next) {
-    mainWindow.loadURL(cleanUrl)
+    saveSession(null)
+    loadLocalHtml()
     return
   }
   const targetUrl = `${cleanUrl}/auth/complete#access_token=${next.accessToken}&refresh_token=${next.refreshToken}`
