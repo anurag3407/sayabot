@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react"
 import { DOWNLOADS, type DownloadId } from "@/lib/links"
 import { AndroidIcon, AppleIcon, ChevronDown, WindowsIcon } from "./icons"
-import { CopyButton } from "./copy-button"
 
 const ORDER: DownloadId[] = ["macArm", "macIntel", "winX64", "winArm", "android"]
 
