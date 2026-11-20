@@ -48,6 +48,7 @@ export async function bootstrapDatabaseSchema(pool: DbPool): Promise<void> {
 
       ALTER TABLE auth.users ADD COLUMN IF NOT EXISTS raw_user_meta_data jsonb default '{}'::jsonb;
       ALTER TABLE auth.users ADD COLUMN IF NOT EXISTS raw_app_meta_data jsonb default '{}'::jsonb;
+      ALTER TABLE auth.users ADD COLUMN IF NOT EXISTS is_anonymous boolean default false;
 
       CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid AS $$
         SELECT null::uuid;
