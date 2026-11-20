@@ -6,6 +6,7 @@ import { formatMinutes, parseTimeToMinutes } from "@sayabot/core"
 import { requireUser } from "@/lib/auth"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { queueRoomMessage } from "@/lib/orchestrator"
+import { ensureSayaAgent } from "@/lib/saya"
 import {
   adminRoomAccess,
   audit,
@@ -117,6 +118,14 @@ export async function setupWorkspaceAction(
       snapshot_text: `# ${roomName}\n\n`,
       created_by: user.id,
     })
+    // The workspace orchestrator is part of a finished workspace, not an optional extra. A
+    // failure here must not roll the workspace back, so it is logged and the user keeps their
+    // room; the next room created by Saya re-runs the same idempotent ensure.
+    try {
+      await ensureSayaAgent({ orgId: org.id, userId: user.id, roomId: room.id }, admin)
+    } catch (error) {
+      console.warn("[saya] could not create the workspace orchestrator", error)
+    }
     await audit({
       orgId: org.id,
       actorId: user.id,

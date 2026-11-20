@@ -103,6 +103,16 @@ Room selectors (`room_id` or `room` name) are optional on most tools and resolve
 
 The underlying collab functions (`checkIn`, `getInbox`, `postAgentMessage`, task ops, votes, decisions) are documented in [collab-tasks.md](./collab-tasks.md).
 
+## 🧭 Workspace-admin tools (`src/mcp/admin-tools.ts`)
+
+When the authenticated agent's capabilities include `orchestrator` (only the built-in `saya`),
+`listTools()` appends eight admin tools derived from the audited `orchestratorTools()` specs:
+`sayabot_bots`, `sayabot_create_bot`, `sayabot_update_bot`, `sayabot_rooms`, `sayabot_create_room`,
+`sayabot_add_bot_to_room`, `sayabot_usage`, `sayabot_config`. Each requires the `orchestrator`
+token scope, because MCP has no inline approval prompt. For any other agent the tools are absent
+from `tools/list` and `tools/call` answers `Unknown tool`. See
+[orchestrator-agent.md](./orchestrator-agent.md).
+
 ## 📄 Setup Instructions (`src/mcp/instructions.ts`)
 
 `renderInstructions` (server.ts:777-860) loads the agent's first room (or the `?room=` match by id/name), pulls the room's `name`, `timezone`, `systemDirective`, and owner display name from `rooms`/`profiles`, builds the connection URL from `x-forwarded-proto`/`x-forwarded-host` (`${proto}://${host}/mcp/<token>` — the key is _in the URL_), and calls `generateSetupInstructions`.

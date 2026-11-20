@@ -1,6 +1,6 @@
 # Onboarding & Workspace Creation
 
-Onboarding asks a new account for one thing: a workspace name. Submitting creates the workspace and a private room named General, then opens that room. API keys, model choice, and the first bot are not part of this screen — those happen later in the app. Progress is stored in `profiles.preferences.onboarding`, so a tab closed after the workspace exists and before the room opens resumes by finishing and redirecting, instead of creating a second workspace. A separate `/new-workspace` page is the path for people who already finished onboarding and want another workspace.
+Onboarding asks a new account for one thing: a workspace name. Submitting creates the workspace and a private room named General, then opens that room. API keys and model choice are not part of this screen. The one bot that *is* created here is the workspace orchestrator, `@saya` ([orchestrator-agent.md](../../orchestrator/platform/orchestrator-agent.md)); any other bot comes later. Progress is stored in `profiles.preferences.onboarding`, so a tab closed after the workspace exists and before the room opens resumes by finishing and redirecting, instead of creating a second workspace. A separate `/new-workspace` page is the path for people who already finished onboarding and want another workspace.
 
 Source files: `apps/web/src/app/onboarding/page.tsx`, `apps/web/src/components/onboarding/wizard.tsx`, `apps/web/src/app/new-workspace/page.tsx`, `apps/web/src/lib/actions/onboarding.ts`
 
@@ -21,7 +21,7 @@ Props handed to `OnboardingWizard`: `userName`, `initialWorkspace`.
 
 ```mermaid
 flowchart LR
-    Form[Workspace name] -->|setupWorkspaceAction| DB[(orgs, org_members, rooms, room_members, room_reads, room_schedules, profiles.preferences, canvases)]
+    Form[Workspace name] -->|setupWorkspaceAction| DB[(orgs, org_members, rooms, room_members, room_reads, room_schedules, profiles.preferences, canvases, agents, room_agents)]
     DB -->|finishOnboardingAction| Q[welcome message]
     Q --> R[router.push /org/r/room]
 ```
@@ -42,7 +42,7 @@ Creates the whole workspace graph in one operation (using the Supabase **admin**
 
 1. Guards: signed-in user, workspace name 2–60 chars, room name 1–60, valid `Intl` time zone, and **no existing org membership** (`"You already have a workspace"`).
 2. Generates a unique slug via `uniqueOrgSlug(workspaceName)` (`src/lib/actions/shared.ts`).
-3. Inserts, in order: `orgs` → `org_members` (role `owner`) → `rooms` (`kind: "private"`, `turn_mode: "mentions"`, `turn_cap: 3`, timezone, `created_by`) → `room_members` (role `admin`) → `room_reads` upsert → `room_schedules` upsert (timezone only; meeting defaults land later) → updates `profiles.preferences` with `timezone` and the `onboarding: { orgSlug, roomId }` resume pointer → inserts a starter **canvas** (`kind: "markdown"`, title "Room notes", `snapshot_text: "# <room>\n\n"`) → writes an audit row `workspace.onboarding_created` with `{ roomName, timezone }`.
+3. Inserts, in order: `orgs` → `org_members` (role `owner`) → `rooms` (`kind: "private"`, `turn_mode: "mentions"`, `turn_cap: 3`, timezone, `created_by`) → `room_members` (role `admin`) → `room_reads` upsert → `room_schedules` upsert (timezone only; meeting defaults land later) → updates `profiles.preferences` with `timezone` and the `onboarding: { orgSlug, roomId }` resume pointer → inserts a starter **canvas** (`kind: "markdown"`, title "Room notes", `snapshot_text: "# <room>\n\n"`) → calls `ensureSayaAgent({ orgId, userId, roomId })` (`src/lib/saya.ts`, idempotent on `agents(org_id, handle)`) so the workspace's orchestrator exists and is in the room → writes an audit row `workspace.onboarding_created` with `{ roomName, timezone }`. The Saya call is wrapped in its own `try/catch`: a failure is logged and the workspace is kept, because the next workspace is ensured by the same idempotent call.
 4. On any failure after the org insert, the org is deleted (`orgs.delete().eq("id", org.id)`) and the error returned.
 
 Returns `ok("Workspace ready", { orgSlug, orgId, roomId })`.

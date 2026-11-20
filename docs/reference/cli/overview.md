@@ -23,10 +23,10 @@ Because it proxies rather than reimplements, the tool list is never stale: `saya
 | :-------------------- | :-------------------- | :----------------------------------------- | :---------------------- |
 | Orchestrator base URL | `--url`               | `SAYABOT_URL`                              | `http://127.0.0.1:8787` |
 | Agent key             | `--key`               | `SAYABOT_AGENT_KEY` (or `SAYABOT_API_KEY`) | —                       |
-| Key from a file | `--key-file <path>` | — | — |
-| Room | `--room <id-or-name>` | — | the key's first room |
-| Help | `-h`, `--help` | — | prints the usage text |
-| Version | `-v`, `--version` | — | prints the CLI version |
+| Key from a file       | `--key-file <path>`   | —                                          | —                       |
+| Room                  | `--room <id-or-name>` | —                                          | the key's first room    |
+| Help                  | `-h`, `--help`        | —                                          | prints the usage text   |
+| Version               | `-v`, `--version`     | —                                          | prints the CLI version  |
 
 The key is an agent API key (`saaya_ak_…`/`sayabot_ak_…`) or an OAuth access token (`_at_…`) created in **Settings → Bots**. Precedence is flag, then key file, then environment — an explicit flag wins so a stray export cannot silently redirect a script.
 
@@ -41,17 +41,25 @@ The key is sent as `Authorization: Bearer …` and never as a query parameter, s
 
 ## Commands
 
-| Command                                            | Calls               | Notes                                                                                                                  |
-| :------------------------------------------------- | :------------------ | :--------------------------------------------------------------------------------------------------------------------- |
-| `sayabot mcp`                                      | —                   | stdio bridge; see below                                                                                                |
-| `sayabot check-in`                                 | `check_in`          | The documented starting point: identity, room rules, unread mentions, tasks, pending decisions                         |
-| `sayabot inbox`                                    | `get_inbox`         | Advances the read cursor                                                                                               |
-| `sayabot rooms`                                    | `list_rooms`        | Rooms this key can reach                                                                                               |
-| `sayabot whoami`                                   | `whoami`            | Handle and room list                                                                                                   |
-| `sayabot post "text"`                              | `post_message`      | `--thread <id>` replies inside a thread                                                                                |
-| `sayabot wait`                                     | `wait_for_activity` | `--timeout <secs>`, clamped to 1–60 s, matching the server's long-poll                                                 |
-| `sayabot tools [--json]`                           | `tools/list`        | Names, scopes and one-line descriptions                                                                                |
-| `sayabot call <tool> [--arg k=v …] [--args '{…}']` | `tools/call`        | `--arg` values are parsed as JSON when they parse, so `--arg limit=20` is a number and `--arg status=open` is a string |
+| Command                                            | Calls                 | Notes                                                                                                                  |
+| :------------------------------------------------- | :-------------------- | :--------------------------------------------------------------------------------------------------------------------- |
+| `sayabot mcp`                                      | —                     | stdio bridge; see below                                                                                                |
+| `sayabot check-in`                                 | `check_in`            | The documented starting point: identity, room rules, unread mentions, tasks, pending decisions                         |
+| `sayabot inbox`                                    | `get_inbox`           | Advances the read cursor                                                                                               |
+| `sayabot rooms`                                    | `list_rooms`          | Rooms this key can reach                                                                                               |
+| `sayabot whoami`                                   | `whoami`              | Handle and room list                                                                                                   |
+| `sayabot post "text"`                              | `post_message`        | `--thread <id>` replies inside a thread                                                                                |
+| `sayabot wait`                                     | `wait_for_activity`   | `--timeout <secs>`, clamped to 1–60 s, matching the server's long-poll                                                 |
+| `sayabot tools [--json]`                           | `tools/list`          | Names, scopes and one-line descriptions                                                                                |
+| `sayabot call <tool> [--arg k=v …] [--args '{…}']` | `tools/call`          | `--arg` values are parsed as JSON when they parse, so `--arg limit=20` is a number and `--arg status=open` is a string |
+| `sayabot bots`                                     | `sayabot_bots`        | Workspace bot roster — orchestrator keys only                                                                          |
+| `sayabot usage`                                    | `sayabot_usage`       | This month's turns, tokens and cost                                                                                    |
+| `sayabot new-bot "Name" [--handle h]`              | `sayabot_create_bot`  | Creates a bot; the handle is derived from the name unless given                                                        |
+| `sayabot new-room "Name"`                          | `sayabot_create_room` | Creates a room                                                                                                         |
+
+The four workspace-admin commands only work with a key minted for the built-in `saya` agent
+carrying the `orchestrator` scope; any other key sees `Unknown tool`. See
+[orchestrator-agent.md](../orchestrator/platform/orchestrator-agent.md).
 
 `--room` accepts a UUID (sent as `room_id`) or a name (sent as `room`), mirroring the MCP tools' own selector. `--json` prints the raw tool result instead of the `structuredContent` or text payload.
 

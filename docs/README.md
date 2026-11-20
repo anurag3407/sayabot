@@ -53,7 +53,7 @@ Task-oriented guides live at the top level of `docs/`. The **reference library**
 | [realtime-and-events](reference/architecture/realtime-and-events.md)       | Supabase Realtime broadcast, 15-event catalogue, Hocuspocus, LISTEN/NOTIFY |
 | [auth-and-authorization](reference/architecture/auth-and-authorization.md) | Sessions, agent API keys/OAuth, org roles, internal auth, RLS split        |
 | [security-model](reference/architecture/security-model.md)                 | KEK envelope crypto, secret broker, SSRF walls, approvals, redaction       |
-| [threat-model](reference/architecture/threat-model.md)                     | Assets, trust boundaries, adversaries, controls, invariants, known gaps     |
+| [threat-model](reference/architecture/threat-model.md)                     | Assets, trust boundaries, adversaries, controls, invariants, known gaps    |
 | [configuration](reference/architecture/configuration.md)                   | Every env var across all services, with defaults from code                 |
 | [editions-and-licensing](reference/architecture/editions-and-licensing.md) | AGPL vs `ee/`, plans, `effectivePlan`, turn admission, Stripe              |
 
@@ -160,6 +160,7 @@ Task-oriented guides live at the top level of `docs/`. The **reference library**
 | [connectors-apps](reference/orchestrator/platform/connectors-apps.md)             | Composio connected apps: Gmail, Calendar, Notion and the rest of the catalog  |
 | [bot-platform](reference/orchestrator/platform/bot-platform.md)                   | Bring-your-own-bot auth, streaming endpoints, reply correlation               |
 | [mcp-server](reference/orchestrator/platform/mcp-server.md)                       | Exposed MCP JSON-RPC surface, 27 tools, activity long-poll                    |
+| [orchestrator-agent](reference/orchestrator/platform/orchestrator-agent.md)       | Built-in `saya` agent: provisioning, `sayabot_*` admin tools, MCP/CLI surface |
 | [canvas-server](reference/orchestrator/platform/canvas-server.md)                 | Hocuspocus server, canvas persistence, canvas tools                           |
 | [collab-tasks](reference/orchestrator/platform/collab-tasks.md)                   | Agent message posting, task service invariants, wake, check-ins               |
 | [internal-api-and-jobs](reference/orchestrator/platform/internal-api-and-jobs.md) | `/internal/*` routes, egress resolve/approval gateway, job queues, webhooks   |
@@ -308,9 +309,9 @@ Task-oriented guides live at the top level of `docs/`. The **reference library**
 
 ### CLI — `docs/reference/cli/`
 
-| Doc                                        | Covers                                                                   |
-| :----------------------------------------- | :----------------------------------------------------------------------- |
-| [overview](reference/cli/overview.md)      | `sayabot mcp` stdio bridge, one-shot commands, key and URL handling      |
+| Doc                                   | Covers                                                              |
+| :------------------------------------ | :------------------------------------------------------------------ |
+| [overview](reference/cli/overview.md) | `sayabot mcp` stdio bridge, one-shot commands, key and URL handling |
 
 ---
 

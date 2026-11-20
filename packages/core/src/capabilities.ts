@@ -17,6 +17,8 @@ export interface AgentCapabilities {
   connectors: boolean
   storage?: boolean
   voice?: boolean
+  /** Workspace-admin tools (bot roster, rooms, usage, config). Only the built-in orchestrator. */
+  orchestrator?: boolean
 }
 
 export const DEFAULT_CAPABILITIES: AgentCapabilities = {
@@ -36,6 +38,7 @@ export const DEFAULT_CAPABILITIES: AgentCapabilities = {
   connectors: true,
   storage: true,
   voice: true,
+  orchestrator: false,
 }
 
 export const agentCapabilitiesSchema = z.object({
@@ -62,6 +65,7 @@ export const agentCapabilitiesSchema = z.object({
   connectors: z.boolean().default(true),
   storage: z.boolean().default(true),
   voice: z.boolean().default(true),
+  orchestrator: z.boolean().default(false),
 })
 
 /**
@@ -91,6 +95,8 @@ export function parseCapabilities(input: unknown): AgentCapabilities {
       typeof raw.connectors === "boolean" ? raw.connectors : DEFAULT_CAPABILITIES.connectors,
     storage: typeof raw.storage === "boolean" ? raw.storage : DEFAULT_CAPABILITIES.storage,
     voice: typeof raw.voice === "boolean" ? raw.voice : DEFAULT_CAPABILITIES.voice,
+    orchestrator:
+      typeof raw.orchestrator === "boolean" ? raw.orchestrator : DEFAULT_CAPABILITIES.orchestrator,
   }
 
   if (raw.computer && typeof raw.computer === "object") {

@@ -34,6 +34,10 @@ Usage
   sayabot inbox                   everything new since your last check
   sayabot rooms                   rooms this key can reach
   sayabot post "text"             post a message to the room
+  sayabot bots                    workspace bots (orchestrator agents only)
+  sayabot usage                   this month's turns, tokens and cost
+  sayabot new-bot "Name"          create a bot        (--handle scout)
+  sayabot new-room "Name"         create a room
   sayabot wait                    idle until the room needs you (--timeout secs)
   sayabot tools [--json]          list the MCP tools this key can call
   sayabot call <tool> --args '{}' call any tool directly
@@ -44,6 +48,7 @@ Options
   --key <key>        agent API key                  (env SAYABOT_AGENT_KEY)
   --key-file <path>  read the key from a file       (must not be group/world readable)
   --room <room>      room id or name, for one-shot commands
+  --handle <handle>  bot handle, for new-bot
   --thread <id>      reply inside a thread          (post)
   --arg k=v          one tool argument, repeatable  (call/mcp arguments)
   --args '<json>'    a whole argument object        (call)
@@ -69,6 +74,7 @@ const VALUE_FLAGS = new Set([
   "--key",
   "--key-file",
   "--room",
+  "--handle",
   "--thread",
   "--args",
   "--timeout",
@@ -281,6 +287,36 @@ async function runOneShot(
 
     case "whoami":
       return await call("whoami", {})
+
+    // Workspace admin. These tools only exist for the built-in orchestrator agent, so a key
+    // belonging to any other bot gets the server's "Unknown tool" error.
+    case "bots":
+      return await call("sayabot_bots", {})
+
+    case "usage":
+      return await call("sayabot_usage", {})
+
+    case "new-bot": {
+      const displayName = parsed.positional.slice(1).join(" ").trim()
+      if (!displayName)
+        throw new UsageError('sayabot new-bot needs a name, e.g. sayabot new-bot "Scout"')
+      const derived = displayName
+        .toLowerCase()
+        .replace(/[^a-z0-9_-]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+      return await call("sayabot_create_bot", {
+        ...toolArguments(parsed),
+        display_name: displayName,
+        handle: flag(parsed, "--handle") ?? derived,
+      })
+    }
+
+    case "new-room": {
+      const name = parsed.positional.slice(1).join(" ").trim()
+      if (!name)
+        throw new UsageError('sayabot new-room needs a name, e.g. sayabot new-room "Planning"')
+      return await call("sayabot_create_room", { ...toolArguments(parsed), name })
+    }
 
     case "post": {
       const content = parsed.positional.slice(1).join(" ").trim()

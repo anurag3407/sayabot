@@ -56,6 +56,7 @@ import { storageTools } from "./builtins/storage"
 import { dataAnalysisTools } from "./builtins/data-analysis"
 import { meetingTools } from "./builtins/meeting"
 import { phoneTools } from "./builtins/phone"
+import { orchestratorTools } from "./builtins/orchestrator"
 
 export interface BuildToolsArgs {
   roomId: string
@@ -473,6 +474,11 @@ export async function buildTools(args: BuildToolsArgs): Promise<BuiltTools> {
             roomId: args.roomId,
           }),
         ]
+      : []),
+    // Workspace admin (Saya only): bot roster, rooms, usage and config. Mutations carry
+    // `dangerous: true`, so they still pass through the human approval gate.
+    ...(caps.orchestrator
+      ? orchestratorTools({ orgId: args.orgId, agentId: args.agent.id, roomId: args.roomId })
       : []),
     ...(caps.voice !== false
       ? [

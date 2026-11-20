@@ -15,6 +15,7 @@ import {
   uniqueOrgSlug,
 } from "@/lib/actions/shared"
 import { ssoEnabled } from "@/lib/env"
+import { ensureSayaAgent } from "@/lib/saya"
 import type { ActionResult } from "@/lib/types"
 
 const orgRoleSchema = z.enum(["owner", "admin", "member"])
@@ -40,6 +41,11 @@ export async function createOrg(
   if (memberError) {
     await admin.from("orgs").delete().eq("id", org.id)
     return fail("Could not add you as the workspace owner")
+  }
+  try {
+    await ensureSayaAgent({ orgId: org.id, userId: user.id }, admin)
+  } catch (error) {
+    console.warn("[saya] could not create the workspace orchestrator", error)
   }
   await audit({
     orgId: org.id,

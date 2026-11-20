@@ -8,7 +8,7 @@ Source files: `packages/core/src/capabilities.ts` (95 lines), `packages/core/src
 
 ## 🧩 `AgentCapabilities` and defaults
 
-The interface has 14 flags (`capabilities.ts:3-18`) — 13 booleans plus the `computer` slot, which is either `false` or an object naming the sandbox profile:
+The interface has 15 flags (`capabilities.ts:3-18`) — 14 booleans (three optional) plus the `computer` slot, which is either `false` or an object naming the sandbox profile. `orchestrator` defaults to `false` everywhere and is only ever set on the built-in `saya` row (`packages/core/src/saya.ts`):
 
 ```typescript
 export interface AgentCapabilities {
@@ -26,6 +26,7 @@ export interface AgentCapabilities {
   subagents: boolean // parallel subagent delegation
   cron: boolean // background routine scheduling
   connectors: boolean // workspace connectors (Drive/Slack/GitHub/Jira/Notion)
+  orchestrator?: boolean // workspace-admin `sayabot_*` tools; only the built-in Saya
 }
 ```
 

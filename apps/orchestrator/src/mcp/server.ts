@@ -1,4 +1,4 @@
-import { planCanvasPatch, redactSecrets } from "@sayabot/core"
+import { parseCapabilities, planCanvasPatch, redactSecrets } from "@sayabot/core"
 import { canvasVersions, profiles, rooms } from "@sayabot/db"
 import { eq } from "drizzle-orm"
 import type { Context } from "hono"
@@ -36,6 +36,7 @@ import { getDb } from "../db"
 import { loadTaskBriefContext } from "../runner/context"
 import { useSecretTool } from "../tools/builtins/use-secret"
 import { waitForActivity } from "./activity"
+import { orchestratorMcpTools, type OrchestratorMcpTool } from "./admin-tools"
 import { generateSetupInstructions } from "./instructions"
 
 /**
@@ -682,14 +683,12 @@ export const MCP_TOOLS: McpTool[] = [
         })
         if (connection.document)
           await persistCanvasState(input.canvas_id, connection.document, newText)
-        await getDb()
-          .insert(canvasVersions)
-          .values({
-            canvasId: input.canvas_id,
-            authorType: "agent",
-            authorId: agent.agentId,
-            snapshotText: newText,
-          })
+        await getDb().insert(canvasVersions).values({
+          canvasId: input.canvas_id,
+          authorType: "agent",
+          authorId: agent.agentId,
+          snapshotText: newText,
+        })
         return {
           ok: true,
           canvasId: input.canvas_id,
@@ -735,8 +734,8 @@ export const MCP_TOOLS: McpTool[] = [
 
 const toolsByName = new Map(MCP_TOOLS.map((t) => [t.name, t]))
 
-export function listTools() {
-  return MCP_TOOLS.map((t) => {
+export function listTools(extra: OrchestratorMcpTool[] = []) {
+  return [...MCP_TOOLS, ...extra].map((t) => {
     const { $schema: _ignored, ...inputSchema } = z.toJSONSchema(t.schema, {
       io: "input",
     }) as Record<string, unknown>
@@ -765,9 +764,19 @@ function rpcError(id: JsonRpcMessage["id"], code: number, message: string): RpcR
   return { jsonrpc: "2.0", id: id ?? null, error: { code, message } }
 }
 
-async function callTool(agent: CollabAgent, params: Record<string, unknown> | undefined) {
+async function callTool(
+  agent: CollabAgent,
+  params: Record<string, unknown> | undefined,
+  extra: OrchestratorMcpTool[] = [],
+) {
   const name = typeof params?.name === "string" ? params.name : ""
-  const tool = toolsByName.get(name)
+  const extraTool = extra.find((candidate) => candidate.name === name)
+  const tool: McpTool | undefined = extraTool
+    ? ({
+        ...extraTool,
+        run: (a: CollabAgent, input: unknown) => extraTool.run(a, input),
+      } as unknown as McpTool)
+    : toolsByName.get(name)
   if (!tool) return { content: [{ type: "text", text: `Unknown tool: ${name}` }], isError: true }
 
   if (tool.scope && agent.scopes && agent.scopes.length > 0) {
@@ -820,6 +829,10 @@ async function handle(identity: BotIdentity, msg: JsonRpcMessage): Promise<RpcRe
     roomIds: identity.roomIds,
     scopes: identity.scopes,
   }
+  // Workspace admin is per-agent, not per-key: only the built-in orchestrator carries the flag.
+  const extraTools = parseCapabilities(identity.agent.capabilities).orchestrator
+    ? orchestratorMcpTools({ orgId: identity.orgId, agentId: identity.agentId })
+    : []
   switch (msg.method) {
     case "initialize": {
       const requested =
@@ -840,9 +853,13 @@ async function handle(identity: BotIdentity, msg: JsonRpcMessage): Promise<RpcRe
     case "ping":
       return { jsonrpc: "2.0", id: msg.id ?? null, result: {} }
     case "tools/list":
-      return { jsonrpc: "2.0", id: msg.id ?? null, result: { tools: listTools() } }
+      return { jsonrpc: "2.0", id: msg.id ?? null, result: { tools: listTools(extraTools) } }
     case "tools/call":
-      return { jsonrpc: "2.0", id: msg.id ?? null, result: await callTool(agent, msg.params) }
+      return {
+        jsonrpc: "2.0",
+        id: msg.id ?? null,
+        result: await callTool(agent, msg.params, extraTools),
+      }
     case "resources/list":
       return { jsonrpc: "2.0", id: msg.id ?? null, result: { resources: [] } }
     case "prompts/list":

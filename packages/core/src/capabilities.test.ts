@@ -20,6 +20,7 @@ describe("capabilities", () => {
       connectors: true,
       storage: true,
       voice: true,
+      orchestrator: false,
     })
   })
 
@@ -55,6 +56,7 @@ describe("capabilities", () => {
       connectors: true,
       storage: true,
       voice: true,
+      orchestrator: false,
     })
     expect((parsed as unknown as Record<string, unknown>).unknownKey).toBeUndefined()
   })
