@@ -2,7 +2,7 @@
 
 Three small modules round out the desktop's "local computer" surface. `local-mcp.ts` executes whitelisted local MCP programs (Obsidian, Paper, Apple/iCloud apps) on behalf of queued server calls. `approve-mcp.ts` is the dependency-free stdio MCP server that Claude Code talks to for permission prompts during local runner jobs. `local-models.ts` discovers what each installed agent app can run — account model lists and locally-served models (Ollama, LM Studio) — so the web's model picker can offer them.
 
-Source files: `apps/desktop/src/local-mcp.ts`, `src/approve-mcp.ts`, `src/local-models.ts`, `src/acp.ts` (ACP model discovery used by `appModels`)
+Source files: `apps/desktop/src/local-mcp.ts`, `src/approve-mcp.ts`, `src/local-models.ts`, `src/platform-mcp.ts`, `src/acp.ts` (ACP model discovery used by `appModels`)
 
 ---
 
@@ -109,6 +109,20 @@ ACP discovery reuses the same launch arguments the runner would use (`spec.run.a
 The runner consumes these the other way: `localServerUrl(id)` (`src/local-models.ts:308`) maps `ollama`/`lmstudio` job apps to their base URL for `runLocalModel`'s `/v1/chat/completions` streaming (see [runner-and-stream.md](./runner-and-stream.md)). Any other id — a CLI app id, for instance — returns `null`, which is how `maybeRun` decides a claimed job is not a local-model job.
 
 Constants worth knowing (`src/local-models.ts:23-26`): model lists refresh every **6 hours** (`LIST_FRESH_MS`) or on a version change, each CLI invocation is capped at **15 seconds** (`CLI_TIMEOUT_MS`) with a 2–4 MB stdout guard, and every reported list is capped at **200 models** (`MAX_MODELS`). The cache is keyed by app id and stores the last good list per version, so a flaky CLI never blanks out a picker that worked a moment ago.
+
+---
+
+## 🖥 Driving Sayabot itself from this Mac
+
+**Sayabot → Copy MCP Config…** (`copyPlatformMcpConfig` in `src/main.ts`) copies a snippet built by
+`platformMcpConfig` (`src/platform-mcp.ts`) for the server the app is already connected to. That
+covers the embedded local workspace and a self-hosted URL the same way: both are the configured
+server, and both expose `/api/v1/mcp`, which the web app forwards to the orchestrator.
+
+The snippet has an HTTP block (Cursor and other URL clients) and a stdio block (`sayabot mcp`,
+for Claude Desktop, Codex, and Hermes). The key is the literal placeholder `PASTE_SAYA_KEY_HERE`.
+The app does not read a saved token into the clipboard. Replace it with a key minted for `@saya`
+that includes the `orchestrator` scope, and do not commit the file.
 
 ---
 

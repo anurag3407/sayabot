@@ -1,6 +1,7 @@
 import {
   app,
   BrowserWindow,
+  clipboard,
   dialog,
   ipcMain,
   Menu,
@@ -37,6 +38,7 @@ import { detectLocalAgents } from "./local-agents"
 import { LocalMcpHost } from "./local-mcp"
 import { LocalRunner, type ApprovalNotice } from "./runner"
 import { readJsonFile, removeJsonFile, writeJsonAtomic } from "./durable-json"
+import { platformMcpConfig } from "./platform-mcp"
 import { normalizeServerUrl } from "./server-url"
 import { VaultRunner } from "./vault-cli"
 import {
@@ -47,9 +49,7 @@ import {
 } from "./embedded-engine"
 
 export const DEFAULT_SERVER_URL =
-  process.env.SAYABOT_SERVER_URL ||
-  process.env.DEFAULT_SERVER_URL ||
-  "https://sayabot.sayalabs.in"
+  process.env.SAYABOT_SERVER_URL || process.env.DEFAULT_SERVER_URL || "https://sayabot.sayalabs.in"
 const CONFIG_FILE = "sayabot-config.json"
 const SESSION_FILE = "sayabot-session.json"
 
@@ -410,6 +410,34 @@ async function changeServerFromMenu(): Promise<void> {
   mainWindow?.show()
 }
 
+/** Copies an MCP snippet for the server this Mac is using. The key is a placeholder. */
+async function copyPlatformMcpConfig(): Promise<void> {
+  const serverUrl = normalizeServerUrl(loadConfig().serverUrl)
+  if (!serverUrl) {
+    await dialog.showMessageBox({
+      type: "info",
+      message: "Connect to a server first",
+      detail: "Choose the local workspace or your own server, then copy the MCP config.",
+    })
+    return
+  }
+  const snippet = platformMcpConfig(serverUrl)
+  if (!snippet.ok) {
+    await dialog.showMessageBox({
+      type: "warning",
+      message: "Couldn't build the MCP config",
+      detail: snippet.error,
+    })
+    return
+  }
+  clipboard.writeText(snippet.text)
+  await dialog.showMessageBox({
+    type: "info",
+    message: "MCP config copied",
+    detail: snippet.note,
+  })
+}
+
 async function connectFromLink(server: string): Promise<void> {
   const info = await checkServer(server)
   if (!info.ok) {
@@ -759,6 +787,10 @@ export function appMenuTemplate(): MenuItemConstructorOptions[] {
           label: "Change Server…",
           click: () => void changeServerFromMenu(),
         },
+        {
+          label: "Copy MCP Config…",
+          click: () => void copyPlatformMcpConfig(),
+        },
         { type: "separator" },
         { role: "hide" },
         { role: "hideOthers" },
@@ -881,7 +913,9 @@ function createWindow() {
       recentNavigations = recentNavigations.filter((n) => now - n.time < 3000)
       const loopHits = recentNavigations.filter((n) => n.url === url).length
       if (loopHits >= 3) {
-        console.warn(`[Sayabot Desktop] Detected redirect loop on ${url}. Breaking loop and returning to controller.`)
+        console.warn(
+          `[Sayabot Desktop] Detected redirect loop on ${url}. Breaking loop and returning to controller.`,
+        )
         recentNavigations = []
         saveSession(null)
         loadLocalHtml()
@@ -1130,7 +1164,9 @@ async function openWorkspaceInWindow() {
   const isLocal = cleanUrl.includes("localhost") || cleanUrl.includes("127.0.0.1")
   if (isLocal) {
     if (!getEmbeddedEngineStatus().running) {
-      console.log("[Sayabot Desktop] Local engine not running; starting embedded engine for workspace...")
+      console.log(
+        "[Sayabot Desktop] Local engine not running; starting embedded engine for workspace...",
+      )
       const res = await startEmbeddedEngine()
       if (res.ok && res.serverUrl) {
         cleanUrl = res.serverUrl.replace(/\/+$/, "")
@@ -1254,7 +1290,9 @@ async function createGuestSession(serverUrl: string): Promise<AuthSession> {
 
   if (isLocal) {
     if (!getEmbeddedEngineStatus().running) {
-      console.log("[Sayabot Desktop] Local server configured but embedded engine not running; starting...")
+      console.log(
+        "[Sayabot Desktop] Local server configured but embedded engine not running; starting...",
+      )
       const embedded = await startEmbeddedEngine()
       if (embedded.ok && embedded.serverUrl) {
         base = embedded.serverUrl
@@ -1277,7 +1315,9 @@ async function createGuestSession(serverUrl: string): Promise<AuthSession> {
   }
   if (!configRes || !configRes.ok) {
     // If remote server unreachable or slow, start zero-config embedded engine automatically
-    console.log("[Sayabot Desktop] Remote server unreachable or slow; booting local zero-config embedded engine…")
+    console.log(
+      "[Sayabot Desktop] Remote server unreachable or slow; booting local zero-config embedded engine…",
+    )
     const embedded = await startEmbeddedEngine()
     if (embedded.ok && embedded.serverUrl) {
       saveConfig({

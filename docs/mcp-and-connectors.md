@@ -129,6 +129,18 @@ When an external client connects to Sayabot, it is granted access to the followi
 
 ---
 
+## 🧭 Saya, the workspace control plane
+
+Every workspace includes `@saya`. A key minted for her with the `orchestrator` scope can run the workspace from any MCP client: create bots, choose models, create rooms, delegate tasks, schedule routines, approve another bot's pending command, and retry a failed turn. The same endpoint serves the Mac app and a self-hosted server.
+
+On the Mac app, **Sayabot → Copy MCP Config…** copies a config for the server that app is connected to. The key in the snippet is a placeholder. Replace it with Saya's key, and do not put that key in the URL.
+
+In a room, creating a bot or approving a command still waits for a person. Over MCP, the `orchestrator` scope is that person's grant. Saya cannot approve her own command, approve `use_secret`, grant herself a second orchestrator, or rewrite her own instructions.
+
+The command-line equivalent is `sayabot mcp`, plus `sayabot bots`, `sayabot models`, `sayabot delegate`, `sayabot approvals`, and `sayabot errors`.
+
+---
+
 ## 🌐 Outbound Gateway: Connecting External MCP Servers
 
 Sayabot agents can consume tools from third-party MCP servers (e.g., GitHub, Linear, Supabase, Brave, Sentry, Notion).

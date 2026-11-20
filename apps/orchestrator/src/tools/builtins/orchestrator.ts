@@ -1,5 +1,16 @@
 import { z } from "zod"
 import {
+  configureWorkspace,
+  decideApproval,
+  delegateTask,
+  listApprovals,
+  listErrors,
+  listModels,
+  manageRoutines,
+  removeBotFromRoom,
+  retryRun,
+} from "../../orchestrator-admin/control"
+import {
   addBotToRoom,
   configSnapshot,
   createBot,
@@ -184,10 +195,209 @@ export function orchestratorTools(opts: OrchestratorToolOptions): ToolSpec[] {
     {
       name: "sayabot_config",
       description:
-        "Read the resolved workspace configuration: plan, bot/room/MCP/provider counts, provider labels (never keys), MCP server status, and whether a Boat, VPS or E2B computer is configured.",
+        "Read the resolved workspace configuration: plan, counts, provider labels (never keys), connectors, MCP server status, desktop computers, and whether a Boat, VPS or E2B computer is configured.",
       schema: z.object({}),
       dangerous: false,
       execute: async () => await configSnapshot(actor),
+    },
+    {
+      name: "sayabot_models",
+      description:
+        "Models this workspace can assign. Lists up to 25 models per saved provider, plus the model each bot already uses. No keys.",
+      schema: z.object({}),
+      dangerous: false,
+      execute: async () => await listModels(actor),
+    },
+    {
+      name: "sayabot_configure",
+      description:
+        "Change workspace configuration. target room: name, timezone, system_directive, turn_mode, execution_mode (review_all or ask_risky only). target bot: display name, instructions, model, capabilities. Cannot rewrite Saya's instructions, grant orchestrator, or set auto/turbo.",
+      schema: z.object({
+        target: z.enum(["room", "bot"]),
+        room_id: z.string().uuid().optional(),
+        room: z.string().max(60).optional().describe("Room name, when room_id is omitted."),
+        handle: handle.optional(),
+        agent_id: z.string().uuid().optional(),
+        name: z.string().min(1).max(60).optional(),
+        timezone: z.string().max(64).optional(),
+        system_directive: z.string().max(4_000).nullable().optional(),
+        turn_mode: z.enum(["mentions", "debate", "moderated"]).optional(),
+        execution_mode: z.enum(["review_all", "ask_risky", "auto", "turbo"]).optional(),
+        display_name: z.string().min(1).max(60).optional(),
+        instructions: z.string().max(20_000).optional(),
+        model: z.string().max(120).nullable().optional(),
+        capabilities: capabilityToggles,
+      }),
+      dangerous: true,
+      execute: async (input: {
+        target: "room" | "bot"
+        room_id?: string
+        room?: string
+        handle?: string
+        agent_id?: string
+        name?: string
+        timezone?: string
+        system_directive?: string | null
+        turn_mode?: string
+        execution_mode?: string
+        display_name?: string
+        instructions?: string
+        model?: string | null
+        capabilities?: Record<string, boolean>
+      }) =>
+        await configureWorkspace(actor, {
+          target: input.target,
+          roomId: input.room_id ?? (input.target === "room" ? opts.roomId : undefined),
+          room: input.room,
+          handle: input.handle,
+          agentId: input.agent_id,
+          name: input.name,
+          timezone: input.timezone,
+          systemDirective: input.system_directive,
+          turnMode: input.turn_mode,
+          executionMode: input.execution_mode,
+          displayName: input.display_name,
+          instructions: input.instructions,
+          model: input.model,
+          capabilities: input.capabilities,
+        }),
+    },
+    {
+      name: "sayabot_delegate",
+      description:
+        "Give a task to another bot and wake them. The bot is added to the room if they are not already in it. Do not delegate to yourself.",
+      schema: z.object({
+        title: z.string().min(1).max(200),
+        instructions: z.string().max(4_000).optional(),
+        handle: handle.optional(),
+        agent_id: z.string().uuid().optional(),
+        room_id: z.string().uuid().optional(),
+        room: z.string().max(60).optional(),
+      }),
+      dangerous: true,
+      execute: async (input: {
+        title: string
+        instructions?: string
+        handle?: string
+        agent_id?: string
+        room_id?: string
+        room?: string
+      }) =>
+        await delegateTask(actor, {
+          title: input.title,
+          instructions: input.instructions,
+          handle: input.handle,
+          agentId: input.agent_id,
+          roomId: input.room_id ?? opts.roomId,
+          room: input.room,
+        }),
+    },
+    {
+      name: "sayabot_remove_bot_from_room",
+      description: "Remove a bot from a room. The bot itself is kept.",
+      schema: z.object({
+        room_id: z.string().uuid(),
+        handle: handle.optional(),
+        agent_id: z.string().uuid().optional(),
+      }),
+      dangerous: true,
+      execute: async (input: { room_id: string; handle?: string; agent_id?: string }) =>
+        await removeBotFromRoom(actor, {
+          roomId: input.room_id,
+          handle: input.handle,
+          agentId: input.agent_id,
+        }),
+    },
+    {
+      name: "sayabot_approvals",
+      description:
+        "Pending commands waiting for a person. Args are redacted. self is true when the command is yours: you cannot decide those.",
+      schema: z.object({}),
+      dangerous: false,
+      execute: async () => ({ approvals: await listApprovals(actor) }),
+    },
+    {
+      name: "sayabot_decide",
+      description:
+        "Approve or reject another bot's pending command. Put what it does in summary. You cannot approve your own command, use_secret, or sayabot_decide. In a room, approving waits for the owner. An MCP client with the orchestrator scope is that owner.",
+      schema: z.object({
+        tool_call_id: z.string().uuid(),
+        decision: z.enum(["approve", "reject"]),
+        summary: z
+          .string()
+          .min(8)
+          .max(280)
+          .describe("What the command does, so the approval card and the audit say it plainly."),
+      }),
+      dangerous: (args) => args.decision === "approve",
+      execute: async (input: {
+        tool_call_id: string
+        decision: "approve" | "reject"
+        summary: string
+      }) =>
+        await decideApproval(actor, {
+          toolCallId: input.tool_call_id,
+          decision: input.decision,
+          summary: input.summary,
+        }),
+    },
+    {
+      name: "sayabot_errors",
+      description:
+        "Recent failed turns and failed tool calls in this workspace. Errors are redacted.",
+      schema: z.object({}),
+      dangerous: false,
+      execute: async () => await listErrors(actor),
+    },
+    {
+      name: "sayabot_retry",
+      description:
+        "Run a failed turn's message again. The coordinator locks the room when the new turn starts.",
+      schema: z.object({ run_id: z.string().uuid() }),
+      dangerous: true,
+      execute: async (input: { run_id: string }) => await retryRun(actor, input.run_id),
+    },
+    {
+      name: "sayabot_routines",
+      description:
+        "Schedules for this workspace. action list is a read. create, pause, resume, and remove change a routine. create needs a name, a schedule (cron or 'daily at 9am'), a prompt, and a bot handle.",
+      schema: z.object({
+        action: z.enum(["list", "create", "pause", "resume", "remove"]),
+        id: z.string().uuid().optional(),
+        name: z.string().max(80).optional(),
+        schedule: z.string().max(80).optional(),
+        prompt: z.string().max(8_000).optional(),
+        timezone: z.string().max(64).optional(),
+        handle: handle.optional(),
+        agent_id: z.string().uuid().optional(),
+        room_id: z.string().uuid().optional(),
+        room: z.string().max(60).optional(),
+      }),
+      dangerous: (args) => args.action !== "list",
+      execute: async (input: {
+        action: "list" | "create" | "pause" | "resume" | "remove"
+        id?: string
+        name?: string
+        schedule?: string
+        prompt?: string
+        timezone?: string
+        handle?: string
+        agent_id?: string
+        room_id?: string
+        room?: string
+      }) =>
+        await manageRoutines(actor, {
+          action: input.action,
+          id: input.id,
+          name: input.name,
+          schedule: input.schedule,
+          prompt: input.prompt,
+          timezone: input.timezone,
+          handle: input.handle,
+          agentId: input.agent_id,
+          roomId: input.room_id,
+          room: input.room,
+        }),
     },
   ]
 }

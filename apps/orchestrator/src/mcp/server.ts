@@ -33,6 +33,7 @@ import {
 } from "../collab"
 import { classifyAndRecordCheckin } from "../collab/classify-checkin"
 import { getDb } from "../db"
+import { OrchestratorAdminError } from "../orchestrator-admin/service"
 import { loadTaskBriefContext } from "../runner/context"
 import { useSecretTool } from "../tools/builtins/use-secret"
 import { waitForActivity } from "./activity"
@@ -801,15 +802,21 @@ async function callTool(
   try {
     const result = await tool.run(agent, parsed.data)
     const text = redactSecrets(JSON.stringify(result, null, 2) ?? "null").text
+    let structured: unknown
+    if (result && typeof result === "object" && !Array.isArray(result)) {
+      try {
+        structured = JSON.parse(redactSecrets(JSON.stringify(result)).text) as unknown
+      } catch {
+        structured = undefined
+      }
+    }
     return {
       content: [{ type: "text", text }],
-      ...(result && typeof result === "object" && !Array.isArray(result)
-        ? { structuredContent: result }
-        : {}),
+      ...(structured && typeof structured === "object" ? { structuredContent: structured } : {}),
     }
   } catch (error) {
     const message =
-      error instanceof CollabError
+      error instanceof CollabError || error instanceof OrchestratorAdminError
         ? error.message
         : (console.error(`[mcp] tool ${name} failed`, error), "internal error running the tool")
     return { content: [{ type: "text", text: message }], isError: true }
@@ -846,7 +853,11 @@ async function handle(identity: BotIdentity, msg: JsonRpcMessage): Promise<RpcRe
             : SUPPORTED_VERSIONS[0],
           capabilities: { tools: { listChanged: false } },
           serverInfo: SERVER_INFO,
-          instructions: `${INSTRUCTIONS}\n\nYou are @${identity.agent.handle} (${identity.agent.displayName}).`,
+          instructions: `${INSTRUCTIONS}${
+            extraTools.length
+              ? "\n\nYou are the workspace orchestrator. sayabot_* tools create bots, choose models, configure rooms, delegate tasks, schedule routines, approve another bot's command, and retry failed turns. You cannot approve your own command, approve use_secret, grant orchestrator, or rewrite Saya's instructions. Secrets are redacted."
+              : ""
+          }\n\nYou are @${identity.agent.handle} (${identity.agent.displayName}).`,
         },
       }
     }

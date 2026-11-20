@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { HttpError, RpcError, SayabotClient } from "./client.js"
+import { HttpError, RpcError, SayabotClient, mcpEndpoint } from "./client.js"
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -42,6 +42,9 @@ describe("SayabotClient", () => {
     await client.request("tools/list")
 
     expect(captured[0]?.url).toBe("http://127.0.0.1:8787/v1/mcp")
+    expect(mcpEndpoint("https://sayabot.example/api/v1/mcp")).toBe(
+      "https://sayabot.example/api/v1/mcp",
+    )
     expect(captured[0]?.headers.authorization).toBe("Bearer saaya_ak_test")
     expect(captured[0]?.url).not.toContain("saaya_ak_test")
     expect(captured[0]?.body).toMatchObject({ jsonrpc: "2.0", method: "tools/list" })

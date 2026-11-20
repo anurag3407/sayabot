@@ -14,11 +14,20 @@ describe("orchestratorTools", () => {
   it("exposes the workspace-admin surface", () => {
     expect([...byName.keys()].sort()).toEqual([
       "sayabot_add_bot_to_room",
+      "sayabot_approvals",
       "sayabot_bots",
       "sayabot_config",
+      "sayabot_configure",
       "sayabot_create_bot",
       "sayabot_create_room",
+      "sayabot_decide",
+      "sayabot_delegate",
+      "sayabot_errors",
+      "sayabot_models",
+      "sayabot_remove_bot_from_room",
+      "sayabot_retry",
       "sayabot_rooms",
+      "sayabot_routines",
       "sayabot_update_bot",
       "sayabot_usage",
     ])
@@ -29,6 +38,14 @@ describe("orchestratorTools", () => {
     expect(isDangerous("sayabot_update_bot")).toBe(true)
     expect(isDangerous("sayabot_create_room")).toBe(true)
     expect(isDangerous("sayabot_add_bot_to_room")).toBe(true)
+    expect(isDangerous("sayabot_configure")).toBe(true)
+    expect(isDangerous("sayabot_delegate")).toBe(true)
+    expect(isDangerous("sayabot_retry")).toBe(true)
+    expect(isDangerous("sayabot_remove_bot_from_room")).toBe(true)
+    expect(isDangerous("sayabot_decide", { decision: "approve" })).toBe(true)
+    expect(isDangerous("sayabot_decide", { decision: "reject" })).toBe(false)
+    expect(isDangerous("sayabot_routines", { action: "list" })).toBe(false)
+    expect(isDangerous("sayabot_routines", { action: "create" })).toBe(true)
   })
 
   it("keeps reads safe", () => {
@@ -36,5 +53,8 @@ describe("orchestratorTools", () => {
     expect(isDangerous("sayabot_rooms")).toBe(false)
     expect(isDangerous("sayabot_usage")).toBe(false)
     expect(isDangerous("sayabot_config")).toBe(false)
+    expect(isDangerous("sayabot_models")).toBe(false)
+    expect(isDangerous("sayabot_approvals")).toBe(false)
+    expect(isDangerous("sayabot_errors")).toBe(false)
   })
 })

@@ -1,7 +1,15 @@
-import { DEFAULT_CAPABILITIES, parseCapabilities, type AgentCapabilities } from "@sayabot/core"
+import {
+  DEFAULT_CAPABILITIES,
+  assignableModelId,
+  isSayaHandle,
+  parseCapabilities,
+  redactSecrets,
+  type AgentCapabilities,
+} from "@sayabot/core"
 import {
   agents,
   auditLogs,
+  desktopHosts,
   mcpServers,
   orgComputerSettings,
   orgPlans,
@@ -12,8 +20,9 @@ import {
   roomMembers,
   rooms,
   usageEvents,
+  workspaceConnectors,
 } from "@sayabot/db"
-import { and, asc, eq, gte, sql } from "drizzle-orm"
+import { and, asc, eq, gte, isNull, sql } from "drizzle-orm"
 import { getDb } from "../db"
 
 /**
@@ -48,7 +57,7 @@ function normaliseHandle(handle: string): string {
   return handle.trim().replace(/^@+/, "").toLowerCase()
 }
 
-async function recordAudit(
+export async function recordAudit(
   actor: OrchestratorActor,
   action: string,
   target: string | null,
@@ -146,6 +155,13 @@ export async function createBot(actor: OrchestratorActor, input: CreateBotInput)
     .limit(1)
   if (existing) throw new OrchestratorAdminError(`@${handle} already exists in this workspace`)
 
+  if (input.model !== undefined && !assignableModelId(input.model)) {
+    throw new OrchestratorAdminError("model must be a model id, not a key or a URL")
+  }
+  if (isSayaHandle(handle)) {
+    throw new OrchestratorAdminError("The handle saya is reserved for the workspace orchestrator.")
+  }
+
   const capabilities = parseCapabilities({
     ...DEFAULT_CAPABILITIES,
     ...(input.capabilities ?? {}),
@@ -231,7 +247,17 @@ export async function updateBot(actor: OrchestratorActor, input: UpdateBotInput)
     }
     patch.displayName = displayName
   }
-  if (input.instructions !== undefined) patch.systemPrompt = input.instructions.slice(0, 20_000)
+  if (input.instructions !== undefined) {
+    if (isSayaHandle(current.handle)) {
+      throw new OrchestratorAdminError(
+        "Saya's standing instructions stay fixed. Change another bot, or the room directive.",
+      )
+    }
+    patch.systemPrompt = input.instructions.slice(0, 20_000)
+  }
+  if (input.model !== undefined && input.model !== null && !assignableModelId(input.model)) {
+    throw new OrchestratorAdminError("model must be a model id, not a key or a URL")
+  }
   if (input.model !== undefined) patch.model = input.model
   if (input.capabilities !== undefined) patch.capabilities = nextCaps
 
@@ -470,6 +496,8 @@ export interface ConfigSnapshot {
   counts: { bots: number; rooms: number; mcpServers: number; providerKeys: number }
   providers: Array<{ provider: string; label: string; last4: string; baseUrl: string | null }>
   mcpServers: Array<{ name: string; enabled: boolean; transport: string }>
+  connectors: Array<{ name: string; source: string; status: string; last4: string }>
+  desktops: Array<{ name: string; platform: string; lastSeenAt: string | null; online: boolean }>
   computers: { boat: boolean; e2b: boolean; vps: boolean; startVpsAutomatically: boolean }
 }
 
@@ -512,6 +540,27 @@ export async function configSnapshot(actor: OrchestratorActor): Promise<ConfigSn
     .where(eq(providerKeys.orgId, actor.orgId))
     .orderBy(asc(providerKeys.label))
 
+  const connectors = await getDb()
+    .select({
+      name: workspaceConnectors.name,
+      source: workspaceConnectors.source,
+      status: workspaceConnectors.status,
+      last4: workspaceConnectors.last4,
+    })
+    .from(workspaceConnectors)
+    .where(eq(workspaceConnectors.orgId, actor.orgId))
+    .orderBy(asc(workspaceConnectors.name))
+
+  const hosts = await getDb()
+    .select({
+      name: desktopHosts.name,
+      platform: desktopHosts.platform,
+      lastSeenAt: desktopHosts.lastSeenAt,
+    })
+    .from(desktopHosts)
+    .where(and(eq(desktopHosts.orgId, actor.orgId), isNull(desktopHosts.revokedAt)))
+    .orderBy(asc(desktopHosts.name))
+
   const [computers] = await getDb()
     .select({
       boat: orgComputerSettings.boatCiphertext,
@@ -532,8 +581,18 @@ export async function configSnapshot(actor: OrchestratorActor): Promise<ConfigSn
       mcpServers: mcp.length,
       providerKeys: providers.length,
     },
-    providers,
+    providers: providers.map((row) => ({
+      ...row,
+      baseUrl: row.baseUrl ? redactSecrets(row.baseUrl).text : null,
+    })),
     mcpServers: mcp,
+    connectors,
+    desktops: hosts.map((host) => ({
+      name: host.name,
+      platform: host.platform,
+      lastSeenAt: host.lastSeenAt?.toISOString() ?? null,
+      online: host.lastSeenAt ? Date.now() - host.lastSeenAt.getTime() < 90_000 : false,
+    })),
     computers: {
       boat: Boolean(computers?.boat),
       e2b: Boolean(computers?.e2b),

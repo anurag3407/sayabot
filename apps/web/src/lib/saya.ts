@@ -4,11 +4,26 @@ import {
   SAYA_CAPABILITIES,
   SAYA_DISPLAY_NAME,
   SAYA_HANDLE,
+  SAYA_MASCOT,
   SAYA_SYSTEM_PROMPT,
 } from "@sayabot/core"
 import { createAdminClient } from "@/lib/supabase/admin"
 
 type AdminClient = ReturnType<typeof createAdminClient>
+
+/** Keeps every other saved param and pins the wordmark ghost. */
+function withOfficialMascot(params: unknown): Record<string, unknown> {
+  const base =
+    params && typeof params === "object" && !Array.isArray(params)
+      ? { ...(params as Record<string, unknown>) }
+      : {}
+  const current =
+    base.mascot && typeof base.mascot === "object" && !Array.isArray(base.mascot)
+      ? { ...(base.mascot as Record<string, unknown>) }
+      : {}
+  base.mascot = { ...current, shape: SAYA_MASCOT.shape, tone: SAYA_MASCOT.tone }
+  return base
+}
 
 /**
  * Every workspace gets the same orchestrator agent. This makes `saya` idempotent: the row is
@@ -26,7 +41,7 @@ export async function ensureSayaAgent(
 
   const { data: existing } = await admin
     .from("agents")
-    .select("id")
+    .select("id, params")
     .eq("org_id", input.orgId)
     .eq("handle", SAYA_HANDLE)
     .maybeSingle()
@@ -43,7 +58,7 @@ export async function ensureSayaAgent(
         display_name: SAYA_DISPLAY_NAME,
         kind: "llm",
         system_prompt: SAYA_SYSTEM_PROMPT,
-        params: {},
+        params: withOfficialMascot({}),
         capabilities: SAYA_CAPABILITIES,
         visibility: "org",
         owner_user_id: input.userId ?? null,
@@ -55,6 +70,18 @@ export async function ensureSayaAgent(
     }
     agentId = data.id as string
     created = true
+  } else {
+    const look =
+      existing?.params &&
+      typeof existing.params === "object" &&
+      !Array.isArray(existing.params) &&
+      (existing.params as { mascot?: { shape?: string; tone?: string } }).mascot
+    if (look?.shape !== SAYA_MASCOT.shape || look?.tone !== SAYA_MASCOT.tone) {
+      await admin
+        .from("agents")
+        .update({ params: withOfficialMascot(existing?.params) })
+        .eq("id", agentId)
+    }
   }
 
   if (input.roomId) {

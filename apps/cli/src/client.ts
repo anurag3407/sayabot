@@ -62,6 +62,16 @@ export interface SayabotClientOptions {
   timeoutMs?: number
 }
 
+/**
+ * Orchestrator base URLs gain `/v1/mcp`. A web or desktop server URL that already ends in
+ * `/api/v1/mcp` or `/v1/mcp` is used as-is, so the same key works against a self-hosted web app.
+ */
+export function mcpEndpoint(url: string): string {
+  const base = url.trim().replace(/\/+$/, "")
+  if (/\/(?:api\/v1\/mcp|v1\/mcp)$/.test(base)) return base
+  return `${base}/v1/mcp`
+}
+
 export class SayabotClient {
   readonly endpoint: string
   private readonly key: string
@@ -70,7 +80,7 @@ export class SayabotClient {
   private nextId = 0
 
   constructor(options: SayabotClientOptions) {
-    this.endpoint = `${options.url.replace(/\/+$/, "")}/v1/mcp`
+    this.endpoint = mcpEndpoint(options.url)
     this.key = options.key
     this.doFetch = options.fetchImpl ?? fetch
     this.timeoutMs = options.timeoutMs ?? 120_000

@@ -11,7 +11,7 @@ import { serveMcpStdio } from "./stdio.js"
  *    client and that client drives a Sayabot room as the agent whose key it was given.
  *  - one-shot commands (`check-in`, `inbox`, `post`, …) for shells, cron jobs and scripts.
  *
- * Both go through the orchestrator's existing `/v1/mcp` endpoint with an agent API key, so the
+ * Both go through the orchestrator's MCP endpoint with an agent API key, so the
  * key's `scopes` and `roomIds` are the whole permission model. This tool never talks to the
  * database, never sees a secret plaintext, and never needs the internal secret.
  */
@@ -35,7 +35,12 @@ Usage
   sayabot rooms                   rooms this key can reach
   sayabot post "text"             post a message to the room
   sayabot bots                    workspace bots (orchestrator agents only)
+  sayabot models                  models the workspace can assign
   sayabot usage                   this month's turns, tokens and cost
+  sayabot approvals               commands waiting for a decision
+  sayabot errors                  failed turns and tool calls
+  sayabot retry <run-id>          run a failed turn again
+  sayabot delegate @bot "title"   give a bot a task (--room name)
   sayabot new-bot "Name"          create a bot        (--handle scout)
   sayabot new-room "Name"         create a room
   sayabot wait                    idle until the room needs you (--timeout secs)
@@ -295,6 +300,30 @@ async function runOneShot(
 
     case "usage":
       return await call("sayabot_usage", {})
+
+    case "models":
+      return await call("sayabot_models", {})
+
+    case "approvals":
+      return await call("sayabot_approvals", {})
+
+    case "errors":
+      return await call("sayabot_errors", {})
+
+    case "retry": {
+      const runId = parsed.positional[1]
+      if (!runId) throw new UsageError("sayabot retry needs a run id from `sayabot errors`")
+      return await call("sayabot_retry", { run_id: runId })
+    }
+
+    case "delegate": {
+      const handle = parsed.positional[1]?.replace(/^@/, "")
+      const title = parsed.positional.slice(2).join(" ").trim()
+      if (!handle || !title) {
+        throw new UsageError('sayabot delegate @scout "Check the deploy"')
+      }
+      return await call("sayabot_delegate", { ...room, ...toolArguments(parsed), handle, title })
+    }
 
     case "new-bot": {
       const displayName = parsed.positional.slice(1).join(" ").trim()

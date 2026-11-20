@@ -67,8 +67,8 @@ interface McpTool<S extends z.ZodType = z.ZodType> {
 1. Unknown tool → `isError` text `Unknown tool: <name>`.
 2. **Scope enforcement**: when the identity carries `scopes`, a tool with a `scope` requires that scope or `*` in the token — e.g. `use_secret` needs `secrets:use`, `plan_task` needs `tasks:write`, `wait_for_activity` needs `room:read`. Denied with `Permission denied: token missing required scope '<scope>'`.
 3. Arguments are parsed by the tool's Zod schema; failures return `Invalid arguments: <issues>`.
-4. Results are serialized, passed through **`redactSecrets`**, and returned both as text content and `structuredContent` (objects only).
-5. `CollabError` messages surface verbatim; unexpected errors are logged and replaced by the opaque `"internal error running the tool"`.
+4. Results are serialized, passed through **`redactSecrets`**, and returned both as text content and `structuredContent`. The structured object is the redacted JSON parsed back, so a secret in a field does not survive the object form either.
+5. `CollabError` and `OrchestratorAdminError` messages surface verbatim; unexpected errors are logged and replaced by the opaque `"internal error running the tool"`.
 
 ## 🧰 Tool Catalogue (`MCP_TOOLS`, `server.ts:78-641`)
 
@@ -106,11 +106,13 @@ The underlying collab functions (`checkIn`, `getInbox`, `postAgentMessage`, task
 ## 🧭 Workspace-admin tools (`src/mcp/admin-tools.ts`)
 
 When the authenticated agent's capabilities include `orchestrator` (only the built-in `saya`),
-`listTools()` appends eight admin tools derived from the audited `orchestratorTools()` specs:
-`sayabot_bots`, `sayabot_create_bot`, `sayabot_update_bot`, `sayabot_rooms`, `sayabot_create_room`,
-`sayabot_add_bot_to_room`, `sayabot_usage`, `sayabot_config`. Each requires the `orchestrator`
-token scope, because MCP has no inline approval prompt. For any other agent the tools are absent
-from `tools/list` and `tools/call` answers `Unknown tool`. See
+`listTools()` appends the workspace control-plane tools derived from the audited
+`orchestratorTools()` specs: roster, models, rooms, configure, delegate, routines, approvals,
+decide, errors, retry, usage, and config. `initialize` appends a short orchestrator instruction
+block for that agent only. Each tool requires the `orchestrator` token scope. In a room those
+mutations still wait on the approval gate; over MCP the scope is the owner's grant, except
+`sayabot_decide` still refuses self-approval, `use_secret`, and nested decisions. For any other
+agent the tools are absent from `tools/list` and `tools/call` answers `Unknown tool`. See
 [orchestrator-agent.md](./orchestrator-agent.md).
 
 ## 📄 Setup Instructions (`src/mcp/instructions.ts`)

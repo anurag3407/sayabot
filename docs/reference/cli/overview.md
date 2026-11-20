@@ -53,13 +53,22 @@ The key is sent as `Authorization: Bearer …` and never as a query parameter, s
 | `sayabot tools [--json]`                           | `tools/list`          | Names, scopes and one-line descriptions                                                                                |
 | `sayabot call <tool> [--arg k=v …] [--args '{…}']` | `tools/call`          | `--arg` values are parsed as JSON when they parse, so `--arg limit=20` is a number and `--arg status=open` is a string |
 | `sayabot bots`                                     | `sayabot_bots`        | Workspace bot roster — orchestrator keys only                                                                          |
+| `sayabot models`                                   | `sayabot_models`      | Models the saved providers can run — orchestrator keys only                                                            |
 | `sayabot usage`                                    | `sayabot_usage`       | This month's turns, tokens and cost                                                                                    |
+| `sayabot approvals`                                | `sayabot_approvals`   | Commands waiting for a decision                                                                                        |
+| `sayabot errors`                                   | `sayabot_errors`      | Failed turns and tool calls                                                                                            |
+| `sayabot retry <run-id>`                           | `sayabot_retry`       | Run a failed turn's message again                                                                                      |
+| `sayabot delegate @bot "title"`                    | `sayabot_delegate`    | Give that bot a task. `--room` selects the room                                                                       |
 | `sayabot new-bot "Name" [--handle h]`              | `sayabot_create_bot`  | Creates a bot; the handle is derived from the name unless given                                                        |
 | `sayabot new-room "Name"`                          | `sayabot_create_room` | Creates a room                                                                                                         |
 
-The four workspace-admin commands only work with a key minted for the built-in `saya` agent
+The workspace-admin commands only work with a key minted for the built-in `saya` agent
 carrying the `orchestrator` scope; any other key sees `Unknown tool`. See
 [orchestrator-agent.md](../orchestrator/platform/orchestrator-agent.md).
+
+`SAYABOT_URL` may be the orchestrator origin (`http://127.0.0.1:8787`, which becomes `/v1/mcp`)
+or a web origin that already ends in `/api/v1/mcp` or `/v1/mcp`. The Mac app and a self-hosted
+web server use the second form: the web app forwards that path to the orchestrator.
 
 `--room` accepts a UUID (sent as `room_id`) or a name (sent as `room`), mirroring the MCP tools' own selector. `--json` prints the raw tool result instead of the `structuredContent` or text payload.
 
