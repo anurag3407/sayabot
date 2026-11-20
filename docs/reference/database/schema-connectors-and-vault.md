@@ -155,7 +155,7 @@ Defined at `packages/db/src/schema/vault.ts:74`. One row per workspace bounding 
 
 ## Agent gateways
 
-`agent_gateways` (per-agent Telegram/Discord bot accounts), `gateway_inbound` (delivery dedup ledger) and `external_chats` (outside conversation → mirrored room) live in `packages/db/src/schema/gateways.ts` and `packages/db/sql/0041_agent_gateways.sql`. Tokens use the same sealed envelope as connectors, so `decryptSecret` + `unwrapConnectorSecret` read both. See [agent gateways](../orchestrator/platform/agent-gateways.md) and the [migrations catalog](./migrations-catalog.md).
+`agent_gateways` (per-agent Telegram/Discord bot accounts), `gateway_inbound` (delivery dedup ledger) and `external_chats` (the bound chat's room) live in `packages/db/src/schema/gateways.ts`, `packages/db/sql/0041_agent_gateways.sql` and `packages/db/sql/0042_gateway_one_channel.sql`. `bound_chat_id` and `room_id` pin each gateway to one chat and one room. Tokens use the same sealed envelope as connectors, so `decryptSecret` + `unwrapConnectorSecret` read both. See [agent gateways](../orchestrator/platform/agent-gateways.md) and the [migrations catalog](./migrations-catalog.md).
 
 ---
 

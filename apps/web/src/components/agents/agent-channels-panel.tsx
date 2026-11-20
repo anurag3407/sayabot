@@ -18,6 +18,7 @@ interface Channel {
   lastSeenAt: string | null
   lastError: string | null
   webhookUrl: string | null
+  boundChatId?: string | null
 }
 
 const SOURCES = [
@@ -102,8 +103,8 @@ export function AgentChannelsPanel({
       <div>
         <h3 className="text-sm font-semibold text-foreground">Chat channels</h3>
         <p className="text-xs text-muted-foreground mt-1">
-          Give this bot its own Telegram or Discord account. People who message it there get this
-          bot&apos;s replies, and each conversation appears as its own chat in the app.
+          Give this bot its own Telegram or Discord account. The app and that chat are the same
+          conversation: the first message binds it, and any later chat gets a short refusal.
         </p>
       </div>
 
@@ -127,6 +128,11 @@ export function AgentChannelsPanel({
                   <span className="font-mono text-[10px] text-faint">••••{channel.last4}</span>
                 </div>
                 <div className="text-[11px] text-muted-foreground truncate">{channel.name}</div>
+                <div className="text-[10px] text-faint mt-0.5">
+                  {channel.boundChatId
+                    ? "Bound to one chat. Replies from the app go there too."
+                    : "Waiting for the first message. That chat becomes the only one."}
+                </div>
                 {channel.lastError ? (
                   <div className="text-[11px] text-red-500 mt-0.5">{channel.lastError}</div>
                 ) : null}

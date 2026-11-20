@@ -28,7 +28,7 @@ export function FinalCta() {
         </p>
         <div className="final-ctas">
           <DownloadButton align="center" />
-          <a className="btn btn-ghost" href={LINKS.selfHost} target="_blank" rel="noreferrer">
+          <a className="btn btn-ghost" href={LINKS.selfHost}>
             Self-host <ArrowRight className="arrow" />
           </a>
         </div>

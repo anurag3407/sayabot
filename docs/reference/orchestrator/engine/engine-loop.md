@@ -221,7 +221,7 @@ Caught exceptions go through `classifyEngineError(err)` (see [engine-interrupts-
 4. `agent_runs` update: final `status`, `finishReason` (`"abort"` / `"error"` / stream finish / `"stop"`), `steps`, `heartbeatAt`, token totals, `costUsd`, `ttftMs`, `latencyMs`, `error`.
 5. Task accounting: when `args.taskId` is set, `tasks.turns_used = turns_used + 1` and `tasks.cost_usd = cost_usd + cost` (raw SQL increments).
 6. Broadcast `{ type: "message.done", messageId, status }` and await the broadcast chain.
-7. **Inbound connectors**: on success, `deliverInboundReply(args.trigger.metadata, redacted)` routes the reply back to Telegram/WhatsApp-originated triggers.
+7. **Inbound connectors**: on success, `deliverInboundReply(args.trigger.metadata, redacted, args.room.id)` routes the reply back. Gateway metadata or a room bound in `agent_gateways.room_id` sends through that bot; otherwise Telegram/WhatsApp connector metadata is used.
 8. **Routine results**: `recordRoutineResult({ metadata, roomId, agentId, reply, error })` records outcomes for scheduled routine runs (`"Stopped before it finished"` on abort).
 9. **Memory extraction** (capability `memory`, non-empty redacted reply, no abort/error): builds `buildExtractionTranscript({ triggerSender, triggerText (≤2500 chars), agentName, reply (≤3500 chars) })` and calls `runInBackground("memory.extract", () => memoryService.extractMemoriesFromTranscript(...))`. Memories the reply actually cited (`citedMemoryIds(redacted, recalledMemoryIds)`) are reinforced via `memoryService.reinforce(orgId, cited)` — also in the background so the room lock is released promptly.
 10. `flushLangfuse()`.

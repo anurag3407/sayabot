@@ -61,7 +61,11 @@ async function fakeCalls(): Promise<FakeCall[]> {
   return (await response.json()) as FakeCall[]
 }
 
-async function waitFor<T>(what: string, check: () => Promise<T | null>, timeoutMs = 240_000): Promise<T> {
+async function waitFor<T>(
+  what: string,
+  check: () => Promise<T | null>,
+  timeoutMs = 240_000,
+): Promise<T> {
   const deadline = Date.now() + timeoutMs
   let last: unknown = null
   while (Date.now() < deadline) {
@@ -103,7 +107,8 @@ async function signIn(page: Page): Promise<void> {
       password: PASSWORD,
       user_metadata: { full_name: "Gateway E2E" },
     })
-    if (created.error || !created.data.user) throw new Error(`createUser: ${created.error?.message}`)
+    if (created.error || !created.data.user)
+      throw new Error(`createUser: ${created.error?.message}`)
     user = created.data.user
   } else {
     const updated = await admin.auth.admin.updateUserById(user.id, { password: PASSWORD })
@@ -158,7 +163,11 @@ test.beforeAll(async () => {
   )
   await fetch(`${FAKE}/__reset`, { method: "POST" })
 
-  const { data: existing } = await admin.from("orgs").select("id").eq("slug", ORG_SLUG).maybeSingle()
+  const { data: existing } = await admin
+    .from("orgs")
+    .select("id")
+    .eq("slug", ORG_SLUG)
+    .maybeSingle()
   if (existing) {
     await admin.from("rooms").delete().eq("org_id", existing.id)
     await admin.from("agents").delete().eq("org_id", existing.id)
@@ -225,7 +234,9 @@ test("channels API: create, list, cross-agent refusal, no sealed token in respon
   const createdText = await created.text()
   expect(createdText).not.toContain(TG_TOKEN)
   expect(createdText).not.toContain("ciphertext")
-  const createdBody = JSON.parse(createdText) as { channel: { id: string; name: string; last4: string } }
+  const createdBody = JSON.parse(createdText) as {
+    channel: { id: string; name: string; last4: string }
+  }
   expect(createdBody.channel.name).toBe("@gateway_e2e_bot")
   expect(createdBody.channel.last4).toBe(TG_TOKEN.slice(-4))
   telegramGatewayId = createdBody.channel.id
@@ -279,7 +290,9 @@ test("public webhook: valid update accepted, duplicate ignored, wrong secret rej
     },
   })
 
-  const first = await page.request.post(webhook, { data: update(800001, 555001, "private", "hello bot") })
+  const first = await page.request.post(webhook, {
+    data: update(800001, 555001, "private", "hello bot"),
+  })
   expect(first.status()).toBe(200)
   expect(((await first.json()) as any).results[0].queued).toBe(true)
 
@@ -313,7 +326,11 @@ test("public webhook: valid update accepted, duplicate ignored, wrong secret rej
     return data as { room_id: string } | null
   })
   telegramRooms.push(mirrored.room_id)
-  const { data: room } = await admin.from("rooms").select("name").eq("id", mirrored.room_id).single()
+  const { data: room } = await admin
+    .from("rooms")
+    .select("name")
+    .eq("id", mirrored.room_id)
+    .single()
   expect((room as { name: string }).name).toContain("Telegram")
 })
 
@@ -332,13 +349,7 @@ test("orchestrator: the queued DM produces a real outbound send to the faked pro
   expect(sent.path).toContain("/telegram/")
 })
 
-test("orchestrator: silence in a group chat sends nothing", async ({ page }) => {
-  const patched = await page.request.patch(
-    `/api/workspaces/${ORG_SLUG}/agents/${agentA}/channels/${telegramGatewayId}`,
-    { data: { silence: true } },
-  )
-  expect(patched.status()).toBe(200)
-
+test("a second chat is refused and does not open another room", async ({ page }) => {
   const { data: row } = await admin
     .from("agent_gateways")
     .select("webhook_secret_enc")
@@ -361,31 +372,21 @@ test("orchestrator: silence in a group chat sends nothing", async ({ page }) => 
     },
   )
   expect(response.status()).toBe(200)
-  expect(((await response.json()) as any).results[0].queued).toBe(true)
+  const result = ((await response.json()) as any).results[0]
+  expect(result.queued).toBe(false)
+  expect(result.reason).toBe("bound to another chat")
 
-  const group = await waitFor("the group mirror room message", async () => {
-    const { data } = await admin
-      .from("external_chats")
-      .select("room_id")
-      .eq("gateway_id", telegramGatewayId)
-      .eq("external_chat_id", "-100555")
-      .maybeSingle()
-    if (!data) return null
-    const { count } = await admin
-      .from("messages")
-      .select("id", { count: "exact", head: true })
-      .eq("room_id", (data as { room_id: string }).room_id)
-    return count && count > 0 ? (data as { room_id: string }) : null
-  })
-  telegramRooms.push(group.room_id)
-
-  // Give the turn time to finish; no Telegram send for the group may appear.
-  await page.waitForTimeout(20_000)
   const calls = await fakeCalls()
-  const groupSends = calls.filter(
+  const refusal = calls.find(
     (call) => call.path.endsWith("/sendMessage") && String(call.body?.chat_id) === "-100555",
   )
-  expect(groupSends).toHaveLength(0)
+  expect(String(refusal?.body?.text ?? "")).toContain("bound to another chat")
+
+  const { data: chats } = await admin
+    .from("external_chats")
+    .select("room_id")
+    .eq("gateway_id", telegramGatewayId)
+  expect(chats ?? []).toHaveLength(1)
 })
 
 test("bot settings page renders the Chat channels panel with the connected account", async ({

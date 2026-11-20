@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest"
 import {
+  GATEWAY_REFUSAL,
   GATEWAY_SILENCE_TOKENS,
+  gatewayChatDecision,
   gatewayChatRoomName,
   isGatewaySource,
   isSilentGatewayReply,
@@ -31,6 +33,14 @@ describe("gateways", () => {
       "Discord · #dev channel",
     )
     expect(gatewayChatRoomName("telegram", "saya", "")).toBe("Telegram · chat")
+  })
+
+  it("binds the first chat and refuses every later one", () => {
+    expect(gatewayChatDecision(null, "555")).toBe("bind")
+    expect(gatewayChatDecision(undefined, "555")).toBe("bind")
+    expect(gatewayChatDecision("555", "555")).toBe("accept")
+    expect(gatewayChatDecision("555", "777")).toBe("refuse")
+    expect(GATEWAY_REFUSAL).toContain("another chat")
   })
 
   it("validates the Telegram token shape", () => {

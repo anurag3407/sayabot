@@ -77,7 +77,7 @@ export async function waitForApproval(
 | Mobile push (APNs)   | Title `"${agent} needs your approval"`, body `"Wants to use ${tool with underscores → spaces}. It expires in 5 minutes."`, category `approval`, thread = room (`push.ts:168-176`)                                                                  |
 | Web push (VAPID)     | Payload carries `kind: "approval"` and `toolCallId`, `tag: mesh-approval-<toolCallId>`, URL `/<org-slug>/inbox`, TTL 300 s (`push.ts:177-186`, `push.ts:7`)                                                                                        |
 | Notification buttons | The service worker renders **Allow / Don't allow** action buttons on approval pushes (`apps/web/src/sw.ts:79-83`)                                                                                                                                  |
-| Inbound chat echo    | If the triggering message came from Telegram/Discord/WhatsApp (`runtime.triggerMetadata`), the original chat is told approval is waiting and expires in 5 minutes (`audited.ts:132-142`, `deliverInboundReply` in `src/connectors/inbound.ts:178`) |
+| Inbound chat echo    | If the turn has `runtime.triggerMetadata` or a `runtime.roomId`, the bound Telegram/Discord chat (or the legacy connector chat) is told approval is waiting and expires in 5 minutes (`audited.ts`, `deliverInboundReply` in `src/connectors/inbound.ts`) |
 
 Delivery is best effort — push failures are logged and never hold up the run; the Inbox item remains the source of truth (`push.ts:150-152`).
 

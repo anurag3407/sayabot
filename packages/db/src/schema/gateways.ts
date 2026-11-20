@@ -30,8 +30,12 @@ export const agentGateways = pgTable(
     tokenFingerprint: text("token_fingerprint").notNull(),
     /** Telegram only: the secret segment of the webhook URL. Sealed. */
     webhookSecretEnc: text("webhook_secret_enc"),
-    /** allowedChats / allowedUserIds / silence / defaultRoomId. */
+    /** allowedChats / allowedUserIds / silence. The allowlist only chooses who may bind. */
     config: jsonb("config").notNull().default({}),
+    /** The one outside chat this bot answers. Set by the first message that passes the allowlist. */
+    boundChatId: text("bound_chat_id"),
+    /** The app room for that chat. Created when the channel is connected. */
+    roomId: uuid("room_id").references(() => rooms.id, { onDelete: "set null" }),
     lastError: text("last_error"),
     lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
     createdBy: uuid("created_by").references(() => profiles.id, { onDelete: "set null" }),
@@ -41,6 +45,7 @@ export const agentGateways = pgTable(
   (t) => [
     uniqueIndex("agent_gateways_agent_source_idx").on(t.agentId, t.source),
     uniqueIndex("agent_gateways_token_idx").on(t.tokenFingerprint),
+    uniqueIndex("agent_gateways_room_idx").on(t.roomId),
     index("agent_gateways_org_idx").on(t.orgId, t.source),
   ],
 )
@@ -60,8 +65,8 @@ export const gatewayInbound = pgTable(
 )
 
 /**
- * An external conversation mirrored into a room. Keeping the mirror as a real room means the chat
- * list, realtime, memory, canvas and approvals all work without a second message store.
+ * The bound chat's room, kept so older readers can still label it. One gateway has one room;
+ * `room_id` is unique, and a second outside chat never gets a row here.
  */
 export const externalChats = pgTable(
   "external_chats",

@@ -147,7 +147,7 @@ export function AddPhoneDialog({
                 <ScanLine aria-hidden className="h-5 w-5 shrink-0 text-muted" />
                 <span>
                   <span className="block text-[15px] font-medium text-text">
-                    {pending ? "Making a code…" : "Yes, sign in"}
+                    {pending ? "Opening a link…" : "Yes, sign in"}
                   </span>
                   <span className="block text-[13px] text-muted">Show a one-time code</span>
                 </span>
@@ -233,28 +233,15 @@ export function AddPhoneDialog({
               If the app asks for a server, use{" "}
               <span className="select-all text-muted">{pairing.server}</span>.
             </p>
-            {pairing.reach === "same-wifi" || pairing.reach === "this-computer" ? (
-              <div className="mt-3 rounded-lg border border-line bg-ink px-3 py-2.5 text-[12px] leading-relaxed text-muted">
-                {pairing.reach === "same-wifi" ? (
-                  <p>
-                    Sayabot is running on this computer, so the phone has to be on the{" "}
-                    <span className="text-text">same Wi-Fi</span>.
-                  </p>
-                ) : (
-                  <p>
-                    This computer has no address a phone can open. Connect it to Wi-Fi, or use a
-                    tunnel.
-                  </p>
-                )}
-                <p className="mt-1.5">
-                  To use the phone from anywhere, free: run{" "}
-                  <code className="select-all rounded bg-panel px-1 py-0.5 font-mono text-[11px] text-text">
-                    cloudflared tunnel --url{" "}
-                    {pairing.server.replace(/^https?:\/\/[^/:]+/, "http://localhost")}
-                  </code>{" "}
-                  then open Sayabot at the https address it prints and add the phone from there.
-                </p>
-              </div>
+            {pairing.server.includes(".trycloudflare.com") ? (
+              <p className="mt-3 text-[12px] leading-relaxed text-muted">
+                Scanning connects the phone to Sayabot on this computer. A Cloudflare tunnel
+                carries that connection, so the phone does not need to be on the same Wi-Fi.
+              </p>
+            ) : pairing.reach === "same-wifi" ? (
+              <p className="mt-3 text-[12px] leading-relaxed text-muted">
+                The phone has to be on the same Wi-Fi as this computer.
+              </p>
             ) : null}
           </div>
         ) : null}

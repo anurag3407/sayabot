@@ -6,7 +6,7 @@ import {
   getSupabaseUrl,
   instanceName,
 } from "@/lib/env"
-import { supabaseUrlForClient } from "@/lib/phone-reachable"
+import { supabaseUrlForPhone } from "@/lib/phone-tunnel"
 import { getPublicOrigin } from "@/lib/public-origin"
 
 export const dynamic = "force-dynamic"
@@ -28,9 +28,10 @@ export function GET(request: Request) {
       guestMode: desktopGuestModeEnabled(),
       // Public values (every browser gets them): the phone app signs in against this server's
       // own Supabase, so a self-hosted server never touches Sayabot Cloud. A local Supabase
-      // (127.0.0.1) is handed out on the LAN address the phone used to get here.
+      // is handed out on its Cloudflare tunnel once phone pairing has opened one, otherwise
+      // on the LAN address the phone used to get here.
       supabase: {
-        url: supabaseUrlForClient(getSupabaseUrl(), requestHost),
+        url: supabaseUrlForPhone(getSupabaseUrl(), requestHost),
         anonKey: getSupabaseAnonKey(),
       },
       version: process.env.APP_VERSION || process.env.NEXT_PUBLIC_APP_VERSION || null,

@@ -151,13 +151,14 @@ export function toAuditedTools(specs: ToolSpec[], runtime: ToolRuntime): ToolSet
             detail: spec.name,
             refId: row.id,
           })
-          if (runtime.triggerMetadata) {
+          if (runtime.triggerMetadata || runtime.roomId) {
             const action = spec.name.replace(/_/g, " ")
             void import("../connectors/inbound")
               .then(({ deliverInboundReply }) =>
                 deliverInboundReply(
                   runtime.triggerMetadata,
                   `Waiting for your OK to use ${action}. Allow it from the Sayabot notification, app or Inbox. It expires in 5 minutes.`,
+                  runtime.roomId,
                 ),
               )
               .catch((error) => console.warn("[inbound] approval notice not delivered", error))

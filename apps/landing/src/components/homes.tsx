@@ -119,7 +119,7 @@ const HOMES: Home[] = [
     id: "server",
     title: "On your own server",
     body: "Run the same open-source stack on a machine you control, free under the AGPL. Chats, agents and files never leave it.",
-    cta: { label: "Read the self-host guide", href: LINKS.selfHost, external: true },
+    cta: { label: "Read the self-host guide", href: LINKS.selfHost },
     place: { name: "Your server", detail: "On while it runs", Icon: ServerIcon },
     pill: ["Running", "Running"],
     sleeps: false,

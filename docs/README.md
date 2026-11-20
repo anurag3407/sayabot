@@ -155,7 +155,7 @@ Task-oriented guides live at the top level of `docs/`. The **reference library**
 | :-------------------------------------------------------------------------------- | :---------------------------------------------------------------------------- |
 | [connector-platform](reference/orchestrator/platform/connector-platform.md)       | ConnectorService, scope grants, retry/backoff, inbound intake                 |
 | [connectors-chat](reference/orchestrator/platform/connectors-chat.md)             | Slack, Discord gateway, Telegram/WhatsApp clients                             |
-| [agent-gateways](reference/orchestrator/platform/agent-gateways.md)               | Per-agent Telegram/Discord accounts, mirrored rooms, reply delivery           |
+| [agent-gateways](reference/orchestrator/platform/agent-gateways.md)               | Per-agent Telegram/Discord account, one bound chat, reply delivery           |
 | [connectors-content](reference/orchestrator/platform/connectors-content.md)       | GitHub, Google Drive, password managers, desktop bridge                       |
 | [connectors-storage](reference/orchestrator/platform/connectors-storage.md)       | `CloudStorageClient`: Supabase, R2, B2, S3/MinIO, Hugging Face object storage |
 | [connectors-apps](reference/orchestrator/platform/connectors-apps.md)             | Composio connected apps: Gmail, Calendar, Notion and the rest of the catalog  |

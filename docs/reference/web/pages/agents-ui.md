@@ -123,7 +123,7 @@ Three admin-gated actions for `kind === "external"` agents only:
 
 ### Chat channels (`AgentChannelsPanel`)
 
-Below the connector scopes, the page renders `apps/web/src/components/agents/agent-channels-panel.tsx`, which talks to `/api/workspaces/[org]/agents/[agentId]/channels`. It lists this bot's own Telegram/Discord accounts (platform, status, `last4`, last seen, last error, whether a webhook is set), takes a pasted bot token to connect, and offers disconnect. The token is verified with the provider (`getMe` / `/users/@me`), sealed with `MESH_KEK`, and never returned by the API; connecting a Telegram bot also sets its webhook. Only owners/admins see the controls. See [agent gateways](../../orchestrator/platform/agent-gateways.md).
+Below the connector scopes, the page renders `apps/web/src/components/agents/agent-channels-panel.tsx`, which talks to `/api/workspaces/[org]/agents/[agentId]/channels`. It lists this bot's own Telegram/Discord accounts (platform, status, `last4`, last error, whether a webhook is set, and whether a chat is bound yet). Connecting opens one private room and, for Telegram, sets the webhook. The first message binds that chat; the app and the outside chat are the same room. The token is verified with the provider (`getMe` / `/users/@me`), sealed with `MESH_KEK`, and never returned by the API. Only owners/admins see the controls. See [agent gateways](../../orchestrator/platform/agent-gateways.md).
 
 ---
 

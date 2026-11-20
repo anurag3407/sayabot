@@ -6,8 +6,9 @@ import { revalidatePath } from "next/cache"
 import { headers } from "next/headers"
 import { getOrgAccess } from "@/lib/auth"
 import { audit, errorMessage, fail, ok } from "@/lib/actions/shared"
-import { getAppUrl } from "@/lib/env"
-import { lanIPv4, phoneServerUrl } from "@/lib/phone-reachable"
+import { getAppUrl, getSupabaseUrl } from "@/lib/env"
+import { lanIPv4, loopbackTunnelTarget } from "@/lib/phone-reachable"
+import { ensureQuickTunnel, resolvePhoneServer } from "@/lib/phone-tunnel"
 import { createAdminClient } from "@/lib/supabase/admin"
 import type { ActionResult } from "@/lib/types"
 
@@ -40,13 +41,31 @@ export async function createPhonePairingAction(input: { orgSlug: string }): Prom
     .select("id")
     .single()
   if (error || !data) return fail(errorMessage(error) || "Could not make a code")
-  // An address the phone can open: on a Mac running Sayabot itself, localhost becomes the
-  // Mac's Wi-Fi address (or the tunnel/domain the browser is using).
+  // A phone cannot open localhost. Publish this computer through a Cloudflare quick tunnel
+  // unless the browser is already on a public address (a domain, or a tunnel).
   const h = await headers()
   const host = h.get("x-forwarded-host") ?? h.get("host")
   const proto = (h.get("x-forwarded-proto") ?? "http").split(",")[0]?.trim() || "http"
   const requestOrigin = host ? `${proto}://${host}` : null
-  const { url: server, reach } = phoneServerUrl(getAppUrl(), requestOrigin, lanIPv4())
+  let server: string
+  let reach: "anywhere" | "same-wifi" | "this-computer"
+  try {
+    const supabaseTarget = loopbackTunnelTarget(getSupabaseUrl())
+    const [resolved] = await Promise.all([
+      resolvePhoneServer({
+        appUrl: getAppUrl(),
+        requestOrigin,
+        lanIp: lanIPv4(),
+        presetPublicUrl: process.env.PHONE_PUBLIC_URL,
+      }),
+      supabaseTarget ? ensureQuickTunnel(supabaseTarget) : Promise.resolve(null),
+    ])
+    server = resolved.url
+    reach = resolved.reach
+  } catch (err) {
+    await admin.from("device_pairings").delete().eq("id", data.id)
+    return fail(err instanceof Error ? err.message : "Could not open a tunnel for the phone.")
+  }
   return ok(undefined, {
     pairingId: data.id,
     code: formatPairingCode(code),

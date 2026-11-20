@@ -44,7 +44,11 @@ Sayabot solves the autonomy vs. safety dilemma for AI agents. Rather than runnin
 - Android (APK): https://github.com/anurag3407/sayabot/releases/latest/download/Sayabot.apk
 - Web Application: Browser console for room chat, Monaco canvas, and agent settings on your server (http://localhost:7431 or self-hosted domain).
 
-## 5. Contact & Creators
+## 5. Self-hosting a clone
+
+The public guide is https://sayabot.tech/self-host. `./deploy/install.sh` starts nginx, the web app, the orchestrator, and either Let's Encrypt or a Cloudflare Tunnel. Bundled Supabase (the recommended answer) runs Postgres, sign-in, realtime, and storage on the same machine. Agent computers and egress are not in the default `SAYABOT_APP_SERVICES` (`orchestrator web`); they start after `sudo ./deploy/scripts/setup-computers.sh` and a deploy with `computerd` and `egress` included. `SAYABOT_EDITION` stays `self-hosted`: no plans, limits, or billing. Live checks are `GET /api/health` (`ok: true`, `service: sayabot-web`) and `GET /api/instance` (`sayabot: true`, `edition: self-hosted`). Database URLs use port 5432.
+
+## 6. Contact & Creators
 
 Sayabot is developed by Sayalabs Studio (https://sayalabs.in) led by Anurag Mishra (https://github.com/anurag3407).
 For support, issues, or contributions, visit https://github.com/anurag3407/sayabot.

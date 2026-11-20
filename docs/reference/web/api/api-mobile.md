@@ -27,7 +27,7 @@ Flow:
 1. `normalizePairingCode` + `isPairingCode` validate the code from the computer screen (`400` "That code doesn't look right…").
 2. The pairing row is claimed with a guarded update — `.eq("code_hash", hashAgentApiKey(code)).eq("status", "waiting").gt("expires_at", now)` — so two phones cannot both redeem one code (`pair/route.ts:33`); failure is `410` "That code expired or was already used…".
 3. The claim sets `status: "paired"`, `paired_at`, `device_name` (trimmed ≤ 80, defaulting to `"<platform> phone"`), `platform` (≤ 20), and `device_token_hash` from a fresh `generateDeviceToken()`.
-4. `auth.admin.generateLink({ type: "magiclink", email })` mints a single-use Supabase sign-in token for the pairing's user (the account must have an email, else `409` and the pairing is revoked again).
+4. `magicLinkForPairing` (`src/lib/guest-phone-auth.ts`) mints a single-use Supabase magic link for the pairing's user. A guest has no email, so the route first sets a confirmed `guest-<id>@example.com` on that same user and then calls `generateLink`. If the user was anonymous, `restoreGuestAnonymous` sets `auth.users.is_anonymous` back to true when `DATABASE_URL` is a Postgres URL, so saving the account later still works. Failure revokes the pairing and returns `409`.
 5. Audit `phone.paired` (when the pairing carries an org).
 
 **Response** (`pair/route.ts:78`):
@@ -40,11 +40,11 @@ Flow:
   "org_slug": "… | null",
   "device_id": "<pairing id>",
   "device_token": "<plaintext device token>",
-  "supabase_url": "<NEXT_PUBLIC_SUPABASE_URL>"
+  "supabase_url": "<phone-reachable Supabase URL>"
 }
 ```
 
-The phone redeems `token_hash` with `verifyOtp` and keeps `device_id` + `device_token` for the `/device` check-in. Errors: `400` non-JSON body, `409`/`500` account issues (pairing revoked), `410` expired code.
+The phone redeems `token_hash` with `verifyOtp` and keeps `device_id` + `device_token` for the `/device` check-in. `supabase_url` is the configured Supabase URL, or the quick tunnel opened for a loopback Supabase. Errors: `400` non-JSON body, `409` when the sign-in link cannot be minted (pairing revoked), `410` expired code.
 
 ---
 

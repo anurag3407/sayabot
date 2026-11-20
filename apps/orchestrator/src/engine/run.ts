@@ -315,7 +315,9 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
     await chain
     if (!aborted && !error && redacted) {
       void import("../connectors/inbound")
-        .then(({ deliverInboundReply }) => deliverInboundReply(args.trigger.metadata, redacted))
+        .then(({ deliverInboundReply }) =>
+          deliverInboundReply(args.trigger.metadata, redacted, args.room.id),
+        )
         .catch((error) => console.warn("[inbound] reply not delivered", error))
     }
     // A routine's run history and "routine finished" alert get the agent's real outcome.

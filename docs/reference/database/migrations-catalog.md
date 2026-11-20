@@ -2,7 +2,7 @@
 
 This catalog documents every database migration in `packages/db`: the four Drizzle-generated migrations in `packages/db/migrations/` (the declarative schema snapshot pipeline) and the 41 hand-written SQL scripts in `packages/db/sql/` (functions, triggers, RLS, realtime, and RPCs that Drizzle cannot express). `src/migrate.ts` runs both phases in order — Drizzle first, then every `sql/*.sql` file in sorted filename order — and the SQL phase re-applies on every run, so each script is written to be idempotent.
 
-Source files: `packages/db/migrations/0000_conscious_natasha_romanoff.sql` through `0003_gigantic_the_call.sql`, `packages/db/sql/0001_functions.sql` through `0041_agent_gateways.sql`, `packages/db/src/migrate.ts`
+Source files: `packages/db/migrations/0000_conscious_natasha_romanoff.sql` through `0003_gigantic_the_call.sql`, `packages/db/sql/0001_functions.sql` through `0042_gateway_one_channel.sql`, `packages/db/src/migrate.ts`
 
 ---
 
@@ -289,6 +289,11 @@ Creates `agent_reads` (PK `(agent_id, room_id)`, `last_read_at`, `updated_at`) w
 - `gateway_inbound`: `(gateway_id, external_id)` dedup ledger with an optional `message_id`. Separate from `messaging_inbound`, which requires a `workspace_connectors` parent.
 - `external_chats`: one row per outside conversation, `unique (gateway_id, external_chat_id)` and `unique (room_id)`, mapping to the mirrored room plus `chat_type`, `title`, `last_message_at`.
 - RLS: `agent_gateways_org` and `external_chats_org` for org members; `gateway_inbound_read` is select-only for members and written by the service role.
+
+### `0042_gateway_one_channel.sql` — one chat per gateway
+
+- `agent_gateways.bound_chat_id` is the single outside chat the bot answers. `agent_gateways.room_id` references `rooms(id)` `on delete set null`, with unique index `agent_gateways_room_idx` where `room_id` is not null.
+- Existing rows are backfilled from the most recent `external_chats` row (`last_message_at`, then `created_at`). Older rooms are left in place. New messages from any other chat are refused and do not open another room.
 
 ---
 

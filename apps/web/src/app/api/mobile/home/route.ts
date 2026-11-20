@@ -169,19 +169,27 @@ export async function GET(request: Request) {
     if (m.sender_id !== who.user.id && (!read || m.created_at > read.last_read_at))
       unread.set(m.room_id, (unread.get(m.room_id) ?? 0) + 1)
   }
-  // Telegram/Discord conversations are real rooms too; label each one with the channel it came from.
+  // The gateway's own room is labeled from agent_gateways.room_id. Older mirror rows that were
+  // not chosen as the bound chat still get a label from external_chats.
   const { data: externalChatRows } = roomIds.length
     ? await c.from("external_chats").select("room_id, gateway_id").in("room_id", roomIds)
     : { data: [] as { room_id: string; gateway_id: string }[] }
   const { data: gatewayRows } = await c
     .from("agent_gateways")
-    .select("id, source")
+    .select("id, source, room_id")
     .eq("org_id", access.org.id)
   const gatewaySourceById = new Map(
-    ((gatewayRows ?? []) as { id: string; source: string }[]).map((row) => [row.id, row.source]),
+    ((gatewayRows ?? []) as { id: string; source: string; room_id: string | null }[]).map((row) => [
+      row.id,
+      row.source,
+    ]),
   )
   const channelByRoom = new Map<string, string>()
+  for (const row of (gatewayRows ?? []) as { source: string; room_id: string | null }[]) {
+    if (row.room_id) channelByRoom.set(row.room_id, row.source)
+  }
   for (const row of (externalChatRows ?? []) as { room_id: string; gateway_id: string }[]) {
+    if (channelByRoom.has(row.room_id)) continue
     const source = gatewaySourceById.get(row.gateway_id)
     if (source) channelByRoom.set(row.room_id, source)
   }

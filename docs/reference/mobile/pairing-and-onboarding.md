@@ -135,7 +135,9 @@ Phone pairing is free on every server, with no plan check in `/api/mobile/pair`.
 | :-------------------------------------------------------------- | :---------------------------------------------------------------------------------------- | :---------------------------------- |
 | Cloud / public domain server                                    | server domain                                                                             | anywhere                            |
 | Self-hosted with a domain (`deploy/docker-compose.yml` + nginx) | the domain                                                                                | anywhere                            |
-| Sayabot running on a Mac (`pnpm dev` / local)                   | `http://<Mac's Wi-Fi IP>:<port>`, put into the QR by `createPhonePairingAction`           | same Wi-Fi                          |
-| Same Mac + `cloudflared tunnel --url http://localhost:7431`     | `https://<random>.trycloudflare.com` (open the web app there first, so the QR carries it) | anywhere, until the tunnel restarts |
+| Sayabot running on a Mac (`pnpm dev` / local)                   | `https://<random>.trycloudflare.com`, opened by `createPhonePairingAction` and aimed at `http://127.0.0.1:<port>` | anywhere, until `cloudflared` exits |
+| `PHONE_PUBLIC_URL` already set to a public https address        | that address, with no extra tunnel                                                        | anywhere                            |
+
+A guest is signed in as that same user. The server stores a confirmed `guest-<id>@example.com` only so Supabase can mint the magic link, then sets `is_anonymous` back to true. A local Supabase (`127.0.0.1:54321`) is published on its own quick tunnel and returned as `supabase_url`, so the phone can redeem the link and use the API.
 
 A typed code is sent to the phone's current server. If the phone is still on Sayabot Cloud and Cloud answers 410 for a code made by another server, `pairOnce` appends "If your computer runs its own Sayabot, tap Change server and enter the address shown under the code." Scanning the QR avoids this, because the link carries `server=`.

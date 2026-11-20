@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto"
 import { NextResponse } from "next/server"
-import { isGatewaySource, looksLikeTelegramToken } from "@sayabot/core"
+import { gatewayChatRoomName, isGatewaySource, looksLikeTelegramToken } from "@sayabot/core"
 import { decryptSecret, encryptSecret, sealSecret, unwrapConnectorSecret } from "@sayabot/llm"
 import { getOrgAccess, isOrgAdmin } from "@/lib/auth"
 import { getKek } from "@/lib/env"
@@ -25,11 +25,15 @@ interface ProviderIdentity {
 }
 
 /** Mirrors of the provider APIs (self-hosted proxy or the E2E harness) can override the base URL. */
-const telegramApi = () => (process.env.TELEGRAM_API_BASE ?? "https://api.telegram.org").replace(/\/+$/, "")
+const telegramApi = () =>
+  (process.env.TELEGRAM_API_BASE ?? "https://api.telegram.org").replace(/\/+$/, "")
 const discordApi = () =>
   (process.env.DISCORD_API_BASE ?? "https://discord.com/api/v10").replace(/\/+$/, "")
 
-async function verifyToken(source: "telegram" | "discord", token: string): Promise<ProviderIdentity> {
+async function verifyToken(
+  source: "telegram" | "discord",
+  token: string,
+): Promise<ProviderIdentity> {
   if (source === "telegram") {
     if (!looksLikeTelegramToken(token)) {
       throw new Error("That does not look like a Telegram bot token (123456789:AA…)")
@@ -77,14 +81,19 @@ async function setTelegramWebhook(token: string, url: string): Promise<void> {
   }
 }
 
-export async function GET(_request: Request, context: { params: Promise<{ org: string; agentId: string }> }) {
+export async function GET(
+  _request: Request,
+  context: { params: Promise<{ org: string; agentId: string }> },
+) {
   const { org, agentId } = await context.params
   const access = await getOrgAccess(org)
   if (!access) return NextResponse.json({ error: "Not found" }, { status: 404 })
   const admin = createAdminClient()
   const { data, error } = await admin
     .from("agent_gateways")
-    .select("id, source, name, status, last4, config, last_seen_at, last_error, webhook_secret_enc")
+    .select(
+      "id, source, name, status, last4, config, last_seen_at, last_error, webhook_secret_enc, bound_chat_id, room_id",
+    )
     .eq("org_id", access.org.id)
     .eq("agent_id", agentId)
     .order("created_at", { ascending: true })
@@ -99,11 +108,16 @@ export async function GET(_request: Request, context: { params: Promise<{ org: s
     lastSeenAt: row.last_seen_at ?? null,
     lastError: row.last_error ?? null,
     webhookUrl: row.source === "telegram" && row.webhook_secret_enc ? "set" : null,
+    boundChatId: row.bound_chat_id ?? null,
+    roomId: row.room_id ?? null,
   }))
   return NextResponse.json({ channels }, { headers: { "cache-control": "no-store" } })
 }
 
-export async function POST(request: Request, context: { params: Promise<{ org: string; agentId: string }> }) {
+export async function POST(
+  request: Request,
+  context: { params: Promise<{ org: string; agentId: string }> },
+) {
   const { org, agentId } = await context.params
   const access = await getOrgAccess(org)
   if (!access) return NextResponse.json({ error: "Not found" }, { status: 404 })
@@ -112,7 +126,8 @@ export async function POST(request: Request, context: { params: Promise<{ org: s
   const body = (await request.json().catch(() => null)) as GatewayBody | null
   const source = body?.source
   const token = body?.token?.trim() ?? ""
-  if (!isGatewaySource(source)) return NextResponse.json({ error: "Unknown platform" }, { status: 400 })
+  if (!isGatewaySource(source))
+    return NextResponse.json({ error: "Unknown platform" }, { status: 400 })
   if (!token) return NextResponse.json({ error: "A bot token is required" }, { status: 400 })
 
   const admin = createAdminClient()
@@ -189,6 +204,25 @@ export async function POST(request: Request, context: { params: Promise<{ org: s
 
   const kek = getKek()
   const inboundSecret = randomBytes(24).toString("hex")
+  const { data: room, error: roomError } = await admin
+    .from("rooms")
+    .insert({
+      org_id: access.org.id,
+      name: gatewayChatRoomName(source, agent.handle, identity.name),
+      kind: "private",
+      turn_mode: "mentions",
+      timezone: "UTC",
+      created_by: access.user.id,
+    })
+    .select("id")
+    .single()
+  if (roomError || !room) {
+    return NextResponse.json(
+      { error: roomError?.message ?? "Could not open the channel chat" },
+      { status: 500 },
+    )
+  }
+
   const { data: created, error } = await admin
     .from("agent_gateways")
     .insert({
@@ -202,17 +236,30 @@ export async function POST(request: Request, context: { params: Promise<{ org: s
       token_fingerprint: fingerprint,
       webhook_secret_enc: sealSecret(inboundSecret, kek),
       config: {},
+      room_id: room.id,
       created_by: access.user.id,
     })
-    .select("id, source, name, status, last4, config, created_at")
+    .select("id, source, name, status, last4, config, created_at, room_id")
     .single()
   if (error || !created) {
+    await admin.from("rooms").delete().eq("id", room.id)
     const duplicate = error?.code === "23505"
     return NextResponse.json(
-      { error: duplicate ? "That bot account is already connected." : (error?.message ?? "Could not connect") },
+      {
+        error: duplicate
+          ? "That bot account is already connected."
+          : (error?.message ?? "Could not connect"),
+      },
       { status: duplicate ? 409 : 500 },
     )
   }
+
+  await admin.from("room_members").insert({
+    room_id: room.id,
+    user_id: access.user.id,
+    role: "admin",
+  })
+  await admin.from("room_agents").insert({ room_id: room.id, agent_id: agentId, position: 0 })
 
   if (source === "telegram") {
     const webhookUrl = `${getPublicOrigin(request)}/api/gateways/telegram/${created.id}/${inboundSecret}`
@@ -220,6 +267,7 @@ export async function POST(request: Request, context: { params: Promise<{ org: s
       await setTelegramWebhook(token, webhookUrl)
     } catch (webhookError) {
       await admin.from("agent_gateways").delete().eq("id", created.id)
+      await admin.from("rooms").delete().eq("id", room.id)
       return NextResponse.json(
         {
           error:
@@ -232,5 +280,8 @@ export async function POST(request: Request, context: { params: Promise<{ org: s
     }
   }
 
-  return NextResponse.json({ channel: { ...created, webhookUrl: source === "telegram" ? "set" : null } }, { status: 201 })
+  return NextResponse.json(
+    { channel: { ...created, webhookUrl: source === "telegram" ? "set" : null } },
+    { status: 201 },
+  )
 }

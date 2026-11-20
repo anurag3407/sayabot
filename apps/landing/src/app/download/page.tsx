@@ -479,7 +479,7 @@ export default function DownloadPage() {
                   >
                     <GitHubIcon /> GitHub AGPL-3.0
                   </a>
-                  <a className="link" href={LINKS.selfHost} target="_blank" rel="noreferrer">
+                  <a className="link" href={LINKS.selfHost}>
                     Self-Hosting Guide
                   </a>
                 </div>

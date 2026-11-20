@@ -37,8 +37,30 @@ export function gatewayLabel(source: GatewaySource): string {
   return source === "telegram" ? "Telegram" : "Discord"
 }
 
-/** The room title for a mirrored external chat, kept short and stable. */
-export function gatewayChatRoomName(source: GatewaySource, handle: string, chatTitle: string): string {
+/** What the first message from an outside chat is allowed to do. */
+export type GatewayChatDecision = "bind" | "accept" | "refuse"
+
+/** Sent once to a chat that is not the one this bot is bound to. */
+export const GATEWAY_REFUSAL = "This bot is bound to another chat."
+
+/**
+ * One gateway answers one chat. The first chat binds it; that same chat is accepted afterwards;
+ * every other chat is refused.
+ */
+export function gatewayChatDecision(
+  boundChatId: string | null | undefined,
+  incomingChatId: string,
+): GatewayChatDecision {
+  if (!boundChatId) return "bind"
+  return boundChatId === incomingChatId ? "accept" : "refuse"
+}
+
+/** The room title for the gateway's one chat, kept short and stable. */
+export function gatewayChatRoomName(
+  source: GatewaySource,
+  handle: string,
+  chatTitle: string,
+): string {
   const title = chatTitle.replace(/\s+/g, " ").trim().slice(0, 40) || "chat"
   return `${gatewayLabel(source)} · ${title}`
 }

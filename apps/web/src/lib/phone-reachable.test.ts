@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   isLoopbackHost,
   lanIPv4,
+  loopbackTunnelTarget,
   phoneServerUrl,
   reachOf,
   supabaseUrlForClient,
@@ -69,6 +70,18 @@ describe("lanIPv4", () => {
   })
   it("returns null without a network", () => {
     expect(lanIPv4({} as Parameters<typeof lanIPv4>[0])).toBeNull()
+  })
+})
+
+describe("loopbackTunnelTarget", () => {
+  it("points a local or Wi-Fi address at this machine's port", () => {
+    expect(loopbackTunnelTarget("http://localhost:7431")).toBe("http://127.0.0.1:7431")
+    expect(loopbackTunnelTarget("http://192.168.1.4:7431")).toBe("http://127.0.0.1:7431")
+    expect(loopbackTunnelTarget("http://127.0.0.1:54321")).toBe("http://127.0.0.1:54321")
+  })
+  it("leaves a public server alone", () => {
+    expect(loopbackTunnelTarget("https://sayabot.example.com")).toBeNull()
+    expect(loopbackTunnelTarget("https://abc.trycloudflare.com")).toBeNull()
   })
 })
 

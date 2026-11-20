@@ -169,7 +169,7 @@ A pure line-based splitter (unit-tested in `tests/unit/markdown.test.ts`) produc
 
 ## Telegram and Discord chats
 
-Mirrored external conversations are ordinary rooms, so they arrive in the same home feed. `/api/mobile/home` maps each room to its gateway source through `external_chats` → `agent_gateways` and returns `channel: "telegram" | "discord" | null` on every chat; `HomeChat.channel` carries it into `ChatRow`, which prefixes the preview with `Telegram · ` or `Discord · `. Nothing else changes: unread counts, working state, DMs and realtime all use the normal room paths.
+A gateway's chat is an ordinary room, so it arrives in the same home feed. `/api/mobile/home` labels that room from `agent_gateways.room_id` first, then fills any older unlabeled room from `external_chats`, and returns `channel: "telegram" | "discord" | null`. `HomeChat.channel` carries it into `ChatRow`, which prefixes the preview with `Telegram · ` or `Discord · `. Unread counts, working state and realtime all use the normal room paths.
 
 ---
 

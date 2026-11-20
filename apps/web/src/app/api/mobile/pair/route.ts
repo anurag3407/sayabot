@@ -3,6 +3,8 @@ import { generateDeviceToken, hashAgentApiKey } from "@sayabot/core/server"
 import { NextResponse } from "next/server"
 import { audit } from "@/lib/actions/shared"
 import { getSupabaseUrl } from "@/lib/env"
+import { magicLinkForPairing, restoreGuestAnonymous } from "@/lib/guest-phone-auth"
+import { supabaseUrlForPhone } from "@/lib/phone-tunnel"
 import { createAdminClient } from "@/lib/supabase/admin"
 
 function json(body: unknown, status = 200) {
@@ -55,49 +57,54 @@ export async function POST(req: Request) {
       410,
     )
 
-  const { data: userRes, error: userError } = await admin.auth.admin.getUserById(pairing.user_id)
-  let email = userRes?.user?.email
-  if (!email && userRes?.user) {
-    // Guest or anonymous accounts in Supabase don't have an email by default.
-    // Assign a synthetic confirmed email so Supabase can generate the magic link OTP token.
-    const syntheticEmail = `guest-${pairing.user_id.slice(0, 8)}@sayabot.internal`
-    const { data: updateRes, error: updateError } = await admin.auth.admin.updateUserById(
-      pairing.user_id,
-      {
-        email: syntheticEmail,
-        email_confirm: true,
+  const linked = await magicLinkForPairing(
+    {
+      async getUserById(id) {
+        const { data, error } = await admin.auth.admin.getUserById(id)
+        return {
+          data: {
+            user: data.user
+              ? {
+                  id: data.user.id,
+                  email: data.user.email,
+                  is_anonymous: data.user.is_anonymous,
+                }
+              : null,
+          },
+          error: error ? { message: error.message } : null,
+        }
       },
-    )
-    if (!updateError && updateRes?.user?.email) {
-      email = updateRes.user.email
-    }
-  }
-
-  if (userError || !email) {
+      async updateUserById(id, attrs) {
+        const { data, error } = await admin.auth.admin.updateUserById(id, attrs)
+        return {
+          data: {
+            user: data.user ? { id: data.user.id, email: data.user.email } : null,
+          },
+          error: error ? { message: error.message } : null,
+        }
+      },
+      async generateLink(args) {
+        const { data, error } = await admin.auth.admin.generateLink(args)
+        return {
+          data: data ? { properties: { hashed_token: data.properties?.hashed_token } } : null,
+          error: error ? { message: error.message } : null,
+        }
+      },
+    },
+    pairing.user_id,
+  )
+  if (!linked.ok) {
     await admin
       .from("device_pairings")
       .update({ status: "revoked", revoked_at: now })
       .eq("id", pairing.id)
-    return json(
-      {
-        error:
-          "This account has no email (guest mode). Please sign in with Google or GitHub on your computer first, then try again.",
-      },
-      409,
-    )
+    return json({ error: linked.error }, 409)
   }
-  const { data: link, error: linkError } = await admin.auth.admin.generateLink({
-    type: "magiclink",
-    email,
-  })
-  const tokenHash = link?.properties?.hashed_token
-  if (linkError || !tokenHash) {
-    await admin
-      .from("device_pairings")
-      .update({ status: "revoked", revoked_at: now })
-      .eq("id", pairing.id)
-    return json({ error: "Could not sign this phone in. Try a new code." }, 500)
-  }
+  if (linked.wasAnonymous) await restoreGuestAnonymous(pairing.user_id)
+  const requestHost = /^https?:\/\/(\[[^\]]+\]|[^/:]+)/i.exec(req.url)?.[1] ?? null
+  // Prefer the Host the phone actually called (the tunnel), not the server-side request URL.
+  const hostHeader = req.headers.get("x-forwarded-host") ?? req.headers.get("host")
+  const phoneHost = hostHeader?.split(",")[0]?.trim().replace(/:\d+$/, "") || requestHost
 
   let orgSlug: string | null = null
   if (pairing.org_id) {
@@ -119,12 +126,12 @@ export async function POST(req: Request) {
   }
 
   return json({
-    token_hash: tokenHash,
+    token_hash: linked.tokenHash,
     type: "magiclink",
-    email,
+    email: linked.email,
     org_slug: orgSlug,
     device_id: pairing.id,
     device_token: device.token,
-    supabase_url: getSupabaseUrl(),
+    supabase_url: supabaseUrlForPhone(getSupabaseUrl(), phoneHost),
   })
 }

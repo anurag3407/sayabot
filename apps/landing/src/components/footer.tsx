@@ -5,12 +5,12 @@ const COLUMNS = [
   {
     title: "Product",
     links: [
-      { label: "Download", href: "#download" },
+      { label: "Download", href: "/#download" },
       { label: "Web app", href: LINKS.app },
-      { label: "How it works", href: "#how" },
-      { label: "Computers", href: "#computer" },
-      { label: "Memory", href: "#memory" },
-      { label: "Questions", href: "#faq" },
+      { label: "How it works", href: "/#how" },
+      { label: "Computers", href: "/#computer" },
+      { label: "Memory", href: "/#memory" },
+      { label: "Questions", href: "/#faq" },
     ],
   },
   {
@@ -39,7 +39,7 @@ export function Footer() {
     <footer className="footer">
       <div className="wrap footer-top">
         <div className="footer-brand">
-          <a href="#top" className="nav-brand" aria-label="Back to top">
+          <a href="/" className="nav-brand" aria-label="Sayabot home">
             <Saya shape="ghost" follow className="nav-mark" />
             <span>Sayabot</span>
           </a>

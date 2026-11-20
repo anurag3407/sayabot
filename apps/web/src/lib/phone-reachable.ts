@@ -100,3 +100,15 @@ export function supabaseUrlForClient(supabaseUrl: string, requestHostname: strin
   if (isLoopbackHost(requestHostname)) return supabaseUrl
   return withHost(supabaseUrl, requestHostname)
 }
+
+/**
+ * Where cloudflared should dial for an address that only this machine can open.
+ * A LAN IP is still this machine, so the tunnel targets loopback and keeps the port.
+ * Public hosts return null — they are already reachable.
+ */
+export function loopbackTunnelTarget(url: string): string | null {
+  if (reachOf(url) === "anywhere") return null
+  const match = /^https?:\/\/(?:\[[^\]]+\]|[^/:?#]+)(?::(\d+))?/i.exec(url.trim())
+  if (!match) return null
+  return `http://127.0.0.1${match[1] ? `:${match[1]}` : ""}`
+}

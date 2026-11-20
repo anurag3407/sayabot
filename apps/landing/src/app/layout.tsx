@@ -7,6 +7,7 @@ import "@/styles/hero.css"
 import "@/styles/sections.css"
 import "@/styles/homes.css"
 import "@/styles/story.css"
+import "@/styles/self-host.css"
 import { TabTitle } from "@/components/tab-title"
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://sayabot.tech"

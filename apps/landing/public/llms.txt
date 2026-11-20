@@ -7,6 +7,7 @@
 - [Sayabot Home](https://sayabot.tech): Official homepage, product overview, interactive demo, and download hub.
 - [GitHub Repository](https://github.com/anurag3407/sayabot): Source code under AGPL-3.0, issue tracking, and roadmap discussions.
 - [Architecture Guide](https://github.com/anurag3407/sayabot/tree/main/docs): Monorepo directory map, multi-agent turns, and security model.
+- [Self-host guide](https://sayabot.tech/self-host): What a VPS clone runs, the install steps, and a prompt you can hand to an agent.
 - [Self-Hosting Quickstart](https://github.com/anurag3407/sayabot/blob/main/docs/self-hosting-quickstart.md): Docker Compose production deployment instructions for self-hosters.
 - [AGENTS.md Developer Spec](https://github.com/anurag3407/sayabot/blob/main/AGENTS.md): High-priority operational manual for autonomous AI coding agents.
 

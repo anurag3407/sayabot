@@ -9,22 +9,24 @@ import {
   rooms,
 } from "@sayabot/db"
 import {
+  GATEWAY_REFUSAL,
+  gatewayChatDecision,
   gatewayChatRoomName,
   isGatewaySource,
   isSilentGatewayReply,
   type GatewaySource,
 } from "@sayabot/core"
 import { decryptSecret, unwrapConnectorSecret } from "@sayabot/llm"
-import { and, eq } from "drizzle-orm"
+import { and, eq, isNull } from "drizzle-orm"
 import { DiscordConnector, TelegramConnector } from "../connectors/messaging"
 import { getDb } from "../db"
 import { getEnv } from "../env"
 import { enqueueRoomMessage } from "../jobs"
 
 /**
- * Per-agent gateways: one external bot account bound to one agent. Inbound messages are mirrored
- * into a real room (`external_chats` holds the mapping), so the chat list, realtime, memory,
- * approvals and canvas all keep working without a second message store.
+ * Per-agent gateways: one bot account, one bound chat, one room. The app and Telegram or Discord
+ * are two clients of that room. A message from any other chat gets one refusal and does not open
+ * another room.
  *
  * Every query is scoped through the gateway row's `orgId`/`agentId`; an id from another workspace
  * resolves to "gateway not found".
@@ -87,8 +89,12 @@ function safeEqual(a: string, b: string): boolean {
   return diff === 0
 }
 
+function isUuid(value: string): boolean {
+  return /^[0-9a-f-]{36}$/i.test(value)
+}
+
 async function loadGateway(gatewayId: string): Promise<GatewayRow | null> {
-  if (!/^[0-9a-f-]{36}$/i.test(gatewayId)) return null
+  if (!isUuid(gatewayId)) return null
   const [row] = await getDb()
     .select()
     .from(agentGateways)
@@ -97,9 +103,165 @@ async function loadGateway(gatewayId: string): Promise<GatewayRow | null> {
   return row ?? null
 }
 
+async function loadGatewayByRoom(roomId: string): Promise<GatewayRow | null> {
+  if (!isUuid(roomId)) return null
+  const [row] = await getDb()
+    .select()
+    .from(agentGateways)
+    .where(eq(agentGateways.roomId, roomId))
+    .limit(1)
+  return row ?? null
+}
+
+async function claimInbound(gatewayId: string, externalId: string): Promise<boolean> {
+  const inserted = await getDb()
+    .insert(gatewayInbound)
+    .values({ gatewayId, externalId })
+    .onConflictDoNothing()
+    .returning({ externalId: gatewayInbound.externalId })
+  return inserted.length > 0
+}
+
+/** First writer wins. A retry of the winning chat still counts as bound. */
+async function claimBoundChat(gatewayId: string, chatId: string): Promise<boolean> {
+  const db = getDb()
+  const updated = await db
+    .update(agentGateways)
+    .set({ boundChatId: chatId, updatedAt: new Date() })
+    .where(and(eq(agentGateways.id, gatewayId), isNull(agentGateways.boundChatId)))
+    .returning({ id: agentGateways.id })
+  if (updated.length > 0) return true
+  const [fresh] = await db
+    .select({ boundChatId: agentGateways.boundChatId })
+    .from(agentGateways)
+    .where(eq(agentGateways.id, gatewayId))
+    .limit(1)
+  return fresh?.boundChatId === chatId
+}
+
+async function sendGatewayText(gateway: GatewayRow, chatId: string, text: string): Promise<void> {
+  const { token } = openGatewayToken(gateway)
+  if (gateway.source === "telegram") {
+    await new TelegramConnector({ botToken: token }).sendMessage(chatId, text.slice(0, 4_000))
+    return
+  }
+  if (gateway.source === "discord") {
+    await new DiscordConnector({ botToken: token }).sendMessage(chatId, text.slice(0, 2_000))
+  }
+}
+
+async function chatTypeFor(
+  gatewayId: string,
+  chatId: string,
+  hinted: "dm" | "group" | null,
+): Promise<"dm" | "group"> {
+  if (hinted) return hinted
+  const [row] = await getDb()
+    .select({ chatType: externalChats.chatType })
+    .from(externalChats)
+    .where(and(eq(externalChats.gatewayId, gatewayId), eq(externalChats.externalChatId, chatId)))
+    .limit(1)
+  return row?.chatType === "group" ? "group" : "dm"
+}
+
 /**
- * Stores one outside message and wakes the mirrored room. A repeated webhook for the same id does
- * nothing. `trusted` is the Discord socket, which already holds the bot token.
+ * The room created at connect, or one created here if a gateway from before this column has none.
+ * Two arrivals racing to create it leave a single room.
+ */
+async function ensureGatewayRoom(opts: {
+  gateway: GatewayRow
+  agent: { id: string; handle: string }
+  chat: { chatId: string; chatType: "dm" | "group"; title?: string }
+  binding: boolean
+}): Promise<{ roomId: string; chatType: "dm" | "group" } | null> {
+  const db = getDb()
+  const { gateway, agent, chat } = opts
+  const label = chat.title?.slice(0, 80)
+  let roomId = gateway.roomId
+
+  if (roomId) {
+    const [existing] = await db
+      .select({ id: rooms.id })
+      .from(rooms)
+      .where(and(eq(rooms.id, roomId), eq(rooms.orgId, gateway.orgId)))
+      .limit(1)
+    if (!existing) roomId = null
+  }
+
+  if (!roomId) {
+    const [created] = await db
+      .insert(rooms)
+      .values({
+        orgId: gateway.orgId,
+        name: gatewayChatRoomName(
+          gateway.source as GatewaySource,
+          agent.handle,
+          label || (chat.chatType === "dm" ? "Direct message" : "Group"),
+        ),
+        kind: "private",
+        turnMode: "mentions",
+        timezone: "UTC",
+        createdBy: gateway.createdBy,
+      })
+      .returning({ id: rooms.id })
+    if (!created) return null
+    const claimed = await db
+      .update(agentGateways)
+      .set({ roomId: created.id, updatedAt: new Date() })
+      .where(and(eq(agentGateways.id, gateway.id), isNull(agentGateways.roomId)))
+      .returning({ id: agentGateways.id })
+    if (claimed.length === 0) {
+      await db.delete(rooms).where(eq(rooms.id, created.id))
+      const [fresh] = await db
+        .select({ roomId: agentGateways.roomId })
+        .from(agentGateways)
+        .where(eq(agentGateways.id, gateway.id))
+        .limit(1)
+      roomId = fresh?.roomId ?? null
+      if (!roomId) return null
+    } else {
+      roomId = created.id
+    }
+  } else if (opts.binding && label) {
+    await db
+      .update(rooms)
+      .set({
+        name: gatewayChatRoomName(gateway.source as GatewaySource, agent.handle, label),
+        updatedAt: new Date(),
+      })
+      .where(eq(rooms.id, roomId))
+  }
+
+  await db
+    .insert(roomAgents)
+    .values({ roomId, agentId: agent.id, position: 0 })
+    .onConflictDoNothing()
+  if (gateway.createdBy) {
+    await db
+      .insert(roomMembers)
+      .values({ roomId, userId: gateway.createdBy, role: "admin" })
+      .onConflictDoNothing()
+  }
+
+  await db
+    .insert(externalChats)
+    .values({
+      orgId: gateway.orgId,
+      gatewayId: gateway.id,
+      externalChatId: chat.chatId,
+      chatType: chat.chatType,
+      roomId,
+      title: label ?? null,
+      lastMessageAt: new Date(),
+    })
+    .onConflictDoNothing()
+
+  return { roomId, chatType: chat.chatType }
+}
+
+/**
+ * Stores one outside message and wakes the gateway's room. A repeated webhook for the same id
+ * does nothing. `trusted` is the Discord socket, which already holds the bot token.
  */
 export async function acceptGatewayInbound(
   args: {
@@ -132,7 +294,13 @@ export async function acceptGatewayInbound(
   }
 
   const config = (gateway.config ?? {}) as GatewayConfig
-  if (config.allowedChats?.length && !config.allowedChats.includes(chatId)) {
+  const decision = gatewayChatDecision(gateway.boundChatId, chatId)
+  // The allowlist chooses which chat may bind. Once bound, that chat stays even if the list moves.
+  if (
+    decision !== "accept" &&
+    config.allowedChats?.length &&
+    !config.allowedChats.includes(chatId)
+  ) {
     return { queued: false, reason: "chat not allowed" }
   }
   if (
@@ -151,22 +319,43 @@ export async function acceptGatewayInbound(
     .limit(1)
   if (!agent) return { queued: false, reason: "agent not found" }
 
-  const duplicate = await db
-    .insert(gatewayInbound)
-    .values({ gatewayId: gateway.id, externalId })
-    .onConflictDoNothing()
-    .returning({ externalId: gatewayInbound.externalId })
-  if (duplicate.length === 0) return { queued: false, reason: "duplicate" }
+  if (!(await claimInbound(gateway.id, externalId))) {
+    return { queued: false, reason: "duplicate" }
+  }
 
-  const chat = await ensureMirrorRoom(gateway, agent, {
-    chatId,
-    chatType: args.chatType ?? "dm",
-    title: args.chatTitle,
-    senderId: args.senderId,
+  if (decision === "refuse") {
+    await sendGatewayText(gateway, chatId, GATEWAY_REFUSAL).catch((error) => {
+      console.error(
+        "[gateway] refusal failed",
+        error instanceof Error ? error.message : "send failed",
+      )
+    })
+    return { queued: false, reason: "bound to another chat" }
+  }
+
+  if (decision === "bind") {
+    const won = await claimBoundChat(gateway.id, chatId)
+    if (!won) {
+      await sendGatewayText(gateway, chatId, GATEWAY_REFUSAL).catch((error) => {
+        console.error(
+          "[gateway] refusal failed",
+          error instanceof Error ? error.message : "send failed",
+        )
+      })
+      return { queued: false, reason: "bound to another chat" }
+    }
+  }
+
+  const chat = await ensureGatewayRoom({
+    gateway,
+    agent,
+    chat: { chatId, chatType: args.chatType ?? "dm", title: args.chatTitle },
+    binding: decision === "bind",
   })
   if (!chat) return { queued: false, reason: "could not open the chat" }
 
-  const content = `@${agent.handle} ${args.sender || "Someone"} says:\n${args.text.trim().slice(0, 8_000)}`
+  const said = args.text.trim().slice(0, 8_000)
+  const content = `@${agent.handle} ${args.sender || "Someone"} says:\n${said}`
   const [message] = await db
     .insert(messages)
     .values({
@@ -193,13 +382,11 @@ export async function acceptGatewayInbound(
   await db
     .update(gatewayInbound)
     .set({ messageId: message.id })
-    .where(
-      and(eq(gatewayInbound.gatewayId, gateway.id), eq(gatewayInbound.externalId, externalId)),
-    )
+    .where(and(eq(gatewayInbound.gatewayId, gateway.id), eq(gatewayInbound.externalId, externalId)))
   await db
     .update(externalChats)
     .set({ lastMessageAt: new Date(), updatedAt: new Date() })
-    .where(eq(externalChats.id, chat.id))
+    .where(and(eq(externalChats.gatewayId, gateway.id), eq(externalChats.externalChatId, chatId)))
   await db
     .update(agentGateways)
     .set({ lastSeenAt: new Date(), lastError: null, updatedAt: new Date() })
@@ -210,110 +397,40 @@ export async function acceptGatewayInbound(
 }
 
 /**
- * Find-or-create the room behind an external chat. The room is a real room: the gateway's agent is
- * a member, and the person who connected the gateway is a member so the chat appears for them.
+ * Sends the agent's reply to the gateway's bound chat. A reply typed in the app has no gateway
+ * metadata, so the room id is the lookup. Returns `false` when this room is not a gateway (the
+ * connector path can run) and `true` when the gateway handled it, including a silence token and a
+ * room whose chat is not bound yet.
  */
-async function ensureMirrorRoom(
-  gateway: GatewayRow,
-  agent: { id: string; handle: string },
-  chat: { chatId: string; chatType: "dm" | "group"; title?: string; senderId?: string },
-): Promise<{ id: string; roomId: string; chatType: "dm" | "group" } | null> {
-  const db = getDb()
-  const [existing] = await db
-    .select({ id: externalChats.id, roomId: externalChats.roomId, chatType: externalChats.chatType })
-    .from(externalChats)
-    .where(
-      and(eq(externalChats.gatewayId, gateway.id), eq(externalChats.externalChatId, chat.chatId)),
-    )
-    .limit(1)
-  if (existing) {
-    await db
-      .insert(roomAgents)
-      .values({ roomId: existing.roomId, agentId: agent.id, position: 0 })
-      .onConflictDoNothing()
-    return { id: existing.id, roomId: existing.roomId, chatType: existing.chatType as "dm" | "group" }
-  }
-
-  const title = chat.title?.slice(0, 80) ?? (chat.chatType === "dm" ? "Direct message" : "Group")
-  const [room] = await db
-    .insert(rooms)
-    .values({
-      orgId: gateway.orgId,
-      name: gatewayChatRoomName(gateway.source as GatewaySource, agent.handle, title),
-      // Mirror rooms are plain private rooms, never `dm`: `dm` carries a unique (user, agent)
-      // marker pair, and one bot talks to many outside people at once.
-      kind: "private",
-      turnMode: "mentions",
-      timezone: "UTC",
-      createdBy: gateway.createdBy,
-    })
-    .returning({ id: rooms.id })
-  if (!room) return null
-
-  await db
-    .insert(roomAgents)
-    .values({ roomId: room.id, agentId: agent.id, position: 0 })
-    .onConflictDoNothing()
-  if (gateway.createdBy) {
-    await db
-      .insert(roomMembers)
-      .values({ roomId: room.id, userId: gateway.createdBy, role: "admin" })
-      .onConflictDoNothing()
-  }
-
-  const [created] = await db
-    .insert(externalChats)
-    .values({
-      orgId: gateway.orgId,
-      gatewayId: gateway.id,
-      externalChatId: chat.chatId,
-      chatType: chat.chatType,
-      roomId: room.id,
-      title,
-    })
-    .onConflictDoNothing()
-    .returning({ id: externalChats.id, roomId: externalChats.roomId })
-  if (!created) {
-    // A concurrent webhook won the race: reuse its row and drop the room we just made.
-    const [winner] = await db
-      .select({ id: externalChats.id, roomId: externalChats.roomId })
-      .from(externalChats)
-      .where(
-        and(eq(externalChats.gatewayId, gateway.id), eq(externalChats.externalChatId, chat.chatId)),
-      )
-      .limit(1)
-    if (winner) {
-      await db.delete(rooms).where(eq(rooms.id, room.id))
-      return { id: winner.id, roomId: winner.roomId, chatType: chat.chatType }
-    }
-    return null
-  }
-  return { id: created.id, roomId: created.roomId, chatType: chat.chatType }
-}
-
-/**
- * Sends the agent's reply back through its own gateway. Returns `false` when the message did not
- * come from a gateway (so the connector path can run), `true` when it was handled — including a
- * deliberate silence token, which is not an error.
- */
-export async function deliverGatewayReply(metadata: unknown, text: string): Promise<boolean> {
+export async function deliverGatewayReply(
+  metadata: unknown,
+  text: string,
+  roomId?: string | null,
+): Promise<boolean> {
   const target = readGatewayInbound(metadata)
-  if (!target) return false
+  const gateway = target
+    ? await loadGateway(target.gatewayId)
+    : roomId
+      ? await loadGatewayByRoom(roomId)
+      : null
+  if (!gateway || gateway.status !== "active" || (target && gateway.source !== target.platform)) {
+    return Boolean(target)
+  }
+
+  const chatId = gateway.boundChatId ?? target?.chatId ?? null
+  if (!chatId) return true
+
   const body = text.trim()
   if (!body || isSilentGatewayReply(body)) return true
 
-  const gateway = await loadGateway(target.gatewayId)
-  if (!gateway || gateway.status !== "active" || gateway.source !== target.platform) return true
-
+  const hinted =
+    target && (!gateway.boundChatId || target.chatId === gateway.boundChatId)
+      ? target.chatType
+      : null
+  const chatType = await chatTypeFor(gateway.id, chatId, hinted)
   const config = (gateway.config ?? {}) as GatewayConfig
-  // `silence` keeps a bot quiet in group chats it was added to; DMs always answer.
-  if (config.silence && target.chatType === "group") return true
+  if (config.silence && chatType === "group") return true
 
-  const { token } = openGatewayToken(gateway)
-  if (target.platform === "telegram") {
-    await new TelegramConnector({ botToken: token }).sendMessage(target.chatId, body.slice(0, 4_000))
-  } else {
-    await new DiscordConnector({ botToken: token }).sendMessage(target.chatId, body.slice(0, 2_000))
-  }
+  await sendGatewayText(gateway, chatId, body)
   return true
 }

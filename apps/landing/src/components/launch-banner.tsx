@@ -179,9 +179,8 @@ export function LaunchBanner() {
                 </div>
                 <ul className="launch-link-list">
                   <li>
-                    <a href={LINKS.selfHost} target="_blank" rel="noreferrer">
+                    <a href={LINKS.selfHost}>
                       <span className="launch-link-name">Docker Self-Hosting</span>
-                      <ArrowUpRight className="launch-ext-icon" />
                     </a>
                   </li>
                   <li>

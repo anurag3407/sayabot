@@ -1,7 +1,7 @@
 /**
  * Local end-to-end check for per-agent gateways. Runs against a real Postgres (schema from
  * `pnpm db:migrate`) and a stubbed Telegram HTTP API, so the whole path is exercised:
- * sealed token -> gateway row -> inbound dedup -> mirror room -> message -> reply delivery.
+ * sealed token -> gateway row -> inbound dedup -> one bound chat -> refusal -> reply delivery.
  *
  *   DATABASE_URL=... MESH_KEK=<64 hex> tsx scripts/gateway-e2e.local.ts
  */
@@ -101,6 +101,17 @@ async function main(): Promise<void> {
   })
   check("wrong webhook secret rejected", !wrong.queued && wrong.reason === "bad key")
 
+  console.log("reply delivery")
+  const sent: { url: string; body: string }[] = []
+  const realFetch = globalThis.fetch
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    sent.push({ url: String(input), body: String(init?.body ?? "") })
+    const payload = String(input).includes("api.telegram.org")
+      ? { ok: true, result: { message_id: 42, chat: { id: 5550001 } } }
+      : { id: "9001", channel_id: "5550001" }
+    return new Response(JSON.stringify(payload), { status: 200 })
+  }) as typeof fetch
+
   const second = await acceptGatewayInbound({
     gatewayId,
     platform: "telegram",
@@ -112,29 +123,43 @@ async function main(): Promise<void> {
     text: "second person",
     chatType: "dm",
   })
-  check("a second outside DM gets its own room", second.queued)
+  check(
+    "a second outside chat is refused",
+    !second.queued && second.reason === "bound to another chat",
+  )
+  check(
+    "the other chat got one refusal",
+    sent.some((call) => call.body.includes("7770002") && call.body.includes("another chat")),
+  )
+
+  const bound = await client.query(
+    "select bound_chat_id, room_id from agent_gateways where id = $1",
+    [gatewayId],
+  )
+  check("gateway is bound to the first chat", bound.rows[0]?.bound_chat_id === "5550001")
 
   const rooms = await client.query(
     "select r.id, r.name, r.kind, e.external_chat_id from rooms r join external_chats e on e.room_id = r.id where e.org_id = $1 order by e.external_chat_id",
     [orgId],
   )
-  check("two mirror rooms exist", rooms.rowCount === 2)
+  check("one room exists", rooms.rowCount === 1)
   check(
-    "rooms are private and named after the channel",
+    "the room is private and named after the channel",
     rooms.rows.every((row) => row.kind === "private" && row.name.includes("Telegram")),
   )
+  check("the room is the gateway room", rooms.rows[0]?.id === bound.rows[0]?.room_id)
 
   const members = await client.query(
     "select count(*)::int as n from room_members rm join rooms r on r.id = rm.room_id where r.org_id = $1 and rm.user_id = $2",
     [orgId, userId],
   )
-  check("connector is a member of both rooms", members.rows[0].n === 2)
+  check("connector is a member of the room", members.rows[0].n === 1)
 
   const messages = await client.query(
     "select content, metadata from messages m join rooms r on r.id = m.room_id where r.org_id = $1",
     [orgId],
   )
-  check("two messages stored", messages.rowCount === 2)
+  check("one message stored", messages.rowCount === 1)
   const metadata = (messages.rows[0].metadata as { gateway?: { platform?: string } }).gateway
   check("message carries gateway metadata", metadata?.platform === "telegram")
 
@@ -142,25 +167,21 @@ async function main(): Promise<void> {
     "select count(*)::int as n from room_agents ra join rooms r on r.id = ra.room_id where r.org_id = $1 and ra.agent_id = $2",
     [orgId, agentId],
   )
-  check("agent attached to both rooms", agentsAttached.rows[0].n === 2)
-
-  console.log("reply delivery")
-  const sent: { url: string; body: string }[] = []
-  const realFetch = globalThis.fetch
-  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
-    sent.push({ url: String(input), body: String(init?.body ?? "") })
-    // Telegram's Bot API envelope; Discord only needs an id.
-    const payload = String(input).includes("api.telegram.org")
-      ? { ok: true, result: { message_id: 42, chat: { id: 5550001 } } }
-      : { id: "9001", channel_id: "5550001" }
-    return new Response(JSON.stringify(payload), { status: 200 })
-  }) as typeof fetch
+  check("agent attached to the room", agentsAttached.rows[0].n === 1)
 
   const handled = await deliverGatewayReply(messages.rows[0].metadata, "reply from the bot")
+  const reply = sent.find((call) => call.body.includes("reply from the bot"))
   check("gateway reply handled", handled)
-  check("reply went to Telegram sendMessage", sent[0]?.url.includes("sendMessage") === true)
-  check("reply used the mirror chat id", sent[0]?.body.includes("5550001") === true)
-  check("reply text sent", sent[0]?.body.includes("reply from the bot") === true)
+  check("reply went to Telegram sendMessage", reply?.url.includes("sendMessage") === true)
+  check("reply used the bound chat id", reply?.body.includes("5550001") === true)
+  check("reply text sent", Boolean(reply))
+
+  const viaRoom = await deliverGatewayReply(null, "typed in the app", bound.rows[0]?.room_id)
+  check("a reply typed in the app reaches the bound chat", viaRoom === true)
+  check(
+    "the app reply used the bound chat id",
+    sent.some((call) => call.body.includes("typed in the app") && call.body.includes("5550001")),
+  )
 
   const before = sent.length
   const silent = await deliverGatewayReply(messages.rows[0].metadata, "[SILENT]")

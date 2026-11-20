@@ -170,7 +170,7 @@ export function Downloads() {
               >
                 <GitHubIcon /> View on GitHub
               </a>
-              <a className="link" href={LINKS.selfHost} target="_blank" rel="noreferrer">
+              <a className="link" href={LINKS.selfHost}>
                 Self-hosting guide
               </a>
               <a className="link" href={LINKS.releases} target="_blank" rel="noreferrer">

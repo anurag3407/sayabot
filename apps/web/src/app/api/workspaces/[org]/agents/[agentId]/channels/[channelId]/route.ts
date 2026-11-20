@@ -12,13 +12,14 @@ interface ChannelRow {
   iv: string
   tag: string
   config: Record<string, unknown> | null
+  room_id: string | null
 }
 
 async function load(orgId: string, agentId: string, channelId: string): Promise<ChannelRow | null> {
   const admin = createAdminClient()
   const { data } = await admin
     .from("agent_gateways")
-    .select("id, org_id, source, ciphertext, iv, tag, config")
+    .select("id, org_id, source, ciphertext, iv, tag, config, room_id")
     .eq("id", channelId)
     .eq("org_id", orgId)
     .eq("agent_id", agentId)
@@ -64,8 +65,13 @@ export async function DELETE(
     .from("external_chats")
     .select("room_id")
     .eq("gateway_id", row.id)
-  const roomIds = ((chats ?? []) as { room_id: string }[]).map((chat) => chat.room_id)
-  if (roomIds.length) await admin.from("rooms").delete().in("id", roomIds)
+  const roomIds = new Set(((chats ?? []) as { room_id: string }[]).map((chat) => chat.room_id))
+  if (row.room_id) roomIds.add(row.room_id)
+  if (roomIds.size)
+    await admin
+      .from("rooms")
+      .delete()
+      .in("id", [...roomIds])
 
   const { error } = await admin.from("agent_gateways").delete().eq("id", row.id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

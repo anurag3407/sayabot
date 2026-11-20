@@ -6,10 +6,12 @@ import { CheckIcon, CopyIcon } from "./icons"
 export function CopyButton({
   text,
   label = "Copy",
+  title = "Copy to clipboard",
   className = "",
 }: {
   text: string
   label?: string
+  title?: string
   className?: string
 }) {
   const [copied, setCopied] = useState(false)
@@ -52,8 +54,8 @@ export function CopyButton({
       type="button"
       onClick={handleCopy}
       className={`btn-copy ${copied ? "is-copied" : ""} ${className}`.trim()}
-      aria-label="Copy to clipboard"
-      title="Copy install command"
+      aria-label={title}
+      title={title}
     >
       {copied ? <CheckIcon className="btn-copy-icon" /> : <CopyIcon className="btn-copy-icon" />}
       <span>{copied ? "Copied!" : label}</span>

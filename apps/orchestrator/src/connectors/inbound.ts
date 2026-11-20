@@ -73,9 +73,7 @@ export function eventsFromPayload(platform: InboundPlatform, raw: string): Inbou
     const text = typeof message.text === "string" ? message.text : ""
     if (!text.trim()) return []
     const chat = message.chat as { id?: number; type?: string; title?: string } | undefined
-    const from = message.from as
-      | { id?: number; username?: string; first_name?: string }
-      | undefined
+    const from = message.from as { id?: number; username?: string; first_name?: string } | undefined
     if (chat?.id === undefined || message.message_id === undefined) return []
     return [
       {
@@ -238,11 +236,18 @@ export async function acceptInbound(args: {
   return { queued: true }
 }
 
-/** Sends the agent's room reply back to the chat it came from. Failures are logged by the caller. */
-export async function deliverInboundReply(metadata: unknown, text: string): Promise<void> {
-  // Per-agent gateway messages carry `metadata.gateway` and reply through their own bot account.
+/**
+ * Sends the agent's room reply back to the chat it came from. `roomId` lets a reply typed in the
+ * app leave through the gateway bound to that room. Failures are logged by the caller.
+ */
+export async function deliverInboundReply(
+  metadata: unknown,
+  text: string,
+  roomId?: string | null,
+): Promise<void> {
+  // A gateway room is handled here, including when the trigger has no gateway metadata.
   // `false` means this is not a gateway message, so the connector path below still runs.
-  if (await deliverGatewayReply(metadata, text)) return
+  if (await deliverGatewayReply(metadata, text, roomId)) return
   const target = readInbound(metadata)
   const body = text.trim().slice(0, 4_000)
   if (!target || !body) return

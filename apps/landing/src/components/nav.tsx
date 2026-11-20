@@ -7,12 +7,12 @@ import { LaunchBanner } from "./launch-banner"
 import { Saya } from "./saya"
 
 const ITEMS = [
-  { href: "#agents", label: "Agents" },
-  { href: "#mascots", label: "Mascots" },
-  { href: "#how", label: "How it works" },
-  { href: "#computer", label: "Computers" },
-  { href: "#features", label: "Features" },
-  { href: "#download", label: "Download" },
+  { href: "/#agents", label: "Agents" },
+  { href: "/#mascots", label: "Mascots" },
+  { href: "/#how", label: "How it works" },
+  { href: "/#computer", label: "Computers" },
+  { href: "/#features", label: "Features" },
+  { href: "/#download", label: "Download" },
 ]
 
 export function Nav() {
@@ -28,7 +28,7 @@ export function Nav() {
     <header className={`nav ${scrolled ? "nav-scrolled" : ""}`}>
       <LaunchBanner />
       <div className="wrap nav-inner">
-        <a href="#top" className="nav-brand" aria-label="Sayabot home">
+        <a href="/" className="nav-brand" aria-label="Sayabot home">
           <Saya shape="ghost" follow className="nav-mark" />
           <span>Sayabot</span>
         </a>
