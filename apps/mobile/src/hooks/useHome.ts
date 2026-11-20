@@ -8,6 +8,8 @@ export interface HomeChat {
   id: string
   name: string
   kind: "public" | "private" | "dm"
+  /** Set when this chat is a mirrored Telegram/Discord conversation. */
+  channel?: "telegram" | "discord" | null
   agentIds: string[]
   pinned: boolean
   muted: boolean

@@ -23,7 +23,7 @@ supabase-locations.conf             # mounted at /etc/nginx/supabase/locations.c
                                     # only when docker-compose.supabase.yml is active
 ```
 
-The compose command for nginx runs the official image's `20-envsubst-on-templates.sh`, deletes `conf.d/default.conf`, starts a background loop that runs `nginx -s reload` every 6h (so renewed certificates are picked up without downtime), and then execs `nginx -g 'daemon off;'` (`deploy/docker-compose.yml:142`). Plain nginx variables (`$host`, `$remote_addr`) are left untouched by envsubst; only `${SAYABOT_DOMAIN}` is substituted.
+The compose command for nginx runs the official image's `20-envsubst-on-templates.sh`, deletes `conf.d/default.conf`, starts a background loop that runs `nginx -s reload` every 6h (so renewed certificates are picked up without downtime), and then execs `nginx -g 'daemon off;'` (`deploy/docker-compose.yml:142`). `deploy/deploy.sh` also re-runs `20-envsubst-on-templates.sh` explicitly on each deployment before triggering `nginx -s reload` so that template edits (such as upstream port or hostname changes) are immediately rendered into `/etc/nginx/conf.d` without needing a full container recreation. Plain nginx variables (`$host`, `$remote_addr`) are left untouched by envsubst; only `${SAYABOT_DOMAIN}` is substituted.
 
 ## ⚙️ Global Settings (`deploy/nginx/nginx.conf`)
 

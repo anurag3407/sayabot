@@ -109,11 +109,15 @@ function ChatRow({
 }) {
   const theme = useTheme()
   const working = chat.workingAgentId ? agents.get(chat.workingAgentId) : null
+  const channelLabel =
+    chat.channel === "telegram" ? "Telegram · " : chat.channel === "discord" ? "Discord · " : ""
   const preview = working
     ? `${working.name} is working…`
     : chat.lastMessage
-      ? `${chat.lastMessage.senderName && chat.kind !== "dm" ? `${chat.lastMessage.senderName}: ` : ""}${chat.lastMessage.preview || "…"}`
-      : "No messages yet"
+      ? `${channelLabel}${chat.lastMessage.senderName && chat.kind !== "dm" ? `${chat.lastMessage.senderName}: ` : ""}${chat.lastMessage.preview || "…"}`
+      : chat.channel
+        ? `${channelLabel.replace(" · ", "")} chat`
+        : "No messages yet"
   return (
     <Pressable
       onPress={() => {

@@ -44,12 +44,15 @@ async function readJson<T>(res: Response, service: string): Promise<T> {
 // ── Discord ────────────────────────────────────────────────────────────────
 
 export class DiscordConnector {
-  private static readonly API = "https://discord.com/api/v10"
-
   constructor(private config: { botToken: string; fetchFn?: typeof fetch; baseUrl?: string }) {}
 
+  /** `DISCORD_API_BASE` lets a deployment (or a test harness) point at a mirror of the API. */
   private api(): string {
-    return (this.config.baseUrl ?? DiscordConnector.API).replace(/\/+$/, "")
+    return (
+      this.config.baseUrl ??
+      process.env.DISCORD_API_BASE ??
+      "https://discord.com/api/v10"
+    ).replace(/\/+$/, "")
   }
 
   private headers(json = false): Record<string, string> {
@@ -159,7 +162,12 @@ export class TelegramConnector {
   }
 
   private url(method: string) {
-    const base = (this.config.baseUrl ?? "https://api.telegram.org").replace(/\/+$/, "")
+    // `TELEGRAM_API_BASE` points at a mirror of the Bot API (self-hosted proxy or test harness).
+    const base = (
+      this.config.baseUrl ??
+      process.env.TELEGRAM_API_BASE ??
+      "https://api.telegram.org"
+    ).replace(/\/+$/, "")
     return `${base}/bot${this.config.botToken}/${method}`
   }
 

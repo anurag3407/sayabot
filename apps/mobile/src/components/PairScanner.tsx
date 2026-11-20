@@ -74,7 +74,11 @@ export function PairScanner({
                       const server = extractServerFromScan(event.data)
                       if (!server) return
                       locked.current = true
-                      onScanServer ? onScanServer(server) : onScan({ code: "", server })
+                      if (onScanServer) {
+                        onScanServer(server)
+                      } else {
+                        onScan({ code: "", server })
+                      }
                       return
                     }
 

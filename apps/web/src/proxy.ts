@@ -17,6 +17,8 @@ const PUBLIC_PATHS = [
   "/offline",
   "/api/v1",
   "/api/connectors",
+  // Per-agent chat gateways: Telegram posts here with the gateway's own secret, not a session.
+  "/api/gateways",
   "/api/mobile",
   "/api/version",
   // "Is this a Sayabot server?" for the Mac and phone apps' server picker.

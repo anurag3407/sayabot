@@ -169,6 +169,22 @@ export async function GET(request: Request) {
     if (m.sender_id !== who.user.id && (!read || m.created_at > read.last_read_at))
       unread.set(m.room_id, (unread.get(m.room_id) ?? 0) + 1)
   }
+  // Telegram/Discord conversations are real rooms too; label each one with the channel it came from.
+  const { data: externalChatRows } = roomIds.length
+    ? await c.from("external_chats").select("room_id, gateway_id").in("room_id", roomIds)
+    : { data: [] as { room_id: string; gateway_id: string }[] }
+  const { data: gatewayRows } = await c
+    .from("agent_gateways")
+    .select("id, source")
+    .eq("org_id", access.org.id)
+  const gatewaySourceById = new Map(
+    ((gatewayRows ?? []) as { id: string; source: string }[]).map((row) => [row.id, row.source]),
+  )
+  const channelByRoom = new Map<string, string>()
+  for (const row of (externalChatRows ?? []) as { room_id: string; gateway_id: string }[]) {
+    const source = gatewaySourceById.get(row.gateway_id)
+    if (source) channelByRoom.set(row.room_id, source)
+  }
   const nowIso = new Date().toISOString()
   const openQuestions = (
     (requestsRes.data ?? []) as { room_id: string; expires_at: string | null }[]
@@ -205,6 +221,7 @@ export async function GET(request: Request) {
             ? (agentById.get(r.agent_dm_agent_id)?.display_name ?? r.name)
             : r.name,
         kind: r.kind,
+        channel: channelByRoom.get(r.id) ?? null,
         agentIds: ids,
         pinned: Boolean(reads.get(r.id)?.pinned),
         muted: Boolean(reads.get(r.id)?.muted_until && reads.get(r.id)!.muted_until! > nowIso),

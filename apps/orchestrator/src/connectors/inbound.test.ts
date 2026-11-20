@@ -11,7 +11,15 @@ describe("inbound chat", () => {
       message: { message_id: 4, text: "hi", chat: { id: -100 }, from: { username: "sam" } },
     })
     expect(eventsFromPayload("telegram", raw)).toEqual([
-      { externalId: "4", chatId: "-100", sender: "@sam", text: "hi" },
+      {
+        externalId: "4",
+        chatId: "-100",
+        sender: "@sam",
+        text: "hi",
+        senderId: undefined,
+        chatType: "group",
+        chatTitle: undefined,
+      },
     ])
     const bot = JSON.stringify({
       message: { message_id: 5, text: "hi", chat: { id: 1 }, from: { is_bot: true } },

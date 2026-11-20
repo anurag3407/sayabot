@@ -9,6 +9,7 @@ import { ActionForm } from "@/components/ui/action-form"
 import { ComputerPanel, type ComputerInfo } from "@/components/room/computer-panel"
 import { listAgentConnectorGrants, listWorkspaceConnectors } from "@/lib/queries"
 import { AgentConnectorScopeManager } from "@/components/agents/agent-connector-scope"
+import { AgentChannelsPanel } from "@/components/agents/agent-channels-panel"
 import { MacOffForm } from "@/components/agents/mac-off-form"
 import { runsOnLabel } from "@/lib/runs-on"
 import { WorksOnForm } from "@/components/agents/works-on-form"
@@ -268,6 +269,9 @@ export default async function AgentProfilePage({
           availableConnectors={availableConnectors}
           canEdit={canEdit}
         />
+
+        {/* Chat Channels: this agent's own Telegram / Discord bot account */}
+        <AgentChannelsPanel orgSlug={orgSlug} agentId={agent.id} canEdit={canEdit} />
 
         {/* Recent Tasks */}
         <div className="rounded-xl border border-border bg-card p-4 space-y-3">

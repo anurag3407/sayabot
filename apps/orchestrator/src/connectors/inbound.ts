@@ -10,6 +10,7 @@ import { decryptSecret, unwrapConnectorSecret } from "@sayabot/llm"
 import { and, eq } from "drizzle-orm"
 import { getDb } from "../db"
 import { getEnv } from "../env"
+import { deliverGatewayReply } from "../gateways/inbound"
 import { enqueueRoomMessage } from "../jobs"
 import { DiscordConnector, TelegramConnector, WhatsAppConnector } from "./messaging"
 
@@ -27,6 +28,9 @@ export interface InboundEvent {
   chatId: string
   sender: string
   text: string
+  senderId?: string
+  chatType?: "dm" | "group"
+  chatTitle?: string
 }
 
 export function readInbound(metadata: unknown): InboundTarget | null {
@@ -68,8 +72,10 @@ export function eventsFromPayload(platform: InboundPlatform, raw: string): Inbou
     if (!message || (message.from as { is_bot?: boolean } | undefined)?.is_bot) return []
     const text = typeof message.text === "string" ? message.text : ""
     if (!text.trim()) return []
-    const chat = message.chat as { id?: number } | undefined
-    const from = message.from as { username?: string; first_name?: string } | undefined
+    const chat = message.chat as { id?: number; type?: string; title?: string } | undefined
+    const from = message.from as
+      | { id?: number; username?: string; first_name?: string }
+      | undefined
     if (chat?.id === undefined || message.message_id === undefined) return []
     return [
       {
@@ -77,6 +83,9 @@ export function eventsFromPayload(platform: InboundPlatform, raw: string): Inbou
         chatId: String(chat.id),
         sender: from?.username ? `@${from.username}` : (from?.first_name ?? "Someone"),
         text,
+        senderId: from?.id === undefined ? undefined : String(from.id),
+        chatType: chat.type === "private" ? "dm" : "group",
+        chatTitle: chat.title,
       },
     ]
   }
@@ -231,6 +240,9 @@ export async function acceptInbound(args: {
 
 /** Sends the agent's room reply back to the chat it came from. Failures are logged by the caller. */
 export async function deliverInboundReply(metadata: unknown, text: string): Promise<void> {
+  // Per-agent gateway messages carry `metadata.gateway` and reply through their own bot account.
+  // `false` means this is not a gateway message, so the connector path below still runs.
+  if (await deliverGatewayReply(metadata, text)) return
   const target = readInbound(metadata)
   const body = text.trim().slice(0, 4_000)
   if (!target || !body) return

@@ -1,8 +1,8 @@
 # Migrations Catalog
 
-This catalog documents every database migration in `packages/db`: the four Drizzle-generated migrations in `packages/db/migrations/` (the declarative schema snapshot pipeline) and the 40 hand-written SQL scripts in `packages/db/sql/` (functions, triggers, RLS, realtime, and RPCs that Drizzle cannot express). `src/migrate.ts` runs both phases in order — Drizzle first, then every `sql/*.sql` file in sorted filename order — and the SQL phase re-applies on every run, so each script is written to be idempotent.
+This catalog documents every database migration in `packages/db`: the four Drizzle-generated migrations in `packages/db/migrations/` (the declarative schema snapshot pipeline) and the 41 hand-written SQL scripts in `packages/db/sql/` (functions, triggers, RLS, realtime, and RPCs that Drizzle cannot express). `src/migrate.ts` runs both phases in order — Drizzle first, then every `sql/*.sql` file in sorted filename order — and the SQL phase re-applies on every run, so each script is written to be idempotent.
 
-Source files: `packages/db/migrations/0000_conscious_natasha_romanoff.sql` through `0003_gigantic_the_call.sql`, `packages/db/sql/0001_functions.sql` through `0040_workspace_join_requests.sql`, `packages/db/src/migrate.ts`
+Source files: `packages/db/migrations/0000_conscious_natasha_romanoff.sql` through `0003_gigantic_the_call.sql`, `packages/db/sql/0001_functions.sql` through `0041_agent_gateways.sql`, `packages/db/src/migrate.ts`
 
 ---
 
@@ -282,6 +282,13 @@ Creates `agent_reads` (PK `(agent_id, room_id)`, `last_read_at`, `updated_at`) w
 - `workspace_join_requests` table: one row per person per `workspace_invites` link (`unique (invite_id, user_id)`), `status` CHECK `pending`/`approved`/`declined`, `role` CHECK `member`/`admin`, `room_ids`, `decided_by` / `decided_at`. Opening a link inserts `pending`; a workspace admin approves before `org_members` is written. Asking again after a decline updates the same row.
 - Index `workspace_join_requests_org_idx` on `(org_id, status)`.
 - RLS locked to `service_role` (`0040_workspace_join_requests.sql`).
+
+### `0041_agent_gateways.sql` — one bot account per agent
+
+- `agent_gateways`: `org_id`, `agent_id`, `source` (`telegram`/`discord`), `name`, `status`, sealed token (`ciphertext`/`iv`/`tag`), `last4`, `token_fingerprint`, `webhook_secret_enc`, `config jsonb`, `last_error`, `last_seen_at`, `created_by`. Unique `(agent_id, source)` and unique `token_fingerprint` enforce one bot identity per agent.
+- `gateway_inbound`: `(gateway_id, external_id)` dedup ledger with an optional `message_id`. Separate from `messaging_inbound`, which requires a `workspace_connectors` parent.
+- `external_chats`: one row per outside conversation, `unique (gateway_id, external_chat_id)` and `unique (room_id)`, mapping to the mirrored room plus `chat_type`, `title`, `last_message_at`.
+- RLS: `agent_gateways_org` and `external_chats_org` for org members; `gateway_inbound_read` is select-only for members and written by the service role.
 
 ---
 

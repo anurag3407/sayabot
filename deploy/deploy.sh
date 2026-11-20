@@ -208,15 +208,21 @@ public_check() {
     else warn "$url did not respond through Cloudflare yet. Check the tunnel's Public Hostname (→ http://nginx:8080) and that Access bypasses /api/health."; fi
     return 0
   fi
-  for _ in $(seq 1 10); do
+  local last_err=""
+  for i in $(seq 1 10); do
     # --resolve pins the request to this host, so the check does not depend on DNS/CDN.
-    if curl -fsSk --max-time 5 --resolve "$DOMAIN:443:127.0.0.1" "$url" >/dev/null 2>&1; then
+    if last_err="$(curl -fsSk --max-time 5 --resolve "$DOMAIN:443:127.0.0.1" "$url" 2>&1)"; then
       ok "$url responds"
       return 0
     fi
+    # If nginx failed to connect to upstream, refresh templates and reload/restart nginx once
+    if (( i == 3 )); then
+      warn "Health probe attempt failed ($last_err); refreshing nginx..."
+      compose exec -T nginx /bin/sh -c "/docker-entrypoint.d/20-envsubst-on-templates.sh && rm -f /etc/nginx/conf.d/default.conf && nginx -t && nginx -s reload" >/dev/null 2>&1 || compose restart nginx >/dev/null 2>&1 || true
+    fi
     sleep 3
   done
-  warn "$url did not respond through nginx"
+  warn "$url did not respond through nginx: $last_err"
   return 1
 }
 
@@ -308,8 +314,8 @@ roll_out() {
   compose up -d --no-build "${EDGE_SERVICES[@]}"
   # Switching to tunnel mode leaves the old certbot renewer running; it has nothing to do.
   (( TUNNEL )) && compose stop certbot >/dev/null 2>&1 || true
-  # Pick up config edits even when the nginx container itself was not recreated.
-  compose exec -T nginx nginx -t >/dev/null 2>&1 && compose exec -T nginx nginx -s reload >/dev/null 2>&1 || true
+  # Pick up config and template edits (including upstream port changes) even when the nginx container was not recreated.
+  compose exec -T nginx /bin/sh -c "/docker-entrypoint.d/20-envsubst-on-templates.sh && rm -f /etc/nginx/conf.d/default.conf && nginx -t && nginx -s reload" >/dev/null 2>&1 || compose restart nginx >/dev/null 2>&1 || true
   public_check
 }
 
@@ -322,6 +328,7 @@ rollback_to() {
   MESH_TAG="$tag"
   export SAYABOT_TAG MESH_TAG
   compose up -d --no-build --remove-orphans "${APP_SERVICES[@]}"
+  compose exec -T nginx /bin/sh -c "/docker-entrypoint.d/20-envsubst-on-templates.sh && rm -f /etc/nginx/conf.d/default.conf && nginx -t && nginx -s reload" >/dev/null 2>&1 || compose restart nginx >/dev/null 2>&1 || true
   wait_healthy "${APP_SERVICES[@]}" && public_check && ok "Rolled back to $tag"
 }
 
@@ -419,6 +426,7 @@ main() {
       export SAYABOT_TAG MESH_TAG
       log "Applying .env.production to ${APP_SERVICES[*]} ($SAYABOT_TAG)"
       compose up -d --no-build --force-recreate "${APP_SERVICES[@]}"
+      compose exec -T nginx /bin/sh -c "/docker-entrypoint.d/20-envsubst-on-templates.sh && rm -f /etc/nginx/conf.d/default.conf && nginx -t && nginx -s reload" >/dev/null 2>&1 || compose restart nginx >/dev/null 2>&1 || true
       wait_healthy "${APP_SERVICES[@]}" && public_check && ok "New settings are live" || die "Services are not healthy after reload. Check: ./deploy/deploy.sh logs" ;;
     logs)
       SAYABOT_TAG="$(current_release)"; MESH_TAG="$SAYABOT_TAG"; export SAYABOT_TAG MESH_TAG; compose logs -f --tail 200 "$@" ;;

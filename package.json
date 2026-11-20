@@ -31,7 +31,8 @@
     "test:integration": "node tests/integration/run.mjs",
     "test:e2e:api": "E2E_SMOKE=1 playwright test api navigation.spec.ts api-guard.spec.ts",
     "test:e2e": "playwright test",
-    "test:coverage": "turbo run test:coverage"
+    "test:coverage": "turbo run test:coverage",
+    "test:gateways": "playwright test -c playwright.gateways.config.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",

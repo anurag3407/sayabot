@@ -121,6 +121,10 @@ Three admin-gated actions for `kind === "external"` agents only:
 - **`setRoomAgentModelAction`** — the chat picker: verifies the bot is in the room; `scope: "default"` delegates to `setAgentModelAction` then clears `room_agents.model_override`; `clear` just clears the override; `scope: "chat"` stores the full resolved choice as `model_override` JSON `{ keyId, model, effort, providerKeyId, agentModel, runner }` — refusing Mac choices for bots the caller doesn't own ("Use 'Chat + bot default' to take it over"). Audits `room.agent_model_set`.
 - **`refreshModelListsAction`** — clears the provider-model and plan-usage caches, then force-refreshes the models.dev catalog, the manifest, and (when the server runs on a personal machine) the Codex and Claude CLI catalogs. Cache schedules otherwise: models.dev daily, manifest hourly, CLI lists 6 h, key lists 10 min, plan usage 45 s (`agents.ts:481`).
 
+### Chat channels (`AgentChannelsPanel`)
+
+Below the connector scopes, the page renders `apps/web/src/components/agents/agent-channels-panel.tsx`, which talks to `/api/workspaces/[org]/agents/[agentId]/channels`. It lists this bot's own Telegram/Discord accounts (platform, status, `last4`, last seen, last error, whether a webhook is set), takes a pasted bot token to connect, and offers disconnect. The token is verified with the provider (`getMe` / `/users/@me`), sealed with `MESH_KEK`, and never returned by the API; connecting a Telegram bot also sets its webhook. Only owners/admins see the controls. See [agent gateways](../../orchestrator/platform/agent-gateways.md).
+
 ---
 
 ## Related docs

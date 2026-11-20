@@ -19,6 +19,8 @@ import { restoreCanvasSnapshot } from "./canvas/tools"
 import { getDb, notify } from "./db"
 import { isInternalRequest } from "./internal-auth"
 import { acceptInbound, eventsFromPayload, type InboundPlatform } from "./connectors/inbound"
+import { acceptGatewayInbound } from "./gateways/inbound"
+import { isGatewaySource } from "@sayabot/core"
 import { enqueueRoomMessage } from "./jobs"
 import { loadMessage } from "./runner/context"
 import { agentCliRunner, runCliOnce } from "./runner/cli"
@@ -465,6 +467,57 @@ How can I assist your team today?</div>
     for (const event of events.slice(0, 10)) {
       results.push(
         await acceptInbound({ connectorId: body.connectorId, platform, key: body.key, ...event }),
+      )
+    }
+    return c.json({ results })
+  })
+
+  /** Web forwards public gateway webhooks here; the shared secret keeps the port private. */
+  app.post("/internal/gateway-inbound", async (c) => {
+    const body = (await c.req.json().catch(() => null)) as {
+      gatewayId?: string
+      platform?: string
+      secret?: string
+      raw?: string
+    } | null
+    const gatewayId = body?.gatewayId
+    const platform = body?.platform
+    if (!gatewayId || !isGatewaySource(platform) || typeof body?.raw !== "string") {
+      return c.json({ error: "invalid payload" }, 400)
+    }
+    const events = eventsFromPayload(platform, body.raw)
+    const results = []
+    for (const event of events.slice(0, 10)) {
+      results.push(
+        await acceptGatewayInbound({
+          gatewayId,
+          platform,
+          secret: body.secret ?? null,
+          ...event,
+        }),
+      )
+    }
+    return c.json({ results })
+  })
+
+  /**
+   * Telegram webhook for a per-agent gateway. The secret is the per-gateway value minted when the
+   * channel was connected; a wrong secret is rejected before any row is read.
+   */
+  app.post("/v1/gateways/telegram/:gatewayId/:secret", async (c) => {
+    const raw = await c.req.text().catch(() => "")
+    if (raw.length > 100_000) return c.json({ error: "too large" }, 413)
+    const events = eventsFromPayload("telegram", raw)
+    if (events.length === 0) return c.json({ queued: false })
+    const results = []
+    for (const event of events.slice(0, 10)) {
+      results.push(
+        await acceptGatewayInbound({
+          gatewayId: c.req.param("gatewayId"),
+          platform: "telegram",
+          secret: c.req.param("secret"),
+          ...event,
+        }),
       )
     }
     return c.json({ results })
