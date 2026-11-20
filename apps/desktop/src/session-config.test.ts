@@ -67,37 +67,25 @@ describe("desktop session and config management", () => {
     delete process.env.SAYABOT_SERVER_URL
   })
 
-  it("migrates legacy sayabot.sayalabs.in config and clears cloud session", () => {
+  it("migrates dead localhost config and preserves DEFAULT_SERVER_URL", () => {
     saveConfig({
-      serverUrl: "https://sayabot.sayalabs.in",
+      serverUrl: "http://localhost:3000",
       enableLocalRunner: true,
       serverChosen: true,
-      serverName: "Sayabot Cloud",
+      serverName: "This Mac",
       serverGuestMode: true,
-    })
-    saveSession({
-      accessToken: "old-cloud-access",
-      refreshToken: "old-cloud-refresh",
-      email: "",
-      userId: "u-cloud",
-      serverUrl: "https://sayabot.sayalabs.in",
-      isGuest: true,
     })
 
     const config = loadConfig()
-    expect(config.serverUrl).toBe("http://localhost:3000")
+    expect(config.serverUrl).toBe("https://sayabot.sayalabs.in")
     expect(config.serverChosen).toBe(true)
     expect(config.serverName).toBe("This Mac")
-
-    // The legacy session must have been cleared so it doesn't open the cloud landing page
-    const session = loadSession()
-    expect(session).toBeNull()
   })
 
   it("useThisMacOnFirstLaunch defaults to This Mac with serverChosen: true", () => {
     useThisMacOnFirstLaunch()
     const config = loadConfig()
-    expect(config.serverUrl).toBe("http://localhost:3000")
+    expect(config.serverUrl).toBe("https://sayabot.sayalabs.in")
     expect(config.serverChosen).toBe(true)
     expect(config.serverName).toBe("This Mac")
     expect(config.serverGuestMode).toBe(true)
@@ -105,7 +93,7 @@ describe("desktop session and config management", () => {
 
   it("clears sessions when session.serverUrl mismatches config.serverUrl", () => {
     saveConfig({
-      serverUrl: "http://localhost:3000",
+      serverUrl: "https://sayabot.sayalabs.in",
       enableLocalRunner: true,
       serverChosen: true,
       serverName: "This Mac",
@@ -124,7 +112,7 @@ describe("desktop session and config management", () => {
 
   it("preserves valid sessions for the matching server", () => {
     saveConfig({
-      serverUrl: "http://localhost:3000",
+      serverUrl: "https://sayabot.sayalabs.in",
       enableLocalRunner: true,
       serverChosen: true,
       serverName: "This Mac",
@@ -134,7 +122,7 @@ describe("desktop session and config management", () => {
       refreshToken: "valid-refresh",
       email: "local@example.com",
       userId: "u-local",
-      serverUrl: "http://localhost:3000",
+      serverUrl: "https://sayabot.sayalabs.in",
     })
 
     const session = loadSession()

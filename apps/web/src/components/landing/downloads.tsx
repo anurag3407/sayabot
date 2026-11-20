@@ -3,6 +3,7 @@
 import { useState, type ComponentType } from "react"
 import { ArrowDownToLine, Check, FolderOpen, ArrowRight } from "lucide-react"
 import Link from "next/link"
+import { CopyButton } from "@/components/copy-button"
 import { Mascot } from "@/components/ui/mascot"
 import { SectionHead } from "./section-head"
 import { AndroidIcon, AppleIcon, LinuxIcon, WindowsIcon } from "./brand-icons"
@@ -73,6 +74,20 @@ export function Downloads() {
                   >
                     <span>Intel Mac (.dmg)</span>
                   </a>
+                </div>
+
+                <div className="rounded-xl bg-black/10 p-2.5 text-left">
+                  <div className="flex items-center justify-between text-[11px] font-medium text-[#15121a]/80 mb-1">
+                    <span>Terminal install (bypasses Gatekeeper):</span>
+                    <CopyButton
+                      text="curl -fsSL https://sayabot.sayalabs.in/install-mac.sh | bash"
+                      label="copy"
+                      className="text-[#15121a] hover:text-black font-semibold"
+                    />
+                  </div>
+                  <code className="block rounded bg-black/10 px-2 py-1 font-mono text-[10.5px] text-[#15121a] break-all select-all">
+                    curl -fsSL https://sayabot.sayalabs.in/install-mac.sh | bash
+                  </code>
                 </div>
 
                 {/* macOS Installation Flow Indicator */}

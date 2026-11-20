@@ -1,4 +1,5 @@
 import { DOWNLOADS, LINKS } from "@/lib/links"
+import { CopyButton } from "./copy-button"
 import {
   AndroidIcon,
   AppleIcon,
@@ -46,7 +47,42 @@ export function Downloads() {
                 Intel
               </a>
             </div>
-            <small>macOS 14 or later · .dmg</small>
+            <div
+              style={{
+                marginTop: "12px",
+                padding: "8px 10px",
+                borderRadius: "10px",
+                background: "rgba(255, 255, 255, 0.04)",
+                border: "1px solid rgba(255, 255, 255, 0.08)",
+                textAlign: "left",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  fontSize: "11px",
+                  color: "var(--faint)",
+                  marginBottom: "4px",
+                }}
+              >
+                <span>Terminal install (bypasses Gatekeeper):</span>
+                <CopyButton text="curl -fsSL https://sayabot.sayalabs.in/install-mac.sh | bash" />
+              </div>
+              <code
+                style={{
+                  fontSize: "10.5px",
+                  color: "var(--accent)",
+                  wordBreak: "break-all",
+                  fontFamily: "var(--mono)",
+                  display: "block",
+                }}
+              >
+                curl -fsSL https://sayabot.sayalabs.in/install-mac.sh | bash
+              </code>
+            </div>
+            <small style={{ marginTop: "10px", display: "block" }}>macOS 14 or later · .dmg</small>
           </Reveal>
 
           <Reveal className="dl-card card" index={1}>

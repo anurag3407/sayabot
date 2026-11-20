@@ -571,30 +571,17 @@
           <span id="gateway-label">Connecting…</span>
         </div>
 
-        <h1 id="unauth-title">Sign in to Sayabot</h1>
+        <h1 id="unauth-title">Welcome to Sayabot</h1>
         <p id="unauth-subtitle" class="subtitle">
-          Connect your Mac to your room workspace. All agents sync live with your phone.
+          Get started with your room workspace. No account needed — you can save your profile in Settings later.
         </p>
 
-        <button id="sign-in-btn" class="btn" type="button">
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            aria-hidden="true"
-          >
-            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
-            <polyline points="10 17 15 12 10 7"></polyline>
-            <line x1="15" y1="12" x2="3" y2="12"></line>
-          </svg>
-          Sign in with Google or GitHub
+        <button id="guest-btn" class="btn" type="button">
+          Start Workspace Onboarding
         </button>
 
-        <button id="guest-btn" class="btn btn-secondary" type="button">
-          Continue without an account
+        <button id="sign-in-btn" class="btn btn-secondary" type="button">
+          Sign in to Existing Account
         </button>
         <p id="guest-error" class="server-status error hidden" role="alert"></p>
 
@@ -807,14 +794,14 @@
 
       function showGuestStarting(starting) {
         unauthTitle.textContent = starting
-          ? `Setting up ${serverDisplayName}…`
-          : `Sign in to ${serverDisplayName}`
+          ? `Setting up your workspace…`
+          : `Welcome to ${serverDisplayName}`
         unauthSubtitle.textContent = starting
-          ? "Getting your workspace ready. No account needed. You can save it later."
-          : "Connect your Mac to your room workspace. All agents sync live with your phone."
+          ? "Getting your room workspace ready. No account needed — you can save your profile in Settings anytime."
+          : "Get started with your room workspace. No account needed — you can save your profile in Settings later."
         signInBtn.classList.toggle("hidden", starting)
         unauthCrew.classList.toggle("busy", starting)
-        if (starting) guestBtn.classList.add("hidden")
+        guestBtn.textContent = starting ? "Preparing workspace…" : "Start Workspace Onboarding"
         guestBtn.disabled = starting
       }
 
@@ -825,7 +812,7 @@
         if (result && result.ok) return // the main process opens the workspace
         showGuestStarting(false)
         guestBtn.classList.remove("hidden")
-        guestError.textContent = "Couldn't start without an account. Sign in instead, or try again."
+        guestError.textContent = "Could not connect to workspace server. Click Retry or Change server."
         guestError.title = (result && result.error) || ""
         guestError.classList.remove("hidden")
       }

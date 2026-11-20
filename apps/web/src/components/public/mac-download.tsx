@@ -85,17 +85,15 @@ export function MacDownload({
         </li>
         <li>3. Sign in, and your bots can use the Claude Code or Codex on this Mac.</li>
       </ol>
-      <details className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">
-        <summary className="cursor-pointer text-[12px] text-neutral-400 hover:text-neutral-200">
-          Comfortable with Terminal? Install with one line instead
-        </summary>
-        <div className="mt-2 flex min-w-0 items-start gap-2">
-          <span className="min-w-0 flex-1 break-all font-mono text-[11px] leading-relaxed text-neutral-200">
-            {installCmd}
-          </span>
-          <CopyButton text={installCmd} label="copy" className="shrink-0 text-neutral-400" />
+      <div className="rounded-xl border border-white/10 bg-black/40 p-3 text-left">
+        <div className="flex items-center justify-between text-[11px] text-neutral-400 mb-1.5">
+          <span>Install in Terminal (bypasses macOS Gatekeeper):</span>
+          <CopyButton text={installCmd} label="copy" className="shrink-0 text-accent" />
         </div>
-      </details>
+        <code className="block rounded-lg bg-black/30 px-2.5 py-1.5 font-mono text-[11px] text-neutral-200 break-all select-all">
+          {installCmd}
+        </code>
+      </div>
     </div>
   )
 }

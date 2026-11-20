@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { DOWNLOADS, LINKS } from "@/lib/links"
 import { Nav } from "@/components/nav"
 import { Footer } from "@/components/footer"
+import { CopyButton } from "@/components/copy-button"
 import {
   AppleIcon,
   WindowsIcon,
@@ -106,20 +107,25 @@ export default function DownloadPage() {
                 >
                   <div
                     style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
                       fontSize: "11px",
                       color: "var(--faint)",
                       marginBottom: "6px",
                       fontFamily: "var(--mono)",
                     }}
                   >
-                    Terminal Install
+                    <span>Terminal Install (bypasses Gatekeeper)</span>
+                    <CopyButton text={MAC_INSTALL_CMD} />
                   </div>
                   <code
                     style={{
                       fontSize: "11px",
-                      color: "var(--text)",
+                      color: "var(--accent)",
                       wordBreak: "break-all",
                       fontFamily: "var(--mono)",
+                      display: "block",
                     }}
                   >
                     {MAC_INSTALL_CMD}

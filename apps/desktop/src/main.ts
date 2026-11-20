@@ -40,8 +40,10 @@ import { readJsonFile, removeJsonFile, writeJsonAtomic } from "./durable-json"
 import { normalizeServerUrl } from "./server-url"
 import { VaultRunner } from "./vault-cli"
 
-const DEFAULT_SERVER_URL =
-  process.env.SAYABOT_SERVER_URL || process.env.DEFAULT_SERVER_URL || "http://localhost:3000"
+export const DEFAULT_SERVER_URL =
+  process.env.SAYABOT_SERVER_URL ||
+  process.env.DEFAULT_SERVER_URL ||
+  "https://sayabot.sayalabs.in"
 const CONFIG_FILE = "sayabot-config.json"
 const SESSION_FILE = "sayabot-session.json"
 
@@ -296,7 +298,10 @@ export function loadConfig(): DesktopConfig {
   try {
     const data = readJsonFile<Partial<DesktopConfig>>(path.join(getUserDataDir(), CONFIG_FILE))
     if (data) {
-      if (data.serverUrl === "https://sayabot.sayalabs.in") {
+      if (
+        !process.env.SAYABOT_SERVER_URL &&
+        (data.serverUrl === "http://localhost:3000" || data.serverUrl === "http://127.0.0.1:3000")
+      ) {
         data.serverUrl = DEFAULT_SERVER_URL
         data.serverChosen = true
         data.serverName = "This Mac"
@@ -345,13 +350,6 @@ export function loadSession(): AuthSession | null {
   const config = loadConfig()
   const configUrl = normalizeServerUrl(config.serverUrl)
   const sessionUrl = normalizeServerUrl(session.serverUrl)
-  if (
-    session.serverUrl === "https://sayabot.sayalabs.in" &&
-    configUrl !== "https://sayabot.sayalabs.in"
-  ) {
-    saveSession(null)
-    return null
-  }
   if (configUrl && sessionUrl && configUrl !== sessionUrl) {
     saveSession(null)
     return null
@@ -1191,9 +1189,25 @@ interface GuestConfig {
  * allowed and where Supabase is; the sign-up goes from this Mac so its own IP is rate limited.
  */
 async function createGuestSession(serverUrl: string): Promise<AuthSession> {
-  const base = serverUrl.replace(/\/+$/, "")
-  const configRes = await fetch(`${base}/api/desktop/guest`)
-  if (!configRes.ok) throw new Error(`guest mode unavailable (HTTP ${configRes.status})`)
+  let base = serverUrl.replace(/\/+$/, "")
+  let configRes: Response | null = null
+  try {
+    configRes = await fetch(`${base}/api/desktop/guest`, { signal: AbortSignal.timeout(5000) })
+  } catch {
+    if (base !== DEFAULT_SERVER_URL) {
+      base = DEFAULT_SERVER_URL
+      configRes = await fetch(`${base}/api/desktop/guest`, { signal: AbortSignal.timeout(8000) }).catch(() => null)
+    }
+  }
+  if (!configRes || !configRes.ok) {
+    if (base !== DEFAULT_SERVER_URL) {
+      base = DEFAULT_SERVER_URL
+      configRes = await fetch(`${base}/api/desktop/guest`, { signal: AbortSignal.timeout(8000) }).catch(() => null)
+    }
+  }
+  if (!configRes || !configRes.ok) {
+    throw new Error(`Workspace server unreachable (${configRes?.status ?? "network error"})`)
+  }
   const config = (await configRes.json()) as GuestConfig
   if (!config.enabled || !config.supabaseUrl || !config.anonKey) {
     throw new Error("guest mode is turned off on this server")

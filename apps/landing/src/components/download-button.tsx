@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { DOWNLOADS, type DownloadId } from "@/lib/links"
 import { AndroidIcon, AppleIcon, ChevronDown, WindowsIcon } from "./icons"
+import { CopyButton } from "./copy-button"
 
 const ORDER: DownloadId[] = ["macArm", "macIntel", "winX64", "winArm", "android"]
 
@@ -87,6 +88,28 @@ export function DownloadButton({ align = "left" }: { align?: "left" | "center" }
           ))}
         </div>
       ) : null}
+      {primary.startsWith("mac") && (
+        <div
+          style={{
+            marginTop: "10px",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "8px",
+            fontSize: "11px",
+            color: "var(--faint)",
+            background: "rgba(255, 255, 255, 0.04)",
+            border: "1px solid rgba(255, 255, 255, 0.08)",
+            padding: "4px 10px",
+            borderRadius: "8px",
+          }}
+        >
+          <span>Terminal install:</span>
+          <code style={{ color: "var(--accent)", fontFamily: "var(--mono)" }}>
+            curl -fsSL https://sayabot.sayalabs.in/install-mac.sh | bash
+          </code>
+          <CopyButton text="curl -fsSL https://sayabot.sayalabs.in/install-mac.sh | bash" />
+        </div>
+      )}
     </div>
   )
 }
