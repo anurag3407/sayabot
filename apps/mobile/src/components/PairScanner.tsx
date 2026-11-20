@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from "react"
-import { ActivityIndicator, Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native"
+import React, { useEffect, useRef, useState } from "react"
+import { ActivityIndicator, Linking, Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native"
 import { CameraView, useCameraPermissions } from "expo-camera"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { X } from "lucide-react-native"
@@ -30,13 +30,14 @@ export function PairScanner({
 }: PairScannerProps) {
   const [permission, requestPermission] = useCameraPermissions()
   const locked = useRef(false)
-
   const asked = useRef(false)
+  const [mountError, setMountError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!visible) {
       locked.current = false
       asked.current = false
+      setMountError(null)
     }
   }, [visible])
 
@@ -56,15 +57,36 @@ export function PairScanner({
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <View style={styles.root}>
-        {!permission ? (
+        {mountError ? (
+          <View style={styles.denied}>
+            <Text style={styles.deniedTitle}>Camera could not start</Text>
+            <Text style={styles.deniedBody}>{mountError}</Text>
+            <TouchableOpacity
+              style={styles.allowBtn}
+              onPress={() => {
+                setMountError(null)
+                void requestPermission()
+              }}
+            >
+              <Text style={styles.allowText}>Try again</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.allowBtn, { marginTop: 4, backgroundColor: "transparent" }]}
+              onPress={() => void Linking.openSettings()}
+            >
+              <Text style={[styles.allowText, { color: colors.primary }]}>Open Settings</Text>
+            </TouchableOpacity>
+          </View>
+        ) : !permission ? (
           <View style={styles.denied}>
             <ActivityIndicator color="#fff" />
           </View>
         ) : granted ? (
           <CameraView
-            style={StyleSheet.absoluteFill}
+            style={[StyleSheet.absoluteFill, styles.camera]}
             facing="back"
             barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
+            onMountError={(e) => setMountError(e.message ?? "Camera could not be started")}
             onBarcodeScanned={
               busy
                 ? undefined
@@ -105,7 +127,11 @@ export function PairScanner({
                 ? "Allow camera access to scan the server QR code on your computer."
                 : "Allow camera access, or type the 8-character code shown under the QR on your computer."}
             </Text>
-            {permission && !permission.canAskAgain ? null : (
+            {permission && !permission.canAskAgain ? (
+              <TouchableOpacity style={styles.allowBtn} onPress={() => void Linking.openSettings()}>
+                <Text style={styles.allowText}>Open Settings</Text>
+              </TouchableOpacity>
+            ) : (
               <TouchableOpacity style={styles.allowBtn} onPress={() => void requestPermission()}>
                 <Text style={styles.allowText}>Allow camera</Text>
               </TouchableOpacity>
@@ -160,6 +186,11 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: "#000",
+  },
+  camera: {
+    flex: 1,
+    width: "100%",
+    height: "100%",
   },
   denied: {
     flex: 1,

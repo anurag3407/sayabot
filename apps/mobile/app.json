@@ -2,7 +2,7 @@
   "expo": {
     "name": "Sayabot",
     "slug": "sayabot",
-    "version": "1.2.2",
+    "version": "1.2.3",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -29,6 +29,7 @@
       },
       "package": "in.sayalabs.sayabot",
       "permissions": [
+        "android.permission.CAMERA",
         "android.permission.USE_BIOMETRIC",
         "android.permission.USE_FINGERPRINT",
         "android.permission.POST_NOTIFICATIONS",
