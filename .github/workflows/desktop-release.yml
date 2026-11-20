@@ -82,11 +82,26 @@ jobs:
           tag="v${version}"
           dir=apps/desktop/dist/installers
 
-          # Android APKs live in the same "latest" release; carry them over so their links work.
+          # Android APKs live in the same "latest" release; carry them over from recent releases so links never break.
           mkdir -p carry
-          previous=$(gh release view --json tagName -q .tagName 2>/dev/null || true)
-          if [ -n "$previous" ]; then
-            gh release download "$previous" --pattern "*.apk" --dir carry || true
+          for r in $(gh release list --limit 5 --json tagName -q '.[].tagName'); do
+            gh release download "$r" --pattern "*.apk" --dir carry 2>/dev/null || true
+          done
+
+          # Also check if mobile app.json defines a version and if an APK for that version exists
+          mobile_ver=$(node -p "require('./apps/mobile/app.json').expo.version" 2>/dev/null || true)
+          if [ -n "$mobile_ver" ] && [ ! -f "carry/Sayabot-$mobile_ver.apk" ]; then
+            for r in $(gh release list --limit 10 --json tagName -q '.[].tagName'); do
+              gh release download "$r" --pattern "Sayabot-$mobile_ver.apk" --dir carry 2>/dev/null || true
+              [ -f "carry/Sayabot-$mobile_ver.apk" ] && break
+            done
+          fi
+
+          # Ensure Sayabot.apk is always a copy of the highest-versioned APK
+          latest_apk=$(ls -v carry/Sayabot-*.apk 2>/dev/null | grep -E 'Sayabot-[0-9]+\.[0-9]+\.[0-9]+\.apk' | tail -n 1)
+          if [ -n "$latest_apk" ]; then
+            cp "$latest_apk" carry/Sayabot.apk
+            echo "Latest APK carried over: $latest_apk as Sayabot.apk"
           fi
 
           notes="Sayabot for Mac ${version}

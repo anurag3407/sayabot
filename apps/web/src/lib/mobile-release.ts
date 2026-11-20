@@ -39,17 +39,52 @@ export function repoFromGithubUrl(url: string): string | null {
   return `${m[1]}/${m[2].replace(/\.git$/, "")}`
 }
 
-/** Asks GitHub for the latest release; cached by Next for 10 minutes. Null on any failure. */
+/** Asks GitHub for the latest releases; cached by Next for 60 seconds. Pools assets across top releases so APKs uploaded to an earlier tag or during parallel builds are never missed. Null on any failure. */
 export async function fetchLatestApk(repo: string): Promise<LatestApk | null> {
   try {
+    const headers: Record<string, string> = { Accept: "application/vnd.github+json" }
+    if (process.env.GITHUB_TOKEN) {
+      headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`
+    }
+
+    const allAssets: ReleaseAsset[] = []
+
+    // 1. Fetch latest release
     const res = await fetch(`https://api.github.com/repos/${repo}/releases/latest`, {
-      headers: { Accept: "application/vnd.github+json" },
-      next: { revalidate: 600 },
+      headers,
+      next: { revalidate: 60 },
       signal: AbortSignal.timeout(5000),
     })
-    if (!res.ok) return null
-    const body = (await res.json()) as { assets?: ReleaseAsset[] }
-    return pickLatestApk(Array.isArray(body.assets) ? body.assets : [])
+    if (res.ok) {
+      const body = (await res.json()) as { assets?: ReleaseAsset[] }
+      if (Array.isArray(body.assets)) {
+        allAssets.push(...body.assets)
+      }
+    }
+
+    // 2. Also inspect the top 3 releases in case a newly published tag hasn't received its APK yet
+    // or the APK was attached to the preceding release during concurrent desktop/mobile builds.
+    try {
+      const listRes = await fetch(`https://api.github.com/repos/${repo}/releases?per_page=3`, {
+        headers,
+        next: { revalidate: 60 },
+        signal: AbortSignal.timeout(5000),
+      })
+      if (listRes.ok) {
+        const releases = (await listRes.json()) as Array<{ assets?: ReleaseAsset[] }>
+        if (Array.isArray(releases)) {
+          for (const r of releases) {
+            if (Array.isArray(r.assets)) {
+              allAssets.push(...r.assets)
+            }
+          }
+        }
+      }
+    } catch {
+      // Fallback: list fetch failure is non-fatal if latest release responded
+    }
+
+    return pickLatestApk(allAssets)
   } catch {
     return null
   }

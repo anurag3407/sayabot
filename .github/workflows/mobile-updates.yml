@@ -3,20 +3,17 @@ name: Mobile Updates & Release
 on:
   push:
     branches: [ main ]
-    paths:
-      - 'apps/mobile/**'
-      - 'packages/**'
-      - '.github/workflows/mobile-updates.yml'
   workflow_dispatch:
     inputs:
       action:
-        description: 'Action to run: "update" (OTA) or "build-apk"'
+        description: 'Action to run: "update" (OTA), "build-apk", or "sync-apk"'
         required: true
-        default: 'update'
+        default: 'sync-apk'
         type: choice
         options:
           - update
           - build-apk
+          - sync-apk
 
 concurrency:
   group: mobile-release
@@ -30,22 +27,41 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check if mobile or packages changed
+        id: check_diff
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            if ! git diff-tree --no-commit-id --name-only -r HEAD 2>/dev/null | grep -E '^(apps/mobile|packages)/'; then
+              echo "==> No mobile or package changes in this push. Skipping OTA publish."
+              echo "changed=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
 
       - name: Setup Node.js 20
+        if: steps.check_diff.outputs.changed == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
       - name: Install pnpm
+        if: steps.check_diff.outputs.changed == 'true'
         uses: pnpm/action-setup@v4
         with:
           run_install: false
 
       - name: Get pnpm store directory
+        if: steps.check_diff.outputs.changed == 'true'
         shell: bash
         run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
 
       - name: Setup pnpm cache
+        if: steps.check_diff.outputs.changed == 'true'
         uses: actions/cache@v4
         with:
           path: ${{ env.STORE_PATH }}
@@ -54,9 +70,11 @@ jobs:
             ${{ runner.os }}-pnpm-store-
 
       - name: Install dependencies
+        if: steps.check_diff.outputs.changed == 'true'
         run: pnpm install --frozen-lockfile=false
 
       - name: Publish OTA Update to Installed APKs
+        if: steps.check_diff.outputs.changed == 'true'
         working-directory: apps/mobile
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
@@ -71,12 +89,12 @@ jobs:
           echo "==> OTA update published successfully! Installed APKs will receive updates automatically."
 
   release-apk:
-    # Phones update themselves from the newest `Sayabot-<version>.apk` on GitHub Releases
-    # (see /api/mobile/version). Bumping "version" in apps/mobile/app.json is all it takes:
-    # this job sees no APK for that version yet, builds one, and attaches it.
-    name: Build & publish APK for a new app version
+    # Ensures the latest GitHub release ALWAYS has the newest APK (e.g. Sayabot-1.2.2.apk and Sayabot.apk).
+    # If the APK was already compiled in a recent release, syncs it in ~5 seconds.
+    # If a new version is bumped in app.json, builds it with Gradle and attaches it.
+    name: Ensure latest APK is on latest release
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.action == 'build-apk')
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     permissions:
       contents: write
     env:
@@ -84,22 +102,66 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
 
-      - name: Is there already an APK for this version?
+      - name: Check APK status on GitHub releases
         id: version
         shell: bash
         run: |
           version=$(node -p "require('./apps/mobile/app.json').expo.version")
           tag=$(gh release view --json tagName -q .tagName 2>/dev/null || true)
+          echo "Current app version: $version"
+          echo "Latest release tag: ${tag:-none}"
           echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
-          if [ "${{ github.event_name }}" != "workflow_dispatch" ] && [ -n "$tag" ] \
-            && gh release view "$tag" --json assets -q '.assets[].name' | grep -qx "Sayabot-$version.apk"; then
-            echo "Sayabot-$version.apk is already published; nothing to build."
-            echo "build=false" >> "$GITHUB_OUTPUT"
-          else
+
+          if [ -z "$tag" ]; then
+            echo "No GitHub release tag found; full build needed."
             echo "build=true" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
+
+          # 1. Does the latest release tag already have BOTH Sayabot-$version.apk AND Sayabot.apk?
+          has_version_apk=$(gh release view "$tag" --json assets -q '.assets[].name' 2>/dev/null | grep -qx "Sayabot-$version.apk" && echo "yes" || echo "no")
+          has_generic_apk=$(gh release view "$tag" --json assets -q '.assets[].name' 2>/dev/null | grep -qx "Sayabot.apk" && echo "yes" || echo "no")
+
+          # If user explicitly requested 'build-apk' via dispatch, force rebuild
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.action }}" = "build-apk" ]; then
+            echo "Workflow dispatch requested full APK rebuild."
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "$has_version_apk" = "yes" ] && [ "$has_generic_apk" = "yes" ]; then
+            echo "==> Latest release $tag already contains Sayabot-$version.apk and Sayabot.apk. Up to date!"
+            echo "build=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # 2. Check if Sayabot-$version.apk was already built and exists in any recent release
+          echo "==> Looking for existing Sayabot-$version.apk across recent releases..."
+          found_tag=""
+          for r in $(gh release list --limit 10 --json tagName -q '.[].tagName'); do
+            if gh release view "$r" --json assets -q '.assets[].name' 2>/dev/null | grep -qx "Sayabot-$version.apk"; then
+              found_tag="$r"
+              break
+            fi
+          done
+
+          if [ -n "$found_tag" ]; then
+            echo "==> Found existing Sayabot-$version.apk in release $found_tag!"
+            echo "==> Syncing Sayabot-$version.apk to latest release $tag..."
+            mkdir -p /tmp/sync_apk
+            gh release download "$found_tag" --pattern "Sayabot-$version.apk" --dir /tmp/sync_apk
+            cp "/tmp/sync_apk/Sayabot-$version.apk" "/tmp/sync_apk/Sayabot.apk"
+            gh release upload "$tag" "/tmp/sync_apk/Sayabot-$version.apk" "/tmp/sync_apk/Sayabot.apk" --clobber
+            echo "==> Successfully synced Sayabot-$version.apk and Sayabot.apk to $tag!"
+            echo "build=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "==> Sayabot-$version.apk was not found in any existing release. Building new APK with Gradle..."
+          echo "build=true" >> "$GITHUB_OUTPUT"
 
       - name: Setup Node.js 20
         if: steps.version.outputs.build == 'true'
@@ -148,13 +210,13 @@ jobs:
         shell: bash
         run: |
           version="${{ steps.version.outputs.version }}"
-          tag="${{ steps.version.outputs.tag }}"
+          tag=$(gh release view --json tagName -q .tagName 2>/dev/null || true)
           mkdir -p out
           cp apps/mobile/android/app/build/outputs/apk/release/app-release.apk "out/Sayabot-$version.apk"
           cp "out/Sayabot-$version.apk" out/Sayabot.apk
           if [ -z "$tag" ]; then
-            tag="mobile-v$version"
-            gh release create "$tag" --title "Sayabot for Android $version" --notes "Android app $version."
+            tag="v1.0.0"
+            gh release create "$tag" --title "Sayabot $tag" --notes "Release $tag."
           fi
           gh release upload "$tag" "out/Sayabot-$version.apk" out/Sayabot.apk --clobber
-          echo "==> Published Sayabot-$version.apk to $tag"
+          echo "==> Published Sayabot-$version.apk and Sayabot.apk to $tag"
