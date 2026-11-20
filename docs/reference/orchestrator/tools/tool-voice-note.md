@@ -41,6 +41,27 @@ Source file: `apps/orchestrator/src/tools/builtins/voice-note.ts` (tests: `voice
    ```
 6. The web client immediately renders an interactive `VoiceNoteBubble` with audio waveform, scrubber, speed controls, and transcript.
 
+---
+
+## Live Voice Sessions & Spoken Approval Protocol
+
+Beyond one-way voice notes, Sayabot supports real-time bidirectional voice sessions with spoken approval verification:
+
+### Endpoints (`apps/orchestrator/src/tts/routes.ts`)
+
+| Endpoint | Method | Description |
+| :--- | :--- | :--- |
+| `/v1/tts/live/session` | `POST` | Starts or joins a live voice session for a room (`roomId`, `orgId`, `agentId`). |
+| `/v1/tts/live/session/:roomId` | `GET` | Retrieves active live voice session participants and history. |
+| `/v1/tts/live/spoken-approval` | `POST` | Evaluates spoken transcript for affirmative/negative intent and resolves `toolCalls` approval waiters. |
+| `/v1/tts/live/prompt` | `POST` | Generates a concise speakable approval query for pending tool executions. |
+
+### Spoken Decision Classifier (`apps/orchestrator/src/tts/spoken-approval.ts`)
+
+- **Affirmative (`"approved"`)**: Matches `"yes"`, `"approve"`, `"proceed"`, `"go ahead"`, `"confirm"`, `"run it"`, `"sure"`.
+- **Negative (`"rejected"`)**: Matches `"no"`, `"reject"`, `"cancel"`, `"deny"`, `"stop"`, `"abort"`, `"don't"`.
+- **Ambiguous (`"unclear"`)**: Asks the user to repeat or clarify.
+
 ## Related docs
 
 - [Speech text normalization](../../core/speech-text.md) — Normalizer rules

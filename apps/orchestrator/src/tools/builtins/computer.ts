@@ -1176,8 +1176,105 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
     },
   }
 
+  const desktopInfoTool: ToolSpec = {
+    name: "desktop_info",
+    description:
+      "Get virtual desktop screen resolution, active window title, and X11 display status.",
+    schema: z.object({}),
+    dangerous: false,
+    execute: async () => {
+      const blocked = await useLocalVm()
+      if (blocked) return blocked
+      return client.desktop(agentId, "info")
+    },
+  }
+
+  const desktopScreenshotTool: ToolSpec = {
+    name: "desktop_screenshot",
+    description:
+      "Capture a high-resolution screenshot of the full virtual desktop or running GUI application.",
+    schema: z.object({}),
+    dangerous: false,
+    execute: async () => {
+      const blocked = await useLocalVm()
+      if (blocked) return blocked
+      return client.desktop(agentId, "screenshot")
+    },
+  }
+
+  const desktopMouseTool: ToolSpec = {
+    name: "desktop_mouse",
+    description:
+      "Control the virtual desktop mouse: move cursor, click, double click, right click, or drag to coordinates.",
+    schema: z.object({
+      action: z
+        .enum([
+          "click",
+          "double_click",
+          "right_click",
+          "middle_click",
+          "move",
+          "down",
+          "up",
+          "drag",
+        ])
+        .default("click")
+        .describe("Mouse action to perform"),
+      x: z.number().int().describe("X coordinate in pixels"),
+      y: z.number().int().describe("Y coordinate in pixels"),
+      end_x: z.number().int().optional().describe("Target end X coordinate when dragging"),
+      end_y: z.number().int().optional().describe("Target end Y coordinate when dragging"),
+      button: z.number().int().optional().default(1).describe("Mouse button: 1=left, 2=middle, 3=right"),
+    }),
+    dangerous: false,
+    execute: async (input: {
+      action: "click" | "double_click" | "right_click" | "middle_click" | "move" | "down" | "up" | "drag"
+      x: number
+      y: number
+      end_x?: number
+      end_y?: number
+      button?: number
+    }) => {
+      const blocked = await useLocalVm()
+      if (blocked) return blocked
+      return client.desktop(agentId, "mouse", {
+        action: input.action,
+        x: input.x,
+        y: input.y,
+        endX: input.end_x,
+        endY: input.end_y,
+        button: input.button,
+      })
+    },
+  }
+
+  const desktopKeyboardTool: ToolSpec = {
+    name: "desktop_keyboard",
+    description:
+      "Type text or press keys on the virtual desktop keyboard (e.g. 'Return', 'ctrl+c', 'BackSpace', 'Tab').",
+    schema: z.object({
+      action: z.enum(["type", "press", "key_down", "key_up"]).default("type"),
+      text: z.string().optional().describe("Text string to type into the active window"),
+      key: z.string().optional().describe("Special key combination to press, e.g. Return, ctrl+a, Escape"),
+    }),
+    dangerous: false,
+    execute: async (input: { action: "type" | "press" | "key_down" | "key_up"; text?: string; key?: string }) => {
+      const blocked = await useLocalVm()
+      if (blocked) return blocked
+      return client.desktop(agentId, "keyboard", {
+        action: input.action,
+        text: input.text,
+        key: input.key,
+      })
+    },
+  }
+
   return [
     ...standardTools,
+    desktopInfoTool,
+    desktopScreenshotTool,
+    desktopMouseTool,
+    desktopKeyboardTool,
     browserOpenTool,
     browserSnapshotTool,
     browserClickTool,

@@ -152,6 +152,17 @@ Added only when `caps.computer.profile === "browser"`; every tool runs `useLocal
 | `browser_dialog`     | `action` (enum `accept\|dismiss`), `promptText?` (string)                                                              | `dialog` — handle `alert/confirm/prompt/beforeunload`                                                                                                        |
 | `browser_vault`      | `secretName` (string), `selector` (string), `submit` (boolean, default `false`)                                        | `vault` — autofill a vault credential without exposing plaintext; the orchestrator forwards `orgId` so agentd can resolve the secret (`computer.ts:857-867`) |
 
+## 🖱️ Tool catalog — virtual desktop GUI automation
+
+The virtual desktop toolset allows agents to operate containerized graphical X11/XFCE desktops via `xdotool` and screen capture tools.
+
+| Tool | Parameters | Description |
+| :--- | :--- | :--- |
+| `desktop_info` | none | Returns desktop screen resolution, active window title, and X11 display status. |
+| `desktop_screenshot` | none | Captures a high-resolution screenshot of the full virtual desktop or running GUI application. |
+| `desktop_mouse` | `action` (enum `click\|double_click\|right_click\|middle_click\|move\|down\|up\|drag`), `x` (int), `y` (int), `end_x?`, `end_y?`, `button?` | Injects virtual mouse movements, clicks, and drag-and-drop gestures. |
+| `desktop_keyboard` | `action` (enum `type\|press\|key_down\|key_up`), `text?` (string), `key?` (string) | Injects text strings or key combinations (e.g. `Return`, `ctrl+c`, `Tab`). |
+
 ## 🤝 Talking to computerd (`src/computer/client.ts`)
 
 `ComputerClient` (singleton via `getComputerClient()`) talks HTTP to `COMPUTERD_URL` with the `x-internal-secret` header (`client.ts:83-115`):

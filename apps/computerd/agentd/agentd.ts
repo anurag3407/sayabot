@@ -13,6 +13,8 @@ import { dirname, resolve } from "node:path"
 import { constants as osConstants } from "node:os"
 import { StringDecoder } from "node:string_decoder"
 import { codeIntelligence } from "./code-intelligence"
+import { desktopGuiManager } from "./desktop-gui"
+import { androidDeviceManager } from "./phone"
 import {
   applyPatchAtomic,
   editFileAtomic,
@@ -360,6 +362,78 @@ async function handleRequest(client: Socket, jsonStr: string) {
               message: "browser session ready",
             }) + "\n",
           )
+        }
+        break
+      }
+
+      // Desktop GUI Automation Operations
+      case "desktop":
+      case "desktop.info":
+      case "desktop.screenshot":
+      case "desktop.mouse":
+      case "desktop.keyboard": {
+        const action = req.action || (op.includes(".") ? op.split(".")[1] : "info")
+        if (action === "info") {
+          const info = await desktopGuiManager.getScreenInfo()
+          client.write(JSON.stringify({ ok: true, ...info }) + "\n")
+        } else if (action === "screenshot") {
+          const screenshot = await desktopGuiManager.captureScreenshotBase64()
+          client.write(JSON.stringify({ ok: true, screenshot }) + "\n")
+        } else if (action === "mouse") {
+          const res = await desktopGuiManager.handleMouse(req)
+          client.write(JSON.stringify(res) + "\n")
+        } else if (action === "keyboard") {
+          const res = await desktopGuiManager.handleKeyboard(req)
+          client.write(JSON.stringify(res) + "\n")
+        } else {
+          client.write(JSON.stringify({ ok: false, error: `unknown desktop action: ${action}` }) + "\n")
+        }
+        break
+      }
+
+      // Android Device Operations
+      case "phone":
+      case "phone.list":
+      case "phone.info":
+      case "phone.screenshot":
+      case "phone.touch":
+      case "phone.key":
+      case "phone.text":
+      case "phone.launch": {
+        const action = req.action || (op.includes(".") ? op.split(".")[1] : "list")
+        if (action === "list") {
+          const devices = await androidDeviceManager.listDevices()
+          client.write(JSON.stringify({ ok: true, count: devices.length, devices }) + "\n")
+        } else if (action === "info") {
+          const size = await androidDeviceManager.getScreenSize(req.serial)
+          client.write(JSON.stringify({ ok: true, ...size }) + "\n")
+        } else if (action === "screenshot") {
+          const screenshot = await androidDeviceManager.captureScreenshotBase64(req.serial)
+          client.write(JSON.stringify({ ok: true, screenshot }) + "\n")
+        } else if (action === "touch" || action === "tap") {
+          await androidDeviceManager.tap(Number(req.x || 0), Number(req.y || 0), req.serial)
+          client.write(JSON.stringify({ ok: true, action: "tap" }) + "\n")
+        } else if (action === "swipe") {
+          await androidDeviceManager.swipe(
+            Number(req.x1 || req.x || 0),
+            Number(req.y1 || req.y || 0),
+            Number(req.x2 || req.endX || 0),
+            Number(req.y2 || req.endY || 0),
+            Number(req.durationMs || 300),
+            req.serial,
+          )
+          client.write(JSON.stringify({ ok: true, action: "swipe" }) + "\n")
+        } else if (action === "key") {
+          await androidDeviceManager.pressKey(String(req.key || "HOME"), req.serial)
+          client.write(JSON.stringify({ ok: true, key: req.key }) + "\n")
+        } else if (action === "text") {
+          await androidDeviceManager.typeText(String(req.text || ""), req.serial)
+          client.write(JSON.stringify({ ok: true, text: req.text }) + "\n")
+        } else if (action === "launch") {
+          await androidDeviceManager.launchApp(String(req.packageName || ""), req.serial)
+          client.write(JSON.stringify({ ok: true, packageName: req.packageName }) + "\n")
+        } else {
+          client.write(JSON.stringify({ ok: false, error: `unknown phone action: ${action}` }) + "\n")
         }
         break
       }

@@ -103,6 +103,8 @@ export function createApp(lifecycle: Lifecycle) {
     ["files/list", "list"],
     ["code", "code"],
     ["browser", "browser"],
+    ["desktop", "desktop"],
+    ["phone", "phone"],
   ] as const) {
     app.post(`/v1/computers/:agentId/${route}`, async (c) => {
       const body = await c.req.json()

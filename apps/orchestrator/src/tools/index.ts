@@ -53,6 +53,9 @@ import { workspaceTools } from "./builtins/workspace"
 import { documentTools } from "./builtins/document"
 import { sendVoiceNoteTool } from "./builtins/voice-note"
 import { storageTools } from "./builtins/storage"
+import { dataAnalysisTools } from "./builtins/data-analysis"
+import { meetingTools } from "./builtins/meeting"
+import { phoneTools } from "./builtins/phone"
 
 export interface BuildToolsArgs {
   roomId: string
@@ -480,6 +483,22 @@ export async function buildTools(args: BuildToolsArgs): Promise<BuiltTools> {
           }),
         ]
       : []),
+    ...dataAnalysisTools({
+      orgId: args.orgId,
+      agentId: args.agent.id,
+      roomId: args.roomId,
+    }),
+    ...meetingTools({
+      orgId: args.orgId,
+      agentId: args.agent.id,
+      roomId: args.roomId,
+      botName: args.agent.displayName,
+    }),
+    ...phoneTools({
+      orgId: args.orgId,
+      agentId: args.agent.id,
+      roomId: args.roomId,
+    }),
     ...(isV2 && args.runtime.runId
       ? [
           updatePlanTool({ runId: args.runtime.runId, roomId: args.roomId }),

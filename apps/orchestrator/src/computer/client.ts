@@ -300,6 +300,28 @@ export class ComputerClient {
     })
   }
 
+  async desktop(
+    agentId: string,
+    action: string,
+    params: Record<string, unknown> = {},
+  ): Promise<unknown> {
+    return this.request(`/v1/computers/${agentId}/desktop`, {
+      method: "POST",
+      body: JSON.stringify({ action, ...params }),
+    })
+  }
+
+  async phone(
+    agentId: string,
+    action: string,
+    params: Record<string, unknown> = {},
+  ): Promise<unknown> {
+    return this.request(`/v1/computers/${agentId}/phone`, {
+      method: "POST",
+      body: JSON.stringify({ action, ...params }),
+    })
+  }
+
   async stop(agentId: string): Promise<{ ok: boolean }> {
     return this.request(`/v1/computers/${agentId}/stop`, {
       method: "POST",

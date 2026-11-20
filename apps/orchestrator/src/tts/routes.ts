@@ -9,6 +9,8 @@ import {
 import { Hono } from "hono"
 import { z } from "zod"
 import { getVoiceConfig, resolveVoiceCredentials } from "./config"
+import { liveVoiceSessionManager } from "./live-voice"
+import { generateSpokenApprovalPrompt, processSpokenDecision } from "./spoken-approval"
 
 const prepareSchema = z.object({
   text: z.string().default(""),
@@ -156,4 +158,69 @@ ttsRoutes.post("/transcribe", async (c) => {
       502,
     )
   }
+})
+
+// POST /v1/tts/live/session - starts or creates a live bidirectional voice session for a room
+ttsRoutes.post("/live/session", async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  const { roomId, orgId, agentId, provider } = body
+  if (!roomId || !orgId || !agentId) {
+    return c.json({ error: "roomId, orgId, and agentId are required" }, 400)
+  }
+
+  const session = liveVoiceSessionManager.createSession({
+    roomId,
+    orgId,
+    agentId,
+    provider,
+  })
+
+  return c.json({
+    ok: true,
+    sessionId: session.sessionId,
+    roomId: session.roomId,
+    status: session.status,
+    provider: session.provider,
+  })
+})
+
+// GET /v1/tts/live/session/:roomId - retrieves active live voice session
+ttsRoutes.get("/live/session/:roomId", (c) => {
+  const roomId = c.req.param("roomId")
+  const session = liveVoiceSessionManager.getSessionForRoom(roomId)
+  if (!session) {
+    return c.json({ ok: false, error: "No active live voice session found for this room" }, 404)
+  }
+
+  return c.json({
+    ok: true,
+    sessionId: session.sessionId,
+    status: session.status,
+    participants: Array.from(session.activeParticipants),
+    historyCount: session.spokenHistory.length,
+  })
+})
+
+// POST /v1/tts/live/spoken-approval - evaluates spoken decision for a pending tool call
+ttsRoutes.post("/live/spoken-approval", async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  const { toolCallId, spokenText } = body
+  if (!toolCallId || typeof spokenText !== "string") {
+    return c.json({ error: "toolCallId and spokenText are required" }, 400)
+  }
+
+  const result = processSpokenDecision(toolCallId, spokenText)
+  return c.json({ ok: true, ...result })
+})
+
+// POST /v1/tts/live/prompt - generates spoken approval prompt for a tool call
+ttsRoutes.post("/live/prompt", async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  const { toolName, args } = body
+  if (!toolName) {
+    return c.json({ error: "toolName is required" }, 400)
+  }
+
+  const prompt = generateSpokenApprovalPrompt(toolName, args || {})
+  return c.json({ ok: true, prompt })
 })
