@@ -1,5 +1,5 @@
 /**
- * Composio client: one API key reaches the whole connected-app catalog OpenMausBot exposes
+ * Composio client: one API key reaches the whole connected-app catalog
  * (Gmail, Google Calendar, Slack, Notion, Linear, HubSpot, Jira, … — the toolkits keep growing,
  * so nothing here is a fixed list). Tokens are the person's own OAuth connections created in
  * their Composio project; this client only lists and executes on their behalf.

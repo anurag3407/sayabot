@@ -1,7 +1,7 @@
 /**
  * Browser Web Audio Voice Activity Detection (VAD) and 16kHz WAV Recorder.
  *
- * Implements OpenMausBot-style voice endpointing:
+ * Implements real-time browser voice endpointing:
  * - RMS energy calculation per frame
  * - Speech start detection (RMS > speechThreshold for minSpeechMs)
  * - Silence endpointing (RMS < silenceThreshold for silenceTimeoutMs, default ~1.7s)

@@ -45,8 +45,9 @@ CLI transports pass the request JSON through process arguments, and Linux caps a
 | `buildDocker(config, docker?)` (`select.ts:26-37`)  | `DockerBackend` with image tag, network, mem/cpus, runtime, ctl root/volume, and a `orchestratorGrantsEnv` fetcher                                                                                           |
 | `buildSmolvm(config, identity)` (`select.ts:39-51`) | `EgressBridge(parseEgressTarget(config.egressProxyUrl), identity.proxyAuthorization)` + `SmolvmBackend` with `SMOLVM_IMAGE` (default `saaya/computer:<tag>`), mem/cpus/storage, `runDir`, grants fetcher     |
 | `buildE2B(config)` (`select.ts:53-63`)              | Throws `BackendUnavailableError("E2B_API_KEY is not set")` without a key; dynamically imports the `e2b` SDK and builds `E2BBackend` with template, `E2B_MAX_RUNNING`, idle window, and the agentd bundle dir |
+| `buildHost(config)` (`select.ts:65-74`)             | `HostBackend` (`backends/host.ts`): zero-config local backend that executes agent workloads directly on the host machine bounded to `~/.sayabot/sandbox/<agentId>`, connecting to an in-process agentd socket. Used for 1-click desktop installs without Docker. |
 
-All three share `grantsEnvFetcher` (`select.ts:10-24`): a `GET ${orchestratorUrl}/internal/computer/:agentId/grants-env` call (5 s timeout, `x-internal-secret`) whose `{ env }` object is injected into the computer as environment variables. Failures degrade to `{}`.
+All four share `grantsEnvFetcher` (`select.ts:10-24`): a `GET ${orchestratorUrl}/internal/computer/:agentId/grants-env` call (5 s timeout, `x-internal-secret`) whose `{ env }` object is injected into the computer as environment variables. Failures degrade to `{}`.
 
 ### `selectBackend` — the `auto` ranking
 
@@ -60,11 +61,11 @@ flowchart TD
     C -- yes --> D[docker backend]
     C -- no --> E{E2B_API_KEY set?}
     E -- yes --> F[e2b backend]
-    E -- no --> G[warn + default to docker<br/>it will fail loudly on use]
+    E -- no --> H[host backend<br/>zero-config local sandbox]
 ```
 
 - `smolvmUsable` requires hardware virtualization (Apple silicon, or Linux with readable/writable `/dev/kvm`) and a successful `smolvm --version` (details in [backend-smolvm.md](backend-smolvm.md)).
-- Every failed candidate's reason is collected and reported in the final warning: `[computerd] no computer backend available (smolvm: …; docker: …; e2b: E2B_API_KEY not set); defaulting to docker` — a deliberate choice so the error surfaces on the first real request rather than killing the daemon.
+- If smolvm, Docker, and E2B are unavailable, computerd automatically falls back to `HostBackend` (`~/.sayabot/sandbox/<agentId>`) instead of failing, enabling seamless zero-config local desktop operation without requiring Docker.
 
 ---
 

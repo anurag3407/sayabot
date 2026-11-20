@@ -15,9 +15,9 @@ import bundledSnapshot from "./models-dev.snapshot.json"
 
 /**
  * The models.dev catalog (https://models.dev, MIT): every provider's models with their context
- * window, list price per million tokens, tool support and reasoning-effort levels. Same design as
- * OpenCode / OpenMausBot: refreshed at most once a day with an ETag, kept on disk, and when the
- * network is down the newest of our cache, OpenCode's own cache and the snapshot bundled here wins.
+ * window, list price per million tokens, tool support and reasoning-effort levels. Refreshed at most
+ * once a day with an ETag, kept on disk, and when the network is down the newest of our cache,
+ * OpenCode's own cache and the snapshot bundled here wins.
  *
  * Maintenance: `pnpm --filter @sayabot/llm catalog:snapshot` rewrites the bundled snapshot.
  */

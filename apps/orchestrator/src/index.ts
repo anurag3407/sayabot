@@ -1,5 +1,6 @@
 import { destroyHocuspocus, createHocuspocus } from "./canvas/server"
-import { closeDb, getPool } from "./db"
+import { closeDb, getDb, getPool } from "./db"
+import { runAllMigrations, seedLocalWorkspace, isLocalConnection } from "@sayabot/db"
 import { getEnv } from "./env"
 import { createApp } from "./http"
 import { enqueueRoomMessage, startJobs, stopJobs } from "./jobs"
@@ -18,37 +19,51 @@ import { WebSocketServer } from "ws"
 import type { Duplex } from "node:stream"
 
 const env = getEnv()
+const isLocal =
+  process.env.SAYABOT_LOCAL === "true" ||
+  env.DATABASE_URL === "local" ||
+  isLocalConnection(env.DATABASE_URL)
+
+if (isLocal) {
+  console.log("[sayabot] local zero-config mode: running database migrations & workspace seeding…")
+  await runAllMigrations(getPool(), { quiet: true })
+  await seedLocalWorkspace(getDb(), getPool())
+  console.log("[sayabot] local zero-config workspace ready.")
+}
 const hocuspocus = createHocuspocus()
 
-await startApprovalListener().catch((error) =>
-  console.error("[approvals] listener unavailable; falling back to polling", error),
-)
-await startBotReplyListener().catch((error) =>
-  console.error("[bot-reply] listener unavailable; falling back to polling", error),
-)
+let control: any = null
+if (!isLocal) {
+  await startApprovalListener().catch((error) =>
+    console.error("[approvals] listener unavailable; falling back to polling", error),
+  )
+  await startBotReplyListener().catch((error) =>
+    console.error("[bot-reply] listener unavailable; falling back to polling", error),
+  )
 
-const control = await getPool().connect()
-control.on("notification", (message) => {
-  if (!message.payload) return
-  try {
-    const payload = JSON.parse(message.payload) as { roomId?: string; runId?: string }
-    if (message.channel === "mesh_room_interrupt" && payload.roomId) {
-      abortRoomRuns(payload.roomId)
+  control = await getPool().connect()
+  control.on("notification", (message: any) => {
+    if (!message.payload) return
+    try {
+      const payload = JSON.parse(message.payload) as { roomId?: string; runId?: string }
+      if (message.channel === "mesh_room_interrupt" && payload.roomId) {
+        abortRoomRuns(payload.roomId)
+      }
+      if (message.channel === "mesh_stop_run" && payload.runId) {
+        abortRun(payload.runId)
+      }
+      if (message.channel === "vault_changed") {
+        emitVaultChanged(message.payload || "{}")
+      }
+    } catch {
+      // ignore malformed control notifications
     }
-    if (message.channel === "mesh_stop_run" && payload.runId) {
-      abortRun(payload.runId)
-    }
-    if (message.channel === "vault_changed") {
-      emitVaultChanged(message.payload || "{}")
-    }
-  } catch {
-    // ignore malformed control notifications
-  }
-})
-control.on("error", (error) => console.error("[control] listener error", error))
-await control.query("LISTEN mesh_room_interrupt")
-await control.query("LISTEN mesh_stop_run")
-await control.query("LISTEN vault_changed")
+  })
+  control.on("error", (error: any) => console.error("[control] listener error", error))
+  await control.query("LISTEN mesh_room_interrupt")
+  await control.query("LISTEN mesh_stop_run")
+  await control.query("LISTEN vault_changed")
+}
 
 await startJobs()
 void import("./engine/resume").then(({ recoverStaleRuns }) =>
@@ -113,7 +128,7 @@ async function shutdown(signal: string) {
     stopMeetingScheduler()
     await stopJobs()
     await destroyHocuspocus()
-    control.release()
+    control?.release()
     wss.close()
     server.close()
     await closeDb()

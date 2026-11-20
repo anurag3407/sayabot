@@ -1,8 +1,7 @@
 # Models, prices, effort and plans
 
 How the model picker on the Agents page finds which models each account can use, what they
-cost, which effort levels they take, and how much of a subscription is used. The design follows
-OpenMausBot (which follows OpenCode and T3 Code). Code: [`packages/llm/src/models/`](../packages/llm/src/models/).
+cost, which effort levels they take, and how much of a subscription is used. Code: [`packages/llm/src/models/`](../packages/llm/src/models/).
 
 ## Where each piece comes from
 

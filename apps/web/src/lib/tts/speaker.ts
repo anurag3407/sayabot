@@ -1,7 +1,7 @@
 /**
  * Client-side Text-to-Speech playback manager with streaming prefetch.
  *
- * Implements OpenMausBot-style TTFB optimization:
+ * Implements ultra-low latency TTFB optimization:
  * 1. Chunks long text via `/api/v1/tts/prepare` (speech-text normalizer with 90-char TTFB fast-path).
  * 2. Sliding window prefetch (maintains 3 ahead) via `/api/v1/tts/speak`.
  * 3. Seamless utterance-by-utterance audio playback.

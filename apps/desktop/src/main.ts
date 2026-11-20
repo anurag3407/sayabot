@@ -39,6 +39,12 @@ import { LocalRunner, type ApprovalNotice } from "./runner"
 import { readJsonFile, removeJsonFile, writeJsonAtomic } from "./durable-json"
 import { normalizeServerUrl } from "./server-url"
 import { VaultRunner } from "./vault-cli"
+import {
+  startEmbeddedEngine,
+  stopEmbeddedEngine,
+  createLocalSession,
+  getEmbeddedEngineStatus,
+} from "./embedded-engine"
 
 export const DEFAULT_SERVER_URL =
   process.env.SAYABOT_SERVER_URL ||
@@ -727,6 +733,24 @@ export function appMenuTemplate(): MenuItemConstructorOptions[] {
           },
         },
         {
+          label: "Run Locally (Zero-Config)",
+          click: async () => {
+            const res = await startEmbeddedEngine()
+            if (res.ok && res.serverUrl) {
+              const localSession = createLocalSession(res.serverUrl)
+              saveConfig({
+                ...loadConfig(),
+                serverUrl: res.serverUrl,
+                serverChosen: true,
+                serverName: "Local Workspace",
+              })
+              saveSession(localSession)
+              startHost()
+              void openWorkspaceInWindow()
+            }
+          },
+        },
+        {
           // Guests: sign in (or sign up) in the browser and bring the guest data along.
           label: "Sign In to Existing Account…",
           click: () => void signInFromMenu(),
@@ -847,21 +871,42 @@ function createWindow() {
 
   buildAppMenu()
 
+  let recentNavigations: { url: string; time: number }[] = []
+
   mainWindow.webContents.on("did-navigate", (_event, url) => {
     buildAppMenu()
     try {
+      const now = Date.now()
+      recentNavigations.push({ url, time: now })
+      recentNavigations = recentNavigations.filter((n) => now - n.time < 3000)
+      const loopHits = recentNavigations.filter((n) => n.url === url).length
+      if (loopHits >= 3) {
+        console.warn(`[Sayabot Desktop] Detected redirect loop on ${url}. Breaking loop and returning to controller.`)
+        recentNavigations = []
+        saveSession(null)
+        loadLocalHtml()
+        return
+      }
+
       const u = new URL(url)
       const config = loadConfig()
       const serverUrl = normalizeServerUrl(config.serverUrl)
       if (serverUrl && u.origin === new URL(serverUrl).origin) {
-        if (u.pathname === "/" || u.pathname === "/login") {
+        if (u.pathname === "/login") {
+          // Server explicitly landed on /login (session expired, rejected, or logged out).
+          // Do NOT force reload /auth/complete! Doing so triggers an infinite redirect loop.
+          const session = loadSession()
+          if (session) {
+            console.log("[Sayabot Desktop] Server routed to /login; clearing invalidated session.")
+            saveSession(null)
+          }
+          loadLocalHtml()
+          return
+        }
+        if (u.pathname === "/") {
           const session = loadSession()
           if (!session || !session.accessToken) {
             loadLocalHtml()
-          } else {
-            const cleanUrl = serverUrl.replace(/\/+$/, "")
-            const targetUrl = `${cleanUrl}/auth/complete#access_token=${session.accessToken}&refresh_token=${session.refreshToken}`
-            mainWindow?.loadURL(targetUrl)
           }
         }
       }
@@ -1081,7 +1126,20 @@ async function openWorkspaceInWindow() {
     loadLocalHtml()
     return
   }
-  const cleanUrl = saved.serverUrl.replace(/\/+$/, "")
+  let cleanUrl = saved.serverUrl.replace(/\/+$/, "")
+  const isLocal = cleanUrl.includes("localhost") || cleanUrl.includes("127.0.0.1")
+  if (isLocal) {
+    if (!getEmbeddedEngineStatus().running) {
+      console.log("[Sayabot Desktop] Local engine not running; starting embedded engine for workspace...")
+      const res = await startEmbeddedEngine()
+      if (res.ok && res.serverUrl) {
+        cleanUrl = res.serverUrl.replace(/\/+$/, "")
+        saved.serverUrl = res.serverUrl
+        saveSession(saved)
+        saveConfig({ ...config, serverUrl: res.serverUrl })
+      }
+    }
+  }
   if (await hasBrowserSession(saved.serverUrl)) {
     // Cookies are the login that survived the last run. Do not hand the file's older
     // refresh token to the page; the server treats a reused token as theft and revokes it.
@@ -1182,33 +1240,60 @@ interface GuestConfig {
   enabled?: boolean
   supabaseUrl?: string
   anonKey?: string
+  localMode?: boolean
 }
 
 /**
  * Creates an anonymous Supabase user for this Mac. The server only says whether guests are
  * allowed and where Supabase is; the sign-up goes from this Mac so its own IP is rate limited.
+ * For local zero-config instances, creates an instant local session directly without network calls.
  */
 async function createGuestSession(serverUrl: string): Promise<AuthSession> {
   let base = serverUrl.replace(/\/+$/, "")
+  const isLocal = base.includes("localhost") || base.includes("127.0.0.1")
+
+  if (isLocal) {
+    if (!getEmbeddedEngineStatus().running) {
+      console.log("[Sayabot Desktop] Local server configured but embedded engine not running; starting...")
+      const embedded = await startEmbeddedEngine()
+      if (embedded.ok && embedded.serverUrl) {
+        base = embedded.serverUrl
+        saveConfig({
+          ...loadConfig(),
+          serverUrl: embedded.serverUrl,
+          serverChosen: true,
+          serverName: "Local Workspace",
+        })
+      }
+    }
+    return createLocalSession(base)
+  }
+
   let configRes: Response | null = null
   try {
-    configRes = await fetch(`${base}/api/desktop/guest`, { signal: AbortSignal.timeout(5000) })
+    configRes = await fetch(`${base}/api/desktop/guest`, { signal: AbortSignal.timeout(1500) })
   } catch {
-    if (base !== DEFAULT_SERVER_URL) {
-      base = DEFAULT_SERVER_URL
-      configRes = await fetch(`${base}/api/desktop/guest`, { signal: AbortSignal.timeout(8000) }).catch(() => null)
-    }
+    configRes = null
   }
   if (!configRes || !configRes.ok) {
-    if (base !== DEFAULT_SERVER_URL) {
-      base = DEFAULT_SERVER_URL
-      configRes = await fetch(`${base}/api/desktop/guest`, { signal: AbortSignal.timeout(8000) }).catch(() => null)
+    // If remote server unreachable or slow, start zero-config embedded engine automatically
+    console.log("[Sayabot Desktop] Remote server unreachable or slow; booting local zero-config embedded engine…")
+    const embedded = await startEmbeddedEngine()
+    if (embedded.ok && embedded.serverUrl) {
+      saveConfig({
+        ...loadConfig(),
+        serverUrl: embedded.serverUrl,
+        serverChosen: true,
+        serverName: "Local Workspace",
+      })
+      return createLocalSession(embedded.serverUrl)
     }
-  }
-  if (!configRes || !configRes.ok) {
     throw new Error(`Workspace server unreachable (${configRes?.status ?? "network error"})`)
   }
   const config = (await configRes.json()) as GuestConfig
+  if (config.localMode) {
+    return createLocalSession(base)
+  }
   if (!config.enabled || !config.supabaseUrl || !config.anonKey) {
     throw new Error("guest mode is turned off on this server")
   }
@@ -1373,6 +1458,31 @@ ipcMain.handle("workspace:open-in-browser", () => {
   shell.openExternal(`${base.replace(/\/+$/, "")}/login`)
 })
 
+ipcMain.handle("embedded:start", async () => {
+  const res = await startEmbeddedEngine()
+  if (res.ok && res.serverUrl) {
+    const localSession = createLocalSession(res.serverUrl)
+    saveConfig({
+      ...loadConfig(),
+      serverUrl: res.serverUrl,
+      serverChosen: true,
+      serverName: "Local Workspace",
+    })
+    saveSession(localSession)
+    startHost()
+  }
+  return res
+})
+
+ipcMain.handle("embedded:stop", async () => {
+  await stopEmbeddedEngine()
+  return { ok: true }
+})
+
+ipcMain.handle("embedded:status", () => {
+  return getEmbeddedEngineStatus()
+})
+
 ipcMain.handle("workspace:return-to-controller", () => {
   loadLocalHtml()
 })
@@ -1494,6 +1604,7 @@ app.whenReady().then(() => {
 })
 
 app.on("before-quit", () => {
+  void stopEmbeddedEngine()
   runner?.stop()
   host?.stop()
 })

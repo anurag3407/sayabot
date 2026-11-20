@@ -576,6 +576,10 @@
           Get started with your room workspace. No account needed — you can save your profile in Settings later.
         </p>
 
+        <button id="local-engine-btn" class="btn" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); margin-bottom: 8px;" type="button">
+          ⚡ Run Locally (Zero-Config)
+        </button>
+
         <button id="guest-btn" class="btn" type="button">
           Start Workspace Onboarding
         </button>
@@ -674,6 +678,7 @@
       const changeServerLink = document.getElementById("change-server-link")
       const localRunnerToggle = document.getElementById("local-runner-toggle")
       const guestBtn = document.getElementById("guest-btn")
+      const localEngineBtn = document.getElementById("local-engine-btn")
       const guestError = document.getElementById("guest-error")
       const unauthTitle = document.getElementById("unauth-title")
       const unauthSubtitle = document.getElementById("unauth-subtitle")
@@ -815,6 +820,26 @@
         guestError.textContent = "Could not connect to workspace server. Click Retry or Change server."
         guestError.title = (result && result.error) || ""
         guestError.classList.remove("hidden")
+      }
+
+      if (localEngineBtn) {
+        localEngineBtn.addEventListener("click", async () => {
+          setBusy(localEngineBtn, true, "Starting local engine…")
+          try {
+            const res = await bridge.startLocalEngine()
+            if (res && res.ok) {
+              await bridge.openWorkspaceInWindow()
+            } else {
+              guestError.textContent = (res && res.error) || "Could not start local engine."
+              guestError.classList.remove("hidden")
+            }
+          } catch (err) {
+            guestError.textContent = err.message || "Failed to start local engine"
+            guestError.classList.remove("hidden")
+          } finally {
+            setBusy(localEngineBtn, false, "⚡ Run Locally (Zero-Config)")
+          }
+        })
       }
 
       async function refreshState() {

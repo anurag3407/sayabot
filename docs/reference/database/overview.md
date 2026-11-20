@@ -50,8 +50,9 @@ Key behaviors:
 - **Timeouts** (`packages/db/src/client.ts:14-15`): idle connections are closed after 10 s and connection attempts fail after 10 s, so a stalled database surfaces as a fast error instead of a hung request.
 - **Schema binding** (`packages/db/src/client.ts:17`): `drizzle(pool, { schema })` attaches the full schema for relational queries and `db.query.*` access.
 - **Two handles returned** (`packages/db/src/client.ts:18`): callers get both `db` (Drizzle query builder) and `pool` (raw `pg.Pool`) from the same object. Raw pool access matters for two things in this codebase: session-level PostgreSQL advisory locks (see below) and `migrate.ts` applying raw SQL files.
+- **Zero-Config In-Process PGlite** (`packages/db/src/client.ts`): when `connectionString === "local"` or starts with `pglite:` or `memory:`, `createDb` provisions an in-process PostgreSQL 16 engine powered by `@electric-sql/pglite` via `createPgConfig()`. Persistent storage defaults to `~/.sayabot/data/db` (or custom data directory / memory). The returned `pool` and `db` conform 100% to node-postgres and Drizzle ORM, supporting full relational queries and `pg_advisory_lock` operations without running a separate PostgreSQL daemon.
 
-`requireDatabaseUrl()` (`packages/db/src/client.ts:24-28`) reads `process.env.DATABASE_URL` and throws `"DATABASE_URL is not set"` when missing — it is the standard guard used by server entrypoints.
+`requireDatabaseUrl()` (`packages/db/src/client.ts:24-28`) reads `process.env.DATABASE_URL` and throws `"DATABASE_URL is not set"` when missing — it is the standard guard used by server entrypoints. In local zero-config mode, setting `SAYABOT_LOCAL=true` defaults `DATABASE_URL` to `"local"`.
 
 ### Advisory locks and why raw pool access matters
 

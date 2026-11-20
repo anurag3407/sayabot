@@ -1,6 +1,6 @@
 # Connected Apps (Composio)
 
-The connected-apps connector reaches the whole Composio catalog — Gmail, Google Calendar, Slack, Notion, Linear, HubSpot, Jira, Stripe and the thousand-odd toolkits Composio maintains — through one workspace API key. This is how Sayabot offers the long tail of integrations without shipping a client per vendor: the person connects their own account once, and an agent runs that vendor's tools as them, under a grant that limits which apps and whether writes are allowed. The shape mirrors OpenMausBot's connector layer (Composio toolkits + per-agent app scopes) on top of Sayabot's tier-1/tier-2 model.
+The connected-apps connector reaches the whole Composio catalog — Gmail, Google Calendar, Slack, Notion, Linear, HubSpot, Jira, Stripe and the thousand-odd toolkits Composio maintains — through one workspace API key. This is how Sayabot offers the long tail of integrations without shipping a client per vendor: the person connects their own account once, and an agent runs that vendor's tools as them, under a grant that limits which apps and whether writes are allowed. The architecture pairs Composio toolkits with per-agent app scopes on top of Sayabot's tier-1/tier-2 security model.
 
 Source files: `apps/orchestrator/src/connectors/composio.ts`, `apps/orchestrator/src/connectors/service.ts`, `apps/orchestrator/src/tools/builtins/connectors.ts`, `apps/web/src/lib/connectors/probe.ts`, `apps/web/src/lib/actions/connectors.ts`
 
@@ -49,11 +49,11 @@ App matching for execution treats the granted app as a slug prefix: with `allowe
 
 `composio_connect_app` is dangerous because it hands the person a link that grants account access; `composio_execute_tool` is dangerous because every tool call acts on a real account, and reads are what `readOnly` grants are for.
 
-### The curated app tools from OpenMausBot
+### Curated convenience app mappings
 
-OpenMausBot offers ten dotted convenience tools for the two apps bots reach for most; they are thin wrappers over Composio slugs, so the same actions are available here through `composio_execute_tool`:
+Common convenience shortcuts for the two apps bots reach for most map directly to standard Composio slugs, available through `composio_execute_tool`:
 
-| OpenMausBot tool                | Composio slug                       |
+| Convenience shortcut            | Composio slug                       |
 | :------------------------------ | :---------------------------------- |
 | `gmail.search_emails`           | `GMAIL_FETCH_EMAILS`                |
 | `gmail.read_email`              | `GMAIL_FETCH_MESSAGE_BY_MESSAGE_ID` |

@@ -47,11 +47,33 @@ export function getEnv(): Env {
   const rawKek = process.env.SAYABOT_KEK || process.env.MESH_KEK
   const rawAllowPrivate =
     process.env.SAYABOT_ALLOW_PRIVATE_WEBHOOKS ?? process.env.MESH_ALLOW_PRIVATE_WEBHOOKS
+
+  const isLocal =
+    process.env.SAYABOT_LOCAL === "true" ||
+    process.env.DESKTOP_EMBEDDED === "true" ||
+    (!process.env.DATABASE_URL && !rawKek)
+
+  const defaultKek = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  const kek = rawKek || (isLocal ? defaultKek : "")
+  const databaseUrl = process.env.DATABASE_URL || (isLocal ? "local" : "")
+  const supabaseUrl =
+    process.env.SUPABASE_URL ??
+    process.env.NEXT_PUBLIC_SUPABASE_URL ??
+    (isLocal ? "http://127.0.0.1:4000" : "")
+  const supabaseServiceKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ?? (isLocal ? "local-service-role-key-desktop" : "")
+  const internalSecret =
+    process.env.ORCHESTRATOR_INTERNAL_SECRET ??
+    (isLocal ? "local-internal-secret-for-desktop-orchestrator" : "")
+
   const parsed = envSchema.safeParse({
     ...process.env,
-    MESH_KEK: rawKek,
-    SAYABOT_KEK: rawKek,
-    SUPABASE_URL: process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL,
+    DATABASE_URL: databaseUrl,
+    MESH_KEK: kek,
+    SAYABOT_KEK: kek,
+    SUPABASE_URL: supabaseUrl,
+    SUPABASE_SERVICE_ROLE_KEY: supabaseServiceKey,
+    ORCHESTRATOR_INTERNAL_SECRET: internalSecret,
     MESH_ALLOW_PRIVATE_WEBHOOKS: rawAllowPrivate,
   })
   if (!parsed.success) {

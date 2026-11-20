@@ -44,7 +44,7 @@ export interface AcpModelList {
 
 const EFFORT_WORD = /^[a-z]{1,10}$/
 
-/** "fireworks-ai/DeepSeek Flash" → "fireworks-ai · DeepSeek Flash", as OpenMausBot shows them. */
+/** Formats model names: "fireworks-ai/DeepSeek Flash" → "fireworks-ai · DeepSeek Flash". */
 export function modelLabel(name: string): string {
   const match = /^([\w.-]+)\/(.+)$/.exec(name.trim())
   return (match ? `${match[1]} · ${match[2]}` : name.trim()).slice(0, 120)

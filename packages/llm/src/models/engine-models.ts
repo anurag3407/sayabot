@@ -23,8 +23,7 @@ import {
 } from "./models-dev"
 
 /**
- * The models each subscription engine (Claude Code, Codex, Cursor) offers the signed-in account,
- * the way OpenMausBot reads them:
+ * The models each subscription engine (Claude Code, Codex, Cursor) offers the signed-in account:
  *  - Codex: asks the CLI itself (`codex app-server`, JSON-RPC `model/list`), with each model's
  *    effort levels and default; falls back to Codex's own models_cache.json, then the manifest.
  *  - Claude Code: asks the CLI itself (the `initialize` control request of its stream-json mode,

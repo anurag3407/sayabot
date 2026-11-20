@@ -7,8 +7,8 @@ import type { FetchLike } from "./http"
 
 /**
  * Which subscription each signed-in CLI is on (Claude Pro/Max/Team, ChatGPT Plus/Pro…) and how
- * much of its rolling limits is used, the way OpenMausBot reads it: the token the CLI already
- * saved on this computer goes, in a header only, to the vendor's own usage endpoint. The token
+ * much of its rolling limits is used: the token the CLI already saved on this computer goes,
+ * in a header only, to the vendor's own usage endpoint. The token
  * never enters the result, a log line or the database.
  *
  * These endpoints are what Claude Code's `/usage` and Codex's `/status` call. They are not

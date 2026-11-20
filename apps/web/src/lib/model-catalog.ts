@@ -28,7 +28,7 @@ import { listOrgAgents, listProviderKeys } from "@/lib/queries"
 import type { AgentView, OrgAccess, ProviderKeyView } from "@/lib/types"
 
 /**
- * The model picker's data, built the way OpenMausBot builds it:
+ * The model picker's data, built from subscriptions and API keys:
  *  - Subscriptions (Claude Code, Codex, Cursor signed in on this computer): each engine's own
  *    model list (Codex asks the CLI; Claude Code and Cursor read the model manifest), with the
  *    plan name and how much of its 5-hour / weekly limits is used.

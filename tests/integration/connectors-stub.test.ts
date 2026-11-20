@@ -1024,7 +1024,7 @@ echo '{}'
   })
 
   // ── Jira (intentionally non-native) ──
-  // ── Composio connected apps (the OpenMausBot catalog: Gmail, Notion, …) ──
+  // ── Composio connected apps (Gmail, Notion, …) ──
   it("composio: lists apps, runs a read tool as the workspace user, and gates by app and read-only", async () => {
     records.connectors.push(row("composio", "conn-composio"))
     records.grants.push(grant("grant-composio", "conn-composio", {}))

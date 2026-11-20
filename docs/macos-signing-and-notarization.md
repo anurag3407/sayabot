@@ -285,7 +285,7 @@ jobs:
 
 > Use `$HOME/private_keys/AuthKey.p8` if `~` isn't expanded in your runner's env.
 
-Optional, for stable download links like OpenMausBot's `releases/latest/download/Sayabot.dmg`:
+Optional, for stable download links like `releases/latest/download/Sayabot.dmg`:
 set `"artifactName": "Sayabot-${arch}.${ext}"` in `build.mac`, then attach the files to a GitHub
 Release (`softprops/action-gh-release`).
 

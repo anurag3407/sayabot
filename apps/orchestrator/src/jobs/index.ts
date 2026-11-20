@@ -3,6 +3,7 @@ import { handleTaskWake, type TaskWakeData } from "../collab/task-wake"
 import { processRoomMessage } from "../coordinator"
 import { getEnv } from "../env"
 import { deliverWebhook, type WebhookJobData } from "./webhook"
+import { isLocalConnection } from "@sayabot/db"
 
 export const ROOM_MESSAGE_QUEUE = "room.message"
 export const WEBHOOK_QUEUE = "webhook.deliver"
@@ -10,9 +11,15 @@ export const TASK_WAKE_QUEUE = "task.wake"
 export const RUN_RESUME_QUEUE = "run.resume"
 
 let boss: PgBoss | null = null
+let isLocalQueue = false
 
-export async function startJobs(): Promise<PgBoss> {
+export async function startJobs(): Promise<PgBoss | null> {
   const env = getEnv()
+  if (process.env.SAYABOT_LOCAL === "true" || isLocalConnection(env.DATABASE_URL)) {
+    isLocalQueue = true
+    console.log("[jobs] local zero-config mode: using in-process async task queue")
+    return null
+  }
   const poolMax = process.env.DATABASE_POOL_MAX ? parseInt(process.env.DATABASE_POOL_MAX, 10) : 3
   const instance = new PgBoss({
     connectionString: env.DATABASE_URL,
@@ -106,11 +113,27 @@ export async function startJobs(): Promise<PgBoss> {
 }
 
 export async function enqueueRoomMessage(roomId: string, messageId: string): Promise<void> {
+  if (isLocalQueue) {
+    setTimeout(() => {
+      void processRoomMessage(roomId, messageId, { enqueueWebhook }).catch((err) => {
+        console.error(`[room.message] error processing message ${messageId}:`, err)
+      })
+    }, 10)
+    return
+  }
   if (!boss) throw new Error("job queue is not started")
   await boss.send(ROOM_MESSAGE_QUEUE, { roomId, messageId })
 }
 
 export async function enqueueWebhook(data: WebhookJobData): Promise<void> {
+  if (isLocalQueue) {
+    setTimeout(() => {
+      void deliverWebhook(data, 1).catch((err) => {
+        console.error("[webhook.deliver] error delivering webhook:", err)
+      })
+    }, 10)
+    return
+  }
   if (!boss) throw new Error("job queue is not started")
   await boss.send(WEBHOOK_QUEUE, data)
 }
@@ -132,11 +155,22 @@ export async function enqueueTaskWake(data: TaskWakeData): Promise<void> {
 }
 
 export async function enqueueRunResume(runId: string, reason?: string): Promise<void> {
+  if (isLocalQueue) {
+    setTimeout(() => {
+      void import("../engine/resume").then(({ resumeRun }) => {
+        void resumeRun(runId).catch((err) => {
+          console.error(`[run.resume] failed for run ${runId}:`, err)
+        })
+      })
+    }, 10)
+    return
+  }
   if (!boss) throw new Error("job queue is not started")
   await boss.send(RUN_RESUME_QUEUE, { runId, reason })
 }
 
 export async function stopJobs(): Promise<void> {
+  isLocalQueue = false
   if (!boss) return
   const instance = boss
   boss = null

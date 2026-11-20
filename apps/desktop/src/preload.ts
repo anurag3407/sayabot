@@ -50,6 +50,8 @@ export interface DesktopBridge {
   getPlanLimits: (force?: boolean) => Promise<unknown[]>
   /** Token history from coding-tool logs on this Mac. */
   getLocalUsage: (days: number) => Promise<{ available: boolean; events: unknown[] }>
+  startLocalEngine: () => Promise<{ ok: boolean; serverUrl: string | null; error?: string }>
+  getLocalEngineStatus: () => Promise<{ running: boolean; serverUrl: string | null; port: number | null }>
   onSessionUpdate: (callback: (session: AuthSession | null) => void) => () => void
   /**
    * The workspace page refreshed the login. Store that copy so the file and the cookies match.
@@ -95,6 +97,8 @@ const bridge: DesktopBridge = {
   },
   getPlanLimits: (force) => ipcRenderer.invoke("usage:plan-limits", force),
   getLocalUsage: (days) => ipcRenderer.invoke("usage:local", days),
+  startLocalEngine: () => ipcRenderer.invoke("embedded:start"),
+  getLocalEngineStatus: () => ipcRenderer.invoke("embedded:status"),
   onSessionUpdate: (callback) => {
     const listener = (_event: any, session: AuthSession | null) => callback(session)
     ipcRenderer.on("auth:session-updated", listener)

@@ -288,7 +288,7 @@ export async function appModels(
     await mkdir(folder, { recursive: true }).catch(() => undefined)
     const env = { ...process.env, PATH: toolPath(binary), NO_COLOR: "1" }
     models = await discoverAcpModels(binary, app.run.args ?? [], { cwd: folder, env })
-    // Cursor's own list when its ACP session doesn't offer one (OpenMausBot does the same).
+    // Fallback to Cursor's own CLI list when its ACP session doesn't offer one.
     if (!models && id === "cursor") {
       const listed = cursorRowsToModels(await cliText(binary, ["models"]))
       models = listed.length ? listed : null

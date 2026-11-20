@@ -1,7 +1,7 @@
 import type { AgentdFrame } from "../transport"
 
 export type ComputerProfile = "standard" | "browser"
-export type BackendKind = "docker" | "smolvm" | "e2b"
+export type BackendKind = "docker" | "smolvm" | "e2b" | "host"
 export type ComputerStatus = "running" | "stopped" | "missing"
 
 /** What computerd needs to reach a running computer. */

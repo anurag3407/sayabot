@@ -165,7 +165,7 @@ Sayabot's own hand-maintained list for the subscription engines — `MANIFEST_EN
 
 ## 🖥️ Engine catalogs (`src/models/engine-models.ts`)
 
-The models each subscription engine offers the _signed-in account on this computer_ (the "OpenMausBot" approach). `EngineCatalog { default, options, source: "live"|"cache"|"manifest", checkedAt, effortLevels, cliVersion? }` (`engine-models.ts:54-63`); `EngineModel` rows carry `custom?`, `contextWindow?`, `effort?`, `defaultEffort?`, `orgBlocked?`, `needsCliUpdate?`, `price?`.
+The models each subscription engine offers the _signed-in account on this computer_. `EngineCatalog { default, options, source: "live"|"cache"|"manifest", checkedAt, effortLevels, cliVersion? }` (`engine-models.ts:54-63`); `EngineModel` rows carry `custom?`, `contextWindow?`, `effort?`, `defaultEffort?`, `orgBlocked?`, `needsCliUpdate?`, `price?`.
 
 ### Binary discovery
 

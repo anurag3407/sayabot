@@ -1,6 +1,6 @@
 # Voice, Speech & Take-Turns Audio System
 
-Sayabot includes a full-featured voice layer inspired by OpenMausBot, bringing spoken turns, voice notes, live dictation, and real-time take-turns audio calls to multiplayer rooms.
+Sayabot includes a full-featured voice layer bringing spoken turns, voice notes, live dictation, and real-time take-turns audio calls to multiplayer rooms.
 
 Source files:
 

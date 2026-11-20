@@ -5,6 +5,7 @@ import type { ComputerdConfig } from "../lifecycle"
 import { DockerBackend } from "./docker"
 import { defaultBundleDir, E2BBackend } from "./e2b"
 import { defaultRunDir, SmolvmBackend, smolvmUsable, spawnRunner } from "./smolvm"
+import { buildHost } from "./host"
 import { BackendUnavailableError, type ComputerBackend } from "./types"
 
 async function grantsEnvFetcher(config: ComputerdConfig) {
@@ -72,6 +73,7 @@ export async function selectBackend(
   config: ComputerdConfig,
   identity: ProxyIdentity,
 ): Promise<ComputerBackend> {
+  if (config.backend === "host") return buildHost(config)
   if (config.backend === "docker") return buildDocker(config)
   if (config.backend === "smolvm") return buildSmolvm(config, identity)
   if (config.backend === "e2b") return buildE2B(config)
@@ -89,7 +91,7 @@ export async function selectBackend(
   reasons.push("e2b: E2B_API_KEY not set")
 
   console.warn(
-    `[computerd] no computer backend available (${reasons.join("; ")}); defaulting to docker`,
+    `[computerd] no container backend available (${reasons.join("; ")}); falling back to zero-config host sandbox`,
   )
-  return buildDocker(config, docker)
+  return buildHost(config)
 }

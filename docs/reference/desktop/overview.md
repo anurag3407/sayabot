@@ -26,6 +26,22 @@ Source files: `apps/desktop/src/main.ts`, `src/preload.ts`, `src/remote-preload.
 
 `createGuestSession` (`src/main.ts`) implements [Desktop guest mode](../../desktop-guest-mode.md): it fetches `GET /api/desktop/guest` for `{ enabled, supabaseUrl, anonKey }`, then signs up an **anonymous Supabase user** directly from the Mac (so the Mac's own IP is rate-limited) with no email/password and `data: { signup_source: "desktop_guest" }`. The returned tokens become an `AuthSession` with `isGuest: true`. Before the first window, `useThisMacOnFirstLaunch` sets `serverChosen` when it is not already true (including an unfinished `false` from the old prompt), with `serverName: "This Mac"`, so a new Mac auto-starts a guest. `auth:guest-status` auto-starts when there is no session, server setup is not open, guest was not declined, and the server allows guests. `needsServerChoice` is true only while the in-memory `serverSetupRequested` flag is set by **Change Server…**. `config:cancel-server-setup` clears that flag. `auth:start-guest` deduplicates concurrent starts through `guestInFlight`. Guests sign in later via `signInFromMenu`, which asks `POST /api/account/merge` for a merge-link URL so the guest workspace travels into the real account.
 
+### ⚡ Zero-Config Local Mode & Embedded Engine (`src/embedded-engine.ts`)
+
+Sayabot Desktop provides a **1-click zero-config local install** delivering a frictionless single `.dmg` (macOS) and `.exe` (Windows) installer experience that requires **zero external PostgreSQL server** and **zero Docker installation**:
+
+- **Embedded Orchestrator**: `startEmbeddedEngine` (`src/embedded-engine.ts`) spawns the orchestrator in-process or via background child process with `SAYABOT_LOCAL=true` and `DATABASE_URL=local`. It dynamically finds an available local port (`findAvailablePort`, default starting at 4000) and waits for health readiness (`waitForServer`).
+- **In-Process PGlite Persistence**: When `DATABASE_URL=local`, the embedded engine boots an in-process `@electric-sql/pglite` database stored persistently at `~/.sayabot/data/db`. All 74 database tables, Drizzle schema migrations, raw SQL migrations (`packages/db/sql/*.sql`), and `pg_advisory_lock` primitives run seamlessly in-process.
+- **Host Sandbox Execution**: Workloads that would otherwise require Docker containers automatically fall back to `HostBackend` in `apps/computerd`, executing agent tasks safely confined to `~/.sayabot/sandbox/<agentId>`.
+- **Automatic Auto-Boot & Fast Probe**: If no remote server is chosen or if the configured remote server does not respond within a 1.5s fast probe, `createGuestSession` immediately transitions to the local embedded engine and boots an instant `Local Workspace` (`local@sayabot.local`) without long blocking freezes.
+- **Redirect Loop Breaker**: Electron's `did-navigate` monitors page redirects; if `/login` is reached due to token rejection or logout, the stale session is safely cleared and the app returns to the controller rather than continuously force-reloading `/auth/complete`. An automated velocity loop breaker halts any navigation loop exceeding 3 hits within 3 seconds.
+- **Native Local Workspace UI**: `apps/orchestrator/src/http.ts` provides native `/auth/complete`, `/api/local/workspace`, `/api/local/message`, and a zero-dependency local room workspace page on `/`, allowing direct chatting with the local Sayabot agent without requiring Next.js `apps/web` to be running.
+- **UI & IPC Integration**:
+  - `startLocalEngine()` (`ipcMain.handle("embedded:start")`): starts the engine, saves config and session, registers local host, and returns the status.
+  - `stopLocalEngine()` (`ipcMain.handle("embedded:stop")`): gracefully tears down the embedded engine process upon app exit.
+  - `getLocalEngineStatus()` (`ipcMain.handle("embedded:status")`): reports `{ running, port, serverUrl, pid }`.
+  - Prominent "⚡ Run Locally (Zero-Config)" one-click action in the Desktop controller UI and the application menu.
+
 ---
 
 ## 🪟 Window Management
