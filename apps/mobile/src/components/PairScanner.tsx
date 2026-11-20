@@ -3,16 +3,18 @@ import { ActivityIndicator, Modal, StyleSheet, Text, TouchableOpacity, View } fr
 import { CameraView, useCameraPermissions } from "expo-camera"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { X } from "lucide-react-native"
-import { codeFromScan, type PairLink } from "../core/pair-link"
+import { codeFromScan, extractServerFromScan, type PairLink } from "../core/pair-link"
 import { colors } from "../theme"
 
 interface PairScannerProps {
   visible: boolean
   busy: boolean
   error: string | null
+  mode?: "pair" | "server"
   onClose: () => void
   onScan: (link: PairLink) => void
-  onTypeInstead: () => void
+  onScanServer?: (serverUrl: string) => void
+  onTypeInstead?: () => void
 }
 
 /** Full-screen camera for the QR shown under Settings → Phones → Add phone. */
@@ -20,8 +22,10 @@ export function PairScanner({
   visible,
   busy,
   error,
+  mode = "pair",
   onClose,
   onScan,
+  onScanServer,
   onTypeInstead,
 }: PairScannerProps) {
   const [permission, requestPermission] = useCameraPermissions()
@@ -66,10 +70,26 @@ export function PairScanner({
                 ? undefined
                 : (event) => {
                     if (locked.current) return
+                    if (mode === "server") {
+                      const server = extractServerFromScan(event.data)
+                      if (!server) return
+                      locked.current = true
+                      onScanServer ? onScanServer(server) : onScan({ code: "", server })
+                      return
+                    }
+
                     const link = codeFromScan(event.data)
-                    if (!link) return
-                    locked.current = true
-                    onScan(link)
+                    if (link) {
+                      locked.current = true
+                      onScan(link)
+                      return
+                    }
+
+                    const server = extractServerFromScan(event.data)
+                    if (server && onScanServer) {
+                      locked.current = true
+                      onScanServer(server)
+                    }
                   }
             }
           />
@@ -77,7 +97,9 @@ export function PairScanner({
           <View style={styles.denied}>
             <Text style={styles.deniedTitle}>The camera is needed to scan the QR</Text>
             <Text style={styles.deniedBody}>
-              Allow camera access, or type the 8-character code shown under the QR on your computer.
+              {mode === "server"
+                ? "Allow camera access to scan the server QR code on your computer."
+                : "Allow camera access, or type the 8-character code shown under the QR on your computer."}
             </Text>
             {permission && !permission.canAskAgain ? null : (
               <TouchableOpacity style={styles.allowBtn} onPress={() => void requestPermission()}>
@@ -90,13 +112,19 @@ export function PairScanner({
         {granted ? (
           <View pointerEvents="none" style={styles.frameWrap}>
             <View style={styles.frame} />
-            <Text style={styles.hint}>Point at the QR on your computer</Text>
+            <Text style={styles.hint}>
+              {mode === "server"
+                ? "Point at the QR to detect server address"
+                : "Point at the QR on your computer"}
+            </Text>
           </View>
         ) : null}
 
         <SafeAreaView style={styles.chrome} edges={["top", "bottom"]} pointerEvents="box-none">
           <View style={styles.topBar}>
-            <Text style={styles.title}>Scan to connect</Text>
+            <Text style={styles.title}>
+              {mode === "server" ? "Scan to detect server" : "Scan to connect"}
+            </Text>
             <TouchableOpacity
               onPress={onClose}
               accessibilityLabel="Close scanner"
@@ -108,13 +136,15 @@ export function PairScanner({
           <View style={styles.bottom}>
             {busy ? <ActivityIndicator color="#fff" /> : null}
             {error ? <Text style={styles.error}>{error}</Text> : null}
-            <TouchableOpacity
-              onPress={onTypeInstead}
-              accessibilityLabel="Type the code instead"
-              style={styles.typeBtn}
-            >
-              <Text style={styles.typeText}>Type the code instead</Text>
-            </TouchableOpacity>
+            {onTypeInstead && mode !== "server" ? (
+              <TouchableOpacity
+                onPress={onTypeInstead}
+                accessibilityLabel="Type the code instead"
+                style={styles.typeBtn}
+              >
+                <Text style={styles.typeText}>Type the code instead</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
         </SafeAreaView>
       </View>

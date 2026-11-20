@@ -98,6 +98,16 @@ async function pairOnce(code: string, serverUrl?: string | null): Promise<void> 
     deviceId: data.device_id ?? "",
     deviceToken: data.device_token ?? "",
   })
+  if (serverUrl) {
+    try {
+      const check = await checkServer(server)
+      if (check.ok) {
+        await saveServer(check.server)
+      }
+    } catch {
+      // ignore
+    }
+  }
 }
 
 /** Asks the server whether this phone was removed. Network failures never sign anyone out. */

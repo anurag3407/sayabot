@@ -56,13 +56,35 @@ export async function POST(req: Request) {
     )
 
   const { data: userRes, error: userError } = await admin.auth.admin.getUserById(pairing.user_id)
-  const email = userRes?.user?.email
+  let email = userRes?.user?.email
+  if (!email && userRes?.user) {
+    // Guest or anonymous accounts in Supabase don't have an email by default.
+    // Assign a synthetic confirmed email so Supabase can generate the magic link OTP token.
+    const syntheticEmail = `guest-${pairing.user_id.slice(0, 8)}@sayabot.internal`
+    const { data: updateRes, error: updateError } = await admin.auth.admin.updateUserById(
+      pairing.user_id,
+      {
+        email: syntheticEmail,
+        email_confirm: true,
+      },
+    )
+    if (!updateError && updateRes?.user?.email) {
+      email = updateRes.user.email
+    }
+  }
+
   if (userError || !email) {
     await admin
       .from("device_pairings")
       .update({ status: "revoked", revoked_at: now })
       .eq("id", pairing.id)
-    return json({ error: "This account has no email to sign in with." }, 409)
+    return json(
+      {
+        error:
+          "This account has no email (guest mode). Please sign in with Google or GitHub on your computer first, then try again.",
+      },
+      409,
+    )
   }
   const { data: link, error: linkError } = await admin.auth.admin.generateLink({
     type: "magiclink",

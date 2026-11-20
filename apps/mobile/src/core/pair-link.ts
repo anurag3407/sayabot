@@ -21,6 +21,33 @@ export function cleanPairCode(input: string): string {
 }
 
 /**
+ * Extracts a server address from any scanned QR text:
+ * - sayabot://pair?code=...&server=...
+ * - sayabot://connect?server=...
+ * - direct http(s) URL
+ */
+export function extractServerFromScan(data: string | null | undefined): string | null {
+  const text = (data ?? "").trim()
+  if (!text) return null
+
+  const pair = parsePairLink(text)
+  if (pair?.server) return pair.server
+
+  if (/^sayabot:\/\/connect\b/i.test(text)) {
+    const query = text.split("?")[1] ?? ""
+    const params = new URLSearchParams(query)
+    const server = (params.get("server") ?? "").trim()
+    if (/^https?:\/\//i.test(server)) return server.replace(/\/+$/, "")
+  }
+
+  if (/^https?:\/\/[^\s]+$/i.test(text)) {
+    return text.replace(/\/+$/, "")
+  }
+
+  return null
+}
+
+/**
  * What a scanned QR should sign in with. A Sayabot pair link carries the code and the server.
  * A bare 8-character code still works when the phone is already on the right server.
  */

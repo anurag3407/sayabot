@@ -36,6 +36,7 @@ export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
   const { signInWithOAuth, signInWithCode, pairError } = useAuth()
   const [codeModal, setCodeModal] = useState(false)
   const [scanOpen, setScanOpen] = useState(false)
+  const [scanMode, setScanMode] = useState<"pair" | "server">("pair")
   const [codeInput, setCodeInput] = useState("")
   const [codeBusy, setCodeBusy] = useState(false)
   const [codeError, setCodeError] = useState<string | null>(null)
@@ -59,10 +60,32 @@ export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
     setCodeBusy(true)
     setScanError(null)
     try {
-      await signInWithCode(link.code, link.server)
-      setScanOpen(false)
+      if (link.code) {
+        await signInWithCode(link.code, link.server)
+        setScanOpen(false)
+      } else if (link.server) {
+        await handleServerScanned(link.server)
+      }
     } catch (err: unknown) {
       setScanError(err instanceof Error ? err.message : "Could not sign in with that code")
+    } finally {
+      setCodeBusy(false)
+    }
+  }
+
+  const handleServerScanned = async (serverUrl: string) => {
+    setScanError(null)
+    setCodeBusy(true)
+    try {
+      const result = await checkServer(serverUrl)
+      if (!result.ok) {
+        throw new Error(result.error)
+      }
+      setScanOpen(false)
+      setServerCheck({ tone: "ok", text: `✓ Connected to ${result.server.name}` })
+      await useServer(result.server)
+    } catch (err: unknown) {
+      setScanError(err instanceof Error ? err.message : "Could not reach server from QR code")
     } finally {
       setCodeBusy(false)
     }
@@ -272,6 +295,7 @@ export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
               <TouchableOpacity
                 style={styles.codeBtn}
                 onPress={() => {
+                  setScanMode("pair")
                   setScanError(null)
                   setScanOpen(true)
                 }}
@@ -440,8 +464,10 @@ export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
         visible={scanOpen}
         busy={codeBusy}
         error={scanError}
+        mode={scanMode}
         onClose={() => setScanOpen(false)}
         onScan={(link) => void submitScan(link)}
+        onScanServer={(server) => void handleServerScanned(server)}
         onTypeInstead={() => {
           setScanOpen(false)
           setCodeError(null)
@@ -485,7 +511,23 @@ export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
               onSubmitEditing={submitCode}
             />
             {codeError ? <Text style={styles.errorText}>{codeError}</Text> : null}
-            <Text style={styles.codeServer}>Server: {settings.webApiUrl}</Text>
+            <View style={styles.codeServerRow}>
+              <Text style={styles.codeServer} numberOfLines={1}>
+                Server: {settings.webApiUrl || "Sayabot Cloud"}
+              </Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setCodeModal(false)
+                  setScanMode("server")
+                  setScanError(null)
+                  setScanOpen(true)
+                }}
+                style={styles.scanDetectBtn}
+              >
+                <QrCode size={13} color={colors.primary} />
+                <Text style={styles.scanDetectText}>Scan to detect</Text>
+              </TouchableOpacity>
+            </View>
             <View style={styles.modalActions}>
               <TouchableOpacity
                 style={styles.modalCancelBtn}
@@ -532,11 +574,31 @@ export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
 
             <Text style={styles.modalDesc}>
               {serverName
-                ? `Now using ${serverName}. Enter your server address below to switch servers.`
+                ? `Now using ${serverName}. Scan a QR code or enter your server address below.`
                 : settings.webApiUrl
-                  ? `Now using ${settings.webApiUrl.replace(/^https?:\/\//, "")}. Enter your server address below to switch servers.`
-                  : "Enter your server address below to connect to your self-hosted Sayabot instance."}
+                  ? `Now using ${settings.webApiUrl.replace(/^https?:\/\//, "")}. Scan a QR code or enter your server address below.`
+                  : "Scan a QR code on your computer or enter your server address to connect."}
             </Text>
+
+            <TouchableOpacity
+              style={styles.scanServerAction}
+              onPress={() => {
+                setServerModal(false)
+                setScanMode("server")
+                setScanError(null)
+                setScanOpen(true)
+              }}
+              activeOpacity={0.85}
+            >
+              <QrCode size={17} color={colors.textInverse} />
+              <Text style={styles.scanServerActionText}>Scan QR to detect server</Text>
+            </TouchableOpacity>
+
+            <View style={styles.orDivider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or enter address manually</Text>
+              <View style={styles.dividerLine} />
+            </View>
 
             <TextInput
               style={styles.modalInput}
@@ -886,5 +948,46 @@ const styles = StyleSheet.create({
     color: colors.textInverse,
     fontSize: 14,
     fontWeight: "700",
+  },
+  scanServerAction: {
+    backgroundColor: colors.primary,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 10,
+    marginTop: 4,
+  },
+  scanServerActionText: {
+    color: colors.textInverse,
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  orDivider: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginVertical: 4,
+  },
+  codeServerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  scanDetectBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    backgroundColor: colors.surfaceLight,
+    borderRadius: 6,
+  },
+  scanDetectText: {
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: "600",
   },
 })

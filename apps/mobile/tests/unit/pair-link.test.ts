@@ -11,15 +11,31 @@ function test(name: string, fn: () => void) {
   }
 }
 
-const { codeFromScan, parsePairLink } = await import("../../src/core/pair-link.ts")
+const { codeFromScan, parsePairLink, extractServerFromScan } = await import("../../src/core/pair-link.ts")
 
 test("a pair QR carries the code and the server", () => {
   const link = parsePairLink("sayabot://pair?code=ABCD2345&server=https%3A%2F%2Fsayabot.example")
   assert.deepEqual(link, { code: "ABCD2345", server: "https://sayabot.example" })
-  assert.deepEqual(codeFromScan("sayabot://pair?code=ABCD2345&server=http://192.168.1.8:3000"), {
+  assert.deepEqual(codeFromScan("sayabot://pair?code=ABCD2345&server=http://192.168.1.8:7431"), {
     code: "ABCD2345",
-    server: "http://192.168.1.8:3000",
+    server: "http://192.168.1.8:7431",
   })
+})
+
+test("extractServerFromScan detects server from any QR format", () => {
+  assert.equal(
+    extractServerFromScan("sayabot://pair?code=ABCD2345&server=http://192.168.1.8:7431/"),
+    "http://192.168.1.8:7431",
+  )
+  assert.equal(
+    extractServerFromScan("sayabot://connect?server=https://sayabot.sayalabs.in/"),
+    "https://sayabot.sayalabs.in",
+  )
+  assert.equal(
+    extractServerFromScan("https://sayabot.sayalabs.in"),
+    "https://sayabot.sayalabs.in",
+  )
+  assert.equal(extractServerFromScan("ABCD2345"), null)
 })
 
 test("a bare code still connects, and other QR contents are ignored", () => {

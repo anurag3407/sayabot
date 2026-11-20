@@ -12,6 +12,7 @@ Pure helpers, deliberately free of React Native imports so they unit-test in Nod
 
 - `parsePairLink(url)` matches `sayabot://pair?code=…&server=…` (case-insensitive scheme check `/^sayabot:\/\/pair\b/i`), trims the code, and keeps `server` only when it is an `http(s)` URL with trailing slashes stripped. Returns `null` for anything else or a missing code (`pair-link.ts:9-17`).
 - `cleanPairCode(input)` uppercases and strips everything except `[0-9A-Z]`.
+- `extractServerFromScan(data)` extracts a server URL from any scanned QR text: a `sayabot://pair?code=...&server=...` pair link, a `sayabot://connect?server=...` link, or a raw `http(s)` server address, returning the normalized URL or null.
 - `codeFromScan(data)` is what the camera uses: a pair link (code + server) or a bare 8-character code. Anything else, including a random URL, returns `null` so the scanner keeps looking.
 - `supabaseMismatch(appSupabaseUrl, serverSupabaseUrl)` compares URL hosts with a hand-rolled regex (React Native's `URL` lacks `host`), returning true when the server signs people in on a different Supabase project than the app build (`pair-link.ts:24-31`).
 
@@ -25,7 +26,7 @@ Turns loose input into a base URL without using `URL` (`server-url.ts:5-24`):
 
 - Trims; rejects empty or whitespace-containing input.
 - If a scheme is present it must be `http://` or `https://` (any other scheme rejected).
-- Schemeless input gets `http://` only for local addresses — `localhost`, `127.*`, `10.*`, `192.168.*`, `172.16-31.*`, `*.local` — otherwise `https://` (`server-url.ts:11-14`). So `"192.168.1.20:3000/"` becomes an HTTP LAN URL while `"sayabot.acme.com"` becomes HTTPS. Release APKs allow these `http://` addresses because the main manifest sets `usesCleartextTraffic`.
+- Schemeless input gets `http://` only for local addresses — `localhost`, `127.*`, `10.*`, `192.168.*`, `172.16-31.*`, `*.local` — otherwise `https://` (`server-url.ts:11-14`). So `"192.168.1.20:7431/"` becomes an HTTP LAN URL while `"sayabot.acme.com"` becomes HTTPS. Release APKs allow these `http://` addresses because the main manifest sets `usesCleartextTraffic`.
 - Hostname must be alphanumeric/dots/dashes (or bracketed IPv6) and contain a dot unless it is exactly `localhost`.
 - Returns `scheme://host[:port]` plus any path, trailing slashes stripped.
 
@@ -135,6 +136,6 @@ Phone pairing is free on every server, with no plan check in `/api/mobile/pair`.
 | Cloud / public domain server                                    | server domain                                                                             | anywhere                            |
 | Self-hosted with a domain (`deploy/docker-compose.yml` + nginx) | the domain                                                                                | anywhere                            |
 | Sayabot running on a Mac (`pnpm dev` / local)                   | `http://<Mac's Wi-Fi IP>:<port>`, put into the QR by `createPhonePairingAction`           | same Wi-Fi                          |
-| Same Mac + `cloudflared tunnel --url http://localhost:3000`     | `https://<random>.trycloudflare.com` (open the web app there first, so the QR carries it) | anywhere, until the tunnel restarts |
+| Same Mac + `cloudflared tunnel --url http://localhost:7431`     | `https://<random>.trycloudflare.com` (open the web app there first, so the QR carries it) | anywhere, until the tunnel restarts |
 
 A typed code is sent to the phone's current server. If the phone is still on Sayabot Cloud and Cloud answers 410 for a code made by another server, `pairOnce` appends "If your computer runs its own Sayabot, tap Change server and enter the address shown under the code." Scanning the QR avoids this, because the link carries `server=`.
