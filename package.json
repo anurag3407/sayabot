@@ -13,6 +13,8 @@
     "db:migrate": "pnpm --filter @sayabot/db migrate",
     "db:seed": "pnpm --filter @sayabot/db seed",
     "format": "prettier --write .",
+    "release:notes": "node scripts/release-notes.mjs",
+    "cli": "pnpm --filter @sayabot/cli exec tsx src/index.ts",
     "mobile:dev": "turbo run dev --filter=@sayabot/mobile",
     "mobile:typecheck": "turbo run typecheck --filter=@sayabot/mobile",
     "mobile:update": "pnpm --filter @sayabot/mobile update:ota",

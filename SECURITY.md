@@ -56,6 +56,25 @@ This is context for reporters, not a promise that every deployment is safe. The 
 
 A running server also publishes a short page at `/security`. It describes the code. It is not a certification.
 
+## What this software does not protect
+
+A short and honest list, so nobody assumes more than the code delivers. Each item is explained, with impact and a suggested fix, in [the threat model](docs/reference/architecture/threat-model.md#7-known-gaps). Reporting one of these is useful, but it is not a vulnerability report.
+
+- **The encryption key cannot be rotated.** Envelopes carry no key id, so changing `MESH_KEK` makes stored credentials unreadable. There is no re-encrypt path yet.
+- **One key protects every organization.** A deployment shares a single KEK; there is no per-customer key custody.
+- **The zero-config host backend is not a container.** `COMPUTER_BACKEND=host` runs agent commands in the operator's account with path checks as the only confinement.
+- **Docker computers are identified to the proxy by IP**, with a short cache and a forget-on-restart call. A reused address inside that window could be attributed to the previous agent.
+- **Desktop builds are ad-hoc signed.** Windows installers are unsigned, so Gatekeeper and SmartScreen warn, and update integrity rests on HTTPS.
+- **No dependency scanning or SBOM in CI**, and no advisory channel beyond this file and the Security section of `CHANGELOG.md`.
+- **No shared rate limiting** on the public HTTP surface; connector clients throttle only their own provider calls.
+- **Approving a tool is authorized by the web app**, not re-checked against a user role inside the orchestrator, which trusts `ORCHESTRATOR_INTERNAL_SECRET`.
+- **Redaction is pattern-based**, plus an exact-value scrubber for the current run. A secret in an unrecognized format can pass.
+- **Prompt injection is contained, not eliminated.** Read-only tools can carry injected instructions; the approval gate is the backstop, and it only covers tools marked dangerous.
+
+## Threat model
+
+The [public threat model](docs/reference/architecture/threat-model.md) lists the assets, the trust boundaries, the adversaries considered, the control that answers each threat with the module that implements it, the invariants a change must not weaken, and the gaps above.
+
 ## Machine-readable contact
 
-Deployments of the web app serve `/.well-known/security.txt` (RFC 9116) with this same address.
+Deployments of the web app serve `/.well-known/security.txt` (RFC 9116) with this same address, from the static file `apps/web/public/.well-known/security.txt`. The `Expires` field there must be refreshed before it passes.

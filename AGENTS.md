@@ -35,7 +35,8 @@ sayabot/
 │   ├── computerd/               # Persistent Linux Docker sandbox daemon, agentd file & terminal daemon (/home/bot)
 │   ├── egress/                  # Hardened SSRF-safe HTTP proxy, IP filtering (RFC 1918 blocks), DNS rebinding defense
 │   ├── mobile/                  # React Native / Expo iOS & Android client with offline SQLite cache & push turns
-│   └── desktop/                 # Electron / desktop wrapper for local workstation management & canvas windows
+│   ├── desktop/                 # Electron / desktop wrapper for local workstation management & canvas windows
+│   └── cli/                     # `sayabot` CLI: stdio MCP bridge + headless commands over /v1/mcp
 ├── packages/
 │   ├── core/                    # Shared types, capabilities parser, secret redactor, fold keys, turn state machine
 │   ├── db/                      # Drizzle ORM schemas, migration runner, seed script, raw SQL migrations (0001-0040)
@@ -65,6 +66,7 @@ sayabot/
 | `apps/egress`       | `@sayabot/egress`       | SSRF-safe outbound fetch proxy: Enforces private IP blocklists (blocks 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 127.0.0.0/8, 169.254.169.254), mitigates DNS rebinding.                           |
 | `apps/mobile`       | `@sayabot/mobile`       | Mobile app: Expo / React Native client supporting push notifications, background task sync, room chats, and canvas preview.                                                                         |
 | `apps/desktop`      | `@sayabot/desktop`      | Desktop app: Electron companion for pairing workstation resources and managing local developer tools.                                                                                               |
+| `apps/cli`          | `@sayabot/cli`          | Headless client: `sayabot mcp` (stdio MCP server proxying `/v1/mcp`) and one-shot commands. No server surface, no database access.                                                                     |
 | `packages/core`     | `@sayabot/core`         | Core business primitives: Capabilities parser (`parseCapabilities`), secret redactor (`redactSecrets`), turn tokens, mention extractors, ask/response protocol.                                     |
 | `packages/db`       | `@sayabot/db`           | Database layer: Drizzle schemas, PostgreSQL client (`createDb`), migration engine (`packages/db/src/migrate.ts`), seeds, and SQL migration files (`0001` - `0040`).                                 |
 | `packages/llm`      | `@sayabot/llm`          | AI client & crypto: LLM adapters (Claude, GPT, DeepSeek, Gemini), AES-256-GCM envelope crypto (`encryptSecret`, `decryptSecret`, `sealSecret`, `openSecret`), MCP client gateway.                   |
@@ -604,9 +606,11 @@ The `docs/reference/` tree is generated from a full read of the codebase and des
 | `apps/web` server actions / API routes                                                                                                           | `docs/reference/web/{actions,api}/*.md`                                                   |
 | `apps/computerd/*`                                                                                                                               | `docs/reference/computerd/*.md`                                                           |
 | `apps/egress/*`                                                                                                                                  | `docs/reference/egress/*.md`                                                              |
-| `apps/mobile/*`                                                                                                                                  | `docs/reference/mobile/*.md`                                                              |
+| `apps/mobile/*`                                                                                                                               | `docs/reference/mobile/*.md`                                                              |
+| `apps/cli/*`                                                                                                                                 | `docs/reference/cli/*.md`                                                                 |
 | `apps/desktop/*`                                                                                                                                 | `docs/reference/desktop/*.md`                                                             |
-| Cross-cutting architecture (turn flow, realtime, auth, security, config)                                                                         | `docs/reference/architecture/*.md`                                                        |
+| Cross-cutting architecture (turn flow, realtime, auth, security, threat model, config)                                                            | `docs/reference/architecture/*.md`                                                        |
+| `CHANGELOG.md`, `scripts/release-notes.mjs`                                                                                                      | `docs/reference/operations/changelog.md`                                                  |
 | `deploy/*`, `tests/*`, `e2e/*`                                                                                                                   | `docs/reference/{operations,testing}/*.md`                                                |
 
 The authoritative index of every reference doc is `docs/README.md` — when you add or remove a doc file, update that index in the same change.

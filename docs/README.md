@@ -2,7 +2,7 @@
 
 Welcome to the **Sayabot** documentation. Sayabot is an open-source, full-stack autonomous remote agent platform and real-time collaboration workspace where human teams and AI agents share rooms, execute deterministic turns, collaborate on live canvases, and operate persistent Linux computers.
 
-Whether you are setting up Sayabot for the first time, designing custom autonomous agents, connecting external tools via MCP, or deploying to production, this hub provides comprehensive, step-by-step guides — plus a **per-feature reference library** (`docs/reference/`, 157 docs) generated from a full read of the codebase.
+Whether you are setting up Sayabot for the first time, designing custom autonomous agents, connecting external tools via MCP, or deploying to production, this hub provides comprehensive, step-by-step guides — plus a **per-feature reference library** (`docs/reference/`, 170+ docs) generated from a full read of the codebase.
 
 Project policies live at the repository root: [Code of Conduct](../CODE_OF_CONDUCT.md), [Security policy](../SECURITY.md), [Contributing](../CONTRIBUTING.md), and [Licensing](../LICENSING.md). Vulnerability reports go to sayalabs.studio@gmail.com.
 
@@ -53,6 +53,7 @@ Task-oriented guides live at the top level of `docs/`. The **reference library**
 | [realtime-and-events](reference/architecture/realtime-and-events.md)       | Supabase Realtime broadcast, 15-event catalogue, Hocuspocus, LISTEN/NOTIFY |
 | [auth-and-authorization](reference/architecture/auth-and-authorization.md) | Sessions, agent API keys/OAuth, org roles, internal auth, RLS split        |
 | [security-model](reference/architecture/security-model.md)                 | KEK envelope crypto, secret broker, SSRF walls, approvals, redaction       |
+| [threat-model](reference/architecture/threat-model.md)                     | Assets, trust boundaries, adversaries, controls, invariants, known gaps     |
 | [configuration](reference/architecture/configuration.md)                   | Every env var across all services, with defaults from code                 |
 | [editions-and-licensing](reference/architecture/editions-and-licensing.md) | AGPL vs `ee/`, plans, `effectivePlan`, turn admission, Stripe              |
 
@@ -289,6 +290,7 @@ Task-oriented guides live at the top level of `docs/`. The **reference library**
 | Doc                                                                  | Covers                                                         |
 | :------------------------------------------------------------------- | :------------------------------------------------------------- |
 | [deployment](reference/operations/deployment.md)                     | Dockerfiles, compose services, rolling updates, rollback       |
+| [changelog](reference/operations/changelog.md)                       | Release-note conventions, drafting script, tag loop            |
 | [nginx-and-cloudflare](reference/operations/nginx-and-cloudflare.md) | Proxy routes, WSS/SSE tuning, Cloudflare tunnel/Workers        |
 | [supabase-platform](reference/operations/supabase-platform.md)       | Bundled Supabase: roles, webhooks, realtime, pooler, JWT       |
 | [scripts](reference/operations/scripts.md)                           | setup-vps.sh, setup-computers.sh, pinned versions, idempotency |
@@ -303,6 +305,12 @@ Task-oriented guides live at the top level of `docs/`. The **reference library**
 | [unit-testing](reference/testing/unit-testing.md)               | Vitest conventions, mocking patterns, worked examples     |
 | [integration-testing](reference/testing/integration-testing.md) | Integration runner, aliases, cross-package suites         |
 | [e2e-testing](reference/testing/e2e-testing.md)                 | Playwright config, fixtures, spec-by-spec coverage        |
+
+### CLI — `docs/reference/cli/`
+
+| Doc                                        | Covers                                                                   |
+| :----------------------------------------- | :----------------------------------------------------------------------- |
+| [overview](reference/cli/overview.md)      | `sayabot mcp` stdio bridge, one-shot commands, key and URL handling      |
 
 ---
 

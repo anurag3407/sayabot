@@ -145,6 +145,7 @@ The algorithm, in order:
 
 Related docs:
 
+- [CLI & stdio MCP server](../../cli/overview.md) — `sayabot mcp` proxies this endpoint over stdio for clients that cannot speak HTTP, plus one-shot shell commands
 - [Bot platform](./bot-platform.md) — the API-key auth both surfaces share, and the webhook-based counterpart
 - [Collab & task board](./collab-tasks.md) — the collaboration functions behind most MCP tools
 - [Canvas server](./canvas-server.md) — the Hocuspocus instance `canvas_read`/`canvas_patch` drive
