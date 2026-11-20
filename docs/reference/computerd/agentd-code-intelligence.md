@@ -13,22 +13,23 @@ Source files: `apps/computerd/agentd/code-intelligence.ts`
 ```typescript
 interface CodeRequest {
   action: "outline" | "definition" | "references" | "diagnostics" | "rename_preview"
-  path: string            // the TS/JS file to analyse (required)
-  projectRoot?: string    // default: nearest tsconfig.json / jsconfig.json walk-up
-  line?: number; column?: number   // 1-based UTF-16 positions (position-based actions)
-  newName?: string        // rename_preview only
-  maxResults?: number     // default 200, hard max 1000
+  path: string // the TS/JS file to analyse (required)
+  projectRoot?: string // default: nearest tsconfig.json / jsconfig.json walk-up
+  line?: number
+  column?: number // 1-based UTF-16 positions (position-based actions)
+  newName?: string // rename_preview only
+  maxResults?: number // default 200, hard max 1000
 }
 ```
 
-| Budget | Value | Enforced by |
-| :--- | :--- | :--- |
-| Source file size | 2 MB (`MAX_FILE`) | `read()` via `readCompleteFile` |
-| Total project bytes | 24 MB (`MAX_PROJECT`) | `read()` throws `Project exceeds code intelligence size limit; narrow projectRoot` |
-| Project files | 512 (`MAX_FILES`) | file scan and final program |
-| Directory entries scanned | 20 000 (`MAX_ENTRIES`) | `readDirectory` scan |
-| Results per action | `maxResults` (1–1000, default 200) | `page()` slicing + `truncated` flag |
-| Wall time | **10 s** (`deadline`, `code-intelligence.ts:67-70`) | `checkBudget()` called on every stat/read/scan and via the language service cancellation token; timeout message: `Code intelligence time limit exceeded; narrow projectRoot` |
+| Budget                    | Value                                               | Enforced by                                                                                                                                                                  |
+| :------------------------ | :-------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Source file size          | 2 MB (`MAX_FILE`)                                   | `read()` via `readCompleteFile`                                                                                                                                              |
+| Total project bytes       | 24 MB (`MAX_PROJECT`)                               | `read()` throws `Project exceeds code intelligence size limit; narrow projectRoot`                                                                                           |
+| Project files             | 512 (`MAX_FILES`)                                   | file scan and final program                                                                                                                                                  |
+| Directory entries scanned | 20 000 (`MAX_ENTRIES`)                              | `readDirectory` scan                                                                                                                                                         |
+| Results per action        | `maxResults` (1–1000, default 200)                  | `page()` slicing + `truncated` flag                                                                                                                                          |
+| Wall time                 | **10 s** (`deadline`, `code-intelligence.ts:67-70`) | `checkBudget()` called on every stat/read/scan and via the language service cancellation token; timeout message: `Code intelligence time limit exceeded; narrow projectRoot` |
 
 Only `.ts/.tsx/.mts/.cts/.js/.jsx/.mjs/.cjs` files are accepted (`sourceExtension`, `code-intelligence.ts:21`); anything else errors with `Code intelligence supports TypeScript and JavaScript files only`.
 
@@ -64,7 +65,7 @@ const read = (path: string): string | undefined => {
     const fd = openSync(canonical, constants.O_RDONLY | constants.O_NOFOLLOW)
     // … size-capped, fully-read …
   } else {
-    bytes = readCompleteFile(canonical, MAX_FILE)     // shares agentd's stability-checked reader
+    bytes = readCompleteFile(canonical, MAX_FILE) // shares agentd's stability-checked reader
   }
   projectBytes += bytes.length
   if (cache.size >= MAX_FILES || projectBytes > MAX_PROJECT)
@@ -122,13 +123,13 @@ Every response embeds a `base` object (`code-intelligence.ts:205`):
 
 and wraps results through `page()` → `{ items, total, truncated }`. Ranges are 1-based `{ start: { line, column }, end: { line, column } }` converted from compiler spans via `location()` — which also re-validates that every result path is still permitted (`Result path escapes allowed projectRoot`).
 
-| Action | Implementation | Returns |
-| :--- | :--- | :--- |
-| `outline` (`:217-229`) | Walks `service.getNavigationTree(file)` — AST-derived declarations, not text matching — collecting `{ name, kind, container, range }` recursively | declaration tree with container names |
-| `definition` (`:230-233`) | `getDefinitionAtPosition(file, position())` | `{ name, kind, range }` per definition |
-| `references` (`:234-237`) | `getReferencesAtPosition` | references with `isWriteAccess` markers |
-| `diagnostics` (`:238-242`) | Concatenates config errors, compiler-options diagnostics, syntactic and semantic diagnostics | `{ code, category: "error" \| "warning" \| …, message, range? }` — type errors without running a build |
-| `rename_preview` (`:243-262`) | see below | a full preview of edits, **no rename executed** |
+| Action                        | Implementation                                                                                                                                    | Returns                                                                                                |
+| :---------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------ | :----------------------------------------------------------------------------------------------------- |
+| `outline` (`:217-229`)        | Walks `service.getNavigationTree(file)` — AST-derived declarations, not text matching — collecting `{ name, kind, container, range }` recursively | declaration tree with container names                                                                  |
+| `definition` (`:230-233`)     | `getDefinitionAtPosition(file, position())`                                                                                                       | `{ name, kind, range }` per definition                                                                 |
+| `references` (`:234-237`)     | `getReferencesAtPosition`                                                                                                                         | references with `isWriteAccess` markers                                                                |
+| `diagnostics` (`:238-242`)    | Concatenates config errors, compiler-options diagnostics, syntactic and semantic diagnostics                                                      | `{ code, category: "error" \| "warning" \| …, message, range? }` — type errors without running a build |
+| `rename_preview` (`:243-262`) | see below                                                                                                                                         | a full preview of edits, **no rename executed**                                                        |
 
 `position()` (`code-intelligence.ts:207-216`) validates 1-based UTF-16 `line`/`column` (`line and column must be positive 1-based UTF-16 positions`), handles CRLF line ends when computing line boundaries, and rejects out-of-range positions (`line is out of range`, `column is out of range`).
 

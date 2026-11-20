@@ -2,7 +2,10 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self' 'unsafe-inline'"
+    />
     <title>Sayabot remote host</title>
   </head>
   <body>
@@ -10,14 +13,20 @@
       // Hidden window: captures the screen and streams it to the viewer over WebRTC.
       // Pointer/keyboard events from the viewer go back to the main process, which checks
       // the session allows control before anything reaches the input helper.
-      const ICE = [{ urls: "stun:stun.l.google.com:19302" }, { urls: "stun:stun1.l.google.com:19302" }]
+      const ICE = [
+        { urls: "stun:stun.l.google.com:19302" },
+        { urls: "stun:stun1.l.google.com:19302" },
+      ]
       const sessions = new Map()
 
       function waitForIce(pc, ms) {
         if (pc.iceGatheringState === "complete") return Promise.resolve()
         return new Promise((resolve) => {
           const done = () => resolve()
-          pc.addEventListener("icegatheringstatechange", () => pc.iceGatheringState === "complete" && done())
+          pc.addEventListener(
+            "icegatheringstatechange",
+            () => pc.iceGatheringState === "complete" && done(),
+          )
           setTimeout(done, ms)
         })
       }
@@ -42,7 +51,8 @@
           stream.getTracks().forEach((track) => pc.addTrack(track, stream))
           pc.ondatachannel = (event) => {
             event.channel.onmessage = (msg) => {
-              if (typeof msg.data === "string" && msg.data.length < 2000) window.remoteHost.input(sessionId, msg.data)
+              if (typeof msg.data === "string" && msg.data.length < 2000)
+                window.remoteHost.input(sessionId, msg.data)
             }
           }
           const finish = (reason) => {
@@ -62,7 +72,10 @@
           await waitForIce(pc, 3000)
           window.remoteHost.answer(sessionId, JSON.stringify(pc.localDescription))
           // A viewer that never connects shouldn't keep the screen captured.
-          setTimeout(() => pc.connectionState !== "connected" && finish("viewer never connected"), 45000)
+          setTimeout(
+            () => pc.connectionState !== "connected" && finish("viewer never connected"),
+            45000,
+          )
         } catch (err) {
           if (stream) stream.getTracks().forEach((t) => t.stop())
           window.remoteHost.ended(sessionId, String((err && err.message) || err))

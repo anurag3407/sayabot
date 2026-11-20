@@ -10,12 +10,12 @@ Source files: `deploy/docker/*.Dockerfile`, `deploy/docker-compose.yml`, `deploy
 
 All four app images share the same recipe shape: `node:24.21.0-bookworm-slim` base, pnpm `10.33.0` activated via corepack, BuildKit cache mounts on `/pnpm/store`, and a `GIT_COMMIT_SHA` build arg baked into an OCI label (`org.opencontainers.image.revision`).
 
-| Image | Dockerfile | Port | Healthcheck endpoint | Runtime command |
-| :--- | :--- | :--- | :--- | :--- |
-| `web` | `deploy/docker/web.Dockerfile` | 3000 | `GET /api/health` (node fetch, 15s interval, 30s start period, 5 retries) | `node apps/web/server.js` (Next.js standalone output) |
-| `orchestrator` | `deploy/docker/orchestrator.Dockerfile` | 4000 | `GET /health` (15s interval, 40s start period) | `node --import tsx src/index.ts` |
-| `computerd` | `deploy/docker/computerd.Dockerfile` | 4100 | `GET /health` (15s interval, 10s start period, 3 retries) | `node --import tsx src/index.ts` |
-| `egress` | `deploy/docker/egress.Dockerfile` | 8080 (proxy), 8081 (admin) | `GET :8081/health` (15s interval, 3 retries) | `node --import tsx src/index.ts` |
+| Image          | Dockerfile                              | Port                       | Healthcheck endpoint                                                      | Runtime command                                       |
+| :------------- | :-------------------------------------- | :------------------------- | :------------------------------------------------------------------------ | :---------------------------------------------------- |
+| `web`          | `deploy/docker/web.Dockerfile`          | 3000                       | `GET /api/health` (node fetch, 15s interval, 30s start period, 5 retries) | `node apps/web/server.js` (Next.js standalone output) |
+| `orchestrator` | `deploy/docker/orchestrator.Dockerfile` | 4000                       | `GET /health` (15s interval, 40s start period)                            | `node --import tsx src/index.ts`                      |
+| `computerd`    | `deploy/docker/computerd.Dockerfile`    | 4100                       | `GET /health` (15s interval, 10s start period, 3 retries)                 | `node --import tsx src/index.ts`                      |
+| `egress`       | `deploy/docker/egress.Dockerfile`       | 8080 (proxy), 8081 (admin) | `GET :8081/health` (15s interval, 3 retries)                              | `node --import tsx src/index.ts`                      |
 
 Key differences per image:
 
@@ -29,15 +29,15 @@ Key differences per image:
 
 Project name `sayabot`. Every app service inherits an `x-hardening` anchor: `init: true`, `restart: unless-stopped`, `security_opt: no-new-privileges:true`, `cap_drop: ALL`, json-file logging (20 MB x 5), read-only root filesystem with a `/tmp` tmpfs, and memory limits (default 1g for web and orchestrator, overridable via `SAYABOT_WEB_MEMORY` / `SAYABOT_ORCHESTRATOR_MEMORY`).
 
-| Service | Image / build | Internal port | Published | Notes |
-| :--- | :--- | :--- | :--- | :--- |
-| `web` | `${SAYABOT_IMAGE_PREFIX:-sayabot}/web:${SAYABOT_TAG:-latest}` | 3000 | none (nginx only) | `depends_on: orchestrator (service_healthy)`; `stop_grace_period: 20s` |
-| `orchestrator` | same prefix, `orchestrator` | 4000 | none | `EGRESS_URL: http://egress:8081`, `EGRESS_PROXY_URL: http://egress:8080`; `stop_grace_period: 30s` |
-| `migrate` | orchestrator image | — | none | `profiles: ["tools"]` — never started by `up`; runs `node --import tsx src/migrate.ts` in `/app/packages/db` |
-| `nginx` | `nginx:1.28-alpine` (`NGINX_VERSION`) | 8080 (tunnel mode) | **80, 443** | healthcheck curls `https://127.0.0.1/api/health` with the `Host` header set; reloads every 6h to pick up renewed certs |
-| `certbot` | `certbot/certbot:v4.1.1` (`CERTBOT_VERSION`) | — | none | renew loop every 12h against `/var/www/certbot` webroot |
-| `computerd` | `computerd` image | 4100 | none | runs as `user: "0:0"`, mounts `/var/run/docker.sock` and the fixed-name `saaya-agentd` volume at `/srv/saaya-agentd` (agentd fast-path control volume, so computerd stays off `botnet`) |
-| `egress` | `egress` image | 8080/8081 | none | the only dual-homed service: joins both `sayabot` and the `internal: true` `botnet` network |
+| Service        | Image / build                                                 | Internal port      | Published         | Notes                                                                                                                                                                                   |
+| :------------- | :------------------------------------------------------------ | :----------------- | :---------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `web`          | `${SAYABOT_IMAGE_PREFIX:-sayabot}/web:${SAYABOT_TAG:-latest}` | 3000               | none (nginx only) | `depends_on: orchestrator (service_healthy)`; `stop_grace_period: 20s`                                                                                                                  |
+| `orchestrator` | same prefix, `orchestrator`                                   | 4000               | none              | `EGRESS_URL: http://egress:8081`, `EGRESS_PROXY_URL: http://egress:8080`; `stop_grace_period: 30s`                                                                                      |
+| `migrate`      | orchestrator image                                            | —                  | none              | `profiles: ["tools"]` — never started by `up`; runs `node --import tsx src/migrate.ts` in `/app/packages/db`                                                                            |
+| `nginx`        | `nginx:1.28-alpine` (`NGINX_VERSION`)                         | 8080 (tunnel mode) | **80, 443**       | healthcheck curls `https://127.0.0.1/api/health` with the `Host` header set; reloads every 6h to pick up renewed certs                                                                  |
+| `certbot`      | `certbot/certbot:v4.1.1` (`CERTBOT_VERSION`)                  | —                  | none              | renew loop every 12h against `/var/www/certbot` webroot                                                                                                                                 |
+| `computerd`    | `computerd` image                                             | 4100               | none              | runs as `user: "0:0"`, mounts `/var/run/docker.sock` and the fixed-name `saaya-agentd` volume at `/srv/saaya-agentd` (agentd fast-path control volume, so computerd stays off `botnet`) |
+| `egress`       | `egress` image                                                | 8080/8081          | none              | the only dual-homed service: joins both `sayabot` and the `internal: true` `botnet` network                                                                                             |
 
 Networks: `sayabot` (bridge) and `botnet` (named bridge, `internal: true` — no outbound internet; bot containers attach here and reach the internet only through egress). Volumes: `saaya-agentd` (fixed name — computerd mounts per-computer subpaths of it into bot containers).
 
@@ -107,17 +107,17 @@ Interactive (or `--yes` scripted) generator for `deploy/.env.production`, mode 6
 
 ## ⚙️ Key Environment Variables
 
-| Variable | Meaning |
-| :--- | :--- |
-| `SAYABOT_DOMAIN` / `MESH_DOMAIN` | Public hostname; drives nginx template rendering, `NEXT_PUBLIC_*` URLs, health checks |
-| `SAYABOT_TAG` / `SAYABOT_IMAGE_PREFIX` | Release tag (git SHA) and image registry prefix |
-| `SAYABOT_APP_SERVICES` | App services to build/roll out (default `orchestrator web`; scripts extend it) |
-| `SAYABOT_SUPABASE=bundled` | Adds the bundled Supabase compose overlay |
-| `CLOUDFLARE_TUNNEL_TOKEN` | Switches to tunnel mode (cloudflared, no open ports) |
-| `COMPUTER_BACKEND` | `auto`/`smolvm`/`docker`/`e2b`; `smolvm` adds the KVM overlay |
-| `SAYABOT_HEALTH_TIMEOUT` | Health-gate deadline in seconds (default 180) |
-| `SAYABOT_KEEP_RELEASES` | Tag retention for image pruning (default 3) |
-| `SAYABOT_ALLOW_PRIVATE_WEBHOOKS` | Dev-only escape hatch allowing webhook delivery to private networks |
+| Variable                               | Meaning                                                                               |
+| :------------------------------------- | :------------------------------------------------------------------------------------ |
+| `SAYABOT_DOMAIN` / `MESH_DOMAIN`       | Public hostname; drives nginx template rendering, `NEXT_PUBLIC_*` URLs, health checks |
+| `SAYABOT_TAG` / `SAYABOT_IMAGE_PREFIX` | Release tag (git SHA) and image registry prefix                                       |
+| `SAYABOT_APP_SERVICES`                 | App services to build/roll out (default `orchestrator web`; scripts extend it)        |
+| `SAYABOT_SUPABASE=bundled`             | Adds the bundled Supabase compose overlay                                             |
+| `CLOUDFLARE_TUNNEL_TOKEN`              | Switches to tunnel mode (cloudflared, no open ports)                                  |
+| `COMPUTER_BACKEND`                     | `auto`/`smolvm`/`docker`/`e2b`; `smolvm` adds the KVM overlay                         |
+| `SAYABOT_HEALTH_TIMEOUT`               | Health-gate deadline in seconds (default 180)                                         |
+| `SAYABOT_KEEP_RELEASES`                | Tag retention for image pruning (default 3)                                           |
+| `SAYABOT_ALLOW_PRIVATE_WEBHOOKS`       | Dev-only escape hatch allowing webhook delivery to private networks                   |
 
 ---
 

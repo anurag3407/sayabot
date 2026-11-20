@@ -1,7 +1,14 @@
 import { hostOnline, MAC_CLI_APP_IDS, redactSecrets } from "@sayabot/core"
 import { clampEffort, ENGINE_EFFORT_LEVELS } from "@sayabot/llm/models/effort"
 import { sealSecret } from "@sayabot/llm"
-import { agentRuns, desktopHosts, localRunnerJobs, messages, orgMembers, toolCalls } from "@sayabot/db"
+import {
+  agentRuns,
+  desktopHosts,
+  localRunnerJobs,
+  messages,
+  orgMembers,
+  toolCalls,
+} from "@sayabot/db"
 import { and, desc, eq, isNull, sql } from "drizzle-orm"
 import { registerRun, unregisterRun } from "../active-runs"
 import { getDb } from "../db"
@@ -45,16 +52,22 @@ export interface LocalRunnerConfig {
 /** A model id reaches the Mac's command line, so only plain ones pass. */
 const MAC_MODEL_ID = /^[\w.:/@+[\]-]{1,160}$/
 
-export function localRunnerConfig(params: Record<string, unknown> | null | undefined): LocalRunnerConfig | null {
+export function localRunnerConfig(
+  params: Record<string, unknown> | null | undefined,
+): LocalRunnerConfig | null {
   const runner = params?.runner as Record<string, unknown> | undefined
-  if (!runner || typeof runner.hostId !== "string" || !/^[0-9a-f-]{36}$/i.test(runner.hostId)) return null
+  if (!runner || typeof runner.hostId !== "string" || !/^[0-9a-f-]{36}$/i.test(runner.hostId))
+    return null
   const app = MAC_RUNNER_APPS.includes(String(runner.app)) ? String(runner.app) : "claude-code"
   const model =
-    typeof runner.model === "string" && runner.model !== "default" && MAC_MODEL_ID.test(runner.model)
+    typeof runner.model === "string" &&
+    runner.model !== "default" &&
+    MAC_MODEL_ID.test(runner.model)
       ? runner.model
       : null
   // Apps with no fixed list (Copilot, OpenCode…) keep the pick; the Mac sets it only if the app offers it.
-  const known = ENGINE_EFFORT_LEVELS[app] ?? (app === "ollama" || app === "lmstudio" ? [] : undefined)
+  const known =
+    ENGINE_EFFORT_LEVELS[app] ?? (app === "ollama" || app === "lmstudio" ? [] : undefined)
   const effort = clampEffort(params?.effort as string | undefined, known) ?? null
   return { hostId: runner.hostId, app, ...(model ? { model } : {}), ...(effort ? { effort } : {}) }
 }
@@ -86,7 +99,11 @@ export async function defaultMacRunner(agent: {
   const owner = members.length === 1 ? members[0] : undefined
   if (!owner) return null
   const hosts = await db
-    .select({ id: desktopHosts.id, settings: desktopHosts.settings, lastSeenAt: desktopHosts.lastSeenAt })
+    .select({
+      id: desktopHosts.id,
+      settings: desktopHosts.settings,
+      lastSeenAt: desktopHosts.lastSeenAt,
+    })
     .from(desktopHosts)
     .where(and(eq(desktopHosts.userId, owner.userId), isNull(desktopHosts.revokedAt)))
     .orderBy(desc(desktopHosts.lastSeenAt))
@@ -94,7 +111,12 @@ export async function defaultMacRunner(agent: {
   for (const host of hosts) {
     const choice = host.settings?.localDefault
     const app = choice && typeof choice === "object" ? choice.app : null
-    if (host.settings?.runnerEnabled && app && RUNNER_APPS.has(app) && hostOnline(host.lastSeenAt)) {
+    if (
+      host.settings?.runnerEnabled &&
+      app &&
+      RUNNER_APPS.has(app) &&
+      hostOnline(host.lastSeenAt)
+    ) {
       return { hostId: host.id, app: app as LocalRunnerConfig["app"] }
     }
   }
@@ -111,7 +133,9 @@ export type WhenMacOff = (typeof WHEN_MAC_OFF)[number]
 
 export function whenMacOff(params: unknown): WhenMacOff {
   const value = (params as Record<string, unknown> | null)?.whenMacOff
-  return (WHEN_MAC_OFF as readonly string[]).includes(String(value)) ? (value as WhenMacOff) : "auto"
+  return (WHEN_MAC_OFF as readonly string[]).includes(String(value))
+    ? (value as WhenMacOff)
+    : "auto"
 }
 
 /** "local": the Mac takes it now. "wait": queue it for the Mac. "server": answer from the server. */
@@ -120,16 +144,23 @@ export async function macPlan(
   config: LocalRunnerConfig,
 ): Promise<"local" | "wait" | "server"> {
   const [host] = await getDb()
-    .select({ userId: desktopHosts.userId, revokedAt: desktopHosts.revokedAt, settings: desktopHosts.settings, lastSeenAt: desktopHosts.lastSeenAt })
+    .select({
+      userId: desktopHosts.userId,
+      revokedAt: desktopHosts.revokedAt,
+      settings: desktopHosts.settings,
+      lastSeenAt: desktopHosts.lastSeenAt,
+    })
     .from(desktopHosts)
     .where(eq(desktopHosts.id, config.hostId))
     .limit(1)
-  const usable = host && !host.revokedAt && host.userId === agent.ownerUserId && host.settings?.runnerEnabled
+  const usable =
+    host && !host.revokedAt && host.userId === agent.ownerUserId && host.settings?.runnerEnabled
   if (usable && hostOnline(host.lastSeenAt)) return "local"
   const choice = whenMacOff(agent.params)
   // A Mac that's gone or switched off for bots won't come back on its own: waiting can't help.
   if (choice === "fail") return "local"
-  const server = choice !== "wait" && (await serverCanAnswer({ ...agent, params: withoutRunner(agent.params) }))
+  const server =
+    choice !== "wait" && (await serverCanAnswer({ ...agent, params: withoutRunner(agent.params) }))
   if (server) return "server"
   return usable && choice !== "server" ? "wait" : "local"
 }
@@ -146,7 +177,11 @@ async function expireMacApprovals(roomId: string, jobId: string): Promise<void> 
   const db = getDb()
   const expired = await db
     .update(toolCalls)
-    .set({ status: "rejected", resolvedAt: new Date(), error: "The run ended before anyone answered" })
+    .set({
+      status: "rejected",
+      resolvedAt: new Date(),
+      error: "The run ended before anyone answered",
+    })
     .where(
       and(
         eq(toolCalls.roomId, roomId),
@@ -157,7 +192,11 @@ async function expireMacApprovals(roomId: string, jobId: string): Promise<void> 
     .returning({ id: toolCalls.id })
     .catch(() => [])
   for (const row of expired) {
-    await broadcast(roomId, { type: "tool.approval_resolved", toolCallId: row.id, status: "rejected" }).catch(() => {})
+    await broadcast(roomId, {
+      type: "tool.approval_resolved",
+      toolCallId: row.id,
+      status: "rejected",
+    }).catch(() => {})
   }
 }
 
@@ -278,28 +317,66 @@ export async function runLocalTurn(
       .where(eq(messages.id, message.id))
     await db
       .update(agentRuns)
-      .set({ status: status === "halted" ? "halted" : status === "error" ? "error" : "complete", error, finishReason: status === "complete" ? "stop" : status })
+      .set({
+        status: status === "halted" ? "halted" : status === "error" ? "error" : "complete",
+        error,
+        finishReason: status === "complete" ? "stop" : status,
+      })
       .where(eq(agentRuns.id, run.id))
-    await broadcast(room.id, { type: "message.done", messageId: message.id, status }).catch(() => {})
-    return { messageId: message.id, runId: run.id, content: safe, error, aborted: status === "halted" } satisfies TurnResult
+    await broadcast(room.id, { type: "message.done", messageId: message.id, status }).catch(
+      () => {},
+    )
+    return {
+      messageId: message.id,
+      runId: run.id,
+      content: safe,
+      error,
+      aborted: status === "halted",
+    } satisfies TurnResult
   }
 
-  const [host] = await db.select().from(desktopHosts).where(eq(desktopHosts.id, config.hostId)).limit(1)
+  const [host] = await db
+    .select()
+    .from(desktopHosts)
+    .where(eq(desktopHosts.id, config.hostId))
+    .limit(1)
   if (!host || host.revokedAt || host.userId !== agent.ownerUserId) {
-    return finish("", "error", "The computer this bot ran on was removed. Pick another model with \"Switch model\".", "mac_removed")
+    return finish(
+      "",
+      "error",
+      'The computer this bot ran on was removed. Pick another model with "Switch model".',
+      "mac_removed",
+    )
   }
   if (!host.settings?.runnerEnabled) {
-    return finish("", "error", `"Run agents on this computer" is off for ${host.name}. Turn it on in Settings → Computers.`, "runner_off")
+    return finish(
+      "",
+      "error",
+      `"Run agents on this computer" is off for ${host.name}. Turn it on in Settings → Computers.`,
+      "runner_off",
+    )
   }
   const waiting = options.wait === true && !hostOnline(host.lastSeenAt)
   if (!hostOnline(host.lastSeenAt) && !waiting) {
-    return finish("", "error", `${host.name} is offline. Open Sayabot for Mac there and retry, or pick another model with "Switch model".`, "mac_offline")
+    return finish(
+      "",
+      "error",
+      `${host.name} is offline. Open Sayabot for Mac there and retry, or pick another model with "Switch model".`,
+      "mac_offline",
+    )
   }
   // Waiting: the reply says so until the Mac answers (the answer then replaces it).
-  const waitingNote = waiting ? `_Waiting for ${host.name}. Open Sayabot for Mac there and I'll answer._` : ""
+  const waitingNote = waiting
+    ? `_Waiting for ${host.name}. Open Sayabot for Mac there and I'll answer._`
+    : ""
   if (waitingNote) {
     await db.update(messages).set({ content: waitingNote }).where(eq(messages.id, message.id))
-    await broadcast(room.id, { type: "message.delta", messageId: message.id, seq: 0, delta: waitingNote }).catch(() => {})
+    await broadcast(room.id, {
+      type: "message.delta",
+      messageId: message.id,
+      seq: 0,
+      delta: waitingNote,
+    }).catch(() => {})
   }
 
   // Claude Code and Codex get Sayabot's room tools (tasks, canvas, decisions, facts) through a
@@ -324,7 +401,11 @@ export async function runLocalTurn(
       app: config.app,
       model: config.model ?? null,
       effort: config.effort ?? null,
-      prompt: `${grant ? `${system}\n\n${ROOM_TOOLS_NOTE} ${MAC_NOTE}` : system}\n\n${prompt}`.slice(0, 200_000),
+      prompt:
+        `${grant ? `${system}\n\n${ROOM_TOOLS_NOTE} ${MAC_NOTE}` : system}\n\n${prompt}`.slice(
+          0,
+          200_000,
+        ),
       status: "queued",
       mcpTokenEnc: grant ? sealSecret(grant.token, getEnv().MESH_KEK) : null,
       mcpTokenId,
@@ -344,12 +425,19 @@ export async function runLocalTurn(
   try {
     for (;;) {
       if (controller.signal.aborted) {
-        await db.update(localRunnerJobs).set({ status: "cancelled", finishedAt: new Date() }).where(eq(localRunnerJobs.id, job.id))
+        await db
+          .update(localRunnerJobs)
+          .set({ status: "cancelled", finishedAt: new Date() })
+          .where(eq(localRunnerJobs.id, job.id))
         return finish(sent === waitingNote ? "" : sent, "halted", null)
       }
       await new Promise((r) => setTimeout(r, POLL_MS))
       const [state] = await db
-        .select({ status: localRunnerJobs.status, output: localRunnerJobs.output, error: localRunnerJobs.error })
+        .select({
+          status: localRunnerJobs.status,
+          output: localRunnerJobs.output,
+          error: localRunnerJobs.error,
+        })
         .from(localRunnerJobs)
         .where(eq(localRunnerJobs.id, job.id))
         .limit(1)
@@ -358,14 +446,24 @@ export async function runLocalTurn(
       if (output.length > sent.length && output.startsWith(sent)) {
         const delta = output.slice(sent.length)
         sent = output
-        await broadcast(room.id, { type: "message.delta", messageId: message.id, seq: seq++, delta }).catch(() => {})
+        await broadcast(room.id, {
+          type: "message.delta",
+          messageId: message.id,
+          seq: seq++,
+          delta,
+        }).catch(() => {})
         await db.update(messages).set({ content: sent }).where(eq(messages.id, message.id))
       } else if (output !== sent && output) {
         sent = output
         await db.update(messages).set({ content: sent }).where(eq(messages.id, message.id))
       }
       if (state.status === "done") return finish(sent === waitingNote ? "" : sent, "complete", null)
-      if (state.status === "failed") return finish(sent === waitingNote ? "" : sent, "error", state.error ?? "It failed on the computer")
+      if (state.status === "failed")
+        return finish(
+          sent === waitingNote ? "" : sent,
+          "error",
+          state.error ?? "It failed on the computer",
+        )
       if (state.status === "queued" && Date.now() - started > START_GRACE_MS) {
         if (!waiting && Date.now() - hostCheckedAt > HOST_CHECK_MS) {
           hostCheckedAt = Date.now()
@@ -382,7 +480,10 @@ export async function runLocalTurn(
           online: !waiting && stillOnline,
         })
         if (decision !== "wait") {
-          await db.update(localRunnerJobs).set({ status: "cancelled", finishedAt: new Date() }).where(eq(localRunnerJobs.id, job.id))
+          await db
+            .update(localRunnerJobs)
+            .set({ status: "cancelled", finishedAt: new Date() })
+            .where(eq(localRunnerJobs.id, job.id))
           const quiet = `${host.name} didn't pick this up. Open Sayabot for Mac there and retry, or pick another model with "Switch model".`
           const gone = `${host.name} stayed offline for 15 minutes. Open Sayabot for Mac there and retry, or pick another model with "Switch model".`
           return finish("", "error", decision === "offline" ? gone : quiet, "mac_offline")
@@ -398,8 +499,16 @@ export async function runLocalTurn(
           .limit(1)
         if (seen && hostOnline(seen.lastSeenAt)) lastAlive = Date.now()
         else if (Date.now() - lastAlive > MAC_GONE_MS) {
-          await db.update(localRunnerJobs).set({ status: "cancelled", finishedAt: new Date() }).where(eq(localRunnerJobs.id, job.id))
-          return finish(sent === waitingNote ? "" : sent, "error", `Lost contact with ${host.name} mid-run (it quit, slept or went offline). Open Sayabot for Mac and retry.`, "mac_offline")
+          await db
+            .update(localRunnerJobs)
+            .set({ status: "cancelled", finishedAt: new Date() })
+            .where(eq(localRunnerJobs.id, job.id))
+          return finish(
+            sent === waitingNote ? "" : sent,
+            "error",
+            `Lost contact with ${host.name} mid-run (it quit, slept or went offline). Open Sayabot for Mac and retry.`,
+            "mac_offline",
+          )
         }
       }
     }

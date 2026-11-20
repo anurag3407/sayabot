@@ -46,13 +46,13 @@ export function resolveContextBudget(
 
 Computed in `src/engine/budget.ts:21-33`:
 
-| Field | Derivation |
-| :--- | :--- |
-| `contextWindow` | `min(2,000,000, max(4096, params.contextWindowTokens ?? provider default))` — provider default comes from `getProviderCapabilities(provider).defaultContextWindow` (`@sayabot/llm`). |
-| `outputTokens` | Default `16,384` when `contextWindow >= 100,000` (room for long file writes and full thinking budgets), else `4,096` for small local models; overridable via `params.maxOutputTokens`; hard-capped at `contextWindow / 2`. |
-| `safetyTokens` | `max(1024, ceil(contextWindow * 0.08))` — an 8% headroom. |
-| `inputTokens` | `params.contextBudgetTokens` (default = full window), capped at `contextWindow - outputTokens - safetyTokens`. |
-| `messageTokens` | `inputTokens - max(0, toolTokens)`. |
+| Field           | Derivation                                                                                                                                                                                                                 |
+| :-------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `contextWindow` | `min(2,000,000, max(4096, params.contextWindowTokens ?? provider default))` — provider default comes from `getProviderCapabilities(provider).defaultContextWindow` (`@sayabot/llm`).                                       |
+| `outputTokens`  | Default `16,384` when `contextWindow >= 100,000` (room for long file writes and full thinking budgets), else `4,096` for small local models; overridable via `params.maxOutputTokens`; hard-capped at `contextWindow / 2`. |
+| `safetyTokens`  | `max(1024, ceil(contextWindow * 0.08))` — an 8% headroom.                                                                                                                                                                  |
+| `inputTokens`   | `params.contextBudgetTokens` (default = full window), capped at `contextWindow - outputTokens - safetyTokens`.                                                                                                             |
+| `messageTokens` | `inputTokens - max(0, toolTokens)`.                                                                                                                                                                                        |
 
 Throws `"Tool definitions leave insufficient context for this model. Reduce active tools or configure the model's contextWindowTokens."` when `messageTokens < 1024`.
 
@@ -138,10 +138,10 @@ export interface CompactedSummary {
 ```typescript
 export interface CompactTranscriptArgs {
   messages: ModelMessage[]
-  keepLastKTools?: number      // default 6
+  keepLastKTools?: number // default 6
   summary?: CompactedSummary
   protectedPrefixCount?: number
-  keepLastMessages?: number    // default 4
+  keepLastMessages?: number // default 4
 }
 
 export interface CompactTranscriptResult {
@@ -169,9 +169,9 @@ Replaces binary payloads before serializing history into the summarizer prompt: 
 ```typescript
 export async function summarizeForBudget(args: {
   messages: ModelMessage[]
-  protectedPrefixCount: number   // initialMessages.length in the engine
-  messageBudget: number          // budget.messageTokens - instructionTokens
-  summarizerInputBudget: number  // modelBudget.inputTokens
+  protectedPrefixCount: number // initialMessages.length in the engine
+  messageBudget: number // budget.messageTokens - instructionTokens
+  summarizerInputBudget: number // modelBudget.inputTokens
   outputTokens: number
   model: LanguageModel
   signal?: AbortSignal
@@ -216,11 +216,11 @@ Every successful stage increments the run's `compactions` counter (reported in `
 
 ## 🧪 Tests
 
-| Test file | Covers |
-| :--- | :--- |
-| `src/engine/budget.test.ts` | Token estimation, `resolveContextBudget` defaults/overrides/tool-pressure errors, `CacheMetrics` snapshot semantics. |
-| `src/engine/compaction.test.ts` | `elideOldToolResults` idempotency and thresholds, `compactionBoundary` tool-call/result pairing, `compactTranscript` summary collapse, `formatCompactedSummary`. |
-| (via `src/engine/harness.test.ts`) | End-to-end compaction behaviour inside `prepareStep` under mocked models. |
+| Test file                          | Covers                                                                                                                                                           |
+| :--------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/engine/budget.test.ts`        | Token estimation, `resolveContextBudget` defaults/overrides/tool-pressure errors, `CacheMetrics` snapshot semantics.                                             |
+| `src/engine/compaction.test.ts`    | `elideOldToolResults` idempotency and thresholds, `compactionBoundary` tool-call/result pairing, `compactTranscript` summary collapse, `formatCompactedSummary`. |
+| (via `src/engine/harness.test.ts`) | End-to-end compaction behaviour inside `prepareStep` under mocked models.                                                                                        |
 
 `summarize.ts` has no dedicated `summarize.test.ts`; its behavior is exercised through `compaction.test.ts` primitives and the harness tests.
 

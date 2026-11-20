@@ -31,7 +31,8 @@ export function runsOnLabel(agent: {
   providerKeyId?: string | null
 }): string {
   const params = (agent.params as Record<string, unknown> | null) ?? {}
-  const runner = params.runner as { hostId?: string; app?: string; where?: string; model?: string } | undefined
+  const runner = params.runner as
+    { hostId?: string; app?: string; where?: string; model?: string } | undefined
   if (runner?.hostId) {
     const app = appName(runner.app ?? "claude-code")
     return `${app}${runner.model ? ` · ${runner.model}` : ""} on your Mac`
@@ -48,7 +49,8 @@ export function runsOnLabel(agent: {
 export function replySourceLabel(metadata: Record<string, unknown>): string | null {
   const runsOn = typeof metadata.runsOn === "string" ? metadata.runsOn : null
   const model = typeof metadata.model === "string" ? metadata.model : null
-  if (runsOn) return `${appName(runsOn)}${model ? ` · ${model}` : ""} ${metadata.where === "mac" ? "on your Mac" : "on the server"}`
+  if (runsOn)
+    return `${appName(runsOn)}${model ? ` · ${model}` : ""} ${metadata.where === "mac" ? "on your Mac" : "on the server"}`
   if (model) return model
   return null
 }

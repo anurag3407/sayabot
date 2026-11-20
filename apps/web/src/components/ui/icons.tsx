@@ -224,4 +224,3 @@ export function TraceIcon(props: IconProps) {
     </svg>
   )
 }
-

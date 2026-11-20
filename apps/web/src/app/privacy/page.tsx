@@ -46,9 +46,9 @@ export default function PrivacyPage() {
       <DocSection title="Retention and deletion">
         <p>
           Active data stays until the operator or an authorized workspace owner removes it. The
-          operator configures database backups and job retention. Account and workspace deletion
-          are operator-managed in this deployment; ask the operator to delete an account, subject
-          to backups and records they keep for legal or security reasons.
+          operator configures database backups and job retention. Account and workspace deletion are
+          operator-managed in this deployment; ask the operator to delete an account, subject to
+          backups and records they keep for legal or security reasons.
         </p>
       </DocSection>
       <DocSection title="Your choices">

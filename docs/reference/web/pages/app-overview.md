@@ -29,12 +29,12 @@ if (!user && !isPublic) {
 
 Rules, in order:
 
-| Condition | Behaviour |
-| :--- | :--- |
-| No session, private path | Redirect to `/login?next=<path>`, carrying any cookies `updateSession` set. |
+| Condition                                                                  | Behaviour                                                                                                                               |
+| :------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------- |
+| No session, private path                                                   | Redirect to `/login?next=<path>`, carrying any cookies `updateSession` set.                                                             |
 | Session, path is `/login` or `/signup`, no `force`/`reauth`/`switch` param | Redirect to the sanitized `next` param (via `safeNextPath`) or to `/`. This lets an already-signed-in user bounce off the auth screens. |
-| `?force=true`, `?reauth=true`, or `?switch=true` | Bypass the bounce so a signed-in user can re-authenticate or switch accounts. |
-| Otherwise | Pass the (possibly cookie-refreshed) response through. |
+| `?force=true`, `?reauth=true`, or `?switch=true`                           | Bypass the bounce so a signed-in user can re-authenticate or switch accounts.                                                           |
+| Otherwise                                                                  | Pass the (possibly cookie-refreshed) response through.                                                                                  |
 
 `PUBLIC_PATHS` (matched as exact path or `path/...` prefix) covers the landing page, all auth screens (`/auth`, `/login`, `/signup`, `/forgot-password`, `/reset-password`), legal pages, `/download`, `/offline`, machine-to-machine surfaces authenticated by other means (`/api/v1`, `/api/mobile`, `/api/desktop`, `/api/remote`, `/api/files`, `/api/instance`, `/api/billing/webhook`, `/mcp`, `/bot`, `/api/account/merge`) and the OAuth 2.1 endpoints (`/.well-known`, `/oauth/register`, `/oauth/token`, `/oauth/callback`).
 
@@ -144,7 +144,9 @@ const serwist = new Serwist({
   clientsClaim: true,
   navigationPreload: true,
   runtimeCaching: [noPageCache, ...defaultCache],
-  fallbacks: { entries: [{ url: "/offline", matcher: ({ request }) => request.destination === "document" }] },
+  fallbacks: {
+    entries: [{ url: "/offline", matcher: ({ request }) => request.destination === "document" }],
+  },
 })
 ```
 
@@ -177,10 +179,10 @@ Two components cooperate so exactly one update toast appears per deploy. The sha
 
 **`UpdateProvider` / `useAppUpdate`** (`src/components/update-notification.tsx`) handles the other two update sources and renders the actual cards:
 
-| Source | Detection | Card |
-| :--- | :--- | :--- |
-| Newer website (browser + Mac app) | Polls `/api/version?t=<now>` (no-store) every 5 minutes and on visibility; compares the `gitCommit` against the commit the page loaded from. Also hears `onWebUpdate` from the service-worker path. | "Sayabot was updated" with a Reload button that SKIP_WAITINGs then reloads. |
-| Mac app update available | Talks to the `window.sayabotDesktop` bridge (`getVersion`, `checkForUpdates`, `getUpdateState`, `installUpdate`, `onUpdateState`; mirrors `UpdateState` in `apps/desktop/src/updater.ts`). | Progress card for `downloading`/`installing` (percent bar), install prompt for `available`, retry card for `error`. `applyUpdate()` installs the Mac update when ready, else reloads. |
+| Source                            | Detection                                                                                                                                                                                           | Card                                                                                                                                                                                  |
+| :-------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Newer website (browser + Mac app) | Polls `/api/version?t=<now>` (no-store) every 5 minutes and on visibility; compares the `gitCommit` against the commit the page loaded from. Also hears `onWebUpdate` from the service-worker path. | "Sayabot was updated" with a Reload button that SKIP_WAITINGs then reloads.                                                                                                           |
+| Mac app update available          | Talks to the `window.sayabotDesktop` bridge (`getVersion`, `checkForUpdates`, `getUpdateState`, `installUpdate`, `onUpdateState`; mirrors `UpdateState` in `apps/desktop/src/updater.ts`).          | Progress card for `downloading`/`installing` (percent bar), install prompt for `available`, retry card for `error`. `applyUpdate()` installs the Mac update when ready, else reloads. |
 
 `useAppUpdate()` returns a no-op-safe default outside the provider, and any screen can call `checkForUpdates()` — inside the Mac app the native app answers in its own dialog; in a browser a toast reports "newest" or "reload".
 
@@ -188,15 +190,15 @@ Two components cooperate so exactly one update toast appears per deploy. The sha
 
 ## ⚙️ Build Configuration (`next.config.ts`)
 
-| Setting | Value / purpose |
-| :--- | :--- |
-| Serwist | `withSerwistInit({ swSrc: "src/sw.ts", swDest: "public/sw.js", disable: NODE_ENV === "development", cacheOnNavigation: false, reloadOnOnline: true })`. `additionalPrecacheEntries` pins `/offline`, `/icon.svg`, `/icon-192.png`, `/manifest.webmanifest` with a revision from `VERCEL_GIT_COMMIT_SHA` / `GIT_COMMIT_SHA` / timestamp. |
-| Standalone output | `NEXT_OUTPUT=standalone` (Docker builds) enables `output: "standalone"` with `outputFileTracingRoot` at the monorepo root so `packages/*` imported as source are traced. |
-| Packages | `transpilePackages: ["@sayabot/core", "@sayabot/db", "@sayabot/llm"]` (consumed as source), `serverExternalPackages: ["pg", "pg-boss", "@e2b/code-interpreter"]`. |
-| Client fallbacks | Webpack sets `fs: false`, `child_process: false` for the browser bundle (node-only modules leak through shared package imports). |
-| TypeScript | `ignoreBuildErrors: true` — the monorepo mixes React 19 (web) and React 18 (mobile), so the web app typechecks separately via `pnpm --filter @sayabot/web typecheck`. |
-| Hardening headers | `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()` on every route; `poweredByHeader: false`. |
-| Bundler | Empty `turbopack: {}` config (Turbopack enabled for dev). |
+| Setting           | Value / purpose                                                                                                                                                                                                                                                                                                                         |
+| :---------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Serwist           | `withSerwistInit({ swSrc: "src/sw.ts", swDest: "public/sw.js", disable: NODE_ENV === "development", cacheOnNavigation: false, reloadOnOnline: true })`. `additionalPrecacheEntries` pins `/offline`, `/icon.svg`, `/icon-192.png`, `/manifest.webmanifest` with a revision from `VERCEL_GIT_COMMIT_SHA` / `GIT_COMMIT_SHA` / timestamp. |
+| Standalone output | `NEXT_OUTPUT=standalone` (Docker builds) enables `output: "standalone"` with `outputFileTracingRoot` at the monorepo root so `packages/*` imported as source are traced.                                                                                                                                                                |
+| Packages          | `transpilePackages: ["@sayabot/core", "@sayabot/db", "@sayabot/llm"]` (consumed as source), `serverExternalPackages: ["pg", "pg-boss", "@e2b/code-interpreter"]`.                                                                                                                                                                       |
+| Client fallbacks  | Webpack sets `fs: false`, `child_process: false` for the browser bundle (node-only modules leak through shared package imports).                                                                                                                                                                                                        |
+| TypeScript        | `ignoreBuildErrors: true` — the monorepo mixes React 19 (web) and React 18 (mobile), so the web app typechecks separately via `pnpm --filter @sayabot/web typecheck`.                                                                                                                                                                   |
+| Hardening headers | `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()` on every route; `poweredByHeader: false`.                                                                                                    |
+| Bundler           | Empty `turbopack: {}` config (Turbopack enabled for dev).                                                                                                                                                                                                                                                                               |
 
 ---
 

@@ -28,7 +28,7 @@ export interface ExternalTurnResult {
   timedOut: boolean
   aborted: boolean
   error: string | null
-  deferred?: boolean  // pull-based (MCP) bot: picks the turn up from get_inbox
+  deferred?: boolean // pull-based (MCP) bot: picks the turn up from get_inbox
 }
 ```
 
@@ -56,13 +56,13 @@ DB tables touched: `agent_runs`, `messages` (runId link, content read). Events: 
 export type CliApp = "claude-code" | "codex" | "cursor"
 export interface CliRunnerConfig {
   app: CliApp
-  model: string | null   // null = the app's own default
-  effort?: EffortLevel   // --effort / model_reasoning_effort
+  model: string | null // null = the app's own default
+  effort?: EffortLevel // --effort / model_reasoning_effort
 }
 ```
 
 - **Binaries**: `claude`, `codex`, `cursor-agent` (Cursor's CLI is `cursor-agent`; plain `cursor` is the editor). `findCliBinary(app, env)` honours overrides `SAYABOT_CLAUDE_PATH` / `SAYABOT_CODEX_PATH` / `SAYABOT_CURSOR_PATH`, else searches `PATH` plus a wide list of install dirs (`/opt/homebrew/bin`, `/usr/local/bin`, `~/.local/bin`, `~/.claude/local`, `~/.bun/bin`, `~/.npm-global/bin`, `~/.volta/bin`, newest `~/.nvm/versions/node/*` first) for an executable.
-- **Sign-in detection** — `cliSignedIn(app)` only checks that a saved sign-in *exists*; credentials are never read into the process: Codex → `~/.codex/auth.json` (`CODEX_HOME` respected); Cursor → `CURSOR_API_KEY` env, macOS Keychain `cursor-access-token` (queried with `security find-generic-password` **without** `-w`, so the secret is never printed), or `"authInfo"` in `~/.cursor/cli-config.json`; Claude Code → `.credentials.json` in `CLAUDE_CONFIG_DIR`/`~/.claude`, Keychain `Claude Code-credentials` (account = `USER`/`userInfo().username`), or `"oauthAccount"` in `~/.claude.json`.
+- **Sign-in detection** — `cliSignedIn(app)` only checks that a saved sign-in _exists_; credentials are never read into the process: Codex → `~/.codex/auth.json` (`CODEX_HOME` respected); Cursor → `CURSOR_API_KEY` env, macOS Keychain `cursor-access-token` (queried with `security find-generic-password` **without** `-w`, so the secret is never printed), or `"authInfo"` in `~/.cursor/cli-config.json`; Claude Code → `.credentials.json` in `CLAUDE_CONFIG_DIR`/`~/.claude`, Keychain `Claude Code-credentials` (account = `USER`/`userInfo().username`), or `"oauthAccount"` in `~/.claude.json`.
 - **`cliRunnerAllowed(env)`** — the local-CLI fallback is only for a person's own computer: on by default outside production, forced with `SAYABOT_LOCAL_CLI=1`, disabled with `SAYABOT_LOCAL_CLI=0` (legacy alias `SAYABOT_LOCAL_DETECTION`).
 - **`cliRunnerConfig(params)`** — parses the explicit `params.runner = { where: "server", app, model }` (model validated against `^[\w./:@~-]{1,120}$`), with `params.effort` clamped via `clampEffort(..., ENGINE_EFFORT_LEVELS[app])`.
 - **`cheapCliModel(config, custom?)`** — the app's fast model for background jobs: `params.cheapModel` wins, Claude Code defaults to `claude-haiku-5-5`, everything else keeps its default; the agent's effort is dropped.
@@ -76,10 +76,10 @@ Builds the child env by stripping: session markers that would make a nested CLI 
 
 Non-interactive modes with **default (non-bypassed) permissions** — print mode refuses anything that would need approval, Codex keeps its read-only sandbox, Cursor gets no `--force` (Golden Rule 4):
 
-| App | Invocation |
-| :--- | :--- |
-| **Codex** | `codex exec --json --skip-git-repo-check --ephemeral --sandbox read-only [-c mcp_servers.sayabot.* …] [--model M] [-c model_reasoning_effort="E"] -` with `system\n\nprompt` on stdin. MCP config: url, `bearer_token_env_var`, `disabled_tools`, and `default_tools_approval_mode="approve"` (exec mode has nobody to approve with). |
-| **Cursor** | `cursor-agent -p --output-format stream-json [--model M] "<system\n\nprompt sliced to last 200,000 chars>"` on the command line, no stdin. |
+| App             | Invocation                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| :-------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Codex**       | `codex exec --json --skip-git-repo-check --ephemeral --sandbox read-only [-c mcp_servers.sayabot.* …] [--model M] [-c model_reasoning_effort="E"] -` with `system\n\nprompt` on stdin. MCP config: url, `bearer_token_env_var`, `disabled_tools`, and `default_tools_approval_mode="approve"` (exec mode has nobody to approve with).                                                                                                                                                                                                                                                                                                                                                                                                   |
+| **Cursor**      | `cursor-agent -p --output-format stream-json [--model M] "<system\n\nprompt sliced to last 200,000 chars>"` on the command line, no stdin.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | **Claude Code** | `claude -p --output-format stream-json --verbose --include-partial-messages --permission-mode default --no-session-persistence --tools Read,Glob,Grep,WebSearch,WebFetch --strict-mcp-config [--mcp-config <file> --allowedTools mcp__sayabot --disallowedTools mcp__sayabot__post_message,…] --setting-sources project,local --disable-slash-commands --exclude-dynamic-system-prompt-sections [--model M] [--effort E] --system-prompt <system ≤ 60,000 chars>` with the prompt on stdin. Runs "lean": Sayabot's system prompt replaces the coding-agent one, only read/search tools, none of the person's own MCP servers/plugins/skills — cutting ~25k input tokens a turn to ~4k while keeping the Keychain sign-in (no `--bare`). |
 
 ### JSONL event parsing (`parseCliLine`)
@@ -88,8 +88,13 @@ Non-interactive modes with **default (non-bypassed) permissions** — print mode
 export type CliEvent =
   | { kind: "delta"; text: string }
   | { kind: "message"; text: string }
-  | { kind: "done"; text: string | null; error: string | null; model: string | null;
-      usage: { inputTokens: number; outputTokens: number; cachedInputTokens: number } | null }
+  | {
+      kind: "done"
+      text: string | null
+      error: string | null
+      model: string | null
+      usage: { inputTokens: number; outputTokens: number; cachedInputTokens: number } | null
+    }
 ```
 
 - **Codex**: `item.completed` + `agent_message` → `message`; `turn.completed` → usage; `turn.failed`/`error` → error (`Reconnecting...` retries are ignored — only the last word counts).
@@ -121,7 +126,7 @@ A server-CLI room turn, on the person's own subscription:
 
 1. v1-style context: `loadConversation` + `renderTranscript` + canvas/tasks/task-brief, `buildSystemPrompt` + `buildUserPrompt`.
 2. Inserts `agent_runs` with `engine: "cli"` and the streaming message (metadata `{ agentName, agentHandle, role, runsOn: config.app }`).
-3. `registerRun(run.id, room.id, { agentId, engine: "cli" })` — CLI runs are *not* steerable (only `engine: "v2"` is).
+3. `registerRun(run.id, room.id, { agentId, engine: "cli" })` — CLI runs are _not_ steerable (only `engine: "v2"` is).
 4. `runCliProcess({ folder: cliAgentFolder(agent.handle), signal, room: { agentId, roomId }, onEvent })`. Streaming is append-only: only an extension of what the room already has is broadcast (`latest.startsWith(sentText)`), redacted, every 40 ms; content persists every 1 s; a non-extension update is only persisted, never streamed. `ttftMs` is captured at the first delta/message.
 5. Finalize: message `status` = `halted`/`complete`/`error` with redacted content and `{ error?, stopped? }` metadata; `recordUsageEvent({ provider: config.app, model, tokens: usage ? { ...usage, cacheWriteTokens: 0 } : null, kind: "llm", billing: "subscription", ttftMs, latencyMs })` — "Subscription runs cost nothing per token here, but the tokens still show on Usage"; `agent_runs` final row; `message.done` broadcast.
 
@@ -155,7 +160,7 @@ export interface LocalRunnerConfig {
 }
 ```
 
-- **`localRunnerConfig(params)`** — parses `params.runner = { hostId, app, model }`: `hostId` must be a UUID; unknown apps fall back to `"claude-code"`; model must match `^[\w.:/@+[\]-]{1,160}$` (it reaches the Mac's command line); `effort` clamped per app. This is the *explicit* "pin this bot to my Mac" runner.
+- **`localRunnerConfig(params)`** — parses `params.runner = { hostId, app, model }`: `hostId` must be a UUID; unknown apps fall back to `"claude-code"`; model must match `^[\w.:/@+[\]-]{1,160}$` (it reaches the Mac's command line); `effort` clamped per app. This is the _explicit_ "pin this bot to my Mac" runner.
 - **`defaultMacRunner(agent)`** — the fallback for agents with **no key, no computer, and no explicit runner** when Sayabot for Mac has a default turned on: requires the org to have exactly one member (the owner — nobody else's messages run on their Mac), then scans the owner's non-revoked `desktop_hosts` (newest `lastSeenAt` first, ≤ 5) for one with `settings.runnerEnabled`, `settings.localDefault.app` in `RUNNER_APPS` (`MAC_CLI_APP_IDS`: signed-in CLI apps only — a local model needs a model picked for it), and `hostOnline(lastSeenAt)`.
 - **`whenMacOff(params)`** — `params.whenMacOff` ∈ `"auto" | "server" | "wait" | "fail"` (default `"auto"`): what a pinned bot does when its Mac can't take the turn.
 - **`macPlan(agent, config): "local" | "wait" | "server"`** — the host must be un-revoked, owned by `agent.ownerUserId`, and `runnerEnabled`; if it's also online → `"local"`. Otherwise: `"fail"` → `"local"` (the turn fails downstream with a clear note); `"auto"`/`"server"` → `"server"` when `serverCanAnswer(agent without runner)`; else `"wait"` when the host is at least still configured, else `"local"`.
@@ -200,13 +205,13 @@ DB tables touched: `agent_runs`, `messages`, `local_runner_jobs`, `desktop_hosts
 
 ## 🧪 Tests
 
-| Test file | Covers |
-| :--- | :--- |
-| `src/runner/cli-agent.test.ts` | Runner config parsing, cheap models, command building, `parseCliLine` for all three apps, failure hints, env stripping. |
-| `src/runner/cli-model.test.ts` | `createCliLanguageModel` prompt flattening, JSON mode, usage mapping. |
-| `src/runner/default-mac.test.ts` | `defaultMacRunner` single-owner/host eligibility rules. |
-| `src/runner/mac-plan.test.ts` | `macPlan`/`whenMacOff` routing and `localRunnerConfig` parsing. |
-| `src/runner/stream-agent.test.ts`, `src/runner/room-model.test.ts`, `src/runner/local-events.test.ts` | Shared plumbing (see [runner-llm.md](./runner-llm.md)). |
+| Test file                                                                                             | Covers                                                                                                                  |
+| :---------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------- |
+| `src/runner/cli-agent.test.ts`                                                                        | Runner config parsing, cheap models, command building, `parseCliLine` for all three apps, failure hints, env stripping. |
+| `src/runner/cli-model.test.ts`                                                                        | `createCliLanguageModel` prompt flattening, JSON mode, usage mapping.                                                   |
+| `src/runner/default-mac.test.ts`                                                                      | `defaultMacRunner` single-owner/host eligibility rules.                                                                 |
+| `src/runner/mac-plan.test.ts`                                                                         | `macPlan`/`whenMacOff` routing and `localRunnerConfig` parsing.                                                         |
+| `src/runner/stream-agent.test.ts`, `src/runner/room-model.test.ts`, `src/runner/local-events.test.ts` | Shared plumbing (see [runner-llm.md](./runner-llm.md)).                                                                 |
 
 `runner/external.ts`, `runner/cli.ts`, and `runner/cli-mcp.ts` have no dedicated test files; they are covered indirectly through route-level and engine tests.
 

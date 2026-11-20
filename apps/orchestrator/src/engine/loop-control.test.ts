@@ -117,9 +117,11 @@ describe("capToolOutputForModel", () => {
   })
 
   it("retains diagnostics buried in the middle of long logs", () => {
-    const output = Array.from({ length: 5000 }, (_, i) => i === 2500
-      ? "src/auth.ts(42,7): error TS2322: string is not assignable to number"
-      : `progress ${i}: building module`).join("\n")
+    const output = Array.from({ length: 5000 }, (_, i) =>
+      i === 2500
+        ? "src/auth.ts(42,7): error TS2322: string is not assignable to number"
+        : `progress ${i}: building module`,
+    ).join("\n")
     const result = capToolOutputForModel({ stdout: output, exit_code: 1 })
     expect(JSON.stringify(result)).toContain("error TS2322")
     expect(JSON.stringify(result).length).toBeLessThanOrEqual(MODEL_OUTPUT_CHAR_LIMIT)
@@ -132,7 +134,10 @@ describe("capToolOutputForModel", () => {
 
   it("keeps head and tail of long strings", () => {
     const stdout = "HEAD" + "x".repeat(100_000) + "TAIL"
-    const capped = capToolOutputForModel({ stdout, exit_code: 1 }) as { stdout: string; exit_code: number }
+    const capped = capToolOutputForModel({ stdout, exit_code: 1 }) as {
+      stdout: string
+      exit_code: number
+    }
     expect(capped.exit_code).toBe(1)
     expect(capped.stdout.startsWith("HEAD")).toBe(true)
     expect(capped.stdout.endsWith("TAIL")).toBe(true)

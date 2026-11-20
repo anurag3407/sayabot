@@ -18,7 +18,11 @@ export interface LocalWorkspaceSnapshot {
 export type HandoffStep = "copy_to_cloud" | "copy_back" | "none"
 
 /** Same decision as planCloudHandoff in @sayabot/core. */
-function planCloudHandoff(input: { cloudReady: boolean; planActive: boolean; copied: boolean }): HandoffStep {
+function planCloudHandoff(input: {
+  cloudReady: boolean
+  planActive: boolean
+  copied: boolean
+}): HandoffStep {
   if (input.copied && !input.planActive) return "copy_back"
   if (input.cloudReady && input.planActive && !input.copied) return "copy_to_cloud"
   return "none"
@@ -29,13 +33,17 @@ export function computersFromRecord(value: unknown): LocalWorkspaceSnapshot["com
   if (!value || typeof value !== "object" || Array.isArray(value)) return null
   const row = value as Record<string, unknown>
   if ("boatToken" in row || "token" in row) return null
-  const text = (key: string) => (typeof row[key] === "string" && row[key] ? (row[key] as string) : null)
+  const text = (key: string) =>
+    typeof row[key] === "string" && row[key] ? (row[key] as string) : null
   const boatCiphertext = text("boatCiphertext")
   const boatIv = text("boatIv")
   const boatTag = text("boatTag")
   const boatLast4 = text("boatLast4")
   const sealed = Boolean(boatCiphertext && boatIv && boatTag && boatLast4)
-  const vpsSshAlias = typeof row.vpsSshAlias === "string" && /^[A-Za-z0-9_.:@-]+$/.test(row.vpsSshAlias) ? row.vpsSshAlias : null
+  const vpsSshAlias =
+    typeof row.vpsSshAlias === "string" && /^[A-Za-z0-9_.:@-]+$/.test(row.vpsSshAlias)
+      ? row.vpsSshAlias
+      : null
   if (!sealed && !vpsSshAlias) return null
   return {
     boatCiphertext: sealed ? boatCiphertext : null,
@@ -81,15 +89,18 @@ export async function importWorkspaceSnapshot(input: {
   fetch?: typeof fetch
 }): Promise<boolean> {
   const fetchImpl = input.fetch ?? fetch
-  const res = await fetchImpl(`${input.serverUrl.replace(/\/+$/, "")}/api/desktop/workspace-import`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-host-id": input.hostId,
-      "x-host-token": input.hostToken,
+  const res = await fetchImpl(
+    `${input.serverUrl.replace(/\/+$/, "")}/api/desktop/workspace-import`,
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-host-id": input.hostId,
+        "x-host-token": input.hostToken,
+      },
+      body: JSON.stringify({ snapshot: input.snapshot }),
     },
-    body: JSON.stringify({ snapshot: input.snapshot }),
-  })
+  )
   return res.ok
 }
 

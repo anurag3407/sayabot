@@ -9,7 +9,12 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client"
 import { AvatarStack } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { useTheme } from "@/components/theme-provider"
-import { colorForUser, peersFromAwareness, remoteCursorCss, type CanvasPeer } from "@/lib/canvas-presence"
+import {
+  colorForUser,
+  peersFromAwareness,
+  remoteCursorCss,
+  type CanvasPeer,
+} from "@/lib/canvas-presence"
 import type { CanvasView } from "@/lib/types"
 
 const MonacoEditor = dynamic(() => import("@monaco-editor/react").then((mod) => mod.Editor), {
@@ -70,7 +75,13 @@ export function CanvasEditor({
       },
       onStatus: ({ status }) => {
         if (disposed) return
-        setConnection(status === "connected" ? "connected" : status === "connecting" ? "connecting" : "disconnected")
+        setConnection(
+          status === "connected"
+            ? "connected"
+            : status === "connecting"
+              ? "connecting"
+              : "disconnected",
+        )
       },
       onClose: () => {
         if (!disposed) setConnection("disconnected")
@@ -105,10 +116,12 @@ export function CanvasEditor({
     }
   }, [session])
 
-  const peerPeople = [...new Map(peers.map((peer) => [peer.userId, peer])).values()].map((peer) => ({
-    id: peer.userId,
-    name: peer.name,
-  }))
+  const peerPeople = [...new Map(peers.map((peer) => [peer.userId, peer])).values()].map(
+    (peer) => ({
+      id: peer.userId,
+      name: peer.name,
+    }),
+  )
 
   useEffect(() => {
     if (!session) return
@@ -244,8 +257,8 @@ export function CanvasEditor({
           <div className="max-w-sm border-l-2 border-[var(--color-danger)] pl-4">
             <p className="font-mono text-[12px] text-danger">could not open this canvas</p>
             <p className="mt-2 text-[13px] leading-relaxed text-muted">
-              You may have been signed out, or you may no longer have access to this room. Reload
-              to try again.
+              You may have been signed out, or you may no longer have access to this room. Reload to
+              try again.
             </p>
             <Button className="mt-3" size="sm" onClick={() => window.location.reload()}>
               Reload

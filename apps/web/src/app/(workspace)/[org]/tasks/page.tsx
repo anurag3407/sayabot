@@ -19,8 +19,13 @@ export default async function TasksPage({ params }: { params: Promise<{ org: str
     <TasksView
       orgSlug={orgSlug}
       tasks={tasks}
-      rooms={rooms.filter((room) => room.kind !== "dm").map((room) => ({ id: room.id, name: room.name }))}
-      members={members.map((member) => ({ userId: member.userId, displayName: member.displayName }))}
+      rooms={rooms
+        .filter((room) => room.kind !== "dm")
+        .map((room) => ({ id: room.id, name: room.name }))}
+      members={members.map((member) => ({
+        userId: member.userId,
+        displayName: member.displayName,
+      }))}
       agents={agents.map((agent) => ({
         id: agent.id,
         handle: agent.handle,

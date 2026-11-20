@@ -8,7 +8,9 @@ import { createSupabaseServerClient } from "@/lib/supabase/server"
  * token; the web app relies on its session cookie. The returned client carries that person's
  * RLS, so reads stay scoped to what they can see.
  */
-export async function userFromRequest(request: Request): Promise<{ user: User; client: SupabaseClient<any> } | null> {
+export async function userFromRequest(
+  request: Request,
+): Promise<{ user: User; client: SupabaseClient<any> } | null> {
   const header = request.headers.get("authorization")
   if (header && header.slice(0, 7).toLowerCase() === "bearer ") {
     const token = header.slice(7).trim()

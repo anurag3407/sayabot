@@ -14,7 +14,14 @@ describe("MCP tool registry", () => {
 
   it("core collab tools exist (inbox, messages, tasks, decisions, votes, check-in)", () => {
     const names = MCP_TOOLS.map((t) => t.name)
-    for (const expected of ["get_inbox", "post_message", "list_tasks", "claim_task", "request_human_decision", "start_vote"]) {
+    for (const expected of [
+      "get_inbox",
+      "post_message",
+      "list_tasks",
+      "claim_task",
+      "request_human_decision",
+      "start_vote",
+    ]) {
       expect(names, expected).toContain(expected)
     }
   })

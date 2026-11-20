@@ -46,26 +46,40 @@ function chatOverride(override: Record<string, unknown> | null): RoomBotModel["c
 }
 
 /** The bots in one chat and the model each answers with there. Null when the room is not in this org. */
-export async function loadRoomBotModels(orgId: string, roomId: string): Promise<RoomBotModel[] | null> {
+export async function loadRoomBotModels(
+  orgId: string,
+  roomId: string,
+): Promise<RoomBotModel[] | null> {
   const admin = createAdminClient()
-  const { data: room } = await admin.from("rooms").select("id, org_id").eq("id", roomId).maybeSingle()
+  const { data: room } = await admin
+    .from("rooms")
+    .select("id, org_id")
+    .eq("id", roomId)
+    .maybeSingle()
   if (!room || room.org_id !== orgId) return null
   const { data: rows } = await admin
     .from("room_agents")
-    .select("position, model_override, agents(id, handle, display_name, kind, provider_key_id, model, params)")
+    .select(
+      "position, model_override, agents(id, handle, display_name, kind, provider_key_id, model, params)",
+    )
     .eq("room_id", room.id)
     .order("position")
   const bots: RoomBotModel[] = []
   for (const row of (rows ?? []) as Array<Record<string, unknown>>) {
     const agent = row.agents as Record<string, unknown> | null
     if (!agent) continue
-    bots.push(botFromAgent(agent, chatOverride(row.model_override as Record<string, unknown> | null)))
+    bots.push(
+      botFromAgent(agent, chatOverride(row.model_override as Record<string, unknown> | null)),
+    )
   }
   return bots
 }
 
 /** One bot's default model, for the agent page picker. Null when it is not in this org. */
-export async function loadAgentPickerModel(orgId: string, agentId: string): Promise<RoomBotModel | null> {
+export async function loadAgentPickerModel(
+  orgId: string,
+  agentId: string,
+): Promise<RoomBotModel | null> {
   const admin = createAdminClient()
   const { data: agent } = await admin
     .from("agents")
@@ -131,7 +145,12 @@ export async function writeAgentModel(input: {
     actorId: input.access.user.id,
     action: choice.runner ? "agent.runner_set" : "agent.model_changed",
     target: agent.id,
-    metadata: { keyId: input.providerKeyId, model: input.model, runner: choice.runner, effort: params.effort ?? null },
+    metadata: {
+      keyId: input.providerKeyId,
+      model: input.model,
+      runner: choice.runner,
+      effort: params.effort ?? null,
+    },
   })
   // A chat that followed this bot's default keeps doing so; one with its own model keeps that.
   // Only the bot pages show its model; re-rendering the whole workspace made picks lag.
@@ -158,11 +177,21 @@ export async function writeRoomAgentModel(input: {
   const admin = createAdminClient()
   const [{ data: room }, { data: link }, { data: agent }] = await Promise.all([
     admin.from("rooms").select("id, org_id").eq("id", input.roomId).maybeSingle(),
-    admin.from("room_agents").select("agent_id").eq("room_id", input.roomId).eq("agent_id", input.agentId).maybeSingle(),
-    admin.from("agents").select("id, org_id, kind, handle, owner_user_id").eq("id", input.agentId).maybeSingle(),
+    admin
+      .from("room_agents")
+      .select("agent_id")
+      .eq("room_id", input.roomId)
+      .eq("agent_id", input.agentId)
+      .maybeSingle(),
+    admin
+      .from("agents")
+      .select("id, org_id, kind, handle, owner_user_id")
+      .eq("id", input.agentId)
+      .maybeSingle(),
   ])
   if (!room || room.org_id !== input.access.org.id) return fail("Chat not found")
-  if (!link || !agent || agent.org_id !== input.access.org.id) return fail("That bot isn't in this chat")
+  if (!link || !agent || agent.org_id !== input.access.org.id)
+    return fail("That bot isn't in this chat")
   if (agent.kind !== "llm") return fail("Invited agents use the model of their own app")
 
   if (input.scope === "default" || input.clear) {
@@ -177,9 +206,17 @@ export async function writeRoomAgentModel(input: {
       })
       if (!saved.ok) return saved
     }
-    const { error } = await admin.from("room_agents").update({ model_override: null }).eq("room_id", room.id).eq("agent_id", agent.id)
+    const { error } = await admin
+      .from("room_agents")
+      .update({ model_override: null })
+      .eq("room_id", room.id)
+      .eq("agent_id", agent.id)
     if (error) return fail(errorMessage(error))
-    return ok(input.clear ? `@${agent.handle} uses its own model here again` : `@${agent.handle}'s model changed everywhere`)
+    return ok(
+      input.clear
+        ? `@${agent.handle} uses its own model here again`
+        : `@${agent.handle}'s model changed everywhere`,
+    )
   }
 
   const resolved = await resolveModelChoice({
@@ -194,7 +231,9 @@ export async function writeRoomAgentModel(input: {
   const choice = resolved.choice
   // A chat can't hand someone else's bot to your Mac: a Mac only runs its owner's bots.
   if (choice.macOwnerUserId && agent.owner_user_id !== choice.macOwnerUserId) {
-    return fail(`Only @${agent.handle}'s owner can run it on their computer. Use "Chat + bot default" to take it over.`)
+    return fail(
+      `Only @${agent.handle}'s owner can run it on their computer. Use "Chat + bot default" to take it over.`,
+    )
   }
   const override = {
     keyId: input.keyId ?? null,
@@ -204,14 +243,23 @@ export async function writeRoomAgentModel(input: {
     agentModel: choice.agentModel,
     runner: choice.runner,
   }
-  const { error } = await admin.from("room_agents").update({ model_override: override }).eq("room_id", room.id).eq("agent_id", agent.id)
+  const { error } = await admin
+    .from("room_agents")
+    .update({ model_override: override })
+    .eq("room_id", room.id)
+    .eq("agent_id", agent.id)
   if (error) return fail(errorMessage(error))
   await audit({
     orgId: input.access.org.id,
     actorId: input.access.user.id,
     action: "room.agent_model_set",
     target: room.id,
-    metadata: { agentId: agent.id, keyId: override.keyId, model: override.model, effort: override.effort },
+    metadata: {
+      agentId: agent.id,
+      keyId: override.keyId,
+      model: override.model,
+      effort: override.effort,
+    },
   })
   return ok(`@${agent.handle} uses ${choice.label} in this chat`)
 }

@@ -9,14 +9,14 @@ Source files: `apps/orchestrator/src/computers/e2b.ts`, `apps/orchestrator/src/t
 ## Setup and credentials
 
 - The admin pastes an E2B key (`e2b_…`) in Settings → AI providers → Computers and browser. It is sealed into `org_computer_settings.e2b_ciphertext/iv/tag` with `MESH_KEK` and only `e2b_last4` is shown again ([../../database/schema-computers-devices-desktop.md](../../database/schema-computers-devices-desktop.md)).
-- `e2bKeyForOrg(orgId)` decrypts it; through `boatCredential(own, process.env.E2B_API_KEY)` the workspace's own key wins and the server's `E2B_API_KEY` is the fallback (`source: "included"`). Neither → *"No E2B key is set in Settings → AI providers."*
+- `e2bKeyForOrg(orgId)` decrypts it; through `boatCredential(own, process.env.E2B_API_KEY)` the workspace's own key wins and the server's `E2B_API_KEY` is the fallback (`source: "included"`). Neither → _"No E2B key is set in Settings → AI providers."_
 - `buildTools` marks `available.e2bConfigured` when either key exists. A person picks it per bot under Works on → Cloud desktop → E2B (`params.worksOn = "e2b"`), which also turns on the bot's `computer` capability.
 
-| Env var | Role |
-| :--- | :--- |
-| `E2B_API_KEY` | Server-wide fallback key, used only when the workspace has none |
+| Env var                | Role                                                                                |
+| :--------------------- | :---------------------------------------------------------------------------------- |
+| `E2B_API_KEY`          | Server-wide fallback key, used only when the workspace has none                     |
 | `SAYABOT_E2B_TEMPLATE` | Template for new sandboxes; default `desktop` (E2B's public template with a screen) |
-| `MESH_KEK` | Opens the sealed workspace key |
+| `MESH_KEK`             | Opens the sealed workspace key                                                      |
 
 ## Lifecycle
 
@@ -43,7 +43,7 @@ flowchart TD
 
 `runE2bShell({ orgId, agentId, params, command, timeoutMs?, background? })` never throws and returns `{ ok, output, stdout, exitCode, background? }`:
 
-- Without `params.computer.e2bId` → *"Call select_computer with e2b first."*
+- Without `params.computer.e2bId` → _"Call select_computer with e2b first."_
 - Foreground: `sbx.commands.run(command, { timeoutMs })` (default 60 s). The SDK throws `CommandExitError` on a non-zero exit; its `exitCode`/`stdout`/`stderr` are read the same way, so a failing command is `ok: false` with its stderr, not an exception.
 - `stdout` is capped at 2 MiB (file reads use it); `output` joins stdout and stderr.
 - `background: true` starts the command with `{ background: true }` and returns at once with its pid.
@@ -52,7 +52,7 @@ The computer tools route `e2b` through `readyServer()` in `computer.ts`, the sam
 
 ## Screen
 
-`captureE2bScreen` runs `panelShotCommand()` (scrot → ImageMagick → ffmpeg fallbacks into `/tmp/sayabot-screen.jpg`) and reads the bytes back with `sbx.files.read(path, { format: "bytes" })` — never through the shell. A template without a display gives *"The E2B screen could not be read. Its template may have no display."* `computer_click` runs `boatClickCommand` (xdotool) in the sandbox.
+`captureE2bScreen` runs `panelShotCommand()` (scrot → ImageMagick → ffmpeg fallbacks into `/tmp/sayabot-screen.jpg`) and reads the bytes back with `sbx.files.read(path, { format: "bytes" })` — never through the shell. A template without a display gives _"The E2B screen could not be read. Its template may have no display."_ `computer_click` runs `boatClickCommand` (xdotool) in the sandbox.
 
 ## Limits
 

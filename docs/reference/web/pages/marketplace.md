@@ -8,6 +8,7 @@ Sayabot separates app integrations from ready-made agent discovery into two dedi
 The legacy `/[org]/marketplace` route automatically redirects to `/[org]/connectors` (or `/[org]/bot-store` when `tab=agents`), preserving all query params (e.g. `connected`, `tools`, `signin_error`).
 
 Source files:
+
 - Connectors: `apps/web/src/app/(workspace)/[org]/connectors/page.tsx`, `apps/web/src/components/connectors/connectors-view.tsx`
 - Bot Store: `apps/web/src/app/(workspace)/[org]/bot-store/page.tsx`, `apps/web/src/components/bot-store/bot-store-view.tsx`, `apps/web/src/lib/curated-bot-templates.ts`
 - Shared Catalog: `apps/web/src/lib/marketplace.ts`, `apps/web/src/lib/marketplace-catalog.ts`, `apps/web/src/lib/actions/marketplace.ts`
@@ -23,7 +24,7 @@ Source files:
 3. Runs two parallel admin-client queries (`page.tsx:19-30`):
    - `mcp_servers` for the org, newest first, selecting `id, name, url, enabled, room_id, catalog_app, auth_kind, auth_status`.
    - `agent_templates` where `org_id IS NULL` (global) or `org_id = <org>`, oldest first, selecting `id, slug, name, description, category`.
-4. Maps servers to a safe `ServerSummary` shape: only `host` (from `safeHost(url)`) is exposed — the comment at `page.tsx:42` explains why: *"Never send a saved URL to the browser: some carry the key (Exa, Firecrawl, Zapier)."* `signIn` is derived as `"ok" | "pending" | "signed_out"` from `auth_status` only when `auth_kind === "oauth"`, else `null`.
+4. Maps servers to a safe `ServerSummary` shape: only `host` (from `safeHost(url)`) is exposed — the comment at `page.tsx:42` explains why: _"Never send a saved URL to the browser: some carry the key (Exa, Firecrawl, Zapier)."_ `signIn` is derived as `"ok" | "pending" | "signed_out"` from `auth_status` only when `auth_kind === "oauth"`, else `null`.
 5. Renders `<MarketplaceView>` with `canManage` (`role === "owner" || "admin"`), `initialTab` (`tab === "agents" ? "agents" : "apps"`), and a `notice` built from the query params: `signin_error` becomes a danger toast (truncated to 300 chars); `connected` becomes a success toast (`"<name> connected"` plus `" with N tools"` when `tools` is numeric).
 
 ## 🧩 Marketplace View (`components/marketplace/marketplace-view.tsx`)
@@ -46,12 +47,12 @@ Source files:
 
 `ConnectDialog` is a modal (bottom sheet on mobile, centered ≥ `sm`) for one app. Copy and inputs vary by `app.auth.kind`:
 
-| Auth kind | UI | Submit gating |
-| :--- | :--- | :--- |
-| `none` | "No account needed" explainer | always enabled |
-| `oauth` | "You'll go to <name> to sign in…" + note that mutating actions wait for approval in the Inbox | always enabled; button reads "Sign in with <name>" |
-| `token` / `url-key` | password input for the secret + `auth.help` hint | token: enabled if `auth.optional` or non-empty; url-key: requires input |
-| `personal-url` | URL input with `auth.placeholder` | requires input |
+| Auth kind           | UI                                                                                            | Submit gating                                                           |
+| :------------------ | :-------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------- |
+| `none`              | "No account needed" explainer                                                                 | always enabled                                                          |
+| `oauth`             | "You'll go to <name> to sign in…" + note that mutating actions wait for approval in the Inbox | always enabled; button reads "Sign in with <name>"                      |
+| `token` / `url-key` | password input for the secret + `auth.help` hint                                              | token: enabled if `auth.optional` or non-empty; url-key: requires input |
+| `personal-url`      | URL input with `auth.placeholder`                                                             | requires input                                                          |
 
 Additional footnotes: secrets are "Stored encrypted. Agents use it through Sayabot and never see it."; `runOn: "desktop"` / `"server"` apps get an explainer about where the local program runs; apps with explicit `dangerousTools` (not the `@writes` wildcard) get a note that those actions wait for approval in the Inbox. A docs link (`app.docs`, new tab) sits next to the submit button.
 
@@ -70,7 +71,7 @@ Renders the brand logo in a white rounded tile when `brandLogo(app.id)` exists (
 ### Types
 
 - `AppAuth` is a discriminated union: `none` | `token` (`header`, `prefix`, `label`, `help`, `optional?`, `env?` — when `env` is set the key becomes an environment variable for a local program, not an HTTP header) | `url-key` (a `template` with `{key}`) | `personal-url` (validated against `host`) | `oauth`.
-- `MarketplaceApp` adds `id`, `name`, `tagline`, `category`, `url`, `transport: "http" | "sse" | "stdio"`, `runOn?: "server" | "desktop"` (for stdio local programs), `color`, `docs`, and `dangerousTools?: string[]` — tool names that require human approval; the special value `"@writes"` means *every tool not named like a read* (`get_`, `list_`, `search_`…), for apps whose tool names vary.
+- `MarketplaceApp` adds `id`, `name`, `tagline`, `category`, `url`, `transport: "http" | "sse" | "stdio"`, `runOn?: "server" | "desktop"` (for stdio local programs), `color`, `docs`, and `dangerousTools?: string[]` — tool names that require human approval; the special value `"@writes"` means _every tool not named like a read_ (`get_`, `list_`, `search_`…), for apps whose tool names vary.
 
 ### Composition
 
@@ -110,6 +111,8 @@ The browser sends only the id and the secret; URL, transport, and headers come f
 The row is inserted into `mcp_servers` with `room_id: null`, sealed `headers_enc` (either `{ headers }` or `{ env }` envelope), `dangerous_tools: app.dangerousTools ?? []`, `enabled: true`, `created_by`, `catalog_app: app.id`, and audited as `mcp_server.created`.
 
 For `stdio` apps it returns immediately ("saved", with a `runOn` explainer). For remote apps it immediately **tests the connection** with `listMcpTools(orgSlug, serverId)` (`actions/marketplace.ts:112`): a failure returns success with `reachable: false` and a "Saved, but <name> didn't answer yet" message so a wrong key surfaces here rather than later in a room; success reports the tool count.
+
+That test (and "try a tool") goes through `apps/web/src/lib/mcp-client.ts`, which applies the same rules the agent applies at run time: `https:` only (HTTP needs `ALLOW_LOCAL_MCP=true`), no credentials or fragment in the URL, `redirect: "error"`, and the sealed headers opened with the workspace KEK. A connection that the settings page reports as working is therefore one the agent will also accept.
 
 ### `disconnectMarketplaceServerAction({ orgSlug, serverId })`
 

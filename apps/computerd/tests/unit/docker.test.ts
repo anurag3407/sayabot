@@ -28,7 +28,9 @@ describe("DockerClient (fetch stubbed)", () => {
   it("create/start/stop/remove hit the right endpoints", async () => {
     const calls = stubFetch(() => Response.json({ Id: "abc" }))
     const client = new DockerClient("http://d")
-    await expect(client.createContainer({ Image: "img", name: "n" })).resolves.toEqual({ Id: "abc" })
+    await expect(client.createContainer({ Image: "img", name: "n" })).resolves.toEqual({
+      Id: "abc",
+    })
     expect(calls[0]!.url).toContain("/containers/create?name=n")
     await client.startContainer("n")
     expect(calls.at(-1)!.url).toContain("/containers/n/start")
@@ -41,10 +43,15 @@ describe("DockerClient (fetch stubbed)", () => {
   })
 
   it("execCreate posts Cmd and execStart posts Detach/Tty", async () => {
-    const calls = stubFetch((url) => url.includes("/start") ? new Response("out") : Response.json({ Id: "e1" }))
+    const calls = stubFetch((url) =>
+      url.includes("/start") ? new Response("out") : Response.json({ Id: "e1" }),
+    )
     const client = new DockerClient("http://d")
     await expect(client.execCreate("c1", ["ls"])).resolves.toEqual({ Id: "e1" })
-    expect(JSON.parse(String(calls[0]!.init!.body))).toMatchObject({ Cmd: ["ls"], AttachStdout: true })
+    expect(JSON.parse(String(calls[0]!.init!.body))).toMatchObject({
+      Cmd: ["ls"],
+      AttachStdout: true,
+    })
     const res = await client.execStart("e1")
     expect(await res.text()).toBe("out")
   })
@@ -52,7 +59,9 @@ describe("DockerClient (fetch stubbed)", () => {
   it("ping is true on 2xx and false on network failure", async () => {
     stubFetch(() => new Response("OK"))
     await expect(new DockerClient("http://d").ping()).resolves.toBe(true)
-    vi.stubGlobal("fetch", async () => { throw new Error("down") })
+    vi.stubGlobal("fetch", async () => {
+      throw new Error("down")
+    })
     await expect(new DockerClient("http://d").ping()).resolves.toBe(false)
   })
 })

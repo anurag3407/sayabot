@@ -55,7 +55,14 @@ const NONE: ComputerDecision = { surface: "off", action: "none", reason: "" }
  */
 export function macScreenAllowed(params: Record<string, unknown> | null | undefined): boolean {
   const worksOn = worksOnFromParams(params)
-  if (worksOn === "boat" || worksOn === "local_vm" || worksOn === "vps" || worksOn === "e2b" || worksOn === "off") return false
+  if (
+    worksOn === "boat" ||
+    worksOn === "local_vm" ||
+    worksOn === "vps" ||
+    worksOn === "e2b" ||
+    worksOn === "off"
+  )
+    return false
   return availabilityFromParams(params).thisComputer
 }
 
@@ -82,7 +89,9 @@ export function worksOnFromParams(params: Record<string, unknown> | null | undef
 }
 
 /** Desktops this bot may use, stored on the bot until a live Boat or VPS lookup replaces it. */
-export function availabilityFromParams(params: Record<string, unknown> | null | undefined): ComputerAvailability {
+export function availabilityFromParams(
+  params: Record<string, unknown> | null | undefined,
+): ComputerAvailability {
   const raw = params?.computer
   const computer = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {}
   const boatState = computer.boatState
@@ -90,7 +99,10 @@ export function availabilityFromParams(params: Record<string, unknown> | null | 
     thisComputer: computer.thisComputer === true,
     localVmReady: computer.localVmReady === true,
     boatConfigured: computer.boatConfigured === true,
-    boatState: boatState === "running" || boatState === "sleeping" || boatState === "absent" ? boatState : "absent",
+    boatState:
+      boatState === "running" || boatState === "sleeping" || boatState === "absent"
+        ? boatState
+        : "absent",
     vpsReady: computer.vpsReady === true,
     startVpsAutomatically: computer.startVpsAutomatically === true,
     e2bConfigured: computer.e2bConfigured === true,
@@ -152,7 +164,8 @@ function pickReady(available: ComputerAvailability): ComputerDecision {
   return {
     surface: "off",
     action: "none",
-    reason: "No desktop is ready. Call select_computer to choose one. Auto does not create or wake a Boat.",
+    reason:
+      "No desktop is ready. Call select_computer to choose one. Auto does not create or wake a Boat.",
   }
 }
 
@@ -171,16 +184,28 @@ function place(
     case "this_computer":
       return available.thisComputer
         ? use("this_computer")
-        : { surface: "off", action: "none", reason: "This computer is off for this bot until it is turned on." }
+        : {
+            surface: "off",
+            action: "none",
+            reason: "This computer is off for this bot until it is turned on.",
+          }
     case "local_vm":
       return available.localVmReady
         ? use("local_vm")
         : fromAuto
-          ? { surface: "off", action: "none", reason: "No local VM is ready. Call select_computer to create one." }
+          ? {
+              surface: "off",
+              action: "none",
+              reason: "No local VM is ready. Call select_computer to create one.",
+            }
           : { surface: "local_vm", action: "provision", reason: "" }
     case "boat":
       if (!available.boatConfigured && available.boatState === "absent") {
-        return { surface: "off", action: "none", reason: "No Boat key is set in Settings → Computers." }
+        return {
+          surface: "off",
+          action: "none",
+          reason: "No Boat key is set in Settings → Computers.",
+        }
       }
       if (available.boatState === "running") return use("boat")
       if (fromAuto) {
@@ -206,7 +231,11 @@ function place(
     case "e2b":
       if (available.e2bReady) return use("e2b")
       if (!available.e2bConfigured) {
-        return { surface: "off", action: "none", reason: "No E2B key is set in Settings → AI providers." }
+        return {
+          surface: "off",
+          action: "none",
+          reason: "No E2B key is set in Settings → AI providers.",
+        }
       }
       if (fromAuto) {
         return {
@@ -231,7 +260,9 @@ export function rememberSelectedDesktop(
 ): void {
   if (applied.ok === false || decision.action === "none") return
   const current =
-    params.computer && typeof params.computer === "object" ? { ...(params.computer as Record<string, unknown>) } : {}
+    params.computer && typeof params.computer === "object"
+      ? { ...(params.computer as Record<string, unknown>) }
+      : {}
   if (decision.surface === "boat" && typeof applied.boatId === "string") {
     available.boatState = "running"
     available.boatConfigured = true
@@ -275,7 +306,10 @@ export function boatShouldSleep(input: {
   watching: boolean
 }): boolean {
   if (input.watching) return false
-  if (input.backgroundStartedAt !== null && input.now - input.backgroundStartedAt < BOAT_BACKGROUND_MAX_MS) {
+  if (
+    input.backgroundStartedAt !== null &&
+    input.now - input.backgroundStartedAt < BOAT_BACKGROUND_MAX_MS
+  ) {
     return false
   }
   if (input.nextRoutineAt !== null) {

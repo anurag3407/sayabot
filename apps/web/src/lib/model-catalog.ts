@@ -97,7 +97,9 @@ export interface PickerGroup {
   hostName?: string
 }
 
-const RUNNER_APPS: Record<string, string> = Object.fromEntries(MAC_CLI_APPS.map((app) => [app.id, app.name]))
+const RUNNER_APPS: Record<string, string> = Object.fromEntries(
+  MAC_CLI_APPS.map((app) => [app.id, app.name]),
+)
 
 /** A model an app on someone's Mac listed (see the desktop heartbeat). */
 export interface ReportedModel {
@@ -125,16 +127,29 @@ export interface RunnerHost {
  * Apps on a Mac and the model provider each one stands for in the picker (MAC_CLI_APPS in
  * @sayabot/core). Apps that don't report their models fall back to Sayabot's list for the engine.
  */
-const MAC_APP_FALLBACK: Record<string, { engine?: "claude-code" | "codex" | "cursor"; suggestions?: string }> = {
+const MAC_APP_FALLBACK: Record<
+  string,
+  { engine?: "claude-code" | "codex" | "cursor"; suggestions?: string }
+> = {
   "claude-code": { engine: "claude-code" },
   codex: { engine: "codex" },
   gemini: { suggestions: "google" },
   cursor: { engine: "cursor" },
 }
-const MAC_APPS: Record<string, { provider: string; label: string; engine?: "claude-code" | "codex" | "cursor"; suggestions?: string }> =
-  Object.fromEntries(
-    MAC_CLI_APPS.map((app) => [app.id, { provider: app.provider, label: app.label, ...MAC_APP_FALLBACK[app.id] }]),
-  )
+const MAC_APPS: Record<
+  string,
+  {
+    provider: string
+    label: string
+    engine?: "claude-code" | "codex" | "cursor"
+    suggestions?: string
+  }
+> = Object.fromEntries(
+  MAC_CLI_APPS.map((app) => [
+    app.id,
+    { provider: app.provider, label: app.label, ...MAC_APP_FALLBACK[app.id] },
+  ]),
+)
 const LOCAL_MODEL_APPS: Record<string, { provider: string; label: string }> = {
   ollama: { provider: "ollama", label: "Ollama" },
   lmstudio: { provider: "lmstudio", label: "LM Studio" },
@@ -167,12 +182,16 @@ function macAppModels(
     id: m.id,
     label: m.label,
     ...(m.effort ? { effort: effortList(m.effort) } : {}),
-    ...(m.defaultEffort && isEffortLevel(m.defaultEffort) ? { defaultEffort: m.defaultEffort } : {}),
+    ...(m.defaultEffort && isEffortLevel(m.defaultEffort)
+      ? { defaultEffort: m.defaultEffort }
+      : {}),
   }))
   const defaultModel = reported?.find((m) => m.isDefault)
   const defaultRow: PickerModel = {
     id: "default",
-    label: defaultModel ? `${spec?.label ?? app} default · ${defaultModel.label}` : `${spec?.label ?? app} default`,
+    label: defaultModel
+      ? `${spec?.label ?? app} default · ${defaultModel.label}`
+      : `${spec?.label ?? app} default`,
   }
   if (fromApp.length) {
     // Apps Sayabot has no effort list for (OpenCode, Copilot…) say which levels their models take.
@@ -209,7 +228,11 @@ export interface ServerCliApp {
 
 const CLI_ENGINES: Record<string, { provider: string; label: string; defaultLabel: string }> = {
   "claude-code": { provider: "anthropic", label: "Claude", defaultLabel: "Claude Code default" },
-  codex: { provider: "openai", label: "Codex", defaultLabel: "Codex default (your Codex settings)" },
+  codex: {
+    provider: "openai",
+    label: "Codex",
+    defaultLabel: "Codex default (your Codex settings)",
+  },
   cursor: { provider: "cursor", label: "Cursor", defaultLabel: "Cursor default (Auto)" },
 }
 
@@ -224,7 +247,10 @@ function addModel(list: PickerModel[], seen: Set<string>, model: PickerModel) {
 
 /** Resolves within `ms` with the fallback, so one slow provider never holds up the page. */
 function within<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
-  return Promise.race([promise.catch(() => fallback), new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms))])
+  return Promise.race([
+    promise.catch(() => fallback),
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+  ])
 }
 
 function fromEngine(row: EngineCatalog["options"][number]): PickerModel {
@@ -254,7 +280,11 @@ function fromProvider(row: ProviderModel): PickerModel {
 
 function planOf(usage: PlanUsage | null): PickerPlan | undefined {
   if (!usage) return undefined
-  return { plan: usage.plan, windows: usage.windows, ...(usage.error ? { error: usage.error } : {}) }
+  return {
+    plan: usage.plan,
+    windows: usage.windows,
+    ...(usage.error ? { error: usage.error } : {}),
+  }
 }
 
 interface KeySecretRow {
@@ -284,7 +314,13 @@ async function keySecrets(orgId: string): Promise<Map<string, string>> {
       out.set(
         row.id,
         providerKeyToApiKey(
-          { provider: row.provider as never, baseUrl: row.base_url, ciphertext: row.ciphertext, iv: row.iv, tag: row.tag },
+          {
+            provider: row.provider as never,
+            baseUrl: row.base_url,
+            ciphertext: row.ciphertext,
+            iv: row.iv,
+            tag: row.tag,
+          },
           kek,
         ),
       )
@@ -313,17 +349,27 @@ export async function buildModelCatalog(
   const [engineLists, plans, secrets] = await Promise.all([
     Promise.all(
       readyApps.map((app) =>
-        within(engineModelCatalog(app.id as "claude-code" | "codex" | "cursor"), 8_000, null as EngineCatalog | null),
+        within(
+          engineModelCatalog(app.id as "claude-code" | "codex" | "cursor"),
+          8_000,
+          null as EngineCatalog | null,
+        ),
       ),
     ),
     Promise.all(
       readyApps.map((app) =>
         PLAN_ENGINES.has(app.id) && app.status === "ready"
-          ? within(loadEnginePlanUsage(app.id as "claude-code" | "codex"), 9_000, null as PlanUsage | null)
+          ? within(
+              loadEnginePlanUsage(app.id as "claude-code" | "codex"),
+              9_000,
+              null as PlanUsage | null,
+            )
           : Promise.resolve(null),
       ),
     ),
-    keys.length ? keySecrets(orgId).catch(() => new Map<string, string>()) : Promise.resolve(new Map<string, string>()),
+    keys.length
+      ? keySecrets(orgId).catch(() => new Map<string, string>())
+      : Promise.resolve(new Map<string, string>()),
   ])
   const keyLists = await Promise.all(
     keys.map((key) =>
@@ -380,7 +426,8 @@ export async function buildModelCatalog(
     for (const row of list?.options ?? []) addModel(models, seen, fromEngine(row))
     for (const m of app.models ?? []) addModel(models, seen, { id: m.id, label: m.label })
     for (const use of inUse) {
-      if (use.keyId === keyId && use.model) addModel(models, seen, { id: use.model, label: use.model })
+      if (use.keyId === keyId && use.model)
+        addModel(models, seen, { id: use.model, label: use.model })
     }
     const plan = planOf(plans[index] ?? null)
     groups.push({
@@ -406,10 +453,12 @@ export async function buildModelCatalog(
     const seen = new Set<string>()
     for (const row of list?.models ?? []) addModel(models, seen, fromProvider(row))
     if (!models.length) {
-      for (const id of MODEL_SUGGESTIONS[provider] ?? []) addModel(models, seen, { id, label: id, free: id.endsWith(":free") })
+      for (const id of MODEL_SUGGESTIONS[provider] ?? [])
+        addModel(models, seen, { id, label: id, free: id.endsWith(":free") })
     }
     for (const use of inUse) {
-      if (use.keyId === key.id && use.model) addModel(models, seen, { id: use.model, label: use.model })
+      if (use.keyId === key.id && use.model)
+        addModel(models, seen, { id: use.model, label: use.model })
     }
     const freeTier = list?.freeTier ? " · free tier" : ""
     groups.push({
@@ -428,7 +477,9 @@ export async function buildModelCatalog(
   // Apps signed in on this person's own Macs, each its own provider: no key, no login, their own
   // subscription. Then models served on those Macs (Ollama, LM Studio).
   for (const host of hosts) {
-    const off = host.runnerEnabled ? "" : " · turn on “Run agents on this computer” in Settings → Computers"
+    const off = host.runnerEnabled
+      ? ""
+      : " · turn on “Run agents on this computer” in Settings → Computers"
     let offered = 0
     for (const agent of host.localAgents) {
       const spec = MAC_APPS[agent.id]
@@ -436,9 +487,14 @@ export async function buildModelCatalog(
       const used = inUse.filter((use) => use.keyId === keyId)
       if (!spec || (agent.status !== "ready" && !used.length)) continue
       offered++
-      const { models, effortLevels, source } = macAppModels(agent.id, agent.models, agent.version ?? null)
+      const { models, effortLevels, source } = macAppModels(
+        agent.id,
+        agent.models,
+        agent.version ?? null,
+      )
       const seen = new Set(models.map((m) => m.id))
-      for (const use of used) if (use.model) addModel(models, seen, { id: use.model, label: use.model })
+      for (const use of used)
+        if (use.model) addModel(models, seen, { id: use.model, label: use.model })
       groups.push({
         keyId,
         provider: spec.provider,
@@ -464,10 +520,15 @@ export async function buildModelCatalog(
       const used = inUse.filter((use) => use.keyId === keyId)
       if (!spec || (agent.status !== "ready" && !used.length)) continue
       offered++
-      const models: PickerModel[] = (agent.models ?? []).map((m) => ({ id: m.id, label: m.label, free: true }))
+      const models: PickerModel[] = (agent.models ?? []).map((m) => ({
+        id: m.id,
+        label: m.label,
+        free: true,
+      }))
       const seen = new Set(models.map((m) => m.id))
       for (const use of used) {
-        if (use.model) addModel(models, seen, { id: use.model, label: `${use.model} (not running right now)` })
+        if (use.model)
+          addModel(models, seen, { id: use.model, label: `${use.model} (not running right now)` })
       }
       groups.push({
         keyId,
@@ -541,13 +602,15 @@ export function agentRunner(
   agent: Pick<AgentView, "params">,
 ): { keyId: string; model: string | null } | null {
   const runner = agent.params?.runner as
-    | { hostId?: string; app?: string; where?: string; model?: string }
-    | undefined
+    { hostId?: string; app?: string; where?: string; model?: string } | undefined
   if (runner?.where === "server" && runner.app) {
     return { keyId: `cli:${runner.app}`, model: runner.model ?? "default" }
   }
   return runner?.hostId
-    ? { keyId: macKeyId(runner.hostId, runner.app ?? "claude-code"), model: runner.model ?? "default" }
+    ? {
+        keyId: macKeyId(runner.hostId, runner.app ?? "claude-code"),
+        model: runner.model ?? "default",
+      }
     : null
 }
 

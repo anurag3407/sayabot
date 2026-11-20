@@ -1,722 +1,961 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sayabot</title>
-  <style>
-    :root {
-      color-scheme: dark;
-      --bg: #09090b;
-      --card-bg: #111114;
-      --raised: #17171b;
-      --card-border: rgba(255, 255, 255, 0.07);
-      --line-strong: rgba(255, 255, 255, 0.12);
-      --accent: #9d8cff;
-      --accent-strong: #b6a9ff;
-      --accent-glow: rgba(157, 140, 255, 0.16);
-      --ok: #6fd39a;
-      --danger: #f2756e;
-      --text: #ededf0;
-      --text-muted: #a3a3ad;
-      --text-faint: #8b8b96;
-    }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sayabot</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #09090b;
+        --card-bg: #111114;
+        --raised: #17171b;
+        --card-border: rgba(255, 255, 255, 0.07);
+        --line-strong: rgba(255, 255, 255, 0.12);
+        --accent: #9d8cff;
+        --accent-strong: #b6a9ff;
+        --accent-glow: rgba(157, 140, 255, 0.16);
+        --ok: #6fd39a;
+        --danger: #f2756e;
+        --text: #ededf0;
+        --text-muted: #a3a3ad;
+        --text-faint: #8b8b96;
+      }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      user-select: none;
-    }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        font-family:
+          "Geist",
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          Roboto,
+          Helvetica,
+          Arial,
+          sans-serif;
+        user-select: none;
+      }
 
-    body {
-      background:
-        radial-gradient(60% 45% at 50% 0%, rgba(157, 140, 255, 0.10), transparent 70%),
-        var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      -webkit-font-smoothing: antialiased;
-    }
+      body {
+        background:
+          radial-gradient(60% 45% at 50% 0%, rgba(157, 140, 255, 0.1), transparent 70%), var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        -webkit-font-smoothing: antialiased;
+      }
 
-    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+      :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
 
-    /* The window has no title bar: this strip is what you drag. */
-    .titlebar {
-      height: 40px;
-      flex-shrink: 0;
-      -webkit-app-region: drag;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
+      /* The window has no title bar: this strip is what you drag. */
+      .titlebar {
+        height: 40px;
+        flex-shrink: 0;
+        -webkit-app-region: drag;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
 
-    .titlebar-title {
-      font-size: 12px;
-      font-weight: 500;
-      color: var(--text-faint);
-    }
+      .titlebar-title {
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--text-faint);
+      }
 
-    .main-content {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 12px 32px 40px;
-      overflow-y: auto;
-    }
+      .main-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 12px 32px 40px;
+        overflow-y: auto;
+      }
 
-    .card {
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 22px;
-      padding: 34px 36px 30px;
-      width: 100%;
-      max-width: 460px;
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 30px 70px -24px rgba(0, 0, 0, 0.8);
-      text-align: center;
-      animation: fadeIn 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
-    }
+      .card {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 22px;
+        padding: 34px 36px 30px;
+        width: 100%;
+        max-width: 460px;
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.04),
+          0 30px 70px -24px rgba(0, 0, 0, 0.8);
+        text-align: center;
+        animation: fadeIn 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+      }
 
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(8px) scale(0.99); }
-      to { opacity: 1; transform: none; }
-    }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(8px) scale(0.99);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
 
-    /* Three Sayas; the rare one in the middle. The lamp passes along while something loads. */
-    .crew {
-      position: relative;
-      display: flex;
-      align-items: flex-end;
-      justify-content: center;
-      gap: 6px;
-      height: 92px;
-      margin: 0 auto 20px;
-    }
-    .crew::before {
-      content: "";
-      position: absolute;
-      left: 50%; top: 55%;
-      width: 240px; height: 110px;
-      transform: translate(-50%, -50%);
-      background: radial-gradient(closest-side, rgba(157, 140, 255, 0.22), transparent);
-      pointer-events: none;
-    }
-    .crew img { position: relative; display: block; width: 58px; height: auto; }
-    .crew img.lead { width: 84px; }
-    .crew.busy img { animation: crew-hop 0.9s cubic-bezier(0.3, 0.7, 0.4, 1) infinite; }
-    .crew.busy img:nth-child(2) { animation-delay: 0.3s; }
-    .crew.busy img:nth-child(3) { animation-delay: 0.6s; }
-    @keyframes crew-hop { 0%, 60%, 100% { transform: translateY(0); } 25% { transform: translateY(-8px); } }
+      /* Three Sayas; the rare one in the middle. The lamp passes along while something loads. */
+      .crew {
+        position: relative;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        gap: 6px;
+        height: 92px;
+        margin: 0 auto 20px;
+      }
+      .crew::before {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 55%;
+        width: 240px;
+        height: 110px;
+        transform: translate(-50%, -50%);
+        background: radial-gradient(closest-side, rgba(157, 140, 255, 0.22), transparent);
+        pointer-events: none;
+      }
+      .crew img {
+        position: relative;
+        display: block;
+        width: 58px;
+        height: auto;
+      }
+      .crew img.lead {
+        width: 84px;
+      }
+      .crew.busy img {
+        animation: crew-hop 0.9s cubic-bezier(0.3, 0.7, 0.4, 1) infinite;
+      }
+      .crew.busy img:nth-child(2) {
+        animation-delay: 0.3s;
+      }
+      .crew.busy img:nth-child(3) {
+        animation-delay: 0.6s;
+      }
+      @keyframes crew-hop {
+        0%,
+        60%,
+        100% {
+          transform: translateY(0);
+        }
+        25% {
+          transform: translateY(-8px);
+        }
+      }
 
-    h1 {
-      font-size: 22px;
-      font-weight: 600;
-      letter-spacing: -0.02em;
-      margin-bottom: 6px;
-    }
+      h1 {
+        font-size: 22px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        margin-bottom: 6px;
+      }
 
-    p.subtitle {
-      font-size: 13.5px;
-      color: var(--text-muted);
-      line-height: 1.55;
-      margin-bottom: 22px;
-    }
+      p.subtitle {
+        font-size: 13.5px;
+        color: var(--text-muted);
+        line-height: 1.55;
+        margin-bottom: 22px;
+      }
 
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      background: #ffffff;
-      color: #09090b;
-      border: none;
-      padding: 12px 22px;
-      border-radius: 12px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      width: 100%;
-      transition: background 0.15s ease, transform 0.15s ease;
-    }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        background: #ffffff;
+        color: #09090b;
+        border: none;
+        padding: 12px 22px;
+        border-radius: 12px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        width: 100%;
+        transition:
+          background 0.15s ease,
+          transform 0.15s ease;
+      }
 
-    .btn:hover { background: #e9e9ee; }
-    .btn:active { transform: scale(0.99); }
-    .btn:disabled { cursor: default; }
+      .btn:hover {
+        background: #e9e9ee;
+      }
+      .btn:active {
+        transform: scale(0.99);
+      }
+      .btn:disabled {
+        cursor: default;
+      }
 
-    .btn-secondary {
-      background: transparent;
-      color: var(--text);
-      border: 1px solid var(--line-strong);
-      margin-top: 10px;
-      font-weight: 500;
-    }
+      .btn-secondary {
+        background: transparent;
+        color: var(--text);
+        border: 1px solid var(--line-strong);
+        margin-top: 10px;
+        font-weight: 500;
+      }
 
-    .btn-secondary:hover { background: rgba(255, 255, 255, 0.05); }
+      .btn-secondary:hover {
+        background: rgba(255, 255, 255, 0.05);
+      }
 
-    .server-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 7px;
-      font-size: 11.5px;
-      color: var(--text-muted);
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid var(--card-border);
-      padding: 4px 12px 4px 10px;
-      border-radius: 100px;
-      margin-bottom: 16px;
-      font-family: "Geist Mono", ui-monospace, monospace;
-    }
+      .server-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        font-size: 11.5px;
+        color: var(--text-muted);
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--card-border);
+        padding: 4px 12px 4px 10px;
+        border-radius: 100px;
+        margin-bottom: 16px;
+        font-family: "Geist Mono", ui-monospace, monospace;
+      }
 
-    .status-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--ok);
-      box-shadow: 0 0 8px rgba(111, 211, 154, 0.7);
-    }
+      .status-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--ok);
+        box-shadow: 0 0 8px rgba(111, 211, 154, 0.7);
+      }
 
-    .info-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin: 20px 0;
-      text-align: left;
-    }
+      .info-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin: 20px 0;
+        text-align: left;
+      }
 
-    .info-box {
-      background: var(--raised);
-      border: 1px solid var(--card-border);
-      border-radius: 12px;
-      padding: 12px 14px;
-    }
+      .info-box {
+        background: var(--raised);
+        border: 1px solid var(--card-border);
+        border-radius: 12px;
+        padding: 12px 14px;
+      }
 
-    .info-label {
-      font-size: 11px;
-      color: var(--text-faint);
-      margin-bottom: 3px;
-    }
+      .info-label {
+        font-size: 11px;
+        color: var(--text-faint);
+        margin-bottom: 3px;
+      }
 
-    .info-val {
-      font-size: 12.5px;
-      font-weight: 500;
-      color: var(--text);
-    }
+      .info-val {
+        font-size: 12.5px;
+        font-weight: 500;
+        color: var(--text);
+      }
 
-    .toggle-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      background: var(--raised);
-      border: 1px solid var(--card-border);
-      border-radius: 12px;
-      padding: 12px 16px;
-      margin: 16px 0;
-      text-align: left;
-    }
+      .toggle-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        background: var(--raised);
+        border: 1px solid var(--card-border);
+        border-radius: 12px;
+        padding: 12px 16px;
+        margin: 16px 0;
+        text-align: left;
+      }
 
-    .toggle-title { font-size: 12.5px; font-weight: 500; }
-    .toggle-sub { font-size: 11.5px; color: var(--text-muted); margin-top: 1px; }
+      .toggle-title {
+        font-size: 12.5px;
+        font-weight: 500;
+      }
+      .toggle-sub {
+        font-size: 11.5px;
+        color: var(--text-muted);
+        margin-top: 1px;
+      }
 
-    .switch { position: relative; display: inline-block; flex-shrink: 0; width: 40px; height: 22px; }
-    .switch input { opacity: 0; width: 0; height: 0; }
-    .slider {
-      position: absolute;
-      cursor: pointer;
-      inset: 0;
-      background-color: rgba(255, 255, 255, 0.12);
-      transition: 0.2s;
-      border-radius: 24px;
-    }
-    .slider:before {
-      position: absolute;
-      content: "";
-      height: 16px;
-      width: 16px;
-      left: 3px;
-      bottom: 3px;
-      background-color: white;
-      transition: 0.2s;
-      border-radius: 50%;
-    }
-    input:checked + .slider { background-color: var(--accent); }
-    input:checked + .slider:before { transform: translateX(18px); }
-    input:focus-visible + .slider { outline: 2px solid var(--accent); outline-offset: 2px; }
+      .switch {
+        position: relative;
+        display: inline-block;
+        flex-shrink: 0;
+        width: 40px;
+        height: 22px;
+      }
+      .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+      .slider {
+        position: absolute;
+        cursor: pointer;
+        inset: 0;
+        background-color: rgba(255, 255, 255, 0.12);
+        transition: 0.2s;
+        border-radius: 24px;
+      }
+      .slider:before {
+        position: absolute;
+        content: "";
+        height: 16px;
+        width: 16px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: 0.2s;
+        border-radius: 50%;
+      }
+      input:checked + .slider {
+        background-color: var(--accent);
+      }
+      input:checked + .slider:before {
+        transform: translateX(18px);
+      }
+      input:focus-visible + .slider {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
 
-    .hidden { display: none !important; }
+      .hidden {
+        display: none !important;
+      }
 
-    .links { display: flex; gap: 6px; justify-content: center; align-items: center; margin-top: 16px; }
-    .link-dot { color: var(--text-faint); font-size: 11px; }
-    .settings-link {
-      font: inherit;
-      font-size: 12px;
-      color: var(--text-faint);
-      background: none;
-      border: none;
-      border-radius: 6px;
-      padding: 2px 4px;
-      cursor: pointer;
-      display: inline-block;
-    }
-    .settings-link:hover { color: var(--text); }
+      .links {
+        display: flex;
+        gap: 6px;
+        justify-content: center;
+        align-items: center;
+        margin-top: 16px;
+      }
+      .link-dot {
+        color: var(--text-faint);
+        font-size: 11px;
+      }
+      .settings-link {
+        font: inherit;
+        font-size: 12px;
+        color: var(--text-faint);
+        background: none;
+        border: none;
+        border-radius: 6px;
+        padding: 2px 4px;
+        cursor: pointer;
+        display: inline-block;
+      }
+      .settings-link:hover {
+        color: var(--text);
+      }
 
-    /* Start screen: where do you want to use Sayabot? */
-    .choice-list { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
-    .choice {
-      display: flex; align-items: flex-start; gap: 14px; text-align: left; width: 100%;
-      padding: 15px 16px; border-radius: 16px; cursor: pointer; font: inherit;
-      background: var(--raised); border: 1px solid var(--card-border);
-      color: var(--text); transition: border-color 0.15s, background 0.15s, transform 0.15s;
-    }
-    .choice:hover { border-color: rgba(157, 140, 255, 0.5); background: rgba(157, 140, 255, 0.06); }
-    .choice:active { transform: scale(0.995); }
-    .choice:disabled { opacity: 0.6; cursor: default; }
-    .choice-soon { cursor: default; }
-    .choice-soon:hover { border-color: var(--card-border); background: var(--raised); }
-    .choice-soon:active { transform: none; }
-    .soon-list { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-    .soon-list li {
-      display: flex; align-items: center; justify-content: space-between; gap: 10px;
-      font-size: 12px; line-height: 1.35; color: var(--text);
-    }
-    .soon-list li span:first-child { display: flex; align-items: flex-start; gap: 6px; }
-    .soon-mark { color: var(--accent); flex-shrink: 0; margin-top: 1px; }
-    .choice-icon {
-      flex-shrink: 0; width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center;
-      background: var(--accent-glow); color: var(--accent);
-    }
-    .choice-title { font-size: 14.5px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
-    .choice-badge {
-      font-size: 10.5px; font-weight: 500; color: var(--accent-strong); background: var(--accent-glow);
-      padding: 2px 8px; border-radius: 99px;
-    }
-    .choice-sub { display: block; font-size: 12.5px; color: var(--text-muted); line-height: 1.45; margin-top: 3px; }
-    .server-form { text-align: left; margin: 4px 0 16px; }
-    .server-form label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
-    .server-input {
-      width: 100%; padding: 12px 14px; border-radius: 12px; font-size: 14px; user-select: text;
-      background: var(--raised); border: 1px solid var(--line-strong); color: var(--text);
-    }
-    .server-input::placeholder { color: var(--text-faint); }
-    .server-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
-    .server-status { font-size: 12.5px; min-height: 18px; margin: 8px 2px 0; line-height: 1.45; color: var(--text-muted); }
-    .server-status.ok { color: var(--ok); }
-    .server-status.error { color: var(--danger); }
-    .server-hint { font-size: 12px; color: var(--text-faint); margin-top: 12px; line-height: 1.5; }
-    .back-link { margin-top: 12px; }
+      /* Start screen: where do you want to use Sayabot? */
+      .choice-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-top: 4px;
+      }
+      .choice {
+        display: flex;
+        align-items: flex-start;
+        gap: 14px;
+        text-align: left;
+        width: 100%;
+        padding: 15px 16px;
+        border-radius: 16px;
+        cursor: pointer;
+        font: inherit;
+        background: var(--raised);
+        border: 1px solid var(--card-border);
+        color: var(--text);
+        transition:
+          border-color 0.15s,
+          background 0.15s,
+          transform 0.15s;
+      }
+      .choice:hover {
+        border-color: rgba(157, 140, 255, 0.5);
+        background: rgba(157, 140, 255, 0.06);
+      }
+      .choice:active {
+        transform: scale(0.995);
+      }
+      .choice:disabled {
+        opacity: 0.6;
+        cursor: default;
+      }
+      .choice-soon {
+        cursor: default;
+      }
+      .choice-soon:hover {
+        border-color: var(--card-border);
+        background: var(--raised);
+      }
+      .choice-soon:active {
+        transform: none;
+      }
+      .soon-list {
+        list-style: none;
+        margin: 10px 0 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .soon-list li {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        font-size: 12px;
+        line-height: 1.35;
+        color: var(--text);
+      }
+      .soon-list li span:first-child {
+        display: flex;
+        align-items: flex-start;
+        gap: 6px;
+      }
+      .soon-mark {
+        color: var(--accent);
+        flex-shrink: 0;
+        margin-top: 1px;
+      }
+      .choice-icon {
+        flex-shrink: 0;
+        width: 38px;
+        height: 38px;
+        border-radius: 11px;
+        display: grid;
+        place-items: center;
+        background: var(--accent-glow);
+        color: var(--accent);
+      }
+      .choice-title {
+        font-size: 14.5px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .choice-badge {
+        font-size: 10.5px;
+        font-weight: 500;
+        color: var(--accent-strong);
+        background: var(--accent-glow);
+        padding: 2px 8px;
+        border-radius: 99px;
+      }
+      .choice-sub {
+        display: block;
+        font-size: 12.5px;
+        color: var(--text-muted);
+        line-height: 1.45;
+        margin-top: 3px;
+      }
+      .server-form {
+        text-align: left;
+        margin: 4px 0 16px;
+      }
+      .server-form label {
+        display: block;
+        font-size: 12px;
+        color: var(--text-muted);
+        margin-bottom: 6px;
+      }
+      .server-input {
+        width: 100%;
+        padding: 12px 14px;
+        border-radius: 12px;
+        font-size: 14px;
+        user-select: text;
+        background: var(--raised);
+        border: 1px solid var(--line-strong);
+        color: var(--text);
+      }
+      .server-input::placeholder {
+        color: var(--text-faint);
+      }
+      .server-input:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px var(--accent-glow);
+      }
+      .server-status {
+        font-size: 12.5px;
+        min-height: 18px;
+        margin: 8px 2px 0;
+        line-height: 1.45;
+        color: var(--text-muted);
+      }
+      .server-status.ok {
+        color: var(--ok);
+      }
+      .server-status.error {
+        color: var(--danger);
+      }
+      .server-hint {
+        font-size: 12px;
+        color: var(--text-faint);
+        margin-top: 12px;
+        line-height: 1.5;
+      }
+      .back-link {
+        margin-top: 12px;
+      }
 
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after { animation: none !important; transition: none !important; }
-    }
-  </style>
-</head>
-<body>
-  <div class="titlebar">
-    <div class="titlebar-title">Sayabot</div>
-  </div>
-
-  <div class="main-content">
-    <!-- Server address, opened later from Change server. First launch skips this. -->
-    <div id="welcome-view" class="card hidden">
-      <div class="crew" aria-hidden="true">
-        <img src="mascots/pip-live.svg" alt="">
-        <img class="lead" src="mascots/nova-live.svg" alt="">
-        <img src="mascots/moss-live.svg" alt="">
-      </div>
-
-      <form id="server-step" class="hidden" autocomplete="off">
-        <h1>Connect to your server</h1>
-        <p class="subtitle">Enter the address you open Sayabot at in your browser.</p>
-        <div class="server-form">
-          <label for="server-input">Server address</label>
-          <input id="server-input" class="server-input" type="text" inputmode="url" spellcheck="false"
-            placeholder="sayabot.yourcompany.com" aria-describedby="server-status">
-          <p id="server-status" class="server-status" role="status" aria-live="polite"></p>
-        </div>
-        <button id="server-connect" class="btn" type="submit">Connect</button>
-        <p class="server-hint">Self-hosting? Your server's Download page has a one-click "Open in Sayabot" link.</p>
-        <button id="server-back" class="settings-link back-link" type="button">Back</button>
-      </form>
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation: none !important;
+          transition: none !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="titlebar">
+      <div class="titlebar-title">Sayabot</div>
     </div>
 
-    <!-- Unauthenticated View: Instant local login card -->
-    <div id="unauth-view" class="card hidden">
-      <div class="crew" id="unauth-crew" aria-hidden="true">
-        <img src="mascots/pip-live.svg" alt="">
-        <img class="lead" src="mascots/nova-live.svg" alt="">
-        <img src="mascots/moss-live.svg" alt="">
-      </div>
-
-      <div class="server-pill">
-        <span class="status-dot"></span>
-        <span id="gateway-label">sayabot.sayalabs.in</span>
-      </div>
-
-      <h1 id="unauth-title">Sign in to Sayabot</h1>
-      <p id="unauth-subtitle" class="subtitle">
-        Connect your Mac to your room workspace. All agents sync live with your phone.
-      </p>
-
-      <button id="sign-in-btn" class="btn" type="button">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-          <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
-          <polyline points="10 17 15 12 10 7"></polyline>
-          <line x1="15" y1="12" x2="3" y2="12"></line>
-        </svg>
-        Sign in with Google or GitHub
-      </button>
-
-      <button id="guest-btn" class="btn btn-secondary" type="button">
-        Continue without an account
-      </button>
-      <p id="guest-error" class="server-status error hidden" role="alert"></p>
-
-      <div class="links">
-        <button id="change-server-link" class="settings-link" type="button">Change server</button>
-        <span class="link-dot" aria-hidden="true">·</span>
-        <button id="unauth-check-updates-link" class="settings-link" type="button">Check for updates</button>
-      </div>
-    </div>
-
-    <!-- Authenticated View: Native controller & Direct workspace launcher -->
-    <div id="auth-view" class="card hidden">
-      <div class="server-pill">
-        <span class="status-dot"></span>
-        <span>Signed in and synced</span>
-      </div>
-
-      <h1 id="user-display">Sayabot</h1>
-      <p id="user-email-label" class="subtitle">user@gmail.com</p>
-
-      <div class="info-grid">
-        <div class="info-box">
-          <div class="info-label">Host Machine</div>
-          <div class="info-val" id="host-machine">This computer</div>
+    <div class="main-content">
+      <!-- Server address, opened later from Change server. First launch skips this. -->
+      <div id="welcome-view" class="card hidden">
+        <div class="crew" aria-hidden="true">
+          <img src="mascots/pip-live.svg" alt="" />
+          <img class="lead" src="mascots/nova-live.svg" alt="" />
+          <img src="mascots/moss-live.svg" alt="" />
         </div>
-        <div class="info-box">
-          <div class="info-label">Android Companion</div>
-          <div class="info-val" style="color: var(--ok);">Ready for approvals</div>
-        </div>
+
+        <form id="server-step" class="hidden" autocomplete="off">
+          <h1>Connect to your server</h1>
+          <p class="subtitle">Enter the address you open Sayabot at in your browser.</p>
+          <div class="server-form">
+            <label for="server-input">Server address</label>
+            <input
+              id="server-input"
+              class="server-input"
+              type="text"
+              inputmode="url"
+              spellcheck="false"
+              placeholder="sayabot.yourcompany.com"
+              aria-describedby="server-status"
+            />
+            <p id="server-status" class="server-status" role="status" aria-live="polite"></p>
+          </div>
+          <button id="server-connect" class="btn" type="submit">Connect</button>
+          <p class="server-hint">
+            Self-hosting? Your server's Download page has a one-click "Open in Sayabot" link.
+          </p>
+          <button id="server-back" class="settings-link back-link" type="button">Back</button>
+        </form>
       </div>
 
-      <div class="toggle-row">
-        <div>
-          <div class="toggle-title">Local Computer Runner (computerd)</div>
-          <div class="toggle-sub" id="runner-sub">Execute bash and code directly on this computer</div>
+      <!-- Unauthenticated View: Instant local login card -->
+      <div id="unauth-view" class="card hidden">
+        <div class="crew" id="unauth-crew" aria-hidden="true">
+          <img src="mascots/pip-live.svg" alt="" />
+          <img class="lead" src="mascots/nova-live.svg" alt="" />
+          <img src="mascots/moss-live.svg" alt="" />
         </div>
-        <label class="switch">
-          <input type="checkbox" id="local-runner-toggle" checked aria-label="Run bash and code on this computer">
-          <span class="slider"></span>
-        </label>
-      </div>
 
-      <div class="toggle-row" style="margin: 14px 0;">
-        <div>
-          <div class="toggle-title" id="desktop-version-title">Sayabot</div>
-          <div class="toggle-sub" id="desktop-version-subtitle">Checking version…</div>
+        <div class="server-pill">
+          <span class="status-dot"></span>
+          <span id="gateway-label">Connecting…</span>
         </div>
-        <button id="auth-check-updates-btn" class="btn btn-secondary" type="button" style="width: auto; padding: 6px 14px; font-size: 12px; margin-top: 0;">
-          Check for updates
+
+        <h1 id="unauth-title">Sign in to Sayabot</h1>
+        <p id="unauth-subtitle" class="subtitle">
+          Connect your Mac to your room workspace. All agents sync live with your phone.
+        </p>
+
+        <button id="sign-in-btn" class="btn" type="button">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            aria-hidden="true"
+          >
+            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+            <polyline points="10 17 15 12 10 7"></polyline>
+            <line x1="15" y1="12" x2="3" y2="12"></line>
+          </svg>
+          Sign in with Google or GitHub
         </button>
+
+        <button id="guest-btn" class="btn btn-secondary" type="button">
+          Continue without an account
+        </button>
+        <p id="guest-error" class="server-status error hidden" role="alert"></p>
+
+        <div class="links">
+          <button id="change-server-link" class="settings-link" type="button">Change server</button>
+          <span class="link-dot" aria-hidden="true">·</span>
+          <button id="unauth-check-updates-link" class="settings-link" type="button">
+            Check for updates
+          </button>
+        </div>
       </div>
 
-      <button id="open-workspace-btn" class="btn" type="button">
-        Open workspace
-      </button>
+      <!-- Authenticated View: Native controller & Direct workspace launcher -->
+      <div id="auth-view" class="card hidden">
+        <div class="server-pill">
+          <span class="status-dot"></span>
+          <span>Signed in and synced</span>
+        </div>
 
-      <button id="sign-out-btn" class="btn btn-secondary" type="button">
-        Sign out
-      </button>
+        <h1 id="user-display">Sayabot</h1>
+        <p id="user-email-label" class="subtitle">user@gmail.com</p>
+
+        <div class="info-grid">
+          <div class="info-box">
+            <div class="info-label">Host Machine</div>
+            <div class="info-val" id="host-machine">This computer</div>
+          </div>
+          <div class="info-box">
+            <div class="info-label">Android Companion</div>
+            <div class="info-val" style="color: var(--ok)">Ready for approvals</div>
+          </div>
+        </div>
+
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-title">Local Computer Runner (computerd)</div>
+            <div class="toggle-sub" id="runner-sub">
+              Execute bash and code directly on this computer
+            </div>
+          </div>
+          <label class="switch">
+            <input
+              type="checkbox"
+              id="local-runner-toggle"
+              checked
+              aria-label="Run bash and code on this computer"
+            />
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="toggle-row" style="margin: 14px 0">
+          <div>
+            <div class="toggle-title" id="desktop-version-title">Sayabot</div>
+            <div class="toggle-sub" id="desktop-version-subtitle">Checking version…</div>
+          </div>
+          <button
+            id="auth-check-updates-btn"
+            class="btn btn-secondary"
+            type="button"
+            style="width: auto; padding: 6px 14px; font-size: 12px; margin-top: 0"
+          >
+            Check for updates
+          </button>
+        </div>
+
+        <button id="open-workspace-btn" class="btn" type="button">Open workspace</button>
+
+        <button id="sign-out-btn" class="btn btn-secondary" type="button">Sign out</button>
+      </div>
     </div>
-  </div>
 
-  <script>
-    const bridge = window.sayabotDesktop;
-    const onWindows = navigator.userAgent.includes("Windows");
-    const productName = onWindows ? "Sayabot for Windows" : "Sayabot for Mac";
-    const hostMachine = document.getElementById("host-machine");
-    if (hostMachine) hostMachine.textContent = onWindows ? "Windows local node" : "macOS local node";
-    const userDisplay = document.getElementById("user-display");
-    if (userDisplay) userDisplay.textContent = productName;
-    document.title = productName;
-    const unauthView = document.getElementById("unauth-view");
-    const authView = document.getElementById("auth-view");
-    const gatewayLabel = document.getElementById("gateway-label");
-    const userEmailLabel = document.getElementById("user-email-label");
-    const signInBtn = document.getElementById("sign-in-btn");
-    const signOutBtn = document.getElementById("sign-out-btn");
-    const openWorkspaceBtn = document.getElementById("open-workspace-btn");
-    const changeServerLink = document.getElementById("change-server-link");
-    const localRunnerToggle = document.getElementById("local-runner-toggle");
-    const guestBtn = document.getElementById("guest-btn");
-    const guestError = document.getElementById("guest-error");
-    const unauthTitle = document.getElementById("unauth-title");
-    const unauthSubtitle = document.getElementById("unauth-subtitle");
-    const unauthCheckUpdatesLink = document.getElementById("unauth-check-updates-link");
-    const authCheckUpdatesBtn = document.getElementById("auth-check-updates-btn");
-    const desktopVersionTitle = document.getElementById("desktop-version-title");
-    const desktopVersionSubtitle = document.getElementById("desktop-version-subtitle");
-    const welcomeView = document.getElementById("welcome-view");
-    const unauthCrew = document.getElementById("unauth-crew");
-    const serverStep = document.getElementById("server-step");
-    const serverInput = document.getElementById("server-input");
-    const serverStatus = document.getElementById("server-status");
-    const serverConnect = document.getElementById("server-connect");
-    const serverBack = document.getElementById("server-back");
-    let serverCanGoBack = true;
+    <script>
+      const bridge = window.sayabotDesktop
+      const onWindows = navigator.userAgent.includes("Windows")
+      const productName = onWindows ? "Sayabot for Windows" : "Sayabot for Mac"
+      const hostMachine = document.getElementById("host-machine")
+      if (hostMachine)
+        hostMachine.textContent = onWindows ? "Windows local node" : "macOS local node"
+      const userDisplay = document.getElementById("user-display")
+      if (userDisplay) userDisplay.textContent = productName
+      document.title = productName
+      const unauthView = document.getElementById("unauth-view")
+      const authView = document.getElementById("auth-view")
+      const gatewayLabel = document.getElementById("gateway-label")
+      const userEmailLabel = document.getElementById("user-email-label")
+      const signInBtn = document.getElementById("sign-in-btn")
+      const signOutBtn = document.getElementById("sign-out-btn")
+      const openWorkspaceBtn = document.getElementById("open-workspace-btn")
+      const changeServerLink = document.getElementById("change-server-link")
+      const localRunnerToggle = document.getElementById("local-runner-toggle")
+      const guestBtn = document.getElementById("guest-btn")
+      const guestError = document.getElementById("guest-error")
+      const unauthTitle = document.getElementById("unauth-title")
+      const unauthSubtitle = document.getElementById("unauth-subtitle")
+      const unauthCheckUpdatesLink = document.getElementById("unauth-check-updates-link")
+      const authCheckUpdatesBtn = document.getElementById("auth-check-updates-btn")
+      const desktopVersionTitle = document.getElementById("desktop-version-title")
+      const desktopVersionSubtitle = document.getElementById("desktop-version-subtitle")
+      const welcomeView = document.getElementById("welcome-view")
+      const unauthCrew = document.getElementById("unauth-crew")
+      const serverStep = document.getElementById("server-step")
+      const serverInput = document.getElementById("server-input")
+      const serverStatus = document.getElementById("server-status")
+      const serverConnect = document.getElementById("server-connect")
+      const serverBack = document.getElementById("server-back")
+      let serverCanGoBack = true
 
-    function showView(view) {
-      for (const el of [welcomeView, unauthView, authView]) el.classList.toggle("hidden", el !== view);
-    }
-
-    function showServerStep(prefill, canGoBack = true) {
-      serverCanGoBack = canGoBack;
-      showView(welcomeView);
-      serverStep.classList.remove("hidden");
-      serverBack.classList.toggle("hidden", !canGoBack);
-      serverInput.value = prefill || "";
-      setServerStatus("", "");
-      setTimeout(() => serverInput.focus(), 50);
-    }
-
-    function setServerStatus(text, tone) {
-      serverStatus.textContent = text;
-      serverStatus.className = `server-status${tone ? ` ${tone}` : ""}`;
-    }
-
-    function setBusy(button, busy, label) {
-      button.disabled = busy;
-      button.style.opacity = busy ? "0.7" : "1";
-      if (label) button.textContent = label;
-    }
-
-    // After a server is picked: start right away when it allows it, else show sign-in.
-    async function afterServerChosen(result) {
-      const guest = await bridge.getGuestStatus();
-      await refreshServerLabel();
-      if (guest && guest.autoStart) {
-        showView(unauthView);
-        void startGuest();
-        return;
-      }
-      showView(unauthView);
-      showGuestStarting(false);
-      guestBtn.classList.toggle("hidden", !(guest && guest.guestAllowed));
-
-    }
-
-    serverBack.addEventListener("click", async () => {
-      if (!serverCanGoBack) return;
-      await bridge.cancelServerSetup();
-      refreshState();
-    });
-
-    // Check the address as soon as the person stops typing, so mistakes show early.
-    let checkTimer = null;
-    let checkSeq = 0;
-    serverInput.addEventListener("input", () => {
-      clearTimeout(checkTimer);
-      const value = serverInput.value.trim();
-      if (!value) return setServerStatus("", "");
-      setServerStatus("Checking…", "");
-      const seq = ++checkSeq;
-      checkTimer = setTimeout(async () => {
-        const result = await bridge.checkServer(value);
-        if (seq !== checkSeq) return;
-        if (result.ok) setServerStatus(`✓ Found ${result.name}`, "ok");
-        else setServerStatus(result.error, "error");
-      }, 600);
-    });
-
-    serverStep.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const value = serverInput.value.trim();
-      if (!value) {
-        setServerStatus("Enter your server's address.", "error");
-        serverInput.focus();
-        return;
-      }
-      clearTimeout(checkTimer);
-      checkSeq++;
-      setBusy(serverConnect, true, "Connecting…");
-      setServerStatus("Checking…", "");
-      const result = await bridge.chooseServer(value);
-      setBusy(serverConnect, false, "Connect");
-      if (!result.ok) {
-        setServerStatus(result.error, "error");
-        serverInput.focus();
-        return;
-      }
-      setServerStatus(`✓ Connected to ${result.name}`, "ok");
-      await afterServerChosen(result);
-    });
-
-    async function refreshServerLabel() {
-      try {
-        const info = await bridge.getServerInfo();
-        gatewayLabel.textContent = info.name;
-        gatewayLabel.title = info.url;
-        serverDisplayName = info.isCloud ? "Sayabot" : info.name;
-        if (!unauthTitle.textContent.startsWith("Setting up")) unauthTitle.textContent = `Sign in to ${serverDisplayName}`;
-      } catch (e) {
-        // keep the last label
-      }
-    }
-
-    // The connected server's name ("Acme's Sayabot"); Sayabot Cloud reads as just "Sayabot".
-    let serverDisplayName = "Sayabot";
-
-    function showGuestStarting(starting) {
-      unauthTitle.textContent = starting ? `Setting up ${serverDisplayName}…` : `Sign in to ${serverDisplayName}`;
-      unauthSubtitle.textContent = starting
-        ? "Getting your workspace ready. No account needed. You can save it later."
-        : "Connect your Mac to your room workspace. All agents sync live with your phone.";
-      signInBtn.classList.toggle("hidden", starting);
-      unauthCrew.classList.toggle("busy", starting);
-      if (starting) guestBtn.classList.add("hidden");
-      guestBtn.disabled = starting;
-    }
-
-    async function startGuest() {
-      guestError.classList.add("hidden");
-      showGuestStarting(true);
-      const result = await bridge.startGuest();
-      if (result && result.ok) return; // the main process opens the workspace
-      showGuestStarting(false);
-      guestBtn.classList.remove("hidden");
-      guestError.textContent = "Couldn't start without an account. Sign in instead, or try again.";
-      guestError.title = (result && result.error) || "";
-      guestError.classList.remove("hidden");
-    }
-
-    async function refreshState() {
-      await refreshServerLabel();
-
-      const session = await bridge.getSession();
-      if (session && session.accessToken) {
-        unauthView.classList.add("hidden");
-        bridge.openWorkspaceInWindow();
-        return;
+      function showView(view) {
+        for (const el of [welcomeView, unauthView, authView])
+          el.classList.toggle("hidden", el !== view)
       }
 
-      const guest = await bridge.getGuestStatus();
-      // Server address is only for Change server. First launch continues on this Mac.
-      if (guest && guest.needsServerChoice) {
-        showServerStep("", true);
-        return;
-      }
-      showView(unauthView);
-      guestBtn.classList.toggle("hidden", !(guest && guest.guestAllowed));
-
-      // Then skip the sign-in card and open Sayabot as a guest.
-      if (guest && guest.autoStart) {
-        void startGuest();
-        return;
+      function showServerStep(prefill, canGoBack = true) {
+        serverCanGoBack = canGoBack
+        showView(welcomeView)
+        serverStep.classList.remove("hidden")
+        serverBack.classList.toggle("hidden", !canGoBack)
+        serverInput.value = prefill || ""
+        setServerStatus("", "")
+        setTimeout(() => serverInput.focus(), 50)
       }
 
-      const status = await bridge.getLocalRunnerStatus();
-      localRunnerToggle.checked = status.running;
-    }
+      function setServerStatus(text, tone) {
+        serverStatus.textContent = text
+        serverStatus.className = `server-status${tone ? ` ${tone}` : ""}`
+      }
 
-    signInBtn.addEventListener("click", async () => {
-      signInBtn.textContent = "Finish signing in in your browser…";
-      unauthCrew.classList.add("busy");
-      await bridge.startBrowserAuth();
-      setTimeout(() => {
-        unauthCrew.classList.remove("busy");
-        signInBtn.innerHTML = `
+      function setBusy(button, busy, label) {
+        button.disabled = busy
+        button.style.opacity = busy ? "0.7" : "1"
+        if (label) button.textContent = label
+      }
+
+      // After a server is picked: start right away when it allows it, else show sign-in.
+      async function afterServerChosen(result) {
+        const guest = await bridge.getGuestStatus()
+        await refreshServerLabel()
+        if (guest && guest.autoStart) {
+          showView(unauthView)
+          void startGuest()
+          return
+        }
+        showView(unauthView)
+        showGuestStarting(false)
+        guestBtn.classList.toggle("hidden", !(guest && guest.guestAllowed))
+      }
+
+      serverBack.addEventListener("click", async () => {
+        if (!serverCanGoBack) return
+        await bridge.cancelServerSetup()
+        refreshState()
+      })
+
+      // Check the address as soon as the person stops typing, so mistakes show early.
+      let checkTimer = null
+      let checkSeq = 0
+      serverInput.addEventListener("input", () => {
+        clearTimeout(checkTimer)
+        const value = serverInput.value.trim()
+        if (!value) return setServerStatus("", "")
+        setServerStatus("Checking…", "")
+        const seq = ++checkSeq
+        checkTimer = setTimeout(async () => {
+          const result = await bridge.checkServer(value)
+          if (seq !== checkSeq) return
+          if (result.ok) setServerStatus(`✓ Found ${result.name}`, "ok")
+          else setServerStatus(result.error, "error")
+        }, 600)
+      })
+
+      serverStep.addEventListener("submit", async (e) => {
+        e.preventDefault()
+        const value = serverInput.value.trim()
+        if (!value) {
+          setServerStatus("Enter your server's address.", "error")
+          serverInput.focus()
+          return
+        }
+        clearTimeout(checkTimer)
+        checkSeq++
+        setBusy(serverConnect, true, "Connecting…")
+        setServerStatus("Checking…", "")
+        const result = await bridge.chooseServer(value)
+        setBusy(serverConnect, false, "Connect")
+        if (!result.ok) {
+          setServerStatus(result.error, "error")
+          serverInput.focus()
+          return
+        }
+        setServerStatus(`✓ Connected to ${result.name}`, "ok")
+        await afterServerChosen(result)
+      })
+
+      async function refreshServerLabel() {
+        try {
+          const info = await bridge.getServerInfo()
+          gatewayLabel.textContent = info.name
+          gatewayLabel.title = info.url
+          serverDisplayName = info.name || "Sayabot"
+          if (!unauthTitle.textContent.startsWith("Setting up"))
+            unauthTitle.textContent = `Sign in to ${serverDisplayName}`
+        } catch (e) {
+          // keep the last label
+        }
+      }
+
+      // The connected server's name ("Acme's Sayabot").
+      let serverDisplayName = "Sayabot"
+
+      function showGuestStarting(starting) {
+        unauthTitle.textContent = starting
+          ? `Setting up ${serverDisplayName}…`
+          : `Sign in to ${serverDisplayName}`
+        unauthSubtitle.textContent = starting
+          ? "Getting your workspace ready. No account needed. You can save it later."
+          : "Connect your Mac to your room workspace. All agents sync live with your phone."
+        signInBtn.classList.toggle("hidden", starting)
+        unauthCrew.classList.toggle("busy", starting)
+        if (starting) guestBtn.classList.add("hidden")
+        guestBtn.disabled = starting
+      }
+
+      async function startGuest() {
+        guestError.classList.add("hidden")
+        showGuestStarting(true)
+        const result = await bridge.startGuest()
+        if (result && result.ok) return // the main process opens the workspace
+        showGuestStarting(false)
+        guestBtn.classList.remove("hidden")
+        guestError.textContent = "Couldn't start without an account. Sign in instead, or try again."
+        guestError.title = (result && result.error) || ""
+        guestError.classList.remove("hidden")
+      }
+
+      async function refreshState() {
+        await refreshServerLabel()
+
+        const session = await bridge.getSession()
+        if (session && session.accessToken) {
+          unauthView.classList.add("hidden")
+          bridge.openWorkspaceInWindow()
+          return
+        }
+
+        const guest = await bridge.getGuestStatus()
+        // Server address is only for Change server. First launch continues on this Mac.
+        if (guest && guest.needsServerChoice) {
+          showServerStep("", true)
+          return
+        }
+        showView(unauthView)
+        guestBtn.classList.toggle("hidden", !(guest && guest.guestAllowed))
+
+        // Then skip the sign-in card and open Sayabot as a guest.
+        if (guest && guest.autoStart) {
+          void startGuest()
+          return
+        }
+
+        const status = await bridge.getLocalRunnerStatus()
+        localRunnerToggle.checked = status.running
+      }
+
+      signInBtn.addEventListener("click", async () => {
+        signInBtn.textContent = "Finish signing in in your browser…"
+        unauthCrew.classList.add("busy")
+        await bridge.startBrowserAuth()
+        setTimeout(() => {
+          unauthCrew.classList.remove("busy")
+          signInBtn.innerHTML = `
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
             <polyline points="10 17 15 12 10 7"></polyline>
             <line x1="15" y1="12" x2="3" y2="12"></line>
           </svg>
           Sign in with Google or GitHub
-        `;
-      }, 5000);
-    });
+        `
+        }, 5000)
+      })
 
-    guestBtn.addEventListener("click", () => {
-      void startGuest();
-    });
+      guestBtn.addEventListener("click", () => {
+        void startGuest()
+      })
 
-    signOutBtn.addEventListener("click", async () => {
-      await bridge.signOut();
-      refreshState();
-    });
+      signOutBtn.addEventListener("click", async () => {
+        await bridge.signOut()
+        refreshState()
+      })
 
-    openWorkspaceBtn.addEventListener("click", () => {
-      bridge.openWorkspaceInWindow();
-    });
+      openWorkspaceBtn.addEventListener("click", () => {
+        bridge.openWorkspaceInWindow()
+      })
 
-    changeServerLink.addEventListener("click", () => {
-      showServerStep("");
-    });
+      changeServerLink.addEventListener("click", () => {
+        showServerStep("")
+      })
 
-    localRunnerToggle.addEventListener("change", async () => {
-      await bridge.toggleLocalRunner();
-    });
+      localRunnerToggle.addEventListener("change", async () => {
+        await bridge.toggleLocalRunner()
+      })
 
-    async function updateVersionDisplay() {
-      if (!bridge.getVersion) return;
-      try {
-        const v = await bridge.getVersion();
-        if (desktopVersionTitle) desktopVersionTitle.textContent = `${productName} v${v}`;
-        if (desktopVersionSubtitle) desktopVersionSubtitle.textContent = "Latest release installed";
-      } catch (e) {
-        // ignore
-      }
-    }
-
-    async function triggerUpdateCheck(sourceBtn) {
-      const origText = sourceBtn?.textContent;
-      if (sourceBtn) {
-        sourceBtn.textContent = "Checking…";
-        sourceBtn.style.opacity = "0.7";
-        sourceBtn.style.pointerEvents = "none";
-      }
-      try {
-        const res = await bridge.checkForUpdates(true);
-        if (res && res.isUpdateAvailable) {
-          if (desktopVersionSubtitle) {
-            desktopVersionSubtitle.textContent = `Update available: v${res.latestVersion}`;
-            desktopVersionSubtitle.style.color = "var(--accent)";
-          }
-        } else if (res && !res.error) {
-          if (desktopVersionSubtitle) {
-            desktopVersionSubtitle.textContent = "Up to date";
-          }
+      async function updateVersionDisplay() {
+        if (!bridge.getVersion) return
+        try {
+          const v = await bridge.getVersion()
+          if (desktopVersionTitle) desktopVersionTitle.textContent = `${productName} v${v}`
+          if (desktopVersionSubtitle)
+            desktopVersionSubtitle.textContent = "Latest release installed"
+        } catch (e) {
+          // ignore
         }
-      } finally {
+      }
+
+      async function triggerUpdateCheck(sourceBtn) {
+        const origText = sourceBtn?.textContent
         if (sourceBtn) {
-          sourceBtn.textContent = origText;
-          sourceBtn.style.opacity = "1";
-          sourceBtn.style.pointerEvents = "auto";
+          sourceBtn.textContent = "Checking…"
+          sourceBtn.style.opacity = "0.7"
+          sourceBtn.style.pointerEvents = "none"
+        }
+        try {
+          const res = await bridge.checkForUpdates(true)
+          if (res && res.isUpdateAvailable) {
+            if (desktopVersionSubtitle) {
+              desktopVersionSubtitle.textContent = `Update available: v${res.latestVersion}`
+              desktopVersionSubtitle.style.color = "var(--accent)"
+            }
+          } else if (res && !res.error) {
+            if (desktopVersionSubtitle) {
+              desktopVersionSubtitle.textContent = "Up to date"
+            }
+          }
+        } finally {
+          if (sourceBtn) {
+            sourceBtn.textContent = origText
+            sourceBtn.style.opacity = "1"
+            sourceBtn.style.pointerEvents = "auto"
+          }
         }
       }
-    }
 
-    if (unauthCheckUpdatesLink) {
-      unauthCheckUpdatesLink.addEventListener("click", () => triggerUpdateCheck(unauthCheckUpdatesLink));
-    }
-    if (authCheckUpdatesBtn) {
-      authCheckUpdatesBtn.addEventListener("click", () => triggerUpdateCheck(authCheckUpdatesBtn));
-    }
-
-    bridge.onSessionUpdate((newSession) => {
-      refreshState();
-      void updateVersionDisplay();
-      if (newSession && newSession.accessToken) {
-        bridge.openWorkspaceInWindow();
+      if (unauthCheckUpdatesLink) {
+        unauthCheckUpdatesLink.addEventListener("click", () =>
+          triggerUpdateCheck(unauthCheckUpdatesLink),
+        )
       }
-    });
+      if (authCheckUpdatesBtn) {
+        authCheckUpdatesBtn.addEventListener("click", () => triggerUpdateCheck(authCheckUpdatesBtn))
+      }
 
-    refreshState();
-    void updateVersionDisplay();
-  </script>
-</body>
+      bridge.onSessionUpdate((newSession) => {
+        refreshState()
+        void updateVersionDisplay()
+        if (newSession && newSession.accessToken) {
+          bridge.openWorkspaceInWindow()
+        }
+      })
+
+      refreshState()
+      void updateVersionDisplay()
+    </script>
+  </body>
 </html>

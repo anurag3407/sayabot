@@ -213,13 +213,7 @@ export async function recordMacToolEvents(
         ids[key] = existing.id
         continue
       }
-      const card = await insertCard(
-        job,
-        key,
-        stepName(event.toolName),
-        event.args ?? {},
-        "running",
-      )
+      const card = await insertCard(job, key, stepName(event.toolName), event.args ?? {}, "running")
       ids[key] = card.id
       continue
     }

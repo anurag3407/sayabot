@@ -2,7 +2,13 @@ import { strict as assert } from "node:assert"
 
 let failures = 0
 function test(name, fn) {
-  try { fn(); console.log("ok -", name) } catch (e) { failures++; console.error("FAIL -", name, e) }
+  try {
+    fn()
+    console.log("ok -", name)
+  } catch (e) {
+    failures++
+    console.error("FAIL -", name, e)
+  }
 }
 
 process.env.EXPO_PUBLIC_SUPABASE_URL = "https://proj.supabase.co"
@@ -21,5 +27,8 @@ test("ENV metadata is stable", () => {
   assert.equal(ENV.DEFAULT_ORG_SLUG, "default")
 })
 
-if (failures > 0) { console.error(failures + " failing"); process.exit(1) }
+if (failures > 0) {
+  console.error(failures + " failing")
+  process.exit(1)
+}
 console.log("mobile unit: all passed")

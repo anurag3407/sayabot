@@ -1,6 +1,13 @@
 "use client"
 
-import { useEffect, useRef, useState, type ComponentProps, type CSSProperties, type RefObject } from "react"
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ComponentProps,
+  type CSSProperties,
+  type RefObject,
+} from "react"
 import { Mascot } from "@/components/ui/mascot"
 
 type Watcher = (x: number, y: number) => void
@@ -33,7 +40,8 @@ function useLookAt(ref: RefObject<SVGSVGElement | null>) {
       element.style.setProperty("--lx", `${(Math.cos(angle) * reach * 3.4).toFixed(2)}px`)
       element.style.setProperty("--ly", `${(Math.sin(angle) * reach * 4).toFixed(2)}px`)
     }
-    if (watchers.size === 0) window.addEventListener("pointermove", onPointerMove, { passive: true })
+    if (watchers.size === 0)
+      window.addEventListener("pointermove", onPointerMove, { passive: true })
     watchers.add(watch)
     return () => {
       watchers.delete(watch)
@@ -61,11 +69,24 @@ export function LiveMascot({
   return (
     <span
       className={`inline-block ${float ? "l-float" : ""} ${className}`}
-      style={{ "--bob-delay": `${delay}s`, "--blink-delay": `${delay * 1.7}s`, ...style } as CSSProperties}
+      style={
+        {
+          "--bob-delay": `${delay}s`,
+          "--blink-delay": `${delay * 1.7}s`,
+          ...style,
+        } as CSSProperties
+      }
       onPointerEnter={() => setHover(true)}
       onPointerLeave={() => setHover(false)}
     >
-      <Mascot svgRef={ref} blink lit={lit} mood={hover ? "happy" : mood} className="block h-full w-full" {...props} />
+      <Mascot
+        svgRef={ref}
+        blink
+        lit={lit}
+        mood={hover ? "happy" : mood}
+        className="block h-full w-full"
+        {...props}
+      />
     </span>
   )
 }
@@ -76,9 +97,12 @@ export function useInView<T extends Element>(ref: RefObject<T | null>, margin = 
   useEffect(() => {
     const element = ref.current
     if (!element) return
-    const observer = new IntersectionObserver(([entry]) => setInView(Boolean(entry?.isIntersecting)), {
-      rootMargin: margin,
-    })
+    const observer = new IntersectionObserver(
+      ([entry]) => setInView(Boolean(entry?.isIntersecting)),
+      {
+        rootMargin: margin,
+      },
+    )
     observer.observe(element)
     return () => observer.disconnect()
   }, [ref, margin])

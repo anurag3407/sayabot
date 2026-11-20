@@ -4,7 +4,11 @@ import { requireOrgAdmin } from "@/lib/auth"
 import { listOrgAgents, listAgentApiKeys, listWebhookDeliveries, listRooms } from "@/lib/queries"
 import { EmptyState } from "@/components/ui/empty"
 import { Section } from "@/components/settings/section"
-import { IssueApiKey, RevokeKeyButton, RotateWebhookSecret } from "@/components/settings/bot-actions"
+import {
+  IssueApiKey,
+  RevokeKeyButton,
+  RotateWebhookSecret,
+} from "@/components/settings/bot-actions"
 import { McpConnect } from "@/components/settings/mcp-connect"
 import { fullTime, relativeTime } from "@/lib/format"
 import { headers } from "next/headers"
@@ -192,7 +196,9 @@ export default async function BotsPage({ params }: { params: Promise<{ org: stri
                       {fullTime(delivery.createdAt)}
                     </td>
                     <td className="py-2 pr-3 font-mono text-[12px] text-muted">
-                      {delivery.agentId ? `@${agentsById.get(delivery.agentId)?.handle ?? "agent"}` : "-"}
+                      {delivery.agentId
+                        ? `@${agentsById.get(delivery.agentId)?.handle ?? "agent"}`
+                        : "-"}
                     </td>
                     <td className="py-2 pr-3 font-mono text-[12px] text-muted">
                       {delivery.attempt}

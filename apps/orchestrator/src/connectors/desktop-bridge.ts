@@ -35,7 +35,11 @@ export const DESKTOP_OFFLINE_AFTER_MS = 60_000
  * skip desktop-only tools instead of waiting on a sleeping laptop, so the agent carries on with its
  * cloud computer.
  */
-export async function desktopOnline(orgId: string, preferred?: string | null, now = Date.now()): Promise<boolean> {
+export async function desktopOnline(
+  orgId: string,
+  preferred?: string | null,
+  now = Date.now(),
+): Promise<boolean> {
   const hostId = await hostForOrg(orgId, preferred)
   if (!hostId) return false
   const [row] = await getDb()
@@ -54,7 +58,13 @@ export async function hostForOrg(orgId: string, preferred?: string | null): Prom
     const [row] = await db
       .select({ id: desktopHosts.id })
       .from(desktopHosts)
-      .where(and(eq(desktopHosts.id, preferred), eq(desktopHosts.orgId, orgId), isNull(desktopHosts.revokedAt)))
+      .where(
+        and(
+          eq(desktopHosts.id, preferred),
+          eq(desktopHosts.orgId, orgId),
+          isNull(desktopHosts.revokedAt),
+        ),
+      )
       .limit(1)
     if (row) return row.id
   }
@@ -67,7 +77,11 @@ export async function hostForOrg(orgId: string, preferred?: string | null): Prom
   return row?.id ?? null
 }
 
-async function waitFor<T>(id: string, read: () => Promise<{ status: string; error: string | null; done: T | null }>, signal?: AbortSignal): Promise<T> {
+async function waitFor<T>(
+  id: string,
+  read: () => Promise<{ status: string; error: string | null; done: T | null }>,
+  signal?: AbortSignal,
+): Promise<T> {
   const started = Date.now()
   while (Date.now() - started < WAIT_MS) {
     signal?.throwIfAborted()
@@ -107,16 +121,27 @@ export async function runSecretOnDesktop(args: {
     .returning({ id: desktopSecretJobs.id })
   if (!job) throw new Error("Could not ask the computer")
   try {
-    return await waitFor(job.id, async () => {
-      const [row] = await db
-        .select({ status: desktopSecretJobs.status, error: desktopSecretJobs.error, resultEnc: desktopSecretJobs.resultEnc })
-        .from(desktopSecretJobs)
-        .where(eq(desktopSecretJobs.id, job.id))
-        .limit(1)
-      if (!row) return { status: "failed", error: "Job disappeared", done: null }
-      const done = row.status === "done" && row.resultEnc ? JSON.parse(openSecret(row.resultEnc, getEnv().MESH_KEK)) : null
-      return { status: row.status, error: row.error, done }
-    }, args.signal)
+    return await waitFor(
+      job.id,
+      async () => {
+        const [row] = await db
+          .select({
+            status: desktopSecretJobs.status,
+            error: desktopSecretJobs.error,
+            resultEnc: desktopSecretJobs.resultEnc,
+          })
+          .from(desktopSecretJobs)
+          .where(eq(desktopSecretJobs.id, job.id))
+          .limit(1)
+        if (!row) return { status: "failed", error: "Job disappeared", done: null }
+        const done =
+          row.status === "done" && row.resultEnc
+            ? JSON.parse(openSecret(row.resultEnc, getEnv().MESH_KEK))
+            : null
+        return { status: row.status, error: row.error, done }
+      },
+      args.signal,
+    )
   } catch (error) {
     await db
       .update(desktopSecretJobs)
@@ -152,15 +177,27 @@ export async function runMcpOnDesktop(args: {
     .returning({ id: desktopMcpCalls.id })
   if (!job) throw new Error("Could not ask the computer")
   try {
-    return await waitFor(job.id, async () => {
-      const [row] = await db
-        .select({ status: desktopMcpCalls.status, error: desktopMcpCalls.error, result: desktopMcpCalls.result })
-        .from(desktopMcpCalls)
-        .where(eq(desktopMcpCalls.id, job.id))
-        .limit(1)
-      if (!row) return { status: "failed", error: "Call disappeared", done: null }
-      return { status: row.status, error: row.error, done: row.status === "done" ? row.result : null }
-    }, args.signal)
+    return await waitFor(
+      job.id,
+      async () => {
+        const [row] = await db
+          .select({
+            status: desktopMcpCalls.status,
+            error: desktopMcpCalls.error,
+            result: desktopMcpCalls.result,
+          })
+          .from(desktopMcpCalls)
+          .where(eq(desktopMcpCalls.id, job.id))
+          .limit(1)
+        if (!row) return { status: "failed", error: "Call disappeared", done: null }
+        return {
+          status: row.status,
+          error: row.error,
+          done: row.status === "done" ? row.result : null,
+        }
+      },
+      args.signal,
+    )
   } catch (error) {
     await db
       .update(desktopMcpCalls)

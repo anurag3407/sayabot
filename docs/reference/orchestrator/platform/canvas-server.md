@@ -8,10 +8,10 @@ Source files: `apps/orchestrator/src/canvas/server.ts`, `apps/orchestrator/src/c
 
 ## 🗄️ Storage (`packages/db/src/schema/canvas.ts`)
 
-| Table | Columns | Purpose |
-| :--- | :--- | :--- |
-| `canvases` | `id`, `room_id` (cascade), `kind` (`canvas_kind_enum`, default `"markdown"`), `title`, `language`, `ydoc_state` (bytea), `snapshot_text` (default `""`), `created_by`, `updated_at` | One row per canvas document; `ydoc_state` holds the full CRDT update, `snapshot_text` the plain-text projection. |
-| `canvas_versions` | `canvas_id` (cascade), `author_type` (`"agent"` \| `"human"`), `author_id`, `snapshot_text`, `created_at` | Restore-point history, indexed `(canvas_id, created_at)`. |
+| Table             | Columns                                                                                                                                                                             | Purpose                                                                                                          |
+| :---------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------- |
+| `canvases`        | `id`, `room_id` (cascade), `kind` (`canvas_kind_enum`, default `"markdown"`), `title`, `language`, `ydoc_state` (bytea), `snapshot_text` (default `""`), `created_by`, `updated_at` | One row per canvas document; `ydoc_state` holds the full CRDT update, `snapshot_text` the plain-text projection. |
+| `canvas_versions` | `canvas_id` (cascade), `author_type` (`"agent"` \| `"human"`), `author_id`, `snapshot_text`, `created_at`                                                                           | Restore-point history, indexed `(canvas_id, created_at)`.                                                        |
 
 ## ⚡ Hocuspocus Server (`src/canvas/server.ts`)
 
@@ -69,20 +69,27 @@ async onLoadDocument({ document, documentName }) {
 **Saving** (`onStoreDocument` → `persistCanvasState`, `server.ts:114-125`): writes `Buffer.from(Y.encodeStateAsUpdate(document))` plus `snapshotText = document.getText("content").toString()` and `updatedAt` on every debounced store. Any code path that transacts (agent tools, MCP `canvas_patch`, restores) also calls `persistCanvasState` directly so nothing is lost before the debounce fires:
 
 ```typescript
-export async function persistCanvasState(canvasId: string, document: Y.Doc, text?: string): Promise<string> {
+export async function persistCanvasState(
+  canvasId: string,
+  document: Y.Doc,
+  text?: string,
+): Promise<string> {
   const snapshotText = text ?? document.getText("content").toString()
-  await getDb().update(canvases).set({
-    ydocState: Buffer.from(Y.encodeStateAsUpdate(document)),
-    snapshotText,
-    updatedAt: new Date(),
-  }).where(eq(canvases.id, canvasId))
+  await getDb()
+    .update(canvases)
+    .set({
+      ydocState: Buffer.from(Y.encodeStateAsUpdate(document)),
+      snapshotText,
+      updatedAt: new Date(),
+    })
+    .where(eq(canvases.id, canvasId))
   return snapshotText
 }
 ```
 
 ### Access sweep
 
-Authentication is only checked at socket setup, so a 30-second interval (`ACCESS_SWEEP_MS = 30_000`, unref'ed) runs `revokeStaleCanvasConnections(server)` (`server.ts:30-52`): for every live connection with a `userId`/`roomId` context it re-evaluates `canUserReadRoom` — **deduplicating per `(userId, roomId)`** via a promise map — and closes forbidden connections with WebSocket close code `4403 "Forbidden"`. A failed authz lookup is treated as *still allowed* (`catch(() => true)`): a database blip must not throw everyone off the canvas. It returns the number of revoked connections.
+Authentication is only checked at socket setup, so a 30-second interval (`ACCESS_SWEEP_MS = 30_000`, unref'ed) runs `revokeStaleCanvasConnections(server)` (`server.ts:30-52`): for every live connection with a `userId`/`roomId` context it re-evaluates `canUserReadRoom` — **deduplicating per `(userId, roomId)`** via a promise map — and closes forbidden connections with WebSocket close code `4403 "Forbidden"`. A failed authz lookup is treated as _still allowed_ (`catch(() => true)`): a database blip must not throw everyone off the canvas. It returns the number of revoked connections.
 
 ### Process wiring (`src/index.ts`)
 
@@ -90,7 +97,7 @@ Authentication is only checked at socket setup, so a 30-second interval (`ACCESS
 - The HTTP server's `upgrade` event (`index.ts:73-91`) accepts **only** path `/collab` (nginx proxies WSS there — see `deploy/nginx/`), hands the socket to a `WebSocketServer({ noServer: true, maxPayload: 2 MB })`, and bridges it to `hocuspocus.handleConnection(ws, request)`, forwarding `message`/`close`/`pong` events.
 - Startup logs `canvas sync at ws://localhost:<port>/collab`.
 
-`getHocuspocus()` (`server.ts:109-112`) throws `"Canvas server is not initialised"` if accessed before boot — agent tools and MCP use it for *direct connections*.
+`getHocuspocus()` (`server.ts:109-112`) throws `"Canvas server is not initialised"` if accessed before boot — agent tools and MCP use it for _direct connections_.
 
 ## 🛠️ Agent Canvas Tools (`src/canvas/tools.ts`)
 
@@ -98,10 +105,10 @@ All three tools are built per agent turn in `src/tools/index.ts:333-335` (`canva
 
 Every tool first calls `requireCanvas(canvasId, roomId)` (`tools.ts:13-17`): the canvas must exist **and belong to the calling agent's room** (`"Canvas not found in this room"`). Mutations open a `directConnection` on the Hocuspocus instance with context `{ agentId }`, transact against `doc.getText("content")`, disconnect in a `finally`, and record a `canvas_versions` row with `authorType: "agent"` via `recordVersion` (`tools.ts:19-23`).
 
-| Tool | Schema | Behavior |
-| :--- | :--- | :--- |
-| `canvas_read` | `{ canvasId: uuid }` | Plain DB read — returns `canvasId`, `title`, `kind`, `language`, `content = snapshotText`. No Yjs connection needed. |
-| `canvas_write` | `{ canvasId: uuid, content ≤ 200 000 }` | Full replace inside one Yjs transaction (`delete(0, length)` + `insert(0, content)`), then persist + version. Returns `ok`, `characters`, and a 400-char `preview`. The description steers agents to prefer `canvas_patch` for small changes "so concurrent human edits survive". |
+| Tool           | Schema                                                    | Behavior                                                                                                                                                                                                                                                                                                                                              |
+| :------------- | :-------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `canvas_read`  | `{ canvasId: uuid }`                                      | Plain DB read — returns `canvasId`, `title`, `kind`, `language`, `content = snapshotText`. No Yjs connection needed.                                                                                                                                                                                                                                  |
+| `canvas_write` | `{ canvasId: uuid, content ≤ 200 000 }`                   | Full replace inside one Yjs transaction (`delete(0, length)` + `insert(0, content)`), then persist + version. Returns `ok`, `characters`, and a 400-char `preview`. The description steers agents to prefer `canvas_patch` for small changes "so concurrent human edits survive".                                                                     |
 | `canvas_patch` | `{ canvasId: uuid, edits: { search, replace }[] (1–50) }` | Computes `planCanvasPatch(currentText, edits)` from `@sayabot/core` — each `search` must match exactly once — and applies the returned `splices` in order (later searches see earlier replacements). Concurrent human keystrokes elsewhere in the doc are preserved because only the matched ranges are touched. Returns `ok`, `edits`, `characters`. |
 
 ### `restoreCanvasSnapshot` (human restore path)
@@ -110,12 +117,15 @@ Every tool first calls `requireCanvas(canvasId, roomId)` (`tools.ts:13-17`): the
 
 ```typescript
 const result = await restoreCanvasSnapshot({
-  canvasId, roomId: canvas.roomId, userId: parsed.data.userId, snapshot: parsed.data.snapshot,
+  canvasId,
+  roomId: canvas.roomId,
+  userId: parsed.data.userId,
+  snapshot: parsed.data.snapshot,
 })
-return c.json(result)   // { characters }
+return c.json(result) // { characters }
 ```
 
-Because restore replaces the whole document, the *previous* text remains recoverable from the `canvas_versions` history — restores are versioned just like agent writes, making restores themselves restorable.
+Because restore replaces the whole document, the _previous_ text remains recoverable from the `canvas_versions` history — restores are versioned just like agent writes, making restores themselves restorable.
 
 ```mermaid
 sequenceDiagram
@@ -146,6 +156,7 @@ There are no dedicated `.test.ts` files under `src/canvas/`; the patch planner i
 ---
 
 Related docs:
+
 - [Canvas tools reference](../tools/tool-system.md) — how `canvas_read`/`canvas_write`/`canvas_patch` are registered and gated by capabilities
 - [MCP server](./mcp-server.md) — the `canvas_read`/`canvas_patch` MCP tools that reuse the same connection path
 - [Coordinator](../engine/coordinator.md) — turn serialization that orders tool calls per room

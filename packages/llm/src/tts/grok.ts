@@ -2,7 +2,11 @@ import type { AudioOutput, Voice } from "./types"
 
 const DEFAULT_API = "https://api.x.ai/v1"
 
-export async function listVoices(apiKey: string, api = DEFAULT_API, signal?: AbortSignal): Promise<Voice[]> {
+export async function listVoices(
+  apiKey: string,
+  api = DEFAULT_API,
+  signal?: AbortSignal,
+): Promise<Voice[]> {
   const url = `${api.replace(/\/+$/, "")}/tts/voices`
   const res = await fetch(url, {
     headers: { authorization: `Bearer ${apiKey}`, accept: "application/json" },
@@ -12,7 +16,9 @@ export async function listVoices(apiKey: string, api = DEFAULT_API, signal?: Abo
     const errorText = await res.text().catch(() => "")
     throw new Error(`xAI Grok list voices failed (${res.status}): ${errorText.slice(0, 200)}`)
   }
-  const data = (await res.json()) as { voices?: Array<{ voice_id: string; name: string; description?: string }> }
+  const data = (await res.json()) as {
+    voices?: Array<{ voice_id: string; name: string; description?: string }>
+  }
   return (data.voices ?? []).map((v) => ({
     id: v.voice_id,
     label: v.name,
@@ -41,7 +47,9 @@ export async function synthesize(
       language: "auto",
       output_format: { codec: "mp3" },
     }),
-    signal: signal ? AbortSignal.any([AbortSignal.timeout(60_000), signal]) : AbortSignal.timeout(60_000),
+    signal: signal
+      ? AbortSignal.any([AbortSignal.timeout(60_000), signal])
+      : AbortSignal.timeout(60_000),
   })
 
   if (!res.ok) {

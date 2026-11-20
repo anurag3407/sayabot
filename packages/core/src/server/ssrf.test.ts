@@ -67,6 +67,8 @@ describe("SSRF Protection Core", () => {
     await expect(assertSafeEgressHost("localhost")).rejects.toThrow(/SSRF blocked/)
     await expect(assertSafeEgressHost("sub.localhost")).rejects.toThrow(/SSRF blocked/)
     await expect(assertSafeEgressHost("metadata.google.internal")).rejects.toThrow(/SSRF blocked/)
-    await expect(assertSafeEgressHost("kubernetes.default.svc.cluster.local")).rejects.toThrow(/SSRF blocked/)
+    await expect(assertSafeEgressHost("kubernetes.default.svc.cluster.local")).rejects.toThrow(
+      /SSRF blocked/,
+    )
   })
 })

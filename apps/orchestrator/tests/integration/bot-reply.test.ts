@@ -1,7 +1,11 @@
 import { describe, expect, it, vi } from "vitest"
 
 vi.mock("../../src/db", () => ({
-  getDb: () => ({ select: () => ({ from: () => ({ where: () => ({ orderBy: () => ({ limit: async () => [] }) }) }) }) }),
+  getDb: () => ({
+    select: () => ({
+      from: () => ({ where: () => ({ orderBy: () => ({ limit: async () => [] }) }) }),
+    }),
+  }),
   getPool: () => ({ connect: async () => ({ query: async () => {}, release() {}, on() {} }) }),
   notify: async () => {},
 }))

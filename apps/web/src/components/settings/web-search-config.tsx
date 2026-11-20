@@ -1,17 +1,12 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import { Coins, ExternalLink, Eye, EyeOff, Loader2, Play, Search, Zap } from "lucide-react"
 import {
-  Coins,
-  ExternalLink,
-  Eye,
-  EyeOff,
-  Loader2,
-  Play,
-  Search,
-  Zap,
-} from "lucide-react"
-import { saveOrgToolConfig, testWebSearchAction, fetchSearchProviderCreditsAction } from "@/lib/actions/mcp"
+  saveOrgToolConfig,
+  testWebSearchAction,
+  fetchSearchProviderCreditsAction,
+} from "@/lib/actions/mcp"
 import { ActionForm } from "@/components/ui/action-form"
 import { Field, Input } from "@/components/ui/field"
 import { Button } from "@/components/ui/button"
@@ -38,7 +33,8 @@ export const SEARCH_PROVIDERS: SearchProviderOption[] = [
     id: "tinyfish",
     name: "TinyFish",
     tag: "Free / Keyless",
-    description: "Fast browser-rendered web, news, and research search API. Free tier with API key.",
+    description:
+      "Fast browser-rendered web, news, and research search API. Free tier with API key.",
     requiresKey: true,
     keyPlaceholder: "tf_… (get free key at tinyfish.ai)",
     docsUrl: "https://tinyfish.ai",
@@ -48,7 +44,8 @@ export const SEARCH_PROVIDERS: SearchProviderOption[] = [
     id: "context",
     name: "Context.dev",
     tag: "AI Search",
-    description: "Live web search, citation extraction, and markdown conversion designed for AI agents.",
+    description:
+      "Live web search, citation extraction, and markdown conversion designed for AI agents.",
     requiresKey: true,
     keyPlaceholder: "ctx_… (from context.dev)",
     docsUrl: "https://context.dev",
@@ -58,7 +55,8 @@ export const SEARCH_PROVIDERS: SearchProviderOption[] = [
     id: "tavily",
     name: "Tavily AI",
     tag: "AI Search",
-    description: "Purpose-built AI search & extraction engine designed specifically for LLMs and agent grounding.",
+    description:
+      "Purpose-built AI search & extraction engine designed specifically for LLMs and agent grounding.",
     requiresKey: true,
     keyPlaceholder: "tvly-…",
     docsUrl: "https://tavily.com",
@@ -68,7 +66,8 @@ export const SEARCH_PROVIDERS: SearchProviderOption[] = [
     id: "brave",
     name: "Brave Search",
     tag: "Search API",
-    description: "Independent global search index with high accuracy, privacy, and 2,000 free queries/mo.",
+    description:
+      "Independent global search index with high accuracy, privacy, and 2,000 free queries/mo.",
     requiresKey: true,
     keyPlaceholder: "BSA…",
     docsUrl: "https://brave.com/search/api/",
@@ -85,7 +84,8 @@ export const SEARCH_PROVIDERS: SearchProviderOption[] = [
     id: "searxng",
     name: "SearXNG",
     tag: "Self-Hosted",
-    description: "Privacy-respecting open-source metasearch aggregator. Connect your own instance or a public node.",
+    description:
+      "Privacy-respecting open-source metasearch aggregator. Connect your own instance or a public node.",
     requiresKey: false,
     requiresUrl: true,
     urlPlaceholder: "https://searx.be",
@@ -96,7 +96,8 @@ export const SEARCH_PROVIDERS: SearchProviderOption[] = [
     id: "whoogle",
     name: "Whoogle Search",
     tag: "Self-Hosted",
-    description: "Self-hosted private Google search proxy with zero ads or tracking. Run locally: docker run -p 5000:5000 benbusby/whoogle-search",
+    description:
+      "Self-hosted private Google search proxy with zero ads or tracking. Run locally: docker run -p 5000:5000 benbusby/whoogle-search",
     requiresKey: false,
     requiresUrl: true,
     urlPlaceholder: "http://localhost:5000",
@@ -107,7 +108,8 @@ export const SEARCH_PROVIDERS: SearchProviderOption[] = [
     id: "serper",
     name: "Serper (Google)",
     tag: "Search API",
-    description: "Fast Google Search API returning rich organic snippets, knowledge graphs, and links.",
+    description:
+      "Fast Google Search API returning rich organic snippets, knowledge graphs, and links.",
     requiresKey: true,
     keyPlaceholder: "Your Serper API key",
     docsUrl: "https://serper.dev",
@@ -125,7 +127,8 @@ export const SEARCH_PROVIDERS: SearchProviderOption[] = [
     id: "firecrawl",
     name: "Firecrawl",
     tag: "AI Search",
-    description: "Advanced search & web crawler that extracts clean LLM-ready markdown from web pages.",
+    description:
+      "Advanced search & web crawler that extracts clean LLM-ready markdown from web pages.",
     requiresKey: true,
     keyPlaceholder: "fc-…",
     docsUrl: "https://firecrawl.dev",
@@ -134,7 +137,8 @@ export const SEARCH_PROVIDERS: SearchProviderOption[] = [
     id: "perplexity",
     name: "Perplexity Sonar",
     tag: "AI Search",
-    description: "Sonar online reasoning LLM with real-time web search citations and direct answers.",
+    description:
+      "Sonar online reasoning LLM with real-time web search citations and direct answers.",
     requiresKey: true,
     keyPlaceholder: "pplx-…",
     docsUrl: "https://perplexity.ai",
@@ -212,7 +216,8 @@ export function WebSearchConfig({
 
   const isSavedProvider = savedConfig?.provider === selectedProvider
   const isProviderConfigured =
-    (savedConfig?.configuredProviders && savedConfig.configuredProviders.includes(selectedProvider)) ||
+    (savedConfig?.configuredProviders &&
+      savedConfig.configuredProviders.includes(selectedProvider)) ||
     (isSavedProvider && (Boolean(savedConfig?.last4) || !activeProvider.requiresKey))
 
   function checkCredits() {
@@ -297,7 +302,10 @@ export function WebSearchConfig({
         <div className="flex items-center justify-between">
           <label className="text-[13px] font-medium text-text">Choose Search Engine</label>
           <span className="text-[11px] text-faint">
-            Default workspace provider: <strong className="text-text font-mono font-medium">{savedConfig?.provider || "duckduckgo"}</strong>
+            Default workspace provider:{" "}
+            <strong className="text-text font-mono font-medium">
+              {savedConfig?.provider || "duckduckgo"}
+            </strong>
           </span>
         </div>
 
@@ -306,7 +314,8 @@ export function WebSearchConfig({
             const isSelected = item.id === selectedProvider
             const isDefault = savedConfig?.provider === item.id
             const isConfigured =
-              (savedConfig?.configuredProviders && savedConfig.configuredProviders.includes(item.id)) ||
+              (savedConfig?.configuredProviders &&
+                savedConfig.configuredProviders.includes(item.id)) ||
               (isDefault && (Boolean(savedConfig?.last4) || !item.requiresKey))
 
             return (
@@ -363,9 +372,7 @@ export function WebSearchConfig({
                       <Zap className="h-3 w-3" /> Default
                     </span>
                   ) : isConfigured ? (
-                    <span className="inline-flex items-center gap-1 text-ok">
-                      ✓ Configured
-                    </span>
+                    <span className="inline-flex items-center gap-1 text-ok">✓ Configured</span>
                   ) : null}
                 </div>
               </button>
@@ -452,7 +459,7 @@ export function WebSearchConfig({
                   placeholder={
                     isProviderConfigured
                       ? `••••••••••••••••${savedConfig?.last4 ? ` (ends with ${savedConfig.last4})` : ""}`
-                      : activeProvider.keyPlaceholder ?? "Paste your API key"
+                      : (activeProvider.keyPlaceholder ?? "Paste your API key")
                   }
                   className="pr-10"
                 />
@@ -468,7 +475,8 @@ export function WebSearchConfig({
             </Field>
           ) : (
             <div className="rounded-xl border border-ok/25 bg-ok/5 p-3.5 text-[12.5px] text-ok">
-              ✓ <strong>Zero credentials required</strong>: {activeProvider.name} is ready for all bots in this workspace without an API key.
+              ✓ <strong>Zero credentials required</strong>: {activeProvider.name} is ready for all
+              bots in this workspace without an API key.
             </div>
           )}
         </ActionForm>
@@ -508,25 +516,19 @@ export function WebSearchConfig({
           </div>
 
           {creditInfo && !creditInfo.ok ? (
-            <InlineAlert tone="danger">
-              {creditInfo.error}
-            </InlineAlert>
+            <InlineAlert tone="danger">{creditInfo.error}</InlineAlert>
           ) : null}
 
           {creditInfo && creditInfo.ok ? (
             <div className="rounded-lg border border-accent/20 bg-accent/5 p-3.5 space-y-2 text-[12.5px]">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-accent/15 pb-2">
-                <span className="font-semibold text-text">
-                  {creditInfo.plan || "Active Tier"}
-                </span>
+                <span className="font-semibold text-text">{creditInfo.plan || "Active Tier"}</span>
                 <span className="rounded-full bg-accent/20 px-2.5 py-0.5 font-mono text-[11px] font-medium text-accent">
                   {creditInfo.credits || "Active"}
                 </span>
               </div>
               {creditInfo.details ? (
-                <p className="text-[12px] text-muted leading-relaxed">
-                  {creditInfo.details}
-                </p>
+                <p className="text-[12px] text-muted leading-relaxed">{creditInfo.details}</p>
               ) : null}
             </div>
           ) : null}
@@ -541,7 +543,8 @@ export function WebSearchConfig({
               <Search className="h-4 w-4 text-accent" /> Test {activeProvider.name} Live
             </h3>
             <p className="mt-0.5 text-[12px] text-muted">
-              Execute a real query to test search connectivity and results latency before agents run.
+              Execute a real query to test search connectivity and results latency before agents
+              run.
             </p>
           </div>
           <span className="font-mono text-[11px] text-faint">
@@ -598,9 +601,7 @@ export function WebSearchConfig({
 
         {testResult && !testResult.ok ? (
           <div className="mt-3">
-            <InlineAlert tone="danger">
-              {testResult.error}
-            </InlineAlert>
+            <InlineAlert tone="danger">{testResult.error}</InlineAlert>
           </div>
         ) : null}
 
@@ -628,14 +629,19 @@ export function WebSearchConfig({
                 <p className="font-mono text-[11px] font-semibold text-accent uppercase tracking-wider mb-1">
                   Synthesized Answer:
                 </p>
-                <p className="text-[13px] leading-relaxed whitespace-pre-wrap">{testResult.answer}</p>
+                <p className="text-[13px] leading-relaxed whitespace-pre-wrap">
+                  {testResult.answer}
+                </p>
               </div>
             ) : null}
 
             {testResult.results && testResult.results.length > 0 ? (
               <div className="space-y-3">
                 {testResult.results.map((item, idx) => (
-                  <div key={idx} className="rounded-lg border border-line/60 bg-surface/50 p-3 hover:border-line-strong transition-colors">
+                  <div
+                    key={idx}
+                    className="rounded-lg border border-line/60 bg-surface/50 p-3 hover:border-line-strong transition-colors"
+                  >
                     <a
                       href={item.url}
                       target="_blank"

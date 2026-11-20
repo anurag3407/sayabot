@@ -12,10 +12,13 @@ import {
 describe("computeCostUsd", () => {
   it("prices input and output tokens per million", () => {
     expect(
-      computeCostUsd({ inputTokens: 1_000_000, outputTokens: 500_000 }, {
-        inputPerMtok: 2,
-        outputPerMtok: 8,
-      }),
+      computeCostUsd(
+        { inputTokens: 1_000_000, outputTokens: 500_000 },
+        {
+          inputPerMtok: 2,
+          outputPerMtok: 8,
+        },
+      ),
     ).toBe(6)
   })
 
@@ -25,7 +28,10 @@ describe("computeCostUsd", () => {
 
   it("rounds to six decimals", () => {
     expect(
-      computeCostUsd({ inputTokens: 1, outputTokens: 1 }, { inputPerMtok: 0.15, outputPerMtok: 0.6 }),
+      computeCostUsd(
+        { inputTokens: 1, outputTokens: 1 },
+        { inputPerMtok: 0.15, outputPerMtok: 0.6 },
+      ),
     ).toBe(0.000001)
   })
 
@@ -57,7 +63,12 @@ describe("computeCostUsd", () => {
     expect(
       computeCostUsd(
         { inputTokens: 100, cachedInputTokens: 80, cacheCreationTokens: 500, outputTokens: 0 },
-        { inputPerMtok: 1_000_000, outputPerMtok: 0, cacheReadPerMtok: 0, cacheWritePerMtok: 1_000_000 },
+        {
+          inputPerMtok: 1_000_000,
+          outputPerMtok: 0,
+          cacheReadPerMtok: 0,
+          cacheWritePerMtok: 1_000_000,
+        },
       ),
     ).toBe(20) // 80 read for free + 20 written, nothing fresh
   })
@@ -99,7 +110,6 @@ describe("formatUsd", () => {
   })
 })
 
-
 describe("pickModelPrice", () => {
   const rows = [
     { provider: "anthropic", model: "claude-sonnet-4-5", inputPerMtok: 3, outputPerMtok: 15 },
@@ -112,7 +122,9 @@ describe("pickModelPrice", () => {
   })
 
   it("matches OpenRouter-style and dated names to the base model", () => {
-    expect(pickModelPrice(rows, "openrouter", "anthropic/claude-sonnet-4-5")?.provider).toBe("anthropic")
+    expect(pickModelPrice(rows, "openrouter", "anthropic/claude-sonnet-4-5")?.provider).toBe(
+      "anthropic",
+    )
     expect(pickModelPrice(rows, "anthropic", "claude-sonnet-4-5-20250929")?.inputPerMtok).toBe(3)
     expect(pickModelPrice(rows, "anthropic", "claude-sonnet-4-5:beta")?.inputPerMtok).toBe(3)
   })

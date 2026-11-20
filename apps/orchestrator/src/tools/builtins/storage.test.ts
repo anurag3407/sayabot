@@ -10,6 +10,7 @@ describe("storageTools", () => {
   const mockService = {
     getDecryptedConnector: vi.fn(),
     getAgentScope: vi.fn(),
+    getStorageTarget: vi.fn(),
   }
 
   beforeEach(() => {
@@ -18,7 +19,7 @@ describe("storageTools", () => {
   })
 
   it("returns empty array if no cloud storage connector is configured", async () => {
-    mockService.getDecryptedConnector.mockRejectedValue(new Error("No connector found"))
+    mockService.getStorageTarget.mockResolvedValue(null)
 
     const tools = await storageTools({
       orgId: "org-test-1",
@@ -30,7 +31,7 @@ describe("storageTools", () => {
   })
 
   it("returns full suite of storage tools when Supabase storage connector exists", async () => {
-    mockService.getDecryptedConnector.mockResolvedValue({
+    mockService.getStorageTarget.mockResolvedValue({
       connector: {
         id: "conn-supa-1",
         name: "Supabase Storage",
@@ -38,8 +39,8 @@ describe("storageTools", () => {
         config: { projectUrl: "https://test.supabase.co", bucket: "test-bucket" },
       },
       token: "test-service-key",
+      granted: false,
     })
-    mockService.getAgentScope.mockResolvedValue({})
 
     const tools = await storageTools({
       orgId: "org-test-1",
@@ -62,8 +63,8 @@ describe("storageTools", () => {
     expect(listTool.dangerous).toBe(false)
   })
 
-  it("enforces read-only scope restriction for write and delete tools", async () => {
-    mockService.getDecryptedConnector.mockResolvedValue({
+  it("uses the connector the agent was granted, not another active provider", async () => {
+    mockService.getStorageTarget.mockResolvedValue({
       connector: {
         id: "conn-r2-1",
         name: "Cloudflare R2",
@@ -71,6 +72,31 @@ describe("storageTools", () => {
         config: { bucket: "artifacts", accountId: "acc-123", accessKeyId: "key-1" },
       },
       token: "secret-token",
+      granted: true,
+    })
+    mockService.getAgentScope.mockResolvedValue({})
+
+    const tools = await storageTools({
+      orgId: "org-test-1",
+      agentId: "agent-test-1",
+      roomId: "room-test-1",
+    })
+
+    const listTool = tools.find((t) => t.name === "storage_list_files")!
+    expect(listTool.description).toContain("cloudflare_r2")
+    expect(mockService.getAgentScope).toHaveBeenCalledWith("agent-test-1", "conn-r2-1")
+  })
+
+  it("enforces read-only scope restriction for write and delete tools", async () => {
+    mockService.getStorageTarget.mockResolvedValue({
+      connector: {
+        id: "conn-r2-1",
+        name: "Cloudflare R2",
+        source: "cloudflare_r2",
+        config: { bucket: "artifacts", accountId: "acc-123", accessKeyId: "key-1" },
+      },
+      token: "secret-token",
+      granted: true,
     })
     // Agent has read-only grant
     mockService.getAgentScope.mockResolvedValue({
@@ -93,7 +119,7 @@ describe("storageTools", () => {
   })
 
   it("enforces path prefix restrictions from agent scope", async () => {
-    mockService.getDecryptedConnector.mockResolvedValue({
+    mockService.getStorageTarget.mockResolvedValue({
       connector: {
         id: "conn-b2-1",
         name: "Backblaze B2",
@@ -101,6 +127,7 @@ describe("storageTools", () => {
         config: { bucket: "bucket-1", keyId: "key-1", endpoint: "s3.us-west-004.backblazeb2.com" },
       },
       token: "secret-key",
+      granted: true,
     })
     // Agent is restricted to reports/
     mockService.getAgentScope.mockResolvedValue({

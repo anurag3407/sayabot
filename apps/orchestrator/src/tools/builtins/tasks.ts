@@ -90,9 +90,17 @@ export function taskTools(args: {
       description:
         "Schedule an autonomous follow-up reminder or delayed action for yourself. The orchestrator will post your note into the room and wake you up when the timer expires. Use when waiting on builds, deployments, asynchronous human feedback, or scheduled audits.",
       schema: z.object({
-        in_minutes: z.number().int().min(1).max(10_080).describe("Delay in minutes (1 min to 7 days)"),
+        in_minutes: z
+          .number()
+          .int()
+          .min(1)
+          .max(10_080)
+          .describe("Delay in minutes (1 min to 7 days)"),
         title: z.string().min(2).max(120).describe("Short title for the follow-up task"),
-        note: z.string().max(2_000).describe("Detailed reminder or action note for what to check when awakened"),
+        note: z
+          .string()
+          .max(2_000)
+          .describe("Detailed reminder or action note for what to check when awakened"),
       }),
       dangerous: false,
       execute: async (input: { in_minutes: number; title: string; note: string }) => {
@@ -126,7 +134,8 @@ export function taskTools(args: {
         "Claim an unassigned task before you start on it. Fails safely, telling you who holds it, if another agent got there first.",
       schema: z.object({ task_id: z.string().uuid() }),
       dangerous: false,
-      execute: (input: { task_id: string }) => friendly(() => claimTask(agent, { taskId: input.task_id })),
+      execute: (input: { task_id: string }) =>
+        friendly(() => claimTask(agent, { taskId: input.task_id })),
     },
     {
       name: "report_checkin",
@@ -236,7 +245,13 @@ export function taskTools(args: {
         fold_key: z.string().max(64).optional(),
       }),
       dangerous: false,
-      execute: (input: { task_id?: string; question: string; details?: string; options?: string[]; fold_key?: string }) =>
+      execute: (input: {
+        task_id?: string
+        question: string
+        details?: string
+        options?: string[]
+        fold_key?: string
+      }) =>
         friendly(() =>
           requestHumanDecision(agent, {
             roomId: args.roomId,
@@ -251,7 +266,8 @@ export function taskTools(args: {
     {
       name: "start_vote",
       description:
-        "Ask the other agents to vote between approaches. Returns a vote_id they use with cast_vote." + handoff,
+        "Ask the other agents to vote between approaches. Returns a vote_id they use with cast_vote." +
+        handoff,
       schema: z.object({
         question: z.string().min(4).max(300),
         options: z.array(z.string().min(1).max(120)).min(2).max(8),
@@ -270,7 +286,9 @@ export function taskTools(args: {
       }),
       dangerous: false,
       execute: (input: { vote_id: string; option: string; reason?: string }) =>
-        friendly(() => castVote(agent, { voteId: input.vote_id, option: input.option, reason: input.reason })),
+        friendly(() =>
+          castVote(agent, { voteId: input.vote_id, option: input.option, reason: input.reason }),
+        ),
     },
     {
       name: "plan_task",

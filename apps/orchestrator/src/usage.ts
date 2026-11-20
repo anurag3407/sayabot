@@ -27,7 +27,11 @@ async function priceRows(): Promise<PriceRow[]> {
     .from(modelPricing)
   const list = Array.isArray(rows) ? rows : []
   priceCache = {
-    rows: list.map((r) => ({ ...r, inputPerMtok: Number(r.inputPerMtok), outputPerMtok: Number(r.outputPerMtok) })),
+    rows: list.map((r) => ({
+      ...r,
+      inputPerMtok: Number(r.inputPerMtok),
+      outputPerMtok: Number(r.outputPerMtok),
+    })),
     at: Date.now(),
   }
   return priceCache.rows
@@ -61,12 +65,20 @@ function listPrice(provider: string, model: string): ModelPrice | null {
   return {
     inputPerMtok: list.inputPerMillion,
     outputPerMtok: list.outputPerMillion,
-    ...(list.cachedInputPerMillion !== undefined ? { cacheReadPerMtok: list.cachedInputPerMillion } : {}),
-    ...(list.cacheWritePerMillion !== undefined ? { cacheWritePerMtok: list.cacheWritePerMillion } : {}),
+    ...(list.cachedInputPerMillion !== undefined
+      ? { cacheReadPerMtok: list.cachedInputPerMillion }
+      : {}),
+    ...(list.cacheWritePerMillion !== undefined
+      ? { cacheWritePerMtok: list.cacheWritePerMillion }
+      : {}),
   }
 }
 
-export async function priceUsage(provider: string, model: string, tokens: UsageTokens): Promise<number> {
+export async function priceUsage(
+  provider: string,
+  model: string,
+  tokens: UsageTokens,
+): Promise<number> {
   const price = pickModelPrice(await priceRows(), provider, model) ?? listPrice(provider, model)
   return computeCostUsd(
     {
@@ -102,20 +114,22 @@ export async function recordUsageEvent(args: {
   try {
     const cost =
       args.billing === "subscription" ? 0 : await priceUsage(args.provider, args.model, args.tokens)
-    await getDb().insert(usageEvents).values({
-      orgId: args.orgId,
-      roomId: args.roomId ?? null,
-      agentId: args.agentId ?? null,
-      provider: args.provider,
-      model: args.model,
-      inputTokens,
-      outputTokens,
-      cachedInputTokens,
-      kind: args.kind ?? "llm",
-      costUsd: cost,
-      ttftMs: args.ttftMs ?? null,
-      latencyMs: args.latencyMs ?? null,
-    })
+    await getDb()
+      .insert(usageEvents)
+      .values({
+        orgId: args.orgId,
+        roomId: args.roomId ?? null,
+        agentId: args.agentId ?? null,
+        provider: args.provider,
+        model: args.model,
+        inputTokens,
+        outputTokens,
+        cachedInputTokens,
+        kind: args.kind ?? "llm",
+        costUsd: cost,
+        ttftMs: args.ttftMs ?? null,
+        latencyMs: args.latencyMs ?? null,
+      })
     return cost
   } catch (error) {
     console.error("[usage] could not record usage", error)

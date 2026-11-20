@@ -1,12 +1,5 @@
 import React, { useRef } from "react"
-import {
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native"
+import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native"
 import { Terminal, Trash2, X } from "lucide-react-native"
 import { colors, fonts } from "../../theme"
 

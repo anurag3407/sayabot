@@ -1,4 +1,9 @@
-import { createServer, request as httpRequest, type IncomingMessage, type ServerResponse } from "node:http"
+import {
+  createServer,
+  request as httpRequest,
+  type IncomingMessage,
+  type ServerResponse,
+} from "node:http"
 import { request as httpsRequest } from "node:https"
 import { connect, type Socket } from "node:net"
 import { URL } from "node:url"
@@ -6,7 +11,17 @@ import { timingSafeEqual } from "node:crypto"
 import { Hono } from "hono"
 import { serve } from "@hono/node-server"
 import { assertSafeEgressHost } from "./ssrf"
-import { flushGrantCache, forgetIdentity, isHostAllowed, proxySecretFrom, resolveAgentIdentityBySecret, reportViolation, requestApproval, resolveAgentIdentity, resolvePlaceholder } from "./swapper"
+import {
+  flushGrantCache,
+  forgetIdentity,
+  isHostAllowed,
+  proxySecretFrom,
+  resolveAgentIdentityBySecret,
+  reportViolation,
+  requestApproval,
+  resolveAgentIdentity,
+  resolvePlaceholder,
+} from "./swapper"
 import { scrubResponseText } from "./scrub"
 
 const PROXY_PORT = Number(process.env.PROXY_PORT || 8080)
@@ -24,7 +39,8 @@ adminApp.use("*", async (c, next) => {
   if (c.req.path === "/health") return next()
   const secretHeader = c.req.header("x-internal-secret")
   const authHeader = c.req.header("authorization")
-  const provided = secretHeader ?? (authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : undefined)
+  const provided =
+    secretHeader ?? (authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : undefined)
   if (!INTERNAL_SECRET || !provided) return c.json({ error: "unauthorized" }, 401)
   const a = Buffer.from(provided)
   const b = Buffer.from(INTERNAL_SECRET)
@@ -139,7 +155,10 @@ const proxyServer = createServer(async (req: IncomingMessage, res: ServerRespons
     let agentId = "anonymous"
     const identified = await identifyConnection(req)
     if (identified === "invalid") {
-      res.writeHead(407, { "content-type": "text/plain", "proxy-authenticate": 'Basic realm="saaya"' })
+      res.writeHead(407, {
+        "content-type": "text/plain",
+        "proxy-authenticate": 'Basic realm="saaya"',
+      })
       res.end("saaya: invalid proxy credential")
       return
     }
@@ -214,7 +233,12 @@ const proxyServer = createServer(async (req: IncomingMessage, res: ServerRespons
 
         // Check approval if required
         if (grant.requiresApproval) {
-          const decision = await requestApproval(agentId, grant.grantId, parsedUrl.toString(), req.method || "GET")
+          const decision = await requestApproval(
+            agentId,
+            grant.grantId,
+            parsedUrl.toString(),
+            req.method || "GET",
+          )
           if (decision !== "approved") {
             res.writeHead(403, { "content-type": "text/plain" })
             res.end("saaya: human approval rejected or timed out")
@@ -336,7 +360,9 @@ proxyServer.on("connect", async (req: IncomingMessage, clientSocket: Socket, hea
 
   try {
     if ((await identifyConnection(req)) === "invalid") {
-      clientSocket.end('HTTP/1.1 407 Proxy Authentication Required\r\nProxy-Authenticate: Basic realm="saaya"\r\n\r\n')
+      clientSocket.end(
+        'HTTP/1.1 407 Proxy Authentication Required\r\nProxy-Authenticate: Basic realm="saaya"\r\n\r\n',
+      )
       return
     }
     if (!host) throw new Error("Missing host in CONNECT request")
@@ -354,8 +380,12 @@ proxyServer.on("connect", async (req: IncomingMessage, clientSocket: Socket, hea
     })
 
     const cleanup = () => {
-      try { targetSocket.destroy() } catch {}
-      try { clientSocket.destroy() } catch {}
+      try {
+        targetSocket.destroy()
+      } catch {}
+      try {
+        clientSocket.destroy()
+      } catch {}
     }
 
     clientSocket.setTimeout(60_000, cleanup)

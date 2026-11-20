@@ -1,101 +1,503 @@
 <title>Sayabot Icon</title>
-<meta name="claude:viewport-fit-sides" content="cover">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;800&family=Geist+Mono:wght@400;500&display=swap">
+<meta name="claude:viewport-fit-sides" content="cover" />
+<link
+  rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;800&family=Geist+Mono:wght@400;500&display=swap"
+/>
 <style>
-/* Layout: hero icon + pitch, then the icon in its real homes (dock, home screen), sizes, alternates, files. */
-:root{--bg:#fbf8f8;--surface:#fff;--fg:#1b1220;--muted:#6f6471;--line:#ece4e4;--red:#ff5d6c;
---sans:"Geist",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--mono:"Geist Mono",ui-monospace,Menlo,monospace}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#130e15;--surface:#1d1620;--fg:#f7efef;--muted:#a99ba9;--line:#2d2431;color-scheme:dark}}
-:root[data-theme="dark"]{--bg:#130e15;--surface:#1d1620;--fg:#f7efef;--muted:#a99ba9;--line:#2d2431;color-scheme:dark}
-*{box-sizing:border-box}
-body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:16px;line-height:1.55;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:40px 80px}
-.wrap{max-width:1000px;margin:0 auto;display:grid;gap:64px}
-h1,h2,h3,p{margin:0}h1,h2{text-wrap:balance;letter-spacing:-.02em}h2{font-size:26px;font-weight:600}
-.eb{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
-.muted{color:var(--muted);max-width:62ch}
-section{display:grid;gap:20px}
-.hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:48px;align-items:center}
-.hero img{width:100%;max-width:400px;filter:drop-shadow(0 30px 40px rgba(238,65,87,.35))}
-.hero h1{font-size:clamp(40px,6.5vw,64px);font-weight:800;line-height:1.02}
-.hero p{font-size:19px;margin-top:16px;max-width:34ch}
-.why{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
-.why div{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;display:grid;gap:6px;align-content:start}
-.why h3{font-size:16px;font-weight:600}.why p{color:var(--muted);font-size:15px}
-.desk{border-radius:20px;padding:120px 20px 22px;background:linear-gradient(135deg,#f5b7a8,#c77b9a 45%,#5b4a8b);display:grid;justify-items:center;overflow:hidden}
-.dock{display:flex;gap:10px;padding:10px 12px;border-radius:24px;background:rgba(255,255,255,.28);border:1px solid rgba(255,255,255,.4);backdrop-filter:blur(20px);max-width:100%;overflow-x:auto}
-.dock i,.dock img{flex:0 0 auto;width:64px;height:64px;display:block}
-.dock i{border-radius:22.4%;transform:scale(.805)}
-.dock .on{position:relative}.dock .on::after{content:"";position:absolute;left:50%;bottom:-6px;width:4px;height:4px;border-radius:50%;background:#fff;transform:translateX(-50%)}
-.pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
-.phone{border-radius:20px;padding:28px 22px;background:linear-gradient(170deg,#2c2140,#140e1a 70%);display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px 10px;justify-items:center}
-.phone div{display:grid;gap:6px;justify-items:center;font-size:12px;color:#fff}
-.phone i,.phone img{width:60px;height:60px;border-radius:22.4%;display:block}
-.notif-wrap{border-radius:20px;padding:22px;background:var(--surface);border:1px solid var(--line);display:grid;gap:14px;align-content:center}
-.notif{background:#f2edf0;color:#1b1220;border-radius:18px;padding:12px 14px;display:grid;grid-template-columns:38px minmax(0,1fr);gap:12px;align-items:center}
-.notif img{width:38px;height:38px}.notif b{font-size:14px;font-weight:600}.notif p{font-size:13px;color:#4f4451}
-.tab{display:flex;align-items:center;gap:8px;background:#ece6e9;color:#1b1220;border-radius:10px 10px 0 0;padding:9px 14px;font-size:13px;width:max-content;max-width:100%}
-.tab img{width:16px;height:16px}
-.sizes{display:flex;flex-wrap:wrap;align-items:flex-end;gap:28px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:28px}
-.sizes figure{margin:0;display:grid;gap:8px;justify-items:center}.sizes figcaption{font-family:var(--mono);font-size:12px;color:var(--muted)}
-.alts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
-.alt{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;display:grid;grid-template-columns:96px minmax(0,1fr);gap:16px;align-items:center}
-.alt img{width:96px;height:96px}.alt h3{font-size:16px;font-weight:600}.alt p{color:var(--muted);font-size:14px}
-.files{font-family:var(--mono);font-size:13px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;overflow-x:auto;white-space:pre;line-height:1.8}
-@media (max-width:760px){.hero,.why,.pair,.alts{grid-template-columns:minmax(0,1fr)}.hero img{max-width:280px}}
+  /* Layout: hero icon + pitch, then the icon in its real homes (dock, home screen), sizes, alternates, files. */
+  :root {
+    --bg: #fbf8f8;
+    --surface: #fff;
+    --fg: #1b1220;
+    --muted: #6f6471;
+    --line: #ece4e4;
+    --red: #ff5d6c;
+    --sans: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --mono: "Geist Mono", ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #130e15;
+      --surface: #1d1620;
+      --fg: #f7efef;
+      --muted: #a99ba9;
+      --line: #2d2431;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #130e15;
+    --surface: #1d1620;
+    --fg: #f7efef;
+    --muted: #a99ba9;
+    --line: #2d2431;
+    color-scheme: dark;
+  }
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.55;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 40px 80px;
+  }
+  .wrap {
+    max-width: 1000px;
+    margin: 0 auto;
+    display: grid;
+    gap: 64px;
+  }
+  h1,
+  h2,
+  h3,
+  p {
+    margin: 0;
+  }
+  h1,
+  h2 {
+    text-wrap: balance;
+    letter-spacing: -0.02em;
+  }
+  h2 {
+    font-size: 26px;
+    font-weight: 600;
+  }
+  .eb {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .muted {
+    color: var(--muted);
+    max-width: 62ch;
+  }
+  section {
+    display: grid;
+    gap: 20px;
+  }
+  .hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+    gap: 48px;
+    align-items: center;
+  }
+  .hero img {
+    width: 100%;
+    max-width: 400px;
+    filter: drop-shadow(0 30px 40px rgba(238, 65, 87, 0.35));
+  }
+  .hero h1 {
+    font-size: clamp(40px, 6.5vw, 64px);
+    font-weight: 800;
+    line-height: 1.02;
+  }
+  .hero p {
+    font-size: 19px;
+    margin-top: 16px;
+    max-width: 34ch;
+  }
+  .why {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+  }
+  .why div {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 20px;
+    display: grid;
+    gap: 6px;
+    align-content: start;
+  }
+  .why h3 {
+    font-size: 16px;
+    font-weight: 600;
+  }
+  .why p {
+    color: var(--muted);
+    font-size: 15px;
+  }
+  .desk {
+    border-radius: 20px;
+    padding: 120px 20px 22px;
+    background: linear-gradient(135deg, #f5b7a8, #c77b9a 45%, #5b4a8b);
+    display: grid;
+    justify-items: center;
+    overflow: hidden;
+  }
+  .dock {
+    display: flex;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.28);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    backdrop-filter: blur(20px);
+    max-width: 100%;
+    overflow-x: auto;
+  }
+  .dock i,
+  .dock img {
+    flex: 0 0 auto;
+    width: 64px;
+    height: 64px;
+    display: block;
+  }
+  .dock i {
+    border-radius: 22.4%;
+    transform: scale(0.805);
+  }
+  .dock .on {
+    position: relative;
+  }
+  .dock .on::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: -6px;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: #fff;
+    transform: translateX(-50%);
+  }
+  .pair {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+  .phone {
+    border-radius: 20px;
+    padding: 28px 22px;
+    background: linear-gradient(170deg, #2c2140, #140e1a 70%);
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 18px 10px;
+    justify-items: center;
+  }
+  .phone div {
+    display: grid;
+    gap: 6px;
+    justify-items: center;
+    font-size: 12px;
+    color: #fff;
+  }
+  .phone i,
+  .phone img {
+    width: 60px;
+    height: 60px;
+    border-radius: 22.4%;
+    display: block;
+  }
+  .notif-wrap {
+    border-radius: 20px;
+    padding: 22px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    display: grid;
+    gap: 14px;
+    align-content: center;
+  }
+  .notif {
+    background: #f2edf0;
+    color: #1b1220;
+    border-radius: 18px;
+    padding: 12px 14px;
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr);
+    gap: 12px;
+    align-items: center;
+  }
+  .notif img {
+    width: 38px;
+    height: 38px;
+  }
+  .notif b {
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .notif p {
+    font-size: 13px;
+    color: #4f4451;
+  }
+  .tab {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #ece6e9;
+    color: #1b1220;
+    border-radius: 10px 10px 0 0;
+    padding: 9px 14px;
+    font-size: 13px;
+    width: max-content;
+    max-width: 100%;
+  }
+  .tab img {
+    width: 16px;
+    height: 16px;
+  }
+  .sizes {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 28px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 28px;
+  }
+  .sizes figure {
+    margin: 0;
+    display: grid;
+    gap: 8px;
+    justify-items: center;
+  }
+  .sizes figcaption {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .alts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+  .alt {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 20px;
+    display: grid;
+    grid-template-columns: 96px minmax(0, 1fr);
+    gap: 16px;
+    align-items: center;
+  }
+  .alt img {
+    width: 96px;
+    height: 96px;
+  }
+  .alt h3 {
+    font-size: 16px;
+    font-weight: 600;
+  }
+  .alt p {
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .files {
+    font-family: var(--mono);
+    font-size: 13px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 20px;
+    overflow-x: auto;
+    white-space: pre;
+    line-height: 1.8;
+  }
+  @media (max-width: 760px) {
+    .hero,
+    .why,
+    .pair,
+    .alts {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .hero img {
+      max-width: 280px;
+    }
+  }
 </style>
 <main class="wrap">
-<header class="hero">
-  <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDI0IDEwMjQiIHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiPjx0aXRsZT5TYXlhYm90PC90aXRsZT48ZGVmcz4KPGxpbmVhckdyYWRpZW50IGlkPSJhYmciIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZjc4ODYiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNlZTQxNTciLz48L2xpbmVhckdyYWRpZW50Pgo8bGluZWFyR3JhZGllbnQgaWQ9ImFib2R5IiB4MT0iMCIgeTE9IjAiIHgyPSIwIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjZmZmZmZmIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjZmZlOGRlIi8+PC9saW5lYXJHcmFkaWVudD4KPGxpbmVhckdyYWRpZW50IGlkPSJhZ29sZCIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iI2ZmZTlhOCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2ZmYmY1NSIvPjwvbGluZWFyR3JhZGllbnQ+CjxmaWx0ZXIgaWQ9ImFzaCIgeD0iLTIwJSIgeT0iLTIwJSIgd2lkdGg9IjE0MCUiIGhlaWdodD0iMTYwJSI+PGZlRHJvcFNoYWRvdyBkeD0iMCIgZHk9IjI2IiBzdGREZXZpYXRpb249IjI2IiBmbG9vZC1jb2xvcj0iIzhhMTQyNiIgZmxvb2Qtb3BhY2l0eT0iLjM1Ii8+PC9maWx0ZXI+CjxmaWx0ZXIgaWQ9ImF0aWxlIiB4PSItMjAlIiB5PSItMjAlIiB3aWR0aD0iMTQwJSIgaGVpZ2h0PSIxNTAlIj48ZmVEcm9wU2hhZG93IGR4PSIwIiBkeT0iMTgiIHN0ZERldmlhdGlvbj0iMjAiIGZsb29kLWNvbG9yPSIjMDAwIiBmbG9vZC1vcGFjaXR5PSIuMjgiLz48L2ZpbHRlcj4KPC9kZWZzPjxjbGlwUGF0aCBpZD0iYWNsaXAiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIHJ4PSIyMjkiLz48L2NsaXBQYXRoPjxnIGNsaXAtcGF0aD0idXJsKCNhY2xpcCkiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIGZpbGw9InVybCgjYWJnKSIvPjxnIGZpbHRlcj0idXJsKCNhc2gpIj48cGF0aCBkPSJNNDE2LDMxOEg1NzZBMjIwLDIyMCAwIDAgMSA3OTYsNTM4VjU2OEEyMjAsMjIwIDAgMCAxIDU3Niw3ODhINDE2QTIyMCwyMjAgMCAwIDEgMTk2LDU2OFY1MzhBMjIwLDIyMCAwIDAgMSA0MTYsMzE4Wk0zMDAsNzQyQzMwMCw4MTIgMjcwLDg1OCAyMjgsODg0QzMxOCw4ODggMzkyLDg1OCA0NDAsODA2WiIgZmlsbD0idXJsKCNhYm9keSkiLz48L2c+PGcgZmlsbD0iIzFiMTIyMCI+PHJlY3QgeD0iMzg2IiB5PSI0NzciIHdpZHRoPSI3NiIgaGVpZ2h0PSIxNDIiIHJ4PSIzOCIvPjxyZWN0IHg9IjU0NiIgeT0iNDc3IiB3aWR0aD0iNzYiIGhlaWdodD0iMTQyIiByeD0iMzgiLz48L2c+PGcgZmlsbD0iI2ZmZiI+PGNpcmNsZSBjeD0iNDM0IiBjeT0iNTEzLjkyIiByPSIxNS4yMDAwMDAwMDAwMDAwMDEiLz48Y2lyY2xlIGN4PSI1OTQiIGN5PSI1MTMuOTIiIHI9IjE1LjIwMDAwMDAwMDAwMDAwMSIvPjwvZz48ZyBmaWxsPSIjZmY4YTk4IiBvcGFjaXR5PSIuNTUiPjxlbGxpcHNlIGN4PSIzMzgiIGN5PSI2NDIiIHJ4PSI0NiIgcnk9IjI1Ii8+PGVsbGlwc2UgY3g9IjY2OCIgY3k9IjY0MiIgcng9IjQ2IiByeT0iMjUiLz48L2c+PHBhdGggZD0iTTc3MiwxNjRRNzcyLDI4NCA4OTIsMjg0UTc3MiwyODQgNzcyLDQwNFE3NzIsMjg0IDY1MiwyODRRNzcyLDI4NCA3NzIsMTY0WiIgZmlsbD0idXJsKCNhZ29sZCkiIHN0cm9rZT0iI2VmNGY2MyIgc3Ryb2tlLXdpZHRoPSIzMCIgcGFpbnQtb3JkZXI9InN0cm9rZSIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik02NDIsMTU0UTY0MiwxOTQgNjgyLDE5NFE2NDIsMTk0IDY0MiwyMzRRNjQyLDE5NCA2MDIsMTk0UTY0MiwxOTQgNjQyLDE1NFoiIGZpbGw9IiNmZmY3ZjAiLz48L2c+PC9zdmc+Cg==" alt="Sayabot app icon: a cute white chat bubble with two eyes, rosy cheeks and a golden AI sparkle, on coral red">
-  <div><p class="eb">Sayabot · app icon</p><h1>A chat that woke up.</h1>
-  <p>A speech bubble with a face and a golden AI sparkle for a cowlick. It's an agent you talk to, and it reads that way at a glance.</p></div>
-</header>
-<section class="why">
-  <div><h3>Says "AI agent" instantly</h3><p>The chat bubble means conversation and rooms, the sparkle is the sign everyone now knows means AI, and the eyes make it someone, not a tool.</p></div>
-  <div><h3>Cute, not a robot</h3><p>No antenna, visor or bolts. Soft shapes, rosy cheeks and shiny eyes make it a companion you're happy to hand work to.</p></div>
-  <div><h3>Built for the dock</h3><p>A big white shape on a red gradient, sitting on Apple's macOS grid, so it stands out among blue and green icons and looks right next to them.</p></div>
-</section>
-<section>
-  <p class="eb">macOS dock</p>
-  <div class="desk"><div class="dock"><i style="background:#3b82f6"></i><i style="background:#22c55e"></i><i style="background:linear-gradient(#a78bfa,#7c3aed)"></i><img class="on" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDI0IDEwMjQiIHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiPjx0aXRsZT5TYXlhYm90PC90aXRsZT48ZGVmcz4KPGxpbmVhckdyYWRpZW50IGlkPSJhYmciIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZjc4ODYiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNlZTQxNTciLz48L2xpbmVhckdyYWRpZW50Pgo8bGluZWFyR3JhZGllbnQgaWQ9ImFib2R5IiB4MT0iMCIgeTE9IjAiIHgyPSIwIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjZmZmZmZmIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjZmZlOGRlIi8+PC9saW5lYXJHcmFkaWVudD4KPGxpbmVhckdyYWRpZW50IGlkPSJhZ29sZCIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iI2ZmZTlhOCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2ZmYmY1NSIvPjwvbGluZWFyR3JhZGllbnQ+CjxmaWx0ZXIgaWQ9ImFzaCIgeD0iLTIwJSIgeT0iLTIwJSIgd2lkdGg9IjE0MCUiIGhlaWdodD0iMTYwJSI+PGZlRHJvcFNoYWRvdyBkeD0iMCIgZHk9IjI2IiBzdGREZXZpYXRpb249IjI2IiBmbG9vZC1jb2xvcj0iIzhhMTQyNiIgZmxvb2Qtb3BhY2l0eT0iLjM1Ii8+PC9maWx0ZXI+CjxmaWx0ZXIgaWQ9ImF0aWxlIiB4PSItMjAlIiB5PSItMjAlIiB3aWR0aD0iMTQwJSIgaGVpZ2h0PSIxNTAlIj48ZmVEcm9wU2hhZG93IGR4PSIwIiBkeT0iMTgiIHN0ZERldmlhdGlvbj0iMjAiIGZsb29kLWNvbG9yPSIjMDAwIiBmbG9vZC1vcGFjaXR5PSIuMjgiLz48L2ZpbHRlcj4KPC9kZWZzPjxnIGZpbHRlcj0idXJsKCNhdGlsZSkiPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDEwMCAxMDApIHNjYWxlKDAuODA0Njg3NSkiPjxjbGlwUGF0aCBpZD0iYWNsaXAiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIHJ4PSIyMjkiLz48L2NsaXBQYXRoPjxnIGNsaXAtcGF0aD0idXJsKCNhY2xpcCkiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIGZpbGw9InVybCgjYWJnKSIvPjxnIGZpbHRlcj0idXJsKCNhc2gpIj48cGF0aCBkPSJNNDE2LDMxOEg1NzZBMjIwLDIyMCAwIDAgMSA3OTYsNTM4VjU2OEEyMjAsMjIwIDAgMCAxIDU3Niw3ODhINDE2QTIyMCwyMjAgMCAwIDEgMTk2LDU2OFY1MzhBMjIwLDIyMCAwIDAgMSA0MTYsMzE4Wk0zMDAsNzQyQzMwMCw4MTIgMjcwLDg1OCAyMjgsODg0QzMxOCw4ODggMzkyLDg1OCA0NDAsODA2WiIgZmlsbD0idXJsKCNhYm9keSkiLz48L2c+PGcgZmlsbD0iIzFiMTIyMCI+PHJlY3QgeD0iMzg2IiB5PSI0NzciIHdpZHRoPSI3NiIgaGVpZ2h0PSIxNDIiIHJ4PSIzOCIvPjxyZWN0IHg9IjU0NiIgeT0iNDc3IiB3aWR0aD0iNzYiIGhlaWdodD0iMTQyIiByeD0iMzgiLz48L2c+PGcgZmlsbD0iI2ZmZiI+PGNpcmNsZSBjeD0iNDM0IiBjeT0iNTEzLjkyIiByPSIxNS4yMDAwMDAwMDAwMDAwMDEiLz48Y2lyY2xlIGN4PSI1OTQiIGN5PSI1MTMuOTIiIHI9IjE1LjIwMDAwMDAwMDAwMDAwMSIvPjwvZz48ZyBmaWxsPSIjZmY4YTk4IiBvcGFjaXR5PSIuNTUiPjxlbGxpcHNlIGN4PSIzMzgiIGN5PSI2NDIiIHJ4PSI0NiIgcnk9IjI1Ii8+PGVsbGlwc2UgY3g9IjY2OCIgY3k9IjY0MiIgcng9IjQ2IiByeT0iMjUiLz48L2c+PHBhdGggZD0iTTc3MiwxNjRRNzcyLDI4NCA4OTIsMjg0UTc3MiwyODQgNzcyLDQwNFE3NzIsMjg0IDY1MiwyODRRNzcyLDI4NCA3NzIsMTY0WiIgZmlsbD0idXJsKCNhZ29sZCkiIHN0cm9rZT0iI2VmNGY2MyIgc3Ryb2tlLXdpZHRoPSIzMCIgcGFpbnQtb3JkZXI9InN0cm9rZSIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik02NDIsMTU0UTY0MiwxOTQgNjgyLDE5NFE2NDIsMTk0IDY0MiwyMzRRNjQyLDE5NCA2MDIsMTk0UTY0MiwxOTQgNjQyLDE1NFoiIGZpbGw9IiNmZmY3ZjAiLz48L2c+PC9nPjwvZz48L3N2Zz4K" alt="Sayabot in the dock"><i style="background:#f59e0b"></i><i style="background:linear-gradient(#94a3b8,#475569)"></i><i style="background:#0ea5e9"></i></div></div>
-</section>
-<section class="pair">
-  <div class="phone">
-    <div><i style="background:#22c55e"></i>Messages</div><div><i style="background:#f59e0b"></i>Notes</div><div><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDI0IDEwMjQiIHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiPjx0aXRsZT5TYXlhYm90PC90aXRsZT48ZGVmcz4KPGxpbmVhckdyYWRpZW50IGlkPSJhYmciIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZjc4ODYiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNlZTQxNTciLz48L2xpbmVhckdyYWRpZW50Pgo8bGluZWFyR3JhZGllbnQgaWQ9ImFib2R5IiB4MT0iMCIgeTE9IjAiIHgyPSIwIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjZmZmZmZmIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjZmZlOGRlIi8+PC9saW5lYXJHcmFkaWVudD4KPGxpbmVhckdyYWRpZW50IGlkPSJhZ29sZCIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iI2ZmZTlhOCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2ZmYmY1NSIvPjwvbGluZWFyR3JhZGllbnQ+CjxmaWx0ZXIgaWQ9ImFzaCIgeD0iLTIwJSIgeT0iLTIwJSIgd2lkdGg9IjE0MCUiIGhlaWdodD0iMTYwJSI+PGZlRHJvcFNoYWRvdyBkeD0iMCIgZHk9IjI2IiBzdGREZXZpYXRpb249IjI2IiBmbG9vZC1jb2xvcj0iIzhhMTQyNiIgZmxvb2Qtb3BhY2l0eT0iLjM1Ii8+PC9maWx0ZXI+CjxmaWx0ZXIgaWQ9ImF0aWxlIiB4PSItMjAlIiB5PSItMjAlIiB3aWR0aD0iMTQwJSIgaGVpZ2h0PSIxNTAlIj48ZmVEcm9wU2hhZG93IGR4PSIwIiBkeT0iMTgiIHN0ZERldmlhdGlvbj0iMjAiIGZsb29kLWNvbG9yPSIjMDAwIiBmbG9vZC1vcGFjaXR5PSIuMjgiLz48L2ZpbHRlcj4KPC9kZWZzPjxjbGlwUGF0aCBpZD0iYWNsaXAiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIHJ4PSIyMjkiLz48L2NsaXBQYXRoPjxnIGNsaXAtcGF0aD0idXJsKCNhY2xpcCkiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIGZpbGw9InVybCgjYWJnKSIvPjxnIGZpbHRlcj0idXJsKCNhc2gpIj48cGF0aCBkPSJNNDE2LDMxOEg1NzZBMjIwLDIyMCAwIDAgMSA3OTYsNTM4VjU2OEEyMjAsMjIwIDAgMCAxIDU3Niw3ODhINDE2QTIyMCwyMjAgMCAwIDEgMTk2LDU2OFY1MzhBMjIwLDIyMCAwIDAgMSA0MTYsMzE4Wk0zMDAsNzQyQzMwMCw4MTIgMjcwLDg1OCAyMjgsODg0QzMxOCw4ODggMzkyLDg1OCA0NDAsODA2WiIgZmlsbD0idXJsKCNhYm9keSkiLz48L2c+PGcgZmlsbD0iIzFiMTIyMCI+PHJlY3QgeD0iMzg2IiB5PSI0NzciIHdpZHRoPSI3NiIgaGVpZ2h0PSIxNDIiIHJ4PSIzOCIvPjxyZWN0IHg9IjU0NiIgeT0iNDc3IiB3aWR0aD0iNzYiIGhlaWdodD0iMTQyIiByeD0iMzgiLz48L2c+PGcgZmlsbD0iI2ZmZiI+PGNpcmNsZSBjeD0iNDM0IiBjeT0iNTEzLjkyIiByPSIxNS4yMDAwMDAwMDAwMDAwMDEiLz48Y2lyY2xlIGN4PSI1OTQiIGN5PSI1MTMuOTIiIHI9IjE1LjIwMDAwMDAwMDAwMDAwMSIvPjwvZz48ZyBmaWxsPSIjZmY4YTk4IiBvcGFjaXR5PSIuNTUiPjxlbGxpcHNlIGN4PSIzMzgiIGN5PSI2NDIiIHJ4PSI0NiIgcnk9IjI1Ii8+PGVsbGlwc2UgY3g9IjY2OCIgY3k9IjY0MiIgcng9IjQ2IiByeT0iMjUiLz48L2c+PHBhdGggZD0iTTc3MiwxNjRRNzcyLDI4NCA4OTIsMjg0UTc3MiwyODQgNzcyLDQwNFE3NzIsMjg0IDY1MiwyODRRNzcyLDI4NCA3NzIsMTY0WiIgZmlsbD0idXJsKCNhZ29sZCkiIHN0cm9rZT0iI2VmNGY2MyIgc3Ryb2tlLXdpZHRoPSIzMCIgcGFpbnQtb3JkZXI9InN0cm9rZSIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik02NDIsMTU0UTY0MiwxOTQgNjgyLDE5NFE2NDIsMTk0IDY0MiwyMzRRNjQyLDE5NCA2MDIsMTk0UTY0MiwxOTQgNjQyLDE1NFoiIGZpbGw9IiNmZmY3ZjAiLz48L2c+PC9zdmc+Cg==" alt="">Sayabot</div><div><i style="background:#3b82f6"></i>Mail</div>
-    <div><i style="background:#ef4444"></i>Music</div><div><i style="background:#64748b"></i>Settings</div><div><i style="background:#0ea5e9"></i>Weather</div><div><i style="background:#a855f7"></i>Podcasts</div>
-  </div>
-  <div class="notif-wrap">
-    <p class="eb">Notification · browser tab</p>
-    <div class="notif"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDI0IDEwMjQiIHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiPjx0aXRsZT5TYXlhYm90PC90aXRsZT48ZGVmcz4KPGxpbmVhckdyYWRpZW50IGlkPSJhYmciIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZjc4ODYiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNlZTQxNTciLz48L2xpbmVhckdyYWRpZW50Pgo8bGluZWFyR3JhZGllbnQgaWQ9ImFib2R5IiB4MT0iMCIgeTE9IjAiIHgyPSIwIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjZmZmZmZmIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjZmZlOGRlIi8+PC9saW5lYXJHcmFkaWVudD4KPGxpbmVhckdyYWRpZW50IGlkPSJhZ29sZCIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iI2ZmZTlhOCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2ZmYmY1NSIvPjwvbGluZWFyR3JhZGllbnQ+CjxmaWx0ZXIgaWQ9ImFzaCIgeD0iLTIwJSIgeT0iLTIwJSIgd2lkdGg9IjE0MCUiIGhlaWdodD0iMTYwJSI+PGZlRHJvcFNoYWRvdyBkeD0iMCIgZHk9IjI2IiBzdGREZXZpYXRpb249IjI2IiBmbG9vZC1jb2xvcj0iIzhhMTQyNiIgZmxvb2Qtb3BhY2l0eT0iLjM1Ii8+PC9maWx0ZXI+CjxmaWx0ZXIgaWQ9ImF0aWxlIiB4PSItMjAlIiB5PSItMjAlIiB3aWR0aD0iMTQwJSIgaGVpZ2h0PSIxNTAlIj48ZmVEcm9wU2hhZG93IGR4PSIwIiBkeT0iMTgiIHN0ZERldmlhdGlvbj0iMjAiIGZsb29kLWNvbG9yPSIjMDAwIiBmbG9vZC1vcGFjaXR5PSIuMjgiLz48L2ZpbHRlcj4KPC9kZWZzPjxjbGlwUGF0aCBpZD0iYWNsaXAiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIHJ4PSIyMjkiLz48L2NsaXBQYXRoPjxnIGNsaXAtcGF0aD0idXJsKCNhY2xpcCkiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIGZpbGw9InVybCgjYWJnKSIvPjxnIGZpbHRlcj0idXJsKCNhc2gpIj48cGF0aCBkPSJNNDE2LDMxOEg1NzZBMjIwLDIyMCAwIDAgMSA3OTYsNTM4VjU2OEEyMjAsMjIwIDAgMCAxIDU3Niw3ODhINDE2QTIyMCwyMjAgMCAwIDEgMTk2LDU2OFY1MzhBMjIwLDIyMCAwIDAgMSA0MTYsMzE4Wk0zMDAsNzQyQzMwMCw4MTIgMjcwLDg1OCAyMjgsODg0QzMxOCw4ODggMzkyLDg1OCA0NDAsODA2WiIgZmlsbD0idXJsKCNhYm9keSkiLz48L2c+PGcgZmlsbD0iIzFiMTIyMCI+PHJlY3QgeD0iMzg2IiB5PSI0NzciIHdpZHRoPSI3NiIgaGVpZ2h0PSIxNDIiIHJ4PSIzOCIvPjxyZWN0IHg9IjU0NiIgeT0iNDc3IiB3aWR0aD0iNzYiIGhlaWdodD0iMTQyIiByeD0iMzgiLz48L2c+PGcgZmlsbD0iI2ZmZiI+PGNpcmNsZSBjeD0iNDM0IiBjeT0iNTEzLjkyIiByPSIxNS4yMDAwMDAwMDAwMDAwMDEiLz48Y2lyY2xlIGN4PSI1OTQiIGN5PSI1MTMuOTIiIHI9IjE1LjIwMDAwMDAwMDAwMDAwMSIvPjwvZz48ZyBmaWxsPSIjZmY4YTk4IiBvcGFjaXR5PSIuNTUiPjxlbGxpcHNlIGN4PSIzMzgiIGN5PSI2NDIiIHJ4PSI0NiIgcnk9IjI1Ii8+PGVsbGlwc2UgY3g9IjY2OCIgY3k9IjY0MiIgcng9IjQ2IiByeT0iMjUiLz48L2c+PHBhdGggZD0iTTc3MiwxNjRRNzcyLDI4NCA4OTIsMjg0UTc3MiwyODQgNzcyLDQwNFE3NzIsMjg0IDY1MiwyODRRNzcyLDI4NCA3NzIsMTY0WiIgZmlsbD0idXJsKCNhZ29sZCkiIHN0cm9rZT0iI2VmNGY2MyIgc3Ryb2tlLXdpZHRoPSIzMCIgcGFpbnQtb3JkZXI9InN0cm9rZSIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik02NDIsMTU0UTY0MiwxOTQgNjgyLDE5NFE2NDIsMTk0IDY0MiwyMzRRNjQyLDE5NCA2MDIsMTk0UTY0MiwxOTQgNjQyLDE1NFoiIGZpbGw9IiNmZmY3ZjAiLz48L2c+PC9zdmc+Cg==" alt=""><div><b>Atlas needs your approval</b><p>Wants to open a PR on saaya/web · tap to review</p></div></div>
-    <div class="tab"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDI0IDEwMjQiIHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiPjx0aXRsZT5TYXlhYm90PC90aXRsZT48ZGVmcz4KPGxpbmVhckdyYWRpZW50IGlkPSJhYmciIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZjc4ODYiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNlZTQxNTciLz48L2xpbmVhckdyYWRpZW50Pgo8bGluZWFyR3JhZGllbnQgaWQ9ImFib2R5IiB4MT0iMCIgeTE9IjAiIHgyPSIwIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjZmZmZmZmIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjZmZlOGRlIi8+PC9saW5lYXJHcmFkaWVudD4KPGxpbmVhckdyYWRpZW50IGlkPSJhZ29sZCIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iI2ZmZTlhOCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2ZmYmY1NSIvPjwvbGluZWFyR3JhZGllbnQ+CjxmaWx0ZXIgaWQ9ImFzaCIgeD0iLTIwJSIgeT0iLTIwJSIgd2lkdGg9IjE0MCUiIGhlaWdodD0iMTYwJSI+PGZlRHJvcFNoYWRvdyBkeD0iMCIgZHk9IjI2IiBzdGREZXZpYXRpb249IjI2IiBmbG9vZC1jb2xvcj0iIzhhMTQyNiIgZmxvb2Qtb3BhY2l0eT0iLjM1Ii8+PC9maWx0ZXI+CjxmaWx0ZXIgaWQ9ImF0aWxlIiB4PSItMjAlIiB5PSItMjAlIiB3aWR0aD0iMTQwJSIgaGVpZ2h0PSIxNTAlIj48ZmVEcm9wU2hhZG93IGR4PSIwIiBkeT0iMTgiIHN0ZERldmlhdGlvbj0iMjAiIGZsb29kLWNvbG9yPSIjMDAwIiBmbG9vZC1vcGFjaXR5PSIuMjgiLz48L2ZpbHRlcj4KPC9kZWZzPjxjbGlwUGF0aCBpZD0iYWNsaXAiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIHJ4PSIyMjkiLz48L2NsaXBQYXRoPjxnIGNsaXAtcGF0aD0idXJsKCNhY2xpcCkiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIGZpbGw9InVybCgjYWJnKSIvPjxnIGZpbHRlcj0idXJsKCNhc2gpIj48cGF0aCBkPSJNNDE2LDMxOEg1NzZBMjIwLDIyMCAwIDAgMSA3OTYsNTM4VjU2OEEyMjAsMjIwIDAgMCAxIDU3Niw3ODhINDE2QTIyMCwyMjAgMCAwIDEgMTk2LDU2OFY1MzhBMjIwLDIyMCAwIDAgMSA0MTYsMzE4Wk0zMDAsNzQyQzMwMCw4MTIgMjcwLDg1OCAyMjgsODg0QzMxOCw4ODggMzkyLDg1OCA0NDAsODA2WiIgZmlsbD0idXJsKCNhYm9keSkiLz48L2c+PGcgZmlsbD0iIzFiMTIyMCI+PHJlY3QgeD0iMzc2IiB5PSI0NjgiIHdpZHRoPSI5NiIgaGVpZ2h0PSIxNjgiIHJ4PSI0OCIvPjxyZWN0IHg9IjUzMiIgeT0iNDY4IiB3aWR0aD0iOTYiIGhlaWdodD0iMTY4IiByeD0iNDgiLz48L2c+PHBhdGggZD0iTTc3NCwxMjhRNzc0LDI3OCA5MjQsMjc4UTc3NCwyNzggNzc0LDQyOFE3NzQsMjc4IDYyNCwyNzhRNzc0LDI3OCA3NzQsMTI4WiIgZmlsbD0idXJsKCNhZ29sZCkiIHN0cm9rZT0iI2VmNGY2MyIgc3Ryb2tlLXdpZHRoPSIzNCIgcGFpbnQtb3JkZXI9InN0cm9rZSIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjwvZz48L3N2Zz4K" alt="">Design review · Sayabot</div>
-  </div>
-</section>
-<section>
-  <p class="eb">Size tests</p>
-  <p class="muted">At 32 px and below a simpler version drops the cheeks and small sparkle, and makes the eyes and main sparkle bigger.</p>
-  <div class="sizes">
-    <figure><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDI0IDEwMjQiIHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiPjx0aXRsZT5TYXlhYm90PC90aXRsZT48ZGVmcz4KPGxpbmVhckdyYWRpZW50IGlkPSJhYmciIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZjc4ODYiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNlZTQxNTciLz48L2xpbmVhckdyYWRpZW50Pgo8bGluZWFyR3JhZGllbnQgaWQ9ImFib2R5IiB4MT0iMCIgeTE9IjAiIHgyPSIwIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjZmZmZmZmIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjZmZlOGRlIi8+PC9saW5lYXJHcmFkaWVudD4KPGxpbmVhckdyYWRpZW50IGlkPSJhZ29sZCIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iI2ZmZTlhOCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2ZmYmY1NSIvPjwvbGluZWFyR3JhZGllbnQ+CjxmaWx0ZXIgaWQ9ImFzaCIgeD0iLTIwJSIgeT0iLTIwJSIgd2lkdGg9IjE0MCUiIGhlaWdodD0iMTYwJSI+PGZlRHJvcFNoYWRvdyBkeD0iMCIgZHk9IjI2IiBzdGREZXZpYXRpb249IjI2IiBmbG9vZC1jb2xvcj0iIzhhMTQyNiIgZmxvb2Qtb3BhY2l0eT0iLjM1Ii8+PC9maWx0ZXI+CjxmaWx0ZXIgaWQ9ImF0aWxlIiB4PSItMjAlIiB5PSItMjAlIiB3aWR0aD0iMTQwJSIgaGVpZ2h0PSIxNTAlIj48ZmVEcm9wU2hhZG93IGR4PSIwIiBkeT0iMTgiIHN0ZERldmlhdGlvbj0iMjAiIGZsb29kLWNvbG9yPSIjMDAwIiBmbG9vZC1vcGFjaXR5PSIuMjgiLz48L2ZpbHRlcj4KPC9kZWZzPjxjbGlwUGF0aCBpZD0iYWNsaXAiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIHJ4PSIyMjkiLz48L2NsaXBQYXRoPjxnIGNsaXAtcGF0aD0idXJsKCNhY2xpcCkiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIGZpbGw9InVybCgjYWJnKSIvPjxnIGZpbHRlcj0idXJsKCNhc2gpIj48cGF0aCBkPSJNNDE2LDMxOEg1NzZBMjIwLDIyMCAwIDAgMSA3OTYsNTM4VjU2OEEyMjAsMjIwIDAgMCAxIDU3Niw3ODhINDE2QTIyMCwyMjAgMCAwIDEgMTk2LDU2OFY1MzhBMjIwLDIyMCAwIDAgMSA0MTYsMzE4Wk0zMDAsNzQyQzMwMCw4MTIgMjcwLDg1OCAyMjgsODg0QzMxOCw4ODggMzkyLDg1OCA0NDAsODA2WiIgZmlsbD0idXJsKCNhYm9keSkiLz48L2c+PGcgZmlsbD0iIzFiMTIyMCI+PHJlY3QgeD0iMzg2IiB5PSI0NzciIHdpZHRoPSI3NiIgaGVpZ2h0PSIxNDIiIHJ4PSIzOCIvPjxyZWN0IHg9IjU0NiIgeT0iNDc3IiB3aWR0aD0iNzYiIGhlaWdodD0iMTQyIiByeD0iMzgiLz48L2c+PGcgZmlsbD0iI2ZmZiI+PGNpcmNsZSBjeD0iNDM0IiBjeT0iNTEzLjkyIiByPSIxNS4yMDAwMDAwMDAwMDAwMDEiLz48Y2lyY2xlIGN4PSI1OTQiIGN5PSI1MTMuOTIiIHI9IjE1LjIwMDAwMDAwMDAwMDAwMSIvPjwvZz48ZyBmaWxsPSIjZmY4YTk4IiBvcGFjaXR5PSIuNTUiPjxlbGxpcHNlIGN4PSIzMzgiIGN5PSI2NDIiIHJ4PSI0NiIgcnk9IjI1Ii8+PGVsbGlwc2UgY3g9IjY2OCIgY3k9IjY0MiIgcng9IjQ2IiByeT0iMjUiLz48L2c+PHBhdGggZD0iTTc3MiwxNjRRNzcyLDI4NCA4OTIsMjg0UTc3MiwyODQgNzcyLDQwNFE3NzIsMjg0IDY1MiwyODRRNzcyLDI4NCA3NzIsMTY0WiIgZmlsbD0idXJsKCNhZ29sZCkiIHN0cm9rZT0iI2VmNGY2MyIgc3Ryb2tlLXdpZHRoPSIzMCIgcGFpbnQtb3JkZXI9InN0cm9rZSIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik02NDIsMTU0UTY0MiwxOTQgNjgyLDE5NFE2NDIsMTk0IDY0MiwyMzRRNjQyLDE5NCA2MDIsMTk0UTY0MiwxOTQgNjQyLDE1NFoiIGZpbGw9IiNmZmY3ZjAiLz48L2c+PC9zdmc+Cg==" width="180" height="180" alt=""><figcaption>180</figcaption></figure>
-    <figure><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDI0IDEwMjQiIHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiPjx0aXRsZT5TYXlhYm90PC90aXRsZT48ZGVmcz4KPGxpbmVhckdyYWRpZW50IGlkPSJhYmciIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZjc4ODYiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNlZTQxNTciLz48L2xpbmVhckdyYWRpZW50Pgo8bGluZWFyR3JhZGllbnQgaWQ9ImFib2R5IiB4MT0iMCIgeTE9IjAiIHgyPSIwIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjZmZmZmZmIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjZmZlOGRlIi8+PC9saW5lYXJHcmFkaWVudD4KPGxpbmVhckdyYWRpZW50IGlkPSJhZ29sZCIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iI2ZmZTlhOCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2ZmYmY1NSIvPjwvbGluZWFyR3JhZGllbnQ+CjxmaWx0ZXIgaWQ9ImFzaCIgeD0iLTIwJSIgeT0iLTIwJSIgd2lkdGg9IjE0MCUiIGhlaWdodD0iMTYwJSI+PGZlRHJvcFNoYWRvdyBkeD0iMCIgZHk9IjI2IiBzdGREZXZpYXRpb249IjI2IiBmbG9vZC1jb2xvcj0iIzhhMTQyNiIgZmxvb2Qtb3BhY2l0eT0iLjM1Ii8+PC9maWx0ZXI+CjxmaWx0ZXIgaWQ9ImF0aWxlIiB4PSItMjAlIiB5PSItMjAlIiB3aWR0aD0iMTQwJSIgaGVpZ2h0PSIxNTAlIj48ZmVEcm9wU2hhZG93IGR4PSIwIiBkeT0iMTgiIHN0ZERldmlhdGlvbj0iMjAiIGZsb29kLWNvbG9yPSIjMDAwIiBmbG9vZC1vcGFjaXR5PSIuMjgiLz48L2ZpbHRlcj4KPC9kZWZzPjxjbGlwUGF0aCBpZD0iYWNsaXAiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIHJ4PSIyMjkiLz48L2NsaXBQYXRoPjxnIGNsaXAtcGF0aD0idXJsKCNhY2xpcCkiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIGZpbGw9InVybCgjYWJnKSIvPjxnIGZpbHRlcj0idXJsKCNhc2gpIj48cGF0aCBkPSJNNDE2LDMxOEg1NzZBMjIwLDIyMCAwIDAgMSA3OTYsNTM4VjU2OEEyMjAsMjIwIDAgMCAxIDU3Niw3ODhINDE2QTIyMCwyMjAgMCAwIDEgMTk2LDU2OFY1MzhBMjIwLDIyMCAwIDAgMSA0MTYsMzE4Wk0zMDAsNzQyQzMwMCw4MTIgMjcwLDg1OCAyMjgsODg0QzMxOCw4ODggMzkyLDg1OCA0NDAsODA2WiIgZmlsbD0idXJsKCNhYm9keSkiLz48L2c+PGcgZmlsbD0iIzFiMTIyMCI+PHJlY3QgeD0iMzg2IiB5PSI0NzciIHdpZHRoPSI3NiIgaGVpZ2h0PSIxNDIiIHJ4PSIzOCIvPjxyZWN0IHg9IjU0NiIgeT0iNDc3IiB3aWR0aD0iNzYiIGhlaWdodD0iMTQyIiByeD0iMzgiLz48L2c+PGcgZmlsbD0iI2ZmZiI+PGNpcmNsZSBjeD0iNDM0IiBjeT0iNTEzLjkyIiByPSIxNS4yMDAwMDAwMDAwMDAwMDEiLz48Y2lyY2xlIGN4PSI1OTQiIGN5PSI1MTMuOTIiIHI9IjE1LjIwMDAwMDAwMDAwMDAwMSIvPjwvZz48ZyBmaWxsPSIjZmY4YTk4IiBvcGFjaXR5PSIuNTUiPjxlbGxpcHNlIGN4PSIzMzgiIGN5PSI2NDIiIHJ4PSI0NiIgcnk9IjI1Ii8+PGVsbGlwc2UgY3g9IjY2OCIgY3k9IjY0MiIgcng9IjQ2IiByeT0iMjUiLz48L2c+PHBhdGggZD0iTTc3MiwxNjRRNzcyLDI4NCA4OTIsMjg0UTc3MiwyODQgNzcyLDQwNFE3NzIsMjg0IDY1MiwyODRRNzcyLDI4NCA3NzIsMTY0WiIgZmlsbD0idXJsKCNhZ29sZCkiIHN0cm9rZT0iI2VmNGY2MyIgc3Ryb2tlLXdpZHRoPSIzMCIgcGFpbnQtb3JkZXI9InN0cm9rZSIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik02NDIsMTU0UTY0MiwxOTQgNjgyLDE5NFE2NDIsMTk0IDY0MiwyMzRRNjQyLDE5NCA2MDIsMTk0UTY0MiwxOTQgNjQyLDE1NFoiIGZpbGw9IiNmZmY3ZjAiLz48L2c+PC9zdmc+Cg==" width="96" height="96" alt=""><figcaption>96</figcaption></figure>
-    <figure><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDI0IDEwMjQiIHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiPjx0aXRsZT5TYXlhYm90PC90aXRsZT48ZGVmcz4KPGxpbmVhckdyYWRpZW50IGlkPSJhYmciIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZjc4ODYiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNlZTQxNTciLz48L2xpbmVhckdyYWRpZW50Pgo8bGluZWFyR3JhZGllbnQgaWQ9ImFib2R5IiB4MT0iMCIgeTE9IjAiIHgyPSIwIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjZmZmZmZmIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjZmZlOGRlIi8+PC9saW5lYXJHcmFkaWVudD4KPGxpbmVhckdyYWRpZW50IGlkPSJhZ29sZCIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iI2ZmZTlhOCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2ZmYmY1NSIvPjwvbGluZWFyR3JhZGllbnQ+CjxmaWx0ZXIgaWQ9ImFzaCIgeD0iLTIwJSIgeT0iLTIwJSIgd2lkdGg9IjE0MCUiIGhlaWdodD0iMTYwJSI+PGZlRHJvcFNoYWRvdyBkeD0iMCIgZHk9IjI2IiBzdGREZXZpYXRpb249IjI2IiBmbG9vZC1jb2xvcj0iIzhhMTQyNiIgZmxvb2Qtb3BhY2l0eT0iLjM1Ii8+PC9maWx0ZXI+CjxmaWx0ZXIgaWQ9ImF0aWxlIiB4PSItMjAlIiB5PSItMjAlIiB3aWR0aD0iMTQwJSIgaGVpZ2h0PSIxNTAlIj48ZmVEcm9wU2hhZG93IGR4PSIwIiBkeT0iMTgiIHN0ZERldmlhdGlvbj0iMjAiIGZsb29kLWNvbG9yPSIjMDAwIiBmbG9vZC1vcGFjaXR5PSIuMjgiLz48L2ZpbHRlcj4KPC9kZWZzPjxjbGlwUGF0aCBpZD0iYWNsaXAiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIHJ4PSIyMjkiLz48L2NsaXBQYXRoPjxnIGNsaXAtcGF0aD0idXJsKCNhY2xpcCkiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIGZpbGw9InVybCgjYWJnKSIvPjxnIGZpbHRlcj0idXJsKCNhc2gpIj48cGF0aCBkPSJNNDE2LDMxOEg1NzZBMjIwLDIyMCAwIDAgMSA3OTYsNTM4VjU2OEEyMjAsMjIwIDAgMCAxIDU3Niw3ODhINDE2QTIyMCwyMjAgMCAwIDEgMTk2LDU2OFY1MzhBMjIwLDIyMCAwIDAgMSA0MTYsMzE4Wk0zMDAsNzQyQzMwMCw4MTIgMjcwLDg1OCAyMjgsODg0QzMxOCw4ODggMzkyLDg1OCA0NDAsODA2WiIgZmlsbD0idXJsKCNhYm9keSkiLz48L2c+PGcgZmlsbD0iIzFiMTIyMCI+PHJlY3QgeD0iMzg2IiB5PSI0NzciIHdpZHRoPSI3NiIgaGVpZ2h0PSIxNDIiIHJ4PSIzOCIvPjxyZWN0IHg9IjU0NiIgeT0iNDc3IiB3aWR0aD0iNzYiIGhlaWdodD0iMTQyIiByeD0iMzgiLz48L2c+PGcgZmlsbD0iI2ZmZiI+PGNpcmNsZSBjeD0iNDM0IiBjeT0iNTEzLjkyIiByPSIxNS4yMDAwMDAwMDAwMDAwMDEiLz48Y2lyY2xlIGN4PSI1OTQiIGN5PSI1MTMuOTIiIHI9IjE1LjIwMDAwMDAwMDAwMDAwMSIvPjwvZz48ZyBmaWxsPSIjZmY4YTk4IiBvcGFjaXR5PSIuNTUiPjxlbGxpcHNlIGN4PSIzMzgiIGN5PSI2NDIiIHJ4PSI0NiIgcnk9IjI1Ii8+PGVsbGlwc2UgY3g9IjY2OCIgY3k9IjY0MiIgcng9IjQ2IiByeT0iMjUiLz48L2c+PHBhdGggZD0iTTc3MiwxNjRRNzcyLDI4NCA4OTIsMjg0UTc3MiwyODQgNzcyLDQwNFE3NzIsMjg0IDY1MiwyODRRNzcyLDI4NCA3NzIsMTY0WiIgZmlsbD0idXJsKCNhZ29sZCkiIHN0cm9rZT0iI2VmNGY2MyIgc3Ryb2tlLXdpZHRoPSIzMCIgcGFpbnQtb3JkZXI9InN0cm9rZSIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik02NDIsMTU0UTY0MiwxOTQgNjgyLDE5NFE2NDIsMTk0IDY0MiwyMzRRNjQyLDE5NCA2MDIsMTk0UTY0MiwxOTQgNjQyLDE1NFoiIGZpbGw9IiNmZmY3ZjAiLz48L2c+PC9zdmc+Cg==" width="64" height="64" alt=""><figcaption>64</figcaption></figure>
-    <figure><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDI0IDEwMjQiIHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiPjx0aXRsZT5TYXlhYm90PC90aXRsZT48ZGVmcz4KPGxpbmVhckdyYWRpZW50IGlkPSJhYmciIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZjc4ODYiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNlZTQxNTciLz48L2xpbmVhckdyYWRpZW50Pgo8bGluZWFyR3JhZGllbnQgaWQ9ImFib2R5IiB4MT0iMCIgeTE9IjAiIHgyPSIwIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjZmZmZmZmIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjZmZlOGRlIi8+PC9saW5lYXJHcmFkaWVudD4KPGxpbmVhckdyYWRpZW50IGlkPSJhZ29sZCIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iI2ZmZTlhOCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2ZmYmY1NSIvPjwvbGluZWFyR3JhZGllbnQ+CjxmaWx0ZXIgaWQ9ImFzaCIgeD0iLTIwJSIgeT0iLTIwJSIgd2lkdGg9IjE0MCUiIGhlaWdodD0iMTYwJSI+PGZlRHJvcFNoYWRvdyBkeD0iMCIgZHk9IjI2IiBzdGREZXZpYXRpb249IjI2IiBmbG9vZC1jb2xvcj0iIzhhMTQyNiIgZmxvb2Qtb3BhY2l0eT0iLjM1Ii8+PC9maWx0ZXI+CjxmaWx0ZXIgaWQ9ImF0aWxlIiB4PSItMjAlIiB5PSItMjAlIiB3aWR0aD0iMTQwJSIgaGVpZ2h0PSIxNTAlIj48ZmVEcm9wU2hhZG93IGR4PSIwIiBkeT0iMTgiIHN0ZERldmlhdGlvbj0iMjAiIGZsb29kLWNvbG9yPSIjMDAwIiBmbG9vZC1vcGFjaXR5PSIuMjgiLz48L2ZpbHRlcj4KPC9kZWZzPjxjbGlwUGF0aCBpZD0iYWNsaXAiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIHJ4PSIyMjkiLz48L2NsaXBQYXRoPjxnIGNsaXAtcGF0aD0idXJsKCNhY2xpcCkiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIGZpbGw9InVybCgjYWJnKSIvPjxnIGZpbHRlcj0idXJsKCNhc2gpIj48cGF0aCBkPSJNNDE2LDMxOEg1NzZBMjIwLDIyMCAwIDAgMSA3OTYsNTM4VjU2OEEyMjAsMjIwIDAgMCAxIDU3Niw3ODhINDE2QTIyMCwyMjAgMCAwIDEgMTk2LDU2OFY1MzhBMjIwLDIyMCAwIDAgMSA0MTYsMzE4Wk0zMDAsNzQyQzMwMCw4MTIgMjcwLDg1OCAyMjgsODg0QzMxOCw4ODggMzkyLDg1OCA0NDAsODA2WiIgZmlsbD0idXJsKCNhYm9keSkiLz48L2c+PGcgZmlsbD0iIzFiMTIyMCI+PHJlY3QgeD0iMzc2IiB5PSI0NjgiIHdpZHRoPSI5NiIgaGVpZ2h0PSIxNjgiIHJ4PSI0OCIvPjxyZWN0IHg9IjUzMiIgeT0iNDY4IiB3aWR0aD0iOTYiIGhlaWdodD0iMTY4IiByeD0iNDgiLz48L2c+PHBhdGggZD0iTTc3NCwxMjhRNzc0LDI3OCA5MjQsMjc4UTc3NCwyNzggNzc0LDQyOFE3NzQsMjc4IDYyNCwyNzhRNzc0LDI3OCA3NzQsMTI4WiIgZmlsbD0idXJsKCNhZ29sZCkiIHN0cm9rZT0iI2VmNGY2MyIgc3Ryb2tlLXdpZHRoPSIzNCIgcGFpbnQtb3JkZXI9InN0cm9rZSIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjwvZz48L3N2Zz4K" width="32" height="32" alt=""><figcaption>32</figcaption></figure>
-    <figure><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDI0IDEwMjQiIHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiPjx0aXRsZT5TYXlhYm90PC90aXRsZT48ZGVmcz4KPGxpbmVhckdyYWRpZW50IGlkPSJhYmciIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZjc4ODYiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNlZTQxNTciLz48L2xpbmVhckdyYWRpZW50Pgo8bGluZWFyR3JhZGllbnQgaWQ9ImFib2R5IiB4MT0iMCIgeTE9IjAiIHgyPSIwIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjZmZmZmZmIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjZmZlOGRlIi8+PC9saW5lYXJHcmFkaWVudD4KPGxpbmVhckdyYWRpZW50IGlkPSJhZ29sZCIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iI2ZmZTlhOCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2ZmYmY1NSIvPjwvbGluZWFyR3JhZGllbnQ+CjxmaWx0ZXIgaWQ9ImFzaCIgeD0iLTIwJSIgeT0iLTIwJSIgd2lkdGg9IjE0MCUiIGhlaWdodD0iMTYwJSI+PGZlRHJvcFNoYWRvdyBkeD0iMCIgZHk9IjI2IiBzdGREZXZpYXRpb249IjI2IiBmbG9vZC1jb2xvcj0iIzhhMTQyNiIgZmxvb2Qtb3BhY2l0eT0iLjM1Ii8+PC9maWx0ZXI+CjxmaWx0ZXIgaWQ9ImF0aWxlIiB4PSItMjAlIiB5PSItMjAlIiB3aWR0aD0iMTQwJSIgaGVpZ2h0PSIxNTAlIj48ZmVEcm9wU2hhZG93IGR4PSIwIiBkeT0iMTgiIHN0ZERldmlhdGlvbj0iMjAiIGZsb29kLWNvbG9yPSIjMDAwIiBmbG9vZC1vcGFjaXR5PSIuMjgiLz48L2ZpbHRlcj4KPC9kZWZzPjxjbGlwUGF0aCBpZD0iYWNsaXAiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIHJ4PSIyMjkiLz48L2NsaXBQYXRoPjxnIGNsaXAtcGF0aD0idXJsKCNhY2xpcCkiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIGZpbGw9InVybCgjYWJnKSIvPjxnIGZpbHRlcj0idXJsKCNhc2gpIj48cGF0aCBkPSJNNDE2LDMxOEg1NzZBMjIwLDIyMCAwIDAgMSA3OTYsNTM4VjU2OEEyMjAsMjIwIDAgMCAxIDU3Niw3ODhINDE2QTIyMCwyMjAgMCAwIDEgMTk2LDU2OFY1MzhBMjIwLDIyMCAwIDAgMSA0MTYsMzE4Wk0zMDAsNzQyQzMwMCw4MTIgMjcwLDg1OCAyMjgsODg0QzMxOCw4ODggMzkyLDg1OCA0NDAsODA2WiIgZmlsbD0idXJsKCNhYm9keSkiLz48L2c+PGcgZmlsbD0iIzFiMTIyMCI+PHJlY3QgeD0iMzc2IiB5PSI0NjgiIHdpZHRoPSI5NiIgaGVpZ2h0PSIxNjgiIHJ4PSI0OCIvPjxyZWN0IHg9IjUzMiIgeT0iNDY4IiB3aWR0aD0iOTYiIGhlaWdodD0iMTY4IiByeD0iNDgiLz48L2c+PHBhdGggZD0iTTc3NCwxMjhRNzc0LDI3OCA5MjQsMjc4UTc3NCwyNzggNzc0LDQyOFE3NzQsMjc4IDYyNCwyNzhRNzc0LDI3OCA3NzQsMTI4WiIgZmlsbD0idXJsKCNhZ29sZCkiIHN0cm9rZT0iI2VmNGY2MyIgc3Ryb2tlLXdpZHRoPSIzNCIgcGFpbnQtb3JkZXI9InN0cm9rZSIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjwvZz48L3N2Zz4K" width="16" height="16" alt=""><figcaption>16</figcaption></figure>
-  </div>
-</section>
-<section>
-  <p class="eb">Alternates, same family</p>
-  <div class="alts">
-    <div class="alt"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDI0IDEwMjQiIHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiPjx0aXRsZT5TYXlhYm90PC90aXRsZT48ZGVmcz4KPGxpbmVhckdyYWRpZW50IGlkPSJiYmciIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZjc4ODYiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNlZTQxNTciLz48L2xpbmVhckdyYWRpZW50Pgo8bGluZWFyR3JhZGllbnQgaWQ9ImJib2R5IiB4MT0iMCIgeTE9IjAiIHgyPSIwIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjZmZmZmZmIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjZmZlOGRlIi8+PC9saW5lYXJHcmFkaWVudD4KPGxpbmVhckdyYWRpZW50IGlkPSJiZ29sZCIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iI2ZmZTlhOCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2ZmYmY1NSIvPjwvbGluZWFyR3JhZGllbnQ+CjxmaWx0ZXIgaWQ9ImJzaCIgeD0iLTIwJSIgeT0iLTIwJSIgd2lkdGg9IjE0MCUiIGhlaWdodD0iMTYwJSI+PGZlRHJvcFNoYWRvdyBkeD0iMCIgZHk9IjI2IiBzdGREZXZpYXRpb249IjI2IiBmbG9vZC1jb2xvcj0iIzhhMTQyNiIgZmxvb2Qtb3BhY2l0eT0iLjM1Ii8+PC9maWx0ZXI+CjxmaWx0ZXIgaWQ9ImJ0aWxlIiB4PSItMjAlIiB5PSItMjAlIiB3aWR0aD0iMTQwJSIgaGVpZ2h0PSIxNTAlIj48ZmVEcm9wU2hhZG93IGR4PSIwIiBkeT0iMTgiIHN0ZERldmlhdGlvbj0iMjAiIGZsb29kLWNvbG9yPSIjMDAwIiBmbG9vZC1vcGFjaXR5PSIuMjgiLz48L2ZpbHRlcj4KPC9kZWZzPjxjbGlwUGF0aCBpZD0iYmNsaXAiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIHJ4PSIyMjkiLz48L2NsaXBQYXRoPjxnIGNsaXAtcGF0aD0idXJsKCNiY2xpcCkiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIGZpbGw9InVybCgjYmJnKSIvPjxnIGZpbHRlcj0idXJsKCNic2gpIj48cGF0aCBkPSJNMzMwLDIyMEwzMzAsNzgwUTMzMCw4NDAgMzgwLDgxMkw1MDAsNzIyTDU4MCw4NzJRNjA0LDkxNiA2NDgsODk2TDY5Miw4NzVRNzM2LDg1NCA3MTQsODEwTDYzNiw2NjBMNzkyLDY0NFE4NDgsNjM4IDgwOCw1OTZMMzgyLDE5MFEzMzAsMTUyIDMzMCwyMjBaIiBmaWxsPSJ1cmwoI2Jib2R5KSIgc3Ryb2tlPSJ1cmwoI2Jib2R5KSIgc3Ryb2tlLXdpZHRoPSI0MCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjwvZz48ZyBmaWxsPSIjMWIxMjIwIj48cmVjdCB4PSI0MDUiIHk9IjQ0NSIgd2lkdGg9IjU4IiBoZWlnaHQ9IjExMCIgcng9IjI5Ii8+PHJlY3QgeD0iNTA1IiB5PSI0NDUiIHdpZHRoPSI1OCIgaGVpZ2h0PSIxMTAiIHJ4PSIyOSIvPjwvZz48ZyBmaWxsPSIjZmZmIj48Y2lyY2xlIGN4PSI0NDQiIGN5PSI0NzMuNiIgcj0iMTEuNjAwMDAwMDAwMDAwMDAxIi8+PGNpcmNsZSBjeD0iNTQ0IiBjeT0iNDczLjYiIHI9IjExLjYwMDAwMDAwMDAwMDAwMSIvPjwvZz48cGF0aCBkPSJNNzc2LDE2MlE3NzYsMjYyIDg3NiwyNjJRNzc2LDI2MiA3NzYsMzYyUTc3NiwyNjIgNjc2LDI2MlE3NzYsMjYyIDc3NiwxNjJaIiBmaWxsPSJ1cmwoI2Jnb2xkKSIvPjxwYXRoIGQ9Ik04NjQsMzU2UTg2NCwzOTIgOTAwLDM5MlE4NjQsMzkyIDg2NCw0MjhRODY0LDM5MiA4MjgsMzkyUTg2NCwzOTIgODY0LDM1NloiIGZpbGw9IiNmZmY3ZjAiLz48L2c+PC9zdmc+Cg==" alt=""><div><h3>Cursor Buddy</h3><p>The pointer that works your computer, with a face. Leans into the agent's own sandbox computer.</p></div></div>
-    <div class="alt"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDI0IDEwMjQiIHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiPjx0aXRsZT5TYXlhYm90PC90aXRsZT48ZGVmcz4KPGxpbmVhckdyYWRpZW50IGlkPSJjYmciIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZjc4ODYiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNlZTQxNTciLz48L2xpbmVhckdyYWRpZW50Pgo8bGluZWFyR3JhZGllbnQgaWQ9ImNib2R5IiB4MT0iMCIgeTE9IjAiIHgyPSIwIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjZmZmZmZmIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjZmZlOGRlIi8+PC9saW5lYXJHcmFkaWVudD4KPGxpbmVhckdyYWRpZW50IGlkPSJjZ29sZCIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iI2ZmZTlhOCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2ZmYmY1NSIvPjwvbGluZWFyR3JhZGllbnQ+CjxmaWx0ZXIgaWQ9ImNzaCIgeD0iLTIwJSIgeT0iLTIwJSIgd2lkdGg9IjE0MCUiIGhlaWdodD0iMTYwJSI+PGZlRHJvcFNoYWRvdyBkeD0iMCIgZHk9IjI2IiBzdGREZXZpYXRpb249IjI2IiBmbG9vZC1jb2xvcj0iIzhhMTQyNiIgZmxvb2Qtb3BhY2l0eT0iLjM1Ii8+PC9maWx0ZXI+CjxmaWx0ZXIgaWQ9ImN0aWxlIiB4PSItMjAlIiB5PSItMjAlIiB3aWR0aD0iMTQwJSIgaGVpZ2h0PSIxNTAlIj48ZmVEcm9wU2hhZG93IGR4PSIwIiBkeT0iMTgiIHN0ZERldmlhdGlvbj0iMjAiIGZsb29kLWNvbG9yPSIjMDAwIiBmbG9vZC1vcGFjaXR5PSIuMjgiLz48L2ZpbHRlcj4KPC9kZWZzPjxjbGlwUGF0aCBpZD0iY2NsaXAiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIHJ4PSIyMjkiLz48L2NsaXBQYXRoPjxnIGNsaXAtcGF0aD0idXJsKCNjY2xpcCkiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIGZpbGw9InVybCgjY2JnKSIvPjxnIGZpbHRlcj0idXJsKCNjc2gpIj48cGF0aCBkPSJNNDMwLDI2MEg1OTRBMjUwLDI1MCAwIDAgMSA4NDQsNTEwVjU3MEEyNTAsMjUwIDAgMCAxIDU5NCw4MjBINDMwQTI1MCwyNTAgMCAwIDEgMTgwLDU3MFY1MTBBMjUwLDI1MCAwIDAgMSA0MzAsMjYwWiIgZmlsbD0idXJsKCNjYm9keSkiLz48L2c+PGcgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMWIxMjIwIiBzdHJva2Utd2lkdGg9IjU4IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGQ9Ik0zNDIsNTMwTDQwNCw0NjJMNDY2LDUzMCIvPjxwYXRoIGQ9Ik01NTgsNTMwTDYyMCw0NjJMNjgyLDUzMCIvPjwvZz48cmVjdCB4PSI0NjAiIHk9IjYxMiIgd2lkdGg9IjEwNCIgaGVpZ2h0PSI1NCIgcng9IjIwIiBmaWxsPSIjMWIxMjIwIi8+PGcgZmlsbD0iI2ZmOGE5OCIgb3BhY2l0eT0iLjU1Ij48ZWxsaXBzZSBjeD0iMzMwIiBjeT0iNjIyIiByeD0iNDYiIHJ5PSIyNSIvPjxlbGxpcHNlIGN4PSI2OTQiIGN5PSI2MjIiIHJ4PSI0NiIgcnk9IjI1Ii8+PC9nPjxwYXRoIGQ9Ik04MTIsMTQ2UTgxMiwyNDAgOTA2LDI0MFE4MTIsMjQwIDgxMiwzMzRRODEyLDI0MCA3MTgsMjQwUTgxMiwyNDAgODEyLDE0NloiIGZpbGw9InVybCgjY2dvbGQpIiBzdHJva2U9IiNlZjRmNjMiIHN0cm9rZS13aWR0aD0iMjYiIHBhaW50LW9yZGVyPSJzdHJva2UiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz48L2c+PC9zdmc+Cg==" alt=""><div><h3>Prompt Pal</h3><p>Happy ^ ^ eyes and a blinking-cursor mouth. More playful and more developer-flavoured.</p></div></div>
-  </div>
-</section>
-<section>
-  <p class="eb">Files</p>
-  <div class="files">assets/branding/saaya-mark/
-  build.cjs                       one geometry → every icon below
-  svg/sayabot-icon.svg            iOS / Android / PWA (full-bleed, OS masks)
-  svg/sayabot-icon-macos.svg      desktop dock, Apple grid (.icns source)
-  svg/sayabot-icon-maskable.svg   Android adaptive / PWA safe zone
-  svg/sayabot-icon-small.svg      favicon, ≤32 px
-  svg/sayabot-mono-white.svg      Android notification icon
-  png/  1024 · 512 · 192 · 180 · 64 · 32 · 16 · macOS 1024</div>
-</section>
+  <header class="hero">
+    <img
+      src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDI0IDEwMjQiIHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiPjx0aXRsZT5TYXlhYm90PC90aXRsZT48ZGVmcz4KPGxpbmVhckdyYWRpZW50IGlkPSJhYmciIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZjc4ODYiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNlZTQxNTciLz48L2xpbmVhckdyYWRpZW50Pgo8bGluZWFyR3JhZGllbnQgaWQ9ImFib2R5IiB4MT0iMCIgeTE9IjAiIHgyPSIwIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjZmZmZmZmIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjZmZlOGRlIi8+PC9saW5lYXJHcmFkaWVudD4KPGxpbmVhckdyYWRpZW50IGlkPSJhZ29sZCIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iI2ZmZTlhOCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2ZmYmY1NSIvPjwvbGluZWFyR3JhZGllbnQ+CjxmaWx0ZXIgaWQ9ImFzaCIgeD0iLTIwJSIgeT0iLTIwJSIgd2lkdGg9IjE0MCUiIGhlaWdodD0iMTYwJSI+PGZlRHJvcFNoYWRvdyBkeD0iMCIgZHk9IjI2IiBzdGREZXZpYXRpb249IjI2IiBmbG9vZC1jb2xvcj0iIzhhMTQyNiIgZmxvb2Qtb3BhY2l0eT0iLjM1Ii8+PC9maWx0ZXI+CjxmaWx0ZXIgaWQ9ImF0aWxlIiB4PSItMjAlIiB5PSItMjAlIiB3aWR0aD0iMTQwJSIgaGVpZ2h0PSIxNTAlIj48ZmVEcm9wU2hhZG93IGR4PSIwIiBkeT0iMTgiIHN0ZERldmlhdGlvbj0iMjAiIGZsb29kLWNvbG9yPSIjMDAwIiBmbG9vZC1vcGFjaXR5PSIuMjgiLz48L2ZpbHRlcj4KPC9kZWZzPjxjbGlwUGF0aCBpZD0iYWNsaXAiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIHJ4PSIyMjkiLz48L2NsaXBQYXRoPjxnIGNsaXAtcGF0aD0idXJsKCNhY2xpcCkiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIGZpbGw9InVybCgjYWJnKSIvPjxnIGZpbHRlcj0idXJsKCNhc2gpIj48cGF0aCBkPSJNNDE2LDMxOEg1NzZBMjIwLDIyMCAwIDAgMSA3OTYsNTM4VjU2OEEyMjAsMjIwIDAgMCAxIDU3Niw3ODhINDE2QTIyMCwyMjAgMCAwIDEgMTk2LDU2OFY1MzhBMjIwLDIyMCAwIDAgMSA0MTYsMzE4Wk0zMDAsNzQyQzMwMCw4MTIgMjcwLDg1OCAyMjgsODg0QzMxOCw4ODggMzkyLDg1OCA0NDAsODA2WiIgZmlsbD0idXJsKCNhYm9keSkiLz48L2c+PGcgZmlsbD0iIzFiMTIyMCI+PHJlY3QgeD0iMzg2IiB5PSI0NzciIHdpZHRoPSI3NiIgaGVpZ2h0PSIxNDIiIHJ4PSIzOCIvPjxyZWN0IHg9IjU0NiIgeT0iNDc3IiB3aWR0aD0iNzYiIGhlaWdodD0iMTQyIiByeD0iMzgiLz48L2c+PGcgZmlsbD0iI2ZmZiI+PGNpcmNsZSBjeD0iNDM0IiBjeT0iNTEzLjkyIiByPSIxNS4yMDAwMDAwMDAwMDAwMDEiLz48Y2lyY2xlIGN4PSI1OTQiIGN5PSI1MTMuOTIiIHI9IjE1LjIwMDAwMDAwMDAwMDAwMSIvPjwvZz48ZyBmaWxsPSIjZmY4YTk4IiBvcGFjaXR5PSIuNTUiPjxlbGxpcHNlIGN4PSIzMzgiIGN5PSI2NDIiIHJ4PSI0NiIgcnk9IjI1Ii8+PGVsbGlwc2UgY3g9IjY2OCIgY3k9IjY0MiIgcng9IjQ2IiByeT0iMjUiLz48L2c+PHBhdGggZD0iTTc3MiwxNjRRNzcyLDI4NCA4OTIsMjg0UTc3MiwyODQgNzcyLDQwNFE3NzIsMjg0IDY1MiwyODRRNzcyLDI4NCA3NzIsMTY0WiIgZmlsbD0idXJsKCNhZ29sZCkiIHN0cm9rZT0iI2VmNGY2MyIgc3Ryb2tlLXdpZHRoPSIzMCIgcGFpbnQtb3JkZXI9InN0cm9rZSIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik02NDIsMTU0UTY0MiwxOTQgNjgyLDE5NFE2NDIsMTk0IDY0MiwyMzRRNjQyLDE5NCA2MDIsMTk0UTY0MiwxOTQgNjQyLDE1NFoiIGZpbGw9IiNmZmY3ZjAiLz48L2c+PC9zdmc+Cg=="
+      alt="Sayabot app icon: a cute white chat bubble with two eyes, rosy cheeks and a golden AI sparkle, on coral red"
+    />
+    <div>
+      <p class="eb">Sayabot · app icon</p>
+      <h1>A chat that woke up.</h1>
+      <p>
+        A speech bubble with a face and a golden AI sparkle for a cowlick. It's an agent you talk
+        to, and it reads that way at a glance.
+      </p>
+    </div>
+  </header>
+  <section class="why">
+    <div>
+      <h3>Says "AI agent" instantly</h3>
+      <p>
+        The chat bubble means conversation and rooms, the sparkle is the sign everyone now knows
+        means AI, and the eyes make it someone, not a tool.
+      </p>
+    </div>
+    <div>
+      <h3>Cute, not a robot</h3>
+      <p>
+        No antenna, visor or bolts. Soft shapes, rosy cheeks and shiny eyes make it a companion
+        you're happy to hand work to.
+      </p>
+    </div>
+    <div>
+      <h3>Built for the dock</h3>
+      <p>
+        A big white shape on a red gradient, sitting on Apple's macOS grid, so it stands out among
+        blue and green icons and looks right next to them.
+      </p>
+    </div>
+  </section>
+  <section>
+    <p class="eb">macOS dock</p>
+    <div class="desk">
+      <div class="dock">
+        <i style="background: #3b82f6"></i><i style="background: #22c55e"></i
+        ><i style="background: linear-gradient(#a78bfa, #7c3aed)"></i
+        ><img
+          class="on"
+          src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDI0IDEwMjQiIHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiPjx0aXRsZT5TYXlhYm90PC90aXRsZT48ZGVmcz4KPGxpbmVhckdyYWRpZW50IGlkPSJhYmciIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZjc4ODYiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNlZTQxNTciLz48L2xpbmVhckdyYWRpZW50Pgo8bGluZWFyR3JhZGllbnQgaWQ9ImFib2R5IiB4MT0iMCIgeTE9IjAiIHgyPSIwIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjZmZmZmZmIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjZmZlOGRlIi8+PC9saW5lYXJHcmFkaWVudD4KPGxpbmVhckdyYWRpZW50IGlkPSJhZ29sZCIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iI2ZmZTlhOCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2ZmYmY1NSIvPjwvbGluZWFyR3JhZGllbnQ+CjxmaWx0ZXIgaWQ9ImFzaCIgeD0iLTIwJSIgeT0iLTIwJSIgd2lkdGg9IjE0MCUiIGhlaWdodD0iMTYwJSI+PGZlRHJvcFNoYWRvdyBkeD0iMCIgZHk9IjI2IiBzdGREZXZpYXRpb249IjI2IiBmbG9vZC1jb2xvcj0iIzhhMTQyNiIgZmxvb2Qtb3BhY2l0eT0iLjM1Ii8+PC9maWx0ZXI+CjxmaWx0ZXIgaWQ9ImF0aWxlIiB4PSItMjAlIiB5PSItMjAlIiB3aWR0aD0iMTQwJSIgaGVpZ2h0PSIxNTAlIj48ZmVEcm9wU2hhZG93IGR4PSIwIiBkeT0iMTgiIHN0ZERldmlhdGlvbj0iMjAiIGZsb29kLWNvbG9yPSIjMDAwIiBmbG9vZC1vcGFjaXR5PSIuMjgiLz48L2ZpbHRlcj4KPC9kZWZzPjxnIGZpbHRlcj0idXJsKCNhdGlsZSkiPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDEwMCAxMDApIHNjYWxlKDAuODA0Njg3NSkiPjxjbGlwUGF0aCBpZD0iYWNsaXAiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIHJ4PSIyMjkiLz48L2NsaXBQYXRoPjxnIGNsaXAtcGF0aD0idXJsKCNhY2xpcCkiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIGZpbGw9InVybCgjYWJnKSIvPjxnIGZpbHRlcj0idXJsKCNhc2gpIj48cGF0aCBkPSJNNDE2LDMxOEg1NzZBMjIwLDIyMCAwIDAgMSA3OTYsNTM4VjU2OEEyMjAsMjIwIDAgMCAxIDU3Niw3ODhINDE2QTIyMCwyMjAgMCAwIDEgMTk2LDU2OFY1MzhBMjIwLDIyMCAwIDAgMSA0MTYsMzE4Wk0zMDAsNzQyQzMwMCw4MTIgMjcwLDg1OCAyMjgsODg0QzMxOCw4ODggMzkyLDg1OCA0NDAsODA2WiIgZmlsbD0idXJsKCNhYm9keSkiLz48L2c+PGcgZmlsbD0iIzFiMTIyMCI+PHJlY3QgeD0iMzg2IiB5PSI0NzciIHdpZHRoPSI3NiIgaGVpZ2h0PSIxNDIiIHJ4PSIzOCIvPjxyZWN0IHg9IjU0NiIgeT0iNDc3IiB3aWR0aD0iNzYiIGhlaWdodD0iMTQyIiByeD0iMzgiLz48L2c+PGcgZmlsbD0iI2ZmZiI+PGNpcmNsZSBjeD0iNDM0IiBjeT0iNTEzLjkyIiByPSIxNS4yMDAwMDAwMDAwMDAwMDEiLz48Y2lyY2xlIGN4PSI1OTQiIGN5PSI1MTMuOTIiIHI9IjE1LjIwMDAwMDAwMDAwMDAwMSIvPjwvZz48ZyBmaWxsPSIjZmY4YTk4IiBvcGFjaXR5PSIuNTUiPjxlbGxpcHNlIGN4PSIzMzgiIGN5PSI2NDIiIHJ4PSI0NiIgcnk9IjI1Ii8+PGVsbGlwc2UgY3g9IjY2OCIgY3k9IjY0MiIgcng9IjQ2IiByeT0iMjUiLz48L2c+PHBhdGggZD0iTTc3MiwxNjRRNzcyLDI4NCA4OTIsMjg0UTc3MiwyODQgNzcyLDQwNFE3NzIsMjg0IDY1MiwyODRRNzcyLDI4NCA3NzIsMTY0WiIgZmlsbD0idXJsKCNhZ29sZCkiIHN0cm9rZT0iI2VmNGY2MyIgc3Ryb2tlLXdpZHRoPSIzMCIgcGFpbnQtb3JkZXI9InN0cm9rZSIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik02NDIsMTU0UTY0MiwxOTQgNjgyLDE5NFE2NDIsMTk0IDY0MiwyMzRRNjQyLDE5NCA2MDIsMTk0UTY0MiwxOTQgNjQyLDE1NFoiIGZpbGw9IiNmZmY3ZjAiLz48L2c+PC9nPjwvZz48L3N2Zz4K"
+          alt="Sayabot in the dock"
+        /><i style="background: #f59e0b"></i
+        ><i style="background: linear-gradient(#94a3b8, #475569)"></i
+        ><i style="background: #0ea5e9"></i>
+      </div>
+    </div>
+  </section>
+  <section class="pair">
+    <div class="phone">
+      <div><i style="background: #22c55e"></i>Messages</div>
+      <div><i style="background: #f59e0b"></i>Notes</div>
+      <div>
+        <img
+          src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDI0IDEwMjQiIHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiPjx0aXRsZT5TYXlhYm90PC90aXRsZT48ZGVmcz4KPGxpbmVhckdyYWRpZW50IGlkPSJhYmciIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZjc4ODYiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNlZTQxNTciLz48L2xpbmVhckdyYWRpZW50Pgo8bGluZWFyR3JhZGllbnQgaWQ9ImFib2R5IiB4MT0iMCIgeTE9IjAiIHgyPSIwIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjZmZmZmZmIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjZmZlOGRlIi8+PC9saW5lYXJHcmFkaWVudD4KPGxpbmVhckdyYWRpZW50IGlkPSJhZ29sZCIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iI2ZmZTlhOCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2ZmYmY1NSIvPjwvbGluZWFyR3JhZGllbnQ+CjxmaWx0ZXIgaWQ9ImFzaCIgeD0iLTIwJSIgeT0iLTIwJSIgd2lkdGg9IjE0MCUiIGhlaWdodD0iMTYwJSI+PGZlRHJvcFNoYWRvdyBkeD0iMCIgZHk9IjI2IiBzdGREZXZpYXRpb249IjI2IiBmbG9vZC1jb2xvcj0iIzhhMTQyNiIgZmxvb2Qtb3BhY2l0eT0iLjM1Ii8+PC9maWx0ZXI+CjxmaWx0ZXIgaWQ9ImF0aWxlIiB4PSItMjAlIiB5PSItMjAlIiB3aWR0aD0iMTQwJSIgaGVpZ2h0PSIxNTAlIj48ZmVEcm9wU2hhZG93IGR4PSIwIiBkeT0iMTgiIHN0ZERldmlhdGlvbj0iMjAiIGZsb29kLWNvbG9yPSIjMDAwIiBmbG9vZC1vcGFjaXR5PSIuMjgiLz48L2ZpbHRlcj4KPC9kZWZzPjxjbGlwUGF0aCBpZD0iYWNsaXAiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIHJ4PSIyMjkiLz48L2NsaXBQYXRoPjxnIGNsaXAtcGF0aD0idXJsKCNhY2xpcCkiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIGZpbGw9InVybCgjYWJnKSIvPjxnIGZpbHRlcj0idXJsKCNhc2gpIj48cGF0aCBkPSJNNDE2LDMxOEg1NzZBMjIwLDIyMCAwIDAgMSA3OTYsNTM4VjU2OEEyMjAsMjIwIDAgMCAxIDU3Niw3ODhINDE2QTIyMCwyMjAgMCAwIDEgMTk2LDU2OFY1MzhBMjIwLDIyMCAwIDAgMSA0MTYsMzE4Wk0zMDAsNzQyQzMwMCw4MTIgMjcwLDg1OCAyMjgsODg0QzMxOCw4ODggMzkyLDg1OCA0NDAsODA2WiIgZmlsbD0idXJsKCNhYm9keSkiLz48L2c+PGcgZmlsbD0iIzFiMTIyMCI+PHJlY3QgeD0iMzg2IiB5PSI0NzciIHdpZHRoPSI3NiIgaGVpZ2h0PSIxNDIiIHJ4PSIzOCIvPjxyZWN0IHg9IjU0NiIgeT0iNDc3IiB3aWR0aD0iNzYiIGhlaWdodD0iMTQyIiByeD0iMzgiLz48L2c+PGcgZmlsbD0iI2ZmZiI+PGNpcmNsZSBjeD0iNDM0IiBjeT0iNTEzLjkyIiByPSIxNS4yMDAwMDAwMDAwMDAwMDEiLz48Y2lyY2xlIGN4PSI1OTQiIGN5PSI1MTMuOTIiIHI9IjE1LjIwMDAwMDAwMDAwMDAwMSIvPjwvZz48ZyBmaWxsPSIjZmY4YTk4IiBvcGFjaXR5PSIuNTUiPjxlbGxpcHNlIGN4PSIzMzgiIGN5PSI2NDIiIHJ4PSI0NiIgcnk9IjI1Ii8+PGVsbGlwc2UgY3g9IjY2OCIgY3k9IjY0MiIgcng9IjQ2IiByeT0iMjUiLz48L2c+PHBhdGggZD0iTTc3MiwxNjRRNzcyLDI4NCA4OTIsMjg0UTc3MiwyODQgNzcyLDQwNFE3NzIsMjg0IDY1MiwyODRRNzcyLDI4NCA3NzIsMTY0WiIgZmlsbD0idXJsKCNhZ29sZCkiIHN0cm9rZT0iI2VmNGY2MyIgc3Ryb2tlLXdpZHRoPSIzMCIgcGFpbnQtb3JkZXI9InN0cm9rZSIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik02NDIsMTU0UTY0MiwxOTQgNjgyLDE5NFE2NDIsMTk0IDY0MiwyMzRRNjQyLDE5NCA2MDIsMTk0UTY0MiwxOTQgNjQyLDE1NFoiIGZpbGw9IiNmZmY3ZjAiLz48L2c+PC9zdmc+Cg=="
+          alt=""
+        />Sayabot
+      </div>
+      <div><i style="background: #3b82f6"></i>Mail</div>
+      <div><i style="background: #ef4444"></i>Music</div>
+      <div><i style="background: #64748b"></i>Settings</div>
+      <div><i style="background: #0ea5e9"></i>Weather</div>
+      <div><i style="background: #a855f7"></i>Podcasts</div>
+    </div>
+    <div class="notif-wrap">
+      <p class="eb">Notification · browser tab</p>
+      <div class="notif">
+        <img
+          src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDI0IDEwMjQiIHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiPjx0aXRsZT5TYXlhYm90PC90aXRsZT48ZGVmcz4KPGxpbmVhckdyYWRpZW50IGlkPSJhYmciIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZjc4ODYiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNlZTQxNTciLz48L2xpbmVhckdyYWRpZW50Pgo8bGluZWFyR3JhZGllbnQgaWQ9ImFib2R5IiB4MT0iMCIgeTE9IjAiIHgyPSIwIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjZmZmZmZmIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjZmZlOGRlIi8+PC9saW5lYXJHcmFkaWVudD4KPGxpbmVhckdyYWRpZW50IGlkPSJhZ29sZCIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iI2ZmZTlhOCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2ZmYmY1NSIvPjwvbGluZWFyR3JhZGllbnQ+CjxmaWx0ZXIgaWQ9ImFzaCIgeD0iLTIwJSIgeT0iLTIwJSIgd2lkdGg9IjE0MCUiIGhlaWdodD0iMTYwJSI+PGZlRHJvcFNoYWRvdyBkeD0iMCIgZHk9IjI2IiBzdGREZXZpYXRpb249IjI2IiBmbG9vZC1jb2xvcj0iIzhhMTQyNiIgZmxvb2Qtb3BhY2l0eT0iLjM1Ii8+PC9maWx0ZXI+CjxmaWx0ZXIgaWQ9ImF0aWxlIiB4PSItMjAlIiB5PSItMjAlIiB3aWR0aD0iMTQwJSIgaGVpZ2h0PSIxNTAlIj48ZmVEcm9wU2hhZG93IGR4PSIwIiBkeT0iMTgiIHN0ZERldmlhdGlvbj0iMjAiIGZsb29kLWNvbG9yPSIjMDAwIiBmbG9vZC1vcGFjaXR5PSIuMjgiLz48L2ZpbHRlcj4KPC9kZWZzPjxjbGlwUGF0aCBpZD0iYWNsaXAiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIHJ4PSIyMjkiLz48L2NsaXBQYXRoPjxnIGNsaXAtcGF0aD0idXJsKCNhY2xpcCkiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIGZpbGw9InVybCgjYWJnKSIvPjxnIGZpbHRlcj0idXJsKCNhc2gpIj48cGF0aCBkPSJNNDE2LDMxOEg1NzZBMjIwLDIyMCAwIDAgMSA3OTYsNTM4VjU2OEEyMjAsMjIwIDAgMCAxIDU3Niw3ODhINDE2QTIyMCwyMjAgMCAwIDEgMTk2LDU2OFY1MzhBMjIwLDIyMCAwIDAgMSA0MTYsMzE4Wk0zMDAsNzQyQzMwMCw4MTIgMjcwLDg1OCAyMjgsODg0QzMxOCw4ODggMzkyLDg1OCA0NDAsODA2WiIgZmlsbD0idXJsKCNhYm9keSkiLz48L2c+PGcgZmlsbD0iIzFiMTIyMCI+PHJlY3QgeD0iMzg2IiB5PSI0NzciIHdpZHRoPSI3NiIgaGVpZ2h0PSIxNDIiIHJ4PSIzOCIvPjxyZWN0IHg9IjU0NiIgeT0iNDc3IiB3aWR0aD0iNzYiIGhlaWdodD0iMTQyIiByeD0iMzgiLz48L2c+PGcgZmlsbD0iI2ZmZiI+PGNpcmNsZSBjeD0iNDM0IiBjeT0iNTEzLjkyIiByPSIxNS4yMDAwMDAwMDAwMDAwMDEiLz48Y2lyY2xlIGN4PSI1OTQiIGN5PSI1MTMuOTIiIHI9IjE1LjIwMDAwMDAwMDAwMDAwMSIvPjwvZz48ZyBmaWxsPSIjZmY4YTk4IiBvcGFjaXR5PSIuNTUiPjxlbGxpcHNlIGN4PSIzMzgiIGN5PSI2NDIiIHJ4PSI0NiIgcnk9IjI1Ii8+PGVsbGlwc2UgY3g9IjY2OCIgY3k9IjY0MiIgcng9IjQ2IiByeT0iMjUiLz48L2c+PHBhdGggZD0iTTc3MiwxNjRRNzcyLDI4NCA4OTIsMjg0UTc3MiwyODQgNzcyLDQwNFE3NzIsMjg0IDY1MiwyODRRNzcyLDI4NCA3NzIsMTY0WiIgZmlsbD0idXJsKCNhZ29sZCkiIHN0cm9rZT0iI2VmNGY2MyIgc3Ryb2tlLXdpZHRoPSIzMCIgcGFpbnQtb3JkZXI9InN0cm9rZSIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik02NDIsMTU0UTY0MiwxOTQgNjgyLDE5NFE2NDIsMTk0IDY0MiwyMzRRNjQyLDE5NCA2MDIsMTk0UTY0MiwxOTQgNjQyLDE1NFoiIGZpbGw9IiNmZmY3ZjAiLz48L2c+PC9zdmc+Cg=="
+          alt=""
+        />
+        <div>
+          <b>Atlas needs your approval</b>
+          <p>Wants to open a PR on saaya/web · tap to review</p>
+        </div>
+      </div>
+      <div class="tab">
+        <img
+          src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDI0IDEwMjQiIHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiPjx0aXRsZT5TYXlhYm90PC90aXRsZT48ZGVmcz4KPGxpbmVhckdyYWRpZW50IGlkPSJhYmciIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZjc4ODYiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNlZTQxNTciLz48L2xpbmVhckdyYWRpZW50Pgo8bGluZWFyR3JhZGllbnQgaWQ9ImFib2R5IiB4MT0iMCIgeTE9IjAiIHgyPSIwIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjZmZmZmZmIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjZmZlOGRlIi8+PC9saW5lYXJHcmFkaWVudD4KPGxpbmVhckdyYWRpZW50IGlkPSJhZ29sZCIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iI2ZmZTlhOCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2ZmYmY1NSIvPjwvbGluZWFyR3JhZGllbnQ+CjxmaWx0ZXIgaWQ9ImFzaCIgeD0iLTIwJSIgeT0iLTIwJSIgd2lkdGg9IjE0MCUiIGhlaWdodD0iMTYwJSI+PGZlRHJvcFNoYWRvdyBkeD0iMCIgZHk9IjI2IiBzdGREZXZpYXRpb249IjI2IiBmbG9vZC1jb2xvcj0iIzhhMTQyNiIgZmxvb2Qtb3BhY2l0eT0iLjM1Ii8+PC9maWx0ZXI+CjxmaWx0ZXIgaWQ9ImF0aWxlIiB4PSItMjAlIiB5PSItMjAlIiB3aWR0aD0iMTQwJSIgaGVpZ2h0PSIxNTAlIj48ZmVEcm9wU2hhZG93IGR4PSIwIiBkeT0iMTgiIHN0ZERldmlhdGlvbj0iMjAiIGZsb29kLWNvbG9yPSIjMDAwIiBmbG9vZC1vcGFjaXR5PSIuMjgiLz48L2ZpbHRlcj4KPC9kZWZzPjxjbGlwUGF0aCBpZD0iYWNsaXAiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIHJ4PSIyMjkiLz48L2NsaXBQYXRoPjxnIGNsaXAtcGF0aD0idXJsKCNhY2xpcCkiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIGZpbGw9InVybCgjYWJnKSIvPjxnIGZpbHRlcj0idXJsKCNhc2gpIj48cGF0aCBkPSJNNDE2LDMxOEg1NzZBMjIwLDIyMCAwIDAgMSA3OTYsNTM4VjU2OEEyMjAsMjIwIDAgMCAxIDU3Niw3ODhINDE2QTIyMCwyMjAgMCAwIDEgMTk2LDU2OFY1MzhBMjIwLDIyMCAwIDAgMSA0MTYsMzE4Wk0zMDAsNzQyQzMwMCw4MTIgMjcwLDg1OCAyMjgsODg0QzMxOCw4ODggMzkyLDg1OCA0NDAsODA2WiIgZmlsbD0idXJsKCNhYm9keSkiLz48L2c+PGcgZmlsbD0iIzFiMTIyMCI+PHJlY3QgeD0iMzc2IiB5PSI0NjgiIHdpZHRoPSI5NiIgaGVpZ2h0PSIxNjgiIHJ4PSI0OCIvPjxyZWN0IHg9IjUzMiIgeT0iNDY4IiB3aWR0aD0iOTYiIGhlaWdodD0iMTY4IiByeD0iNDgiLz48L2c+PHBhdGggZD0iTTc3NCwxMjhRNzc0LDI3OCA5MjQsMjc4UTc3NCwyNzggNzc0LDQyOFE3NzQsMjc4IDYyNCwyNzhRNzc0LDI3OCA3NzQsMTI4WiIgZmlsbD0idXJsKCNhZ29sZCkiIHN0cm9rZT0iI2VmNGY2MyIgc3Ryb2tlLXdpZHRoPSIzNCIgcGFpbnQtb3JkZXI9InN0cm9rZSIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjwvZz48L3N2Zz4K"
+          alt=""
+        />Design review · Sayabot
+      </div>
+    </div>
+  </section>
+  <section>
+    <p class="eb">Size tests</p>
+    <p class="muted">
+      At 32 px and below a simpler version drops the cheeks and small sparkle, and makes the eyes
+      and main sparkle bigger.
+    </p>
+    <div class="sizes">
+      <figure>
+        <img
+          src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDI0IDEwMjQiIHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiPjx0aXRsZT5TYXlhYm90PC90aXRsZT48ZGVmcz4KPGxpbmVhckdyYWRpZW50IGlkPSJhYmciIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZjc4ODYiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNlZTQxNTciLz48L2xpbmVhckdyYWRpZW50Pgo8bGluZWFyR3JhZGllbnQgaWQ9ImFib2R5IiB4MT0iMCIgeTE9IjAiIHgyPSIwIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjZmZmZmZmIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjZmZlOGRlIi8+PC9saW5lYXJHcmFkaWVudD4KPGxpbmVhckdyYWRpZW50IGlkPSJhZ29sZCIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iI2ZmZTlhOCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2ZmYmY1NSIvPjwvbGluZWFyR3JhZGllbnQ+CjxmaWx0ZXIgaWQ9ImFzaCIgeD0iLTIwJSIgeT0iLTIwJSIgd2lkdGg9IjE0MCUiIGhlaWdodD0iMTYwJSI+PGZlRHJvcFNoYWRvdyBkeD0iMCIgZHk9IjI2IiBzdGREZXZpYXRpb249IjI2IiBmbG9vZC1jb2xvcj0iIzhhMTQyNiIgZmxvb2Qtb3BhY2l0eT0iLjM1Ii8+PC9maWx0ZXI+CjxmaWx0ZXIgaWQ9ImF0aWxlIiB4PSItMjAlIiB5PSItMjAlIiB3aWR0aD0iMTQwJSIgaGVpZ2h0PSIxNTAlIj48ZmVEcm9wU2hhZG93IGR4PSIwIiBkeT0iMTgiIHN0ZERldmlhdGlvbj0iMjAiIGZsb29kLWNvbG9yPSIjMDAwIiBmbG9vZC1vcGFjaXR5PSIuMjgiLz48L2ZpbHRlcj4KPC9kZWZzPjxjbGlwUGF0aCBpZD0iYWNsaXAiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIHJ4PSIyMjkiLz48L2NsaXBQYXRoPjxnIGNsaXAtcGF0aD0idXJsKCNhY2xpcCkiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIGZpbGw9InVybCgjYWJnKSIvPjxnIGZpbHRlcj0idXJsKCNhc2gpIj48cGF0aCBkPSJNNDE2LDMxOEg1NzZBMjIwLDIyMCAwIDAgMSA3OTYsNTM4VjU2OEEyMjAsMjIwIDAgMCAxIDU3Niw3ODhINDE2QTIyMCwyMjAgMCAwIDEgMTk2LDU2OFY1MzhBMjIwLDIyMCAwIDAgMSA0MTYsMzE4Wk0zMDAsNzQyQzMwMCw4MTIgMjcwLDg1OCAyMjgsODg0QzMxOCw4ODggMzkyLDg1OCA0NDAsODA2WiIgZmlsbD0idXJsKCNhYm9keSkiLz48L2c+PGcgZmlsbD0iIzFiMTIyMCI+PHJlY3QgeD0iMzg2IiB5PSI0NzciIHdpZHRoPSI3NiIgaGVpZ2h0PSIxNDIiIHJ4PSIzOCIvPjxyZWN0IHg9IjU0NiIgeT0iNDc3IiB3aWR0aD0iNzYiIGhlaWdodD0iMTQyIiByeD0iMzgiLz48L2c+PGcgZmlsbD0iI2ZmZiI+PGNpcmNsZSBjeD0iNDM0IiBjeT0iNTEzLjkyIiByPSIxNS4yMDAwMDAwMDAwMDAwMDEiLz48Y2lyY2xlIGN4PSI1OTQiIGN5PSI1MTMuOTIiIHI9IjE1LjIwMDAwMDAwMDAwMDAwMSIvPjwvZz48ZyBmaWxsPSIjZmY4YTk4IiBvcGFjaXR5PSIuNTUiPjxlbGxpcHNlIGN4PSIzMzgiIGN5PSI2NDIiIHJ4PSI0NiIgcnk9IjI1Ii8+PGVsbGlwc2UgY3g9IjY2OCIgY3k9IjY0MiIgcng9IjQ2IiByeT0iMjUiLz48L2c+PHBhdGggZD0iTTc3MiwxNjRRNzcyLDI4NCA4OTIsMjg0UTc3MiwyODQgNzcyLDQwNFE3NzIsMjg0IDY1MiwyODRRNzcyLDI4NCA3NzIsMTY0WiIgZmlsbD0idXJsKCNhZ29sZCkiIHN0cm9rZT0iI2VmNGY2MyIgc3Ryb2tlLXdpZHRoPSIzMCIgcGFpbnQtb3JkZXI9InN0cm9rZSIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik02NDIsMTU0UTY0MiwxOTQgNjgyLDE5NFE2NDIsMTk0IDY0MiwyMzRRNjQyLDE5NCA2MDIsMTk0UTY0MiwxOTQgNjQyLDE1NFoiIGZpbGw9IiNmZmY3ZjAiLz48L2c+PC9zdmc+Cg=="
+          width="180"
+          height="180"
+          alt=""
+        />
+        <figcaption>180</figcaption>
+      </figure>
+      <figure>
+        <img
+          src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDI0IDEwMjQiIHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiPjx0aXRsZT5TYXlhYm90PC90aXRsZT48ZGVmcz4KPGxpbmVhckdyYWRpZW50IGlkPSJhYmciIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZjc4ODYiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNlZTQxNTciLz48L2xpbmVhckdyYWRpZW50Pgo8bGluZWFyR3JhZGllbnQgaWQ9ImFib2R5IiB4MT0iMCIgeTE9IjAiIHgyPSIwIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjZmZmZmZmIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjZmZlOGRlIi8+PC9saW5lYXJHcmFkaWVudD4KPGxpbmVhckdyYWRpZW50IGlkPSJhZ29sZCIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iI2ZmZTlhOCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2ZmYmY1NSIvPjwvbGluZWFyR3JhZGllbnQ+CjxmaWx0ZXIgaWQ9ImFzaCIgeD0iLTIwJSIgeT0iLTIwJSIgd2lkdGg9IjE0MCUiIGhlaWdodD0iMTYwJSI+PGZlRHJvcFNoYWRvdyBkeD0iMCIgZHk9IjI2IiBzdGREZXZpYXRpb249IjI2IiBmbG9vZC1jb2xvcj0iIzhhMTQyNiIgZmxvb2Qtb3BhY2l0eT0iLjM1Ii8+PC9maWx0ZXI+CjxmaWx0ZXIgaWQ9ImF0aWxlIiB4PSItMjAlIiB5PSItMjAlIiB3aWR0aD0iMTQwJSIgaGVpZ2h0PSIxNTAlIj48ZmVEcm9wU2hhZG93IGR4PSIwIiBkeT0iMTgiIHN0ZERldmlhdGlvbj0iMjAiIGZsb29kLWNvbG9yPSIjMDAwIiBmbG9vZC1vcGFjaXR5PSIuMjgiLz48L2ZpbHRlcj4KPC9kZWZzPjxjbGlwUGF0aCBpZD0iYWNsaXAiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIHJ4PSIyMjkiLz48L2NsaXBQYXRoPjxnIGNsaXAtcGF0aD0idXJsKCNhY2xpcCkiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIGZpbGw9InVybCgjYWJnKSIvPjxnIGZpbHRlcj0idXJsKCNhc2gpIj48cGF0aCBkPSJNNDE2LDMxOEg1NzZBMjIwLDIyMCAwIDAgMSA3OTYsNTM4VjU2OEEyMjAsMjIwIDAgMCAxIDU3Niw3ODhINDE2QTIyMCwyMjAgMCAwIDEgMTk2LDU2OFY1MzhBMjIwLDIyMCAwIDAgMSA0MTYsMzE4Wk0zMDAsNzQyQzMwMCw4MTIgMjcwLDg1OCAyMjgsODg0QzMxOCw4ODggMzkyLDg1OCA0NDAsODA2WiIgZmlsbD0idXJsKCNhYm9keSkiLz48L2c+PGcgZmlsbD0iIzFiMTIyMCI+PHJlY3QgeD0iMzg2IiB5PSI0NzciIHdpZHRoPSI3NiIgaGVpZ2h0PSIxNDIiIHJ4PSIzOCIvPjxyZWN0IHg9IjU0NiIgeT0iNDc3IiB3aWR0aD0iNzYiIGhlaWdodD0iMTQyIiByeD0iMzgiLz48L2c+PGcgZmlsbD0iI2ZmZiI+PGNpcmNsZSBjeD0iNDM0IiBjeT0iNTEzLjkyIiByPSIxNS4yMDAwMDAwMDAwMDAwMDEiLz48Y2lyY2xlIGN4PSI1OTQiIGN5PSI1MTMuOTIiIHI9IjE1LjIwMDAwMDAwMDAwMDAwMSIvPjwvZz48ZyBmaWxsPSIjZmY4YTk4IiBvcGFjaXR5PSIuNTUiPjxlbGxpcHNlIGN4PSIzMzgiIGN5PSI2NDIiIHJ4PSI0NiIgcnk9IjI1Ii8+PGVsbGlwc2UgY3g9IjY2OCIgY3k9IjY0MiIgcng9IjQ2IiByeT0iMjUiLz48L2c+PHBhdGggZD0iTTc3MiwxNjRRNzcyLDI4NCA4OTIsMjg0UTc3MiwyODQgNzcyLDQwNFE3NzIsMjg0IDY1MiwyODRRNzcyLDI4NCA3NzIsMTY0WiIgZmlsbD0idXJsKCNhZ29sZCkiIHN0cm9rZT0iI2VmNGY2MyIgc3Ryb2tlLXdpZHRoPSIzMCIgcGFpbnQtb3JkZXI9InN0cm9rZSIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik02NDIsMTU0UTY0MiwxOTQgNjgyLDE5NFE2NDIsMTk0IDY0MiwyMzRRNjQyLDE5NCA2MDIsMTk0UTY0MiwxOTQgNjQyLDE1NFoiIGZpbGw9IiNmZmY3ZjAiLz48L2c+PC9zdmc+Cg=="
+          width="96"
+          height="96"
+          alt=""
+        />
+        <figcaption>96</figcaption>
+      </figure>
+      <figure>
+        <img
+          src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDI0IDEwMjQiIHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiPjx0aXRsZT5TYXlhYm90PC90aXRsZT48ZGVmcz4KPGxpbmVhckdyYWRpZW50IGlkPSJhYmciIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZjc4ODYiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNlZTQxNTciLz48L2xpbmVhckdyYWRpZW50Pgo8bGluZWFyR3JhZGllbnQgaWQ9ImFib2R5IiB4MT0iMCIgeTE9IjAiIHgyPSIwIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjZmZmZmZmIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjZmZlOGRlIi8+PC9saW5lYXJHcmFkaWVudD4KPGxpbmVhckdyYWRpZW50IGlkPSJhZ29sZCIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iI2ZmZTlhOCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2ZmYmY1NSIvPjwvbGluZWFyR3JhZGllbnQ+CjxmaWx0ZXIgaWQ9ImFzaCIgeD0iLTIwJSIgeT0iLTIwJSIgd2lkdGg9IjE0MCUiIGhlaWdodD0iMTYwJSI+PGZlRHJvcFNoYWRvdyBkeD0iMCIgZHk9IjI2IiBzdGREZXZpYXRpb249IjI2IiBmbG9vZC1jb2xvcj0iIzhhMTQyNiIgZmxvb2Qtb3BhY2l0eT0iLjM1Ii8+PC9maWx0ZXI+CjxmaWx0ZXIgaWQ9ImF0aWxlIiB4PSItMjAlIiB5PSItMjAlIiB3aWR0aD0iMTQwJSIgaGVpZ2h0PSIxNTAlIj48ZmVEcm9wU2hhZG93IGR4PSIwIiBkeT0iMTgiIHN0ZERldmlhdGlvbj0iMjAiIGZsb29kLWNvbG9yPSIjMDAwIiBmbG9vZC1vcGFjaXR5PSIuMjgiLz48L2ZpbHRlcj4KPC9kZWZzPjxjbGlwUGF0aCBpZD0iYWNsaXAiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIHJ4PSIyMjkiLz48L2NsaXBQYXRoPjxnIGNsaXAtcGF0aD0idXJsKCNhY2xpcCkiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIGZpbGw9InVybCgjYWJnKSIvPjxnIGZpbHRlcj0idXJsKCNhc2gpIj48cGF0aCBkPSJNNDE2LDMxOEg1NzZBMjIwLDIyMCAwIDAgMSA3OTYsNTM4VjU2OEEyMjAsMjIwIDAgMCAxIDU3Niw3ODhINDE2QTIyMCwyMjAgMCAwIDEgMTk2LDU2OFY1MzhBMjIwLDIyMCAwIDAgMSA0MTYsMzE4Wk0zMDAsNzQyQzMwMCw4MTIgMjcwLDg1OCAyMjgsODg0QzMxOCw4ODggMzkyLDg1OCA0NDAsODA2WiIgZmlsbD0idXJsKCNhYm9keSkiLz48L2c+PGcgZmlsbD0iIzFiMTIyMCI+PHJlY3QgeD0iMzg2IiB5PSI0NzciIHdpZHRoPSI3NiIgaGVpZ2h0PSIxNDIiIHJ4PSIzOCIvPjxyZWN0IHg9IjU0NiIgeT0iNDc3IiB3aWR0aD0iNzYiIGhlaWdodD0iMTQyIiByeD0iMzgiLz48L2c+PGcgZmlsbD0iI2ZmZiI+PGNpcmNsZSBjeD0iNDM0IiBjeT0iNTEzLjkyIiByPSIxNS4yMDAwMDAwMDAwMDAwMDEiLz48Y2lyY2xlIGN4PSI1OTQiIGN5PSI1MTMuOTIiIHI9IjE1LjIwMDAwMDAwMDAwMDAwMSIvPjwvZz48ZyBmaWxsPSIjZmY4YTk4IiBvcGFjaXR5PSIuNTUiPjxlbGxpcHNlIGN4PSIzMzgiIGN5PSI2NDIiIHJ4PSI0NiIgcnk9IjI1Ii8+PGVsbGlwc2UgY3g9IjY2OCIgY3k9IjY0MiIgcng9IjQ2IiByeT0iMjUiLz48L2c+PHBhdGggZD0iTTc3MiwxNjRRNzcyLDI4NCA4OTIsMjg0UTc3MiwyODQgNzcyLDQwNFE3NzIsMjg0IDY1MiwyODRRNzcyLDI4NCA3NzIsMTY0WiIgZmlsbD0idXJsKCNhZ29sZCkiIHN0cm9rZT0iI2VmNGY2MyIgc3Ryb2tlLXdpZHRoPSIzMCIgcGFpbnQtb3JkZXI9InN0cm9rZSIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik02NDIsMTU0UTY0MiwxOTQgNjgyLDE5NFE2NDIsMTk0IDY0MiwyMzRRNjQyLDE5NCA2MDIsMTk0UTY0MiwxOTQgNjQyLDE1NFoiIGZpbGw9IiNmZmY3ZjAiLz48L2c+PC9zdmc+Cg=="
+          width="64"
+          height="64"
+          alt=""
+        />
+        <figcaption>64</figcaption>
+      </figure>
+      <figure>
+        <img
+          src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDI0IDEwMjQiIHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiPjx0aXRsZT5TYXlhYm90PC90aXRsZT48ZGVmcz4KPGxpbmVhckdyYWRpZW50IGlkPSJhYmciIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZjc4ODYiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNlZTQxNTciLz48L2xpbmVhckdyYWRpZW50Pgo8bGluZWFyR3JhZGllbnQgaWQ9ImFib2R5IiB4MT0iMCIgeTE9IjAiIHgyPSIwIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjZmZmZmZmIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjZmZlOGRlIi8+PC9saW5lYXJHcmFkaWVudD4KPGxpbmVhckdyYWRpZW50IGlkPSJhZ29sZCIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iI2ZmZTlhOCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2ZmYmY1NSIvPjwvbGluZWFyR3JhZGllbnQ+CjxmaWx0ZXIgaWQ9ImFzaCIgeD0iLTIwJSIgeT0iLTIwJSIgd2lkdGg9IjE0MCUiIGhlaWdodD0iMTYwJSI+PGZlRHJvcFNoYWRvdyBkeD0iMCIgZHk9IjI2IiBzdGREZXZpYXRpb249IjI2IiBmbG9vZC1jb2xvcj0iIzhhMTQyNiIgZmxvb2Qtb3BhY2l0eT0iLjM1Ii8+PC9maWx0ZXI+CjxmaWx0ZXIgaWQ9ImF0aWxlIiB4PSItMjAlIiB5PSItMjAlIiB3aWR0aD0iMTQwJSIgaGVpZ2h0PSIxNTAlIj48ZmVEcm9wU2hhZG93IGR4PSIwIiBkeT0iMTgiIHN0ZERldmlhdGlvbj0iMjAiIGZsb29kLWNvbG9yPSIjMDAwIiBmbG9vZC1vcGFjaXR5PSIuMjgiLz48L2ZpbHRlcj4KPC9kZWZzPjxjbGlwUGF0aCBpZD0iYWNsaXAiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIHJ4PSIyMjkiLz48L2NsaXBQYXRoPjxnIGNsaXAtcGF0aD0idXJsKCNhY2xpcCkiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIGZpbGw9InVybCgjYWJnKSIvPjxnIGZpbHRlcj0idXJsKCNhc2gpIj48cGF0aCBkPSJNNDE2LDMxOEg1NzZBMjIwLDIyMCAwIDAgMSA3OTYsNTM4VjU2OEEyMjAsMjIwIDAgMCAxIDU3Niw3ODhINDE2QTIyMCwyMjAgMCAwIDEgMTk2LDU2OFY1MzhBMjIwLDIyMCAwIDAgMSA0MTYsMzE4Wk0zMDAsNzQyQzMwMCw4MTIgMjcwLDg1OCAyMjgsODg0QzMxOCw4ODggMzkyLDg1OCA0NDAsODA2WiIgZmlsbD0idXJsKCNhYm9keSkiLz48L2c+PGcgZmlsbD0iIzFiMTIyMCI+PHJlY3QgeD0iMzc2IiB5PSI0NjgiIHdpZHRoPSI5NiIgaGVpZ2h0PSIxNjgiIHJ4PSI0OCIvPjxyZWN0IHg9IjUzMiIgeT0iNDY4IiB3aWR0aD0iOTYiIGhlaWdodD0iMTY4IiByeD0iNDgiLz48L2c+PHBhdGggZD0iTTc3NCwxMjhRNzc0LDI3OCA5MjQsMjc4UTc3NCwyNzggNzc0LDQyOFE3NzQsMjc4IDYyNCwyNzhRNzc0LDI3OCA3NzQsMTI4WiIgZmlsbD0idXJsKCNhZ29sZCkiIHN0cm9rZT0iI2VmNGY2MyIgc3Ryb2tlLXdpZHRoPSIzNCIgcGFpbnQtb3JkZXI9InN0cm9rZSIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjwvZz48L3N2Zz4K"
+          width="32"
+          height="32"
+          alt=""
+        />
+        <figcaption>32</figcaption>
+      </figure>
+      <figure>
+        <img
+          src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDI0IDEwMjQiIHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiPjx0aXRsZT5TYXlhYm90PC90aXRsZT48ZGVmcz4KPGxpbmVhckdyYWRpZW50IGlkPSJhYmciIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZjc4ODYiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNlZTQxNTciLz48L2xpbmVhckdyYWRpZW50Pgo8bGluZWFyR3JhZGllbnQgaWQ9ImFib2R5IiB4MT0iMCIgeTE9IjAiIHgyPSIwIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjZmZmZmZmIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjZmZlOGRlIi8+PC9saW5lYXJHcmFkaWVudD4KPGxpbmVhckdyYWRpZW50IGlkPSJhZ29sZCIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iI2ZmZTlhOCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2ZmYmY1NSIvPjwvbGluZWFyR3JhZGllbnQ+CjxmaWx0ZXIgaWQ9ImFzaCIgeD0iLTIwJSIgeT0iLTIwJSIgd2lkdGg9IjE0MCUiIGhlaWdodD0iMTYwJSI+PGZlRHJvcFNoYWRvdyBkeD0iMCIgZHk9IjI2IiBzdGREZXZpYXRpb249IjI2IiBmbG9vZC1jb2xvcj0iIzhhMTQyNiIgZmxvb2Qtb3BhY2l0eT0iLjM1Ii8+PC9maWx0ZXI+CjxmaWx0ZXIgaWQ9ImF0aWxlIiB4PSItMjAlIiB5PSItMjAlIiB3aWR0aD0iMTQwJSIgaGVpZ2h0PSIxNTAlIj48ZmVEcm9wU2hhZG93IGR4PSIwIiBkeT0iMTgiIHN0ZERldmlhdGlvbj0iMjAiIGZsb29kLWNvbG9yPSIjMDAwIiBmbG9vZC1vcGFjaXR5PSIuMjgiLz48L2ZpbHRlcj4KPC9kZWZzPjxjbGlwUGF0aCBpZD0iYWNsaXAiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIHJ4PSIyMjkiLz48L2NsaXBQYXRoPjxnIGNsaXAtcGF0aD0idXJsKCNhY2xpcCkiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIGZpbGw9InVybCgjYWJnKSIvPjxnIGZpbHRlcj0idXJsKCNhc2gpIj48cGF0aCBkPSJNNDE2LDMxOEg1NzZBMjIwLDIyMCAwIDAgMSA3OTYsNTM4VjU2OEEyMjAsMjIwIDAgMCAxIDU3Niw3ODhINDE2QTIyMCwyMjAgMCAwIDEgMTk2LDU2OFY1MzhBMjIwLDIyMCAwIDAgMSA0MTYsMzE4Wk0zMDAsNzQyQzMwMCw4MTIgMjcwLDg1OCAyMjgsODg0QzMxOCw4ODggMzkyLDg1OCA0NDAsODA2WiIgZmlsbD0idXJsKCNhYm9keSkiLz48L2c+PGcgZmlsbD0iIzFiMTIyMCI+PHJlY3QgeD0iMzc2IiB5PSI0NjgiIHdpZHRoPSI5NiIgaGVpZ2h0PSIxNjgiIHJ4PSI0OCIvPjxyZWN0IHg9IjUzMiIgeT0iNDY4IiB3aWR0aD0iOTYiIGhlaWdodD0iMTY4IiByeD0iNDgiLz48L2c+PHBhdGggZD0iTTc3NCwxMjhRNzc0LDI3OCA5MjQsMjc4UTc3NCwyNzggNzc0LDQyOFE3NzQsMjc4IDYyNCwyNzhRNzc0LDI3OCA3NzQsMTI4WiIgZmlsbD0idXJsKCNhZ29sZCkiIHN0cm9rZT0iI2VmNGY2MyIgc3Ryb2tlLXdpZHRoPSIzNCIgcGFpbnQtb3JkZXI9InN0cm9rZSIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjwvZz48L3N2Zz4K"
+          width="16"
+          height="16"
+          alt=""
+        />
+        <figcaption>16</figcaption>
+      </figure>
+    </div>
+  </section>
+  <section>
+    <p class="eb">Alternates, same family</p>
+    <div class="alts">
+      <div class="alt">
+        <img
+          src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDI0IDEwMjQiIHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiPjx0aXRsZT5TYXlhYm90PC90aXRsZT48ZGVmcz4KPGxpbmVhckdyYWRpZW50IGlkPSJiYmciIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZjc4ODYiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNlZTQxNTciLz48L2xpbmVhckdyYWRpZW50Pgo8bGluZWFyR3JhZGllbnQgaWQ9ImJib2R5IiB4MT0iMCIgeTE9IjAiIHgyPSIwIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjZmZmZmZmIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjZmZlOGRlIi8+PC9saW5lYXJHcmFkaWVudD4KPGxpbmVhckdyYWRpZW50IGlkPSJiZ29sZCIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iI2ZmZTlhOCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2ZmYmY1NSIvPjwvbGluZWFyR3JhZGllbnQ+CjxmaWx0ZXIgaWQ9ImJzaCIgeD0iLTIwJSIgeT0iLTIwJSIgd2lkdGg9IjE0MCUiIGhlaWdodD0iMTYwJSI+PGZlRHJvcFNoYWRvdyBkeD0iMCIgZHk9IjI2IiBzdGREZXZpYXRpb249IjI2IiBmbG9vZC1jb2xvcj0iIzhhMTQyNiIgZmxvb2Qtb3BhY2l0eT0iLjM1Ii8+PC9maWx0ZXI+CjxmaWx0ZXIgaWQ9ImJ0aWxlIiB4PSItMjAlIiB5PSItMjAlIiB3aWR0aD0iMTQwJSIgaGVpZ2h0PSIxNTAlIj48ZmVEcm9wU2hhZG93IGR4PSIwIiBkeT0iMTgiIHN0ZERldmlhdGlvbj0iMjAiIGZsb29kLWNvbG9yPSIjMDAwIiBmbG9vZC1vcGFjaXR5PSIuMjgiLz48L2ZpbHRlcj4KPC9kZWZzPjxjbGlwUGF0aCBpZD0iYmNsaXAiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIHJ4PSIyMjkiLz48L2NsaXBQYXRoPjxnIGNsaXAtcGF0aD0idXJsKCNiY2xpcCkiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIGZpbGw9InVybCgjYmJnKSIvPjxnIGZpbHRlcj0idXJsKCNic2gpIj48cGF0aCBkPSJNMzMwLDIyMEwzMzAsNzgwUTMzMCw4NDAgMzgwLDgxMkw1MDAsNzIyTDU4MCw4NzJRNjA0LDkxNiA2NDgsODk2TDY5Miw4NzVRNzM2LDg1NCA3MTQsODEwTDYzNiw2NjBMNzkyLDY0NFE4NDgsNjM4IDgwOCw1OTZMMzgyLDE5MFEzMzAsMTUyIDMzMCwyMjBaIiBmaWxsPSJ1cmwoI2Jib2R5KSIgc3Ryb2tlPSJ1cmwoI2Jib2R5KSIgc3Ryb2tlLXdpZHRoPSI0MCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjwvZz48ZyBmaWxsPSIjMWIxMjIwIj48cmVjdCB4PSI0MDUiIHk9IjQ0NSIgd2lkdGg9IjU4IiBoZWlnaHQ9IjExMCIgcng9IjI5Ii8+PHJlY3QgeD0iNTA1IiB5PSI0NDUiIHdpZHRoPSI1OCIgaGVpZ2h0PSIxMTAiIHJ4PSIyOSIvPjwvZz48ZyBmaWxsPSIjZmZmIj48Y2lyY2xlIGN4PSI0NDQiIGN5PSI0NzMuNiIgcj0iMTEuNjAwMDAwMDAwMDAwMDAxIi8+PGNpcmNsZSBjeD0iNTQ0IiBjeT0iNDczLjYiIHI9IjExLjYwMDAwMDAwMDAwMDAwMSIvPjwvZz48cGF0aCBkPSJNNzc2LDE2MlE3NzYsMjYyIDg3NiwyNjJRNzc2LDI2MiA3NzYsMzYyUTc3NiwyNjIgNjc2LDI2MlE3NzYsMjYyIDc3NiwxNjJaIiBmaWxsPSJ1cmwoI2Jnb2xkKSIvPjxwYXRoIGQ9Ik04NjQsMzU2UTg2NCwzOTIgOTAwLDM5MlE4NjQsMzkyIDg2NCw0MjhRODY0LDM5MiA4MjgsMzkyUTg2NCwzOTIgODY0LDM1NloiIGZpbGw9IiNmZmY3ZjAiLz48L2c+PC9zdmc+Cg=="
+          alt=""
+        />
+        <div>
+          <h3>Cursor Buddy</h3>
+          <p>
+            The pointer that works your computer, with a face. Leans into the agent's own sandbox
+            computer.
+          </p>
+        </div>
+      </div>
+      <div class="alt">
+        <img
+          src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDI0IDEwMjQiIHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiPjx0aXRsZT5TYXlhYm90PC90aXRsZT48ZGVmcz4KPGxpbmVhckdyYWRpZW50IGlkPSJjYmciIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZjc4ODYiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNlZTQxNTciLz48L2xpbmVhckdyYWRpZW50Pgo8bGluZWFyR3JhZGllbnQgaWQ9ImNib2R5IiB4MT0iMCIgeTE9IjAiIHgyPSIwIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjZmZmZmZmIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjZmZlOGRlIi8+PC9saW5lYXJHcmFkaWVudD4KPGxpbmVhckdyYWRpZW50IGlkPSJjZ29sZCIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iI2ZmZTlhOCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2ZmYmY1NSIvPjwvbGluZWFyR3JhZGllbnQ+CjxmaWx0ZXIgaWQ9ImNzaCIgeD0iLTIwJSIgeT0iLTIwJSIgd2lkdGg9IjE0MCUiIGhlaWdodD0iMTYwJSI+PGZlRHJvcFNoYWRvdyBkeD0iMCIgZHk9IjI2IiBzdGREZXZpYXRpb249IjI2IiBmbG9vZC1jb2xvcj0iIzhhMTQyNiIgZmxvb2Qtb3BhY2l0eT0iLjM1Ii8+PC9maWx0ZXI+CjxmaWx0ZXIgaWQ9ImN0aWxlIiB4PSItMjAlIiB5PSItMjAlIiB3aWR0aD0iMTQwJSIgaGVpZ2h0PSIxNTAlIj48ZmVEcm9wU2hhZG93IGR4PSIwIiBkeT0iMTgiIHN0ZERldmlhdGlvbj0iMjAiIGZsb29kLWNvbG9yPSIjMDAwIiBmbG9vZC1vcGFjaXR5PSIuMjgiLz48L2ZpbHRlcj4KPC9kZWZzPjxjbGlwUGF0aCBpZD0iY2NsaXAiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIHJ4PSIyMjkiLz48L2NsaXBQYXRoPjxnIGNsaXAtcGF0aD0idXJsKCNjY2xpcCkiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIGZpbGw9InVybCgjY2JnKSIvPjxnIGZpbHRlcj0idXJsKCNjc2gpIj48cGF0aCBkPSJNNDMwLDI2MEg1OTRBMjUwLDI1MCAwIDAgMSA4NDQsNTEwVjU3MEEyNTAsMjUwIDAgMCAxIDU5NCw4MjBINDMwQTI1MCwyNTAgMCAwIDEgMTgwLDU3MFY1MTBBMjUwLDI1MCAwIDAgMSA0MzAsMjYwWiIgZmlsbD0idXJsKCNjYm9keSkiLz48L2c+PGcgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMWIxMjIwIiBzdHJva2Utd2lkdGg9IjU4IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGQ9Ik0zNDIsNTMwTDQwNCw0NjJMNDY2LDUzMCIvPjxwYXRoIGQ9Ik01NTgsNTMwTDYyMCw0NjJMNjgyLDUzMCIvPjwvZz48cmVjdCB4PSI0NjAiIHk9IjYxMiIgd2lkdGg9IjEwNCIgaGVpZ2h0PSI1NCIgcng9IjIwIiBmaWxsPSIjMWIxMjIwIi8+PGcgZmlsbD0iI2ZmOGE5OCIgb3BhY2l0eT0iLjU1Ij48ZWxsaXBzZSBjeD0iMzMwIiBjeT0iNjIyIiByeD0iNDYiIHJ5PSIyNSIvPjxlbGxpcHNlIGN4PSI2OTQiIGN5PSI2MjIiIHJ4PSI0NiIgcnk9IjI1Ii8+PC9nPjxwYXRoIGQ9Ik04MTIsMTQ2UTgxMiwyNDAgOTA2LDI0MFE4MTIsMjQwIDgxMiwzMzRRODEyLDI0MCA3MTgsMjQwUTgxMiwyNDAgODEyLDE0NloiIGZpbGw9InVybCgjY2dvbGQpIiBzdHJva2U9IiNlZjRmNjMiIHN0cm9rZS13aWR0aD0iMjYiIHBhaW50LW9yZGVyPSJzdHJva2UiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz48L2c+PC9zdmc+Cg=="
+          alt=""
+        />
+        <div>
+          <h3>Prompt Pal</h3>
+          <p>
+            Happy ^ ^ eyes and a blinking-cursor mouth. More playful and more developer-flavoured.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section>
+    <p class="eb">Files</p>
+    <div class="files">
+      assets/branding/saaya-mark/ build.cjs one geometry → every icon below svg/sayabot-icon.svg iOS
+      / Android / PWA (full-bleed, OS masks) svg/sayabot-icon-macos.svg desktop dock, Apple grid
+      (.icns source) svg/sayabot-icon-maskable.svg Android adaptive / PWA safe zone
+      svg/sayabot-icon-small.svg favicon, ≤32 px svg/sayabot-mono-white.svg Android notification
+      icon png/ 1024 · 512 · 192 · 180 · 64 · 32 · 16 · macOS 1024
+    </div>
+  </section>
 </main>

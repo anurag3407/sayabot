@@ -50,7 +50,10 @@ function RowFace({ item }: { item: ChatListItem }) {
     <span className="relative grid h-12 w-12 shrink-0 place-items-center rounded-[16px] bg-raised text-[16px] font-medium text-muted">
       {item.kind === "public" ? "#" : item.name.slice(0, 1).toUpperCase()}
       {item.agentNames[0] ? (
-        <Mascot seed={item.agentNames[0]} className="absolute -bottom-1 -right-1 h-[22px] w-[22px]" />
+        <Mascot
+          seed={item.agentNames[0]}
+          className="absolute -bottom-1 -right-1 h-[22px] w-[22px]"
+        />
       ) : null}
     </span>
   )
@@ -111,7 +114,12 @@ function ChatRow({
         <RowFace item={item} />
         <span className="min-w-0 flex-1">
           <span className="flex items-baseline gap-2">
-            <span className={cn("truncate text-[15px]", unread ? "font-semibold text-text" : "font-medium text-text")}>
+            <span
+              className={cn(
+                "truncate text-[15px]",
+                unread ? "font-semibold text-text" : "font-medium text-text",
+              )}
+            >
               {item.name}
             </span>
             {!item.isBotDm && item.agentNames[0] ? (
@@ -124,7 +132,9 @@ function ChatRow({
             </span>
           </span>
           <span className="mt-0.5 flex items-center gap-2">
-            <span className={cn("min-w-0 truncate text-[13px]", unread ? "text-muted" : "text-faint")}>
+            <span
+              className={cn("min-w-0 truncate text-[13px]", unread ? "text-muted" : "text-faint")}
+            >
               {item.lastMessage ?? (item.isBotDm ? "Say hello" : "No messages yet")}
             </span>
             {item.mentionCount > 0 ? (
@@ -132,7 +142,10 @@ function ChatRow({
                 {item.mentionCount}
               </span>
             ) : unread && !muted ? (
-              <span className="ml-auto h-2 w-2 shrink-0 rounded-full bg-accent" aria-label={`${item.unreadCount} unread`} />
+              <span
+                className="ml-auto h-2 w-2 shrink-0 rounded-full bg-accent"
+                aria-label={`${item.unreadCount} unread`}
+              />
             ) : muted ? (
               <span className="ml-auto shrink-0 text-[11px] text-faint">muted</span>
             ) : null}
@@ -160,28 +173,58 @@ function ChatRow({
             onClick={() => setMenuOpen(false)}
           />
           <div className="absolute right-2 top-10 z-20 w-44 overflow-hidden rounded-xl border border-line-strong bg-panel py-1 shadow-[0_16px_40px_rgba(0,0,0,0.5)]">
-            <button type="button" disabled={pending} onClick={() => run(item.pinned ? "unpin" : "pin")} className={menuItem}>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => run(item.pinned ? "unpin" : "pin")}
+              className={menuItem}
+            >
               {item.pinned ? "Unpin" : "Pin"}
             </button>
-            <button type="button" disabled={pending} onClick={() => run("mark_unread")} className={menuItem}>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => run("mark_unread")}
+              className={menuItem}
+            >
               Mark unread
             </button>
             {muted ? (
-              <button type="button" disabled={pending} onClick={() => run("unmute")} className={menuItem}>
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => run("unmute")}
+                className={menuItem}
+              >
                 Unmute
               </button>
             ) : (
               <>
                 <p className="px-3 pb-0.5 pt-1.5 text-[11px] text-faint">Mute for</p>
                 {(["8h", "1w", "always"] as const).map((duration) => (
-                  <button key={duration} type="button" disabled={pending} onClick={() => run("mute", duration)} className={menuItem}>
-                    {duration === "8h" ? "8 hours" : duration === "1w" ? "1 week" : "Until I unmute"}
+                  <button
+                    key={duration}
+                    type="button"
+                    disabled={pending}
+                    onClick={() => run("mute", duration)}
+                    className={menuItem}
+                  >
+                    {duration === "8h"
+                      ? "8 hours"
+                      : duration === "1w"
+                        ? "1 week"
+                        : "Until I unmute"}
                   </button>
                 ))}
               </>
             )}
             <div className="my-1 h-px bg-line" />
-            <button type="button" disabled={pending} onClick={() => run(item.archived ? "unarchive" : "archive")} className={menuItem}>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => run(item.archived ? "unarchive" : "archive")}
+              className={menuItem}
+            >
               {item.archived ? "Unarchive" : "Archive"}
             </button>
           </div>
@@ -191,7 +234,15 @@ function ChatRow({
   )
 }
 
-function BotRow({ bot, orgSlug, onNavigate }: { bot: BotLink; orgSlug: string; onNavigate?: () => void }) {
+function BotRow({
+  bot,
+  orgSlug,
+  onNavigate,
+}: {
+  bot: BotLink
+  orgSlug: string
+  onNavigate?: () => void
+}) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -227,11 +278,18 @@ function BotRow({ bot, orgSlug, onNavigate }: { bot: BotLink; orgSlug: string; o
           <span className="flex items-center gap-2">
             <span className="truncate text-[15px] font-medium text-text">{bot.displayName}</span>
             {bot.kind === "external" ? (
-              <span className="shrink-0 rounded-md bg-raised px-1.5 py-px text-[11px] text-muted">MCP</span>
+              <span className="shrink-0 rounded-md bg-raised px-1.5 py-px text-[11px] text-muted">
+                MCP
+              </span>
             ) : null}
           </span>
-          <span className={cn("mt-0.5 block truncate text-[13px]", error ? "text-danger" : "text-faint")}>
-            {pending ? "Saying hi…" : error ?? "Tap to say hi"}
+          <span
+            className={cn(
+              "mt-0.5 block truncate text-[13px]",
+              error ? "text-danger" : "text-faint",
+            )}
+          >
+            {pending ? "Saying hi…" : (error ?? "Tap to say hi")}
           </span>
         </span>
       </button>
@@ -239,7 +297,15 @@ function BotRow({ bot, orgSlug, onNavigate }: { bot: BotLink; orgSlug: string; o
   )
 }
 
-function Group({ label, children, action }: { label: string; children: React.ReactNode; action?: React.ReactNode }) {
+function Group({
+  label,
+  children,
+  action,
+}: {
+  label: string
+  children: React.ReactNode
+  action?: React.ReactNode
+}) {
   return (
     <div className="mb-3">
       <div className="flex h-7 items-center justify-between px-2">
@@ -340,7 +406,9 @@ export function ChatList({
   const agents = filtered.filter((item) => item.isBotDm && !item.pinned)
   const rooms = filtered.filter((item) => !item.isBotDm && !item.pinned)
 
-  const dmAgentIds = new Set(items.filter((item) => item.isBotDm && item.agentId).map((item) => item.agentId))
+  const dmAgentIds = new Set(
+    items.filter((item) => item.isBotDm && item.agentId).map((item) => item.agentId),
+  )
   const newBots =
     filter === "all" || filter === "bots"
       ? bots.filter(
@@ -358,7 +426,10 @@ export function ChatList({
       }
       router.refresh()
       if (action === "archive") {
-        showToast({ message: "Chat archived", action: { label: "Undo", onClick: () => act(roomId, "unarchive") } })
+        showToast({
+          message: "Chat archived",
+          action: { label: "Undo", onClick: () => act(roomId, "unarchive") },
+        })
       }
     })
   }
@@ -386,66 +457,67 @@ export function ChatList({
   return (
     <div className="flex h-full min-h-0 flex-col">
       {showSearch ? (
-      <div
-        className="shrink-0 px-3 pb-2 pt-1"
-        onFocus={() => setSearchFocused(true)}
-        onBlur={(event) => {
-          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setSearchFocused(false)
-        }}
-      >
-        <div className="flex items-center gap-1.5">
-        <label className="flex h-10 min-w-0 flex-1 items-center gap-2.5 rounded-xl bg-panel px-3 focus-within:bg-raised">
-          <Search className="h-4 w-4 shrink-0 text-faint" aria-hidden />
-          <span className="sr-only">Filter chats. Press Enter to search every message.</span>
-          <input
-            ref={searchInput}
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Escape" && onSearchOpenChange) {
-                onSearchOpenChange(false)
-                return
-              }
-              if (event.key === "Enter" && needle) {
-                onNavigate?.()
-                router.push(`/${orgSlug}/search?q=${encodeURIComponent(query.trim())}`)
-              }
-            }}
-            placeholder={flat ? "Search" : "Find a chat"}
-            className="w-full bg-transparent text-[14px] text-text outline-none placeholder:text-faint"
-          />
-        </label>
-        {newChatHref ? (
-          <Link
-            href={newChatHref}
-            onClick={onNavigate}
-            aria-label="New chat"
-            title="New chat"
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted transition-colors hover:bg-panel hover:text-text"
-          >
-            <PlusIcon width={19} height={19} />
-          </Link>
-        ) : null}
-        </div>
-        {visibleFilters.length > 1 ? (
-          <div className="mt-2 flex flex-wrap gap-1" role="group" aria-label="Filter chats">
-            {visibleFilters.map((option) => (
-              <button
-                key={option.key}
-                type="button"
-                onClick={() => setFilter(option.key)}
-                aria-pressed={filter === option.key}
-                className={cn(
-                  "h-7 rounded-full px-3 text-[12px] transition-colors",
-                  filter === option.key ? "bg-raised text-text" : "text-faint hover:text-text",
-                )}
+        <div
+          className="shrink-0 px-3 pb-2 pt-1"
+          onFocus={() => setSearchFocused(true)}
+          onBlur={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget as Node | null))
+              setSearchFocused(false)
+          }}
+        >
+          <div className="flex items-center gap-1.5">
+            <label className="flex h-10 min-w-0 flex-1 items-center gap-2.5 rounded-xl bg-panel px-3 focus-within:bg-raised">
+              <Search className="h-4 w-4 shrink-0 text-faint" aria-hidden />
+              <span className="sr-only">Filter chats. Press Enter to search every message.</span>
+              <input
+                ref={searchInput}
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Escape" && onSearchOpenChange) {
+                    onSearchOpenChange(false)
+                    return
+                  }
+                  if (event.key === "Enter" && needle) {
+                    onNavigate?.()
+                    router.push(`/${orgSlug}/search?q=${encodeURIComponent(query.trim())}`)
+                  }
+                }}
+                placeholder={flat ? "Search" : "Find a chat"}
+                className="w-full bg-transparent text-[14px] text-text outline-none placeholder:text-faint"
+              />
+            </label>
+            {newChatHref ? (
+              <Link
+                href={newChatHref}
+                onClick={onNavigate}
+                aria-label="New chat"
+                title="New chat"
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted transition-colors hover:bg-panel hover:text-text"
               >
-                {option.label}
-              </button>
-            ))}
+                <PlusIcon width={19} height={19} />
+              </Link>
+            ) : null}
           </div>
-        ) : null}
-      </div>
+          {visibleFilters.length > 1 ? (
+            <div className="mt-2 flex flex-wrap gap-1" role="group" aria-label="Filter chats">
+              {visibleFilters.map((option) => (
+                <button
+                  key={option.key}
+                  type="button"
+                  onClick={() => setFilter(option.key)}
+                  aria-pressed={filter === option.key}
+                  className={cn(
+                    "h-7 rounded-full px-3 text-[12px] transition-colors",
+                    filter === option.key ? "bg-raised text-text" : "text-faint hover:text-text",
+                  )}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
       ) : null}
 
       <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
@@ -463,7 +535,11 @@ export function ChatList({
           <Group
             label="Your agents"
             action={
-              <Link href={`/${orgSlug}/agents`} onClick={onNavigate} className="text-[12px] text-faint hover:text-text">
+              <Link
+                href={`/${orgSlug}/agents`}
+                onClick={onNavigate}
+                className="text-[12px] text-faint hover:text-text"
+              >
                 See all
               </Link>
             }
@@ -479,7 +555,9 @@ export function ChatList({
         {empty ? (
           <div className="px-3 py-8 text-center">
             <p className="text-[13px] leading-relaxed text-faint">
-              {needle ? "No chats match. Press Enter to search every message." : "Nothing here yet."}
+              {needle
+                ? "No chats match. Press Enter to search every message."
+                : "Nothing here yet."}
             </p>
             {!needle ? (
               <Link

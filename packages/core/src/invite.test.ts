@@ -29,9 +29,7 @@ describe("Invite helpers", () => {
       `claude mcp add --transport http ${name} ${url}`,
     )
 
-    expect(getClientConfigSnippet("hermes", url, name)).toBe(
-      `hermes mcp add ${name} ${url}`,
-    )
+    expect(getClientConfigSnippet("hermes", url, name)).toBe(`hermes mcp add ${name} ${url}`)
 
     expect(getClientConfigSnippet("codex", url, name)).toContain(
       `[mcp_servers.${name}]\nurl = "${url}"`,

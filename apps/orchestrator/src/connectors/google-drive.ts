@@ -4,10 +4,16 @@ import type { ConnectorDoc, ConnectorSearchOptions } from "./types"
 export interface GoogleDriveConfig {
   accessToken: string
   fetchFn?: typeof fetch
+  /** Override the API origin. Tests point this at a local stub server. */
+  baseUrl?: string
 }
 
 export class GoogleDriveConnector {
   constructor(private config: GoogleDriveConfig) {}
+
+  private base(): string {
+    return (this.config.baseUrl ?? "https://www.googleapis.com").replace(/\/+$/, "")
+  }
 
   private get headers(): Record<string, string> {
     return {
@@ -18,15 +24,24 @@ export class GoogleDriveConnector {
 
   /**
    * Searches Google Drive files matching query text and scoped by allowed folder IDs.
+   * Folders are matched with `in ancestors`, so files nested in subfolders are found too.
    */
-  async searchFiles(options: ConnectorSearchOptions): Promise<ConnectorDoc[]> {
+  async searchFiles(
+    options: ConnectorSearchOptions & { rootFolderId?: string },
+  ): Promise<ConnectorDoc[]> {
     const limit = Math.min(25, Math.max(1, options.limit ?? 8))
     const searchTerms = options.query.replace(/'/g, "\\'")
 
     let q = `trashed = false and (name contains '${searchTerms}' or fullText contains '${searchTerms}')`
 
-    if (options.allowedFolders && options.allowedFolders.length > 0) {
-      const folderClauses = options.allowedFolders.map((f) => `'${f}' in parents`).join(" or ")
+    const folders = [
+      ...new Set([
+        ...(options.allowedFolders ?? []),
+        ...(options.rootFolderId ? [options.rootFolderId] : []),
+      ]),
+    ]
+    if (folders.length > 0) {
+      const folderClauses = folders.map((f) => `'${f}' in ancestors`).join(" or ")
       q += ` and (${folderClauses})`
     }
 
@@ -39,7 +54,7 @@ export class GoogleDriveConnector {
       corpora: "allDrives",
     })
 
-    const url = `https://www.googleapis.com/drive/v3/files?${params.toString()}`
+    const url = `${this.base()}/drive/v3/files?${params.toString()}`
     const response = await fetchWithRetry(
       url,
       {
@@ -86,7 +101,7 @@ export class GoogleDriveConnector {
    */
   async readFile(fileId: string): Promise<ConnectorDoc> {
     // 1. Fetch file metadata
-    const metaUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,name,mimeType,webViewLink,modifiedTime,owners&supportsAllDrives=true`
+    const metaUrl = `${this.base()}/drive/v3/files/${fileId}?fields=id,name,mimeType,webViewLink,modifiedTime,owners&supportsAllDrives=true`
     const metaRes = await fetchWithRetry(
       metaUrl,
       {
@@ -113,7 +128,7 @@ export class GoogleDriveConnector {
 
     // 2. Export based on MIME type
     if (meta.mimeType === "application/vnd.google-apps.document") {
-      const exportUrl = `https://www.googleapis.com/drive/v3/files/${fileId}/export?mimeType=text/plain`
+      const exportUrl = `${this.base()}/drive/v3/files/${fileId}/export?mimeType=text/plain`
       const exportRes = await fetchWithRetry(
         exportUrl,
         {
@@ -124,7 +139,7 @@ export class GoogleDriveConnector {
       )
       content = exportRes.ok ? await exportRes.text() : `[Could not export Google Doc ${fileId}]`
     } else if (meta.mimeType === "application/vnd.google-apps.spreadsheet") {
-      const exportUrl = `https://www.googleapis.com/drive/v3/files/${fileId}/export?mimeType=text/csv`
+      const exportUrl = `${this.base()}/drive/v3/files/${fileId}/export?mimeType=text/csv`
       const exportRes = await fetchWithRetry(
         exportUrl,
         {
@@ -135,7 +150,7 @@ export class GoogleDriveConnector {
       )
       content = exportRes.ok ? await exportRes.text() : `[Could not export Google Sheet ${fileId}]`
     } else if (meta.mimeType === "application/vnd.google-apps.presentation") {
-      const exportUrl = `https://www.googleapis.com/drive/v3/files/${fileId}/export?mimeType=text/plain`
+      const exportUrl = `${this.base()}/drive/v3/files/${fileId}/export?mimeType=text/plain`
       const exportRes = await fetchWithRetry(
         exportUrl,
         {
@@ -147,7 +162,7 @@ export class GoogleDriveConnector {
       content = exportRes.ok ? await exportRes.text() : `[Could not export Google Slides ${fileId}]`
     } else {
       // Download raw content for text, markdown, json, etc.
-      const downloadUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&supportsAllDrives=true`
+      const downloadUrl = `${this.base()}/drive/v3/files/${fileId}?alt=media&supportsAllDrives=true`
       const downloadRes = await fetchWithRetry(
         downloadUrl,
         {

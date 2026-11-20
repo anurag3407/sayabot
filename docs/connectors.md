@@ -473,6 +473,29 @@ In `/[org]/settings/connectors`:
   }
   ```
 
+### Composio Connected Apps (Gmail, Calendar, Notion, Linear, HubSpot, …)
+
+One Composio API key covers the whole app catalog instead of one connector per vendor. People connect their own accounts through sign-in links, so Sayabot never stores their vendor passwords.
+
+#### Step 1: Get a project API key
+
+[app.composio.dev](https://app.composio.dev) → Settings → API keys. Self-hosted Composio projects can point at their own API origin instead.
+
+#### Step 2: Register in Sayabot
+
+In `/[org]/settings/connectors`:
+
+- **Source**: `composio`
+- **Token**: the project API key (sent as `x-api-key`)
+- **API base URL** (optional): `https://backend.composio.dev/api/v3` by default
+- **Workspace user id** (optional): defaults to `org:<org id>`; connected accounts belong to it
+
+#### Step 3: Granting apps to an agent
+
+An agent with a `composio` grant gets four tools — `composio_list_apps`, `composio_search_tools`, `composio_execute_tool` and `composio_connect_app`. The grant's **Apps** field (`allowedApps`) limits which app slugs it may use (`gmail`, `googlecalendar`, …); blank allows the whole catalog. Marking the grant read-only blocks every tool that is not a read (`GMAIL_FETCH_EMAILS` runs, `GMAIL_SEND_EMAIL` is refused), and every execution waits for a person's approval.
+
+A person connects an app by asking the agent for a link (`composio_connect_app`), or by connecting it in their Composio project; `composio_list_apps` shows which apps already are.
+
 ---
 
 ## 4. Fine-Grained Agent Scoping (Tier-2 Access Control)
@@ -537,7 +560,7 @@ When an agent searches Google Drive, Sayabot injects folder restriction clauses 
 let q = `trashed = false and (name contains '${searchTerms}' or fullText contains '${searchTerms}')`
 
 if (options.allowedFolders && options.allowedFolders.length > 0) {
-  const folderClauses = options.allowedFolders.map((f) => `'${f}' in parents`).join(" or ")
+  const folderClauses = options.allowedFolders.map((f) => `'${f}' in ancestors`).join(" or ")
   q += ` and (${folderClauses})`
 }
 ```
@@ -557,7 +580,7 @@ if (args.channel && scope.allowedChannels && scope.allowedChannels.length > 0) {
   const clean = args.channel.replace(/^#/, "")
   if (!scope.allowedChannels.includes(clean)) {
     throw new Error(
-      `Channel '${args.channel}' is outside this agent's allowed channels (${scope.allowedChannels.join(", ")})`,
+      `Access Denied: Slack channel ${args.channel} is outside this agent's allowed list (${scope.allowedChannels.join(", ")}).`,
     )
   }
 }
@@ -1211,7 +1234,7 @@ In `apps/orchestrator/src/tools/builtins/connectors.ts`, define the tool specifi
 | :---------------------------------------------------------------------- | :------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------- |
 | **`No connector configured for '<source>' in this workspace`**          | The integration has not been added at Tier 1.                                    | Navigate to `/[org]/settings/connectors` and add the service credentials.                                         |
 | **`Access Denied: This agent is not granted access to this connector`** | The agent lacks a Tier-2 grant in `agent_connector_grants`.                      | Open `/[org]/agents/[handle]` → **Workspace Knowledge Connectors** → Add a grant for this connector.              |
-| **`Channel '<name>' is outside this agent's allowed channels`**         | The agent attempted to query a channel not listed in its grant whitelist.        | Edit the agent's grant in `/[org]/agents/[handle]` to include the channel or use `#` prefixes consistently.       |
+| **`Access Denied: Slack channel '<id>' is outside this agent's allowed list (<ids>)`** | The agent attempted to query a channel not listed in its grant whitelist. Channel names in a grant are resolved to ids first, so a typo or a missing name shows up here. | Edit the agent's grant in `/[org]/agents/[handle]` to include the channel or use `#` prefixes consistently.       |
 | **`Failed to decrypt connector credentials`**                           | `MESH_KEK` was rotated or differs between the web server and orchestrator.       | Ensure `MESH_KEK` is identical across `.env` in `apps/web` and `apps/orchestrator`.                               |
 | **`Slack search failed with HTTP 403 (missing_scope)`**                 | The Slack bot token lacks required scopes (`search:read` or `channels:history`). | Open `api.slack.com/apps` → **OAuth & Permissions** → Add missing scopes → Reinstall app to workspace.            |
 | **`Google Drive search failed (403): Access Not Configured`**           | Google Drive API is not enabled in the Google Cloud Console.                     | Open Google Cloud Console → **APIs & Services** → Search for **Google Drive API** → Click **Enable**.             |

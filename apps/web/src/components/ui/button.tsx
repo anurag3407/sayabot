@@ -11,7 +11,8 @@ const buttonVariants = cva(
         secondary: "border border-line-strong bg-raised text-text hover:bg-hover",
         outline: "border border-line text-text hover:border-line-strong hover:bg-raised",
         ghost: "text-muted hover:bg-raised hover:text-text",
-        danger: "border border-[color-mix(in_srgb,var(--color-danger)_45%,transparent)] text-danger hover:bg-[color-mix(in_srgb,var(--color-danger)_10%,transparent)]",
+        danger:
+          "border border-[color-mix(in_srgb,var(--color-danger)_45%,transparent)] text-danger hover:bg-[color-mix(in_srgb,var(--color-danger)_10%,transparent)]",
         quiet: "text-muted hover:text-text",
       },
       size: {
@@ -27,8 +28,7 @@ const buttonVariants = cva(
 )
 
 export interface ButtonProps
-  extends ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {}
+  extends ButtonHTMLAttributes<HTMLButtonElement>, VariantProps<typeof buttonVariants> {}
 
 export function Button({ className, variant, size, type = "button", ...props }: ButtonProps) {
   return (

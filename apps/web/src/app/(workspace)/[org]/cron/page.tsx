@@ -6,7 +6,11 @@ import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { N8nCanvas, type RoutineChatTarget, type RoutineItem } from "@/components/cron/n8n-canvas"
 
 const CHAT_SOURCES = ["telegram", "discord", "whatsapp"]
-const CHAT_LABELS: Record<string, string> = { telegram: "Telegram", discord: "Discord", whatsapp: "WhatsApp" }
+const CHAT_LABELS: Record<string, string> = {
+  telegram: "Telegram",
+  discord: "Discord",
+  whatsapp: "WhatsApp",
+}
 
 export const metadata: Metadata = { title: "Cron Automations & Routines" }
 
@@ -18,7 +22,8 @@ export default async function CronPage({ params }: { params: Promise<{ org: stri
   const [routinesRes, rooms, agents, connectorsRes] = await Promise.all([
     supabase
       .from("routines")
-      .select(`
+      .select(
+        `
         id,
         name,
         description,
@@ -36,7 +41,8 @@ export default async function CronPage({ params }: { params: Promise<{ org: stri
         created_at,
         agents ( id, handle, display_name, avatar_url, model ),
         rooms ( id, name, kind )
-      `)
+      `,
+      )
       .eq("org_id", access.org.id)
       .order("created_at", { ascending: false }),
     listRooms(access.org.id),

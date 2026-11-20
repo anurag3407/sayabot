@@ -34,7 +34,11 @@ export function CopyButton({
       )}
       aria-live="polite"
     >
-      {state === "copied" ? <CheckIcon width={12} height={12} /> : <CopyIcon width={12} height={12} />}
+      {state === "copied" ? (
+        <CheckIcon width={12} height={12} />
+      ) : (
+        <CopyIcon width={12} height={12} />
+      )}
       {state === "copied" ? "copied" : state === "failed" ? "copy failed" : label}
     </button>
   )

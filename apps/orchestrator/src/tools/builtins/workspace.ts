@@ -3,20 +3,26 @@ import { getComputerClient } from "../../computer/client"
 import type { ToolSpec } from "../audited"
 
 export const WORKTREE_ROOT = "/home/bot/.saaya/worktrees"
-const absolutePath = z.string().min(1).max(4096).refine(
-  // eslint-disable-next-line no-control-regex -- rejecting control characters is the point
-  (value) => value.startsWith("/") && !/[\x00-\x1f\x7f]/.test(value),
-  "Expected an absolute path without control characters",
-)
+const absolutePath = z
+  .string()
+  .min(1)
+  .max(4096)
+  .refine(
+    // eslint-disable-next-line no-control-regex -- rejecting control characters is the point
+    (value) => value.startsWith("/") && !/[\x00-\x1f\x7f]/.test(value),
+    "Expected an absolute path without control characters",
+  )
 
-export const workspaceScopeSchema = z.object({
-  repo: absolutePath.describe("Explicit original repository root"),
-  worktree: absolutePath.refine(
-    (value) => new RegExp(`^${WORKTREE_ROOT.replace(/\./g, "\\.")}/[0-9a-f-]{36}$`).test(value),
-    "Expected a generated workspace_fork worktree path",
-  ),
-  baseSha: z.string().regex(/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/),
-}).strict()
+export const workspaceScopeSchema = z
+  .object({
+    repo: absolutePath.describe("Explicit original repository root"),
+    worktree: absolutePath.refine(
+      (value) => new RegExp(`^${WORKTREE_ROOT.replace(/\./g, "\\.")}/[0-9a-f-]{36}$`).test(value),
+      "Expected a generated workspace_fork worktree path",
+    ),
+    baseSha: z.string().regex(/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/),
+  })
+  .strict()
 
 export interface WorkspaceToolsArgs {
   agentId: string
@@ -155,27 +161,35 @@ export function workspaceTools(args: WorkspaceToolsArgs): ToolSpec[] {
     signal?.throwIfAborted()
     await client.ensure(args.agentId, args.orgId, args.profile)
     signal?.throwIfAborted()
-    const result = await client.exec(args.agentId, {
-      cmd: `python3 -c ${quote(WORKSPACE_SCRIPT)} ${quote(JSON.stringify({ ...parsed, ...args, operation }))}`,
-      timeoutMs: 90_000,
-    }, signal)
+    const result = await client.exec(
+      args.agentId,
+      {
+        cmd: `python3 -c ${quote(WORKSPACE_SCRIPT)} ${quote(JSON.stringify({ ...parsed, ...args, operation }))}`,
+        timeoutMs: 90_000,
+      },
+      signal,
+    )
     signal?.throwIfAborted()
     if (result.exitCode !== 0 || result.truncated) {
-      throw new Error(`workspace_${operation} failed${result.truncated ? " (output truncated)" : ""}: ${result.stderr.slice(0, 4000)}`)
+      throw new Error(
+        `workspace_${operation} failed${result.truncated ? " (output truncated)" : ""}: ${result.stderr.slice(0, 4000)}`,
+      )
     }
     return JSON.parse(result.stdout) as Record<string, unknown>
   }
   return [
     {
       name: "workspace_fork",
-      description: "Fork a CLEAN explicit git repository into a generated detached worktree under /home/bot/.saaya/worktrees. Refuses dirty originals; returns repo/worktree/baseSha. No automatic merge, apply or reset. Shared shell access is not isolated.",
+      description:
+        "Fork a CLEAN explicit git repository into a generated detached worktree under /home/bot/.saaya/worktrees. Refuses dirty originals; returns repo/worktree/baseSha. No automatic merge, apply or reset. Shared shell access is not isolated.",
       schema: forkSchema,
       dangerous: false,
       execute: (input, signal) => execute("fork", input, signal),
     },
     {
       name: "workspace_inspect",
-      description: "Read status and base diff in a tracked generated worktree. Verifies owner, path, git registration, ancestry and a clean unchanged original. Untracked file names are reported separately, not included in the patch. Never merges or resets.",
+      description:
+        "Read status and base diff in a tracked generated worktree. Verifies owner, path, git registration, ancestry and a clean unchanged original. Untracked file names are reported separately, not included in the patch. Never merges or resets.",
       schema: inspectSchema,
       dangerous: false,
       execute: (input, signal) => execute("inspect", input, signal),

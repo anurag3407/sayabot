@@ -6,9 +6,7 @@ import type { LocalProvider, ScannedUsageRecord, UsageSpeed, UsageTokenTotals } 
 import { computeUsageCacheSavings, computeUsageCost, getModelPrice } from "./pricing"
 
 function tokenCount(value: unknown): number {
-  return typeof value === "number" && Number.isFinite(value) && value > 0
-    ? Math.trunc(value)
-    : 0
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? Math.trunc(value) : 0
 }
 
 function parseTimestampMs(value: unknown): number | null {
@@ -255,14 +253,10 @@ export async function scanCodexUsage(
   } = {},
 ): Promise<ScannedUsageRecord[]> {
   const home = os.homedir()
-  const defaultBaseDirs = [
-    path.join(home, ".codex", "sessions"),
-  ]
+  const defaultBaseDirs = [path.join(home, ".codex", "sessions")]
 
   const dirsToSearch =
-    options.directories && options.directories.length > 0
-      ? options.directories
-      : defaultBaseDirs
+    options.directories && options.directories.length > 0 ? options.directories : defaultBaseDirs
 
   const sinceMs = options.sinceMs ?? 0
   const filesToScan: string[] = []

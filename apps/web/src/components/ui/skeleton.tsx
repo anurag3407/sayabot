@@ -32,7 +32,10 @@ export function WorkspaceSkeleton({ label = "Opening your workspace" }: { label?
   return (
     <div className="fixed inset-0 z-50 flex bg-void" role="status" aria-label={label}>
       <span className="sr-only">{label}</span>
-      <aside className="hidden w-[284px] shrink-0 flex-col gap-3 border-r border-line p-3 md:flex" aria-hidden="true">
+      <aside
+        className="hidden w-[284px] shrink-0 flex-col gap-3 border-r border-line p-3 md:flex"
+        aria-hidden="true"
+      >
         <Skeleton className="h-8 w-40" />
         <Skeleton className="h-9 w-full rounded-md" />
         <div className="mt-2 space-y-2">
@@ -48,25 +51,25 @@ export function WorkspaceSkeleton({ label = "Opening your workspace" }: { label?
         <div className="border-b border-line px-4 py-3">
           <Skeleton className="h-4 w-36" />
         </div>
-          <div className="min-h-0 flex-1 space-y-6 px-4 py-6">
-            {[0, 1, 2, 3].map((row) => (
-              <div key={row} className="flex gap-3">
-                <Skeleton className="h-6 w-6 shrink-0 rounded-full" />
-                <div className="min-w-0 flex-1 space-y-2">
-                  <Skeleton className="h-3 w-24" />
-                  <Skeleton className="h-3 w-3/4 max-w-xl" />
-                  {row % 2 === 0 ? <Skeleton className="h-3 w-1/2 max-w-md" /> : null}
-                </div>
+        <div className="min-h-0 flex-1 space-y-6 px-4 py-6">
+          {[0, 1, 2, 3].map((row) => (
+            <div key={row} className="flex gap-3">
+              <Skeleton className="h-6 w-6 shrink-0 rounded-full" />
+              <div className="min-w-0 flex-1 space-y-2">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-3 w-3/4 max-w-xl" />
+                {row % 2 === 0 ? <Skeleton className="h-3 w-1/2 max-w-md" /> : null}
               </div>
-            ))}
-          </div>
-          <div className="border-t border-line p-4">
-            <Skeleton className="h-16 w-full rounded-md" />
-          </div>
+            </div>
+          ))}
+        </div>
+        <div className="border-t border-line p-4">
+          <Skeleton className="h-16 w-full rounded-md" />
         </div>
       </div>
-    )
-  }
+    </div>
+  )
+}
 
 /** The name-your-workspace form, while that page itself is loading. */
 export function SetupSkeleton() {

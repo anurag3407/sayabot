@@ -42,11 +42,11 @@ flowchart LR
 
 Error mapping (`app.onError`, `index.ts:40-46`):
 
-| Error | HTTP status |
-| :--- | :--- |
-| `CapacityError` (all computers busy) | `503` |
-| `DockerUnavailableError` (alias of `BackendUnavailableError` — Docker/smolvm/E2B unreachable) | `503` |
-| anything else | `500` with `{ error: message }` |
+| Error                                                                                         | HTTP status                     |
+| :-------------------------------------------------------------------------------------------- | :------------------------------ |
+| `CapacityError` (all computers busy)                                                          | `503`                           |
+| `DockerUnavailableError` (alias of `BackendUnavailableError` — Docker/smolvm/E2B unreachable) | `503`                           |
+| anything else                                                                                 | `500` with `{ error: message }` |
 
 ---
 
@@ -54,17 +54,17 @@ Error mapping (`app.onError`, `index.ts:40-46`):
 
 All state-changing routes take `:agentId` — one computer per agent, keyed by the agent's id.
 
-| Method & path | Body | Behaviour |
-| :--- | :--- | :--- |
-| `GET /health` | — | `{ ok: true, service: "computerd", port: 4100 }` (`index.ts:48`) |
-| `GET /v1/capacity` | — | Backend kind, `describe()` notes, `maxRunning`, running count, idle window, and per-computer `agentId` / `inflight` / `idleForMs` / `transport: "socket" \| "exec"` (`index.ts:50`) |
-| `POST /v1/computers/:agentId/ensure` | `{ orgId?, profile? }` | Boot or attach the computer. `orgId` defaults to `"default"`; `profile` is coerced to `"browser"` or `"standard"` (`index.ts:52-58`) |
-| `POST /v1/computers/:agentId/exec` | `{ cmd, cwd?, timeoutMs?, env?, stdin?, background? }` | **Streaming NDJSON response** (`application/x-ndjson`), one JSON frame per line (`index.ts:60-96`) |
-| `POST /v1/computers/:agentId/files/read` \| `files/write` \| `files/edit` \| `files/patch` \| `files/list` | op payload | Single-frame RPC; the `op` field (`read`/`write`/`edit`/`patch`/`list`) is injected server-side (`index.ts:98-124`) |
-| `POST /v1/computers/:agentId/code` | `{ action, ... }` | Code intelligence RPC (`op: "code"`) |
-| `POST /v1/computers/:agentId/browser` | `{ action, ... }` | Browser RPC (`op: "browser"`) |
-| `POST /v1/computers/:agentId/stop` | — | Sleep the computer (container/VM stopped, disk kept) (`index.ts:126-129`) |
-| `DELETE /v1/computers/:agentId` | `{ deleteDisk? }` | Remove the computer; `deleteDisk: true` also deletes the disk/volume (`index.ts:131-135`) |
+| Method & path                                                                                              | Body                                                   | Behaviour                                                                                                                                                                           |
+| :--------------------------------------------------------------------------------------------------------- | :----------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /health`                                                                                              | —                                                      | `{ ok: true, service: "computerd", port: 4100 }` (`index.ts:48`)                                                                                                                    |
+| `GET /v1/capacity`                                                                                         | —                                                      | Backend kind, `describe()` notes, `maxRunning`, running count, idle window, and per-computer `agentId` / `inflight` / `idleForMs` / `transport: "socket" \| "exec"` (`index.ts:50`) |
+| `POST /v1/computers/:agentId/ensure`                                                                       | `{ orgId?, profile? }`                                 | Boot or attach the computer. `orgId` defaults to `"default"`; `profile` is coerced to `"browser"` or `"standard"` (`index.ts:52-58`)                                                |
+| `POST /v1/computers/:agentId/exec`                                                                         | `{ cmd, cwd?, timeoutMs?, env?, stdin?, background? }` | **Streaming NDJSON response** (`application/x-ndjson`), one JSON frame per line (`index.ts:60-96`)                                                                                  |
+| `POST /v1/computers/:agentId/files/read` \| `files/write` \| `files/edit` \| `files/patch` \| `files/list` | op payload                                             | Single-frame RPC; the `op` field (`read`/`write`/`edit`/`patch`/`list`) is injected server-side (`index.ts:98-124`)                                                                 |
+| `POST /v1/computers/:agentId/code`                                                                         | `{ action, ... }`                                      | Code intelligence RPC (`op: "code"`)                                                                                                                                                |
+| `POST /v1/computers/:agentId/browser`                                                                      | `{ action, ... }`                                      | Browser RPC (`op: "browser"`)                                                                                                                                                       |
+| `POST /v1/computers/:agentId/stop`                                                                         | —                                                      | Sleep the computer (container/VM stopped, disk kept) (`index.ts:126-129`)                                                                                                           |
+| `DELETE /v1/computers/:agentId`                                                                            | `{ deleteDisk? }`                                      | Remove the computer; `deleteDisk: true` also deletes the disk/volume (`index.ts:131-135`)                                                                                           |
 
 Details worth knowing:
 
@@ -143,11 +143,11 @@ Error shapes: capacity exhaustion returns `503 {"error":"All N computers are bus
 
 ## 🧪 Tests
 
-| File | Covers |
-| :--- | :--- |
+| File                                                     | Covers                                                                                                                       |
+| :------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------- |
 | `apps/computerd/tests/integration/computerd-app.test.ts` | In-process Hono app with a fake lifecycle: public `/health`, auth rejection, exec streaming, single-frame ops, error mapping |
-| `apps/computerd/tests/unit/transport.test.ts` | `NdjsonParser` chunk splitting, `isFinalFrame`, socket refusal on symlinks/non-sockets, `responseTimeoutMs` clamping |
-| `apps/computerd/test/computerd.test.ts` | Legacy suite for the app surface |
+| `apps/computerd/tests/unit/transport.test.ts`            | `NdjsonParser` chunk splitting, `isFinalFrame`, socket refusal on symlinks/non-sockets, `responseTimeoutMs` clamping         |
+| `apps/computerd/test/computerd.test.ts`                  | Legacy suite for the app surface                                                                                             |
 
 ---
 

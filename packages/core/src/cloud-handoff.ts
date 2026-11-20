@@ -45,7 +45,10 @@ export function mergeRecords<T extends HandoffRecord>(destination: T[], incoming
   return [...merged.values()]
 }
 
-export function applyHandoff(destination: LocalWorkspaceSnapshot, incoming: LocalWorkspaceSnapshot): LocalWorkspaceSnapshot {
+export function applyHandoff(
+  destination: LocalWorkspaceSnapshot,
+  incoming: LocalWorkspaceSnapshot,
+): LocalWorkspaceSnapshot {
   return {
     bots: mergeRecords(destination.bots, incoming.bots),
     chats: mergeRecords(destination.chats, incoming.chats),

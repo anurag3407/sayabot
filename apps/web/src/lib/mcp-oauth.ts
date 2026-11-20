@@ -18,7 +18,10 @@ export function persistMcpOAuth(serverId: string) {
   return async (state: McpOAuthState) => {
     const { error } = await createAdminClient()
       .from("mcp_servers")
-      .update({ oauth_enc: sealMcpOAuthState(state, getKek()), updated_at: new Date().toISOString() })
+      .update({
+        oauth_enc: sealMcpOAuthState(state, getKek()),
+        updated_at: new Date().toISOString(),
+      })
       .eq("id", serverId)
     if (error) throw new Error(`Could not save the sign-in: ${error.message}`)
   }

@@ -30,27 +30,27 @@ entry; the credentials themselves are never read or sent) and reports what it fi
 The Providers page lists them under _On this computer_, with the rest under _More providers_ and
 their install command. The model picker shows each ready app with the models it offers you.
 
-| App | Command | Sign-in | API key instead |
-| --- | --- | --- | --- |
-| Claude Code | `claude` | its own login | `ANTHROPIC_API_KEY` |
-| Codex | `codex` | `codex login` | `OPENAI_API_KEY` |
-| GitHub Copilot | `copilot` | `copilot login` | `COPILOT_GITHUB_TOKEN` / `GH_TOKEN` |
-| Command Code | `command-code` | `command-code login` | `COMMAND_CODE_API_KEY` |
-| Cursor | `cursor-agent` | `cursor-agent login` | `CURSOR_API_KEY` |
-| Gemini CLI | `gemini` | **needs a key**: Google ended personal Gemini CLI logins (use Antigravity for those) | `GEMINI_API_KEY` / `GOOGLE_API_KEY` |
-| OpenCode | `opencode` | `opencode auth login`, or its free models | `OPENCODE_API_KEY` |
-| Mistral (Vibe) | `vibe-acp` | `vibe` | `MISTRAL_API_KEY` |
-| Grok | `grok` | `grok login` | none (subscription only) |
-| Kimi Code | `kimi` | `kimi login` | none (subscription only) |
-| Kiro | `kiro-cli` | `kiro-cli login` | `KIRO_API_KEY` |
-| Droid (Factory) | `droid` | `droid` | `FACTORY_API_KEY` |
-| Devin | `devin` | `devin auth login` | `WINDSURF_API_KEY` |
-| Cline | `cline` | `cline auth` | `CLINE_API_KEY` |
-| Qwen Code | `qwen` | providers set up in Qwen | — |
-| Hermes | `hermes` | providers set up with `hermes setup` | — |
-| OMP (Oh My Pi) | `omp` | providers set up in OMP | — |
-| pi | `pi` | **needs a provider key** saved in pi | `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`… |
-| DeepSeek Harness | `dsh` | **needs a key** | `DEEPSEEK_API_KEY` |
+| App              | Command        | Sign-in                                                                              | API key instead                        |
+| ---------------- | -------------- | ------------------------------------------------------------------------------------ | -------------------------------------- |
+| Claude Code      | `claude`       | its own login                                                                        | `ANTHROPIC_API_KEY`                    |
+| Codex            | `codex`        | `codex login`                                                                        | `OPENAI_API_KEY`                       |
+| GitHub Copilot   | `copilot`      | `copilot login`                                                                      | `COPILOT_GITHUB_TOKEN` / `GH_TOKEN`    |
+| Command Code     | `command-code` | `command-code login`                                                                 | `COMMAND_CODE_API_KEY`                 |
+| Cursor           | `cursor-agent` | `cursor-agent login`                                                                 | `CURSOR_API_KEY`                       |
+| Gemini CLI       | `gemini`       | **needs a key**: Google ended personal Gemini CLI logins (use Antigravity for those) | `GEMINI_API_KEY` / `GOOGLE_API_KEY`    |
+| OpenCode         | `opencode`     | `opencode auth login`, or its free models                                            | `OPENCODE_API_KEY`                     |
+| Mistral (Vibe)   | `vibe-acp`     | `vibe`                                                                               | `MISTRAL_API_KEY`                      |
+| Grok             | `grok`         | `grok login`                                                                         | none (subscription only)               |
+| Kimi Code        | `kimi`         | `kimi login`                                                                         | none (subscription only)               |
+| Kiro             | `kiro-cli`     | `kiro-cli login`                                                                     | `KIRO_API_KEY`                         |
+| Droid (Factory)  | `droid`        | `droid`                                                                              | `FACTORY_API_KEY`                      |
+| Devin            | `devin`        | `devin auth login`                                                                   | `WINDSURF_API_KEY`                     |
+| Cline            | `cline`        | `cline auth`                                                                         | `CLINE_API_KEY`                        |
+| Qwen Code        | `qwen`         | providers set up in Qwen                                                             | —                                      |
+| Hermes           | `hermes`       | providers set up with `hermes setup`                                                 | —                                      |
+| OMP (Oh My Pi)   | `omp`          | providers set up in OMP                                                              | —                                      |
+| pi               | `pi`           | **needs a provider key** saved in pi                                                 | `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`… |
+| DeepSeek Harness | `dsh`          | **needs a key**                                                                      | `DEEPSEEK_API_KEY`                     |
 
 **Model lists are live.** Each app reports the models it offers you: Claude Code and Codex from
 their own lists, pi from `pi --list-models`, Cursor from its session or `cursor-agent models`, and

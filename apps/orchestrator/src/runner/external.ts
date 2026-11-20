@@ -71,7 +71,15 @@ export async function runExternalTurn(args: ExternalTurnArgs): Promise<ExternalT
       .update(agentRuns)
       .set({ status: "complete", latencyMs: 0, error: "deferred to the bot's MCP inbox" })
       .where(eq(agentRuns.id, run.id))
-    return { runId: run.id, messageId: null, content: "", timedOut: false, aborted: false, error: null, deferred: true }
+    return {
+      runId: run.id,
+      messageId: null,
+      content: "",
+      timedOut: false,
+      aborted: false,
+      error: null,
+      deferred: true,
+    }
   }
 
   const controller = registerRun(run.id, args.room.id)
@@ -124,10 +132,7 @@ export async function runExternalTurn(args: ExternalTurnArgs): Promise<ExternalT
   const latencyMs = Date.now() - started
 
   if (controller.signal.aborted) {
-    await db
-      .update(agentRuns)
-      .set({ status: "halted", latencyMs })
-      .where(eq(agentRuns.id, run.id))
+    await db.update(agentRuns).set({ status: "halted", latencyMs }).where(eq(agentRuns.id, run.id))
     return {
       runId: run.id,
       messageId: null,

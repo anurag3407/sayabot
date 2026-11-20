@@ -2,13 +2,28 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 
 const poolEnd = vi.fn(async () => {})
 vi.mock("pg", () => ({
-  default: { Pool: class { async connect() { return { query: async () => {}, release() {} } } async query() { return {} } async end() { return poolEnd() } } },
+  default: {
+    Pool: class {
+      async connect() {
+        return { query: async () => {}, release() {} }
+      }
+      async query() {
+        return {}
+      }
+      async end() {
+        return poolEnd()
+      }
+    },
+  },
 }))
 
 import { createDb, requireDatabaseUrl } from "../../src/client"
 
 describe("createDb / requireDatabaseUrl", () => {
-  afterEach(() => { vi.unstubAllEnvs(); vi.clearAllMocks() })
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.clearAllMocks()
+  })
 
   it("creates a db+pool pair without connecting", () => {
     const { db, pool } = createDb("postgres://u:p@host:5432/db")

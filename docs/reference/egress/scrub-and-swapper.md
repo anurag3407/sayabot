@@ -16,7 +16,7 @@ Both modules are configured by the same pair of env vars read at module load (`s
 export interface ResolvedGrant {
   grantId: string
   secretPlaintext: string
-  hostAllowlist: string[]        // matched with matchesHostPattern (packages/core hosts.ts)
+  hostAllowlist: string[] // matched with matchesHostPattern (packages/core hosts.ts)
   inject: { mode: "header" | "basic" | "query" | "body"; template?: string; param?: string }
   methods?: string[]
   requiresApproval?: boolean
@@ -27,18 +27,21 @@ export interface ResolvedGrant {
 
 ### Identity resolution
 
-| Function | Orchestrator endpoint | Cache |
-| :--- | :--- | :--- |
-| `proxySecretFrom(header)` (`swapper.ts:31-38`) | — | parses `Proxy-Authorization: Basic base64(user:secret)` and returns the part after the first `:`; `null` when absent/malformed |
-| `resolveAgentIdentityBySecret(secret)` (`swapper.ts:44-62`) | `POST /internal/egress/identity` with `{ proxySecret }` | `secretIdentityCache`: **60 s** per secret |
-| `resolveAgentIdentity(containerIp)` (`swapper.ts:69-92`) | `POST /internal/egress/identity` with `{ containerIp }` | `identityCache`: **30 s** per IP |
+| Function                                                    | Orchestrator endpoint                                   | Cache                                                                                                                          |
+| :---------------------------------------------------------- | :------------------------------------------------------ | :----------------------------------------------------------------------------------------------------------------------------- |
+| `proxySecretFrom(header)` (`swapper.ts:31-38`)              | —                                                       | parses `Proxy-Authorization: Basic base64(user:secret)` and returns the part after the first `:`; `null` when absent/malformed |
+| `resolveAgentIdentityBySecret(secret)` (`swapper.ts:44-62`) | `POST /internal/egress/identity` with `{ proxySecret }` | `secretIdentityCache`: **60 s** per secret                                                                                     |
+| `resolveAgentIdentity(containerIp)` (`swapper.ts:69-92`)    | `POST /internal/egress/identity` with `{ containerIp }` | `identityCache`: **30 s** per IP                                                                                               |
 
 Both return `{ agentId, orgId }` or `null`. The orchestrator verifies a proxy credential by hashing it (`hashAgentApiKey` in `@sayabot/core`) against the hash computerd reported when the computer started — egress never learns how credentials are derived. `foridentityCache` invalidation: `forgetIdentity(containerIp)` (`swapper.ts:65-67`) deletes the IP entry; computerd calls `POST :8081/identity/forget` on every computer start/stop because Docker reuses IPs across agents.
 
 ### Placeholder resolution (`resolvePlaceholder`, `swapper.ts:94-118`)
 
 ```typescript
-export async function resolvePlaceholder(agentId: string, placeholder: string): Promise<ResolvedGrant> {
+export async function resolvePlaceholder(
+  agentId: string,
+  placeholder: string,
+): Promise<ResolvedGrant> {
   const cacheKey = `${agentId}:${placeholder}`
   const cached = grantCache.get(cacheKey)
   if (cached && cached.expiresAt > Date.now()) return cached.grant
@@ -98,11 +101,11 @@ sequenceDiagram
 
 ### Cache summary
 
-| Cache | Key | Value | TTL | Invalidated by |
-| :--- | :--- | :--- | :--- | :--- |
-| `grantCache` | `` `${agentId}:${placeholder}` `` | `ResolvedGrant` | 30 s | TTL, `flushGrantCache` |
-| `identityCache` | container IP | `{ agentId, orgId }` | 30 s | TTL, `forgetIdentity(ip)`, `flushGrantCache` |
-| `secretIdentityCache` | proxy secret | `{ agentId, orgId }` | 60 s | TTL, `flushGrantCache` |
+| Cache                 | Key                               | Value                | TTL  | Invalidated by                               |
+| :-------------------- | :-------------------------------- | :------------------- | :--- | :------------------------------------------- |
+| `grantCache`          | `` `${agentId}:${placeholder}` `` | `ResolvedGrant`      | 30 s | TTL, `flushGrantCache`                       |
+| `identityCache`       | container IP                      | `{ agentId, orgId }` | 30 s | TTL, `forgetIdentity(ip)`, `flushGrantCache` |
+| `secretIdentityCache` | proxy secret                      | `{ agentId, orgId }` | 60 s | TTL, `flushGrantCache`                       |
 
 The TTL asymmetry is intentional: container IPs are reused (and explicitly forgotten), so their cache is short; a proxy credential is cryptographically bound to one agent, so it can be trusted for a minute. Grant caching for 30 s bounds how long a revoked secret keeps working after a `vault_changed` flush window.
 
@@ -136,11 +139,11 @@ export function scrubResponseText(text: string, secretsToPlaceholder: Map<string
 
 For every secret in the map, in insertion order, three textual forms are replaced (`String.prototype.replaceAll`):
 
-| Form | Guard | Why |
-| :--- | :--- | :--- |
-| raw secret | skipped when shorter than 4 chars (`secret.length < 4`) | the direct echo case: an API that repeats the `Authorization` value back |
-| `Buffer.from(secret).toString("base64")` | only when the base64 string is ≥ 8 chars | secrets echoed inside Basic auth headers or base64 envelopes |
-| `encodeURIComponent(secret)` | only when encoding actually changed the string | secrets echoed inside query strings / URLs |
+| Form                                     | Guard                                                   | Why                                                                      |
+| :--------------------------------------- | :------------------------------------------------------ | :----------------------------------------------------------------------- |
+| raw secret                               | skipped when shorter than 4 chars (`secret.length < 4`) | the direct echo case: an API that repeats the `Authorization` value back |
+| `Buffer.from(secret).toString("base64")` | only when the base64 string is ≥ 8 chars                | secrets echoed inside Basic auth headers or base64 envelopes             |
+| `encodeURIComponent(secret)`             | only when encoding actually changed the string          | secrets echoed inside query strings / URLs                               |
 
 Rules and edges:
 
@@ -162,12 +165,12 @@ The net effect: even an echo endpoint (an API that returns the submitted token, 
 
 ## 🧪 Tests
 
-| File | Covers |
-| :--- | :--- |
-| `apps/egress/tests/unit/scrub.test.ts` | raw / base64 / URL-encoded replacement, short-secret guard, empty-map no-op |
-| `apps/egress/tests/unit/swapper.test.ts` | `proxySecretFrom` parsing, cache TTLs, `forgetIdentity` |
-| `apps/egress/tests/integration/swapper-resolve.test.ts` | `resolvePlaceholder` against a stub orchestrator, error mapping |
-| `apps/egress/test/egress.test.ts` | end-to-end swap + scrub through the proxy |
+| File                                                    | Covers                                                                      |
+| :------------------------------------------------------ | :-------------------------------------------------------------------------- |
+| `apps/egress/tests/unit/scrub.test.ts`                  | raw / base64 / URL-encoded replacement, short-secret guard, empty-map no-op |
+| `apps/egress/tests/unit/swapper.test.ts`                | `proxySecretFrom` parsing, cache TTLs, `forgetIdentity`                     |
+| `apps/egress/tests/integration/swapper-resolve.test.ts` | `resolvePlaceholder` against a stub orchestrator, error mapping             |
+| `apps/egress/test/egress.test.ts`                       | end-to-end swap + scrub through the proxy                                   |
 
 ---
 

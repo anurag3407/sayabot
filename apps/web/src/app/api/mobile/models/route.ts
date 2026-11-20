@@ -3,7 +3,12 @@ import { getOrgAccess, isOrgAdmin } from "@/lib/auth"
 import { loadWorkspaceModels } from "@/lib/model-catalog"
 import { refreshModelSources } from "@/lib/model-refresh"
 import { userFromRequest } from "@/lib/route-bearer"
-import { loadAgentPickerModel, loadRoomBotModels, writeAgentModel, writeRoomAgentModel } from "@/lib/room-models"
+import {
+  loadAgentPickerModel,
+  loadRoomBotModels,
+  writeAgentModel,
+  writeRoomAgentModel,
+} from "@/lib/room-models"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 60
@@ -26,8 +31,10 @@ export async function GET(request: Request) {
   const roomId = url.searchParams.get("roomId")?.trim() ?? ""
   const agentId = url.searchParams.get("agentId")?.trim() ?? ""
   if (!slug) return NextResponse.json({ error: "Which workspace?" }, { status: 400 })
-  if (roomId && !UUID.test(roomId)) return NextResponse.json({ error: "Which chat?" }, { status: 400 })
-  if (agentId && !UUID.test(agentId)) return NextResponse.json({ error: "Which agent?" }, { status: 400 })
+  if (roomId && !UUID.test(roomId))
+    return NextResponse.json({ error: "Which chat?" }, { status: 400 })
+  if (agentId && !UUID.test(agentId))
+    return NextResponse.json({ error: "Which agent?" }, { status: 400 })
   const access = await getOrgAccess(slug, { client: who.client, user: who.user })
   if (!access) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
@@ -66,16 +73,22 @@ export async function POST(request: Request) {
   const orgSlug = typeof body.orgSlug === "string" ? body.orgSlug.trim() : ""
   const agentId = typeof body.agentId === "string" ? body.agentId.trim() : ""
   const roomId = typeof body.roomId === "string" ? body.roomId.trim() : ""
-  if (!orgSlug || !UUID.test(agentId)) return NextResponse.json({ error: "Which agent?" }, { status: 400 })
-  if (roomId && !UUID.test(roomId)) return NextResponse.json({ error: "Which chat?" }, { status: 400 })
+  if (!orgSlug || !UUID.test(agentId))
+    return NextResponse.json({ error: "Which agent?" }, { status: 400 })
+  if (roomId && !UUID.test(roomId))
+    return NextResponse.json({ error: "Which chat?" }, { status: 400 })
   const access = await getOrgAccess(orgSlug, { client: who.client, user: who.user })
   if (!access) return NextResponse.json({ error: "Not found" }, { status: 404 })
   if (!isOrgAdmin(access.role)) {
-    return NextResponse.json({ ok: false, error: "Only workspace admins can change models." }, { status: 403 })
+    return NextResponse.json(
+      { ok: false, error: "Only workspace admins can change models." },
+      { status: 403 },
+    )
   }
   const keyId = typeof body.keyId === "string" ? body.keyId : null
   const model = typeof body.model === "string" ? body.model : null
-  const effort = body.effort === undefined ? undefined : typeof body.effort === "string" ? body.effort : null
+  const effort =
+    body.effort === undefined ? undefined : typeof body.effort === "string" ? body.effort : null
   const scope = body.scope === "default" ? "default" : "chat"
   const result = roomId
     ? await writeRoomAgentModel({
@@ -97,7 +110,10 @@ export async function POST(request: Request) {
         model,
         effort,
       })
-  return NextResponse.json(result.ok ? { ok: true, message: result.message } : { ok: false, error: result.error }, {
-    status: result.ok ? 200 : 400,
-  })
+  return NextResponse.json(
+    result.ok ? { ok: true, message: result.message } : { ok: false, error: result.error },
+    {
+      status: result.ok ? 200 : 400,
+    },
+  )
 }

@@ -145,20 +145,30 @@ function ExecutionModeMenu({
                 active && "bg-white/[0.04]",
               )}
             >
-              <ItemIcon className={cn("mt-0.5 h-[18px] w-[18px] shrink-0", active ? item.tone : "text-muted")} aria-hidden="true" />
+              <ItemIcon
+                className={cn(
+                  "mt-0.5 h-[18px] w-[18px] shrink-0",
+                  active ? item.tone : "text-muted",
+                )}
+                aria-hidden="true"
+              />
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-2 text-[13.5px] font-medium text-text">
                   {item.label}
                 </span>
-                <span className="mt-0.5 block text-[12.5px] leading-snug text-faint">{item.detail}</span>
+                <span className="mt-0.5 block text-[12.5px] leading-snug text-faint">
+                  {item.detail}
+                </span>
               </span>
-              {active ? <Check className="mt-0.5 h-4 w-4 shrink-0 text-text" aria-hidden="true" /> : null}
+              {active ? (
+                <Check className="mt-0.5 h-4 w-4 shrink-0 text-text" aria-hidden="true" />
+              ) : null}
             </button>
           )
         })}
         <div className="mt-1 border-t border-line px-2.5 pb-1.5 pt-2 text-[11.5px] leading-relaxed text-faint">
-          Auto and Turbo apply to bots on your own Mac, and only when you pick them. Sending messages,
-          posting and spending always ask.{" "}
+          Auto and Turbo apply to bots on your own Mac, and only when you pick them. Sending
+          messages, posting and spending always ask.{" "}
           <Link href={`/${orgSlug}/inbox`} className="text-accent hover:underline">
             See what&apos;s waiting
           </Link>
@@ -353,7 +363,14 @@ function QuickActionDialog({
         ) : action === "meeting" ? (
           <>
             <Field label="title" htmlFor="quick-meeting-title">
-              <Input id="quick-meeting-title" name="title" required maxLength={80} defaultValue="Stand-up" autoFocus />
+              <Input
+                id="quick-meeting-title"
+                name="title"
+                required
+                maxLength={80}
+                defaultValue="Stand-up"
+                autoFocus
+              />
             </Field>
             <Field label="length" htmlFor="quick-meeting-length">
               <Select id="quick-meeting-length" name="durationMinutes" defaultValue="15">
@@ -415,7 +432,10 @@ function QuickActionDialog({
                 name="prompt"
                 rows={3}
                 required
-                defaultValue={initialText || "Summarize uncompleted tasks, report progress, and plan next actions."}
+                defaultValue={
+                  initialText ||
+                  "Summarize uncompleted tasks, report progress, and plan next actions."
+                }
               />
             </Field>
           </>
@@ -527,7 +547,13 @@ export function Composer({
   const options: MentionOption[] = mention
     ? [
         ...(agents.length > 1
-          ? [{ handle: "all_bots", displayName: "every agent in the room", group: "agents" as const }]
+          ? [
+              {
+                handle: "all_bots",
+                displayName: "every agent in the room",
+                group: "agents" as const,
+              },
+            ]
           : []),
         ...agents.map(({ agent }) => ({
           handle: agent.handle,
@@ -679,7 +705,11 @@ export function Composer({
       case "goal":
       case "btw":
         if (!rest) {
-          setError(command.name === "goal" ? "Say what to achieve: /goal <what to achieve>" : "Add the note: /btw <note>")
+          setError(
+            command.name === "goal"
+              ? "Say what to achieve: /goal <what to achieve>"
+              : "Add the note: /btw <note>",
+          )
           return
         }
         await deliver(rest, command.name, typed)
@@ -749,8 +779,12 @@ export function Composer({
       } else {
         clearIfUnchanged(typed)
         if (result.warning) setNotice(result.warning)
-        else if (command === "goal") setNotice("Goal set. The bot keeps working round by round until it's done; /stop ends it.")
-        else if (command === "btw") setNotice("Noted. The bots will see it without being interrupted.")
+        else if (command === "goal")
+          setNotice(
+            "Goal set. The bot keeps working round by round until it's done; /stop ends it.",
+          )
+        else if (command === "btw")
+          setNotice("Noted. The bots will see it without being interrupted.")
         onSent?.()
       }
     } catch {
@@ -983,26 +1017,51 @@ export function Composer({
                   aria-label="Add to your message"
                   className="surface-pop pop-in absolute bottom-full left-0 z-30 mb-2 w-60 rounded-2xl p-1.5"
                 >
-                  <button type="button" role="menuitem" className={menuItem} onClick={() => fileInputRef.current?.click()}>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className={menuItem}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
                     <Paperclip className="h-4 w-4" aria-hidden="true" />
                     Attach a PDF
                   </button>
-                  <button type="button" role="menuitem" className={menuItem} onClick={() => setQuickAction("task")}>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className={menuItem}
+                    onClick={() => setQuickAction("task")}
+                  >
                     <ListTodo className="h-4 w-4" aria-hidden="true" />
                     Add a to-do
                   </button>
-                  <button type="button" role="menuitem" className={menuItem} onClick={() => setQuickAction("cron")}>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className={menuItem}
+                    onClick={() => setQuickAction("cron")}
+                  >
                     <AlarmClock className="h-4 w-4" aria-hidden="true" />
                     Do this on a schedule
                   </button>
                   {canAdmin && roomKind !== "dm" ? (
-                    <button type="button" role="menuitem" className={menuItem} onClick={() => setQuickAction("meeting")}>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className={menuItem}
+                      onClick={() => setQuickAction("meeting")}
+                    >
                       <Video className="h-4 w-4" aria-hidden="true" />
                       Start a meeting
                     </button>
                   ) : null}
                   {onShowCanvas ? (
-                    <button type="button" role="menuitem" className={menuItem} onClick={onShowCanvas}>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className={menuItem}
+                      onClick={onShowCanvas}
+                    >
                       <FileText className="h-4 w-4" aria-hidden="true" />
                       Open canvas
                     </button>

@@ -102,7 +102,9 @@ export function waitForBotReply(
             eq(messages.roomId, args.roomId),
             eq(messages.senderType, "agent"),
             eq(messages.senderId, args.agentId),
-            args.threadRootId ? eq(messages.threadRootId, args.threadRootId) : isNull(messages.threadRootId),
+            args.threadRootId
+              ? eq(messages.threadRootId, args.threadRootId)
+              : isNull(messages.threadRootId),
             gte(messages.createdAt, startedAt),
           ),
         )

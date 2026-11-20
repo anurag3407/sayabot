@@ -32,7 +32,9 @@ describe("Recovery and Retries (E6)", () => {
     expect(authErr.category).toBe("auth_error")
     expect(authErr.retryable).toBe(false)
 
-    const quotaErr = classifyEngineError(new Error("insufficient_quota: you exceeded your current quota"))
+    const quotaErr = classifyEngineError(
+      new Error("insufficient_quota: you exceeded your current quota"),
+    )
     expect(quotaErr.category).toBe("quota_exhausted")
     expect(quotaErr.retryable).toBe(false)
   })

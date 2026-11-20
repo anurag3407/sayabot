@@ -11,7 +11,15 @@ describe("parseWorkspaceCopy", () => {
       chats: [{ id: other, name: "Room", messages: [{ id, senderType: "human", content: "hi" }] }],
       routines: [{ id, name: "Morning", agentId: id, scheduleExpr: "0 9 * * *", prompt: "Check" }],
       keys: [
-        { id, provider: "anthropic", label: "Claude", ciphertext: "abc", iv: "iv", tag: "tag", last4: "wxyz" },
+        {
+          id,
+          provider: "anthropic",
+          label: "Claude",
+          ciphertext: "abc",
+          iv: "iv",
+          tag: "tag",
+          last4: "wxyz",
+        },
         { id: other, provider: "anthropic", label: "Open", apiKey: "sk-live" },
       ],
     })
@@ -41,7 +49,13 @@ describe("parseWorkspaceCopy", () => {
       chats: [],
       routines: [],
       keys: [],
-      computers: { boatCiphertext: "sealed", boatIv: "iv", boatTag: "tag", boatLast4: "wxyz", vpsSshAlias: "lab.example" },
+      computers: {
+        boatCiphertext: "sealed",
+        boatIv: "iv",
+        boatTag: "tag",
+        boatLast4: "wxyz",
+        vpsSshAlias: "lab.example",
+      },
     })
     expect(sealed.computers?.boatLast4).toBe("wxyz")
     expect(JSON.stringify(sealed.computers)).not.toContain("boat_")
@@ -59,7 +73,10 @@ describe("materializeCopy", () => {
       routines: [],
       keys: [],
     })
-    const plan = materializeCopy({ botIds: [], handles: ["ada"], chatIds: [], routineIds: [], keyIds: [] }, incoming)
+    const plan = materializeCopy(
+      { botIds: [], handles: ["ada"], chatIds: [], routineIds: [], keyIds: [] },
+      incoming,
+    )
     expect(plan.bots).toEqual([])
     expect(plan.chats.map((chat) => chat.name)).toEqual(["Mac room"])
     const withComputer = parseWorkspaceCopy({
@@ -69,7 +86,24 @@ describe("materializeCopy", () => {
       keys: [],
       computers: { boatCiphertext: "sealed", boatIv: "iv", boatTag: "tag", boatLast4: "wxyz" },
     })
-    expect(materializeCopy({ botIds: [], handles: [], chatIds: [], routineIds: [], keyIds: [], computerSettings: true }, withComputer).computers).toBeNull()
-    expect(materializeCopy({ botIds: [], handles: [], chatIds: [], routineIds: [], keyIds: [] }, withComputer).computers?.boatLast4).toBe("wxyz")
+    expect(
+      materializeCopy(
+        {
+          botIds: [],
+          handles: [],
+          chatIds: [],
+          routineIds: [],
+          keyIds: [],
+          computerSettings: true,
+        },
+        withComputer,
+      ).computers,
+    ).toBeNull()
+    expect(
+      materializeCopy(
+        { botIds: [], handles: [], chatIds: [], routineIds: [], keyIds: [] },
+        withComputer,
+      ).computers?.boatLast4,
+    ).toBe("wxyz")
   })
 })

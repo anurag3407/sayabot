@@ -32,7 +32,9 @@ export interface ComputerProviderInput {
  * Reads what people paste for a server: `ssh -p 2222 ubuntu@host`, `ubuntu@host:2222`,
  * `ubuntu@host` or just `host`. The user defaults to root and the port to 22.
  */
-export function parseSshAddress(raw: string): { host: string; user: string; port: number } | { error: string } {
+export function parseSshAddress(
+  raw: string,
+): { host: string; user: string; port: number } | { error: string } {
   let text = raw.trim().replace(/^ssh\s+/, "")
   let port: number | null = null
   const flag = text.match(/(?:^|\s)-p\s*(\d{1,5})(?=\s|$)/)
@@ -57,7 +59,8 @@ export function parseSshAddress(raw: string): { host: string; user: string; port
   if (!HOST.test(host) || host.startsWith("-")) return { error: "That server address is not valid" }
   if (!USER.test(user)) return { error: "That SSH user name is not valid" }
   const finalPort = port ?? 22
-  if (!Number.isInteger(finalPort) || finalPort < 1 || finalPort > 65_535) return { error: "Use a port from 1 to 65535" }
+  if (!Number.isInteger(finalPort) || finalPort < 1 || finalPort > 65_535)
+    return { error: "Use a port from 1 to 65535" }
   return { host, user, port: finalPort }
 }
 
@@ -65,7 +68,10 @@ export function parseSshAddress(raw: string): { host: string; user: string; port
 export function checkPrivateKey(raw: string): string | null {
   const key = raw.trim()
   if (key.length > 16_000) return "That key is too long"
-  if (!/-----BEGIN [A-Z ]*PRIVATE KEY-----/.test(key) || !/-----END [A-Z ]*PRIVATE KEY-----/.test(key)) {
+  if (
+    !/-----BEGIN [A-Z ]*PRIVATE KEY-----/.test(key) ||
+    !/-----END [A-Z ]*PRIVATE KEY-----/.test(key)
+  ) {
     return "Paste the whole private key, from -----BEGIN to -----END"
   }
   if (/ENCRYPTED/.test(key) || /Proc-Type: 4,ENCRYPTED/.test(key)) {
@@ -74,7 +80,13 @@ export function checkPrivateKey(raw: string): string | null {
   return null
 }
 
-function seal(row: Record<string, unknown>, prefix: string, secret: string, kek: string, withLast4: boolean) {
+function seal(
+  row: Record<string, unknown>,
+  prefix: string,
+  secret: string,
+  kek: string,
+  withLast4: boolean,
+) {
   const sealed = encryptSecret(secret, kek)
   row[`${prefix}_ciphertext`] = sealed.ciphertext
   row[`${prefix}_iv`] = sealed.iv
@@ -96,7 +108,10 @@ function unseal(row: Record<string, unknown>, prefix: string, withLast4: boolean
 export function computerProviderUpdate(
   input: ComputerProviderInput,
 ): { ok: true; row: Record<string, unknown> } | { ok: false; error: string } {
-  const row: Record<string, unknown> = { org_id: input.orgId, updated_at: input.now ?? new Date().toISOString() }
+  const row: Record<string, unknown> = {
+    org_id: input.orgId,
+    updated_at: input.now ?? new Date().toISOString(),
+  }
   const token = input.token?.trim() ?? ""
   if (input.provider === "boat" || input.provider === "e2b") {
     const prefix = input.provider
@@ -105,14 +120,22 @@ export function computerProviderUpdate(
       return { ok: true, row }
     }
     if (!token) return { ok: false, error: "Paste your key first" }
-    if (prefix === "boat" && !BOAT_TOKEN.test(token)) return { ok: false, error: "A Boat key starts with boat_ or box_" }
-    if (prefix === "e2b" && !E2B_KEY.test(token)) return { ok: false, error: "An E2B key starts with e2b_" }
+    if (prefix === "boat" && !BOAT_TOKEN.test(token))
+      return { ok: false, error: "A Boat key starts with boat_ or box_" }
+    if (prefix === "e2b" && !E2B_KEY.test(token))
+      return { ok: false, error: "An E2B key starts with e2b_" }
     seal(row, prefix, token, input.kek, true)
     return { ok: true, row }
   }
 
   if (input.clear) {
-    Object.assign(row, { vps_ssh_alias: null, vps_host: null, vps_user: null, vps_port: null, vps_start_automatically: false })
+    Object.assign(row, {
+      vps_ssh_alias: null,
+      vps_host: null,
+      vps_user: null,
+      vps_port: null,
+      vps_start_automatically: false,
+    })
     unseal(row, "vps_key", false)
     return { ok: true, row }
   }
@@ -122,9 +145,15 @@ export function computerProviderUpdate(
   if (address) {
     const parsed = parseSshAddress(address)
     if ("error" in parsed) return { ok: false, error: parsed.error }
-    Object.assign(row, { vps_host: parsed.host, vps_user: parsed.user, vps_port: parsed.port, vps_ssh_alias: null })
+    Object.assign(row, {
+      vps_host: parsed.host,
+      vps_user: parsed.user,
+      vps_port: parsed.port,
+      vps_ssh_alias: null,
+    })
   } else if (alias) {
-    if (!SSH_NAME.test(alias) || alias.startsWith("-")) return { ok: false, error: "Use the SSH config name of your server" }
+    if (!SSH_NAME.test(alias) || alias.startsWith("-"))
+      return { ok: false, error: "Use the SSH config name of your server" }
     Object.assign(row, { vps_ssh_alias: alias, vps_host: null, vps_user: null, vps_port: null })
     unseal(row, "vps_key", false)
   } else {

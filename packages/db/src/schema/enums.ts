@@ -143,16 +143,6 @@ export const memoryLinkTypeEnum = pgEnum("memory_link_type", [
   "supports",
 ])
 
-export const routineStatusEnum = pgEnum("routine_status", [
-  "idle",
-  "running",
-  "success",
-  "failed",
-])
+export const routineStatusEnum = pgEnum("routine_status", ["idle", "running", "success", "failed"])
 
-export const vectorProviderKindEnum = pgEnum("vector_provider_kind", [
-  "vector_db",
-  "embedding",
-])
-
-
+export const vectorProviderKindEnum = pgEnum("vector_provider_kind", ["vector_db", "embedding"])

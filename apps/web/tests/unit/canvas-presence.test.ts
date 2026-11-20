@@ -18,7 +18,9 @@ describe("canvas presence", () => {
 
   it("does not let a peer inject CSS through its colour or name", () => {
     const peers = peersFromAwareness(
-      new Map([[7, { user: { id: "x", name: 'a"}body{display:none}', color: "red;}body{display:none" } }]]),
+      new Map([
+        [7, { user: { id: "x", name: 'a"}body{display:none}', color: "red;}body{display:none" } }],
+      ]),
       1,
     )
     const css = remoteCursorCss(peers)

@@ -6,16 +6,16 @@ Source directory: `packages/llm/src/tts/` (tests: `tts.test.ts`).
 
 ## Supported Providers
 
-| Provider | Model / Engine | Capabilities | Credential resolution |
-| :--- | :--- | :--- | :--- |
-| **ElevenLabs** | `eleven_turbo_v2_5` / `eleven_flash_v2_5` | High-fidelity expressive TTS, Voice catalog, Audio transcription | `ELEVENLABS_API_KEY` |
-| **Fish Audio** | `s2.1-pro` | Low-latency bilingual speech, Voice search, Webhook STT | `FISH_AUDIO_API_KEY` |
-| **OpenAI** | `tts-1`, `tts-1-hd` | Standard voices (`alloy`, `echo`, `fable`, `onyx`, `nova`, `shimmer`), Whisper STT | `OPENAI_API_KEY` |
-| **Gemini** | `gemini-3.8-flash-lite-tts` | 30 expressive voices (`Aoede`, `Kore`, `Puck`, `Fenrir`…), low latency | `GEMINI_API_KEY` |
-| **xAI / Grok** | `grok-tts-1` | Grok conversational voice catalog | `XAI_API_KEY` / `GROK_API_KEY` |
-| **Chatterbox** | OpenAI-compatible local server | Local inference, zero telemetry | `CHATTERBOX_BASE_URL` |
-| **System** | macOS `/usr/bin/say` | Built-in offline fallback on Mac workstations | Built-in (no key needed) |
-| **DeepSeek** | DeepSeek Voice API | Speech synthesis & transcription | `DEEPSEEK_API_KEY` |
+| Provider       | Model / Engine                            | Capabilities                                                                       | Credential resolution          |
+| :------------- | :---------------------------------------- | :--------------------------------------------------------------------------------- | :----------------------------- |
+| **ElevenLabs** | `eleven_turbo_v2_5` / `eleven_flash_v2_5` | High-fidelity expressive TTS, Voice catalog, Audio transcription                   | `ELEVENLABS_API_KEY`           |
+| **Fish Audio** | `s2.1-pro`                                | Low-latency bilingual speech, Voice search, Webhook STT                            | `FISH_AUDIO_API_KEY`           |
+| **OpenAI**     | `tts-1`, `tts-1-hd`                       | Standard voices (`alloy`, `echo`, `fable`, `onyx`, `nova`, `shimmer`), Whisper STT | `OPENAI_API_KEY`               |
+| **Gemini**     | `gemini-3.8-flash-lite-tts`               | 30 expressive voices (`Aoede`, `Kore`, `Puck`, `Fenrir`…), low latency             | `GEMINI_API_KEY`               |
+| **xAI / Grok** | `grok-tts-1`                              | Grok conversational voice catalog                                                  | `XAI_API_KEY` / `GROK_API_KEY` |
+| **Chatterbox** | OpenAI-compatible local server            | Local inference, zero telemetry                                                    | `CHATTERBOX_BASE_URL`          |
+| **System**     | macOS `/usr/bin/say`                      | Built-in offline fallback on Mac workstations                                      | Built-in (no key needed)       |
+| **DeepSeek**   | DeepSeek Voice API                        | Speech synthesis & transcription                                                   | `DEEPSEEK_API_KEY`             |
 
 ## Core APIs
 

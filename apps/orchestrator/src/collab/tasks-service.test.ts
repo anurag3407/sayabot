@@ -217,7 +217,9 @@ describe("applyTaskMutation invariant checks", () => {
         },
         db,
       ),
-    ).rejects.toThrow("cannot claim a human-fact blocker before reading the form that would ask for it")
+    ).rejects.toThrow(
+      "cannot claim a human-fact blocker before reading the form that would ask for it",
+    )
   })
 
   it("invariant: stuck with human_answer succeeds when formRef is provided", async () => {

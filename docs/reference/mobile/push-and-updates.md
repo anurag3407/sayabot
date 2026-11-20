@@ -53,13 +53,13 @@ Because on a cold start both the listener and `getLastNotificationResponseAsync(
 
 Action routing (`push.ts:91-106`):
 
-| Action | Behavior |
-| :-- | :-- |
+| Action                                          | Behavior                                                                                                                                                                                                                                                            |
+| :---------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `"answer"` (question category, with `userText`) | `POST /api/mobile/inbox/answer` with `{ orgSlug: data.orgSlug, taskId: data.refId, answer: response.userText.trim(), alsoPost: false }`, then schedules a local confirmation alert "Answer sent" echoing the first 100 characters. Returns without opening the app. |
-| `"allow"` / `"deny"` (approval category) | `POST /api/v1/tools/{data.refId}/approve` with `{ approved: action === "allow" }` — the same approval endpoint the in-chat card uses. Returns without opening the app. |
-| API failure on either | Falls through to navigation so the person can act in the app instead (`push.ts:101-103`). |
-| Plain tap, `kind: "request"` | `navigateWhenReady("MainTabs", { screen: "InboxTab" })` — opens the Inbox tab. |
-| Plain tap with `data.roomId` | `navigateWhenReady("Chat", { roomId, roomName: "Chat", orgSlug })`. |
+| `"allow"` / `"deny"` (approval category)        | `POST /api/v1/tools/{data.refId}/approve` with `{ approved: action === "allow" }` — the same approval endpoint the in-chat card uses. Returns without opening the app.                                                                                              |
+| API failure on either                           | Falls through to navigation so the person can act in the app instead (`push.ts:101-103`).                                                                                                                                                                           |
+| Plain tap, `kind: "request"`                    | `navigateWhenReady("MainTabs", { screen: "InboxTab" })` — opens the Inbox tab.                                                                                                                                                                                      |
+| Plain tap with `data.roomId`                    | `navigateWhenReady("Chat", { roomId, roomName: "Chat", orgSlug })`.                                                                                                                                                                                                 |
 
 `navigateWhenReady` queues navigation until the container is ready (see [Navigation & auth](navigation-and-auth.md)).
 
@@ -94,13 +94,13 @@ Pure helpers live in `src/core/app-version.ts` and are unit-tested in `tests/uni
 - `resolveApkUrl(base, apkUrl)` keeps absolute links and joins relative ones onto the server.
 - `shouldQuietCheck(lastCheckedAt, now)` allows a foreground check at most every `QUIET_CHECK_INTERVAL_MS` (30 minutes).
 
-| Field | Meaning |
-| :-- | :-- |
-| `updateType` | `"ota"` (an OTA bundle was found), `"apk"` (the server's `latestVersion` is newer) or `null` |
+| Field                                | Meaning                                                                                                       |
+| :----------------------------------- | :------------------------------------------------------------------------------------------------------------ |
+| `updateType`                         | `"ota"` (an OTA bundle was found), `"apk"` (the server's `latestVersion` is newer) or `null`                  |
 | `isDownloading` / `downloadProgress` | An OTA fetch or APK download is running. `downloadProgress` runs from 0 to 1 for APKs and is `null` otherwise |
-| `isDownloaded` | The OTA bundle is ready for `Updates.reloadAsync()` |
-| `dismissed` | The banner was closed. It stays hidden until the next launch, since the store lives in memory |
-| `lastCheckedAt` | When the last check started, used for throttling |
+| `isDownloaded`                       | The OTA bundle is ready for `Updates.reloadAsync()`                                                           |
+| `dismissed`                          | The banner was closed. It stays hidden until the next launch, since the store lives in memory                 |
+| `lastCheckedAt`                      | When the last check started, used for throttling                                                              |
 
 ### `checkForUpdates(manual)`
 
@@ -124,7 +124,7 @@ An × button dismisses the card. More and Advanced keep their manual "Check for 
 ### Build/release plumbing
 
 - **One version source.** `android/app/build.gradle` reads `expo.version` from `app.json`. It sets `versionName`, sets `versionCode = major*10000 + minor*100 + patch` (1.2.0 becomes 10200, so each APK installs over the last) and generates the `expo_runtime_version` string resource. Bumping `app.json` `version` is the only edit needed for a native release.
-- **OTA wiring.** `app.json` `updates.url` and the manifest's `expo.modules.updates.EXPO_UPDATE_URL` both point at `https://u.expo.dev/<projectId>`. APKs built before 1.2.0 have no update URL, so they never receive OTA updates and need to be updated once by hand. `app.config.js` sets `runtimeVersion` to `app.json`'s `version`. Expo rejects runtime version *policies* in the bare workflow, which this project is because `android/` is committed, and the `eas update` step failed with "runtime version policies are not supported" until this was pinned. So an OTA bundle only reaches binaries built from the same version. The APK sends `expo-channel-name: production` with every update check, set in both `app.json` `updates.requestHeaders` and the manifest's `expo.modules.updates.UPDATES_CONFIGURATION_REQUEST_HEADERS_KEY`. EAS cloud builds add that header automatically, but Gradle builds don't. Without it, `u.expo.dev` rejects the check ("expo-channel-name: Required"), which is why 1.2.0 never got OTA updates and 1.2.1 was needed. The EAS `production` channel must also map to the `production` branch that CI publishes to. Set it once with `eas channel:edit production --branch production`; an unmapped channel answers "There are no branches linked to the channel".
+- **OTA wiring.** `app.json` `updates.url` and the manifest's `expo.modules.updates.EXPO_UPDATE_URL` both point at `https://u.expo.dev/<projectId>`. APKs built before 1.2.0 have no update URL, so they never receive OTA updates and need to be updated once by hand. `app.config.js` sets `runtimeVersion` to `app.json`'s `version`. Expo rejects runtime version _policies_ in the bare workflow, which this project is because `android/` is committed, and the `eas update` step failed with "runtime version policies are not supported" until this was pinned. So an OTA bundle only reaches binaries built from the same version. The APK sends `expo-channel-name: production` with every update check, set in both `app.json` `updates.requestHeaders` and the manifest's `expo.modules.updates.UPDATES_CONFIGURATION_REQUEST_HEADERS_KEY`. EAS cloud builds add that header automatically, but Gradle builds don't. Without it, `u.expo.dev` rejects the check ("expo-channel-name: Required"), which is why 1.2.0 never got OTA updates and 1.2.1 was needed. The EAS `production` channel must also map to the `production` branch that CI publishes to. Set it once with `eas channel:edit production --branch production`; an unmapped channel answers "There are no branches linked to the channel".
 - **CI** (`.github/workflows/mobile-updates.yml`):
   - `ota-update` publishes `eas update --branch production` on every push touching `apps/mobile/**`. It needs the `EXPO_TOKEN` repo secret and skips with a warning without it.
   - `release-apk` checks whether the latest GitHub release already has `Sayabot-<version>.apk`. If not, it runs `./gradlew assembleRelease` for arm64-v8a and armeabi-v7a, and uploads `Sayabot-<version>.apk` and `Sayabot.apk` with `--clobber`. If no release exists yet, it creates `mobile-v<version>`. Running it via `workflow_dispatch` with `build-apk` always rebuilds.

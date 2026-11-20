@@ -4,7 +4,11 @@ import { readdirSync } from "node:fs"
 import { access, constants, readFile, stat } from "node:fs/promises"
 import { homedir } from "node:os"
 import { delimiter, join } from "node:path"
-import { localAgentStatus, LOCAL_AGENT_APPS, type LocalAgentReport } from "@/lib/local-agents-shared"
+import {
+  localAgentStatus,
+  LOCAL_AGENT_APPS,
+  type LocalAgentReport,
+} from "@/lib/local-agents-shared"
 
 /**
  * Finds agent apps installed on this computer (Claude Code, Codex, Gemini CLI…) and whether
@@ -45,7 +49,13 @@ async function exists(path: string): Promise<boolean> {
 }
 
 async function findBinary(names: readonly string[]): Promise<string | null> {
-  const dirs = [...new Set([...(process.env.PATH ?? "").split(delimiter).filter(Boolean), ...COMMON_BIN_DIRS, ...versionManagerBins()])]
+  const dirs = [
+    ...new Set([
+      ...(process.env.PATH ?? "").split(delimiter).filter(Boolean),
+      ...COMMON_BIN_DIRS,
+      ...versionManagerBins(),
+    ]),
+  ]
   for (const name of names) {
     for (const dir of dirs) {
       const candidate = join(dir, name)
@@ -60,7 +70,11 @@ async function findBinary(names: readonly string[]): Promise<string | null> {
   return null
 }
 
-function run(file: string, args: string[], timeoutMs = 2_500): Promise<{ ok: boolean; out: string }> {
+function run(
+  file: string,
+  args: string[],
+  timeoutMs = 2_500,
+): Promise<{ ok: boolean; out: string }> {
   return new Promise((resolve) => {
     execFile(file, args, { timeout: timeoutMs, maxBuffer: 64 * 1024 }, (error, stdout) => {
       resolve({ ok: !error, out: String(stdout ?? "") })
@@ -94,12 +108,20 @@ async function versionOf(binary: string | null): Promise<string | null> {
 /** The models Codex lists for the signed-in account (its own cache, refreshed by Codex). */
 async function codexModels(home: string): Promise<Array<{ id: string; label: string }>> {
   try {
-    const text = await readFile(join(process.env.CODEX_HOME || join(home, ".codex"), "models_cache.json"), "utf8")
-    const data = JSON.parse(text) as { models?: Array<{ slug?: unknown; display_name?: unknown; visibility?: unknown }> }
+    const text = await readFile(
+      join(process.env.CODEX_HOME || join(home, ".codex"), "models_cache.json"),
+      "utf8",
+    )
+    const data = JSON.parse(text) as {
+      models?: Array<{ slug?: unknown; display_name?: unknown; visibility?: unknown }>
+    }
     return (data.models ?? [])
       .filter((m) => typeof m.slug === "string" && m.visibility !== "hidden")
       .slice(0, 80)
-      .map((m) => ({ id: String(m.slug), label: typeof m.display_name === "string" ? m.display_name : String(m.slug) }))
+      .map((m) => ({
+        id: String(m.slug),
+        label: typeof m.display_name === "string" ? m.display_name : String(m.slug),
+      }))
   } catch {
     return []
   }
@@ -123,7 +145,9 @@ export async function detectLocalAgents(): Promise<LocalAgentReport[]> {
           signedIn = await exists(join(home, ".codex/auth.json"))
           break
         case "gemini":
-          signedIn = (await exists(join(home, ".gemini/oauth_creds.json"))) || (await exists(join(home, ".gemini/google_accounts.json")))
+          signedIn =
+            (await exists(join(home, ".gemini/oauth_creds.json"))) ||
+            (await exists(join(home, ".gemini/google_accounts.json")))
           break
         case "cursor":
           signedIn =
@@ -135,7 +159,9 @@ export async function detectLocalAgents(): Promise<LocalAgentReport[]> {
           signedIn = await exists(join(home, ".local/share/opencode/auth.json"))
           break
         case "hermes":
-          signedIn = (await exists(join(home, ".hermes/config.yaml"))) || (await exists(join(home, ".hermes/.env")))
+          signedIn =
+            (await exists(join(home, ".hermes/config.yaml"))) ||
+            (await exists(join(home, ".hermes/.env")))
           break
         default:
           signedIn = null

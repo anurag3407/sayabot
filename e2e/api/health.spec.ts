@@ -26,7 +26,9 @@ test.describe("service health contracts", () => {
     expect(typeof body.activeRuns).toBe("number")
   })
 
-  test("computerd health is public, everything else needs the internal secret", async ({ request }) => {
+  test("computerd health is public, everything else needs the internal secret", async ({
+    request,
+  }) => {
     test.skip(smokeOnly, "computerd not running in smoke lane")
     const health = await request.get(computerd + "/health")
     expect(health.status()).toBe(200)

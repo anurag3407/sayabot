@@ -5,13 +5,7 @@ import { getEnv } from "../../env"
 import type { ToolSpec } from "../audited"
 import { resolveToolCredential, type OrgToolConfig } from "../secrets"
 
-export type SandboxBackend =
-  | "local"
-  | "docker"
-  | "modal"
-  | "daytona"
-  | "ssh"
-  | "serverless_vm"
+export type SandboxBackend = "local" | "docker" | "modal" | "daytona" | "ssh" | "serverless_vm"
 
 export interface SandboxBackendMeta {
   id: SandboxBackend
@@ -271,7 +265,11 @@ async function executeE2bSandbox(
       executionTimeMs: Date.now() - started,
       results: execution.results.map((r) => r.text).filter((t): t is string => Boolean(t)),
       error: execution.error
-        ? { name: execution.error.name, value: execution.error.value, traceback: execution.error.traceback }
+        ? {
+            name: execution.error.name,
+            value: execution.error.value,
+            traceback: execution.error.traceback,
+          }
         : null,
     }
   } finally {
@@ -370,7 +368,9 @@ export async function runSandboxExecution(args: {
 
 // ── Built-in Tools Export ───────────────────────────────────────────────────
 
-export function sandboxTool(optionsOrOrgId?: { orgId?: string; agentId?: string } | string): ToolSpec {
+export function sandboxTool(
+  optionsOrOrgId?: { orgId?: string; agentId?: string } | string,
+): ToolSpec {
   const orgId = typeof optionsOrOrgId === "string" ? optionsOrOrgId : optionsOrOrgId?.orgId
   const agentId = typeof optionsOrOrgId === "string" ? undefined : optionsOrOrgId?.agentId
 
@@ -388,7 +388,8 @@ export function sandboxTool(optionsOrOrgId?: { orgId?: string; agentId?: string 
       timeoutSeconds: z.number().int().min(1).max(60).optional(),
     }),
     dangerous: (input) => {
-      const cmd = typeof input.cmd === "string" ? input.cmd : typeof input.code === "string" ? input.code : ""
+      const cmd =
+        typeof input.cmd === "string" ? input.cmd : typeof input.code === "string" ? input.code : ""
       const backend = input.backend as SandboxBackend | undefined
       return backend === "local" || backend === "ssh" || isDestructiveCommand(cmd)
     },
@@ -403,7 +404,11 @@ export function sandboxTool(optionsOrOrgId?: { orgId?: string; agentId?: string 
     ) => {
       let config: OrgToolConfig | null = null
       if (orgId) {
-        config = await resolveToolCredential({ orgId, agentId, tool: "terminal_sandbox" as any }).catch(() => null)
+        config = await resolveToolCredential({
+          orgId,
+          agentId,
+          tool: "terminal_sandbox" as any,
+        }).catch(() => null)
       }
 
       const activeBackend = input.backend || (config?.provider as SandboxBackend) || "local"
@@ -423,7 +428,9 @@ export function sandboxTool(optionsOrOrgId?: { orgId?: string; agentId?: string 
   }
 }
 
-export function terminalExecTool(optionsOrOrgId?: { orgId?: string; agentId?: string } | string): ToolSpec {
+export function terminalExecTool(
+  optionsOrOrgId?: { orgId?: string; agentId?: string } | string,
+): ToolSpec {
   const orgId = typeof optionsOrOrgId === "string" ? optionsOrOrgId : optionsOrOrgId?.orgId
   const agentId = typeof optionsOrOrgId === "string" ? undefined : optionsOrOrgId?.agentId
 
@@ -441,7 +448,8 @@ export function terminalExecTool(optionsOrOrgId?: { orgId?: string; agentId?: st
       timeoutSeconds: z.number().int().min(1).max(120).default(30).optional(),
     }),
     dangerous: (input) => {
-      const cmd = typeof input.cmd === "string" ? input.cmd : typeof input.code === "string" ? input.code : ""
+      const cmd =
+        typeof input.cmd === "string" ? input.cmd : typeof input.code === "string" ? input.code : ""
       const backend = input.backend as SandboxBackend | undefined
       return backend === "local" || backend === "ssh" || isDestructiveCommand(cmd)
     },
@@ -456,7 +464,11 @@ export function terminalExecTool(optionsOrOrgId?: { orgId?: string; agentId?: st
     ) => {
       let config: OrgToolConfig | null = null
       if (orgId) {
-        config = await resolveToolCredential({ orgId, agentId, tool: "terminal_sandbox" as any }).catch(() => null)
+        config = await resolveToolCredential({
+          orgId,
+          agentId,
+          tool: "terminal_sandbox" as any,
+        }).catch(() => null)
       }
 
       const activeBackend = input.backend || (config?.provider as SandboxBackend) || "local"

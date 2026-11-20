@@ -1,6 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 
-
 // resolvePlaceholder talks to the orchestrator over fetch; stub it and verify
 // the request shape + 30s cache behaviour.
 const realFetch = globalThis.fetch
@@ -14,10 +13,21 @@ beforeAll(() => {
     calls++
     lastBody = String(init?.body ?? "")
     const headers = new Headers(init?.headers as HeadersInit)
-    if (String(url).endsWith("/internal/egress/resolve") && headers.get("x-internal-secret") === "s3cret") {
-      return Response.json({ grantId: "g1", secretPlaintext: "shh", hostAllowlist: ["api.github.com"], inject: { mode: "header" } })
+    if (
+      String(url).endsWith("/internal/egress/resolve") &&
+      headers.get("x-internal-secret") === "s3cret"
+    ) {
+      return Response.json({
+        grantId: "g1",
+        secretPlaintext: "shh",
+        hostAllowlist: ["api.github.com"],
+        inject: { mode: "header" },
+      })
     }
-    if (String(url).endsWith("/internal/egress/identity") && headers.get("x-internal-secret") === "s3cret") {
+    if (
+      String(url).endsWith("/internal/egress/identity") &&
+      headers.get("x-internal-secret") === "s3cret"
+    ) {
       const parsed = JSON.parse(String(init?.body ?? "{}"))
       if (parsed.containerIp === "10.0.0.5") {
         return Response.json({ agentId: "agent-123", orgId: "org-1" })
@@ -28,7 +38,9 @@ beforeAll(() => {
   }) as typeof fetch
 })
 
-afterAll(() => { globalThis.fetch = realFetch })
+afterAll(() => {
+  globalThis.fetch = realFetch
+})
 
 let flushGrantCache: () => void
 let resolvePlaceholder: (a: string, ph: string) => Promise<{ grantId: string }>
@@ -36,7 +48,8 @@ let resolveAgentIdentity: (ip: string) => Promise<{ agentId: string; orgId: stri
 
 describe("resolvePlaceholder (orchestrator stubbed)", () => {
   beforeAll(async () => {
-    ;({ flushGrantCache, resolvePlaceholder, resolveAgentIdentity } = await import("../../src/swapper"))
+    ;({ flushGrantCache, resolvePlaceholder, resolveAgentIdentity } =
+      await import("../../src/swapper"))
   })
   it("fetches the grant and caches it for the same agent+placeholder", async () => {
     flushGrantCache()

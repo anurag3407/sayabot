@@ -43,7 +43,10 @@ export function ImageWithLightbox({ src, alt, className, ...props }: ImageProps)
         <img
           src={src}
           alt={alt || "Image preview"}
-          className={cn("max-h-[440px] max-w-full rounded-xl object-contain transition-transform duration-200 group-hover:scale-[1.01]", className)}
+          className={cn(
+            "max-h-[440px] max-w-full rounded-xl object-contain transition-transform duration-200 group-hover:scale-[1.01]",
+            className,
+          )}
           onError={() => setHasError(true)}
           onClick={() => setIsOpen(true)}
           loading="lazy"

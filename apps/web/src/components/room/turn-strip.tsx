@@ -33,7 +33,11 @@ export function TurnStrip({
   const byId = new Map(agents.map(({ agent }) => [agent.id, agent]))
   const active = turnState?.activeAgentId ? byId.get(turnState.activeAgentId) : null
   const queue = (turnState?.queue ?? []).map((id) => byId.get(id)).filter(Boolean)
-  const visible = Boolean(turnState?.activeAgentId) || queue.length > 0 || Boolean(streamingRunId) || Boolean(runActivity)
+  const visible =
+    Boolean(turnState?.activeAgentId) ||
+    queue.length > 0 ||
+    Boolean(streamingRunId) ||
+    Boolean(runActivity)
   if (!visible) return null
 
   function stop() {
@@ -45,7 +49,9 @@ export function TurnStrip({
     })
   }
 
-  const completedPlanItems = runActivity?.plan ? runActivity.plan.filter((i) => i.status === "done").length : 0
+  const completedPlanItems = runActivity?.plan
+    ? runActivity.plan.filter((i) => i.status === "done").length
+    : 0
 
   return (
     <div

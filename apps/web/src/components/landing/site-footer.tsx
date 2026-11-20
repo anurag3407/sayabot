@@ -50,7 +50,9 @@ export function SiteFooterLinks() {
         </div>
         {COLUMNS.map((col) => (
           <div key={col.title}>
-            <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-faint">{col.title}</p>
+            <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-faint">
+              {col.title}
+            </p>
             <ul className="mt-5 space-y-3">
               {col.links.map((link) => (
                 <li key={link.href}>

@@ -16,8 +16,8 @@ The orchestrator's agent loop calls these helpers every step; they contain no I/
 export interface EngineBudgetLimits {
   maxSteps: number
   maxWallMinutes: number
-  maxUsd?: number            // absent = unbounded spend
-  compactAtTokens?: number   // overrides the compaction threshold
+  maxUsd?: number // absent = unbounded spend
+  compactAtTokens?: number // overrides the compaction threshold
 }
 
 export interface EngineBudgetUsage {
@@ -29,7 +29,7 @@ export interface EngineBudgetUsage {
 
 export interface BudgetCheckResult {
   allowed: boolean
-  warningNearLimit?: boolean          // any budget is ≥ 80% consumed
+  warningNearLimit?: boolean // any budget is ≥ 80% consumed
   haltReason?: "max_steps" | "max_wall_time" | "max_usd"
   message?: string
 }
@@ -53,7 +53,7 @@ Decides when the transcript must be compacted before the next model call. The th
 threshold = min(contextWindow * 0.6, compactAtTokens ?? contextWindow * 0.6)
 ```
 
-i.e. 60% of the context window by default, and `compactAtTokens` can only pull the threshold *down*, never up. `shouldCompact(120_000, 200_000)` is true; `shouldCompact(50_000, 200_000, 40_000)` is also true because the explicit cap wins.
+i.e. 60% of the context window by default, and `compactAtTokens` can only pull the threshold _down_, never up. `shouldCompact(120_000, 200_000)` is true; `shouldCompact(50_000, 200_000, 40_000)` is also true because the explicit cap wins.
 
 ### Structured plan (`update_plan`)
 
@@ -88,22 +88,22 @@ export type BoatState = "running" | "sleeping" | "absent"
 export const CLOUD_DESKTOPS = ["boat", "vps", "e2b"] as const // isCloudDesktop(value) guards it
 
 export interface ComputerAvailability {
-  thisComputer: boolean          // Mac screen/apps allowed for this bot (off until a person enables it)
-  localVmReady: boolean          // a local container desktop exists, workspace intact
-  boatConfigured: boolean        // boat.dev key or Cloud relay token is set
+  thisComputer: boolean // Mac screen/apps allowed for this bot (off until a person enables it)
+  localVmReady: boolean // a local container desktop exists, workspace intact
+  boatConfigured: boolean // boat.dev key or Cloud relay token is set
   boatState: BoatState
-  vpsReady: boolean              // Docker-over-SSH desktop is up (Sayabot never stops a VPS)
+  vpsReady: boolean // Docker-over-SSH desktop is up (Sayabot never stops a VPS)
   startVpsAutomatically: boolean // when false, Auto (and select_computer on an Auto bot) will not create the VPS container
-  e2bConfigured: boolean         // the workspace's own E2B key, or the server's E2B_API_KEY, is set
-  e2bReady: boolean              // this bot already has an E2B sandbox (params.computer.e2bId); connecting resumes it
+  e2bConfigured: boolean // the workspace's own E2B key, or the server's E2B_API_KEY, is set
+  e2bReady: boolean // this bot already has an E2B sandbox (params.computer.e2bId); connecting resumes it
 }
 
 export type ComputerAction = "use" | "wake" | "provision" | "none"
 
 export interface ComputerDecision {
-  surface: WorksOn   // "off" = this turn has no computer
+  surface: WorksOn // "off" = this turn has no computer
   action: ComputerAction
-  reason: string     // why Auto refused; empty when the choice is carried out
+  reason: string // why Auto refused; empty when the choice is carried out
 }
 ```
 
@@ -111,7 +111,7 @@ Helpers for reading bot params defensively: `worksOnFromParams(params)` returns 
 
 ### `resolveComputer(worksOn, available, selected?)` — the placement algorithm (`computers.ts:110`)
 
-One decision per turn. `selected` is a `select_computer` call made by the agent *this turn*; without it, **Auto only attaches to a desktop that is already running** — it never creates or wakes anything.
+One decision per turn. `selected` is a `select_computer` call made by the agent _this turn_; without it, **Auto only attaches to a desktop that is already running** — it never creates or wakes anything.
 
 ```mermaid
 flowchart TD
@@ -126,13 +126,13 @@ flowchart TD
     F -- no --> H[place worksOn surface, fromAuto = true]
 ```
 
-- **`pickReady(available)`** — Auto's preference order when nothing was selected: `this_computer` → ready `local_vm` → `boat` running → ready `vps` → `off` with reason *"No desktop is ready. Call select_computer to choose one. Auto does not create or wake a Boat."* Auto never picks `e2b` on its own: connecting would resume a paused sandbox.
-- **`place(surface, available, fromAuto, pinned)`** — resolves one concrete surface. `pinned` is true when the bot's `worksOn` *is* that surface (a person chose it):
-  - `this_computer`: `use` only if `available.thisComputer`; otherwise off — *"This computer is off for this bot until it is turned on."*
+- **`pickReady(available)`** — Auto's preference order when nothing was selected: `this_computer` → ready `local_vm` → `boat` running → ready `vps` → `off` with reason _"No desktop is ready. Call select_computer to choose one. Auto does not create or wake a Boat."_ Auto never picks `e2b` on its own: connecting would resume a paused sandbox.
+- **`place(surface, available, fromAuto, pinned)`** — resolves one concrete surface. `pinned` is true when the bot's `worksOn` _is_ that surface (a person chose it):
+  - `this_computer`: `use` only if `available.thisComputer`; otherwise off — _"This computer is off for this bot until it is turned on."_
   - `local_vm`: `use` when ready; `provision` when an explicit `select_computer` asked; `none` when Auto found nothing ready.
-  - `boat`: `none` when not configured and state is `absent` (*"No Boat key is set in Settings → Computers."*); `use` when running; when explicitly asked — `wake` if sleeping, `provision` if absent; **Auto never wakes or creates a Boat**.
-  - `vps`: `use` when ready; `provision` when the bot is pinned to `vps` (the person's choice is consent to start its container) or when an explicit `select_computer` asked *and* `startVpsAutomatically` is true; otherwise *"The VPS desktop is not ready. Sayabot does not start your server."*
-  - `e2b`: `use` when `e2bReady`; `none` without a key (*"No E2B key is set in Settings → AI providers."*); `provision` when pinned or explicitly asked; Auto never creates one.
+  - `boat`: `none` when not configured and state is `absent` (_"No Boat key is set in Settings → Computers."_); `use` when running; when explicitly asked — `wake` if sleeping, `provision` if absent; **Auto never wakes or creates a Boat**.
+  - `vps`: `use` when ready; `provision` when the bot is pinned to `vps` (the person's choice is consent to start its container) or when an explicit `select_computer` asked _and_ `startVpsAutomatically` is true; otherwise _"The VPS desktop is not ready. Sayabot does not start your server."_
+  - `e2b`: `use` when `e2bReady`; `none` without a key (_"No E2B key is set in Settings → AI providers."_); `provision` when pinned or explicitly asked; Auto never creates one.
 - A pinned bot (e.g. `worksOn: "boat"`) cannot be moved by `select_computer` to another surface — the decision is refused with the bot's surface named in `reason`.
 
 ### Mac screen safety
@@ -162,11 +162,11 @@ flowchart TD
 
 Three constants and one predicate govern when a Boat goes to sleep:
 
-| Constant | Value | Meaning |
-| :--- | :--- | :--- |
-| `BOAT_IDLE_MS` | `10 * 60 * 1000` | Sleep after this much idle time |
-| `BOAT_ROUTINE_LOOKAHEAD_MS` | `30 * 60 * 1000` | Stay awake for a routine due within ±30 min |
-| `BOAT_BACKGROUND_MAX_MS` | `2 * 60 * 60 * 1000` | A background command keeps it awake at most 2 h after start |
+| Constant                    | Value                | Meaning                                                     |
+| :-------------------------- | :------------------- | :---------------------------------------------------------- |
+| `BOAT_IDLE_MS`              | `10 * 60 * 1000`     | Sleep after this much idle time                             |
+| `BOAT_ROUTINE_LOOKAHEAD_MS` | `30 * 60 * 1000`     | Stay awake for a routine due within ±30 min                 |
+| `BOAT_BACKGROUND_MAX_MS`    | `2 * 60 * 60 * 1000` | A background command keeps it awake at most 2 h after start |
 
 `boatShouldSleep(input)` (`computers.ts:223`) stays awake (`false`) when: someone is `watching` the screen; a background command started less than 2 h ago; or the next routine that uses this Boat falls within ±30 minutes (so a run that just started keeps its desktop). Otherwise it sleeps once `now - lastUsedAt >= BOAT_IDLE_MS` — with `lastUsedAt === null` meaning immediately eligible.
 

@@ -39,13 +39,20 @@ export async function hostFromRequest(request: Request): Promise<HostRow | null>
   const id = request.headers.get("x-host-id") ?? ""
   const token = request.headers.get("x-host-token") ?? ""
   if (!/^[0-9a-f-]{36}$/i.test(id) || !token) return null
-  const { data } = await createAdminClient().from("desktop_hosts").select("*").eq("id", id).maybeSingle()
+  const { data } = await createAdminClient()
+    .from("desktop_hosts")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle()
   const host = data as HostRow | null
   if (!host || host.revoked_at) return null
   return sameHash(hashAgentApiKey(token), host.token_hash) ? host : null
 }
 
-export async function orgRoleOf(userId: string, orgId: string | null): Promise<"owner" | "admin" | "member" | null> {
+export async function orgRoleOf(
+  userId: string,
+  orgId: string | null,
+): Promise<"owner" | "admin" | "member" | null> {
   if (!orgId) return null
   const { data } = await createAdminClient()
     .from("org_members")
@@ -89,7 +96,9 @@ export function withLocalDefault(
   return stillReady || current === best ? null : { ...settings, localDefault: { app: best } }
 }
 
-const APP_NAMES: Record<string, string> = Object.fromEntries(MAC_CLI_APPS.map((app) => [app.id, app.name]))
+const APP_NAMES: Record<string, string> = Object.fromEntries(
+  MAC_CLI_APPS.map((app) => [app.id, app.name]),
+)
 
 /**
  * The app this person's agents will run with on their Mac, if Sayabot for Mac found one signed

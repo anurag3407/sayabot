@@ -97,7 +97,9 @@ describe("sanitizeAskItems", () => {
 describe("askItemsFromMetadata", () => {
   it("round-trips sanitized items and drops junk", () => {
     const items = sanitizeAskItems([{ key: "cgpa", question: "CGPA?" }])
-    const back = askItemsFromMetadata({ items: [...items, null, { key: "", question: "x" }, "str"] })
+    const back = askItemsFromMetadata({
+      items: [...items, null, { key: "", question: "x" }, "str"],
+    })
     expect(back).toEqual(items)
     expect(askItemsFromMetadata(null)).toEqual([])
     expect(askItemsFromMetadata({ items: "nope" })).toEqual([])
@@ -177,7 +179,11 @@ describe("planAsk", () => {
       roomId: ROOM,
       openAsks: [
         { id: "legacy", agentId: "hermes", items: [] },
-        { id: "mine", agentId: "hermes", items: sanitizeAskItems([{ key: "cgpa", question: "CGPA?" }]) },
+        {
+          id: "mine",
+          agentId: "hermes",
+          items: sanitizeAskItems([{ key: "cgpa", question: "CGPA?" }]),
+        },
       ],
       agentId: "hermes",
     })
@@ -211,7 +217,12 @@ describe("answers", () => {
   ])
 
   it("applies partial answers and counts what is left", () => {
-    const result = applyAnswersToItems(items, { availability: " June 2027 ", cgpa: "  " }, "human", "T")
+    const result = applyAnswersToItems(
+      items,
+      { availability: " June 2027 ", cgpa: "  " },
+      "human",
+      "T",
+    )
     expect(result.answeredKeys).toEqual(["start_date"])
     expect(result.remaining).toBe(1)
     expect(result.items[0]).toMatchObject({ answer: "June 2027", answeredAt: "T", source: "human" })

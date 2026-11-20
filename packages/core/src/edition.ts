@@ -3,7 +3,7 @@
  *
  * - `self-hosted` (default): someone runs Sayabot on their own server. No plans, no limits, no
  *   billing, nothing that talks to the Sayabot Cloud.
- * - `cloud`: Sayabot Cloud (sayabot.sayalabs.in). Workspaces are on a plan; limits apply and
+ * - `cloud`: Sayabot Cloud. Workspaces are on a plan; limits apply and
  *   billing is on. Set with SAYABOT_EDITION=cloud.
  */
 export type Edition = "self-hosted" | "cloud"

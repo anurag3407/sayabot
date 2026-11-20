@@ -24,8 +24,12 @@ The core of the function, in the module's own words (`ssrf.ts:7-10`): "Blocks we
 
 ```typescript
 const host = url.hostname.toLowerCase()
-if (host === "localhost" || host.endsWith(".localhost") ||
-    host.endsWith(".local") || host.endsWith(".internal")) {
+if (
+  host === "localhost" ||
+  host.endsWith(".localhost") ||
+  host.endsWith(".local") ||
+  host.endsWith(".internal")
+) {
   throw new Error("webhook URL resolves to a private host")
 }
 if (isIP(host)) {
@@ -40,21 +44,21 @@ for (const address of addresses) {
 return url
 ```
 
-The check is deliberately re-run per attempt by `deliverWebhook` (see [internal-api-and-jobs.md](./internal-api-and-jobs.md)); it is *not* a pinning cache — the orchestrator delegates its general outbound proxying (with true DNS-rebinding defense, IP filtering, and per-agent identity) to the separate **egress** app, documented in [tools-and-sandboxes.md](../../../tools-and-sandboxes.md).
+The check is deliberately re-run per attempt by `deliverWebhook` (see [internal-api-and-jobs.md](./internal-api-and-jobs.md)); it is _not_ a pinning cache — the orchestrator delegates its general outbound proxying (with true DNS-rebinding defense, IP filtering, and per-agent identity) to the separate **egress** app, documented in [tools-and-sandboxes.md](../../../tools-and-sandboxes.md).
 
 ### `isPrivateIp` — the blocklist (`packages/core/src/server/ssrf.ts:62-156`)
 
 Re-exported from `ssrf.ts:5` and shared with egress-side code. IPv4 ranges blocked:
 
-| Range | Meaning |
-| :--- | :--- |
-| `127.0.0.0/8`, `0.0.0.0/8`, `255.255.255.255`, `::1`, `::`, `localhost` | Loopback / unspecified / broadcast |
-| `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16` | RFC 1918 private |
-| `169.254.0.0/16` | Link-local & cloud metadata (`169.254.169.254`) |
-| `100.64.0.0/10` | CGNAT |
-| `198.18.0.0/15` | RFC 2544 benchmarking |
-| `192.0.2.0/24`, `198.51.100.0/24`, `203.0.113.0/24` | TEST-NET documentation ranges |
-| `224.0.0.0/4`, `240.0.0.0/4` | Multicast & reserved |
+| Range                                                                   | Meaning                                         |
+| :---------------------------------------------------------------------- | :---------------------------------------------- |
+| `127.0.0.0/8`, `0.0.0.0/8`, `255.255.255.255`, `::1`, `::`, `localhost` | Loopback / unspecified / broadcast              |
+| `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`                         | RFC 1918 private                                |
+| `169.254.0.0/16`                                                        | Link-local & cloud metadata (`169.254.169.254`) |
+| `100.64.0.0/10`                                                         | CGNAT                                           |
+| `198.18.0.0/15`                                                         | RFC 2544 benchmarking                           |
+| `192.0.2.0/24`, `198.51.100.0/24`, `203.0.113.0/24`                     | TEST-NET documentation ranges                   |
+| `224.0.0.0/4`, `240.0.0.0/4`                                            | Multicast & reserved                            |
 
 The two exact hostnames `127.0.0.1` and the word `localhost` are matched literally before version dispatch (`ssrf.ts:64`), so they cannot fall through any octet arithmetic.
 
@@ -75,41 +79,43 @@ await fetch(`${SUPABASE_URL}/realtime/v1/api/broadcast`, {
     authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
   },
   body: JSON.stringify({
-    messages: [{
-      topic: `room:${roomId}`,
-      event: event.type,
-      payload: event,
-      private: true,   // not echo-broadcast back to the sender
-    }],
+    messages: [
+      {
+        topic: `room:${roomId}`,
+        event: event.type,
+        payload: event,
+        private: true, // not echo-broadcast back to the sender
+      },
+    ],
   }),
 })
 ```
 
 Design notes from the module docstring: broadcasting through REST "keeps the orchestrator stateless and avoids one websocket per room". Errors are **never thrown** — a failed broadcast is logged (`[realtime] broadcast <type> failed: <status> <body-slice-300>` or the fetch error) and the caller continues; realtime is best-effort UI signaling, while durable state lives in Postgres. Web browsers subscribe to the `room:{id}` channel with a Supabase key; `private: true` keeps the message from being rebroadcast to the publishing client.
 
-The orchestrator's other realtime needs — room events it must *receive* rather than send (turn interrupts, run stops, approval resolution, bot replies, vault invalidation) — use Postgres `LISTEN/NOTIFY` on dedicated pool clients instead (`mesh_room_interrupt`, `mesh_stop_run`, `mesh_bot_reply`, `mesh_agent_inbox`, `vault_changed`), documented in [bot-platform.md](./bot-platform.md), [internal-api-and-jobs.md](./internal-api-and-jobs.md), and [mcp-server.md](./mcp-server.md).
+The orchestrator's other realtime needs — room events it must _receive_ rather than send (turn interrupts, run stops, approval resolution, bot replies, vault invalidation) — use Postgres `LISTEN/NOTIFY` on dedicated pool clients instead (`mesh_room_interrupt`, `mesh_stop_run`, `mesh_bot_reply`, `mesh_agent_inbox`, `vault_changed`), documented in [bot-platform.md](./bot-platform.md), [internal-api-and-jobs.md](./internal-api-and-jobs.md), and [mcp-server.md](./mcp-server.md).
 
 ## 🗂️ Event Catalogue (`RoomEvent`, `packages/core/src/types.ts:65-163`)
 
 `roomEventSchema` is a discriminated union on `type`; every broadcast payload is one of:
 
-| Event | Payload | Emitted by |
-| :--- | :--- | :--- |
-| `message.delta` | `{ messageId, seq, delta }` | streaming replies (bot stream route, agent runners) |
-| `message.done` | `{ messageId, status }` (MESSAGE_STATUSES) | finalized messages (postAgentMessage, votes, stream finalization) |
-| `message.removed` | `{ messageId }` | "a reply attempt that was replaced (a failed try the server retried); drop it from view" |
-| `turn.state` | `{ sessionId, activeAgentId (nullable), queue: string[], threadRootId? }` | turn coordinator (who's speaking, what's queued) |
-| `tool.approval_requested` | `{ toolCallId, agentId, toolName, args }` | dangerous-tool gate + egress approval gateway |
-| `tool.approval_resolved` | `{ toolCallId, status: "approved" \| "rejected" }` | approval decisions |
-| `tool.started` | `{ toolCallId, agentId, toolName, args }` | audited tool execution |
-| `tool.finished` | `{ toolCallId, status: "done" \| "error" \| "rejected", durationMs }` | audited tool execution |
-| `tool.output` | `{ toolCallId, seq, chunk }` | streamed tool output (shell, browser…) |
-| `agent.connected` | `{ agentId, handle, client? }` | presence for local/MCP agents |
-| `computer.state` | `{ agentId, status }` | computerd lifecycle via `/internal/computer/state` |
-| `room.notice` | `{ level: "info" \| "warn" \| "error", message }` | system notices (e.g. egress violations) |
-| `run.step` | `{ runId, step, kind: "model" \| "tool" \| "compaction" \| "recall" \| "plan" \| "subagent" \| "verify", label }` | engine loop progress |
-| `run.status` | `{ runId, status: "thinking" \| "tool" \| "waiting:approval" \| "waiting:answer" \| "compacting" }` | engine loop state |
-| `run.plan` | `{ runId, items: [{ id, title, status: "pending" \| "in_progress" \| "done" \| "blocked", note? }] }` | `update_plan` tool |
+| Event                     | Payload                                                                                                           | Emitted by                                                                               |
+| :------------------------ | :---------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------- |
+| `message.delta`           | `{ messageId, seq, delta }`                                                                                       | streaming replies (bot stream route, agent runners)                                      |
+| `message.done`            | `{ messageId, status }` (MESSAGE_STATUSES)                                                                        | finalized messages (postAgentMessage, votes, stream finalization)                        |
+| `message.removed`         | `{ messageId }`                                                                                                   | "a reply attempt that was replaced (a failed try the server retried); drop it from view" |
+| `turn.state`              | `{ sessionId, activeAgentId (nullable), queue: string[], threadRootId? }`                                         | turn coordinator (who's speaking, what's queued)                                         |
+| `tool.approval_requested` | `{ toolCallId, agentId, toolName, args }`                                                                         | dangerous-tool gate + egress approval gateway                                            |
+| `tool.approval_resolved`  | `{ toolCallId, status: "approved" \| "rejected" }`                                                                | approval decisions                                                                       |
+| `tool.started`            | `{ toolCallId, agentId, toolName, args }`                                                                         | audited tool execution                                                                   |
+| `tool.finished`           | `{ toolCallId, status: "done" \| "error" \| "rejected", durationMs }`                                             | audited tool execution                                                                   |
+| `tool.output`             | `{ toolCallId, seq, chunk }`                                                                                      | streamed tool output (shell, browser…)                                                   |
+| `agent.connected`         | `{ agentId, handle, client? }`                                                                                    | presence for local/MCP agents                                                            |
+| `computer.state`          | `{ agentId, status }`                                                                                             | computerd lifecycle via `/internal/computer/state`                                       |
+| `room.notice`             | `{ level: "info" \| "warn" \| "error", message }`                                                                 | system notices (e.g. egress violations)                                                  |
+| `run.step`                | `{ runId, step, kind: "model" \| "tool" \| "compaction" \| "recall" \| "plan" \| "subagent" \| "verify", label }` | engine loop progress                                                                     |
+| `run.status`              | `{ runId, status: "thinking" \| "tool" \| "waiting:approval" \| "waiting:answer" \| "compacting" }`               | engine loop state                                                                        |
+| `run.plan`                | `{ runId, items: [{ id, title, status: "pending" \| "in_progress" \| "done" \| "blocked", note? }] }`             | `update_plan` tool                                                                       |
 
 Callers span the whole orchestrator: `coordinator/index.ts` (turn.state), `runner/llm.ts` + `runner/cli.ts` + `runner/local.ts` (message deltas, run steps), `tools/audited.ts` (tool lifecycle + approvals), `collab/index.ts` (message.done), `bot/routes.ts` (streaming), `engine/plan-tool.ts`, `engine/subagents.ts`, `engine/resume.ts`, `engine/fit-model.ts`, `internal/routes.ts`, `runner/local-events.ts`, `plans.ts`, and `tools/builtins/computer.ts`.
 
@@ -127,7 +133,7 @@ Three representative payloads as they appear on the wire (the whole event is the
 { "type": "run.step", "runId": "r4…", "step": 7, "kind": "tool", "label": "web_fetch" }
 ```
 
-Note the split of concerns: `message.delta`/`message.done` are the *chat* stream, `run.step`/`run.status`/`run.plan` are the *engine telemetry* cards, and `tool.*` are the *audit* stream — the web app renders each family differently.
+Note the split of concerns: `message.delta`/`message.done` are the _chat_ stream, `run.step`/`run.status`/`run.plan` are the _engine telemetry_ cards, and `tool.*` are the _audit_ stream — the web app renders each family differently.
 
 ## 🧪 Tests
 
@@ -145,6 +151,7 @@ There is no dedicated `ssrf.test.ts` or `realtime.test.ts` in the orchestrator; 
 ---
 
 Related docs:
+
 - [Internal API & jobs](./internal-api-and-jobs.md) — the webhook pipeline that calls `assertSafeWebhookUrl`
 - [Approvals](../tools/approvals.md) — the `tool.approval_requested`/`resolved` lifecycle
 - [Bot platform](./bot-platform.md) — a heavy `broadcast` producer (streaming)

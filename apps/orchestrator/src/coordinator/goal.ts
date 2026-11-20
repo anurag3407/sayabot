@@ -31,7 +31,11 @@ export function goalOutcome(reply: string): GoalOutcome {
 }
 
 /** The goal text when a message started one ("/goal" in the composer), else null. */
-export function goalOf(message: { senderType: string; content: string; metadata?: unknown }): string | null {
+export function goalOf(message: {
+  senderType: string
+  content: string
+  metadata?: unknown
+}): string | null {
   const metadata = message.metadata as { command?: unknown } | null | undefined
   if (message.senderType !== "human" || metadata?.command !== "goal") return null
   return message.content.trim() || null

@@ -97,7 +97,8 @@ export function useWorkspaceActivity(args: {
       if (row.status === "streaming") return
       scheduleRefresh()
       const { userId, userName, notifications, sound, currentRoomId, orgSlug } = latest.current
-      if (row.status !== "complete" || row.sender_type === "system" || row.sender_id === userId) return
+      if (row.status !== "complete" || row.sender_type === "system" || row.sender_id === userId)
+        return
       const key = `message:${row.id}`
       if (alerted.current.has(key)) return
       alerted.current.add(key)
@@ -177,16 +178,24 @@ export function useWorkspaceActivity(args: {
       if (data.session?.access_token) supabase.realtime.setAuth(data.session.access_token)
       channel = supabase
         .channel(`workspace-activity:${args.userId}:${args.orgSlug}`)
-        .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (payload) =>
-          onMessage(payload.new as MessageRow),
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "messages" },
+          (payload) => onMessage(payload.new as MessageRow),
         )
-        .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages" }, (payload) =>
-          onMessage(payload.new as MessageRow),
+        .on(
+          "postgres_changes",
+          { event: "UPDATE", schema: "public", table: "messages" },
+          (payload) => onMessage(payload.new as MessageRow),
         )
-        .on("postgres_changes", { event: "*", schema: "public", table: "tool_calls" }, (payload) => {
-          if (payload.eventType === "DELETE") return
-          onToolCall(payload.new as ToolCallRow, payload.eventType === "INSERT")
-        })
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "tool_calls" },
+          (payload) => {
+            if (payload.eventType === "DELETE") return
+            onToolCall(payload.new as ToolCallRow, payload.eventType === "INSERT")
+          },
+        )
         .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, () => {
           scheduleRefresh()
           emitWorkspaceChange("tasks")

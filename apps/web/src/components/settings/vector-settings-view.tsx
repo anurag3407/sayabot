@@ -31,7 +31,9 @@ export function VectorSettingsView({
       <div className="rounded-2xl border border-line bg-surface/30 p-5 space-y-4">
         <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-[16px] font-semibold tracking-tight text-text">Workspace Vector Memory</h2>
+            <h2 className="text-[16px] font-semibold tracking-tight text-text">
+              Workspace Vector Memory
+            </h2>
             <p className="text-[13px] text-muted leading-relaxed">
               Long-term memory is active. Notes and canvas memories stay in this workspace database,
               and semantic search activates when an embedding model is connected.
@@ -53,7 +55,9 @@ export function VectorSettingsView({
             <span className="font-mono text-[10.5px] uppercase tracking-wider text-accent font-semibold">
               ● API Key Cloud
             </span>
-            <p className="mt-1 text-[12.5px] text-text font-medium">Pinecone, Qdrant, Gemini, Voyage</p>
+            <p className="mt-1 text-[12.5px] text-text font-medium">
+              Pinecone, Qdrant, Gemini, Voyage
+            </p>
             <p className="text-[11px] text-muted">Sealed with AES-256 envelope encryption.</p>
           </div>
 
@@ -110,7 +114,9 @@ export function VectorSettingsView({
           <div className="rounded-2xl border border-line bg-surface/20 p-4 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <span className="font-mono text-[11px] uppercase tracking-wider text-faint">Currently Using</span>
+                <span className="font-mono text-[11px] uppercase tracking-wider text-faint">
+                  Currently Using
+                </span>
                 <h3 className="text-[16px] font-semibold text-text">
                   {activeStorage ? activeStorage.label : "Built-in Postgres (pgvector)"}
                 </h3>
@@ -131,18 +137,27 @@ export function VectorSettingsView({
               <h4 className="text-[13px] font-medium text-text">Configured Storage Connections</h4>
               <ul className="divide-y divide-line/60">
                 {storage.map((provider) => (
-                  <li key={provider.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                  <li
+                    key={provider.id}
+                    className="flex flex-wrap items-center justify-between gap-3 py-3"
+                  >
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-[13.5px] font-semibold text-text">{provider.label}</span>
+                        <span className="text-[13.5px] font-semibold text-text">
+                          {provider.label}
+                        </span>
                         <span className="font-mono text-[11px] text-faint">
                           {vectorProviderName(provider.provider)}
                         </span>
                       </div>
                       <p className="mt-0.5 font-mono text-[11px] text-faint truncate">
-                        {provider.last4 && provider.last4 !== "local" ? `•••• ${provider.last4}` : "local"}
+                        {provider.last4 && provider.last4 !== "local"
+                          ? `•••• ${provider.last4}`
+                          : "local"}
                         {provider.endpointUrl ? ` · ${provider.endpointUrl}` : ""}
-                        {provider.config.indexName ? ` · index: ${String(provider.config.indexName)}` : ""}
+                        {provider.config.indexName
+                          ? ` · index: ${String(provider.config.indexName)}`
+                          : ""}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -171,7 +186,9 @@ export function VectorSettingsView({
           <div className="rounded-2xl border border-line bg-surface/20 p-4 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <span className="font-mono text-[11px] uppercase tracking-wider text-faint">Currently Using</span>
+                <span className="font-mono text-[11px] uppercase tracking-wider text-faint">
+                  Currently Using
+                </span>
                 <h3 className="text-[16px] font-semibold text-text">
                   {activeEmbedding ? activeEmbedding.label : "Built-in Keyword Matching"}
                 </h3>
@@ -192,17 +209,26 @@ export function VectorSettingsView({
               <h4 className="text-[13px] font-medium text-text">Configured Embedding Models</h4>
               <ul className="divide-y divide-line/60">
                 {embeddings.map((provider) => (
-                  <li key={provider.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                  <li
+                    key={provider.id}
+                    className="flex flex-wrap items-center justify-between gap-3 py-3"
+                  >
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-[13.5px] font-semibold text-text">{provider.label}</span>
+                        <span className="text-[13.5px] font-semibold text-text">
+                          {provider.label}
+                        </span>
                         <span className="font-mono text-[11px] text-faint">
                           {vectorProviderName(provider.provider)}
                         </span>
                       </div>
                       <p className="mt-0.5 font-mono text-[11px] text-faint truncate">
-                        {provider.last4 && provider.last4 !== "local" ? `•••• ${provider.last4}` : "local"}
-                        {provider.config.dimension ? ` · ${String(provider.config.dimension)}d` : ""}
+                        {provider.last4 && provider.last4 !== "local"
+                          ? `•••• ${provider.last4}`
+                          : "local"}
+                        {provider.config.dimension
+                          ? ` · ${String(provider.config.dimension)}d`
+                          : ""}
                         {provider.endpointUrl ? ` · ${provider.endpointUrl}` : ""}
                       </p>
                     </div>

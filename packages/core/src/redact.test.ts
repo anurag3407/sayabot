@@ -97,7 +97,9 @@ describe("createRunScrubber", () => {
     expect(scrubbed).not.toContain(secretValue)
     expect(scrubbed).not.toContain(Buffer.from(secretValue).toString("base64"))
     expect(scrubbed).not.toContain(encodeURIComponent(secretValue))
-    expect(scrubbed).toBe("The raw is [REDACTED:secret], b64 is [REDACTED:secret], url is [REDACTED:secret]")
+    expect(scrubbed).toBe(
+      "The raw is [REDACTED:secret], b64 is [REDACTED:secret], url is [REDACTED:secret]",
+    )
   })
 
   it("safely ignores short or empty values", () => {

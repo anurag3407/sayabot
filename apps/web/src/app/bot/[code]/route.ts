@@ -12,7 +12,11 @@ export async function GET(_req: Request, { params }: { params: Promise<{ code: s
     "referrer-policy": "no-referrer",
     "x-robots-tag": "noindex",
   }
-  if (!invite) return new NextResponse("This invite link does not exist. Ask the person for a new one.", { status: 404, headers })
+  if (!invite)
+    return new NextResponse("This invite link does not exist. Ask the person for a new one.", {
+      status: 404,
+      headers,
+    })
 
   const state = inviteState(invite)
   if (state === "expired" || state === "revoked" || state === "declined") {

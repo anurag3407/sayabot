@@ -1,16 +1,22 @@
 import { describe, expect, it, vi } from "vitest"
 
 const mocks = vi.hoisted(() => ({ generate: vi.fn(), resolve: vi.fn() }))
-vi.mock("ai", async (original) => ({ ...await original<typeof import("ai")>(), generateText: mocks.generate }))
+vi.mock("ai", async (original) => ({
+  ...(await original<typeof import("ai")>()),
+  generateText: mocks.generate,
+}))
 vi.mock("../runner/llm", () => ({ resolveAgentCheapModel: mocks.resolve }))
-import {
-  buildSelfVerificationPrompt,
-  getVerifyMode,
-  runCriticVerification,
-} from "./verify"
+import { buildSelfVerificationPrompt, getVerifyMode, runCriticVerification } from "./verify"
 
 describe("verify", () => {
-  const args = { agent: {} as any, orgId: "org", roomId: "room", taskBrief: "Fix auth", proposedOutput: "Done", cycle: 0 }
+  const args = {
+    agent: {} as any,
+    orgId: "org",
+    roomId: "room",
+    taskBrief: "Fix auth",
+    proposedOutput: "Done",
+    cycle: 0,
+  }
 
   it("never turns a revision limit into a successful verification", async () => {
     expect((await runCriticVerification({ ...args, cycle: 2 })).pass).toBe(false)
@@ -36,7 +42,9 @@ describe("verify", () => {
   })
 
   it("builds self-verification checklist containing requirements and evidence prompts", () => {
-    const prompt = buildSelfVerificationPrompt("Refactor authentication module to support OAuth PKCE")
+    const prompt = buildSelfVerificationPrompt(
+      "Refactor authentication module to support OAuth PKCE",
+    )
     expect(prompt).toContain("Verification checklist before concluding:")
     expect(prompt).toContain("Refactor authentication module to support OAuth PKCE")
     expect(prompt).toContain("Re-read the initial prompt and task requirements")

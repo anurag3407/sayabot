@@ -16,7 +16,9 @@ describe("OpenRouter Connector", () => {
   })
 
   it("builds valid PKCE OAuth URL with S256 challenge", async () => {
-    const { authUrl, codeVerifier } = await buildOpenRouterOAuthUrl("http://localhost:3000/callback")
+    const { authUrl, codeVerifier } = await buildOpenRouterOAuthUrl(
+      "http://localhost:3000/callback",
+    )
     expect(codeVerifier.length).toBeGreaterThan(32)
     expect(authUrl).toContain("https://openrouter.ai/auth")
     expect(authUrl).toContain("code_challenge_method=S256")

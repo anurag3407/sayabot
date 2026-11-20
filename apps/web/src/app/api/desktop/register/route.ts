@@ -36,7 +36,10 @@ export async function POST(request: Request) {
     }
   }
   if (!who) return NextResponse.json({ error: "unauthorized" }, { status: 401 })
-  const name = typeof body.name === "string" && body.name.trim() ? body.name.trim().slice(0, 80) : "My computer"
+  const name =
+    typeof body.name === "string" && body.name.trim()
+      ? body.name.trim().slice(0, 80)
+      : "My computer"
   const platform = typeof body.platform === "string" ? body.platform.slice(0, 20) : "unknown"
   const version = typeof body.version === "string" ? body.version.slice(0, 40) : null
   const admin = createAdminClient()
@@ -46,7 +49,13 @@ export async function POST(request: Request) {
   if (existing && existing.user_id === who.user.id) {
     await admin
       .from("desktop_hosts")
-      .update({ name, platform, app_version: version, token_hash: token.hash, last_seen_at: new Date().toISOString() })
+      .update({
+        name,
+        platform,
+        app_version: version,
+        token_hash: token.hash,
+        last_seen_at: new Date().toISOString(),
+      })
       .eq("id", existing.id)
     return NextResponse.json({
       hostId: existing.id,
@@ -68,7 +77,8 @@ export async function POST(request: Request) {
     })
     .select("id")
     .single()
-  if (error || !data) return NextResponse.json({ error: error?.message ?? "could not register" }, { status: 500 })
+  if (error || !data)
+    return NextResponse.json({ error: error?.message ?? "could not register" }, { status: 500 })
   return NextResponse.json({
     hostId: data.id,
     hostToken: token.token,

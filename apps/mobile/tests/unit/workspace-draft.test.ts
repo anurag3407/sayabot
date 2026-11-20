@@ -1,6 +1,11 @@
 import { strict as assert } from "node:assert"
 import { isDemoMode, setDemoMode, subscribeDemoMode } from "../../src/core/session-mode.ts"
-import { delegationMessage, roomNameSlug, taskInsertRow, taskPriority } from "../../src/core/workspace-draft.ts"
+import {
+  delegationMessage,
+  roomNameSlug,
+  taskInsertRow,
+  taskPriority,
+} from "../../src/core/workspace-draft.ts"
 
 let failures = 0
 function test(name: string, fn: () => void) {
@@ -118,9 +123,21 @@ if (failures > 0) {
 console.log("workspace draft: all passed")
 
 test("task insert delegates to an agent only when one is chosen", () => {
-  const delegated = taskInsertRow({ orgId: "o", roomId: "r", userId: "u", title: "Draft", assigneeAgentId: "agent-1" })
+  const delegated = taskInsertRow({
+    orgId: "o",
+    roomId: "r",
+    userId: "u",
+    title: "Draft",
+    assigneeAgentId: "agent-1",
+  })
   assert.equal(delegated.assignee_agent_id, "agent-1")
-  const open = taskInsertRow({ orgId: "o", roomId: "r", userId: "u", title: "Draft", assigneeAgentId: null })
+  const open = taskInsertRow({
+    orgId: "o",
+    roomId: "r",
+    userId: "u",
+    title: "Draft",
+    assigneeAgentId: null,
+  })
   assert.equal("assignee_agent_id" in open, false)
 })
 
@@ -138,7 +155,10 @@ test("pair links come from the sayabot scheme with a code", () => {
     code: "ABCD2345",
     server: "https://x.test",
   })
-  assert.deepEqual(parsePairLink("sayabot://pair?code=ABCD2345&server=javascript:alert(1)"), { code: "ABCD2345", server: null })
+  assert.deepEqual(parsePairLink("sayabot://pair?code=ABCD2345&server=javascript:alert(1)"), {
+    code: "ABCD2345",
+    server: null,
+  })
   assert.equal(parsePairLink("sayabot://auth/callback?access_token=x"), null)
   assert.equal(parsePairLink("https://evil.test/pair?code=X"), null)
   assert.equal(parsePairLink("sayabot://pair?server=https://x.test"), null)

@@ -104,7 +104,8 @@ export function BotBasicsForm({
         </div>
 
         <p className="text-[12px] text-faint">
-          Defines the persona, instructions, reasoning rules, and constraints. Updates take effect immediately on next turns across all rooms.
+          Defines the persona, instructions, reasoning rules, and constraints. Updates take effect
+          immediately on next turns across all rooms.
         </p>
 
         {canEdit && (

@@ -638,7 +638,11 @@ export async function listOrgToolConfigs(orgId: string): Promise<OrgToolConfigVi
         if (parsed.keys && typeof parsed.keys === "object") {
           configuredProviders = Object.keys(parsed.keys).filter((k) => Boolean(parsed.keys[k]))
         }
-        if (provider && !configuredProviders.includes(provider) && (parsed.apiKey || provider === "duckduckgo")) {
+        if (
+          provider &&
+          !configuredProviders.includes(provider) &&
+          (parsed.apiKey || provider === "duckduckgo")
+        ) {
           configuredProviders.push(provider)
         }
       } catch {}

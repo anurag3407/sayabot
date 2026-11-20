@@ -19,11 +19,15 @@ function text(value: unknown, max: number): string {
 export async function POST(req: Request, { params }: { params: Promise<{ code: string }> }) {
   const { code } = await params
   const invite = await loadBotInviteByCode(code)
-  if (!invite) return json({ status: "not_found", message: "This invite link does not exist." }, 404)
+  if (!invite)
+    return json({ status: "not_found", message: "This invite link does not exist." }, 404)
 
   const state = inviteState(invite)
   if (state === "expired" || state === "revoked" || state === "declined") {
-    return json({ status: state, message: `This invite link is ${state}. Ask the person for a new link.` }, 410)
+    return json(
+      { status: state, message: `This invite link is ${state}. Ask the person for a new link.` },
+      410,
+    )
   }
 
   let body: Record<string, unknown> = {}
@@ -39,7 +43,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ code: s
   const admin = createAdminClient()
 
   if (state !== "waiting") {
-    const attempts = [...(invite.rejected_attempts ?? []), { at: new Date().toISOString(), app, userAgent }].slice(-10)
+    const attempts = [
+      ...(invite.rejected_attempts ?? []),
+      { at: new Date().toISOString(), app, userAgent },
+    ].slice(-10)
     await admin.from("bot_invites").update({ rejected_attempts: attempts }).eq("id", invite.id)
     return json(
       {
@@ -67,7 +74,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ code: s
     .eq("status", "waiting")
     .select("id")
     .maybeSingle()
-  if (!claimed) return json({ status: "already_used", message: "Another app asked a moment earlier. Ask the person for a new link." }, 409)
+  if (!claimed)
+    return json(
+      {
+        status: "already_used",
+        message: "Another app asked a moment earlier. Ask the person for a new link.",
+      },
+      409,
+    )
 
   const ctx = await roomContext(invite.room_id)
   const label = normalizeClient(app).label

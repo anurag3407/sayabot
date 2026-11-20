@@ -15,7 +15,7 @@ describe("reachOf", () => {
     expect(reachOf("http://192.168.1.4:3000")).toBe("same-wifi")
     expect(reachOf("http://macbook.local:3000")).toBe("same-wifi")
     expect(reachOf("https://abc.trycloudflare.com")).toBe("anywhere")
-    expect(reachOf("https://sayabot.sayalabs.in")).toBe("anywhere")
+    expect(reachOf("https://sayabot.example.com")).toBe("anywhere")
   })
   it("treats 0.0.0.0 as this machine", () => {
     expect(isLoopbackHost("0.0.0.0")).toBe(true)

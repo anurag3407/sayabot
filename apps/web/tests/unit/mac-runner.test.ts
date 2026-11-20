@@ -21,7 +21,8 @@ vi.mock("@/lib/supabase/admin", () => ({
   }),
 }))
 
-const { macAllowRules, macApprovalBlock, macPermissions, rememberMacAllow } = await import("@/lib/mac-runner")
+const { macAllowRules, macApprovalBlock, macPermissions, rememberMacAllow } =
+  await import("@/lib/mac-runner")
 const { describeMacStep, macAllowLabel, readMacMarker, withoutMacMarker } =
   await import("@/lib/mac-runner-shared")
 

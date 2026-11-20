@@ -48,7 +48,8 @@ export async function getRunTraceAction(input: {
 
   const { data: run } = await admin
     .from("agent_runs")
-    .select(`
+    .select(
+      `
       id,
       session_id,
       room_id,
@@ -75,7 +76,8 @@ export async function getRunTraceAction(input: {
         display_name,
         handle
       )
-    `)
+    `,
+    )
     .eq("id", resolvedRunId)
     .maybeSingle()
 
@@ -106,7 +108,8 @@ export async function getRunTraceAction(input: {
   // Fetch any child subagent runs
   const { data: rawSubagentRuns } = await admin
     .from("agent_runs")
-    .select(`
+    .select(
+      `
       id,
       session_id,
       room_id,
@@ -133,7 +136,8 @@ export async function getRunTraceAction(input: {
         display_name,
         handle
       )
-    `)
+    `,
+    )
     .eq("parent_run_id", resolvedRunId)
     .order("created_at", { ascending: true })
 
@@ -204,7 +208,7 @@ export async function getRunTraceAction(input: {
       role: child.role,
       status: child.status,
       finishReason: child.finish_reason,
-      stepsCount: child.steps ?? (subagentStepsMap[child.id]?.length ?? 0),
+      stepsCount: child.steps ?? subagentStepsMap[child.id]?.length ?? 0,
       engine: child.engine,
       parentRunId: child.parent_run_id,
       waitingReason: child.waiting_reason,

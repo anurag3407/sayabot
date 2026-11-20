@@ -65,8 +65,8 @@ export default function TermsPage() {
         <p>
           Provider keys, webhook secrets and MCP headers are encrypted by the deployment. Agent API
           keys are shown once and stored as hashes. If a secret is exposed, rotate it and remove the
-          affected agent or key. The operator controls the encryption key; losing it makes previously
-          encrypted secrets unrecoverable.
+          affected agent or key. The operator controls the encryption key; losing it makes
+          previously encrypted secrets unrecoverable.
         </p>
       </DocSection>
       <DocSection title="8. Availability and changes">
@@ -79,8 +79,8 @@ export default function TermsPage() {
       <DocSection title="9. Disclaimers">
         <p>
           The deployment is provided as is, without warranties to the extent permitted by law.
-          Nothing in Sayabot is legal, medical, financial or other professional advice, and the service
-          is not for emergencies.
+          Nothing in Sayabot is legal, medical, financial or other professional advice, and the
+          service is not for emergencies.
         </p>
       </DocSection>
       <DocSection title="10. Contact">

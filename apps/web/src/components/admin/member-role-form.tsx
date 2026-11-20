@@ -17,7 +17,10 @@ export function MemberRoleForm({
   role: OrgRole
   allowOwner: boolean
 }) {
-  const [state, action, pending] = useActionState<ActionResult | null, FormData>(setMemberRole, null)
+  const [state, action, pending] = useActionState<ActionResult | null, FormData>(
+    setMemberRole,
+    null,
+  )
 
   return (
     <form action={action} className="flex flex-wrap items-center gap-2">

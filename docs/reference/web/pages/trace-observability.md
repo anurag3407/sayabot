@@ -12,16 +12,16 @@ Source files: `apps/web/src/components/trace/inspect-trace-button.tsx`, `apps/we
 
 `InspectTraceButton` is a tiny client component. Props:
 
-| Prop | Type | Default | Purpose |
-| :--- | :--- | :--- | :--- |
-| `orgSlug` | `string` | — | workspace scope for the trace action |
-| `runId` | `string \| null` | — | explicit run to inspect |
-| `messageId` | `string \| null` | — | resolve the run from a message |
-| `agentName` | `string \| null` | — | header fallback before the trace loads |
-| `label` | `string` | `"Inspect"` | button text |
-| `className` | `string` | — | extra classes |
-| `variant` | `"ghost" \| "outline" \| "danger"` | `"ghost"` | ghost is faint mono; danger (red border) is used for failed runs |
-| `size` | `"sm" \| "xs"` | `"xs"` | 24px vs 28px tall |
+| Prop        | Type                               | Default     | Purpose                                                          |
+| :---------- | :--------------------------------- | :---------- | :--------------------------------------------------------------- |
+| `orgSlug`   | `string`                           | —           | workspace scope for the trace action                             |
+| `runId`     | `string \| null`                   | —           | explicit run to inspect                                          |
+| `messageId` | `string \| null`                   | —           | resolve the run from a message                                   |
+| `agentName` | `string \| null`                   | —           | header fallback before the trace loads                           |
+| `label`     | `string`                           | `"Inspect"` | button text                                                      |
+| `className` | `string`                           | —           | extra classes                                                    |
+| `variant`   | `"ghost" \| "outline" \| "danger"` | `"ghost"`   | ghost is faint mono; danger (red border) is used for failed runs |
+| `size`      | `"sm" \| "xs"`                     | `"xs"`      | 24px vs 28px tall                                                |
 
 The button (with `TraceIcon` and the title "Inspect run steps, latency, tokens & subagents") toggles local `open` state and always renders the sibling `<RunInspectorDrawer>`; the drawer returns `null` itself when closed.
 
@@ -59,16 +59,16 @@ One collapsible card per step, matched against `trace.subagentRuns` by `step.idx
 
 ### Kind badge colors (`getKindBadge`, `run-inspector-drawer.tsx:481-524`)
 
-| Kind | Badge | Label |
-| :--- | :--- | :--- |
-| `model` | indigo | AI Reasoning & Generation |
-| `tool` | blue | Tool Execution |
-| `subagent` | purple | Subagent Delegation |
-| `verify` | amber | Critic Verification |
-| `compaction` | emerald | Memory Compaction |
-| `recall` | cyan | Memory Recall |
-| `plan` | rose | Execution Plan Update |
-| anything else | neutral | Execution Step |
+| Kind          | Badge   | Label                     |
+| :------------ | :------ | :------------------------ |
+| `model`       | indigo  | AI Reasoning & Generation |
+| `tool`        | blue    | Tool Execution            |
+| `subagent`    | purple  | Subagent Delegation       |
+| `verify`      | amber   | Critic Verification       |
+| `compaction`  | emerald | Memory Compaction         |
+| `recall`      | cyan    | Memory Recall             |
+| `plan`        | rose    | Execution Plan Update     |
+| anything else | neutral | Execution Step            |
 
 `RunStepKind` is the closed union `"model" | "tool" | "compaction" | "recall" | "plan" | "subagent" | "verify"` (`lib/types.ts:500`).
 

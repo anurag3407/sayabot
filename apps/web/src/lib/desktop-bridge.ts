@@ -31,7 +31,11 @@ export function canReadLocalUsage(): boolean {
 function isPlanLimits(value: unknown): value is PlanLimits {
   if (typeof value !== "object" || value === null) return false
   const item = value as Record<string, unknown>
-  return typeof item.provider === "string" && typeof item.label === "string" && Array.isArray(item.windows)
+  return (
+    typeof item.provider === "string" &&
+    typeof item.label === "string" &&
+    Array.isArray(item.windows)
+  )
 }
 
 export async function readPlanLimits(force = false): Promise<PlanLimits[] | null> {

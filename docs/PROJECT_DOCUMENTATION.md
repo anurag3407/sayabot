@@ -33,6 +33,7 @@
 **Sayabot** is an open-source, full-stack autonomous multi-agent platform and collaborative workspace. It transforms how human engineering teams and autonomous AI agents collaborate by moving beyond isolated chatbot wrappers and single-tenant terminal scripts into a unified multiplayer workspace.
 
 In Sayabot, humans and AI agents share:
+
 - **Persistent Multiplayer Rooms**: Single threads with real-time presence, contextual awareness, and deterministic turn arbitration.
 - **Collaborative Live Canvases**: Shared Monaco and markdown canvases powered by Yjs Conflict-Free Replicated Data Types (CRDTs) where humans and multiple agents type and edit simultaneously.
 - **Dedicated Linux Computers**: Persistent Docker containers (`/home/bot`) where each agent can clone repositories, run compilers, execute tests, inspect services, and run headless browsers via Chrome DevTools Protocol (CDP).
@@ -57,6 +58,7 @@ In Sayabot, humans and AI agents share:
 ### 1.2 The "Bring-Your-Own-Bot" Paradigm
 
 Sayabot does not force users into a single proprietary LLM provider. Instead, it supports a dual integration model:
+
 1. **Hosted Server Agents**: Internal reasoning loops running directly on the orchestrator using standard API keys across 17 supported providers (Anthropic, OpenAI, Google Gemini, DeepSeek, Ollama, Groq, Mistral, xAI, AWS Bedrock, etc.).
 2. **Bring-Your-Own-Bot (BYOB)**: External coding agents that users already run and pay for—such as **Claude Code**, **OpenAI Codex**, **Cursor**, **Hermes**, or **ChatGPT**—connect directly into Sayabot rooms via the Model Context Protocol (MCP) or room webhooks. The external agents keep their own credentials and CLI harnesses while collaborating in the room.
 
@@ -151,18 +153,18 @@ sayabot/
 
 ### Workspace Packages Summary
 
-| Package / App | Filter Flag | Tech Stack | Role & Core Responsibilities |
-| :--- | :--- | :--- | :--- |
-| **`apps/web`** | `@sayabot/web` | Next.js 16, React 19, Tailwind CSS v4, Monaco, Yjs | Server-rendered pages, chat composer, visual routine canvas, collaborative live canvas, approval dialogs, settings drawers, and Supabase SSR auth. |
-| **`apps/landing`** | `@sayabot/landing` | Next.js 16, React 19, Tailwind CSS v4, Canvas | Static public marketing site (exported to `out/`), high-framerate animated canvas mascot, release download mirrors. |
-| **`apps/orchestrator`**| `@sayabot/orchestrator`| Hono, Node.js 22+, Vercel AI SDK, pg-boss | Coordinates turn taking, acquires PostgreSQL advisory locks, executes Agent Loop V2, schedules distributed cron routines, exposes `/api/v1/mcp`. |
-| **`apps/computerd`** | `@sayabot/computerd` | Docker Engine API, `agentd`, `node-pty`, CDP | Spawns and manages persistent container environments (`saaya-bot-${agentId}`), mounts `/home/bot`, runs `agentd` file and execution daemon. |
-| **`apps/egress`** | `@sayabot/egress` | Hono, Fastify proxy, Undici | In-flight secret placeholder resolution, RFC 1918 private network blocking, loopback prevention, and DNS rebinding defense. |
-| **`apps/mobile`** | `@sayabot/mobile` | Expo SDK 52, React Native, SQLite, Expo Push | Native iOS & Android client with offline SQLite cache, instant push notifications for tool approvals, and room chat. |
-| **`apps/desktop`** | `@sayabot/desktop` | Electron 33+, Node.js, TypeScript | Desktop companion for Mac/Windows, local agent runner for host command execution, guest mode, and workstation pairing. |
-| **`packages/core`** | `@sayabot/core` | Pure TypeScript (Zero-Dep) | Capability parsers (`parseCapabilities`), secret redactor (`redactSecrets`), turn state machines, thinking block folding, cron parser. |
-| **`packages/db`** | `@sayabot/db` | Drizzle ORM, PostgreSQL, `pg` | Database schemas (26 modules), migration runner (0001–0040), database seed script, and RLS policies. |
-| **`packages/llm`** | `@sayabot/llm` | Vercel AI SDK, `@ai-sdk/*`, AES-256-GCM | 17-provider model routing, AES-256-GCM envelope crypto (`encryptSecret`, `sealSecret`), MCP client gateway, Langfuse telemetry. |
+| Package / App           | Filter Flag             | Tech Stack                                         | Role & Core Responsibilities                                                                                                                       |
+| :---------------------- | :---------------------- | :------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`apps/web`**          | `@sayabot/web`          | Next.js 16, React 19, Tailwind CSS v4, Monaco, Yjs | Server-rendered pages, chat composer, visual routine canvas, collaborative live canvas, approval dialogs, settings drawers, and Supabase SSR auth. |
+| **`apps/landing`**      | `@sayabot/landing`      | Next.js 16, React 19, Tailwind CSS v4, Canvas      | Static public marketing site (exported to `out/`), high-framerate animated canvas mascot, release download mirrors.                                |
+| **`apps/orchestrator`** | `@sayabot/orchestrator` | Hono, Node.js 22+, Vercel AI SDK, pg-boss          | Coordinates turn taking, acquires PostgreSQL advisory locks, executes Agent Loop V2, schedules distributed cron routines, exposes `/api/v1/mcp`.   |
+| **`apps/computerd`**    | `@sayabot/computerd`    | Docker Engine API, `agentd`, `node-pty`, CDP       | Spawns and manages persistent container environments (`saaya-bot-${agentId}`), mounts `/home/bot`, runs `agentd` file and execution daemon.        |
+| **`apps/egress`**       | `@sayabot/egress`       | Hono, Fastify proxy, Undici                        | In-flight secret placeholder resolution, RFC 1918 private network blocking, loopback prevention, and DNS rebinding defense.                        |
+| **`apps/mobile`**       | `@sayabot/mobile`       | Expo SDK 52, React Native, SQLite, Expo Push       | Native iOS & Android client with offline SQLite cache, instant push notifications for tool approvals, and room chat.                               |
+| **`apps/desktop`**      | `@sayabot/desktop`      | Electron 33+, Node.js, TypeScript                  | Desktop companion for Mac/Windows, local agent runner for host command execution, guest mode, and workstation pairing.                             |
+| **`packages/core`**     | `@sayabot/core`         | Pure TypeScript (Zero-Dep)                         | Capability parsers (`parseCapabilities`), secret redactor (`redactSecrets`), turn state machines, thinking block folding, cron parser.             |
+| **`packages/db`**       | `@sayabot/db`           | Drizzle ORM, PostgreSQL, `pg`                      | Database schemas (26 modules), migration runner (0001–0040), database seed script, and RLS policies.                                               |
+| **`packages/llm`**      | `@sayabot/llm`          | Vercel AI SDK, `@ai-sdk/*`, AES-256-GCM            | 17-provider model routing, AES-256-GCM envelope crypto (`encryptSecret`, `sealSecret`), MCP client gateway, Langfuse telemetry.                    |
 
 ---
 
@@ -183,13 +185,14 @@ The following five architectural invariants govern all code generation, tool imp
 ```
 
 ### Rule 1: Zero Plaintext Secrets (AES-256-GCM MESH_KEK Envelope Encryption)
+
 - **Envelope Specification** ([packages/llm/src/crypto.ts](file:///Users/jarvis/saaya/packages/llm/src/crypto.ts)):
   All credentials, OAuth refresh tokens, API keys, webhook signing secrets, and database connection strings are encrypted at rest using AES-256-GCM with a 32-byte master key (`MESH_KEK` or `SAYABOT_KEK`).
   ```typescript
   interface EncryptedSecret {
     ciphertext: string // Base64 encoded payload
-    iv: string         // Base64 encoded 12-byte initialization vector
-    tag: string        // Base64 encoded 16-byte authentication tag
+    iv: string // Base64 encoded 12-byte initialization vector
+    tag: string // Base64 encoded 16-byte authentication tag
   }
   ```
 - **Secret Redaction**:
@@ -198,6 +201,7 @@ The following five architectural invariants govern all code generation, tool imp
   Agents never see plaintext secrets. Models receive placeholder tokens (e.g. `$SECRET{PROD_DB_URL}`). The orchestrator and egress proxy substitute real credentials in-flight on outbound HTTP requests.
 
 ### Rule 2: Strict Advisory Locking (`withRoomLock`)
+
 - Turn execution is strictly serialized per room across all orchestrator instances using PostgreSQL session-level advisory locks ([apps/orchestrator/src/db.ts](file:///Users/jarvis/saaya/apps/orchestrator/src/db.ts)):
   ```typescript
   export async function withRoomLock<T>(roomId: string, fn: () => Promise<T>): Promise<T> {
@@ -218,6 +222,7 @@ The following five architectural invariants govern all code generation, tool imp
 - Locks are **connection-scoped**; they must acquire a dedicated client from the pool to avoid connection hopping deadlocks.
 
 ### Rule 3: Schema-Driven Persistence & RLS Multi-Tenancy
+
 - All persistence changes must be defined in Drizzle ORM schemas under `packages/db/src/schema/*.ts`.
 - Snapshots are generated via `pnpm db:generate`.
 - Multi-tenant tenant isolation is strictly enforced via PostgreSQL Row Level Security (RLS) policies in `packages/db/sql/`:
@@ -228,6 +233,7 @@ The following five architectural invariants govern all code generation, tool imp
   ```
 
 ### Rule 4: Human-in-the-Loop Approval Gates
+
 - Any tool capable of destructive mutations, file overwrites outside the sandbox, shell execution, external communications, or spending credits must declare `dangerous: true` (or a dynamic danger evaluator function).
 - When a dangerous tool is invoked:
   1. Execution halts immediately.
@@ -237,6 +243,7 @@ The following five architectural invariants govern all code generation, tool imp
   5. If the human operator approves, execution resumes; if rejected or timed out (5 minutes), the tool fails safely.
 
 ### Rule 5: Sandboxed Compute Isolation (`/home/bot`)
+
 - Agent workspaces run inside isolated Docker containers named `saaya-bot-${agentId}` managed by `computerd`.
 - Persistent storage is mounted strictly at `/home/bot` backed by a dedicated Docker named volume.
 - Path operations inside the container are strictly confined:
@@ -277,28 +284,28 @@ erDiagram
 
 The database schemas in [packages/db/src/schema/](file:///Users/jarvis/saaya/packages/db/src/schema/) are organized into domain modules:
 
-| Schema File | Table Names | Core Responsibilities |
-| :--- | :--- | :--- |
-| `identity.ts` | `profiles`, `orgs`, `orgMembers` | User profiles, organizations, RBAC membership (`owner`, `admin`, `member`, `guest`). |
-| `invites.ts` | `roomInvites`, `workspaceInvites`, `botInvites`, `workspaceJoinRequests`, `oauthClients`, `mergeTickets` | Single-use room invite tokens, workspace invitation links, join requests, OAuth applications, and guest-to-account merge tickets. |
-| `agents.ts` | `agents`, `providerKeys`, `agentToolConfigs`, `agentConnectorGrants` | Agent definitions, model configs, system prompts, API keys, and connector scope grants. |
-| `rooms.ts` | `rooms`, `roomMembers`, `roomSchedules` | Multi-agent collaboration rooms, turn modes (`mentions`, `debate`, `moderated`), RPM limits, and daily budgets. |
-| `messages.ts` | `messages` | Chat messages, human/agent/system attribution, thread roots, metadata, and token usage. |
-| `canvas.ts` | `canvases`, `canvasVersions` | Collaborative documents (Markdown, code, SVG), live content, Yjs update snapshots. |
-| `tasks.ts` | `tasks`, `taskEvents`, `taskComments` | Multi-agent task board, assignees, state machine (`open`, `in_progress`, `stuck`, `done`), blockers, and outcomes. |
-| `facts.ts` | `ownerFacts` | User-specific persistent context and instructions known across all rooms. |
-| `memory.ts` | `memories`, `memoryEmbeddings`, `memorySources`, `openLoops`, `memoryLinks`, `vectorProviders` | Cognitive memory system: episodic observations, semantic vectors (pgvector), entity knowledge graphs, and open loops. |
-| `routines.ts` | `routines`, `routineRuns` | Distributed cron routines (Hermes engine), visual n8n-style graphs, execution logs. |
-| `meetings.ts` | `meetings`, `meetingParticipants` | Scheduled multi-agent meetings, standups, and summaries. |
-| `connectors.ts`| `workspaceConnectors`, `connectorQuotas` | Enterprise connectors (Slack, Drive, GitHub, Jira, Notion) with AES-256-GCM sealed credentials. |
-| `vault.ts` | `vaultSecrets` | Encrypted organizational secrets referenced via `$SECRET{...}` placeholder tokens. |
-| `computers.ts` | `agentComputers`, `computerSettings`, `computerJobs` | Persistent computer state, Docker container IDs, placement configs, and asynchronous background jobs. |
-| `desktop.ts` | `desktopHosts`, `desktopLocalApps` | Paired Mac/Windows companion workstations and local MCP tool caches. |
-| `devices.ts` | `devicePairings`, `pushSubscriptions` | Paired mobile devices, Web Push subscriptions, and APNs/Expo push tokens. |
-| `engine.ts` | `turnSessions`, `agentRuns`, `runSteps`, `runTranscripts` | Turn coordination sessions, agent reasoning passes, and step-by-step token transcripts. |
-| `tools.ts` | `skills`, `mcpServers`, `toolCalls` | Active skills, registered MCP servers (transports: stdio, SSE, HTTP), and audited tool logs. |
-| `ops.ts` | `webhooks`, `webhookDeliveries`, `auditLogs`, `storageUsage` | Inbound/outbound webhooks, security audit events, and storage rollups. |
-| `billing.ts` | `orgPlans`, `usageRollups` | Subscription tiers (`free`, `pro`, `enterprise`, `cloud`), monthly token rollups, and turn quotas. |
+| Schema File     | Table Names                                                                                              | Core Responsibilities                                                                                                             |
+| :-------------- | :------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------- |
+| `identity.ts`   | `profiles`, `orgs`, `orgMembers`                                                                         | User profiles, organizations, RBAC membership (`owner`, `admin`, `member`, `guest`).                                              |
+| `invites.ts`    | `roomInvites`, `workspaceInvites`, `botInvites`, `workspaceJoinRequests`, `oauthClients`, `mergeTickets` | Single-use room invite tokens, workspace invitation links, join requests, OAuth applications, and guest-to-account merge tickets. |
+| `agents.ts`     | `agents`, `providerKeys`, `agentToolConfigs`, `agentConnectorGrants`                                     | Agent definitions, model configs, system prompts, API keys, and connector scope grants.                                           |
+| `rooms.ts`      | `rooms`, `roomMembers`, `roomSchedules`                                                                  | Multi-agent collaboration rooms, turn modes (`mentions`, `debate`, `moderated`), RPM limits, and daily budgets.                   |
+| `messages.ts`   | `messages`                                                                                               | Chat messages, human/agent/system attribution, thread roots, metadata, and token usage.                                           |
+| `canvas.ts`     | `canvases`, `canvasVersions`                                                                             | Collaborative documents (Markdown, code, SVG), live content, Yjs update snapshots.                                                |
+| `tasks.ts`      | `tasks`, `taskEvents`, `taskComments`                                                                    | Multi-agent task board, assignees, state machine (`open`, `in_progress`, `stuck`, `done`), blockers, and outcomes.                |
+| `facts.ts`      | `ownerFacts`                                                                                             | User-specific persistent context and instructions known across all rooms.                                                         |
+| `memory.ts`     | `memories`, `memoryEmbeddings`, `memorySources`, `openLoops`, `memoryLinks`, `vectorProviders`           | Cognitive memory system: episodic observations, semantic vectors (pgvector), entity knowledge graphs, and open loops.             |
+| `routines.ts`   | `routines`, `routineRuns`                                                                                | Distributed cron routines (Hermes engine), visual n8n-style graphs, execution logs.                                               |
+| `meetings.ts`   | `meetings`, `meetingParticipants`                                                                        | Scheduled multi-agent meetings, standups, and summaries.                                                                          |
+| `connectors.ts` | `workspaceConnectors`, `connectorQuotas`                                                                 | Enterprise connectors (Slack, Drive, GitHub, Jira, Notion) with AES-256-GCM sealed credentials.                                   |
+| `vault.ts`      | `vaultSecrets`                                                                                           | Encrypted organizational secrets referenced via `$SECRET{...}` placeholder tokens.                                                |
+| `computers.ts`  | `agentComputers`, `computerSettings`, `computerJobs`                                                     | Persistent computer state, Docker container IDs, placement configs, and asynchronous background jobs.                             |
+| `desktop.ts`    | `desktopHosts`, `desktopLocalApps`                                                                       | Paired Mac/Windows companion workstations and local MCP tool caches.                                                              |
+| `devices.ts`    | `devicePairings`, `pushSubscriptions`                                                                    | Paired mobile devices, Web Push subscriptions, and APNs/Expo push tokens.                                                         |
+| `engine.ts`     | `turnSessions`, `agentRuns`, `runSteps`, `runTranscripts`                                                | Turn coordination sessions, agent reasoning passes, and step-by-step token transcripts.                                           |
+| `tools.ts`      | `skills`, `mcpServers`, `toolCalls`                                                                      | Active skills, registered MCP servers (transports: stdio, SSE, HTTP), and audited tool logs.                                      |
+| `ops.ts`        | `webhooks`, `webhookDeliveries`, `auditLogs`, `storageUsage`                                             | Inbound/outbound webhooks, security audit events, and storage rollups.                                                            |
+| `billing.ts`    | `orgPlans`, `usageRollups`                                                                               | Subscription tiers (`free`, `pro`, `enterprise`, `cloud`), monthly token rollups, and turn quotas.                                |
 
 ### 5.2 Migration Catalog (0001–0040)
 
@@ -341,11 +348,11 @@ sequenceDiagram
 
     Coord->>Coord: Plan Turn Queue (mentions: @maya)
     Coord->>Bus: broadcast("turn.state", queue: ["maya"])
-    
+
     Coord->>Engine: startAgentTurn(agent: maya, trigger)
     Engine->>Engine: Assemble context (history, memory, canvas, skills)
     Engine->>Engine: LLM Reasoning Pass (Generate text & tool calls)
-    
+
     opt Tool Call (Dangerous: e.g. git push)
         Engine->>DB: INSERT tool_calls (status: pending_approval)
         Engine->>Bus: broadcast("tool.approval_requested", callId)
@@ -384,6 +391,7 @@ The room configuration (`rooms.turnMode`) governs how turns are queued:
 ### 6.2 Pre-Turn Breakers & Safety Caps
 
 Before executing any turn, `checkPreTurnBreakers()` validates room safety invariants:
+
 - **Turn Cap**: Maximum turns per session (default 12; customizable per task).
 - **RPM Limit**: Rate-limiting requests per minute per room.
 - **Daily Budget Cap**: Halts room execution if estimated spending exceeds `rooms.dailyBudgetUsd`.
@@ -392,6 +400,7 @@ Before executing any turn, `checkPreTurnBreakers()` validates room safety invari
 ### 6.3 Interruption Bus (`LISTEN/NOTIFY`)
 
 If a human submits a message while an agent is generating:
+
 1. `interruptRoom(roomId)` is invoked.
 2. PostgreSQL emits `NOTIFY mesh_room_interrupt, '<roomId>'`.
 3. The active turn's `AbortController` triggers, aborting LLM streaming.
@@ -400,6 +409,7 @@ If a human submits a message while an agent is generating:
 ### 6.4 The Agent Loop V2 & Thinking Blocks
 
 The engine execution loop ([apps/orchestrator/src/engine/run.ts](file:///Users/jarvis/saaya/apps/orchestrator/src/engine/run.ts)):
+
 - **Context Assembly**: Concatenates system prompt, room directives, owner facts, active skills, collaborative canvas snapshot, and retrieved semantic memories.
 - **Thinking Blocks**: Reasoned tokens wrapped in `<thinking>...</thinking>` are extracted via `@sayabot/core/thinking` and folded into collapsible UI rows in the room chat.
 - **Token Compaction Ladder**: If the context approaches token limits, a 3-stage compaction pipeline activates:
@@ -443,6 +453,7 @@ flowchart LR
 ### 7.1 Local Container Daemon (`apps/computerd`)
 
 The primary sandbox engine is `computerd`, a background daemon managing container lifecycles:
+
 - **Dedicated Container**: Spawns a hardened Docker container named `saaya-bot-${agentId}` with persistent volume storage mounted at `/home/bot`.
 - **The `agentd` Daemon**: Runs inside the container, exposing an internal Unix socket server for low-latency operations:
   - Command execution via `node-pty` with stdout/stderr streaming.
@@ -453,6 +464,7 @@ The primary sandbox engine is `computerd`, a background daemon managing containe
 ### 7.2 Cloud Compute Providers
 
 For heavy workloads or environments without local Docker:
+
 - **Boat-Hosted Desktops**: Cloud Linux desktops running XFCE/Kasm with WebRTC streaming into the web app, allowing agents to operate desktop applications.
 - **VPS-over-SSH**: Remote Docker hosts connected via encrypted SSH keys stored in the database. Features an automated sleep policy to stop idle cloud instances.
 - **E2B MicroVMs**: Ephemeral hardware-virtualized sandboxes for untrusted code execution.
@@ -460,6 +472,7 @@ For heavy workloads or environments without local Docker:
 ### 7.3 Headless Browser Automation (CDP)
 
 Sayabot embeds a headless Chromium browser controllable via the Chrome DevTools Protocol:
+
 - Tools: `browser_navigate`, `browser_screenshot`, `browser_click`, `browser_type`, `browser_eval`.
 - Captures real-time DOM states, network requests, console errors, and full-page screenshots streamed directly into chat cards.
 
@@ -472,7 +485,7 @@ Sayabot implements an audited execution pipeline where every tool call is valida
 ```mermaid
 flowchart TD
     AgentCall["Agent Requests Tool Invocation\n(e.g. computer_shell, web_fetch, slack_send)"]
-    
+
     subgraph AuditPipeline["Audited Tool Pipeline (toAuditedTools)"]
         ValidateSchema["Zod Schema Validation"]
         CheckDanger{"Is Tool Dangerous?\n(dangerous: true or dynamic rule)"}
@@ -517,22 +530,23 @@ flowchart TD
 
 ### 8.1 Tool Inventory (60+ Built-In Tools)
 
-| Category | Tool Names | Dangerous? | Description |
-| :--- | :--- | :--- | :--- |
-| **Computer & Shell** | `computer_shell`, `computer_read_file`, `computer_write_file`, `computer_patch_file`, `computer_list_directory`, `computer_file_tree` | Dynamic (`write`, `shell` = `true`) | Execute bash commands, read/write files, and manipulate disk state inside `/home/bot`. |
-| **Browser CDP** | `browser_navigate`, `browser_screenshot`, `browser_click`, `browser_type`, `browser_press_key`, `browser_eval` | False | Automated Chromium browser control, web scraping, and visual screenshot capture. |
-| **Collaborative Canvas** | `canvas_read`, `canvas_write`, `canvas_patch` | `write` / `patch` = `true` | Read and edit the room's live collaborative document using structured diffs. |
-| **Tasks & Project** | `task_create`, `task_claim`, `task_update`, `task_list`, `task_comment`, `task_close` | False | Manage the multiplayer task board, update blockers, set assignees, and record outcomes. |
-| **Cognitive Memory** | `remember`, `recall`, `open_loop`, `reflect`, `graph_walk`, `forget` | False | Store episodic memories, perform semantic searches, update entity graphs, and track open loops. |
-| **Web & Knowledge** | `web_search`, `web_fetch` | False | Query search providers (10 backends) and fetch cleaned, Markdown-formatted web pages. |
-| **Document OCR** | `document_extract`, `document_ocr` | False | Extract structured Markdown from PDFs, spreadsheets, and scanned documents. |
-| **Workspaces** | `workspace_fork`, `workspace_inspect`, `verify_workspace`, `report_findings` | False | Inspect repository directory trees, run test suites, and report verification findings. |
-| **Secret Broker** | `use_secret` | False | Request placeholder tokens (`$SECRET{...}`) for outbound API communication. |
-| **Cron & Schedule** | `cronjob_schedule`, `cronjob_delete` | True | Schedule autonomous background routines and periodic agent check-ins. |
+| Category                 | Tool Names                                                                                                                            | Dangerous?                          | Description                                                                                     |
+| :----------------------- | :------------------------------------------------------------------------------------------------------------------------------------ | :---------------------------------- | :---------------------------------------------------------------------------------------------- |
+| **Computer & Shell**     | `computer_shell`, `computer_read_file`, `computer_write_file`, `computer_patch_file`, `computer_list_directory`, `computer_file_tree` | Dynamic (`write`, `shell` = `true`) | Execute bash commands, read/write files, and manipulate disk state inside `/home/bot`.          |
+| **Browser CDP**          | `browser_navigate`, `browser_screenshot`, `browser_click`, `browser_type`, `browser_press_key`, `browser_eval`                        | False                               | Automated Chromium browser control, web scraping, and visual screenshot capture.                |
+| **Collaborative Canvas** | `canvas_read`, `canvas_write`, `canvas_patch`                                                                                         | `write` / `patch` = `true`          | Read and edit the room's live collaborative document using structured diffs.                    |
+| **Tasks & Project**      | `task_create`, `task_claim`, `task_update`, `task_list`, `task_comment`, `task_close`                                                 | False                               | Manage the multiplayer task board, update blockers, set assignees, and record outcomes.         |
+| **Cognitive Memory**     | `remember`, `recall`, `open_loop`, `reflect`, `graph_walk`, `forget`                                                                  | False                               | Store episodic memories, perform semantic searches, update entity graphs, and track open loops. |
+| **Web & Knowledge**      | `web_search`, `web_fetch`                                                                                                             | False                               | Query search providers (10 backends) and fetch cleaned, Markdown-formatted web pages.           |
+| **Document OCR**         | `document_extract`, `document_ocr`                                                                                                    | False                               | Extract structured Markdown from PDFs, spreadsheets, and scanned documents.                     |
+| **Workspaces**           | `workspace_fork`, `workspace_inspect`, `verify_workspace`, `report_findings`                                                          | False                               | Inspect repository directory trees, run test suites, and report verification findings.          |
+| **Secret Broker**        | `use_secret`                                                                                                                          | False                               | Request placeholder tokens (`$SECRET{...}`) for outbound API communication.                     |
+| **Cron & Schedule**      | `cronjob_schedule`, `cronjob_delete`                                                                                                  | True                                | Schedule autonomous background routines and periodic agent check-ins.                           |
 
 ### 8.2 Outbound Secret Broker & SSRF Defense
 
 The egress proxy ([apps/egress/src/index.ts](file:///Users/jarvis/saaya/apps/egress/src/index.ts)) ensures that models never touch raw credentials:
+
 1. **Zero-Knowledge Token Swapping**: Outbound requests carry placeholders like `$SECRET{STRIPE_KEY}`. The egress proxy intercepts the request, decrypts the secret using `MESH_KEK`, and injects it directly into outbound HTTP headers.
 2. **Hardened SSRF Firewall**: Egress requests are strictly validated against IP blocklists:
    - Private subnets: `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`.
@@ -565,6 +579,7 @@ Sayabot connects external enterprise services and coding clients into a cohesive
 ```
 
 Supported Connectors:
+
 - **Slack & Discord**: Bi-directional message syncing, channel monitoring, thread replies.
 - **GitHub**: Repository exploration, issue triage, branch creation, pull request creation.
 - **Google Drive**: Document search, file reading, structured export.
@@ -574,6 +589,7 @@ Supported Connectors:
 ### 9.2 Universal MCP Gateway (`/api/v1/mcp`)
 
 Sayabot exposes a complete Model Context Protocol (MCP) JSON-RPC gateway:
+
 - **Server Role**: External tools like **Claude Code**, **OpenAI Codex CLI**, or **Cursor** connect to Sayabot over SSE/HTTP at `/api/v1/mcp` using room bot keys. They gain instant access to room tasks, live canvases, memories, and computer sandboxes.
 - **Client Role**: The orchestrator connects to external MCP servers configured by users (supporting `stdio`, `sse`, and `http` transports with OAuth PKCE token exchange).
 
@@ -643,23 +659,27 @@ flowchart TD
 Sayabot delivers a responsive experience across Web, Desktop, and Mobile surfaces.
 
 ### 11.1 Web Application (`apps/web`)
+
 - **Next.js 16 & React 19**: App Router, Server Components, and Server Actions.
 - **Collaborative Live Canvas**: Yjs CRDTs backed by Hocuspocus WebSocket synchronization, featuring Monaco editor bindings, simultaneous multi-user cursors, and instant version history restore.
 - **Visual Routine Workflow Canvas**: n8n-style interactive node graph editor for scheduling automated cron routines.
 - **Real-time SSE Streaming**: Low-latency token generation streaming with collapsible `<thinking>` reasoning drawers.
 
 ### 11.2 Desktop Companion (`apps/desktop`)
+
 - **Electron Shell**: Packaged for macOS (Apple silicon & Intel DMG) and Windows 10/11 (NSIS installer).
 - **Mac Local Runner**: Allows agents to run local Mac terminal commands and file edits under strict user supervision (`Always Ask`, `Sensitive Only`, `Auto`, `Turbo` modes).
 - **Guest Mode**: Instant trial mode using Supabase anonymous authentication without requiring upfront account creation.
 - **Auto-Update Engine**: In-app zero-friction updates signed via Apple Developer ID and notarized.
 
 ### 11.3 Mobile Client (`apps/mobile`)
+
 - **Expo SDK 52 & React Native**: Native iOS and Android builds.
 - **Offline SQLite Cache**: Instant screen transitions and local caching of messages, tasks, and rooms.
 - **Push Turn Approvals**: High-priority push notifications allowing users to review and approve dangerous tool invocations in one tap while away from their workstation.
 
 ### 11.4 Landing Site (`apps/landing`)
+
 - **High-Performance Static Site**: Built with Next.js static HTML export (`out/`).
 - **60fps Mascot Animation**: Canvas-rendered mascot geometry (`@sayabot/core/mascot`).
 
@@ -674,14 +694,17 @@ Anthropic · OpenAI · Google Gemini · DeepSeek · Ollama · Groq · Mistral ·
 ```
 
 ### 12.1 Dynamic Model Resolution & Effort Ladders
+
 - Models support **Effort Ladders** (e.g. `low`, `medium`, `high`, `max`), dynamically configuring reasoning token budgets for models like Claude 3.7 Sonnet thinking mode, OpenAI o1/o3-mini, and DeepSeek R1.
 - Automatic graceful fallback: If a provider experiences rate limits (HTTP 429) or service degradation, the runner can fall back to equivalent tier models.
 
 ### 12.2 Langfuse Observability & Telemetry
+
 - Optional tracing integration via Langfuse ([packages/llm/src/langfuse.ts](file:///Users/jarvis/saaya/packages/llm/src/langfuse.ts)).
 - Captures full generation traces, input/output token counts, execution latencies, tool parameters, and calculated costs per run.
 
 ### 12.3 Real-Time Cost Accounting
+
 - Comprehensive token pricing tables maintained in `@sayabot/core/cost`.
 - Calculates exact costs per turn based on cached input tokens, raw input tokens, and output completion tokens.
 - Monthly rollups in `usage_rollups` enforce plan budget limits (`free`, `pro`, `enterprise`).
@@ -701,25 +724,26 @@ Anthropic · OpenAI · Google Gemini · DeepSeek · Ollama · Groq · Mistral ·
 
 ### 13.2 Environment Variables Reference
 
-| Variable | Service | Required? | Description |
-| :--- | :--- | :--- | :--- |
-| `MESH_KEK` | All | **Yes** | 32-byte Base64/Hex master key for AES-256-GCM envelope encryption. |
-| `DATABASE_URL` | Orchestrator, DB | **Yes** | PostgreSQL connection string (`postgresql://user:pass@host:5432/db`). |
-| `NEXT_PUBLIC_SUPABASE_URL` | Web, Mobile | **Yes** | Public URL for Supabase Auth and Realtime CDC. |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Web, Mobile | **Yes** | Public Supabase anonymous API key. |
-| `SUPABASE_SERVICE_ROLE_KEY` | Orchestrator, Web | **Yes** | Superuser Supabase service role key for admin operations. |
-| `INTERNAL_API_SECRET` | Orchestrator, Web | **Yes** | Shared secret authorizing internal service-to-service calls. |
-| `SAYABOT_EDITION` | All | No | `community` (AGPL-3.0) or `cloud` (Stripe billing enabled). |
-| `ANTHROPIC_API_KEY` | Orchestrator | Optional | Default server key for Claude models. |
-| `OPENAI_API_KEY` | Orchestrator | Optional | Default server key for OpenAI models. |
-| `GEMINI_API_KEY` | Orchestrator | Optional | Default server key for Google Gemini models. |
-| `DEEPSEEK_API_KEY` | Orchestrator | Optional | Default server key for DeepSeek models. |
-| `EGRESS_PROXY_URL` | Orchestrator | Optional | HTTP proxy URL for outbound SSRF-safe requests (`http://egress:8080`). |
-| `COMPUTERD_URL` | Orchestrator | Optional | HTTP endpoint for the compute sandbox daemon (`http://computerd:4000`). |
+| Variable                        | Service           | Required? | Description                                                             |
+| :------------------------------ | :---------------- | :-------- | :---------------------------------------------------------------------- |
+| `MESH_KEK`                      | All               | **Yes**   | 32-byte Base64/Hex master key for AES-256-GCM envelope encryption.      |
+| `DATABASE_URL`                  | Orchestrator, DB  | **Yes**   | PostgreSQL connection string (`postgresql://user:pass@host:5432/db`).   |
+| `NEXT_PUBLIC_SUPABASE_URL`      | Web, Mobile       | **Yes**   | Public URL for Supabase Auth and Realtime CDC.                          |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Web, Mobile       | **Yes**   | Public Supabase anonymous API key.                                      |
+| `SUPABASE_SERVICE_ROLE_KEY`     | Orchestrator, Web | **Yes**   | Superuser Supabase service role key for admin operations.               |
+| `INTERNAL_API_SECRET`           | Orchestrator, Web | **Yes**   | Shared secret authorizing internal service-to-service calls.            |
+| `SAYABOT_EDITION`               | All               | No        | `community` (AGPL-3.0) or `cloud` (Stripe billing enabled).             |
+| `ANTHROPIC_API_KEY`             | Orchestrator      | Optional  | Default server key for Claude models.                                   |
+| `OPENAI_API_KEY`                | Orchestrator      | Optional  | Default server key for OpenAI models.                                   |
+| `GEMINI_API_KEY`                | Orchestrator      | Optional  | Default server key for Google Gemini models.                            |
+| `DEEPSEEK_API_KEY`              | Orchestrator      | Optional  | Default server key for DeepSeek models.                                 |
+| `EGRESS_PROXY_URL`              | Orchestrator      | Optional  | HTTP proxy URL for outbound SSRF-safe requests (`http://egress:8080`).  |
+| `COMPUTERD_URL`                 | Orchestrator      | Optional  | HTTP endpoint for the compute sandbox daemon (`http://computerd:4000`). |
 
 ### 13.3 Zero-Downtime Deployment Pipeline (`deploy/deploy.sh`)
 
 The deployment script executes a 6-phase preflight verification before rolling containers:
+
 1. Validates `MESH_KEK` cryptographic integrity.
 2. Checks PostgreSQL connectivity and runs pending Drizzle/SQL migrations (`pnpm db:migrate`).
 3. Builds Docker images with cached layers.
@@ -774,6 +798,7 @@ pnpm lint
 ```
 
 ### 14.2 Code Standards & Engineering Guidelines
+
 - **Strict TypeScript**: `noImplicitAny: true`, strict null checks. No non-null assertions (`!`) in application code.
 - **Prettier Rules**: No semicolons (`semi: false`), double quotes (`singleQuote: false`), print width 100.
 - **Unused Variables**: Must be prefixed with an underscore (`_req`, `_signal`).

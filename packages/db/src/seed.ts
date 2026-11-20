@@ -31,12 +31,32 @@ const pricing = [
   { provider: "openai" as const, model: "gpt-4.1", inputPerMtok: 2, outputPerMtok: 8 },
   { provider: "openai" as const, model: "gpt-4.1-mini", inputPerMtok: 0.4, outputPerMtok: 1.6 },
   { provider: "openai" as const, model: "o3-mini", inputPerMtok: 1.1, outputPerMtok: 4.4 },
-  { provider: "anthropic" as const, model: "claude-sonnet-4-20250514", inputPerMtok: 3, outputPerMtok: 15 },
-  { provider: "anthropic" as const, model: "claude-opus-4-20250514", inputPerMtok: 15, outputPerMtok: 75 },
-  { provider: "anthropic" as const, model: "claude-3-5-haiku-latest", inputPerMtok: 0.8, outputPerMtok: 4 },
+  {
+    provider: "anthropic" as const,
+    model: "claude-sonnet-4-20250514",
+    inputPerMtok: 3,
+    outputPerMtok: 15,
+  },
+  {
+    provider: "anthropic" as const,
+    model: "claude-opus-4-20250514",
+    inputPerMtok: 15,
+    outputPerMtok: 75,
+  },
+  {
+    provider: "anthropic" as const,
+    model: "claude-3-5-haiku-latest",
+    inputPerMtok: 0.8,
+    outputPerMtok: 4,
+  },
   { provider: "google" as const, model: "gemini-2.5-pro", inputPerMtok: 1.25, outputPerMtok: 10 },
   { provider: "google" as const, model: "gemini-2.5-flash", inputPerMtok: 0.3, outputPerMtok: 2.5 },
-  { provider: "groq" as const, model: "llama-3.3-70b-versatile", inputPerMtok: 0.59, outputPerMtok: 0.79 },
+  {
+    provider: "groq" as const,
+    model: "llama-3.3-70b-versatile",
+    inputPerMtok: 0.59,
+    outputPerMtok: 0.79,
+  },
   { provider: "cerebras" as const, model: "llama-3.3-70b", inputPerMtok: 0.85, outputPerMtok: 1.2 },
 ]
 
@@ -72,7 +92,8 @@ export const CURATED_TEMPLATES: CuratedTemplateSeed[] = [
   {
     slug: "coder",
     name: "Coder",
-    description: "Full-stack implementation, git management, and test execution with a persistent computer.",
+    description:
+      "Full-stack implementation, git management, and test execution with a persistent computer.",
     icon: "code",
     category: "engineering",
     capabilities: {
@@ -98,7 +119,8 @@ export const CURATED_TEMPLATES: CuratedTemplateSeed[] = [
   {
     slug: "reviewer",
     name: "Code Reviewer",
-    description: "Pull request auditing, security review, and edge-case detection with GitHub bridge.",
+    description:
+      "Pull request auditing, security review, and edge-case detection with GitHub bridge.",
     icon: "check-circle",
     category: "engineering",
     capabilities: {
@@ -158,7 +180,8 @@ export const CURATED_TEMPLATES: CuratedTemplateSeed[] = [
   {
     slug: "analyst",
     name: "Data Analyst",
-    description: "Database inspection, SQL query optimization, and structured quantitative metrics.",
+    description:
+      "Database inspection, SQL query optimization, and structured quantitative metrics.",
     icon: "bar-chart-2",
     category: "data",
     capabilities: {
@@ -219,7 +242,8 @@ export const CURATED_TEMPLATES: CuratedTemplateSeed[] = [
   {
     slug: "assistant",
     name: "General Assistant",
-    description: "All-purpose collaborator for project organization, task tracking, and discussions.",
+    description:
+      "All-purpose collaborator for project organization, task tracking, and discussions.",
     icon: "bot",
     category: "general",
     capabilities: {

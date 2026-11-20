@@ -10,40 +10,40 @@ Source files: `packages/db/src/schema/tasks.ts`, `packages/db/src/schema/facts.t
 
 Defined at `packages/db/src/schema/tasks.ts:33`. Base columns come from the Drizzle snapshot (`migrations/0001_amusing_tarot.sql`); the integrity migration `packages/db/sql/0008_task_integrity.sql:2-15` added the deadline/unblock/outcome/ask-queue columns. A task can be a plain `task` or a `request` (a `task_kind` of a bot asking a human).
 
-| Column | SQL type | Constraints / Default | Description |
-| :--- | :--- | :--- | :--- |
-| `id` | `uuid` | PK, default `gen_random_uuid()` | Task id. |
-| `number` | `serial` | NOT NULL | Human-friendly increasing board number (`#12`) alongside the uuid. |
-| `org_id` | `uuid` | NOT NULL, FK → `orgs.id`, `ON DELETE CASCADE` | Workspace. |
-| `room_id` | `uuid` | NOT NULL, FK → `rooms.id`, `ON DELETE CASCADE` | Room the task lives in (tasks are per-room, org aggregates by join). |
-| `kind` | `task_kind` enum | NOT NULL, default `"task"` | `task` (work item) or `request` (bot → human ask) (`enums.ts:65`). |
-| `title` | `text` | NOT NULL | Title. **Immutable after creation** — enforced by the `tasks_enforce_integrity` trigger (`0008_task_integrity.sql:50-52`). |
-| `description` | `text` | NOT NULL, default `""` | Details / acceptance criteria. |
-| `status` | `task_status` enum | NOT NULL, default `"open"` | `open`, `in_progress`, `stuck`, `done` (`enums.ts:66`). |
-| `assignee_user_id` | `uuid` | nullable, FK → `profiles.id`, `ON DELETE SET NULL` | Human assignee. |
-| `assignee_agent_id` | `uuid` | nullable, FK → `agents.id`, `ON DELETE SET NULL` | Bot assignee (atomic claims via the `tasks:*` tools). |
-| `lead_agent_id` | `uuid` | nullable, FK → `agents.id`, `ON DELETE SET NULL` | Coordinating bot for multi-agent work (subagent delegation). |
-| `parent_task_id` | `uuid` | nullable | Parent for subtask trees. **No FK** — plain uuid so deletion of a parent doesn't cascade into work records. |
-| `budget_turns` | `integer` | nullable | Turn budget for the task; the coordinator stops spending past it. |
-| `budget_usd` | `numeric(10,4)` | nullable | Dollar budget. |
-| `turns_used` | `integer` | NOT NULL, default `0` | Spend counter against `budget_turns`. |
-| `cost_usd` | `numeric(10,4)` | NOT NULL, default `"0"` | Spend counter against `budget_usd` (note: string default in Drizzle for numeric fidelity, `tasks.ts:59`). |
-| `requested_by_agent_id` | `uuid` | nullable, FK → `agents.id`, `ON DELETE SET NULL` | For `kind = "request"`: the bot that asked. |
-| `requested_from_user_id` | `uuid` | nullable, FK → `profiles.id`, `ON DELETE SET NULL` | For `kind = "request"`: the human being asked. |
-| `created_by` | `uuid` | nullable, FK → `profiles.id`, `ON DELETE SET NULL` | Human creator. |
-| `due_at` | `timestamptz` | nullable | Deadline (`0008_task_integrity.sql:4`). |
-| `status_changed_at` | `timestamptz` | NOT NULL, default `now()` | Last status transition; powers "stuck for N hours" check-in logic (`0008_task_integrity.sql:5-6`). |
-| `completed_at` | `timestamptz` | nullable | Completion time; **required (with `outcome_kind`) when `status = 'done'`** per the trigger (`0008_task_integrity.sql:54-58`). |
-| `unblock_needs` | `text` | nullable, TS-typed `UnblockNeeds` | Why the task is stuck: `human_answer`, `another_agent`, `credential`, `external_access`, `time`, `other`. Enforced by SQL CHECK (`0008_task_integrity.sql:7-9`); typed in TS via `tasks.ts:17-23`, not a native enum. |
-| `unblock_detail` | `text` | nullable | Free-text explanation accompanying `unblock_needs`. |
-| `blocked_by` | `uuid[]` | NOT NULL, default `[]` | Array of task ids this task waits on; array (not FK rows) keeps blocking lightweight and cycle-tolerant (`tasks.ts:74`). |
-| `outcome_kind` | `text` | nullable, TS-typed `OutcomeKind` | What completing produced: `artifact`, `submission`, `external_change`, `decision`, `none`, `legacy` — SQL CHECK enforced (`0008_task_integrity.sql:10-12`), typed at `tasks.ts:25-31`. |
-| `outcome_ref` | `text` | nullable | Pointer to the outcome (canvas id, PR URL, …). |
-| `fold_key` | `text` | nullable | Deduplication key for repeated asks; same `fold_key` folds into one task instead of spamming new ones (`0008_task_integrity.sql:13`). |
-| `asked_count` | `integer` | NOT NULL, default `1` | How many times the ask has been raised; bumped instead of re-asking (`0008_task_integrity.sql:14`). |
-| `expires_at` | `timestamptz` | nullable, default `now() + interval '72 hours'` | TTL so abandoned asks expire rather than haunting the board (`0008_task_integrity.sql:15`). |
-| `metadata` | `jsonb` | NOT NULL, default `{}` | Extensions. |
-| `created_at` / `updated_at` | `timestamptz` | NOT NULL, default `now()` | Timestamps. |
+| Column                      | SQL type           | Constraints / Default                              | Description                                                                                                                                                                                                           |
+| :-------------------------- | :----------------- | :------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`                        | `uuid`             | PK, default `gen_random_uuid()`                    | Task id.                                                                                                                                                                                                              |
+| `number`                    | `serial`           | NOT NULL                                           | Human-friendly increasing board number (`#12`) alongside the uuid.                                                                                                                                                    |
+| `org_id`                    | `uuid`             | NOT NULL, FK → `orgs.id`, `ON DELETE CASCADE`      | Workspace.                                                                                                                                                                                                            |
+| `room_id`                   | `uuid`             | NOT NULL, FK → `rooms.id`, `ON DELETE CASCADE`     | Room the task lives in (tasks are per-room, org aggregates by join).                                                                                                                                                  |
+| `kind`                      | `task_kind` enum   | NOT NULL, default `"task"`                         | `task` (work item) or `request` (bot → human ask) (`enums.ts:65`).                                                                                                                                                    |
+| `title`                     | `text`             | NOT NULL                                           | Title. **Immutable after creation** — enforced by the `tasks_enforce_integrity` trigger (`0008_task_integrity.sql:50-52`).                                                                                            |
+| `description`               | `text`             | NOT NULL, default `""`                             | Details / acceptance criteria.                                                                                                                                                                                        |
+| `status`                    | `task_status` enum | NOT NULL, default `"open"`                         | `open`, `in_progress`, `stuck`, `done` (`enums.ts:66`).                                                                                                                                                               |
+| `assignee_user_id`          | `uuid`             | nullable, FK → `profiles.id`, `ON DELETE SET NULL` | Human assignee.                                                                                                                                                                                                       |
+| `assignee_agent_id`         | `uuid`             | nullable, FK → `agents.id`, `ON DELETE SET NULL`   | Bot assignee (atomic claims via the `tasks:*` tools).                                                                                                                                                                 |
+| `lead_agent_id`             | `uuid`             | nullable, FK → `agents.id`, `ON DELETE SET NULL`   | Coordinating bot for multi-agent work (subagent delegation).                                                                                                                                                          |
+| `parent_task_id`            | `uuid`             | nullable                                           | Parent for subtask trees. **No FK** — plain uuid so deletion of a parent doesn't cascade into work records.                                                                                                           |
+| `budget_turns`              | `integer`          | nullable                                           | Turn budget for the task; the coordinator stops spending past it.                                                                                                                                                     |
+| `budget_usd`                | `numeric(10,4)`    | nullable                                           | Dollar budget.                                                                                                                                                                                                        |
+| `turns_used`                | `integer`          | NOT NULL, default `0`                              | Spend counter against `budget_turns`.                                                                                                                                                                                 |
+| `cost_usd`                  | `numeric(10,4)`    | NOT NULL, default `"0"`                            | Spend counter against `budget_usd` (note: string default in Drizzle for numeric fidelity, `tasks.ts:59`).                                                                                                             |
+| `requested_by_agent_id`     | `uuid`             | nullable, FK → `agents.id`, `ON DELETE SET NULL`   | For `kind = "request"`: the bot that asked.                                                                                                                                                                           |
+| `requested_from_user_id`    | `uuid`             | nullable, FK → `profiles.id`, `ON DELETE SET NULL` | For `kind = "request"`: the human being asked.                                                                                                                                                                        |
+| `created_by`                | `uuid`             | nullable, FK → `profiles.id`, `ON DELETE SET NULL` | Human creator.                                                                                                                                                                                                        |
+| `due_at`                    | `timestamptz`      | nullable                                           | Deadline (`0008_task_integrity.sql:4`).                                                                                                                                                                               |
+| `status_changed_at`         | `timestamptz`      | NOT NULL, default `now()`                          | Last status transition; powers "stuck for N hours" check-in logic (`0008_task_integrity.sql:5-6`).                                                                                                                    |
+| `completed_at`              | `timestamptz`      | nullable                                           | Completion time; **required (with `outcome_kind`) when `status = 'done'`** per the trigger (`0008_task_integrity.sql:54-58`).                                                                                         |
+| `unblock_needs`             | `text`             | nullable, TS-typed `UnblockNeeds`                  | Why the task is stuck: `human_answer`, `another_agent`, `credential`, `external_access`, `time`, `other`. Enforced by SQL CHECK (`0008_task_integrity.sql:7-9`); typed in TS via `tasks.ts:17-23`, not a native enum. |
+| `unblock_detail`            | `text`             | nullable                                           | Free-text explanation accompanying `unblock_needs`.                                                                                                                                                                   |
+| `blocked_by`                | `uuid[]`           | NOT NULL, default `[]`                             | Array of task ids this task waits on; array (not FK rows) keeps blocking lightweight and cycle-tolerant (`tasks.ts:74`).                                                                                              |
+| `outcome_kind`              | `text`             | nullable, TS-typed `OutcomeKind`                   | What completing produced: `artifact`, `submission`, `external_change`, `decision`, `none`, `legacy` — SQL CHECK enforced (`0008_task_integrity.sql:10-12`), typed at `tasks.ts:25-31`.                                |
+| `outcome_ref`               | `text`             | nullable                                           | Pointer to the outcome (canvas id, PR URL, …).                                                                                                                                                                        |
+| `fold_key`                  | `text`             | nullable                                           | Deduplication key for repeated asks; same `fold_key` folds into one task instead of spamming new ones (`0008_task_integrity.sql:13`).                                                                                 |
+| `asked_count`               | `integer`          | NOT NULL, default `1`                              | How many times the ask has been raised; bumped instead of re-asking (`0008_task_integrity.sql:14`).                                                                                                                   |
+| `expires_at`                | `timestamptz`      | nullable, default `now() + interval '72 hours'`    | TTL so abandoned asks expire rather than haunting the board (`0008_task_integrity.sql:15`).                                                                                                                           |
+| `metadata`                  | `jsonb`            | NOT NULL, default `{}`                             | Extensions.                                                                                                                                                                                                           |
+| `created_at` / `updated_at` | `timestamptz`      | NOT NULL, default `now()`                          | Timestamps.                                                                                                                                                                                                           |
 
 Indexes (`tasks.ts:84-90`): `tasks_room_status_idx` on `(room_id, status)`, `tasks_org_status_idx` on `(org_id, status)`, `tasks_assignee_agent_idx` on `(assignee_agent_id)`, `tasks_lead_agent_idx` on `(lead_agent_id)`, `tasks_parent_task_idx` on `(parent_task_id)`.
 
@@ -59,19 +59,19 @@ Indexes (`tasks.ts:84-90`): `tasks_room_status_idx` on `(room_id, status)`, `tas
 
 Defined at `packages/db/src/schema/tasks.ts:93` (created `packages/db/sql/0008_task_integrity.sql:39-54`). Append-only audit trail of every status transition and outcome declaration. `actor_type` carries a SQL CHECK (`human`, `agent`, `system`).
 
-| Column | SQL type | Constraints / Default | Description |
-| :--- | :--- | :--- | :--- |
-| `id` | `uuid` | PK, default `gen_random_uuid()` | Event id. |
-| `task_id` | `uuid` | NOT NULL, FK → `tasks.id`, `ON DELETE CASCADE` | The task. |
-| `actor_type` | `text` | NOT NULL, TS-typed `"human" \| "agent" \| "system"` (`tasks.ts:100`) | Who acted; CHECK-enforced in SQL. |
-| `actor_id` | `uuid` | nullable | Polymorphic actor id (profile or agent); no FK. |
-| `from_status` | `text` | nullable | Previous status; null on creation events. |
-| `to_status` | `text` | NOT NULL | New status. |
-| `reason` | `text` | nullable | Why the transition happened. |
-| `outcome_kind` | `text` | nullable, TS-typed `OutcomeKind` | Outcome declared on completion (same value set as `tasks.outcome_kind`). |
-| `outcome_ref` | `text` | nullable | Pointer to the outcome. |
-| `metadata` | `jsonb` | NOT NULL, default `{}` | Extensions. |
-| `created_at` | `timestamptz` | NOT NULL, default `now()` | Event time. |
+| Column         | SQL type      | Constraints / Default                                                | Description                                                              |
+| :------------- | :------------ | :------------------------------------------------------------------- | :----------------------------------------------------------------------- |
+| `id`           | `uuid`        | PK, default `gen_random_uuid()`                                      | Event id.                                                                |
+| `task_id`      | `uuid`        | NOT NULL, FK → `tasks.id`, `ON DELETE CASCADE`                       | The task.                                                                |
+| `actor_type`   | `text`        | NOT NULL, TS-typed `"human" \| "agent" \| "system"` (`tasks.ts:100`) | Who acted; CHECK-enforced in SQL.                                        |
+| `actor_id`     | `uuid`        | nullable                                                             | Polymorphic actor id (profile or agent); no FK.                          |
+| `from_status`  | `text`        | nullable                                                             | Previous status; null on creation events.                                |
+| `to_status`    | `text`        | NOT NULL                                                             | New status.                                                              |
+| `reason`       | `text`        | nullable                                                             | Why the transition happened.                                             |
+| `outcome_kind` | `text`        | nullable, TS-typed `OutcomeKind`                                     | Outcome declared on completion (same value set as `tasks.outcome_kind`). |
+| `outcome_ref`  | `text`        | nullable                                                             | Pointer to the outcome.                                                  |
+| `metadata`     | `jsonb`       | NOT NULL, default `{}`                                               | Extensions.                                                              |
+| `created_at`   | `timestamptz` | NOT NULL, default `now()`                                            | Event time.                                                              |
 
 Indexes (`tasks.ts:110-113`): `task_events_task_idx` on `(task_id, created_at)` (the per-task history) and `task_events_to_status_idx` on `(to_status, created_at)` (e.g. "recently completed" queries).
 
@@ -87,14 +87,14 @@ Indexes (`tasks.ts:110-113`): `task_events_task_idx` on `(task_id, created_at)` 
 
 Defined at `packages/db/src/schema/tasks.ts:116` (created in `migrations/0001_amusing_tarot.sql`). Discussion thread attached to a task.
 
-| Column | SQL type | Constraints / Default | Description |
-| :--- | :--- | :--- | :--- |
-| `id` | `uuid` | PK, default `gen_random_uuid()` | Comment id. |
-| `task_id` | `uuid` | NOT NULL, FK → `tasks.id`, `ON DELETE CASCADE` | The task. |
-| `author_type` | `text` | NOT NULL, default `"human"` | `"human"` / `"agent"` / `"system"` (free text, not CHECK-enforced). |
-| `author_id` | `uuid` | nullable | Polymorphic author id; no FK. |
-| `content` | `text` | NOT NULL | Comment body. |
-| `created_at` | `timestamptz` | NOT NULL, default `now()` | Posted at. |
+| Column        | SQL type      | Constraints / Default                          | Description                                                         |
+| :------------ | :------------ | :--------------------------------------------- | :------------------------------------------------------------------ |
+| `id`          | `uuid`        | PK, default `gen_random_uuid()`                | Comment id.                                                         |
+| `task_id`     | `uuid`        | NOT NULL, FK → `tasks.id`, `ON DELETE CASCADE` | The task.                                                           |
+| `author_type` | `text`        | NOT NULL, default `"human"`                    | `"human"` / `"agent"` / `"system"` (free text, not CHECK-enforced). |
+| `author_id`   | `uuid`        | nullable                                       | Polymorphic author id; no FK.                                       |
+| `content`     | `text`        | NOT NULL                                       | Comment body.                                                       |
+| `created_at`  | `timestamptz` | NOT NULL, default `now()`                      | Posted at.                                                          |
 
 Indexes: `task_comments_task_idx` on `(task_id, created_at)` (`tasks.ts:128`).
 
@@ -108,20 +108,20 @@ Indexes: `task_comments_task_idx` on `(task_id, created_at)` (`tasks.ts:128`).
 
 Defined at `packages/db/src/schema/facts.ts:15` (created `packages/db/sql/0019_owner_facts.sql`). Per the doc comment (`facts.ts:10-14`): "Things the people in a workspace have already told their bots ('start date', 'CGPA', 'LinkedIn URL'). Bots read these before asking, so nobody answers the same question twice. `room_id` null = every room in the workspace; otherwise only bots in that room can read it."
 
-| Column | SQL type | Constraints / Default | Description |
-| :--- | :--- | :--- | :--- |
-| `id` | `uuid` | PK, default `gen_random_uuid()` | Fact id. |
-| `org_id` | `uuid` | NOT NULL, FK → `orgs.id`, `ON DELETE CASCADE` | Workspace. |
-| `room_id` | `uuid` | nullable, FK → `rooms.id`, `ON DELETE CASCADE` | Scope: null = workspace-wide, otherwise room-local. |
-| `key` | `text` | NOT NULL | Canonical fact key (e.g. `start_date`). |
-| `label` | `text` | NOT NULL | Human label shown in UI (e.g. "Start date"). |
-| `value` | `text` | NOT NULL | The answer itself (plaintext — this is a fact, not a credential). |
-| `source` | `text` | NOT NULL, default `"answer"`, TS-typed `OwnerFactSource` | `answer` (given in reply to a bot's ask), `manual`, or `agent` (`facts.ts:8`). |
-| `source_task_id` | `uuid` | nullable, FK → `tasks.id`, `ON DELETE SET NULL` | The `kind = "request"` task that solicited the answer. |
-| `source_agent_id` | `uuid` | nullable, FK → `agents.id`, `ON DELETE SET NULL` | The bot that asked. |
-| `note` | `text` | nullable | Extra context. |
-| `updated_by` | `uuid` | nullable, FK → `profiles.id`, `ON DELETE SET NULL` | Last human editor. |
-| `created_at` / `updated_at` | `timestamptz` | NOT NULL, default `now()` | Timestamps (`updated_at` maintained by the `set_updated_at` trigger attached in `0019_owner_facts.sql:26-28`). |
+| Column                      | SQL type      | Constraints / Default                                    | Description                                                                                                    |
+| :-------------------------- | :------------ | :------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------- |
+| `id`                        | `uuid`        | PK, default `gen_random_uuid()`                          | Fact id.                                                                                                       |
+| `org_id`                    | `uuid`        | NOT NULL, FK → `orgs.id`, `ON DELETE CASCADE`            | Workspace.                                                                                                     |
+| `room_id`                   | `uuid`        | nullable, FK → `rooms.id`, `ON DELETE CASCADE`           | Scope: null = workspace-wide, otherwise room-local.                                                            |
+| `key`                       | `text`        | NOT NULL                                                 | Canonical fact key (e.g. `start_date`).                                                                        |
+| `label`                     | `text`        | NOT NULL                                                 | Human label shown in UI (e.g. "Start date").                                                                   |
+| `value`                     | `text`        | NOT NULL                                                 | The answer itself (plaintext — this is a fact, not a credential).                                              |
+| `source`                    | `text`        | NOT NULL, default `"answer"`, TS-typed `OwnerFactSource` | `answer` (given in reply to a bot's ask), `manual`, or `agent` (`facts.ts:8`).                                 |
+| `source_task_id`            | `uuid`        | nullable, FK → `tasks.id`, `ON DELETE SET NULL`          | The `kind = "request"` task that solicited the answer.                                                         |
+| `source_agent_id`           | `uuid`        | nullable, FK → `agents.id`, `ON DELETE SET NULL`         | The bot that asked.                                                                                            |
+| `note`                      | `text`        | nullable                                                 | Extra context.                                                                                                 |
+| `updated_by`                | `uuid`        | nullable, FK → `profiles.id`, `ON DELETE SET NULL`       | Last human editor.                                                                                             |
+| `created_at` / `updated_at` | `timestamptz` | NOT NULL, default `now()`                                | Timestamps (`updated_at` maintained by the `set_updated_at` trigger attached in `0019_owner_facts.sql:26-28`). |
 
 Indexes (`facts.ts:34-41`): the interesting one is **unique `owner_facts_scope_key_idx`** on `(org_id, coalesce(room_id, '00000000-0000-0000-0000-000000000000'::uuid), key)` — an expressional unique index that maps null `room_id` to a sentinel uuid, so "workspace-wide fact with this key" and "room fact with this key" both enforce one-row-per-key while remaining distinguishable. Plus `owner_facts_org_idx` on `(org_id)` for scans.
 
@@ -141,11 +141,11 @@ Indexes (`facts.ts:34-41`): the interesting one is **unique `owner_facts_scope_k
 
 Integrity rules enforced by the `tasks_enforce_integrity` trigger (`0008_task_integrity.sql:44-70`):
 
-| Situation | Result |
-| :--- | :--- |
-| `update` changes `title` | Rejected: `title is immutable after creation`. |
-| `status` set to `done` without `completed_at` or `outcome_kind` | Rejected: `done tasks require completed_at and outcome_kind`. |
-| Any other valid update | Passes through; `status_changed_at` is maintained by application code, not the trigger. |
+| Situation                                                       | Result                                                                                  |
+| :-------------------------------------------------------------- | :-------------------------------------------------------------------------------------- |
+| `update` changes `title`                                        | Rejected: `title is immutable after creation`.                                          |
+| `status` set to `done` without `completed_at` or `outcome_kind` | Rejected: `done tasks require completed_at and outcome_kind`.                           |
+| Any other valid update                                          | Passes through; `status_changed_at` is maintained by application code, not the trigger. |
 
 Blocking and subtasks are intentionally loose: `blocked_by` is a `uuid[]` of task ids and `parent_task_id` a bare uuid, both without FKs, so a deleted parent/blocking task never cascades into surviving work records (see `tasks.ts:55,74`).
 

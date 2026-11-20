@@ -10,10 +10,10 @@ Source files: `apps/orchestrator/src/push.ts`, `apps/orchestrator/src/usage.ts`,
 
 ### Channels
 
-| Channel | Transport | Subscriptions | Cleanup |
-| :--- | :--- | :--- | :--- |
-| Browsers | `web-push` (VAPID) against `push_subscriptions` rows (`endpoint`, `p256dh`, `auth`) | Registered by the web app's service worker `apps/web/src/sw.ts` | `404`/`410` responses delete the row ("the browser dropped this subscription"). Other failures logged. |
-| Phones | `POST https://exp.host/--/api/v2/push/send` (Expo) against `mobile_push_tokens` rows | The React Native client | Responses with `status: "error"` + `details.error === "DeviceNotRegistered"` have their token rows deleted. 10 s timeout. |
+| Channel  | Transport                                                                            | Subscriptions                                                   | Cleanup                                                                                                                   |
+| :------- | :----------------------------------------------------------------------------------- | :-------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------ |
+| Browsers | `web-push` (VAPID) against `push_subscriptions` rows (`endpoint`, `p256dh`, `auth`)  | Registered by the web app's service worker `apps/web/src/sw.ts` | `404`/`410` responses delete the row ("the browser dropped this subscription"). Other failures logged.                    |
+| Phones   | `POST https://exp.host/--/api/v2/push/send` (Expo) against `mobile_push_tokens` rows | The React Native client                                         | Responses with `status: "error"` + `details.error === "DeviceNotRegistered"` have their token rows deleted. 10 s timeout. |
 
 Web push requires `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and `VAPID_SUBJECT`; `pushReady()` (`push.ts:11-23`) configures `webpush.setVapidDetails` once and caches the verdict, so a server without VAPID env vars silently skips browser delivery while phone delivery still works. All web-push messages carry `TTL: PUSH_TTL_SECONDS = 300` (`push.ts:7`) — 5 minutes, because a stale approval alert is worthless.
 
@@ -27,8 +27,8 @@ The service worker receives a `WebPushPayload` (`push.ts:50-57`):
 interface WebPushPayload {
   title: string
   body: string
-  url: string      // deep link, e.g. "/<orgSlug>/inbox"
-  tag: string      // dedup/collapse key, e.g. "mesh-approval-<toolCallId>"
+  url: string // deep link, e.g. "/<orgSlug>/inbox"
+  tag: string // dedup/collapse key, e.g. "mesh-approval-<toolCallId>"
   kind?: "approval" | "request" | "done"
   toolCallId?: string
 }
@@ -44,12 +44,16 @@ The Expo message shape (`push.ts:111-121`): `priority: "high"`, `channelId: "age
 
 ```typescript
 const [admins, orgAdmins] = await Promise.all([
-  db.select({ userId: roomMembers.userId }).from(roomMembers)
+  db
+    .select({ userId: roomMembers.userId })
+    .from(roomMembers)
     .where(and(eq(roomMembers.roomId, roomId), eq(roomMembers.role, "admin"))),
-  db.select({ userId: orgMembers.userId }).from(orgMembers)
+  db
+    .select({ userId: orgMembers.userId })
+    .from(orgMembers)
     .where(and(eq(orgMembers.orgId, room.orgId), inArray(orgMembers.role, ["owner", "admin"]))),
 ])
-return { orgId: room.orgId, userIds: [...new Set([...admins, ...orgAdmins].map(r => r.userId))] }
+return { orgId: room.orgId, userIds: [...new Set([...admins, ...orgAdmins].map((r) => r.userId))] }
 ```
 
 i.e. room-level admins plus org-level owners/admins, deduped. `agentName(agentId)` resolves the agent's display name (fallback `"An agent"`), and the org `slug` is fetched because every web push URL is org-scoped (`"/<slug>/inbox"`, `"/<slug>/cron"`). A missing org slug aborts delivery.
@@ -91,11 +95,11 @@ The docstring is explicit about the design goal (`usage.ts:7-11`): every path th
 
 The plan definitions themselves live in `@sayabot/core` (`packages/core/src/edition.ts`): `PlanId = "free" | "pro" | "team"`, with monthly `serverTurnsPerMonth` limits **300 / 3 000 / 15 000** (plus `agents` 3/20/∞, `computers` 0/2/10, `members` 3/5/50):
 
-| Plan | Price | `serverTurnsPerMonth` | Agents | Computers | Members |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| Free | $0 | 300 | 3 | 0 | 3 |
-| Pro | $12 | 3 000 | 20 | 2 | 5 |
-| Team | — | 15 000 | ∞ (`null`) | 10 | 50 |
+| Plan | Price | `serverTurnsPerMonth` | Agents     | Computers | Members |
+| :--- | :---- | :-------------------- | :--------- | :-------- | :------ |
+| Free | $0    | 300                   | 3          | 0         | 3       |
+| Pro  | $12   | 3 000                 | 20         | 2         | 5       |
+| Team | —     | 15 000                | ∞ (`null`) | 10        | 50      |
 
 `null` means unlimited. The `serverTurnsPerMonth` docstring defines the metric precisely (`edition.ts:36-39`): "Agent replies a month that run on the server (server models, your keys, agent computers). Replies that run on the person's own Mac don't count: they cost the server almost nothing."
 
@@ -108,7 +112,9 @@ Reads the org's `org_plans` row; missing/unknown plan → `"free"`:
 ```typescript
 const [row] = await getDb()
   .select({ plan: orgPlans.plan, status: orgPlans.status })
-  .from(orgPlans).where(eq(orgPlans.orgId, orgId)).limit(1)
+  .from(orgPlans)
+  .where(eq(orgPlans.orgId, orgId))
+  .limit(1)
 return effectivePlan(isPlanId(row?.plan) ? row.plan : "free", row?.status ?? "active")
 ```
 
@@ -129,21 +135,22 @@ select allowed, used from public.bump_server_turns(${orgId}::uuid, ${usageMonth(
 
 ### `planLimitTurn(args, message)` (`plans.ts:62-105`)
 
-The denied reply is *an ordinary-looking agent message*, not an error: it records an `agent_runs` row with `engine: "plan-limit"`, `finishReason: "plan_limit"`, posts the message as the agent (`metadata.planLimit: true`), links it to the run, and broadcasts `message.done` — so the room sees a friendly note and the UI's usage dashboards see the refusals too. Returns the same `TurnResult` shape as a real turn (`{ messageId, runId, content, error: null, aborted: false }`).
+The denied reply is _an ordinary-looking agent message_, not an error: it records an `agent_runs` row with `engine: "plan-limit"`, `finishReason: "plan_limit"`, posts the message as the agent (`metadata.planLimit: true`), links it to the run, and broadcasts `message.done` — so the room sees a friendly note and the UI's usage dashboards see the refusals too. Returns the same `TurnResult` shape as a real turn (`{ messageId, runId, content, error: null, aborted: false }`).
 
 ## 🧪 Tests
 
-| Test file | Covers |
-| :--- | :--- |
-| `apps/orchestrator/src/usage.test.ts` | Token normalization and pricing fallback (`priceUsage`, `tokensFrom`, cache reset). |
+| Test file                             | Covers                                                                                  |
+| :------------------------------------ | :-------------------------------------------------------------------------------------- |
+| `apps/orchestrator/src/usage.test.ts` | Token normalization and pricing fallback (`priceUsage`, `tokensFrom`, cache reset).     |
 | `apps/orchestrator/src/plans.test.ts` | Plan admission messaging (`admitServerTurn` composition, `upgradeFor`, `limitMessage`). |
-| `packages/core/src/edition.test.ts` | Edition detection, `effectivePlan`, `checkLimit`, `usageMonth`. |
+| `packages/core/src/edition.test.ts`   | Edition detection, `effectivePlan`, `checkLimit`, `usageMonth`.                         |
 
 There is no `push.test.ts`; push is exercised indirectly through the approval tests in `apps/orchestrator/src/tools/audited.test.ts`.
 
 ---
 
 Related docs:
+
 - [Collab & task board](./collab-tasks.md) — the `notifyHumansNeeded` call sites (stuck tasks, human decisions)
 - [Scheduler: Routines](./scheduler-routines.md) — `notifyRoutineFinished` producer
 - [Approvals](../tools/approvals.md) — the approval cards the push actions answer

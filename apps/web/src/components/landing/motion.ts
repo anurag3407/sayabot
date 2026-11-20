@@ -62,7 +62,8 @@ export function useAnime(
         root: element,
         desktop: Boolean(self.matches.desktop),
         fine: Boolean(self.matches.fine),
-        all: <T extends Element = HTMLElement>(selector: string) => Array.from(element.querySelectorAll<T>(selector)),
+        all: <T extends Element = HTMLElement>(selector: string) =>
+          Array.from(element.querySelectorAll<T>(selector)),
       })
     })
     return () => {

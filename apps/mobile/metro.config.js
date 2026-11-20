@@ -28,14 +28,14 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
     return (upstreamResolve ?? context.resolveRequest)(
       context,
       path.resolve(projectRoot, "node_modules/react"),
-      platform
+      platform,
     )
   }
   if (moduleName === "react-native") {
     return (upstreamResolve ?? context.resolveRequest)(
       context,
       path.resolve(projectRoot, "node_modules/react-native"),
-      platform
+      platform,
     )
   }
   return (upstreamResolve ?? context.resolveRequest)(context, moduleName, platform)

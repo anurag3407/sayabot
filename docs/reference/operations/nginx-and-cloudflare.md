@@ -42,15 +42,15 @@ The compose command for nginx runs the official image's `20-envsubst-on-template
 
 Shared verbatim by the TLS server (port 443) and the tunnel listener (port 8080) "so both serve exactly the same paths, limits and timeouts" (sayabot-locations.conf:1-2).
 
-| Route | Upstream | Rate limit | Timeouts / notes |
-| :--- | :--- | :--- | :--- |
-| `location = /collab` | `sayabot_orchestrator` (`orchestrator:4000`) | — | WebSocket (Hocuspocus canvas sync); read/send timeout **1h**, buffering off. The only orchestrator path exposed; `/internal/*` stays private |
-| `~ ^/(api/v1\|mcp)/` | `sayabot_web` (`web:3000`) | `sayabot_api` burst 60 nodelay | NDJSON/SSE streaming: `proxy_buffering off`, `proxy_request_buffering off`, `proxy_cache off`, read/send **330s**, `X-Accel-Buffering: no` |
-| `location = /api/health` | `sayabot_web` | none | Liveness for uptime monitors; `access_log off` |
-| `~ ^/(login\|signup\|forgot-password\|reset-password\|auth)(/\|$)` | `sayabot_web` | `sayabot_auth` burst 20 nodelay | Slows password guessing and code brute force |
-| `location /_next/static/` | `sayabot_web` | — | `expires 1y` + `Cache-Control: public, max-age=31536000, immutable` (content-hashed assets) |
-| `~ ^/(sw\.js\|swe-worker.*\.js\|manifest\.webmanifest)$` | `sayabot_web` | — | `Cache-Control: no-cache` so service workers revalidate and new deploys take effect |
-| `location /` | `sayabot_web` | `sayabot_general` burst 100 nodelay | Pages, server actions, RSC payloads; buffering off (server actions can stream), read timeout 120s |
+| Route                                                              | Upstream                                     | Rate limit                          | Timeouts / notes                                                                                                                             |
+| :----------------------------------------------------------------- | :------------------------------------------- | :---------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------- |
+| `location = /collab`                                               | `sayabot_orchestrator` (`orchestrator:4000`) | —                                   | WebSocket (Hocuspocus canvas sync); read/send timeout **1h**, buffering off. The only orchestrator path exposed; `/internal/*` stays private |
+| `~ ^/(api/v1\|mcp)/`                                               | `sayabot_web` (`web:3000`)                   | `sayabot_api` burst 60 nodelay      | NDJSON/SSE streaming: `proxy_buffering off`, `proxy_request_buffering off`, `proxy_cache off`, read/send **330s**, `X-Accel-Buffering: no`   |
+| `location = /api/health`                                           | `sayabot_web`                                | none                                | Liveness for uptime monitors; `access_log off`                                                                                               |
+| `~ ^/(login\|signup\|forgot-password\|reset-password\|auth)(/\|$)` | `sayabot_web`                                | `sayabot_auth` burst 20 nodelay     | Slows password guessing and code brute force                                                                                                 |
+| `location /_next/static/`                                          | `sayabot_web`                                | —                                   | `expires 1y` + `Cache-Control: public, max-age=31536000, immutable` (content-hashed assets)                                                  |
+| `~ ^/(sw\.js\|swe-worker.*\.js\|manifest\.webmanifest)$`           | `sayabot_web`                                | —                                   | `Cache-Control: no-cache` so service workers revalidate and new deploys take effect                                                          |
+| `location /`                                                       | `sayabot_web`                                | `sayabot_general` burst 100 nodelay | Pages, server actions, RSC payloads; buffering off (server actions can stream), read timeout 120s                                            |
 
 `snippets/proxy.conf` sets `proxy_http_version 1.1`, an empty `Connection` (upstream keepalive, switched to `upgrade` for WebSockets via the map), `Host`, `X-Real-IP`, `X-Forwarded-For/Proto/Host/Port 443`, `proxy_next_upstream error timeout` with 2 tries, and the large proxy buffers. `snippets/security-headers.conf` adds `Strict-Transport-Security "max-age=63072000; includeSubDomains"`, `X-Content-Type-Options: nosniff`, and `Cross-Origin-Opener-Policy: same-origin`, all with `always` so they land on error responses too.
 
@@ -82,15 +82,15 @@ so rate limits stay per visitor instead of one shared bucket. `docker-compose.tu
 
 Mounted only with `docker-compose.supabase.yml` at `/etc/nginx/supabase/locations.conf`. These use `^~` prefix matching, which wins over the regex locations in `sayabot-locations.conf` — e.g. `/auth/v1/...` escapes the `/auth` auth rate limit on purpose (supabase-locations.conf:4-5).
 
-| Path | Upstream | Behavior |
-| :--- | :--- | :--- |
-| `^~ /auth/v1/` | `supabase-auth:9999` | `sayabot_general` burst 60; `Authorization` set from the apikey map |
-| `= /rest/v1/` | — | `403` — PostgREST's root endpoint lists the whole API; Supabase's gateway only shows it to admins |
-| `^~ /rest/v1/` | `supabase-rest:3000` | `sayabot_api` burst 120; apikey→Authorization fallback |
-| `^~ /realtime/v1/api/tenants`, `^~ /realtime/v1/api/openapi` | — | `403` — realtime's tenant admin API and OpenAPI page stay private |
-| `^~ /realtime/v1/api/` | `supabase-realtime:4000/api/` | Broadcasts from the orchestrator (REST); sets `Host: realtime-dev.supabase-realtime` (realtime picks its tenant from the Host header) |
-| `^~ /realtime/v1/` | `supabase-realtime:4000/socket/` | Client WebSocket; 1h read/send timeouts, buffering off |
-| `^~ /storage/v1/` | `supabase-storage:5000` | `client_max_body_size 50m`, `proxy_request_buffering off`, `X-Forwarded-Prefix /storage/v1` |
+| Path                                                         | Upstream                         | Behavior                                                                                                                              |
+| :----------------------------------------------------------- | :------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------ |
+| `^~ /auth/v1/`                                               | `supabase-auth:9999`             | `sayabot_general` burst 60; `Authorization` set from the apikey map                                                                   |
+| `= /rest/v1/`                                                | —                                | `403` — PostgREST's root endpoint lists the whole API; Supabase's gateway only shows it to admins                                     |
+| `^~ /rest/v1/`                                               | `supabase-rest:3000`             | `sayabot_api` burst 120; apikey→Authorization fallback                                                                                |
+| `^~ /realtime/v1/api/tenants`, `^~ /realtime/v1/api/openapi` | —                                | `403` — realtime's tenant admin API and OpenAPI page stay private                                                                     |
+| `^~ /realtime/v1/api/`                                       | `supabase-realtime:4000/api/`    | Broadcasts from the orchestrator (REST); sets `Host: realtime-dev.supabase-realtime` (realtime picks its tenant from the Host header) |
+| `^~ /realtime/v1/`                                           | `supabase-realtime:4000/socket/` | Client WebSocket; 1h read/send timeouts, buffering off                                                                                |
+| `^~ /storage/v1/`                                            | `supabase-storage:5000`          | `client_max_body_size 50m`, `proxy_request_buffering off`, `X-Forwarded-Prefix /storage/v1`                                           |
 
 Every proxied Supabase service still validates the JWT itself; nginx only performs the apikey→Authorization normalization.
 

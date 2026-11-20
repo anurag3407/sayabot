@@ -84,17 +84,15 @@ export default async function DownloadPage() {
                   </a>
                   <div className="flex min-w-0 items-center gap-2 rounded-xl border border-line bg-panel px-3 py-2">
                     <span className="font-mono text-[11px] text-faint">server</span>
-                    <span className="min-w-0 truncate font-mono text-[13px] text-text">
-                      {host}
-                    </span>
+                    <span className="min-w-0 truncate font-mono text-[13px] text-text">{host}</span>
                     <CopyButton text={server} />
                   </div>
                 </div>
                 <p className="mt-3 text-xs leading-relaxed text-faint">
                   On your phone, choose <strong>My own server</strong> and enter{" "}
-                  <span className="font-mono text-text">{host}</span>. On a Mac, use Open
-                  in Sayabot above — a fresh install starts on this Mac, and Change Server is
-                  where you enter this address later.
+                  <span className="font-mono text-text">{host}</span>. On a Mac, use Open in Sayabot
+                  above — a fresh install starts on this Mac, and Change Server is where you enter
+                  this address later.
                 </p>
               </div>
             </div>
@@ -201,9 +199,7 @@ export default async function DownloadPage() {
               </a>
               <div className="rounded-xl border border-line bg-raised px-3 py-2">
                 <p className="font-mono text-[11px] text-faint">PowerShell</p>
-                <p className="mt-1 break-all font-mono text-[12px] text-text">
-                  {installWindows}
-                </p>
+                <p className="mt-1 break-all font-mono text-[12px] text-text">{installWindows}</p>
                 <div className="mt-2">
                   <CopyButton text={installWindows} />
                 </div>

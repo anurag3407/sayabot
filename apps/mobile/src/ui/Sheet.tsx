@@ -1,5 +1,14 @@
 import React, { useEffect, useRef, type ReactNode } from "react"
-import { Animated, KeyboardAvoidingView, Modal, PanResponder, Platform, Pressable, ScrollView, View } from "react-native"
+import {
+  Animated,
+  KeyboardAvoidingView,
+  Modal,
+  PanResponder,
+  Platform,
+  Pressable,
+  ScrollView,
+  View,
+} from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { Text } from "./Text"
 import { radius, space, useTheme } from "./theme"
@@ -43,9 +52,26 @@ export function Sheet({
   ).current
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+      statusBarTranslucent
+    >
       <View style={{ flex: 1, justifyContent: "flex-end" }}>
-        <Pressable accessibilityLabel="Close" onPress={onClose} style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0, backgroundColor: theme.overlay }} />
+        <Pressable
+          accessibilityLabel="Close"
+          onPress={onClose}
+          style={{
+            position: "absolute",
+            top: 0,
+            bottom: 0,
+            left: 0,
+            right: 0,
+            backgroundColor: theme.overlay,
+          }}
+        />
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
           <Animated.View
             style={{
@@ -58,8 +84,19 @@ export function Sheet({
               transform: [{ translateY: drag }],
             }}
           >
-            <View {...pan.panHandlers} style={{ paddingTop: 8, paddingBottom: 6, paddingHorizontal: space.lg }}>
-              <View style={{ alignSelf: "center", width: 38, height: 5, borderRadius: 3, backgroundColor: theme.lineStrong }} />
+            <View
+              {...pan.panHandlers}
+              style={{ paddingTop: 8, paddingBottom: 6, paddingHorizontal: space.lg }}
+            >
+              <View
+                style={{
+                  alignSelf: "center",
+                  width: 38,
+                  height: 5,
+                  borderRadius: 3,
+                  backgroundColor: theme.lineStrong,
+                }}
+              />
               {title ? (
                 <View style={{ flexDirection: "row", alignItems: "center", marginTop: 12 }}>
                   <Text variant="headline" style={{ flex: 1 }}>

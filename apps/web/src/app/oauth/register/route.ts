@@ -29,7 +29,10 @@ export async function POST(req: NextRequest) {
   })
 
   if (error) {
-    return NextResponse.json({ error: "server_error", error_description: error.message }, { status: 500 })
+    return NextResponse.json(
+      { error: "server_error", error_description: error.message },
+      { status: 500 },
+    )
   }
 
   return NextResponse.json(

@@ -39,11 +39,21 @@ describe("withModelOverride", () => {
     expect(next.providerKeyId).toBeNull()
     expect(next.model).toBeNull()
     expect(next.params).toEqual({ effort: "high", runner: onMac.runner, other: 1 })
-    expect(agent.params).toEqual({ effort: "low", runner: { where: "server", app: "codex" }, other: 1 })
+    expect(agent.params).toEqual({
+      effort: "low",
+      runner: { where: "server", app: "codex" },
+      other: 1,
+    })
   })
 
   it("drops the runner and effort for a key choice", () => {
-    const next = withModelOverride(agent, { ...onMac, providerKeyId: "key-2", agentModel: "gpt-6", runner: null, effort: null })
+    const next = withModelOverride(agent, {
+      ...onMac,
+      providerKeyId: "key-2",
+      agentModel: "gpt-6",
+      runner: null,
+      effort: null,
+    })
     expect(next.params).toEqual({ other: 1 })
     expect(next.providerKeyId).toBe("key-2")
   })
@@ -79,7 +89,10 @@ describe("applyRoomModel", () => {
   })
 
   it("ignores a key from another workspace", async () => {
-    results.push([{ modelOverride: { ...onMac, runner: null, providerKeyId: "key-9" } }], [{ orgId: "org-2" }])
+    results.push(
+      [{ modelOverride: { ...onMac, runner: null, providerKeyId: "key-9" } }],
+      [{ orgId: "org-2" }],
+    )
     expect(await applyRoomModel("r1", agent)).toBe(agent)
   })
 })

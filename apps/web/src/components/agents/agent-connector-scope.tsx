@@ -3,10 +3,7 @@
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import {
-  saveAgentConnectorGrant,
-  deleteAgentConnectorGrant,
-} from "@/lib/actions/connectors"
+import { saveAgentConnectorGrant, deleteAgentConnectorGrant } from "@/lib/actions/connectors"
 import { Button } from "@/components/ui/button"
 import { Field, HelpText, Input, Select } from "@/components/ui/field"
 import type { AgentConnectorGrantView, WorkspaceConnectorView } from "@/lib/types"
@@ -36,6 +33,7 @@ export function AgentConnectorScopeManager({
   const [allowedRecipients, setAllowedRecipients] = useState("")
   const [allowedVaults, setAllowedVaults] = useState("")
   const [allowedPrefixes, setAllowedPrefixes] = useState("")
+  const [allowedApps, setAllowedApps] = useState("")
   const [readOnly, setReadOnly] = useState(false)
 
   const selectedConnector = availableConnectors.find((c) => c.id === selectedConnectorId)
@@ -55,6 +53,7 @@ export function AgentConnectorScopeManager({
     if (allowedRecipients) formData.append("allowedRecipients", allowedRecipients)
     if (allowedVaults) formData.append("allowedVaults", allowedVaults)
     if (allowedPrefixes) formData.append("allowedPrefixes", allowedPrefixes)
+    if (allowedApps) formData.append("allowedApps", allowedApps)
     if (readOnly) formData.append("readOnly", "1")
 
     startTransition(async () => {
@@ -67,6 +66,7 @@ export function AgentConnectorScopeManager({
         setAllowedRepos("")
         setAllowedRecipients("")
         setAllowedPrefixes("")
+        setAllowedApps("")
         setReadOnly(false)
         router.refresh()
       }
@@ -90,11 +90,10 @@ export function AgentConnectorScopeManager({
     <div className="rounded-xl border border-border bg-card p-4 space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-foreground">
-            Workspace Knowledge Connectors
-          </h3>
+          <h3 className="text-sm font-semibold text-foreground">Workspace Knowledge Connectors</h3>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Tier-2 scoping: give this agent Drive, Slack, GitHub, Discord, Telegram or WhatsApp, limited to what it needs.
+            Tier-2 scoping: give this agent Drive, Slack, GitHub, Discord, Telegram or WhatsApp,
+            limited to what it needs.
           </p>
         </div>
         <Link
@@ -108,7 +107,8 @@ export function AgentConnectorScopeManager({
       {/* Current Grants */}
       {grants.length === 0 ? (
         <p className="text-xs text-muted-foreground">
-          No workspace connectors granted to this bot. Add one below to let this agent use your Drive, chats or repos.
+          No workspace connectors granted to this bot. Add one below to let this agent use your
+          Drive, chats or repos.
         </p>
       ) : (
         <div className="divide-y divide-border rounded-lg border border-border bg-panel">
@@ -139,17 +139,23 @@ export function AgentConnectorScopeManager({
                     {scopes.allowedChannels && scopes.allowedChannels.length > 0 && (
                       <span>
                         {source === "telegram" ? "Chats" : "Channels"}:{" "}
-                        {source === "slack" ? `#${scopes.allowedChannels.join(", #")}` : scopes.allowedChannels.join(", ")}
+                        {source === "slack"
+                          ? `#${scopes.allowedChannels.join(", #")}`
+                          : scopes.allowedChannels.join(", ")}
                       </span>
                     )}
-                    {Array.isArray(scopes.allowedRecipients) && scopes.allowedRecipients.length > 0 && (
-                      <span>Numbers: {(scopes.allowedRecipients as string[]).join(", ")}</span>
-                    )}
+                    {Array.isArray(scopes.allowedRecipients) &&
+                      scopes.allowedRecipients.length > 0 && (
+                        <span>Numbers: {(scopes.allowedRecipients as string[]).join(", ")}</span>
+                      )}
                     {Array.isArray(scopes.allowedVaults) && scopes.allowedVaults.length > 0 && (
                       <span>Vaults: {(scopes.allowedVaults as string[]).join(", ")}</span>
                     )}
                     {Array.isArray(scopes.allowedPrefixes) && scopes.allowedPrefixes.length > 0 && (
                       <span>Prefix: {(scopes.allowedPrefixes as string[]).join(", ")}</span>
+                    )}
+                    {Array.isArray(scopes.allowedApps) && scopes.allowedApps.length > 0 && (
+                      <span>Apps: {(scopes.allowedApps as string[]).join(", ")}</span>
                     )}
                     {scopes.readOnly === true && <span>Read only</span>}
                     {scopes.allowedRepos && scopes.allowedRepos.length > 0 && (
@@ -158,7 +164,9 @@ export function AgentConnectorScopeManager({
                     {!scopes.allowedFolders?.length &&
                       !scopes.allowedChannels?.length &&
                       !scopes.allowedRepos?.length &&
-                      !(Array.isArray(scopes.allowedRecipients) && scopes.allowedRecipients.length) &&
+                      !(
+                        Array.isArray(scopes.allowedRecipients) && scopes.allowedRecipients.length
+                      ) &&
                       !(Array.isArray(scopes.allowedPrefixes) && scopes.allowedPrefixes.length) && (
                         <span className="text-faint">Full workspace access for this connector</span>
                       )}
@@ -226,14 +234,23 @@ export function AgentConnectorScopeManager({
               </Field>
             )}
 
-            {(selectedConnector?.source === "discord" || selectedConnector?.source === "telegram") && (
+            {(selectedConnector?.source === "discord" ||
+              selectedConnector?.source === "telegram") && (
               <Field
-                label={selectedConnector.source === "discord" ? "Allowed channel IDs" : "Allowed chat IDs"}
+                label={
+                  selectedConnector.source === "discord"
+                    ? "Allowed channel IDs"
+                    : "Allowed chat IDs"
+                }
                 htmlFor="grant-chats"
               >
                 <Input
                   id="grant-chats"
-                  placeholder={selectedConnector.source === "discord" ? "e.g. 1180123456789012345" : "e.g. 123456789, -1001234567890"}
+                  placeholder={
+                    selectedConnector.source === "discord"
+                      ? "e.g. 1180123456789012345"
+                      : "e.g. 123456789, -1001234567890"
+                  }
                   value={allowedChannels}
                   onChange={(e) => setAllowedChannels(e.target.value)}
                 />
@@ -253,7 +270,9 @@ export function AgentConnectorScopeManager({
                   value={allowedRecipients}
                   onChange={(e) => setAllowedRecipients(e.target.value)}
                 />
-                <HelpText>Blank = any number. Every message still waits for your OK in the Inbox.</HelpText>
+                <HelpText>
+                  Blank = any number. Every message still waits for your OK in the Inbox.
+                </HelpText>
               </Field>
             )}
 
@@ -267,7 +286,23 @@ export function AgentConnectorScopeManager({
                   value={allowedVaults}
                   onChange={(e) => setAllowedVaults(e.target.value)}
                 />
-                <HelpText>Blank = every vault the token can see. Search still returns titles only.</HelpText>
+                <HelpText>
+                  Blank = every vault the token can see. Search still returns titles only.
+                </HelpText>
+              </Field>
+            )}
+
+            {selectedConnector?.source === "composio" && (
+              <Field label="Apps this agent may use" htmlFor="grant-apps">
+                <Input
+                  id="grant-apps"
+                  placeholder="e.g. gmail, googlecalendar, notion"
+                  value={allowedApps}
+                  onChange={(e) => setAllowedApps(e.target.value)}
+                />
+                <HelpText>
+                  Blank = every app in the catalog. Slugs come from composio_list_apps.
+                </HelpText>
               </Field>
             )}
 
@@ -294,18 +329,39 @@ export function AgentConnectorScopeManager({
                     value={allowedPrefixes}
                     onChange={(e) => setAllowedPrefixes(e.target.value)}
                   />
-                  <HelpText>Restricts this agent to files starting with this folder prefix.</HelpText>
+                  <HelpText>
+                    Restricts this agent to files starting with this folder prefix.
+                  </HelpText>
                 </Field>
               )}
           </div>
 
           {selectedConnector &&
-            ["slack", "discord", "telegram", "whatsapp", "supabase", "cloudflare_r2", "backblaze_b2", "s3_storage", "huggingface"].includes(
-              selectedConnector.source,
-            ) && (
+            [
+              "slack",
+              "discord",
+              "telegram",
+              "whatsapp",
+              "supabase",
+              "cloudflare_r2",
+              "backblaze_b2",
+              "s3_storage",
+              "huggingface",
+              "composio",
+            ].includes(selectedConnector.source) && (
               <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                <input type="checkbox" checked={readOnly} onChange={(e) => setReadOnly(e.target.checked)} />
-                {["supabase", "cloudflare_r2", "backblaze_b2", "s3_storage", "huggingface"].includes(selectedConnector.source)
+                <input
+                  type="checkbox"
+                  checked={readOnly}
+                  onChange={(e) => setReadOnly(e.target.checked)}
+                />
+                {[
+                  "supabase",
+                  "cloudflare_r2",
+                  "backblaze_b2",
+                  "s3_storage",
+                  "huggingface",
+                ].includes(selectedConnector.source)
                   ? "Read only: agent can download and read files, but never upload or delete"
                   : "Read only: this agent can look, but never send messages"}
               </label>

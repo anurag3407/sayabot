@@ -101,15 +101,10 @@ ttsRoutes.post("/speak", async (c) => {
   const voiceId = parsed.data.voiceId || config.defaultVoice
 
   try {
-    const audio = await synthesizeSpeech(
-      provider,
-      text,
-      config.creds,
-      {
-        voiceId,
-        model: parsed.data.model,
-      },
-    )
+    const audio = await synthesizeSpeech(provider, text, config.creds, {
+      voiceId,
+      model: parsed.data.model,
+    })
 
     return new Response(Buffer.from(audio.bytes), {
       status: 200,

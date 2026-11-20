@@ -1,4 +1,12 @@
-import { agents, mobilePushTokens, orgMembers, orgs, pushSubscriptions, roomMembers, rooms } from "@sayabot/db"
+import {
+  agents,
+  mobilePushTokens,
+  orgMembers,
+  orgs,
+  pushSubscriptions,
+  roomMembers,
+  rooms,
+} from "@sayabot/db"
 import { and, eq, inArray } from "drizzle-orm"
 import webpush from "web-push"
 import { getDb } from "./db"
@@ -11,7 +19,9 @@ let configured: boolean | null = null
 function pushReady(): boolean {
   if (configured !== null) return configured
   const env = getEnv()
-  configured = Boolean(env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY && env.VAPID_SUBJECT)
+  configured = Boolean(
+    env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY && env.VAPID_SUBJECT,
+  )
   if (configured) {
     webpush.setVapidDetails(
       env.VAPID_SUBJECT!,
@@ -25,7 +35,11 @@ function pushReady(): boolean {
 /** Everyone who is able to decide on an approval in this room. */
 async function roomApprovers(roomId: string): Promise<{ orgId: string; userIds: string[] } | null> {
   const db = getDb()
-  const [room] = await db.select({ orgId: rooms.orgId }).from(rooms).where(eq(rooms.id, roomId)).limit(1)
+  const [room] = await db
+    .select({ orgId: rooms.orgId })
+    .from(rooms)
+    .where(eq(rooms.id, roomId))
+    .limit(1)
   if (!room) return null
   const [admins, orgAdmins] = await Promise.all([
     db
@@ -56,10 +70,7 @@ interface WebPushPayload {
   toolCallId?: string
 }
 
-async function sendToUsers(
-  userIds: string[],
-  payload: WebPushPayload,
-): Promise<void> {
+async function sendToUsers(userIds: string[], payload: WebPushPayload): Promise<void> {
   if (!userIds.length) return
   const db = getDb()
   const subscriptions = await db
@@ -99,7 +110,13 @@ const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send"
  */
 async function sendToPhones(
   userIds: string[],
-  payload: { title: string; body: string; data: Record<string, unknown>; category: string; threadId: string },
+  payload: {
+    title: string
+    body: string
+    data: Record<string, unknown>
+    category: string
+    threadId: string
+  },
 ): Promise<void> {
   if (!userIds.length) return
   const db = getDb()
@@ -126,9 +143,13 @@ async function sendToPhones(
       body: JSON.stringify(messages),
       signal: AbortSignal.timeout(10_000),
     })
-    const json = (await res.json().catch(() => null)) as { data?: Array<{ status: string; details?: { error?: string } }> } | null
+    const json = (await res.json().catch(() => null)) as {
+      data?: Array<{ status: string; details?: { error?: string } }>
+    } | null
     const gone = (json?.data ?? [])
-      .map((r, i) => (r.status === "error" && r.details?.error === "DeviceNotRegistered" ? tokens[i]?.id : null))
+      .map((r, i) =>
+        r.status === "error" && r.details?.error === "DeviceNotRegistered" ? tokens[i]?.id : null,
+      )
       .filter((id): id is string => Boolean(id))
     if (gone.length) await db.delete(mobilePushTokens).where(inArray(mobilePushTokens.id, gone))
   } catch (error) {
@@ -169,7 +190,10 @@ export function notifyHumansNeeded(args: {
     const title = args.kind === "approval" ? `${who} needs your approval` : `${who} has a question`
     await sendToPhones(approvers.userIds, {
       title,
-      body: args.kind === "approval" ? `Wants to use ${args.detail.replace(/_/g, " ")}. It expires in 5 minutes.` : args.detail,
+      body:
+        args.kind === "approval"
+          ? `Wants to use ${args.detail.replace(/_/g, " ")}. It expires in 5 minutes.`
+          : args.detail,
       data: { kind: args.kind, refId: args.refId ?? null, roomId: args.roomId, orgSlug: slug },
       category: args.refId ? (args.kind === "approval" ? "approval" : "question") : "info",
       threadId: args.roomId,
@@ -191,7 +215,10 @@ export function notifyHumansNeeded(args: {
 
 /** First line of a reply, trimmed for a lock-screen preview. */
 function preview(text: string, max = 160): string {
-  const flat = text.replace(/[#*_`>]+/g, "").replace(/\s+/g, " ").trim()
+  const flat = text
+    .replace(/[#*_`>]+/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
   return flat.length > max ? `${flat.slice(0, max - 1)}…` : flat
 }
 

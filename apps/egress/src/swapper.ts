@@ -17,8 +17,14 @@ export interface ResolvedGrant {
 }
 
 const grantCache = new Map<string, { grant: ResolvedGrant; expiresAt: number }>()
-const identityCache = new Map<string, { identity: { agentId: string; orgId: string }; expiresAt: number }>()
-const secretIdentityCache = new Map<string, { identity: { agentId: string; orgId: string }; expiresAt: number }>()
+const identityCache = new Map<
+  string,
+  { identity: { agentId: string; orgId: string }; expiresAt: number }
+>()
+const secretIdentityCache = new Map<
+  string,
+  { identity: { agentId: string; orgId: string }; expiresAt: number }
+>()
 
 const MAX_CACHE_SIZE = 1000
 
@@ -56,7 +62,9 @@ export function proxySecretFrom(header: string | string[] | undefined): string |
  * Identity from a per-agent proxy credential. computerd adds it on the host side of a
  * microVM's egress socket, so it never enters the computer and cannot be forged by it.
  */
-export async function resolveAgentIdentityBySecret(secret: string): Promise<{ agentId: string; orgId: string } | null> {
+export async function resolveAgentIdentityBySecret(
+  secret: string,
+): Promise<{ agentId: string; orgId: string } | null> {
   const cached = secretIdentityCache.get(secret)
   if (cached && cached.expiresAt > Date.now()) return cached.identity
   try {
@@ -82,7 +90,9 @@ export function forgetIdentity(containerIp: string): boolean {
   return identityCache.delete(containerIp)
 }
 
-export async function resolveAgentIdentity(containerIp: string): Promise<{ agentId: string; orgId: string } | null> {
+export async function resolveAgentIdentity(
+  containerIp: string,
+): Promise<{ agentId: string; orgId: string } | null> {
   const cached = identityCache.get(containerIp)
   if (cached && cached.expiresAt > Date.now()) {
     return cached.identity
@@ -108,7 +118,10 @@ export async function resolveAgentIdentity(containerIp: string): Promise<{ agent
   return null
 }
 
-export async function resolvePlaceholder(agentId: string, placeholder: string): Promise<ResolvedGrant> {
+export async function resolvePlaceholder(
+  agentId: string,
+  placeholder: string,
+): Promise<ResolvedGrant> {
   const cacheKey = `${agentId}:${placeholder}`
   const cached = grantCache.get(cacheKey)
   if (cached && cached.expiresAt > Date.now()) {
@@ -135,7 +148,11 @@ export async function resolvePlaceholder(agentId: string, placeholder: string): 
   return grant
 }
 
-export async function reportViolation(agentId: string, host: string, reason: string): Promise<void> {
+export async function reportViolation(
+  agentId: string,
+  host: string,
+  reason: string,
+): Promise<void> {
   try {
     await fetch(`${ORCHESTRATOR_URL}/internal/egress/violation`, {
       method: "POST",

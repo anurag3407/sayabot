@@ -18,11 +18,16 @@ export function Sponsor() {
                 Help keep the bots fed.
               </h2>
               <p className="l-body mt-2 max-w-[56ch]">
-                Sayabot is free right now. Sponsoring pays for servers and buys time to build the next
-                thing you ask for.
+                Sayabot is free right now. Sponsoring pays for servers and buys time to build the
+                next thing you ask for.
               </p>
             </div>
-            <a href={SPONSOR_URL} target="_blank" rel="noreferrer" className="l-btn l-btn-ghost relative z-[1] shrink-0">
+            <a
+              href={SPONSOR_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="l-btn l-btn-ghost relative z-[1] shrink-0"
+            >
               <Heart className="h-4 w-4 text-accent" />
               Sponsor me
               <ArrowUpRight className="h-4 w-4" />

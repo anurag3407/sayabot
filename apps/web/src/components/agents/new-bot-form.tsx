@@ -69,11 +69,17 @@ export function NewBotForm({
   return (
     <div className="mx-auto w-full max-w-xl px-4 pb-24 pt-12 sm:px-6">
       <div className="mb-8 flex items-center gap-4">
-        <Mascot seed={name.trim() || "new bot"} mood={name.trim() ? "happy" : "idle"} className="h-16 w-16 shrink-0" />
+        <Mascot
+          seed={name.trim() || "new bot"}
+          mood={name.trim() ? "happy" : "idle"}
+          className="h-16 w-16 shrink-0"
+        />
         <div>
           <h1 className="text-[22px] font-semibold tracking-tight text-text">New bot</h1>
           <p className="mt-0.5 text-[14px] text-faint">
-            {roomName ? `It will join ${roomName} and get its own chat with you.` : "You can change all of this later."}
+            {roomName
+              ? `It will join ${roomName} and get its own chat with you.`
+              : "You can change all of this later."}
           </p>
         </div>
       </div>
@@ -86,7 +92,9 @@ export function NewBotForm({
         }}
       >
         <div>
-          <label htmlFor="bot-name" className={label}>Name</label>
+          <label htmlFor="bot-name" className={label}>
+            Name
+          </label>
           <input
             id="bot-name"
             autoFocus
@@ -113,7 +121,10 @@ export function NewBotForm({
         </div>
 
         {error ? (
-          <p role="alert" className="rounded-xl bg-danger/10 px-3.5 py-2.5 text-[13.5px] text-danger">
+          <p
+            role="alert"
+            className="rounded-xl bg-danger/10 px-3.5 py-2.5 text-[13.5px] text-danger"
+          >
             {error}
           </p>
         ) : null}

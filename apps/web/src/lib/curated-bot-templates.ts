@@ -15,7 +15,8 @@ export const CURATED_BOT_TEMPLATES: CuratedBotTemplate[] = [
     id: "coder",
     slug: "coder",
     name: "Coder",
-    description: "Full-stack implementation, git management, and test execution with a persistent computer sandbox.",
+    description:
+      "Full-stack implementation, git management, and test execution with a persistent computer sandbox.",
     category: "engineering",
     icon: "code",
     highlights: ["Persistent computer", "Git & pull requests", "Terminal execution", "Code edits"],
@@ -57,7 +58,8 @@ Your objective is to discover, verify, synthesize, and organize information on c
     id: "reviewer",
     slug: "reviewer",
     name: "Code Reviewer",
-    description: "Pull request auditing, security review, and edge-case detection with GitHub bridge.",
+    description:
+      "Pull request auditing, security review, and edge-case detection with GitHub bridge.",
     category: "engineering",
     icon: "check-circle",
     highlights: ["GitHub PR audit", "Security scan", "Edge cases", "Diff reviews"],
@@ -117,7 +119,8 @@ Craft crisp, clear, persuasive, and human-sounding copy, documentation, release 
     id: "analyst",
     slug: "analyst",
     name: "Data Analyst",
-    description: "Database inspection, SQL query optimization, and structured quantitative metrics.",
+    description:
+      "Database inspection, SQL query optimization, and structured quantitative metrics.",
     category: "data",
     icon: "bar-chart-2",
     highlights: ["PostgreSQL", "SQL queries", "Data exploration", "Charts"],
@@ -157,7 +160,8 @@ Maintain operational health, diagnose system alerts, audit configurations, and a
     id: "assistant",
     slug: "assistant",
     name: "General Assistant",
-    description: "All-purpose collaborator for project organization, task tracking, and discussions.",
+    description:
+      "All-purpose collaborator for project organization, task tracking, and discussions.",
     category: "general",
     icon: "bot",
     highlights: ["Task management", "Brainstorming", "Multi-turn chat", "Canvas"],
@@ -195,37 +199,43 @@ export const RUNTIME_PROMPT_PRESETS: RuntimePromptPreset[] = [
     id: "concise",
     label: "Concise & Direct",
     tagline: "Short, actionable answers without filler",
-    prompt: "Be extremely concise, direct, and actionable. State key conclusions and results first, omit conversational filler, and use tight bullet points.",
+    prompt:
+      "Be extremely concise, direct, and actionable. State key conclusions and results first, omit conversational filler, and use tight bullet points.",
   },
   {
     id: "code_reviewer",
     label: "Strict Code Reviewer",
     tagline: "Thorough verification of edge cases & security",
-    prompt: "Act as a principal software engineer and strict code reviewer. Thoroughly analyze proposed changes for edge cases, performance bottlenecks, race conditions, and security vulnerabilities before approval.",
+    prompt:
+      "Act as a principal software engineer and strict code reviewer. Thoroughly analyze proposed changes for edge cases, performance bottlenecks, race conditions, and security vulnerabilities before approval.",
   },
   {
     id: "test_driven",
     label: "Test-Driven Engineer",
     tagline: "Prioritizes test coverage & assertions",
-    prompt: "Adopt a strict test-driven development workflow. Write or update automated unit and integration tests covering positive, negative, and edge-case paths for every change.",
+    prompt:
+      "Adopt a strict test-driven development workflow. Write or update automated unit and integration tests covering positive, negative, and edge-case paths for every change.",
   },
   {
     id: "root_cause_debugger",
     label: "Root-Cause Debugger",
     tagline: "Diagnoses causes systematically",
-    prompt: "Diagnose problems systematically. Trace error messages to their root origin with evidence, explain the breakdown, and propose minimal, targeted fixes.",
+    prompt:
+      "Diagnose problems systematically. Trace error messages to their root origin with evidence, explain the breakdown, and propose minimal, targeted fixes.",
   },
   {
     id: "system_architect",
     label: "System Architect",
     tagline: "High-level design & trade-offs",
-    prompt: "Evaluate architectures from a systems perspective. Outline structural diagrams, identify failure modes, assess scalability trade-offs, and recommend modular designs.",
+    prompt:
+      "Evaluate architectures from a systems perspective. Outline structural diagrams, identify failure modes, assess scalability trade-offs, and recommend modular designs.",
   },
   {
     id: "tech_writer",
     label: "Technical Writer",
     tagline: "Clear, structured documentation",
-    prompt: "Craft clear, authoritative technical documentation. Use progressive disclosure, structured markdown headings, callouts, and runnable code snippets.",
+    prompt:
+      "Craft clear, authoritative technical documentation. Use progressive disclosure, structured markdown headings, callouts, and runnable code snippets.",
   },
 ]
 

@@ -4,18 +4,84 @@ import type { ConnectorDoc, ConnectorSearchOptions } from "./types"
 export interface SlackConfig {
   botToken: string
   fetchFn?: typeof fetch
+  /** Override the Slack origin. Tests point this at a local stub server. */
+  baseUrl?: string
 }
 
 export class SlackConnector {
   private userCache = new Map<string, string>()
+  private channels: { id: string; name?: string }[] | null = null
 
   constructor(private config: SlackConfig) {}
+
+  private base(): string {
+    return (this.config.baseUrl ?? "https://slack.com").replace(/\/+$/, "")
+  }
 
   private get headers(): Record<string, string> {
     return {
       Authorization: `Bearer ${this.config.botToken}`,
       "Content-Type": "application/x-www-form-urlencoded",
     }
+  }
+
+  /** Channels the bot can see, fetched at most once per client. */
+  private async channelList(): Promise<{ id: string; name?: string }[]> {
+    if (this.channels) return this.channels
+    const listed = await this.slackApi<{
+      ok?: boolean
+      error?: string
+      channels?: Array<{ id: string; name?: string }>
+    }>(
+      `${this.base()}/api/conversations.list?${new URLSearchParams({
+        limit: "200",
+        types: "public_channel,private_channel",
+        exclude_archived: "true",
+      })}`,
+    )
+    if (!listed.ok) throw new Error(`Slack API error: ${listed.error || "unknown error"}`)
+    this.channels = listed.channels ?? []
+    return this.channels
+  }
+
+  /**
+   * A grant may restrict an agent to channel names (general) or ids (C123456). Both are accepted:
+   * names resolve to ids through the workspace channel list. Null means "no restriction".
+   */
+  async allowedChannelIds(allowed?: string[]): Promise<Set<string> | null> {
+    const cleaned = (allowed ?? [])
+      .map((channel) => channel.replace(/^#/, "").trim())
+      .filter(Boolean)
+    if (cleaned.length === 0) return null
+
+    const ids = new Set(cleaned)
+    const names = cleaned
+      .filter((channel) => !/^[CG][A-Z0-9]{6,}$/.test(channel))
+      .map((channel) => channel.toLowerCase())
+    if (names.length === 0) return ids
+
+    for (const channel of await this.channelList()) {
+      if (channel.name && names.includes(channel.name.toLowerCase())) ids.add(channel.id)
+    }
+    return ids
+  }
+
+  /** Throws when a channel sits outside a scoped grant. Accepts an id or a name. */
+  async assertChannelAllowed(channel: string, allowed?: string[]): Promise<void> {
+    const ids = await this.allowedChannelIds(allowed)
+    if (!ids) return
+
+    const clean = channel.replace(/^#/, "").trim()
+    if (ids.has(clean)) return
+
+    const byName = (await this.channelList()).find(
+      (candidate) => candidate.name?.toLowerCase() === clean.toLowerCase(),
+    )
+    if (byName && ids.has(byName.id)) return
+
+    throw new Error(
+      `Access Denied: Slack channel ${channel} is outside this agent's allowed list (${(allowed ?? []).join(", ")}).`,
+    )
   }
 
   /**
@@ -28,7 +94,7 @@ export class SlackConnector {
 
     try {
       const res = await fetchWithRetry(
-        `https://slack.com/api/users.info?user=${userId}`,
+        `${this.base()}/api/users.info?user=${userId}`,
         {
           method: "GET",
           headers: {
@@ -91,7 +157,7 @@ export class SlackConnector {
     })
 
     const res = await fetchWithRetry(
-      `https://slack.com/api/search.messages?${params.toString()}`,
+      `${this.base()}/api/search.messages?${params.toString()}`,
       {
         method: "GET",
         headers: {
@@ -165,29 +231,10 @@ export class SlackConnector {
     const needle = options.query.trim().toLowerCase()
     if (!needle) return []
 
-    const listed = await this.slackApi<{
-      ok?: boolean
-      error?: string
-      channels?: Array<{ id: string; name?: string }>
-    }>(
-      `https://slack.com/api/conversations.list?${new URLSearchParams({
-        limit: "100",
-        types: "public_channel,private_channel",
-        exclude_archived: "true",
-      })}`,
-    )
-    if (!listed.ok) throw new Error(`Slack API error: ${listed.error || "unknown error"}`)
-
-    let channels = listed.channels ?? []
-    if (options.allowedChannels && options.allowedChannels.length > 0) {
-      const allow = new Set(
-        options.allowedChannels.map((channel) => channel.replace(/^#/, "").toLowerCase()),
-      )
-      channels = channels.filter(
-        (channel) =>
-          allow.has(channel.id.toLowerCase()) ||
-          (channel.name ? allow.has(channel.name.toLowerCase()) : false),
-      )
+    let channels = await this.channelList()
+    const allow = await this.allowedChannelIds(options.allowedChannels)
+    if (allow) {
+      channels = channels.filter((channel) => allow.has(channel.id))
     }
 
     const results: ConnectorDoc[] = []
@@ -198,7 +245,7 @@ export class SlackConnector {
         error?: string
         messages?: Array<{ user?: string; username?: string; text?: string; ts?: string }>
       }>(
-        `https://slack.com/api/conversations.history?${new URLSearchParams({
+        `${this.base()}/api/conversations.history?${new URLSearchParams({
           channel: channel.id,
           limit: "40",
         })}`,
@@ -253,7 +300,7 @@ export class SlackConnector {
     })
 
     const res = await fetchWithRetry(
-      `https://slack.com/api/conversations.replies?${params.toString()}`,
+      `${this.base()}/api/conversations.replies?${params.toString()}`,
       {
         method: "GET",
         headers: {
@@ -315,7 +362,7 @@ export class SlackConnector {
   ): Promise<{ ts: string; channel: string }> {
     if (!text.trim()) throw new Error("Message is empty")
     const res = await fetchWithRetry(
-      "https://slack.com/api/chat.postMessage",
+      `${this.base()}/api/chat.postMessage`,
       {
         method: "POST",
         headers: {

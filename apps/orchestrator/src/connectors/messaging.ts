@@ -31,7 +31,8 @@ async function readJson<T>(res: Response, service: string): Promise<T> {
   }
   if (!res.ok) {
     const detail =
-      (parsed as { message?: string; description?: string; error?: { message?: string } })?.message ??
+      (parsed as { message?: string; description?: string; error?: { message?: string } })
+        ?.message ??
       (parsed as { description?: string })?.description ??
       (parsed as { error?: { message?: string } })?.error?.message ??
       `HTTP ${res.status}`
@@ -45,7 +46,11 @@ async function readJson<T>(res: Response, service: string): Promise<T> {
 export class DiscordConnector {
   private static readonly API = "https://discord.com/api/v10"
 
-  constructor(private config: { botToken: string; fetchFn?: typeof fetch }) {}
+  constructor(private config: { botToken: string; fetchFn?: typeof fetch; baseUrl?: string }) {}
+
+  private api(): string {
+    return (this.config.baseUrl ?? DiscordConnector.API).replace(/\/+$/, "")
+  }
 
   private headers(json = false): Record<string, string> {
     return {
@@ -56,12 +61,20 @@ export class DiscordConnector {
   }
 
   async whoami(): Promise<{ id: string; username: string }> {
-    const res = await fetchWithRetry(`${DiscordConnector.API}/users/@me`, { headers: this.headers() }, { fetchFn: this.config.fetchFn })
+    const res = await fetchWithRetry(
+      `${this.api()}/users/@me`,
+      { headers: this.headers() },
+      { fetchFn: this.config.fetchFn },
+    )
     return readJson(res, "Discord")
   }
 
   async listGuilds(): Promise<{ id: string; name: string }[]> {
-    const res = await fetchWithRetry(`${DiscordConnector.API}/users/@me/guilds`, { headers: this.headers() }, { fetchFn: this.config.fetchFn })
+    const res = await fetchWithRetry(
+      `${this.api()}/users/@me/guilds`,
+      { headers: this.headers() },
+      { fetchFn: this.config.fetchFn },
+    )
     const guilds = await readJson<{ id: string; name: string }[]>(res, "Discord")
     return guilds.map((g) => ({ id: g.id, name: g.name }))
   }
@@ -70,11 +83,13 @@ export class DiscordConnector {
   async listChannels(guildId: string): Promise<{ id: string; name: string; topic?: string }[]> {
     if (!/^\d{5,25}$/.test(guildId)) throw new Error("Discord server ID must be a number")
     const res = await fetchWithRetry(
-      `${DiscordConnector.API}/guilds/${guildId}/channels`,
+      `${this.api()}/guilds/${guildId}/channels`,
       { headers: this.headers() },
       { fetchFn: this.config.fetchFn },
     )
-    const channels = await readJson<{ id: string; name: string; type: number; topic?: string | null }[]>(res, "Discord")
+    const channels = await readJson<
+      { id: string; name: string; type: number; topic?: string | null }[]
+    >(res, "Discord")
     return channels
       .filter((c) => c.type === 0 || c.type === 5)
       .map((c) => ({ id: c.id, name: c.name, ...(c.topic ? { topic: c.topic } : {}) }))
@@ -84,12 +99,17 @@ export class DiscordConnector {
     if (!/^\d{5,25}$/.test(channelId)) throw new Error("Discord channel ID must be a number")
     const n = Math.min(100, Math.max(1, limit))
     const res = await fetchWithRetry(
-      `${DiscordConnector.API}/channels/${channelId}/messages?limit=${n}`,
+      `${this.api()}/channels/${channelId}/messages?limit=${n}`,
       { headers: this.headers() },
       { fetchFn: this.config.fetchFn },
     )
     const messages = await readJson<
-      { id: string; content: string; timestamp: string; author?: { username?: string; global_name?: string | null } }[]
+      {
+        id: string
+        content: string
+        timestamp: string
+        author?: { username?: string; global_name?: string | null }
+      }[]
     >(res, "Discord")
     return messages.map((m) => ({
       id: m.id,
@@ -104,16 +124,22 @@ export class DiscordConnector {
     if (!/^\d{5,25}$/.test(channelId)) throw new Error("Discord channel ID must be a number")
     if (!content.trim()) throw new Error("Message is empty")
     const res = await fetchWithRetry(
-      `${DiscordConnector.API}/channels/${channelId}/messages`,
+      `${this.api()}/channels/${channelId}/messages`,
       {
         method: "POST",
         headers: this.headers(true),
         // No @everyone/@here/role pings from an agent.
-        body: JSON.stringify({ content: clip(content, 2000), allowed_mentions: { parse: ["users"] } }),
+        body: JSON.stringify({
+          content: clip(content, 2000),
+          allowed_mentions: { parse: ["users"] },
+        }),
       },
       { fetchFn: this.config.fetchFn, maxRetries: 0 },
     )
-    const sent = await readJson<{ id: string; channel_id: string; guild_id?: string }>(res, "Discord")
+    const sent = await readJson<{ id: string; channel_id: string; guild_id?: string }>(
+      res,
+      "Discord",
+    )
     return {
       id: sent.id,
       url: `https://discord.com/channels/${sent.guild_id ?? "@me"}/${sent.channel_id}/${sent.id}`,
@@ -124,14 +150,17 @@ export class DiscordConnector {
 // ── Telegram ───────────────────────────────────────────────────────────────
 
 export class TelegramConnector {
-  constructor(private config: { botToken: string; fetchFn?: typeof fetch }) {
+  constructor(private config: { botToken: string; fetchFn?: typeof fetch; baseUrl?: string }) {
     if (!/^\d+:[A-Za-z0-9_-]{20,}$/.test(config.botToken)) {
-      throw new Error("That doesn't look like a Telegram bot token (from @BotFather, like 123456:ABC…)")
+      throw new Error(
+        "That doesn't look like a Telegram bot token (from @BotFather, like 123456:ABC…)",
+      )
     }
   }
 
   private url(method: string) {
-    return `https://api.telegram.org/bot${this.config.botToken}/${method}`
+    const base = (this.config.baseUrl ?? "https://api.telegram.org").replace(/\/+$/, "")
+    return `${base}/bot${this.config.botToken}/${method}`
   }
 
   private async call<T>(method: string, body?: Record<string, unknown>, retry = true): Promise<T> {
@@ -139,21 +168,32 @@ export class TelegramConnector {
       return await this.request<T>(method, body, retry)
     } catch (error) {
       // The token is part of Telegram's URL; keep it out of tool results and logs.
-      const message = (error instanceof Error ? error.message : String(error)).split(this.config.botToken).join("[token]")
+      const message = (error instanceof Error ? error.message : String(error))
+        .split(this.config.botToken)
+        .join("[token]")
       throw new Error(message)
     }
   }
 
-  private async request<T>(method: string, body: Record<string, unknown> | undefined, retry: boolean): Promise<T> {
+  private async request<T>(
+    method: string,
+    body: Record<string, unknown> | undefined,
+    retry: boolean,
+  ): Promise<T> {
     const res = await fetchWithRetry(
       this.url(method),
       body
-        ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }
+        ? {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          }
         : { method: "GET" },
       { fetchFn: this.config.fetchFn, ...(retry ? {} : { maxRetries: 0 }) },
     )
     const data = await readJson<{ ok: boolean; result?: T; description?: string }>(res, "Telegram")
-    if (!data.ok || data.result === undefined) throw new Error(`Telegram: ${data.description ?? "request failed"}`)
+    if (!data.ok || data.result === undefined)
+      throw new Error(`Telegram: ${data.description ?? "request failed"}`)
     return data.result
   }
 
@@ -177,7 +217,10 @@ export class TelegramConnector {
         from?: { username?: string; first_name?: string }
       }
     }
-    const updates = await this.call<Update[]>("getUpdates", { limit: 100, allowed_updates: ["message"] })
+    const updates = await this.call<Update[]>("getUpdates", {
+      limit: 100,
+      allowed_updates: ["message"],
+    })
     return updates
       .flatMap((u) => (u.message ? [u.message] : []))
       .slice(-Math.min(100, Math.max(1, limit)))
@@ -210,10 +253,21 @@ export class TelegramConnector {
 export class WhatsAppConnector {
   private static readonly API = "https://graph.facebook.com/v21.0"
 
-  constructor(private config: { accessToken: string; phoneNumberId: string; fetchFn?: typeof fetch }) {
+  constructor(
+    private config: {
+      accessToken: string
+      phoneNumberId: string
+      fetchFn?: typeof fetch
+      baseUrl?: string
+    },
+  ) {
     if (!/^\d{5,25}$/.test(config.phoneNumberId)) {
       throw new Error("WhatsApp phone number ID is missing. Add it in Settings → Connectors.")
     }
+  }
+
+  private api(): string {
+    return (this.config.baseUrl ?? WhatsAppConnector.API).replace(/\/+$/, "")
   }
 
   private headers(json = false): Record<string, string> {
@@ -225,7 +279,7 @@ export class WhatsAppConnector {
 
   async whoami(): Promise<{ display_phone_number?: string; verified_name?: string }> {
     const res = await fetchWithRetry(
-      `${WhatsAppConnector.API}/${this.config.phoneNumberId}?fields=display_phone_number,verified_name`,
+      `${this.api()}/${this.config.phoneNumberId}?fields=display_phone_number,verified_name`,
       { headers: this.headers() },
       { fetchFn: this.config.fetchFn },
     )
@@ -240,7 +294,7 @@ export class WhatsAppConnector {
     const number = normalizePhone(to)
     if (!body.trim()) throw new Error("Message is empty")
     const res = await fetchWithRetry(
-      `${WhatsAppConnector.API}/${this.config.phoneNumberId}/messages`,
+      `${this.api()}/${this.config.phoneNumberId}/messages`,
       {
         method: "POST",
         headers: this.headers(true),
@@ -259,9 +313,10 @@ export class WhatsAppConnector {
 
   async sendTemplate(to: string, template: string, language: string): Promise<{ id: string }> {
     const number = normalizePhone(to)
-    if (!/^[a-z0-9_]{1,512}$/.test(template)) throw new Error("Template names are lowercase letters, digits and _")
+    if (!/^[a-z0-9_]{1,512}$/.test(template))
+      throw new Error("Template names are lowercase letters, digits and _")
     const res = await fetchWithRetry(
-      `${WhatsAppConnector.API}/${this.config.phoneNumberId}/messages`,
+      `${this.api()}/${this.config.phoneNumberId}/messages`,
       {
         method: "POST",
         headers: this.headers(true),
@@ -282,6 +337,7 @@ export class WhatsAppConnector {
 /** Digits only, country code first (E.164 without the +). */
 export function normalizePhone(value: string): string {
   const digits = value.replace(/[\s().-]/g, "").replace(/^\+/, "")
-  if (!/^\d{7,15}$/.test(digits)) throw new Error("Phone numbers need the country code, like +14155550123")
+  if (!/^\d{7,15}$/.test(digits))
+    throw new Error("Phone numbers need the country code, like +14155550123")
   return digits
 }

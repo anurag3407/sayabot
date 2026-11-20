@@ -44,11 +44,7 @@ async function logDelivery(args: {
  * backoff; permanent configuration and SSRF failures are logged and dropped.
  */
 export async function deliverWebhook(data: WebhookJobData, attempt: number): Promise<void> {
-  const [agent] = await getDb()
-    .select()
-    .from(agents)
-    .where(eq(agents.id, data.agentId))
-    .limit(1)
+  const [agent] = await getDb().select().from(agents).where(eq(agents.id, data.agentId)).limit(1)
   if (!agent?.webhookUrl || !agent.webhookSecretEnc) {
     await logDelivery({ data, attempt, error: "agent has no webhook URL or secret" })
     return

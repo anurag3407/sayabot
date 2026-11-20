@@ -8,12 +8,12 @@ Source files: `package.json`, `turbo.json`, `.github/workflows/test.yml`, `tests
 
 ## 🧵 The Four Lanes
 
-| Lane | Command | Runner | Infra needed |
-| :--- | :--- | :--- | :--- |
-| Unit | `pnpm test:unit` | Vitest per workspace (via turbo) | none |
-| Integration | `pnpm test:integration` | Vitest rooted at `tests/integration` | none (mocked fetch/DB) |
-| E2E browser | `pnpm e2e` / `pnpm test:e2e` | Playwright | running web + orchestrator + Supabase (seeded by `e2e/global-setup.ts`) |
-| E2E API smoke | `pnpm test:e2e:api` | Playwright | running web server only |
+| Lane          | Command                      | Runner                               | Infra needed                                                            |
+| :------------ | :--------------------------- | :----------------------------------- | :---------------------------------------------------------------------- |
+| Unit          | `pnpm test:unit`             | Vitest per workspace (via turbo)     | none                                                                    |
+| Integration   | `pnpm test:integration`      | Vitest rooted at `tests/integration` | none (mocked fetch/DB)                                                  |
+| E2E browser   | `pnpm e2e` / `pnpm test:e2e` | Playwright                           | running web + orchestrator + Supabase (seeded by `e2e/global-setup.ts`) |
+| E2E API smoke | `pnpm test:e2e:api`          | Playwright                           | running web server only                                                 |
 
 Root scripts (`package.json:11-29`):
 
@@ -33,21 +33,21 @@ The `test` turbo task is defined in `turbo.json:10` with no `dependsOn` and no c
 
 Each workspace's `test` script and colocated test count (found with `find … -name "*.test.ts"`, excluding node_modules):
 
-| Workspace | `test` script | Colocated `*.test.ts` |
-| :--- | :--- | :--- |
-| `apps/orchestrator` | `vitest run` | 81 |
-| `apps/web` | `vitest run` | 47 |
-| `packages/core` | `vitest run` | 31 |
-| `apps/computerd` | `vitest run` | 16 |
-| `apps/desktop` | `vitest run` | 9 |
-| `packages/llm` | `vitest run` | 10 |
-| `apps/mobile` | plain `node --experimental-strip-types` on six named files in `tests/unit/` (env, workspace-draft, markdown, server-url, server-check, app-version), plus `tsc --noEmit` on a dedicated tsconfig first | 6 |
-| `apps/egress` | `vitest run` | 4 |
-| `packages/db` | none (tests exist under `tests/unit`/`tests/integration` but the package has no test script) | 2 |
+| Workspace           | `test` script                                                                                                                                                                                          | Colocated `*.test.ts` |
+| :------------------ | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------- |
+| `apps/orchestrator` | `vitest run`                                                                                                                                                                                           | 81                    |
+| `apps/web`          | `vitest run`                                                                                                                                                                                           | 47                    |
+| `packages/core`     | `vitest run`                                                                                                                                                                                           | 31                    |
+| `apps/computerd`    | `vitest run`                                                                                                                                                                                           | 16                    |
+| `apps/desktop`      | `vitest run`                                                                                                                                                                                           | 9                     |
+| `packages/llm`      | `vitest run`                                                                                                                                                                                           | 10                    |
+| `apps/mobile`       | plain `node --experimental-strip-types` on six named files in `tests/unit/` (env, workspace-draft, markdown, server-url, server-check, app-version), plus `tsc --noEmit` on a dedicated tsconfig first | 6                     |
+| `apps/egress`       | `vitest run`                                                                                                                                                                                           | 4                     |
+| `packages/db`       | none (tests exist under `tests/unit`/`tests/integration` but the package has no test script)                                                                                                           | 2                     |
 
 Only **`apps/web`** has a `vitest.config.ts`; it exists to alias workspace packages to their TypeScript sources so tests run without pre-building packages (`apps/web/vitest.config.ts`): `@sayabot/core/server` → `packages/core/src/server/index.ts`, `@sayabot/llm` → `packages/llm/src/index.ts`, `@sayabot/db` → `packages/db/src/index.ts`, with `environment: "node"` and the default `**/*.test.ts` include. Every other workspace relies on Vitest defaults, which pick up both colocated `src/**/*.test.ts` files and the package-root `tests/unit/` + `tests/integration/` directories (e.g. `packages/core/tests/unit/clients.test.ts`).
 
-The repo-root-level integration suite lives in `tests/integration/` and is *not* part of `pnpm test`'s turbo fan-out — `test:integration` invokes it directly through `tests/integration/run.mjs`, which spawns the orchestrator workspace's Vitest binary with `--root tests/integration` (run.mjs:1-8). See [integration-testing.md](integration-testing.md).
+The repo-root-level integration suite lives in `tests/integration/` and is _not_ part of `pnpm test`'s turbo fan-out — `test:integration` invokes it directly through `tests/integration/run.mjs`, which spawns the orchestrator workspace's Vitest binary with `--root tests/integration` (run.mjs:1-8). See [integration-testing.md](integration-testing.md).
 
 ## 🤖 CI (`.github/workflows/test.yml`)
 

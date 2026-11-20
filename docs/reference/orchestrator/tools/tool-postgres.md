@@ -11,23 +11,25 @@ Source files: `apps/orchestrator/src/tools/builtins/postgres.ts`, `apps/orchestr
 Registered when the agent has the `postgres` capability (`src/tools/index.ts:354`):
 
 ```typescript
-postgresInspectorTool(args.orgId, args.agent.id)   // agentId optional
+postgresInspectorTool(args.orgId, args.agent.id) // agentId optional
 ```
 
-Tool name: `postgres_inspector`. Description: *"Run one read-only SELECT/WITH query against the organization's configured Postgres database. Limited to 100 rows, 10 second timeout, read-only transaction. Requires a connection string in Settings → Tools."*
+Tool name: `postgres_inspector`. Description: _"Run one read-only SELECT/WITH query against the organization's configured Postgres database. Limited to 100 rows, 10 second timeout, read-only transaction. Requires a connection string in Settings → Tools."_
 
 ## 📥 Schema (`postgres.ts:14-16`)
 
-| Parameter | Type | Description |
-| :--- | :--- | :--- |
-| `query` | string (1–10,000 chars) | A single SELECT or WITH query |
+| Parameter | Type                    | Description                   |
+| :-------- | :---------------------- | :---------------------------- |
+| `query`   | string (1–10,000 chars) | A single SELECT or WITH query |
 
 ## 🔑 Credential resolution (`postgres.ts:19-24`)
 
 ```typescript
 const config = await resolveToolCredential({ orgId, agentId, tool: "postgres_inspector" })
 if (!config?.connectionString) {
-  throw new Error("postgres_inspector is not configured. Add a connection string in Settings → Tools.")
+  throw new Error(
+    "postgres_inspector is not configured. Add a connection string in Settings → Tools.",
+  )
 }
 ```
 
@@ -54,14 +56,14 @@ if (query.includes(";")) {
 
 ## 🛡️ Execution guardrails (`postgres.ts:32-65`)
 
-| Guard | Implementation |
-| :--- | :--- |
-| Connection timeouts | `connectionTimeoutMillis: 5_000`, `query_timeout: 10_000`, `statement_timeout: 10_000` on the `pg.Client` |
-| Run cancellation | the run's `AbortSignal` ends the client (`signal.addEventListener("abort", () => client.end())`, `postgres.ts:38-41`) |
-| Read-only transaction | `BEGIN TRANSACTION READ ONLY` + `SET LOCAL statement_timeout = '10s'` before the query (`postgres.ts:44-45`) — writes, DDL, and `COPY` fail at the server |
-| Row cap | `MAX_ROWS = 100`; `truncated: true` when the result had more |
-| Result-size cap | `MAX_RESULT_CHARS = 120_000`; oversized payloads degrade to the first **20 rows** with `{ truncated: true, note: "Result too large; showing 20 rows." }` (`postgres.ts:57-59`) |
-| Cleanup | `finally` block issues `ROLLBACK` (ignoring errors), removes the abort listener, and closes the client (`postgres.ts:61-65`) |
+| Guard                 | Implementation                                                                                                                                                                 |
+| :-------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Connection timeouts   | `connectionTimeoutMillis: 5_000`, `query_timeout: 10_000`, `statement_timeout: 10_000` on the `pg.Client`                                                                      |
+| Run cancellation      | the run's `AbortSignal` ends the client (`signal.addEventListener("abort", () => client.end())`, `postgres.ts:38-41`)                                                          |
+| Read-only transaction | `BEGIN TRANSACTION READ ONLY` + `SET LOCAL statement_timeout = '10s'` before the query (`postgres.ts:44-45`) — writes, DDL, and `COPY` fail at the server                      |
+| Row cap               | `MAX_ROWS = 100`; `truncated: true` when the result had more                                                                                                                   |
+| Result-size cap       | `MAX_RESULT_CHARS = 120_000`; oversized payloads degrade to the first **20 rows** with `{ truncated: true, note: "Result too large; showing 20 rows." }` (`postgres.ts:57-59`) |
+| Cleanup               | `finally` block issues `ROLLBACK` (ignoring errors), removes the abort listener, and closes the client (`postgres.ts:61-65`)                                                   |
 
 Results use `rowMode: "array"` and are zipped with the column names into objects.
 
@@ -80,11 +82,11 @@ Results use `rowMode: "array"` and are zipped with the column names into objects
 
 ## 🗃️ Tables and events
 
-| Concern | Details |
-| :--- | :--- |
-| DB tables (Sayabot) | `agent_secret_grants` ⋈ `vault_secrets`, `org_tool_configs` (read-only); audit layer writes `tool_calls` |
-| Target database | a fresh `pg.Client` per call using the org/agent-configured connection string — never the Sayabot internal pool |
-| Realtime events | standard audit events only (`tool.started` / `tool.finished`) |
+| Concern             | Details                                                                                                         |
+| :------------------ | :-------------------------------------------------------------------------------------------------------------- |
+| DB tables (Sayabot) | `agent_secret_grants` ⋈ `vault_secrets`, `org_tool_configs` (read-only); audit layer writes `tool_calls`        |
+| Target database     | a fresh `pg.Client` per call using the org/agent-configured connection string — never the Sayabot internal pool |
+| Realtime events     | standard audit events only (`tool.started` / `tool.finished`)                                                   |
 
 ## 🧪 Example calls
 
@@ -107,13 +109,13 @@ insert into logs values ('hi');         -- rejected by the first-word check
 
 ## ⚠️ Error modes
 
-| Condition | Model-visible result |
-| :--- | :--- |
-| No connection string configured | `{ ok: false, error: "postgres_inspector is not configured. Add a connection string in Settings → Tools." }` |
-| Non-SELECT/WITH query | `{ ok: false, error: "Only a single read-only SELECT or WITH query is allowed." }` |
-| Multi-statement query | `{ ok: false, error: "Multiple statements are not allowed." }` |
-| Query exceeds 10 s / connection refused / bad credentials | `{ ok: false, error: "<pg driver error message, secret-redacted>" }` |
-| Run aborted mid-query | client ended via the abort listener; error surfaces as above |
+| Condition                                                 | Model-visible result                                                                                         |
+| :-------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------- |
+| No connection string configured                           | `{ ok: false, error: "postgres_inspector is not configured. Add a connection string in Settings → Tools." }` |
+| Non-SELECT/WITH query                                     | `{ ok: false, error: "Only a single read-only SELECT or WITH query is allowed." }`                           |
+| Multi-statement query                                     | `{ ok: false, error: "Multiple statements are not allowed." }`                                               |
+| Query exceeds 10 s / connection refused / bad credentials | `{ ok: false, error: "<pg driver error message, secret-redacted>" }`                                         |
+| Run aborted mid-query                                     | client ended via the abort listener; error surfaces as above                                                 |
 
 ## ⚠️ Notes
 

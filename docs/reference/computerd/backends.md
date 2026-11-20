@@ -1,6 +1,6 @@
 # computerd — Backend Abstraction & Selection
 
-computerd can give each agent its computer on three different backends: a Docker container, a smolvm microVM, or an E2B cloud sandbox. The `ComputerBackend` interface isolates the lifecycle from *how* a computer is created, reached, paused and deleted, and `selectBackend` implements the `COMPUTER_BACKEND=auto` ranking that picks the strongest backend the host can run. This page covers the interface, the selection logic, and the Docker backend implementation; smolvm and E2B have their own pages.
+computerd can give each agent its computer on three different backends: a Docker container, a smolvm microVM, or an E2B cloud sandbox. The `ComputerBackend` interface isolates the lifecycle from _how_ a computer is created, reached, paused and deleted, and `selectBackend` implements the `COMPUTER_BACKEND=auto` ranking that picks the strongest backend the host can run. This page covers the interface, the selection logic, and the Docker backend implementation; smolvm and E2B have their own pages.
 
 Source files: `apps/computerd/src/backends/types.ts`, `apps/computerd/src/backends/select.ts`, `apps/computerd/src/backends/docker.ts`
 
@@ -10,17 +10,17 @@ Source files: `apps/computerd/src/backends/types.ts`, `apps/computerd/src/backen
 
 ```typescript
 export interface ComputerBackend {
-  readonly kind: BackendKind                       // "docker" | "smolvm" | "e2b"
-  readonly ipIdentity: boolean                     // egress attributes traffic by container IP
+  readonly kind: BackendKind // "docker" | "smolvm" | "e2b"
+  readonly ipIdentity: boolean // egress attributes traffic by container IP
   autoMaxRunning(memMb: number, fraction: number): Promise<number>
   listRunning(): Promise<string[]>
   status(agentId: string): Promise<ComputerStatus> // "running" | "stopped" | "missing"
-  attach(agentId: string): Promise<Ready>          // reconnect to an already-running computer
+  attach(agentId: string): Promise<Ready> // reconnect to an already-running computer
   start(agentId: string, orgId: string, profile: ComputerProfile): Promise<Ready>
   transport(agentId: string, ready: Ready, payload: AgentdFrame): AsyncGenerator<AgentdFrame>
-  sleep(agentId: string, timeoutSec: number): Promise<void>   // stop/pause, keep disk
+  sleep(agentId: string, timeoutSec: number): Promise<void> // stop/pause, keep disk
   remove(agentId: string, deleteDisk: boolean): Promise<void>
-  describe(): Record<string, unknown>              // notes for GET /v1/capacity
+  describe(): Record<string, unknown> // notes for GET /v1/capacity
 }
 ```
 
@@ -40,11 +40,11 @@ CLI transports pass the request JSON through process arguments, and Linux caps a
 
 ### Builder functions
 
-| Builder | What it wires |
-| :--- | :--- |
-| `buildDocker(config, docker?)` (`select.ts:26-37`) | `DockerBackend` with image tag, network, mem/cpus, runtime, ctl root/volume, and a `orchestratorGrantsEnv` fetcher |
-| `buildSmolvm(config, identity)` (`select.ts:39-51`) | `EgressBridge(parseEgressTarget(config.egressProxyUrl), identity.proxyAuthorization)` + `SmolvmBackend` with `SMOLVM_IMAGE` (default `saaya/computer:<tag>`), mem/cpus/storage, `runDir`, grants fetcher |
-| `buildE2B(config)` (`select.ts:53-63`) | Throws `BackendUnavailableError("E2B_API_KEY is not set")` without a key; dynamically imports the `e2b` SDK and builds `E2BBackend` with template, `E2B_MAX_RUNNING`, idle window, and the agentd bundle dir |
+| Builder                                             | What it wires                                                                                                                                                                                                |
+| :-------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `buildDocker(config, docker?)` (`select.ts:26-37`)  | `DockerBackend` with image tag, network, mem/cpus, runtime, ctl root/volume, and a `orchestratorGrantsEnv` fetcher                                                                                           |
+| `buildSmolvm(config, identity)` (`select.ts:39-51`) | `EgressBridge(parseEgressTarget(config.egressProxyUrl), identity.proxyAuthorization)` + `SmolvmBackend` with `SMOLVM_IMAGE` (default `saaya/computer:<tag>`), mem/cpus/storage, `runDir`, grants fetcher     |
+| `buildE2B(config)` (`select.ts:53-63`)              | Throws `BackendUnavailableError("E2B_API_KEY is not set")` without a key; dynamically imports the `e2b` SDK and builds `E2BBackend` with template, `E2B_MAX_RUNNING`, idle window, and the agentd bundle dir |
 
 All three share `grantsEnvFetcher` (`select.ts:10-24`): a `GET ${orchestratorUrl}/internal/computer/:agentId/grants-env` call (5 s timeout, `x-internal-secret`) whose `{ env }` object is injected into the computer as environment variables. Failures degrade to `{}`.
 
@@ -72,12 +72,12 @@ flowchart TD
 
 ### Naming and layout
 
-| Constant | Value | Role |
-| :--- | :--- | :--- |
-| `containerName(agentId)` | `bot-${agentId}` | one container per agent (`docker.ts:38`) |
-| `volumeName(agentId)` | `saaya-bot-${agentId}` | one named disk volume per agent (`docker.ts:39`) |
-| `AGENT_LABEL` | `saaya.agent` | label used to list running computers (`docker.ts:36`) |
-| `CTL_MOUNT` | `/run/agentd-ctl` | control-volume mountpoint inside the container (`docker.ts:35`) |
+| Constant                 | Value                  | Role                                                            |
+| :----------------------- | :--------------------- | :-------------------------------------------------------------- |
+| `containerName(agentId)` | `bot-${agentId}`       | one container per agent (`docker.ts:38`)                        |
+| `volumeName(agentId)`    | `saaya-bot-${agentId}` | one named disk volume per agent (`docker.ts:39`)                |
+| `AGENT_LABEL`            | `saaya.agent`          | label used to list running computers (`docker.ts:36`)           |
+| `CTL_MOUNT`              | `/run/agentd-ctl`      | control-volume mountpoint inside the container (`docker.ts:35`) |
 
 `ipIdentity = true`: egress identifies Docker computers by container IP, so the lifecycle must reset egress caches on start/stop (see [lifecycle.md](lifecycle.md)).
 

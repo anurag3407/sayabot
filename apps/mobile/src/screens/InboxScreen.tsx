@@ -33,7 +33,12 @@ export function QuestionCard({
   onAnswer,
 }: {
   question: InboxQuestion
-  onAnswer: (input: { taskId: string; answer?: string; itemAnswers?: Record<string, string>; alsoPost?: boolean }) => Promise<string>
+  onAnswer: (input: {
+    taskId: string
+    answer?: string
+    itemAnswers?: Record<string, string>
+    alsoPost?: boolean
+  }) => Promise<string>
 }) {
   const t = useTheme()
   const styles = makeStyles(t)
@@ -46,7 +51,9 @@ export function QuestionCard({
   const [error, setError] = useState<string | null>(null)
   const open = question.items.filter((i) => !i.answer)
   const filled = Object.values(values).filter((v) => v.trim()).length
-  const canSend = question.items.length ? filled > 0 || note.trim().length > 0 : note.trim().length > 0
+  const canSend = question.items.length
+    ? filled > 0 || note.trim().length > 0
+    : note.trim().length > 0
 
   const send = async (quick?: string) => {
     setBusy(true)
@@ -76,7 +83,8 @@ export function QuestionCard({
         <Mascot seed={agentSeed} size={42} waiting={true} shadow={true} live={true} />
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={styles.cardTitle}>
-            {question.agentName} {question.items.length > 1 ? "needs a few answers" : "has a question"}
+            {question.agentName}{" "}
+            {question.items.length > 1 ? "needs a few answers" : "has a question"}
           </Text>
           <Text style={styles.meta}>
             {when(question.updatedAt)} · {question.roomName}
@@ -90,7 +98,9 @@ export function QuestionCard({
           <Text style={styles.body} numberOfLines={expanded ? undefined : 4}>
             {question.description}
           </Text>
-          {question.description.length > 200 ? <Text style={styles.more}>{expanded ? "Show less" : "Read more"}</Text> : null}
+          {question.description.length > 200 ? (
+            <Text style={styles.more}>{expanded ? "Show less" : "Read more"}</Text>
+          ) : null}
         </TouchableOpacity>
       ) : null}
 
@@ -139,7 +149,12 @@ export function QuestionCard({
       {!question.items.length && question.options.length ? (
         <View style={styles.chips}>
           {question.options.map((option) => (
-            <TouchableOpacity key={option} style={styles.chip} disabled={busy} onPress={() => void send(option)}>
+            <TouchableOpacity
+              key={option}
+              style={styles.chip}
+              disabled={busy}
+              onPress={() => void send(option)}
+            >
               <Text style={styles.chipText}>{option}</Text>
             </TouchableOpacity>
           ))}
@@ -157,18 +172,28 @@ export function QuestionCard({
 
       <View style={styles.switchRow}>
         <Text style={styles.switchLabel}>Also post my answer in the group chat</Text>
-        <Switch value={alsoPost} onValueChange={setAlsoPost} trackColor={{ true: t.accent, false: t.line }} />
+        <Switch
+          value={alsoPost}
+          onValueChange={setAlsoPost}
+          trackColor={{ true: t.accent, false: t.line }}
+        />
       </View>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
       {status ? <Text style={styles.ok}>{status}</Text> : null}
 
-      <TouchableOpacity style={[styles.send, (!canSend || busy) && styles.sendOff]} disabled={!canSend || busy} onPress={() => void send()}>
+      <TouchableOpacity
+        style={[styles.send, (!canSend || busy) && styles.sendOff]}
+        disabled={!canSend || busy}
+        onPress={() => void send()}
+      >
         {busy ? (
           <ActivityIndicator color={t.onAccent} />
         ) : (
           <Text style={styles.sendText}>
-            {question.items.length && filled && filled < open.length ? `Send ${filled} of ${open.length}` : "Send"}
+            {question.items.length && filled && filled < open.length
+              ? `Send ${filled} of ${open.length}`
+              : "Send"}
           </Text>
         )}
       </TouchableOpacity>
@@ -186,7 +211,10 @@ export function InboxScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      <StatusBar barStyle={t.dark ? "light-content" : "dark-content"} backgroundColor={theme.surface} />
+      <StatusBar
+        barStyle={t.dark ? "light-content" : "dark-content"}
+        backgroundColor={theme.surface}
+      />
       <View style={[styles.header, { backgroundColor: theme.surface }]}>
         <Text style={styles.title}>Inbox</Text>
         <Text style={styles.subtitle}>
@@ -196,7 +224,10 @@ export function InboxScreen() {
           {approvals ? ` · ${approvals} waiting for your OK` : ""}
         </Text>
       </View>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
         {loading ? (
           <ActivityIndicator style={{ marginTop: 40 }} color={t.accent} />
         ) : (
@@ -221,7 +252,9 @@ export function InboxScreen() {
               <View style={styles.empty}>
                 <Bell size={36} color={t.faint} />
                 <Text style={styles.emptyTitle}>You&apos;re all caught up</Text>
-                <Text style={styles.emptyBody}>When an agent needs a decision or a fact from you, it shows up here.</Text>
+                <Text style={styles.emptyBody}>
+                  When an agent needs a decision or a fact from you, it shows up here.
+                </Text>
               </View>
             }
             renderItem={({ item }) => <QuestionCard question={item} onAnswer={answer} />}
@@ -235,7 +268,12 @@ export function InboxScreen() {
 function makeStyles(t: Theme) {
   return StyleSheet.create({
     container: { flex: 1 },
-    header: { paddingHorizontal: 18, paddingVertical: 16, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: t.line },
+    header: {
+      paddingHorizontal: 18,
+      paddingVertical: 16,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: t.line,
+    },
     title: { color: t.text, fontSize: 24, fontWeight: "700", letterSpacing: -0.4 },
     subtitle: { color: t.muted, fontSize: 13, marginTop: 3 },
     list: { padding: 14, gap: 14, paddingBottom: 40 },
@@ -256,13 +294,36 @@ function makeStyles(t: Theme) {
     question: { color: t.text, fontSize: 15, marginTop: 12, lineHeight: 22, fontWeight: "600" },
     body: { color: t.muted, fontSize: 14, marginTop: 6, lineHeight: 20 },
     more: { color: t.accent, fontSize: 13, marginTop: 4, fontWeight: "600" },
-    item: { backgroundColor: t.raised, borderRadius: 14, padding: 12, marginTop: 10, borderWidth: StyleSheet.hairlineWidth, borderColor: t.line },
-    answered: { flexDirection: "row", gap: 8, backgroundColor: t.raised, borderRadius: 14, padding: 12, marginTop: 10, borderWidth: StyleSheet.hairlineWidth, borderColor: t.line },
+    item: {
+      backgroundColor: t.raised,
+      borderRadius: 14,
+      padding: 12,
+      marginTop: 10,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: t.line,
+    },
+    answered: {
+      flexDirection: "row",
+      gap: 8,
+      backgroundColor: t.raised,
+      borderRadius: 14,
+      padding: 12,
+      marginTop: 10,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: t.line,
+    },
     itemQ: { color: t.text, fontSize: 14, fontWeight: "500" },
     itemA: { color: t.text, fontSize: 14, fontWeight: "700", marginTop: 2 },
     hint: { color: t.faint, fontSize: 12, marginTop: 2 },
     chips: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 8 },
-    chip: { borderWidth: 1, borderColor: t.lineStrong, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 7, backgroundColor: t.raised },
+    chip: {
+      borderWidth: 1,
+      borderColor: t.lineStrong,
+      borderRadius: 999,
+      paddingHorizontal: 14,
+      paddingVertical: 7,
+      backgroundColor: t.raised,
+    },
     chipOn: { backgroundColor: t.accent, borderColor: t.accent },
     chipText: { color: t.muted, fontSize: 13, fontWeight: "500" },
     chipTextOn: { color: t.onAccent, fontWeight: "700" },
@@ -278,9 +339,21 @@ function makeStyles(t: Theme) {
       marginTop: 8,
     },
     note: { minHeight: 64, textAlignVertical: "top", marginTop: 12 },
-    switchRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 12, gap: 10 },
+    switchRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginTop: 12,
+      gap: 10,
+    },
     switchLabel: { color: t.muted, fontSize: 13, flex: 1 },
-    send: { backgroundColor: t.accent, borderRadius: 999, paddingVertical: 13, alignItems: "center", marginTop: 14 },
+    send: {
+      backgroundColor: t.accent,
+      borderRadius: 999,
+      paddingVertical: 13,
+      alignItems: "center",
+      marginTop: 14,
+    },
     sendOff: { opacity: 0.45 },
     sendText: { color: t.onAccent, fontWeight: "700", fontSize: 15 },
     error: { color: t.danger, fontSize: 13, marginTop: 8 },

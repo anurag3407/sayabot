@@ -5,7 +5,7 @@
 const REPO = "https://github.com/anurag3407/sayabot"
 const RELEASE = `${REPO}/releases/latest/download`
 /** The hosted web app. Override at build time for a self-hosted deployment. */
-export const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://sayabot.sayalabs.in"
+export const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
 
 export const LINKS = {
   app: `${APP_URL}/login`,

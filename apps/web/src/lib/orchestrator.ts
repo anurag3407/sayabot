@@ -19,7 +19,11 @@ async function callOrchestrator(
     })
     if (!response.ok) {
       const text = await response.text().catch(() => "")
-      return { ok: false, status: response.status, error: text.slice(0, 300) || response.statusText }
+      return {
+        ok: false,
+        status: response.status,
+        error: text.slice(0, 300) || response.statusText,
+      }
     }
     return { ok: true, status: response.status }
   } catch (error) {
@@ -49,7 +53,17 @@ export async function testWebSearchInOrchestrator(payload: {
   apiKey?: string
   baseUrl?: string
   query?: string
-}): Promise<{ ok: true; provider: string; count: number; results: any[]; answer?: string; latencyMs: number } | { ok: false; error: string }> {
+}): Promise<
+  | {
+      ok: true
+      provider: string
+      count: number
+      results: any[]
+      answer?: string
+      latencyMs: number
+    }
+  | { ok: false; error: string }
+> {
   try {
     const response = await fetch(`${getOrchestratorUrl()}/internal/tools/test-web-search`, {
       method: "POST",
@@ -102,11 +116,19 @@ export async function fetchSearchProviderCreditsInOrchestrator(payload: {
     })
     const data = (await response.json().catch(() => null)) as SearchProviderCreditsResult | null
     if (!response.ok || !data) {
-      return { ok: false, provider: payload.provider, error: data?.error || `Failed to fetch credits (${response.status})` }
+      return {
+        ok: false,
+        provider: payload.provider,
+        error: data?.error || `Failed to fetch credits (${response.status})`,
+      }
     }
     return data
   } catch (err) {
-    return { ok: false, provider: payload.provider, error: err instanceof Error ? err.message : String(err) }
+    return {
+      ok: false,
+      provider: payload.provider,
+      error: err instanceof Error ? err.message : String(err),
+    }
   }
 }
 
@@ -116,17 +138,20 @@ export async function testDocumentOcrInOrchestrator(payload: {
   apiKey?: string
   baseUrl?: string
   source?: string
-}): Promise<{
-  ok: true
-  provider: string
-  source: string
-  pageCount?: number
-  tablesCount: number
-  markdownPreview: string
-  processingTimeMs: number
-  fallback?: boolean
-  warning?: string
-} | { ok: false; error: string }> {
+}): Promise<
+  | {
+      ok: true
+      provider: string
+      source: string
+      pageCount?: number
+      tablesCount: number
+      markdownPreview: string
+      processingTimeMs: number
+      fallback?: boolean
+      warning?: string
+    }
+  | { ok: false; error: string }
+> {
   try {
     const response = await fetch(`${getOrchestratorUrl()}/internal/tools/test-document-ocr`, {
       method: "POST",
@@ -140,7 +165,10 @@ export async function testDocumentOcrInOrchestrator(payload: {
     })
     const data = await response.json().catch(() => null)
     if (!response.ok || !data?.ok) {
-      return { ok: false, error: data?.error || `Document test failed with status ${response.status}` }
+      return {
+        ok: false,
+        error: data?.error || `Document test failed with status ${response.status}`,
+      }
     }
     return data
   } catch (err) {
@@ -151,7 +179,9 @@ export async function testDocumentOcrInOrchestrator(payload: {
 export async function testAgentInOrchestrator(
   agentId: string,
   orgId: string,
-): Promise<{ ok: true; text: string; model: string; latencyMs: number } | { ok: false; error: string }> {
+): Promise<
+  { ok: true; text: string; model: string; latencyMs: number } | { ok: false; error: string }
+> {
   try {
     const response = await fetch(
       `${getOrchestratorUrl()}/internal/agents/${encodeURIComponent(agentId)}/test`,
@@ -166,9 +196,12 @@ export async function testAgentInOrchestrator(
         signal: AbortSignal.timeout(30_000),
       },
     )
-    const data = (await response.json().catch(() => null)) as
-      | { text?: string; model?: string; latencyMs?: number; error?: string }
-      | null
+    const data = (await response.json().catch(() => null)) as {
+      text?: string
+      model?: string
+      latencyMs?: number
+      error?: string
+    } | null
     if (!response.ok || !data || typeof data.text !== "string") {
       return { ok: false, error: data?.error ?? `agent test failed (${response.status})` }
     }
@@ -219,9 +252,12 @@ export async function mutateTaskInOrchestrator(input: {
       cache: "no-store",
       signal: AbortSignal.timeout(15_000),
     })
-    const data = (await response.json().catch(() => null)) as
-      | { ok?: boolean; task?: unknown; event?: unknown; error?: string }
-      | null
+    const data = (await response.json().catch(() => null)) as {
+      ok?: boolean
+      task?: unknown
+      event?: unknown
+      error?: string
+    } | null
     if (!response.ok || !data?.ok) {
       return { ok: false, error: data?.error ?? `task mutation failed (${response.status})` }
     }

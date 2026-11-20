@@ -12,9 +12,7 @@ export function isDestructiveCommand(cmd: string): boolean {
     /\brm\s+(-[a-zA-Z]*r[a-zA-Z]*f[a-zA-Z]*|-[a-zA-Z]*f[a-zA-Z]*r[a-zA-Z]*)\s+([~/]|\/home\/?|\/home\/bot\/?|\/\*)/i.test(
       trimmed,
     ) ||
-    /\brm\s+-[a-zA-Z]*r\w*\s+-[a-zA-Z]*f\w*\s+([~/]|\/home\/?|\/home\/bot\/?|\/\*)/i.test(
-      trimmed,
-    )
+    /\brm\s+-[a-zA-Z]*r\w*\s+-[a-zA-Z]*f\w*\s+([~/]|\/home\/?|\/home\/bot\/?|\/\*)/i.test(trimmed)
   ) {
     return true
   }

@@ -58,7 +58,10 @@ export interface OpenRouterRawModel {
   supported_parameters?: string[]
 }
 
-export function isFreeOpenRouterModel(modelId: string, pricing?: { prompt?: string; completion?: string }): boolean {
+export function isFreeOpenRouterModel(
+  modelId: string,
+  pricing?: { prompt?: string; completion?: string },
+): boolean {
   if (modelId.endsWith(":free")) return true
   if (pricing && pricing.prompt === "0" && pricing.completion === "0") return true
   return false
@@ -82,7 +85,10 @@ export async function buildOpenRouterOAuthUrl(callbackUrl: string): Promise<{
   }
 }
 
-export async function exchangeOpenRouterCode(code: string, codeVerifier: string): Promise<{ apiKey: string }> {
+export async function exchangeOpenRouterCode(
+  code: string,
+  codeVerifier: string,
+): Promise<{ apiKey: string }> {
   const response = await fetch(OPENROUTER_TOKEN_URL, {
     method: "POST",
     headers: {
@@ -142,7 +148,10 @@ export async function getOpenRouterKeyDetails(apiKey: string): Promise<OpenRoute
       data?: { total_credits?: number; total_usage?: number }
     }
     if (creditsJson.data && typeof creditsJson.data.total_credits === "number") {
-      creditsRemaining = Math.max(0, creditsJson.data.total_credits - (creditsJson.data.total_usage ?? 0))
+      creditsRemaining = Math.max(
+        0,
+        creditsJson.data.total_credits - (creditsJson.data.total_usage ?? 0),
+      )
     }
   }
 
@@ -161,7 +170,10 @@ export function openRouterFailureExplanation(errorMessage: string, modelId: stri
   if (/\b402\b|insufficient credits|requires more credits/i.test(errorMessage)) {
     return OPENROUTER_FAILURES.credits
   }
-  if (/\bno endpoints found matching your data policy\b/i.test(errorMessage) && (free || /free model/i.test(errorMessage))) {
+  if (
+    /\bno endpoints found matching your data policy\b/i.test(errorMessage) &&
+    (free || /free model/i.test(errorMessage))
+  ) {
     return OPENROUTER_FAILURES.privacy
   }
   if (/\b429\b|rate limit|limit exceeded/i.test(errorMessage) && free) {

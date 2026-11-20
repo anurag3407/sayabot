@@ -114,7 +114,9 @@ function TaskCard({
               due {shortDate(task.dueAt)}
             </span>
           ) : null}
-          <span className="ml-auto font-mono text-[11px] text-faint">{shortDate(task.updatedAt)}</span>
+          <span className="ml-auto font-mono text-[11px] text-faint">
+            {shortDate(task.updatedAt)}
+          </span>
         </div>
         <p className="mt-1.5 text-[13px] leading-snug text-text">{task.title}</p>
         {task.description ? (
@@ -131,7 +133,9 @@ function TaskCard({
         <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[11px] text-faint">
           {showRoom ? <span>{task.roomName}</span> : null}
           <span>· {assigneeLabel(task)}</span>
-          <span>· {formattedCost} · {runs} run{runs === 1 ? "" : "s"}</span>
+          <span>
+            · {formattedCost} · {runs} run{runs === 1 ? "" : "s"}
+          </span>
           {task.comments.length ? <span>· {task.comments.length} comments</span> : null}
           {task.requestedByHandle ? <span>· asked by @{task.requestedByHandle}</span> : null}
         </div>
@@ -301,7 +305,9 @@ function TaskDetail({
 
         <div className="space-y-4 px-4 py-4">
           <div>
-            <h2 className="text-[17px] font-medium leading-snug tracking-[-0.01em]">{task.title}</h2>
+            <h2 className="text-[17px] font-medium leading-snug tracking-[-0.01em]">
+              {task.title}
+            </h2>
             <p className="mt-1 font-mono text-[11px] text-faint">
               {task.roomName} · updated {shortDate(task.updatedAt)} ·{" "}
               {task.requestedByHandle ? `requested by @${task.requestedByHandle}` : `by a teammate`}
@@ -314,7 +320,9 @@ function TaskDetail({
           ) : null}
 
           <div className="flex flex-wrap items-center gap-2 border border-line bg-panel/50 px-3 py-2 font-mono text-[11px] text-muted">
-            <span>Cost: ${typeof task.costUsd === "number" ? task.costUsd.toFixed(2) : "0.00"}</span>
+            <span>
+              Cost: ${typeof task.costUsd === "number" ? task.costUsd.toFixed(2) : "0.00"}
+            </span>
             <span>· Runs: {task.runsCount || 0}</span>
             {task.dueAt ? <span>· Due: {shortDate(task.dueAt)}</span> : null}
             {task.statusChangedAt ? (
@@ -337,9 +345,7 @@ function TaskDetail({
                 id="task-status"
                 value={pendingStatus ?? task.status}
                 disabled={pending}
-                onChange={(event) =>
-                  handleStatusChange(event.target.value as TaskView["status"])
-                }
+                onChange={(event) => handleStatusChange(event.target.value as TaskView["status"])}
               >
                 {Object.entries(STATUS_LABELS).map(([value, label]) => (
                   <option key={value} value={value}>
@@ -394,7 +400,10 @@ function TaskDetail({
                       <option value="none">none (human override only)</option>
                     </Select>
                   </Field>
-                  <Field label="Outcome reference (URL, Canvas ID, or ref)" htmlFor="task-outcome-ref">
+                  <Field
+                    label="Outcome reference (URL, Canvas ID, or ref)"
+                    htmlFor="task-outcome-ref"
+                  >
                     <Input
                       id="task-outcome-ref"
                       value={outcomeRef}
@@ -446,7 +455,12 @@ function TaskDetail({
                 <Button size="sm" variant="ghost" onClick={() => setPendingStatus(null)}>
                   Cancel
                 </Button>
-                <Button size="sm" variant="primary" disabled={pending} onClick={confirmStatusTransition}>
+                <Button
+                  size="sm"
+                  variant="primary"
+                  disabled={pending}
+                  onClick={confirmStatusTransition}
+                >
                   {pending ? "Saving…" : "Save status"}
                 </Button>
               </div>
@@ -720,7 +734,11 @@ export function TasksView({
                   ))}
                 </Select>
               </Field>
-              <Field label="assignee" htmlFor="new-task-assignee" hint="must already be in the room">
+              <Field
+                label="assignee"
+                htmlFor="new-task-assignee"
+                hint="must already be in the room"
+              >
                 <Select id="new-task-assignee" name="assignee" defaultValue="">
                   <option value="">Unassigned</option>
                   <optgroup label="People">
@@ -762,7 +780,11 @@ export function TasksView({
           <div className="flex gap-1">
             {(
               [
-                { key: "tasks", label: "Tasks", count: boardTasks.filter((t) => t.status !== "done").length },
+                {
+                  key: "tasks",
+                  label: "Tasks",
+                  count: boardTasks.filter((t) => t.status !== "done").length,
+                },
                 { key: "requests", label: "Requests", count: openRequests.length },
               ] as const
             ).map((option) => (
@@ -892,11 +914,7 @@ export function TasksView({
               ) : (
                 <ul className="mt-3 space-y-2">
                   {shownOpenRequests.map((task) => (
-                    <TaskCard
-                      key={task.id}
-                      task={task}
-                      onOpen={(item) => setSelectedId(item.id)}
-                    />
+                    <TaskCard key={task.id} task={task} onOpen={(item) => setSelectedId(item.id)} />
                   ))}
                 </ul>
               )}

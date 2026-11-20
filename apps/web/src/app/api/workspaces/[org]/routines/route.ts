@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server"
-import { getNextCronRun, humanReadableCron, isValidCron, normalizeCronExpression } from "@sayabot/core"
+import {
+  getNextCronRun,
+  humanReadableCron,
+  isValidCron,
+  normalizeCronExpression,
+} from "@sayabot/core"
 import { getOrgAccess } from "@/lib/auth"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 
@@ -11,7 +16,8 @@ export async function GET(_request: Request, context: { params: Promise<{ org: s
   const supabase = await createSupabaseServerClient()
   const { data: routinesData, error } = await supabase
     .from("routines")
-    .select(`
+    .select(
+      `
       id,
       name,
       description,
@@ -40,7 +46,8 @@ export async function GET(_request: Request, context: { params: Promise<{ org: s
         name,
         kind
       )
-    `)
+    `,
+    )
     .eq("org_id", access.org.id)
     .order("created_at", { ascending: false })
 
@@ -110,7 +117,8 @@ export async function POST(request: Request, context: { params: Promise<{ org: s
       metadata: metadata || {},
       created_by_user_id: access.user.id,
     })
-    .select(`
+    .select(
+      `
       id,
       name,
       description,
@@ -122,7 +130,8 @@ export async function POST(request: Request, context: { params: Promise<{ org: s
       metadata,
       agents ( id, handle, display_name, avatar_url, model ),
       rooms ( id, name, kind )
-    `)
+    `,
+    )
     .single()
 
   if (error) {

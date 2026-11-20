@@ -21,7 +21,8 @@ export function installTarget(exePath: string): string {
   const marker = exePath.indexOf(".app/Contents/MacOS/")
   if (marker === -1) return FALLBACK_TARGET
   const bundle = exePath.slice(0, marker + 4)
-  if (bundle.startsWith("/Volumes/") || bundle.includes("/AppTranslocation/")) return FALLBACK_TARGET
+  if (bundle.startsWith("/Volumes/") || bundle.includes("/AppTranslocation/"))
+    return FALLBACK_TARGET
   return bundle
 }
 
@@ -113,7 +114,9 @@ export async function downloadFile(
 
 function run(file: string, args: string[]): Promise<string> {
   return new Promise((resolve, reject) =>
-    execFile(file, args, { timeout: 60_000 }, (error, stdout) => (error ? reject(error) : resolve(String(stdout)))),
+    execFile(file, args, { timeout: 60_000 }, (error, stdout) =>
+      error ? reject(error) : resolve(String(stdout)),
+    ),
   )
 }
 
@@ -121,14 +124,29 @@ function run(file: string, args: string[]): Promise<string> {
 export async function inspectDmg(dmgPath: string): Promise<string | null> {
   let mount: string | null = null
   try {
-    const attached = await run("hdiutil", ["attach", dmgPath, "-nobrowse", "-readonly", "-noautoopen"])
+    const attached = await run("hdiutil", [
+      "attach",
+      dmgPath,
+      "-nobrowse",
+      "-readonly",
+      "-noautoopen",
+    ])
     const line = attached.split("\n").find((row) => row.includes("/Volumes/"))
     mount = line ? line.slice(line.indexOf("/Volumes/")).trim() : null
     if (!mount) return null
-    const candidates = [path.join(mount, "Sayabot.app"), ...fs.readdirSync(mount).map((name) => path.join(mount!, name, "Sayabot.app"))]
-    const app = candidates.find((candidate) => fs.existsSync(path.join(candidate, "Contents", "Info.plist")))
+    const candidates = [
+      path.join(mount, "Sayabot.app"),
+      ...fs.readdirSync(mount).map((name) => path.join(mount!, name, "Sayabot.app")),
+    ]
+    const app = candidates.find((candidate) =>
+      fs.existsSync(path.join(candidate, "Contents", "Info.plist")),
+    )
     if (!app) return null
-    const version = await run("/usr/libexec/PlistBuddy", ["-c", "Print :CFBundleShortVersionString", path.join(app, "Contents", "Info.plist")])
+    const version = await run("/usr/libexec/PlistBuddy", [
+      "-c",
+      "Print :CFBundleShortVersionString",
+      path.join(app, "Contents", "Info.plist"),
+    ])
     return version.trim() || null
   } catch {
     return null
@@ -141,7 +159,9 @@ export async function inspectDmg(dmgPath: string): Promise<string | null> {
 export function stageMacUpdate(opts: { dmgPath: string; target: string; version: string }): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sayabot-update-"))
   const scriptPath = path.join(dir, "install.sh")
-  fs.writeFileSync(scriptPath, macUpdateInstallScript({ ...opts, pid: process.pid }), { mode: 0o755 })
+  fs.writeFileSync(scriptPath, macUpdateInstallScript({ ...opts, pid: process.pid }), {
+    mode: 0o755,
+  })
   return scriptPath
 }
 

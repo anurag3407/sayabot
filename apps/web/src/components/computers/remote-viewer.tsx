@@ -31,19 +31,44 @@ function contentRect(video: HTMLVideoElement) {
   const scale = Math.min(box.width / vw, box.height / vh)
   const w = vw * scale
   const h = vh * scale
-  return { left: box.left + (box.width - w) / 2, top: box.top + (box.height - h) / 2, width: w, height: h }
+  return {
+    left: box.left + (box.width - w) / 2,
+    top: box.top + (box.height - h) / 2,
+    width: w,
+    height: h,
+  }
 }
 
 const SPECIAL_KEYS = new Set([
-  "Enter", "Backspace", "Tab", "Escape", "Delete", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight",
-  "Home", "End", "PageUp", "PageDown", " ",
+  "Enter",
+  "Backspace",
+  "Tab",
+  "Escape",
+  "Delete",
+  "ArrowUp",
+  "ArrowDown",
+  "ArrowLeft",
+  "ArrowRight",
+  "Home",
+  "End",
+  "PageUp",
+  "PageDown",
+  " ",
 ])
 
 /**
  * Remote desktop viewer: WebRTC straight to the computer (the server only passes the offer
  * and answer along), with mouse and keyboard sent over a data channel when control is on.
  */
-export function RemoteViewer({ orgSlug, hostId, hostName }: { orgSlug: string; hostId: string; hostName: string }) {
+export function RemoteViewer({
+  orgSlug,
+  hostId,
+  hostName,
+}: {
+  orgSlug: string
+  hostId: string
+  hostName: string
+}) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const pcRef = useRef<RTCPeerConnection | null>(null)
   const dcRef = useRef<RTCDataChannel | null>(null)
@@ -69,15 +94,19 @@ export function RemoteViewer({ orgSlug, hostId, hostName }: { orgSlug: string; h
       const dc = pc.createDataChannel("input", { ordered: true })
       dcRef.current = dc
       pc.ontrack = (event) => {
-        if (videoRef.current) videoRef.current.srcObject = event.streams[0] ?? new MediaStream([event.track])
+        if (videoRef.current)
+          videoRef.current.srcObject = event.streams[0] ?? new MediaStream([event.track])
       }
       pc.onconnectionstatechange = () => {
         if (pc.connectionState === "connected") setPhase("connected")
         if (pc.connectionState === "failed") {
           setPhase("error")
-          setMessage("The connection dropped. Both devices need internet; some strict networks block direct connections.")
+          setMessage(
+            "The connection dropped. Both devices need internet; some strict networks block direct connections.",
+          )
         }
-        if (pc.connectionState === "disconnected" || pc.connectionState === "closed") setPhase((p) => (p === "connected" ? "ended" : p))
+        if (pc.connectionState === "disconnected" || pc.connectionState === "closed")
+          setPhase((p) => (p === "connected" ? "ended" : p))
       }
       await pc.setLocalDescription(await pc.createOffer())
       await waitForIce(pc)
@@ -99,14 +128,23 @@ export function RemoteViewer({ orgSlug, hostId, hostName }: { orgSlug: string; h
       while (!cancelled && Date.now() < deadline) {
         await new Promise((r) => setTimeout(r, 1_000))
         const poll = await fetch(`/api/remote/sessions/${data.id}`, { cache: "no-store" })
-        const state = (await poll.json().catch(() => ({}))) as { status?: string; answer?: string | null; error?: string | null }
+        const state = (await poll.json().catch(() => ({}))) as {
+          status?: string
+          answer?: string | null
+          error?: string | null
+        }
         if (state.status === "answered" && state.answer) {
           await pc.setRemoteDescription(JSON.parse(state.answer))
           return
         }
         if (state.status === "denied" || state.status === "failed" || state.status === "ended") {
           setPhase(state.status === "denied" ? "denied" : "error")
-          setMessage(state.error ?? (state.status === "denied" ? "The computer declined." : "The computer couldn't start sharing."))
+          setMessage(
+            state.error ??
+              (state.status === "denied"
+                ? "The computer declined."
+                : "The computer couldn't start sharing."),
+          )
           return
         }
       }
@@ -144,9 +182,15 @@ export function RemoteViewer({ orgSlug, hostId, hostName }: { orgSlug: string; h
   useEffect(() => {
     if (phase !== "connected" || !control) return
     const onKey = (e: KeyboardEvent) => {
-      const mods = [e.metaKey && "cmd", e.ctrlKey && "ctrl", e.altKey && "alt", e.shiftKey && "shift"].filter(Boolean) as string[]
+      const mods = [
+        e.metaKey && "cmd",
+        e.ctrlKey && "ctrl",
+        e.altKey && "alt",
+        e.shiftKey && "shift",
+      ].filter(Boolean) as string[]
       if (e.key.length === 1 && !e.metaKey && !e.ctrlKey) send({ t: "text", s: e.key })
-      else if (SPECIAL_KEYS.has(e.key) || (e.key.length === 1 && (e.metaKey || e.ctrlKey))) send({ t: "key", key: e.key, mods })
+      else if (SPECIAL_KEYS.has(e.key) || (e.key.length === 1 && (e.metaKey || e.ctrlKey)))
+        send({ t: "key", key: e.key, mods })
       else return
       e.preventDefault()
     }
@@ -157,7 +201,10 @@ export function RemoteViewer({ orgSlug, hostId, hostName }: { orgSlug: string; h
   return (
     <div className="flex h-full flex-col bg-void">
       <div className="flex flex-wrap items-center gap-2 border-b border-line bg-panel px-4 py-2.5">
-        <Link href={`/${orgSlug}/settings/computers`} className="text-[13px] text-muted hover:text-text">
+        <Link
+          href={`/${orgSlug}/settings/computers`}
+          className="text-[13px] text-muted hover:text-text"
+        >
           ← Computers
         </Link>
         <p className="ml-2 min-w-0 flex-1 truncate text-[14px] font-medium text-text">
@@ -165,16 +212,27 @@ export function RemoteViewer({ orgSlug, hostId, hostName }: { orgSlug: string; h
           <span className="ml-2 text-[12px] font-normal text-faint">
             {phase === "starting" && "Starting…"}
             {phase === "waiting" && "Waiting for the computer to allow it…"}
-            {phase === "connected" && (control ? "Connected · you're in control" : "Connected · view only")}
+            {phase === "connected" &&
+              (control ? "Connected · you're in control" : "Connected · view only")}
             {phase === "denied" && "Declined"}
             {phase === "ended" && "Ended"}
             {phase === "error" && "Not connected"}
           </span>
         </p>
-        <Button size="sm" variant={control ? "secondary" : "ghost"} onClick={() => setControl((c) => !c)} disabled={phase !== "connected"}>
+        <Button
+          size="sm"
+          variant={control ? "secondary" : "ghost"}
+          onClick={() => setControl((c) => !c)}
+          disabled={phase !== "connected"}
+        >
           <MousePointer2 className="h-3.5 w-3.5" /> {control ? "Control on" : "View only"}
         </Button>
-        <Button size="sm" variant="ghost" onClick={() => videoRef.current?.parentElement?.requestFullscreen?.()} disabled={phase !== "connected"}>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => videoRef.current?.parentElement?.requestFullscreen?.()}
+          disabled={phase !== "connected"}
+        >
           <Maximize className="h-3.5 w-3.5" /> Full screen
         </Button>
         <Button
@@ -194,7 +252,10 @@ export function RemoteViewer({ orgSlug, hostId, hostName }: { orgSlug: string; h
           autoPlay
           playsInline
           muted
-          className={cn("h-full w-full bg-black object-contain", control && phase === "connected" ? "cursor-none" : "")}
+          className={cn(
+            "h-full w-full bg-black object-contain",
+            control && phase === "connected" ? "cursor-none" : "",
+          )}
           onPointerMove={(e) => {
             const now = performance.now()
             if (now - lastMove.current < 30) return
@@ -211,16 +272,22 @@ export function RemoteViewer({ orgSlug, hostId, hostName }: { orgSlug: string; h
             if (p) send({ t: "up", ...p, b: e.button === 2 ? 2 : 0 })
           }}
           onContextMenu={(e) => control && e.preventDefault()}
-          onWheel={(e) => send({ t: "scroll", dy: Math.round(e.deltaY / 20), dx: Math.round(e.deltaX / 20) })}
+          onWheel={(e) =>
+            send({ t: "scroll", dy: Math.round(e.deltaY / 20), dx: Math.round(e.deltaX / 20) })
+          }
         />
         {phase !== "connected" ? (
           <div className="absolute inset-0 grid place-items-center p-6 text-center">
             <div className="max-w-sm">
               <p className="text-[15px] text-text">
-                {phase === "starting" || phase === "waiting" ? `Connecting to ${hostName}…` : (message ?? "Disconnected")}
+                {phase === "starting" || phase === "waiting"
+                  ? `Connecting to ${hostName}…`
+                  : (message ?? "Disconnected")}
               </p>
               {phase === "waiting" ? (
-                <p className="mt-2 text-[13px] text-muted">If “Ask on this computer” is on, someone at it needs to press Allow.</p>
+                <p className="mt-2 text-[13px] text-muted">
+                  If “Ask on this computer” is on, someone at it needs to press Allow.
+                </p>
               ) : null}
               {phase === "ended" || phase === "error" || phase === "denied" ? (
                 <Button className="mt-4" variant="primary" onClick={() => window.location.reload()}>

@@ -35,18 +35,18 @@ Semantics (`src/engine/interrupts.ts:23-68`):
 - Non-human messages never steer: `{ steered: false, steeredRunIds: [], abortedCount: 0 }`.
 - For each agent handle in `incoming.mentions`, `findActiveRunForAgent(roomId, agentId)` looks up the in-memory run registry; only runs with `engine === "v2"` qualify.
 - Each qualifying run gets `{ messageId, content }` appended to `pendingInterrupts` via `addRunInterrupt(runId, interrupt)` — delivered at the run's next step boundary (`prepareStep`) or after the final step (late steering).
-- If at least one run was steered, **only the other runs in the room are aborted** (`abortRoomRuns(roomId, steeredId)` for each steered run id); the steered runs keep going, and the session is *not* marked superseded (see `interruptRoom` in [coordinator.md](./coordinator.md)).
+- If at least one run was steered, **only the other runs in the room are aborted** (`abortRoomRuns(roomId, steeredId)` for each steered run id); the steered runs keep going, and the session is _not_ marked superseded (see `interruptRoom` in [coordinator.md](./coordinator.md)).
 - If no active v2 agent was mentioned, all room runs are aborted (`abortRoomRuns(roomId)`) and the caller supersedes active sessions.
 
 The consumed interrupts become `<steering>` user messages built by `steeringMessage()` (below).
 
 ### Delivery points in the engine loop
 
-| Point | Mechanism |
-| :--- | :--- |
-| Before each step | `prepareStep` passes `consumeRunInterrupts(run.id)` into `decidePrepareStep`, which appends the steering message |
-| After a pass's final step | `consumeRunInterrupts(run.id)` — a non-empty result pushes `steeringMessage(late)` into `runMessages` and continues the pass loop (see `src/engine/run.ts:772-783`) |
-| Budget exhausted with pending interrupts | post-loop check sets `error = "A new instruction arrived after the execution budget was exhausted. A follow-up turn is required."` |
+| Point                                    | Mechanism                                                                                                                                                           |
+| :--------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Before each step                         | `prepareStep` passes `consumeRunInterrupts(run.id)` into `decidePrepareStep`, which appends the steering message                                                    |
+| After a pass's final step                | `consumeRunInterrupts(run.id)` — a non-empty result pushes `steeringMessage(late)` into `runMessages` and continues the pass loop (see `src/engine/run.ts:772-783`) |
+| Budget exhausted with pending interrupts | post-loop check sets `error = "A new instruction arrived after the execution budget was exhausted. A follow-up turn is required."`                                  |
 
 ---
 
@@ -75,9 +75,16 @@ DB tables touched: `agent_runs` (status, `waiting_reason`, `heartbeat_at` reads/
 
 ```typescript
 export type EngineErrorCategory =
-  | "rate_limit" | "server_error" | "network" | "context_overflow"
-  | "quota_exhausted" | "auth_error" | "refusal" | "request_too_large"
-  | "no_model" | "unknown"
+  | "rate_limit"
+  | "server_error"
+  | "network"
+  | "context_overflow"
+  | "quota_exhausted"
+  | "auth_error"
+  | "refusal"
+  | "request_too_large"
+  | "no_model"
+  | "unknown"
 
 export interface EngineErrorClassification {
   category: EngineErrorCategory
@@ -85,24 +92,24 @@ export interface EngineErrorClassification {
   retryAfterMs?: number
   resetTime?: Date
   message: string
-  limitTokens?: number   // request_too_large: provider-reported token limit
+  limitTokens?: number // request_too_large: provider-reported token limit
 }
 ```
 
 Substring-based classification, evaluated in priority order (`src/engine/recovery.ts:32-164`):
 
-| Priority | Matches (lowercased) | Category | Retryable | Extra |
-| :--- | :--- | :--- | :--- | :--- |
-| 0 | `has no model yet`, `has no model configured`, `no saya ai model set up` | `no_model` | no | raw message |
-| 1 | `request too large`, `reduce your message size`, `request entity too large`, `tokens per minute` + `requested` | `request_too_large` | no | `limitTokens` from `limit 12345` regex; message `"Request is larger than this model's plan allows"` |
-| 2 | `context_length_exceeded`, `maximum context length`, `prompt is too long`, `too many tokens` | `context_overflow` | no | |
-| 3 | `invalid api key`, `authentication error`, `unauthorized`, `401`, `forbidden`, `403` | `auth_error` | no | |
-| 4 | `insufficient_quota`, `quota exceeded`, `credit balance is too low`, `billing account` | `quota_exhausted` | no | |
-| 5 | `rate_limit`, `rate limit`, `429` | `rate_limit` | yes | `retryAfterMs` parsed from `retry after N s` |
-| 6 | `500`, `502`, `503`, `504`, `internal server error`, `overloaded`, `bad gateway` | `server_error` | yes | |
-| 7 | `econnreset`, `econnrefused`, `etimedout`, `fetch failed`, `network error` | `network` | yes | |
-| 8 | `refused to respond`, `content policy`, `safety check` | `refusal` | no | |
-| 9 | anything else | `unknown` | no | raw message |
+| Priority | Matches (lowercased)                                                                                           | Category            | Retryable | Extra                                                                                               |
+| :------- | :------------------------------------------------------------------------------------------------------------- | :------------------ | :-------- | :-------------------------------------------------------------------------------------------------- |
+| 0        | `has no model yet`, `has no model configured`, `no saya ai model set up`                                       | `no_model`          | no        | raw message                                                                                         |
+| 1        | `request too large`, `reduce your message size`, `request entity too large`, `tokens per minute` + `requested` | `request_too_large` | no        | `limitTokens` from `limit 12345` regex; message `"Request is larger than this model's plan allows"` |
+| 2        | `context_length_exceeded`, `maximum context length`, `prompt is too long`, `too many tokens`                   | `context_overflow`  | no        |                                                                                                     |
+| 3        | `invalid api key`, `authentication error`, `unauthorized`, `401`, `forbidden`, `403`                           | `auth_error`        | no        |                                                                                                     |
+| 4        | `insufficient_quota`, `quota exceeded`, `credit balance is too low`, `billing account`                         | `quota_exhausted`   | no        |                                                                                                     |
+| 5        | `rate_limit`, `rate limit`, `429`                                                                              | `rate_limit`        | yes       | `retryAfterMs` parsed from `retry after N s`                                                        |
+| 6        | `500`, `502`, `503`, `504`, `internal server error`, `overloaded`, `bad gateway`                               | `server_error`      | yes       |                                                                                                     |
+| 7        | `econnreset`, `econnrefused`, `etimedout`, `fetch failed`, `network error`                                     | `network`           | yes       |                                                                                                     |
+| 8        | `refused to respond`, `content policy`, `safety check`                                                         | `refusal`           | no        |                                                                                                     |
+| 9        | anything else                                                                                                  | `unknown`           | no        | raw message                                                                                         |
 
 ### `executeWithRecovery(fn, options?)`
 
@@ -154,11 +161,11 @@ export interface PrepareStepInput {
   interrupts: RunInterrupt[]
   contextBudgetTokens: number
   planToolAvailable: boolean
-  sentReminders: Set<string>   // each reminder fires at most once (except doom-loop)
+  sentReminders: Set<string> // each reminder fires at most once (except doom-loop)
 }
 
 export interface PrepareStepDecision {
-  messages?: ModelMessage[]   // present only when something changed
+  messages?: ModelMessage[] // present only when something changed
   reminders: string[]
   steered: boolean
   elidedCount: number
@@ -189,11 +196,11 @@ In order (`src/engine/loop-control.ts:104-163`):
 
 ## 🧪 Tests
 
-| Test file | Covers |
-| :--- | :--- |
-| `src/engine/interrupts.test.ts` | `handleMidRunInterrupt` steering vs. abort routing against the run registry. |
-| `src/engine/recovery.test.ts` | `classifyEngineError` categories/`limitTokens` parsing, retry backoff, `userFacingError` text. |
-| `src/engine/resume.test.ts` | Resume/recovery DB flows (mocked `getDb`). |
+| Test file                         | Covers                                                                                                                                     |
+| :-------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/engine/interrupts.test.ts`   | `handleMidRunInterrupt` steering vs. abort routing against the run registry.                                                               |
+| `src/engine/recovery.test.ts`     | `classifyEngineError` categories/`limitTokens` parsing, retry backoff, `userFacingError` text.                                             |
+| `src/engine/resume.test.ts`       | Resume/recovery DB flows (mocked `getDb`).                                                                                                 |
 | `src/engine/loop-control.test.ts` | `decidePrepareStep` reminder/steering/elision decisions, doom-loop detection, `capToolOutputForModel`, `foldOutput`, `needsStepSeparator`. |
 
 ---

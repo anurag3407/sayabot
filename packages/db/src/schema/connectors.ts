@@ -1,12 +1,4 @@
-import {
-  index,
-  jsonb,
-  pgTable,
-  text,
-  timestamp,
-  uniqueIndex,
-  uuid,
-} from "drizzle-orm/pg-core"
+import { index, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core"
 import { agents } from "./agents"
 import { orgs, profiles } from "./identity"
 
@@ -58,9 +50,7 @@ export const agentConnectorGrants = pgTable(
     scopeConfig: jsonb("scope_config").notNull().default({}),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [
-    index("agent_connector_grants_agent_idx").on(t.orgId, t.agentId),
-  ],
+  (t) => [index("agent_connector_grants_agent_idx").on(t.orgId, t.agentId)],
 )
 
 /** One inbound chat message, so a retried webhook doesn't start a second agent turn. */

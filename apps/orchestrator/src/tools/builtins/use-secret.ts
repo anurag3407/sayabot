@@ -113,14 +113,21 @@ export function useSecretTool(args: { agentId: string; orgId: string }): ToolSpe
         const colonIdx = template.indexOf(":")
         if (colonIdx !== -1) {
           const headerName = template.slice(0, colonIdx).trim()
-          const headerVal = template.slice(colonIdx + 1).trim().replace("{secret}", secretString)
+          const headerVal = template
+            .slice(colonIdx + 1)
+            .trim()
+            .replace("{secret}", secretString)
           reqHeaders[headerName] = headerVal
         } else {
           reqHeaders["Authorization"] = `Bearer ${secretString}`
         }
       } else if (inject.mode === "basic") {
         let authHeader = ""
-        if (typeof parsedSecret === "object" && parsedSecret !== null && "username" in parsedSecret) {
+        if (
+          typeof parsedSecret === "object" &&
+          parsedSecret !== null &&
+          "username" in parsedSecret
+        ) {
           const u = (parsedSecret as any).username || ""
           const p = (parsedSecret as any).password || secretString
           authHeader = Buffer.from(`${u}:${p}`).toString("base64")

@@ -10,21 +10,21 @@ Source files: `apps/computerd/src/backends/e2b.ts`
 
 `E2BBackendConfig` (`e2b.ts:15-22`), built by `buildE2B` in [select.ts](backends.md):
 
-| Field | Env var | Default | Meaning |
-| :--- | :--- | :--- | :--- |
-| `apiKey` | `E2B_API_KEY` | required — `buildE2B` throws `BackendUnavailableError("E2B_API_KEY is not set")` without it | E2B account key |
-| `template` | `E2B_TEMPLATE` | `base` | sandbox image template |
-| `maxRunning` | `E2B_MAX_RUNNING` | `20` | concurrency cap (returned verbatim by `autoMaxRunning`) |
-| `idleMs` | `COMPUTER_IDLE_MS` (fallback `600_000`) | — | E2B pauses the sandbox itself after this long without a call |
-| `bundleDir` | `AGENTD_BUNDLE_DIR` | `<package>/dist/agentd/` (`defaultBundleDir`, `e2b.ts:30-32`) | compiled agentd bundle pushed into new sandboxes |
+| Field        | Env var                                 | Default                                                                                     | Meaning                                                      |
+| :----------- | :-------------------------------------- | :------------------------------------------------------------------------------------------ | :----------------------------------------------------------- |
+| `apiKey`     | `E2B_API_KEY`                           | required — `buildE2B` throws `BackendUnavailableError("E2B_API_KEY is not set")` without it | E2B account key                                              |
+| `template`   | `E2B_TEMPLATE`                          | `base`                                                                                      | sandbox image template                                       |
+| `maxRunning` | `E2B_MAX_RUNNING`                       | `20`                                                                                        | concurrency cap (returned verbatim by `autoMaxRunning`)      |
+| `idleMs`     | `COMPUTER_IDLE_MS` (fallback `600_000`) | —                                                                                           | E2B pauses the sandbox itself after this long without a call |
+| `bundleDir`  | `AGENTD_BUNDLE_DIR`                     | `<package>/dist/agentd/` (`defaultBundleDir`, `e2b.ts:30-32`)                               | compiled agentd bundle pushed into new sandboxes             |
 
 In-sandbox constants (`e2b.ts:26-28`):
 
-| Constant | Value |
-| :--- | :--- |
-| `AGENTD_DIR` | `/opt/saaya-agentd` |
-| `AGENTD_SOCK` | `/tmp/saaya-agentd.sock` |
-| `ENV` | `{ AGENTD_SOCK, BOT_HOME: "/home/bot" }` |
+| Constant      | Value                                    |
+| :------------ | :--------------------------------------- |
+| `AGENTD_DIR`  | `/opt/saaya-agentd`                      |
+| `AGENTD_SOCK` | `/tmp/saaya-agentd.sock`                 |
+| `ENV`         | `{ AGENTD_SOCK, BOT_HOME: "/home/bot" }` |
 
 E2B metadata keys: `saayaApp: "computerd"` marks computers owned by this daemon, `saayaAgent` / `saayaOrg` record the owner. `ipIdentity = false` and `kind = "e2b"`.
 
@@ -48,11 +48,11 @@ stateDiagram-v2
 
 ### Metadata scheme
 
-| Key | Value | Used by |
-| :--- | :--- | :--- |
-| `saayaApp` | `"computerd"` | `listRunning` ownership filter |
-| `saayaAgent` | agent id | `find()` (per-agent lookup), `listRunning` mapping |
-| `saayaOrg` | org id | bookkeeping only |
+| Key          | Value         | Used by                                            |
+| :----------- | :------------ | :------------------------------------------------- |
+| `saayaApp`   | `"computerd"` | `listRunning` ownership filter                     |
+| `saayaAgent` | agent id      | `find()` (per-agent lookup), `listRunning` mapping |
+| `saayaOrg`   | org id        | bookkeeping only                                   |
 
 Metadata-based discovery means computerd instances share one E2B account safely: a restarted computerd re-finds its computers by metadata instead of holding anything in memory.
 
@@ -97,11 +97,11 @@ sequenceDiagram
 
 ## 😴 Sleep / Remove / Describe
 
-| Operation | Behaviour |
-| :--- | :--- |
-| `sleep(agentId)` (`e2b.ts:241-247`) | Finds the sandbox, drops the cache entry, and (if running) `sbx.pause()` — E2B keeps memory + disk |
-| `remove(agentId, deleteDisk)` (`e2b.ts:249-254`) | Without `deleteDisk` this is just a pause; with it, `Sandbox.kill` destroys the sandbox and its disk |
-| `describe()` (`e2b.ts:256-263`) | `isolation: "E2B cloud microVM (Firecracker)"`, `fastPath: false`, `egress: "direct internet (Saaya egress and $SECRET placeholders unavailable)"`, `template` |
+| Operation                                        | Behaviour                                                                                                                                                      |
+| :----------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sleep(agentId)` (`e2b.ts:241-247`)              | Finds the sandbox, drops the cache entry, and (if running) `sbx.pause()` — E2B keeps memory + disk                                                             |
+| `remove(agentId, deleteDisk)` (`e2b.ts:249-254`) | Without `deleteDisk` this is just a pause; with it, `Sandbox.kill` destroys the sandbox and its disk                                                           |
+| `describe()` (`e2b.ts:256-263`)                  | `isolation: "E2B cloud microVM (Firecracker)"`, `fastPath: false`, `egress: "direct internet (Saaya egress and $SECRET placeholders unavailable)"`, `template` |
 
 ### Environment constraints to know
 
@@ -111,12 +111,12 @@ sequenceDiagram
 
 ### Failure modes and recovery
 
-| Symptom | Cause | Recovery |
-| :--- | :--- | :--- |
+| Symptom                            | Cause                                          | Recovery                                                                                                                                               |
+| :--------------------------------- | :--------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `ComputerGoneError` from `connect` | sandbox killed externally (E2B console, quota) | lifecycle wakes-and-retries → `start()` finds nothing and **creates** a fresh sandbox (with bootstrap, so agentd + `/home/bot` layout are reinstalled) |
-| `ENOENT`/`ECONNREFUSED` in stderr | daemon not running after resume | `ensureDaemon` re-runs automatically within the same transport call, fixing the *next* retry |
-| `agentd bundle missing at <path>` | `dist/agentd/` not built | run `pnpm --filter @sayabot/computerd build:agentd`, then restart/start again |
-| Sandbox paused mid-turn | E2B idle timeout expired despite keep-alive | next transport call resumes through `Sandbox.connect` (memory kept), transparently |
+| `ENOENT`/`ECONNREFUSED` in stderr  | daemon not running after resume                | `ensureDaemon` re-runs automatically within the same transport call, fixing the _next_ retry                                                           |
+| `agentd bundle missing at <path>`  | `dist/agentd/` not built                       | run `pnpm --filter @sayabot/computerd build:agentd`, then restart/start again                                                                          |
+| Sandbox paused mid-turn            | E2B idle timeout expired despite keep-alive    | next transport call resumes through `Sandbox.connect` (memory kept), transparently                                                                     |
 
 ---
 
@@ -128,15 +128,15 @@ sequenceDiagram
 
 The backend touches exactly these `e2b` SDK entry points (injected as a module so tests can fake it):
 
-| SDK call | Where | Purpose |
-| :--- | :--- | :--- |
-| `Sandbox.list({ query: { metadata, state } })` | `find`, `listRunning` | metadata-based sandbox discovery (paged) |
-| `Sandbox.create(template, opts)` | `start` | new sandbox with metadata + `onTimeout: "pause"` |
-| `Sandbox.connect(sandboxId, opts)` | `connect`, `sleep` | attach to (and resume) an existing sandbox |
-| `sbx.files.write(path, content)` | `bootstrap`, `transport` | upload agentd bundle / request file |
-| `sbx.commands.run(cmd, opts)` | `bootstrap`, `ensureDaemon`, `transport` | shell execution inside the sandbox |
-| `sbx.setTimeout(ms)` | `keepAlive` | push E2B's idle timer |
-| `sbx.pause()` / `Sandbox.kill(id)` | `sleep`, `remove` | pause-with-disk / destroy |
+| SDK call                                       | Where                                    | Purpose                                          |
+| :--------------------------------------------- | :--------------------------------------- | :----------------------------------------------- |
+| `Sandbox.list({ query: { metadata, state } })` | `find`, `listRunning`                    | metadata-based sandbox discovery (paged)         |
+| `Sandbox.create(template, opts)`               | `start`                                  | new sandbox with metadata + `onTimeout: "pause"` |
+| `Sandbox.connect(sandboxId, opts)`             | `connect`, `sleep`                       | attach to (and resume) an existing sandbox       |
+| `sbx.files.write(path, content)`               | `bootstrap`, `transport`                 | upload agentd bundle / request file              |
+| `sbx.commands.run(cmd, opts)`                  | `bootstrap`, `ensureDaemon`, `transport` | shell execution inside the sandbox               |
+| `sbx.setTimeout(ms)`                           | `keepAlive`                              | push E2B's idle timer                            |
+| `sbx.pause()` / `Sandbox.kill(id)`             | `sleep`, `remove`                        | pause-with-disk / destroy                        |
 
 All calls pass `{ apiKey }` from config; user-scoped commands run as `"user"` (the E2B default non-root user that owns `/home/bot` after `chown`), while bootstrap runs as `"root"`.
 

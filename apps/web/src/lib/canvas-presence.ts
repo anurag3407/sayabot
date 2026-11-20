@@ -1,6 +1,15 @@
 /** Turns Yjs awareness states into the named cursors shown on a shared canvas. */
 
-const PALETTE = ["#ff7a45", "#7dd3c0", "#b79cf5", "#ffd08a", "#7fb2ff", "#f08fb0", "#a6d86f", "#f5b26b"]
+const PALETTE = [
+  "#ff7a45",
+  "#7dd3c0",
+  "#b79cf5",
+  "#ffd08a",
+  "#7fb2ff",
+  "#f08fb0",
+  "#a6d86f",
+  "#f5b26b",
+]
 const FALLBACK = PALETTE[0]!
 
 export interface CanvasPeer {
@@ -17,13 +26,17 @@ export function colorForUser(userId: string): string {
 }
 
 /** Awareness is written by other clients, so every field is untrusted here. */
-export function peersFromAwareness(states: Map<number, unknown>, selfClientId: number): CanvasPeer[] {
+export function peersFromAwareness(
+  states: Map<number, unknown>,
+  selfClientId: number,
+): CanvasPeer[] {
   const peers: CanvasPeer[] = []
   for (const [clientId, state] of states) {
     if (clientId === selfClientId || !Number.isInteger(clientId)) continue
     const user = (state as { user?: Record<string, unknown> } | null)?.user
     if (!user || typeof user.name !== "string") continue
-    const color = typeof user.color === "string" && /^#[0-9a-f]{6}$/i.test(user.color) ? user.color : FALLBACK
+    const color =
+      typeof user.color === "string" && /^#[0-9a-f]{6}$/i.test(user.color) ? user.color : FALLBACK
     peers.push({
       clientId,
       userId: typeof user.id === "string" ? user.id : String(clientId),
@@ -35,7 +48,10 @@ export function peersFromAwareness(states: Map<number, unknown>, selfClientId: n
 }
 
 function cssLabel(name: string): string {
-  const safe = name.replace(/[^\p{L}\p{M}\p{N} ._'-]/gu, "").trim().slice(0, 32)
+  const safe = name
+    .replace(/[^\p{L}\p{M}\p{N} ._'-]/gu, "")
+    .trim()
+    .slice(0, 32)
   return `"${safe || "someone"}"`
 }
 

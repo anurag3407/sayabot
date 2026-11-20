@@ -1,6 +1,6 @@
 # Boat — the Managed boat.dev Desktop
 
-"Boat" is Sayabot's name for a Linux desktop hosted by the [boat.dev](https://boat.dev) service and attached to an agent as one of its computer surfaces. The module header states the concept exactly (`boat.ts:1-4`): *"boat.dev is a Linux desktop the agent can see and click. The agent process stays on the Mac or the Cloud home."* The Boat is therefore a **managed, remote desktop the agent's tools drive over a REST API** — not a container the orchestrator runs, and not a different model. Four files implement it: a typed API client, the decision applier that turns a `select_computer` decision into create/wake calls, the shell layer that builds commands and screen captures on the desktop, and the credential resolver that picks between the org's own Boat key and a Cloud-included relay token.
+"Boat" is Sayabot's name for a Linux desktop hosted by the [boat.dev](https://boat.dev) service and attached to an agent as one of its computer surfaces. The module header states the concept exactly (`boat.ts:1-4`): _"boat.dev is a Linux desktop the agent can see and click. The agent process stays on the Mac or the Cloud home."_ The Boat is therefore a **managed, remote desktop the agent's tools drive over a REST API** — not a container the orchestrator runs, and not a different model. Four files implement it: a typed API client, the decision applier that turns a `select_computer` decision into create/wake calls, the shell layer that builds commands and screen captures on the desktop, and the credential resolver that picks between the org's own Boat key and a Cloud-included relay token.
 
 Source files: `apps/orchestrator/src/computers/boat.ts`, `apps/orchestrator/src/computers/apply-boat.ts`, `apps/orchestrator/src/computers/boat-shell.ts`, `apps/orchestrator/src/computers/open-boat.ts`
 
@@ -8,15 +8,15 @@ Source files: `apps/orchestrator/src/computers/boat.ts`, `apps/orchestrator/src/
 
 ## 🛶 What Boat actually is
 
-| Property | Value |
-| :--- | :--- |
-| Provider | boat.dev cloud desktops, REST API at `https://boat.dev/api/v1` (override: `SAYABOT_BOAT_API`) |
-| Unit of placement | a "sandbox" — `{ id, name, state }` (`boat.ts:11-15`) |
-| Ready states | `idle`, `ready`, `running` (`BOAT_READY_STATES`, `boat.ts:9`); `archived` sandboxes are resumed, provisioning states are not ready |
-| Auth | Bearer token per request (`boat.ts:34-39`) |
-| Files | live in `/home/user` and `/tmp` on the Boat — **not** `/home/bot`, which is the local-VM home (`packages/core/src/computers.ts:58`) |
-| Sleep | stops after 10 idle minutes; files persist and the desktop wakes with them (`BOAT_IDLE_MS`, `packages/core/src/computers.ts:217`) |
-| Billing source | `own` (the org's key) or `included` (the Cloud plan relay token) — returned as `billedTo` on every call |
+| Property          | Value                                                                                                                               |
+| :---------------- | :---------------------------------------------------------------------------------------------------------------------------------- |
+| Provider          | boat.dev cloud desktops, REST API at `https://boat.dev/api/v1` (override: `SAYABOT_BOAT_API`)                                       |
+| Unit of placement | a "sandbox" — `{ id, name, state }` (`boat.ts:11-15`)                                                                               |
+| Ready states      | `idle`, `ready`, `running` (`BOAT_READY_STATES`, `boat.ts:9`); `archived` sandboxes are resumed, provisioning states are not ready  |
+| Auth              | Bearer token per request (`boat.ts:34-39`)                                                                                          |
+| Files             | live in `/home/user` and `/tmp` on the Boat — **not** `/home/bot`, which is the local-VM home (`packages/core/src/computers.ts:58`) |
+| Sleep             | stops after 10 idle minutes; files persist and the desktop wakes with them (`BOAT_IDLE_MS`, `packages/core/src/computers.ts:217`)   |
+| Billing source    | `own` (the org's key) or `included` (the Cloud plan relay token) — returned as `billedTo` on every call                             |
 
 Because the agent process keeps running on the Mac or Cloud home, every Boat interaction is a thin remote-procedure call: shell commands, screen frames, and file writes are POSTed to boat.dev, and results come back in the response. The surface never takes the Mac's screen — `macScreenAllowed` returns false for `boat` (`packages/core/src/computers.ts:44-48`).
 
@@ -26,19 +26,19 @@ What the agent itself is told about the surface comes from `desktopGuidance` (`p
 
 The desktop's own lifecycle states, as the client models them (`boat.ts:8-9`, `boat.ts:74-86`):
 
-| State | Meaning | Client behaviour |
-| :--- | :--- | :--- |
-| `idle` / `ready` / `running` | Can take a command (`BOAT_READY_STATES`) | `waitUntilReady` returns immediately |
-| `archived` | Boat stopped itself; files intact | `waitUntilReady` calls `resume()` and keeps polling |
-| other (provisioning states) | Being created | Polled every `pauseMs` (2 s) until the 90 s budget expires |
+| State                        | Meaning                                  | Client behaviour                                           |
+| :--------------------------- | :--------------------------------------- | :--------------------------------------------------------- |
+| `idle` / `ready` / `running` | Can take a command (`BOAT_READY_STATES`) | `waitUntilReady` returns immediately                       |
+| `archived`                   | Boat stopped itself; files intact        | `waitUntilReady` calls `resume()` and keeps polling        |
+| other (provisioning states)  | Being created                            | Polled every `pauseMs` (2 s) until the 90 s budget expires |
 
 Environment-wise the integration uses three variables, resolved per call rather than at startup:
 
-| Env var | Role |
-| :--- | :--- |
-| `SAYABOT_BOAT_API` | API base override, else `https://boat.dev/api/v1` |
-| `SAYABOT_BOAT_TOKEN` | Cloud plan relay token, used only when the org has no own key |
-| `MESH_KEK` | Decrypts the org's sealed Boat key from `org_computer_settings` |
+| Env var              | Role                                                            |
+| :------------------- | :-------------------------------------------------------------- |
+| `SAYABOT_BOAT_API`   | API base override, else `https://boat.dev/api/v1`               |
+| `SAYABOT_BOAT_TOKEN` | Cloud plan relay token, used only when the org has no own key   |
+| `MESH_KEK`           | Decrypts the org's sealed Boat key from `org_computer_settings` |
 
 ## 🔌 `BoatClient` (`boat.ts`)
 
@@ -46,15 +46,15 @@ A small REST wrapper. Constructor options: `{ token, api?, fetch? }` — `api` d
 
 Boat v1 answers `{ sandbox: { id, state, ... } }`; the private `sandbox()` helper (`boat.ts:50-55`) accepts a flat body too, requires an `id`, and normalises missing `name`/`state` to empty strings.
 
-| Method | Endpoint | Behaviour |
-| :--- | :--- | :--- |
-| `create(name)` | `POST /sandboxes` with `{ name, noEnv: true }` (`boat.ts:57-64`) | Provisions a new desktop. `noEnv: true` means the desktop does not inherit provider environment. |
-| `get(id)` | `GET /sandboxes/:id` (`boat.ts:66-68`) | Current sandbox record including `state`. |
-| `waitUntilReady(id, { budgetMs = 90_000, pauseMs = 2_000 })` | polling loop of `get` (`boat.ts:74-86`) | Returns as soon as the state is in `BOAT_READY_STATES`; an `archived` sandbox triggers `resume(id)` mid-loop; the poll pause shrinks near the deadline; on timeout throws `` `The Boat is ${state}` `` (or "did not become ready"). |
-| `resume(id)` | `POST /sandboxes/:id/resume` (`boat.ts:88-94`) | Wakes an archived desktop. |
-| `stop(id)` | `POST /sandboxes/:id/stop` (`boat.ts:96-98`) | Puts the desktop to sleep (used by the idle sleep scan, not by decision apply). |
-| `command(id, command, detached = false)` | `POST /sandboxes/:id/commands` with `{ command, detached }` (`boat.ts:100-107`) | Foreground commands wait and return `{ exitCode, output }`; `detached` returns at once with a `pid` and no exit code. `output` falls back to `stdout` when the API uses that field. |
-| `artifact(id, filePath)` | `GET /sandboxes/:id/artifacts?path=…` (`boat.ts:109-118`) | Returns `{ contentType, base64 }` of a file from the desktop, capped at 8 MB; empty bodies and non-2xx become `null`. The doc comment is explicit: *"Bytes stay on this request and are not a shell command"* — file reads never pass through the shell. |
+| Method                                                       | Endpoint                                                                        | Behaviour                                                                                                                                                                                                                                                |
+| :----------------------------------------------------------- | :------------------------------------------------------------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `create(name)`                                               | `POST /sandboxes` with `{ name, noEnv: true }` (`boat.ts:57-64`)                | Provisions a new desktop. `noEnv: true` means the desktop does not inherit provider environment.                                                                                                                                                         |
+| `get(id)`                                                    | `GET /sandboxes/:id` (`boat.ts:66-68`)                                          | Current sandbox record including `state`.                                                                                                                                                                                                                |
+| `waitUntilReady(id, { budgetMs = 90_000, pauseMs = 2_000 })` | polling loop of `get` (`boat.ts:74-86`)                                         | Returns as soon as the state is in `BOAT_READY_STATES`; an `archived` sandbox triggers `resume(id)` mid-loop; the poll pause shrinks near the deadline; on timeout throws `` `The Boat is ${state}` `` (or "did not become ready").                      |
+| `resume(id)`                                                 | `POST /sandboxes/:id/resume` (`boat.ts:88-94`)                                  | Wakes an archived desktop.                                                                                                                                                                                                                               |
+| `stop(id)`                                                   | `POST /sandboxes/:id/stop` (`boat.ts:96-98`)                                    | Puts the desktop to sleep (used by the idle sleep scan, not by decision apply).                                                                                                                                                                          |
+| `command(id, command, detached = false)`                     | `POST /sandboxes/:id/commands` with `{ command, detached }` (`boat.ts:100-107`) | Foreground commands wait and return `{ exitCode, output }`; `detached` returns at once with a `pid` and no exit code. `output` falls back to `stdout` when the API uses that field.                                                                      |
+| `artifact(id, filePath)`                                     | `GET /sandboxes/:id/artifacts?path=…` (`boat.ts:109-118`)                       | Returns `{ contentType, base64 }` of a file from the desktop, capped at 8 MB; empty bodies and non-2xx become `null`. The doc comment is explicit: _"Bytes stay on this request and are not a shell command"_ — file reads never pass through the shell. |
 
 ## 🔑 Credentials — `boatTokenForOrg` (`open-boat.ts:11-30`)
 
@@ -95,7 +95,7 @@ flowchart TD
 
 Details worth noting:
 
-- **`applyBoatDecision` never stops a Boat** (`apply-boat.ts:4` — *"Does not stop it"*). `use` just re-attaches to the already-running desktop; any other action falls through to `"This Boat is already running"`. A `decision.surface` other than `"boat"` is refused with `"Not a Boat"`.
+- **`applyBoatDecision` never stops a Boat** (`apply-boat.ts:4` — _"Does not stop it"_). `use` just re-attaches to the already-running desktop; any other action falls through to `"This Boat is already running"`. A `decision.surface` other than `"boat"` is refused with `"Not a Boat"`.
 - **Provisioning names the sandbox after the agent id** (`open-boat.ts:53` passes `input.agentId` as `name`), and both `wake` and `provision` tolerate the created/resumed sandbox already being in a ready state, skipping the poll.
 - **Persistence** (`open-boat.ts:56-66`): on success the agent row's `params` JSON is rewritten with `computer: { ...computer, boatId, boatState: "running", boatConfigured: true, lastUsedAt: <now> }`. This is what `availabilityFromParams` reads on the next turn, and what the sleep scan inspects (see below). `rememberSelectedDesktop` (`packages/core/src/computers.ts:188-214`) additionally makes the wake visible to the very next tool call within the same turn.
 
@@ -114,24 +114,25 @@ The persisted placement state after a successful open therefore looks like:
 ```
 
 `backgroundStartedAt` appears only after a detached command (`boatActivity`, `boat-shell.ts:112-122`), and `watching` is set elsewhere (screen-viewing sessions) — all three optional fields feed the sleep decision in [./vps-and-client.md](./vps-and-client.md).
+
 - All boat.dev errors are caught and returned as `{ ok: false, error }` strings, never thrown into the tool loop.
 
 ## 🐚 Shell access — `boat-shell.ts`
 
 Every command that reaches the desktop is built by a pure function that treats untrusted text as data: paths are single-quoted with a `'\''` escape helper (`shellQuote`, `boat-shell.ts:8-10`), numbers are validated as integers so they cannot alter the command, and file content travels as base64. Each builder returns `null` (or an `{ error }`) for invalid input, which the computer tools surface as a failure instead of a malformed command.
 
-| Builder | Command produced | Guards |
-| :--- | :--- | :--- |
-| `boatReadCommand(path, startLine?, endLine?)` (`boat-shell.ts:13-19`) | `sed -n FROM,TOp '<path>'` | absolute path, no `\n`/`\0`, window ≤ 1999 lines; `endLine` defaults to `startLine ? startLine : from + 1999` |
-| `boatCatCommand(path)` (`boat-shell.ts:52-55`) | `cat '<path>'` | absolute path, no `\n`/`\0` |
-| `boatListCommand(path = "/home/bot", depth = 1)` (`boat-shell.ts:44-49`) | `ls -1 '<path>'` or `find '<path>' -mindepth 1 -maxdepth N` | depth integer in [1, 3] |
-| `boatWriteCommand(path, content)` (`boat-shell.ts:81-85`) | `printf %s '<base64>' \| base64 -d > '<path>'` | content base64-encoded, so *"the file text is not a shell command"*; no `\0` allowed |
-| `boatClickCommand(x, y, button = "left", count = 1)` (`boat-shell.ts:35-41`) | `xdotool mousemove --sync X Y click --repeat N --delay 100 CODE` | coordinates integers in [0, 32767]; button mapped `left→1, middle→2, right→3`; repeat 1–3 |
-| `panelShotCommand()` (`boat-shell.ts:21-32`) | exports `DISPLAY=${DISPLAY:-:0}`, removes the old frame, then `scrot -o -p -q 85` → `import -window root` → `ffmpeg x11grab` fallbacks into `/tmp/sayabot-screen.jpg`, echoing `captured` only if the file exists | pointer included (`-draw_mouse 1`); the frame is fetched later via `artifact()`, never through the shell |
+| Builder                                                                      | Command produced                                                                                                                                                                                                  | Guards                                                                                                        |
+| :--------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------ |
+| `boatReadCommand(path, startLine?, endLine?)` (`boat-shell.ts:13-19`)        | `sed -n FROM,TOp '<path>'`                                                                                                                                                                                        | absolute path, no `\n`/`\0`, window ≤ 1999 lines; `endLine` defaults to `startLine ? startLine : from + 1999` |
+| `boatCatCommand(path)` (`boat-shell.ts:52-55`)                               | `cat '<path>'`                                                                                                                                                                                                    | absolute path, no `\n`/`\0`                                                                                   |
+| `boatListCommand(path = "/home/bot", depth = 1)` (`boat-shell.ts:44-49`)     | `ls -1 '<path>'` or `find '<path>' -mindepth 1 -maxdepth N`                                                                                                                                                       | depth integer in [1, 3]                                                                                       |
+| `boatWriteCommand(path, content)` (`boat-shell.ts:81-85`)                    | `printf %s '<base64>' \| base64 -d > '<path>'`                                                                                                                                                                    | content base64-encoded, so _"the file text is not a shell command"_; no `\0` allowed                          |
+| `boatClickCommand(x, y, button = "left", count = 1)` (`boat-shell.ts:35-41`) | `xdotool mousemove --sync X Y click --repeat N --delay 100 CODE`                                                                                                                                                  | coordinates integers in [0, 32767]; button mapped `left→1, middle→2, right→3`; repeat 1–3                     |
+| `panelShotCommand()` (`boat-shell.ts:21-32`)                                 | exports `DISPLAY=${DISPLAY:-:0}`, removes the old frame, then `scrot -o -p -q 85` → `import -window root` → `ffmpeg x11grab` fallbacks into `/tmp/sayabot-screen.jpg`, echoing `captured` only if the file exists | pointer included (`-draw_mouse 1`); the frame is fetched later via `artifact()`, never through the shell      |
 
 On top of the builders:
 
-- `planBoatEdit(path, content, { oldString, newString, replaceAll?, expectedHash? })` (`boat-shell.ts:61-78`) — plans an exact edit *before* touching the Boat: content capped at 5 MB; an `expectedHash` that does not match the current file refuses the write ("The file changed since it was read."); a missing match refuses; a repeated match refuses unless `replaceAll`; the produced write command plus the SHA-256 of the new content come back so callers can chain hash-guarded edits.
+- `planBoatEdit(path, content, { oldString, newString, replaceAll?, expectedHash? })` (`boat-shell.ts:61-78`) — plans an exact edit _before_ touching the Boat: content capped at 5 MB; an `expectedHash` that does not match the current file refuses the write ("The file changed since it was read."); a missing match refuses; a repeated match refuses unless `replaceAll`; the produced write command plus the SHA-256 of the new content come back so callers can chain hash-guarded edits.
 - `numberBoatLines(text, startLine = 1)` (`boat-shell.ts:88-92`) — renders `N | line` so Boat file pages look exactly like local `fs_read` output.
 - `boatCommandOk({ exitCode })` (`boat-shell.ts:95-97`) — a finished command with a non-zero exit failed; a detached start has no exit code yet and counts as OK.
 
@@ -147,7 +148,7 @@ The single execution path used by `computer_shell` on the Boat surface:
 
 ### `captureBoatScreen` (`boat-shell.ts:159-182`)
 
-Runs `panelShotCommand()` foreground (a sleeping Boat is *not* woken — *"the caller only uses a desktop that is already running"*), requires the `captured` marker in the output, then fetches `/tmp/sayabot-screen.jpg` through `BoatClient.artifact` and returns `{ ok: true, mimeType, image: <base64> }`. Missing frame or credentials degrade to `{ ok: false, error: "The Boat frame could not be read." }`.
+Runs `panelShotCommand()` foreground (a sleeping Boat is _not_ woken — _"the caller only uses a desktop that is already running"_), requires the `captured` marker in the output, then fetches `/tmp/sayabot-screen.jpg` through `BoatClient.artifact` and returns `{ ok: true, mimeType, image: <base64> }`. Missing frame or credentials degrade to `{ ok: false, error: "The Boat frame could not be read." }`.
 
 ## 😴 Sleep integration (summary)
 

@@ -7,11 +7,15 @@ async function load() {
   vi.stubEnv("SUPABASE_URL", "https://x.supabase.co")
   vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "svc")
   vi.stubEnv("ORCHESTRATOR_INTERNAL_SECRET", "0123456789abcdef")
+  vi.stubEnv("PORT", "4000")
   return import("../../src/internal-auth")
 }
 
 describe("isInternalRequest", () => {
-  afterEach(() => { vi.unstubAllEnvs(); vi.resetModules() })
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.resetModules()
+  })
 
   it("accepts the secret via x-internal-secret header", async () => {
     const { isInternalRequest } = await load()

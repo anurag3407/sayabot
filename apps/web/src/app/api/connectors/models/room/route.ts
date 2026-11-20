@@ -22,5 +22,8 @@ export async function GET(request: Request) {
   const bots = await loadRoomBotModels(access.org.id, roomId)
   if (!bots) return NextResponse.json({ error: "Not found" }, { status: 404 })
   // Members see what a bot answers with; only admins change it (see setRoomAgentModelAction).
-  return NextResponse.json({ bots, canEdit: isOrgAdmin(access.role) }, { headers: { "cache-control": "private, no-store" } })
+  return NextResponse.json(
+    { bots, canEdit: isOrgAdmin(access.role) },
+    { headers: { "cache-control": "private, no-store" } },
+  )
 }

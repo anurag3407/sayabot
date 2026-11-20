@@ -62,7 +62,14 @@ export const SECTION_TITLE: Record<PickerSection, string> = {
   computer: "Computers",
 }
 
-export const SECTION_ORDER: PickerSection[] = ["server", "subscription", "mac", "key", "local", "computer"]
+export const SECTION_ORDER: PickerSection[] = [
+  "server",
+  "subscription",
+  "mac",
+  "key",
+  "local",
+  "computer",
+]
 
 export const EFFORT_LABELS: Record<string, string> = {
   none: "None",
@@ -73,15 +80,26 @@ export const EFFORT_LABELS: Record<string, string> = {
   max: "Max",
 }
 
-export function effortOptions(group: PickerGroup | undefined, model: PickerModel | undefined): string[] {
+export function effortOptions(
+  group: PickerGroup | undefined,
+  model: PickerModel | undefined,
+): string[] {
   if (!group) return []
   return model?.effort ?? group.effortLevels
 }
 
 /** A level the new model does not take falls back to Default. */
-export function fitEffort(groups: PickerGroup[], keyId: string | null, model: string | null, effort: string | null): string | null {
+export function fitEffort(
+  groups: PickerGroup[],
+  keyId: string | null,
+  model: string | null,
+  effort: string | null,
+): string | null {
   const group = groups.find((g) => g.keyId === keyId)
-  const levels = effortOptions(group, group?.models.find((m) => m.id === model))
+  const levels = effortOptions(
+    group,
+    group?.models.find((m) => m.id === model),
+  )
   return effort && levels.includes(effort) ? effort : null
 }
 
@@ -91,7 +109,9 @@ export function choiceLabel(groups: PickerGroup[], value: ModelValue): string {
   if (!group) return value.model && value.model !== "default" ? value.model : "Choose a model"
   if (group.keyId === null) {
     if (!group.models.length) return "Sayabot default"
-    return group.models.find((m) => m.id === (value.model ?? ""))?.label ?? `${group.label} · Automatic`
+    return (
+      group.models.find((m) => m.id === (value.model ?? ""))?.label ?? `${group.label} · Automatic`
+    )
   }
   const picked = group.models.find((m) => m.id === value.model)
   return `${picked?.label ?? value.model ?? "Default"} · ${group.label}`

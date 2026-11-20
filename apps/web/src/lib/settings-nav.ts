@@ -49,7 +49,8 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
       {
         segment: "phones",
         label: "Phones",
-        description: "Sign your phone in with a one-time code, and remove phones you no longer use.",
+        description:
+          "Sign your phone in with a one-time code, and remove phones you no longer use.",
         icon: "phones",
         adminOnly: false,
       },
@@ -75,7 +76,8 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
       {
         segment: "keys",
         label: "AI providers",
-        description: "Agent apps, plans and API keys your agents think with, plus the cloud desktops and server they work on.",
+        description:
+          "Agent apps, plans and API keys your agents think with, plus the cloud desktops and server they work on.",
         icon: "keys",
         adminOnly: true,
       },
@@ -109,7 +111,8 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
       {
         segment: "search",
         label: "Search providers",
-        description: "Web search APIs (TinyFish, Context.dev, Tavily, Brave) for agent web research.",
+        description:
+          "Web search APIs (TinyFish, Context.dev, Tavily, Brave) for agent web research.",
         icon: "search",
         adminOnly: true,
       },

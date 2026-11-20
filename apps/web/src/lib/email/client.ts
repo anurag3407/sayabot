@@ -1,7 +1,7 @@
 import { Resend } from "resend"
 
 const resendApiKey = process.env.RESEND_API_KEY
-export const DEFAULT_FROM = process.env.RESEND_FROM_EMAIL || "Sayalabs <auth@sayalabs.in>"
+export const DEFAULT_FROM = process.env.RESEND_FROM_EMAIL || "Sayabot <noreply@localhost>"
 
 export const resend = resendApiKey ? new Resend(resendApiKey) : null
 
@@ -25,9 +25,12 @@ export async function sendEmail(opts: SendEmailOptions): Promise<SendEmailResult
   const recipients = Array.isArray(opts.to) ? opts.to : [opts.to]
 
   if (!resend) {
-    console.warn(`[email] RESEND_API_KEY is not set. Suppressed email to ${recipients.join(", ")}:`, {
-      subject: opts.subject,
-    })
+    console.warn(
+      `[email] RESEND_API_KEY is not set. Suppressed email to ${recipients.join(", ")}:`,
+      {
+        subject: opts.subject,
+      },
+    )
     return { ok: false, error: "RESEND_API_KEY not configured" }
   }
 

@@ -9,7 +9,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const host = await hostFromRequest(request)
   if (!host) return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   const { id } = await params
-  const body = (await request.json().catch(() => null)) as { result?: unknown; error?: string } | null
+  const body = (await request.json().catch(() => null)) as {
+    result?: unknown
+    error?: string
+  } | null
   if (!body) return NextResponse.json({ error: "invalid body" }, { status: 400 })
   const admin = createAdminClient()
   const patch = body.error

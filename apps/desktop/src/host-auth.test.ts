@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { hostAuthPlan } from "./host-auth"
 
-const url = "https://sayabot.sayalabs.in"
+const url = "https://sayabot.example.com"
 
 describe("hostAuthPlan", () => {
   it("registers when nothing is saved or the server changed", () => {

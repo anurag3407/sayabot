@@ -579,7 +579,8 @@ export function ConnectorsView({
 
           {!apps.length ? (
             <p className="rounded-xl border border-dashed border-line p-6 text-center text-[14px] text-faint">
-              No connector matches &ldquo;{query}&rdquo;. You can still add any remote MCP server with Add custom.
+              No connector matches &ldquo;{query}&rdquo;. You can still add any remote MCP server
+              with Add custom.
             </p>
           ) : null}
         </div>

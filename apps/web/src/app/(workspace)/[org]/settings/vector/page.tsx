@@ -21,11 +21,7 @@ export default async function VectorSettingsPage({ params }: { params: Promise<{
 
   return (
     <div className="space-y-6">
-      <VectorSettingsView
-        orgSlug={orgSlug}
-        storage={storage}
-        embeddings={embeddings}
-      />
+      <VectorSettingsView orgSlug={orgSlug} storage={storage} embeddings={embeddings} />
     </div>
   )
 }

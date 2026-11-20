@@ -2,10 +2,7 @@
  * Returns a same-origin relative path or the fallback. Browsers normalize a
  * backslash to a slash, so `/\evil.com` must be rejected alongside `//evil.com`.
  */
-export function safeNextPath(
-  value: string | null | undefined,
-  fallback = "/",
-): string {
+export function safeNextPath(value: string | null | undefined, fallback = "/"): string {
   if (!value) return fallback
   if (!value.startsWith("/")) return fallback
   if (value.startsWith("//")) return fallback

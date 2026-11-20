@@ -20,8 +20,7 @@ export interface SplitThinking {
   open: boolean
 }
 
-const OPEN =
-  /<(think|thinking|reasoning|thought|antthinking)\b[^>]*>|<\|\s*think\s*\|>/gi
+const OPEN = /<(think|thinking|reasoning|thought|antthinking)\b[^>]*>|<\|\s*think\s*\|>/gi
 
 function closerFor(name: string): RegExp {
   if (name === "pipe") return /<\|\s*\/\s*think\s*\|>/i

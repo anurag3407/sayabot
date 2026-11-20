@@ -139,13 +139,18 @@ export function AskCard({
                   <p className="text-[13px] text-muted">{item.question}</p>
                   <p className="text-[14px] text-text">{item.answer}</p>
                   {item.source === "fact" ? (
-                    <p className="text-[11px] text-faint">Filled from what you told your agents before</p>
+                    <p className="text-[11px] text-faint">
+                      Filled from what you told your agents before
+                    </p>
                   ) : null}
                 </div>
               </li>
             ) : (
               <li key={item.key} className="rounded-lg border border-line bg-ink p-3">
-                <label htmlFor={`${task.id}-${item.key}`} className="flex gap-2 text-[14px] text-text">
+                <label
+                  htmlFor={`${task.id}-${item.key}`}
+                  className="flex gap-2 text-[14px] text-text"
+                >
                   <span className="text-faint">{index + 1}.</span>
                   <span>{item.question}</span>
                 </label>
@@ -229,7 +234,11 @@ export function AskCard({
           disabled={pending || (items.length ? !filled && !note.trim() : !note.trim())}
           onClick={() => send()}
         >
-          {pending ? "Sending…" : items.length && filled && filled < open.length ? `Send ${filled} of ${open.length}` : "Send"}
+          {pending
+            ? "Sending…"
+            : items.length && filled && filled < open.length
+              ? `Send ${filled} of ${open.length}`
+              : "Send"}
         </Button>
         <Link
           href={`/${orgSlug}/r/${task.roomId}`}

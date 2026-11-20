@@ -3,7 +3,9 @@ import { test } from "node:test"
 import { parseBlocks } from "../../src/core/markdown.ts"
 
 test("splits paragraphs, lists, headings and code", () => {
-  const blocks = parseBlocks("# Plan\nFirst line\nsecond line\n\n- one\n2. two\n```\nconst a = 1\n```\n> quoted")
+  const blocks = parseBlocks(
+    "# Plan\nFirst line\nsecond line\n\n- one\n2. two\n```\nconst a = 1\n```\n> quoted",
+  )
   assert.deepEqual(
     blocks.map((b) => b.t),
     ["h", "p", "li", "li", "code", "quote"],
@@ -14,8 +16,13 @@ test("splits paragraphs, lists, headings and code", () => {
 })
 
 test("images and file chips are their own blocks", () => {
-  const blocks = parseBlocks("Here you go\n![photo.jpg](https://x.test/api/files/rooms/r/1/photo.jpg)\n[📎 resume.pdf](https://x.test/api/files/rooms/r/2/resume.pdf)")
-  assert.deepEqual(blocks.map((b) => b.t), ["p", "img", "file"])
+  const blocks = parseBlocks(
+    "Here you go\n![photo.jpg](https://x.test/api/files/rooms/r/1/photo.jpg)\n[📎 resume.pdf](https://x.test/api/files/rooms/r/2/resume.pdf)",
+  )
+  assert.deepEqual(
+    blocks.map((b) => b.t),
+    ["p", "img", "file"],
+  )
   assert.equal((blocks[1] as { url: string }).url, "https://x.test/api/files/rooms/r/1/photo.jpg")
   assert.equal((blocks[2] as { name: string }).name, "resume.pdf")
 })

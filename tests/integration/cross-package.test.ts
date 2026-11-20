@@ -7,7 +7,7 @@ import * as schema from "@sayabot/db/schema"
 
 describe("core <-> llm <-> db contracts", () => {
   it("mentions extracted by core are the handles the orchestrator will plan turns for", () => {
-    expect(extractHandles("please @ada and @bolt review this" )).toEqual(["ada", "bolt"])
+    expect(extractHandles("please @ada and @bolt review this")).toEqual(["ada", "bolt"])
     expect(extractHandles("no mentions here")).toEqual([])
   })
 
@@ -16,7 +16,9 @@ describe("core <-> llm <-> db contracts", () => {
     const sealed = sealSecret("sk-1234567890abcdefghij", kek)
     expect(sealed).not.toContain("sk-1234567890abcdefghij")
     expect(openSecret(sealed, kek)).toBe("sk-1234567890abcdefghij")
-    expect(redactSecrets("key is sk-1234567890abcdefghij").text).not.toContain("sk-1234567890abcdefghij")
+    expect(redactSecrets("key is sk-1234567890abcdefghij").text).not.toContain(
+      "sk-1234567890abcdefghij",
+    )
   })
 
   it("db turn_mode enum values equal core TURN_MODES", () => {
@@ -32,7 +34,10 @@ describe("core <-> llm <-> db contracts", () => {
       for (const sym of Object.getOwnPropertySymbols(v as object)) {
         if (String(sym).includes("drizzle:Name")) {
           const name = (v as Record<symbol, unknown>)[sym]
-          if (typeof name === "string") { expect(name).toMatch(/^[a-z_]+$/); count++ }
+          if (typeof name === "string") {
+            expect(name).toMatch(/^[a-z_]+$/)
+            count++
+          }
         }
       }
     }

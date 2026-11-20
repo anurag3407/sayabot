@@ -14,11 +14,11 @@ Registration is `POST /api/desktop/register` with the **user's** bearer token, b
 
 Heartbeats land on the account that **registered** the computer, so a stale registration must never be reused by a new login. `hostAuthPlan(saved, serverUrl, userId)` (`src/host-auth.ts:19`) decides:
 
-| Result | Condition | Action in `connect()` |
-| :--- | :--- | :--- |
-| `"reuse"` | same server + same (or unknown) user id | use saved credentials |
-| `"verify"` | saved before `userId` was recorded (pre-1.0.13 files) | re-register sending the old headers; **if the server is unreachable, keep using the saved registration** (`src/host.ts:206`) |
-| `"register"` | nothing saved, another server, or another account | register; offline means no host this time |
+| Result       | Condition                                             | Action in `connect()`                                                                                                        |
+| :----------- | :---------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------- |
+| `"reuse"`    | same server + same (or unknown) user id               | use saved credentials                                                                                                        |
+| `"verify"`   | saved before `userId` was recorded (pre-1.0.13 files) | re-register sending the old headers; **if the server is unreachable, keep using the saved registration** (`src/host.ts:206`) |
+| `"register"` | nothing saved, another server, or another account     | register; offline means no host this time                                                                                    |
 
 `start()` (`src/host.ts:191`) deduplicates concurrent connects through a `starting` promise and is safe to call on every login change. When the resulting `hostId` differs from the previous one, the agents and storage scans are reset so the new computer row is populated immediately (`src/host.ts:208-212`). `forget()` (`src/host.ts:232`) stops the host and deletes the saved registration (used on sign-out, 401, and account switches).
 
@@ -58,11 +58,11 @@ every 2,500 ms (skipped if the previous beat is still in flight)
 
 ### Session settings (`reply.settings`)
 
-| Setting | Meaning on this Mac |
-| :--- | :--- |
+| Setting         | Meaning on this Mac                                                                                                   |
+| :-------------- | :-------------------------------------------------------------------------------------------------------------------- |
 | `runnerEnabled` | Whether the local runner may claim jobs (the switch lives in the web's Computers settings, so every device shares it) |
-| `askOnComputer` | When not `false`, every remote-desktop session triggers the local confirmation dialog before capture starts |
-| `whoCanControl` | Reported through to the UI (via `host:get-status`); the Mac itself always confirms locally regardless of who asked |
+| `askOnComputer` | When not `false`, every remote-desktop session triggers the local confirmation dialog before capture starts           |
+| `whoCanControl` | Reported through to the UI (via `host:get-status`); the Mac itself always confirms locally regardless of who asked    |
 
 `main.ts` tracks `localRunnerRunning = Boolean(reply.settings.runnerEnabled)` on every beat so the controller page's status is the server's truth (`src/main.ts:197-199`).
 
@@ -113,15 +113,15 @@ Two hooks implement [workspace cloud handoff](./usage-and-cloud-handoff.md):
 
 ## 🧩 What the Host Exposes (summary)
 
-| Capability | Mechanism | Server route |
-| :--- | :--- | :--- |
-| Presence, settings, job counts | heartbeat every 2.5 s | `POST /api/desktop/heartbeat` |
-| One-time registration | user bearer token → host token | `POST /api/desktop/register` |
-| Screen share + control | WebRTC answer/deny/end + input injection | `POST /api/desktop/sessions/[id]` |
-| Local agent jobs | claimed by the runner | `POST /api/desktop/jobs/claim`, `/api/desktop/jobs/[id]`, `/events`, `/approvals` |
-| Password-manager lookups | claimed by `VaultRunner` | `POST /api/desktop/secrets/claim`, `/api/desktop/secrets/[id]` |
-| Local MCP programs | claimed by `LocalMcpHost` | `POST /api/desktop/mcp/claim`, `/api/desktop/mcp/[id]` |
-| Workspace snapshot portability | handoff sync | `GET/POST/DELETE /api/desktop/cloud-home`, `/workspace-snapshot`, `/workspace-import` |
+| Capability                     | Mechanism                                | Server route                                                                          |
+| :----------------------------- | :--------------------------------------- | :------------------------------------------------------------------------------------ |
+| Presence, settings, job counts | heartbeat every 2.5 s                    | `POST /api/desktop/heartbeat`                                                         |
+| One-time registration          | user bearer token → host token           | `POST /api/desktop/register`                                                          |
+| Screen share + control         | WebRTC answer/deny/end + input injection | `POST /api/desktop/sessions/[id]`                                                     |
+| Local agent jobs               | claimed by the runner                    | `POST /api/desktop/jobs/claim`, `/api/desktop/jobs/[id]`, `/events`, `/approvals`     |
+| Password-manager lookups       | claimed by `VaultRunner`                 | `POST /api/desktop/secrets/claim`, `/api/desktop/secrets/[id]`                        |
+| Local MCP programs             | claimed by `LocalMcpHost`                | `POST /api/desktop/mcp/claim`, `/api/desktop/mcp/[id]`                                |
+| Workspace snapshot portability | handoff sync                             | `GET/POST/DELETE /api/desktop/cloud-home`, `/workspace-snapshot`, `/workspace-import` |
 
 ---
 

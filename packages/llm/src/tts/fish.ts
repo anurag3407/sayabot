@@ -3,7 +3,11 @@ import type { AudioOutput, Voice } from "./types"
 const DEFAULT_API = "https://api.fish.audio/v1"
 export const DEFAULT_FISH_MODEL = "s2.1-pro"
 
-export async function listVoices(apiKey: string, api = DEFAULT_API, signal?: AbortSignal): Promise<Voice[]> {
+export async function listVoices(
+  apiKey: string,
+  api = DEFAULT_API,
+  signal?: AbortSignal,
+): Promise<Voice[]> {
   const url = `${api.replace(/\/+$/, "")}/model`
   const res = await fetch(url, {
     method: "GET",
@@ -14,7 +18,9 @@ export async function listVoices(apiKey: string, api = DEFAULT_API, signal?: Abo
     const errorText = await res.text().catch(() => "")
     throw new Error(`Fish Audio list voices failed (${res.status}): ${errorText.slice(0, 200)}`)
   }
-  const data = (await res.json()) as { items?: Array<{ _id: string; title: string; description?: string }> }
+  const data = (await res.json()) as {
+    items?: Array<{ _id: string; title: string; description?: string }>
+  }
   return (data.items ?? []).map((item) => ({
     id: item._id,
     label: item.title,
@@ -44,7 +50,9 @@ export async function synthesize(
       model,
       format: "mp3",
     }),
-    signal: signal ? AbortSignal.any([AbortSignal.timeout(60_000), signal]) : AbortSignal.timeout(60_000),
+    signal: signal
+      ? AbortSignal.any([AbortSignal.timeout(60_000), signal])
+      : AbortSignal.timeout(60_000),
   })
 
   if (!res.ok) {

@@ -2,7 +2,13 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { ArrowRight, Check } from "lucide-react"
 import { isOrgAdmin, requireOrgAccess } from "@/lib/auth"
-import { listMcpServers, listMemberViews, listOrgAgents, listProviderKeys, listVectorProviders } from "@/lib/queries"
+import {
+  listMcpServers,
+  listMemberViews,
+  listOrgAgents,
+  listProviderKeys,
+  listVectorProviders,
+} from "@/lib/queries"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { visibleSettingsGroups } from "@/lib/settings-nav"
 import { cn } from "@/lib/format"
@@ -47,7 +53,11 @@ function plural(count: number, one: string, many = `${one}s`): string {
   return `${count} ${count === 1 ? one : many}`
 }
 
-export default async function SettingsOverviewPage({ params }: { params: Promise<{ org: string }> }) {
+export default async function SettingsOverviewPage({
+  params,
+}: {
+  params: Promise<{ org: string }>
+}) {
   const { org: orgSlug } = await params
   const access = await requireOrgAccess(orgSlug)
   const isAdmin = isOrgAdmin(access.role)
@@ -104,11 +114,17 @@ export default async function SettingsOverviewPage({ params }: { params: Promise
         bots: summary.externalAgents ? plural(summary.externalAgents, "agent") : "None connected",
         vault: summary.secrets ? plural(summary.secrets, "secret") : "Empty",
         vector:
-          summary.vectorDb && summary.embedding ? "Active" : summary.vectorDb || summary.embedding ? "Partly set up" : "Off",
+          summary.vectorDb && summary.embedding
+            ? "Active"
+            : summary.vectorDb || summary.embedding
+              ? "Partly set up"
+              : "Off",
       }
     : {}
   const attention = new Set(
-    summary ? [summary.keys === 0 ? "keys" : null].filter((key): key is string => key !== null) : [],
+    summary
+      ? [summary.keys === 0 ? "keys" : null].filter((key): key is string => key !== null)
+      : [],
   )
 
   return (
@@ -162,18 +178,31 @@ export default async function SettingsOverviewPage({ params }: { params: Promise
                       aria-hidden
                       className={cn(
                         "grid h-5 w-5 shrink-0 place-items-center rounded-full border",
-                        step.done ? "border-ok bg-ok text-void" : isNext ? "border-accent" : "border-line-strong",
+                        step.done
+                          ? "border-ok bg-ok text-void"
+                          : isNext
+                            ? "border-accent"
+                            : "border-line-strong",
                       )}
                     >
                       {step.done ? <Check className="h-3 w-3" strokeWidth={3} /> : null}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className={cn("block text-[13px]", step.done ? "text-muted line-through decoration-faint" : "text-text")}>
+                      <span
+                        className={cn(
+                          "block text-[13px]",
+                          step.done ? "text-muted line-through decoration-faint" : "text-text",
+                        )}
+                      >
                         {step.label}
-                        {step.optional ? <span className="ml-2 text-[11px] text-faint no-underline">optional</span> : null}
+                        {step.optional ? (
+                          <span className="ml-2 text-[11px] text-faint no-underline">optional</span>
+                        ) : null}
                         <span className="sr-only">{step.done ? " (done)" : " (to do)"}</span>
                       </span>
-                      {!step.done ? <span className="mt-0.5 block text-[12px] text-faint">{step.detail}</span> : null}
+                      {!step.done ? (
+                        <span className="mt-0.5 block text-[12px] text-faint">{step.detail}</span>
+                      ) : null}
                     </span>
                     <ArrowRight
                       aria-hidden
@@ -192,15 +221,18 @@ export default async function SettingsOverviewPage({ params }: { params: Promise
         <section className="rounded-[18px] border border-line bg-panel p-5">
           <h2 className="text-[15px] font-medium">Your settings</h2>
           <p className="mt-1 max-w-[60ch] text-[13px] leading-relaxed text-muted">
-            You can change your profile and alerts here. Models, tools, keys and members are
-            managed by the admins of {access.org.name}.
+            You can change your profile and alerts here. Models, tools, keys and members are managed
+            by the admins of {access.org.name}.
           </p>
         </section>
       )}
 
       {visibleSettingsGroups(isAdmin).map((group) => (
         <section key={group.label} aria-labelledby={`group-${group.label}`}>
-          <h2 id={`group-${group.label}`} className="text-[11px] font-medium uppercase tracking-[0.06em] text-faint">
+          <h2
+            id={`group-${group.label}`}
+            className="text-[11px] font-medium uppercase tracking-[0.06em] text-faint"
+          >
             {group.label}
           </h2>
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -230,7 +262,9 @@ export default async function SettingsOverviewPage({ params }: { params: Promise
                         </span>
                       ) : null}
                     </span>
-                    <span className="mt-1 block text-[12px] leading-relaxed text-muted">{link.description}</span>
+                    <span className="mt-1 block text-[12px] leading-relaxed text-muted">
+                      {link.description}
+                    </span>
                   </span>
                 </Link>
               )

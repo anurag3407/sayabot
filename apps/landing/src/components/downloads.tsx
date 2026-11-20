@@ -105,7 +105,12 @@ export function Downloads() {
           <a
             href="/download"
             className="btn btn-ghost"
-            style={{ display: "inline-flex", gap: "8px", alignItems: "center", padding: "10px 20px" }}
+            style={{
+              display: "inline-flex",
+              gap: "8px",
+              alignItems: "center",
+              padding: "10px 20px",
+            }}
           >
             <span>View complete desktop &amp; mobile installation specs</span>
             <ArrowUpRight />

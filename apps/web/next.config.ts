@@ -8,12 +8,15 @@ const withSerwist = withSerwistInit({
   disable: process.env.NODE_ENV === "development",
   cacheOnNavigation: false,
   reloadOnOnline: true,
-  additionalPrecacheEntries: ["/offline", "/icon.svg", "/icon-192.png", "/manifest.webmanifest"].map((url) => ({
+  additionalPrecacheEntries: [
+    "/offline",
+    "/icon.svg",
+    "/icon-192.png",
+    "/manifest.webmanifest",
+  ].map((url) => ({
     url,
     revision:
-        process.env.VERCEL_GIT_COMMIT_SHA ??
-        process.env.GIT_COMMIT_SHA ??
-        Date.now().toString(36),
+      process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.GIT_COMMIT_SHA ?? Date.now().toString(36),
   })),
 })
 

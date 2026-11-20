@@ -1,11 +1,11 @@
 # Sayabot test suites
 
-| Suite | Command | What it covers | Needs infra |
-|---|---|---|---|
-| Unit | `pnpm test:unit` | Pure functions / single-module behaviour, colocated `*.test.ts` next to source | none |
-| Integration | `pnpm test:integration` | Cross-module contracts with in-process HTTP servers + mocked fetch/DB | none (no live Supabase/LLM) |
-| E2E (browser) | `pnpm test:e2e` | Playwright user journeys (`e2e/*.spec.ts`) | running web+orchestrator, Supabase (see `e2e/global-setup.ts`) |
-| E2E (API) | `pnpm test:e2e:api` | Health/contract checks against deployed services | running services |
+| Suite         | Command                 | What it covers                                                                 | Needs infra                                                    |
+| ------------- | ----------------------- | ------------------------------------------------------------------------------ | -------------------------------------------------------------- |
+| Unit          | `pnpm test:unit`        | Pure functions / single-module behaviour, colocated `*.test.ts` next to source | none                                                           |
+| Integration   | `pnpm test:integration` | Cross-module contracts with in-process HTTP servers + mocked fetch/DB          | none (no live Supabase/LLM)                                    |
+| E2E (browser) | `pnpm test:e2e`         | Playwright user journeys (`e2e/*.spec.ts`)                                     | running web+orchestrator, Supabase (see `e2e/global-setup.ts`) |
+| E2E (API)     | `pnpm test:e2e:api`     | Health/contract checks against deployed services                               | running services                                               |
 
 `pnpm test` runs unit + integration across every workspace package via turbo.
 Coverage: `pnpm test:coverage` (vitest `--coverage`, needs `@vitest/coverage-v8`).

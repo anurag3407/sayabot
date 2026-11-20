@@ -59,7 +59,10 @@ export async function saveAgentAsTemplate(
     inject: g.inject,
   }))
 
-  const slug = `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}-${Date.now().toString(36)}`
+  const slug = `${name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")}-${Date.now().toString(36)}`
 
   // 3. Insert template
   const { data: template, error: insertError } = await admin

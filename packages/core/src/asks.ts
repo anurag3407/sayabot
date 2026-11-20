@@ -151,7 +151,10 @@ export function lookupFact(
 }
 
 /** Facts a bot in `roomId` may read, room-scoped first, one per key. */
-export function factsVisibleInRoom(facts: readonly KnownFact[], roomId: string | null): KnownFact[] {
+export function factsVisibleInRoom(
+  facts: readonly KnownFact[],
+  roomId: string | null,
+): KnownFact[] {
   const byKey = new Map<string, KnownFact>()
   for (const fact of facts) {
     if (fact.roomId !== null && fact.roomId !== roomId) continue
@@ -181,7 +184,12 @@ function cleanOptions(options: unknown): string[] | undefined {
  * question, so two bots typing the identical question still fold. Capped at MAX_ASK_ITEMS.
  */
 export function sanitizeAskItems(
-  raw: ReadonlyArray<{ key?: string | null; question?: string | null; hint?: string | null; options?: unknown }>,
+  raw: ReadonlyArray<{
+    key?: string | null
+    question?: string | null
+    hint?: string | null
+    options?: unknown
+  }>,
 ): AskItem[] {
   const seen = new Set<string>()
   const out: AskItem[] = []
@@ -286,7 +294,10 @@ export function planAsk(input: {
 }
 
 /** Appends new items to an existing ask, keeping the total under MAX_ASK_ITEMS. */
-export function mergeAskItems(existing: readonly AskItem[], incoming: readonly AskItem[]): AskItem[] {
+export function mergeAskItems(
+  existing: readonly AskItem[],
+  incoming: readonly AskItem[],
+): AskItem[] {
   const keys = new Set(existing.map((item) => item.key))
   const merged = [...existing]
   for (const item of incoming) {

@@ -56,7 +56,7 @@ export default async function ToolsPage({ params }: { params: Promise<{ org: str
                     <p className="text-[13px] text-text">{server.name}</p>
                     <p className="mt-0.5 font-mono text-[11px] text-faint">
                       {server.transport} · {server.url} ·{" "}
-                      {server.roomId ? roomsById.get(server.roomId)?.name ?? "room" : "workspace"}
+                      {server.roomId ? (roomsById.get(server.roomId)?.name ?? "room") : "workspace"}
                     </p>
                     <p className="mt-0.5 font-mono text-[11px] text-faint">
                       {server.enabled ? "enabled" : "disabled"}
@@ -147,12 +147,7 @@ export default async function ToolsPage({ params }: { params: Promise<{ org: str
             </Field>
           </div>
           <Field label="url" htmlFor="mcp-url">
-            <Input
-              id="mcp-url"
-              name="url"
-              required
-              placeholder="https://mcp.example.com/mcp"
-            />
+            <Input id="mcp-url" name="url" required placeholder="https://mcp.example.com/mcp" />
           </Field>
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="room scope" htmlFor="mcp-room" hint="optional">
@@ -165,12 +160,12 @@ export default async function ToolsPage({ params }: { params: Promise<{ org: str
                 ))}
               </Select>
             </Field>
-            <Field
-              label="dangerous tools"
-              htmlFor="mcp-danger"
-              hint="comma separated"
-            >
-              <Input id="mcp-danger" name="dangerousTools" placeholder="create_issue, delete_branch" />
+            <Field label="dangerous tools" htmlFor="mcp-danger" hint="comma separated">
+              <Input
+                id="mcp-danger"
+                name="dangerousTools"
+                placeholder="create_issue, delete_branch"
+              />
             </Field>
           </div>
           <Field label="headers (JSON object)" htmlFor="mcp-headers" hint="optional">
@@ -193,7 +188,8 @@ export default async function ToolsPage({ params }: { params: Promise<{ org: str
             <div className="mb-4">
               <p className="text-[13px] font-medium text-text">web_search</p>
               <p className="mt-0.5 font-mono text-[11px] text-faint">
-                Multi-provider web search engine (TinyFish, Context.dev, Tavily, Brave, DuckDuckGo, SearXNG, Serper, Exa, Firecrawl, Perplexity, Bing)
+                Multi-provider web search engine (TinyFish, Context.dev, Tavily, Brave, DuckDuckGo,
+                SearXNG, Serper, Exa, Firecrawl, Perplexity, Bing)
               </p>
             </div>
             <WebSearchConfig orgSlug={orgSlug} savedConfig={webSearch} />
@@ -203,7 +199,8 @@ export default async function ToolsPage({ params }: { params: Promise<{ org: str
             <div className="mb-4">
               <p className="text-[13px] font-medium text-text">document_extract</p>
               <p className="mt-0.5 font-mono text-[11px] text-faint">
-                High-precision Document & Financial OCR Intelligence (IBM Docling, Marker, Tesseract, Multimodal Vision, Mistral OCR, AWS Textract)
+                High-precision Document & Financial OCR Intelligence (IBM Docling, Marker,
+                Tesseract, Multimodal Vision, Mistral OCR, AWS Textract)
               </p>
             </div>
             <DocumentOcrConfig orgSlug={orgSlug} savedConfig={documentOcr} />
@@ -213,7 +210,8 @@ export default async function ToolsPage({ params }: { params: Promise<{ org: str
             <div className="mb-4">
               <p className="text-[13px] font-medium text-text">browser_automation & cdp</p>
               <p className="mt-0.5 font-mono text-[11px] text-faint">
-                Live Chromium automation over Chrome DevTools Protocol with zero-token-leakage secret injection (browser_exec, browser_cdp, browser_dialog, browser_vault)
+                Live Chromium automation over Chrome DevTools Protocol with zero-token-leakage
+                secret injection (browser_exec, browser_cdp, browser_dialog, browser_vault)
               </p>
             </div>
             <BrowserCdpConfig />
@@ -223,7 +221,8 @@ export default async function ToolsPage({ params }: { params: Promise<{ org: str
             <div className="mb-4">
               <p className="text-[13px] font-medium text-text">terminal_sandboxes</p>
               <p className="mt-0.5 font-mono text-[11px] text-faint">
-                Interchangeable execution environments for code_sandbox & terminal_exec (Local Host, Docker, Modal Labs, Daytona, Remote SSH, Serverless MicroVM)
+                Interchangeable execution environments for code_sandbox & terminal_exec (Local Host,
+                Docker, Modal Labs, Daytona, Remote SSH, Serverless MicroVM)
               </p>
             </div>
             <TerminalSandboxConfig orgSlug={orgSlug} savedConfig={terminalSandbox} />
@@ -242,14 +241,18 @@ export default async function ToolsPage({ params }: { params: Promise<{ org: str
               </span>
             </div>
             <p className="mt-2 text-[12px] leading-relaxed text-muted">
-              Agents use this tool to scrape and read full documentation, articles, and APIs into clean Markdown. It automatically handles entity decoding, link preservation, and boilerplate stripping with zero external credentials needed.
+              Agents use this tool to scrape and read full documentation, articles, and APIs into
+              clean Markdown. It automatically handles entity decoding, link preservation, and
+              boilerplate stripping with zero external credentials needed.
             </p>
           </div>
 
           <div className="border-b border-line pb-5">
             <p className="text-[13px] text-text">github_bridge</p>
             <p className="mt-0.5 font-mono text-[11px] text-faint">
-              {github ? `configured · ${github.enabled ? "enabled" : "disabled"}` : "not configured"}
+              {github
+                ? `configured · ${github.enabled ? "enabled" : "disabled"}`
+                : "not configured"}
             </p>
             <div className="mt-3">
               <ActionForm action={saveOrgToolConfig} submitLabel="Save GitHub token">

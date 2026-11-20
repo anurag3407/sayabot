@@ -10,13 +10,13 @@ Source files: `apps/orchestrator/src/connectors/github.ts`, `apps/orchestrator/s
 
 `GitHubConnector` talks to `api.github.com` with `Authorization: Bearer <token>`, `Accept: application/vnd.github.v3+json`, and the `Sayabot-Workspace-Connector/1.0` user agent. Constructed by `ConnectorService` per call with the decrypted workspace token. All requests go through `fetchWithRetry`.
 
-| Method | Behavior |
-| :--- | :--- |
-| `searchCode(options)` | `GET /search/code` with `per_page` clamped 1–20 (default 10). Appends `repo:<owner/name>` qualifiers for `allowedRepos`. Returns docs whose `content` is a stub line (`[GitHub Code File: <path> in <repo>]`) — the search API returns fragments, not file bodies. |
-| `getFileContent(owner, repo, path, ref = "main")` | `GET /repos/:owner/:repo/contents/:path?ref=:ref` (leading slashes stripped from `path`). Decodes base64 bodies and returns up to **100 000 chars** of text in `content`. |
+| Method                                            | Behavior                                                                                                                                                                                                                                                                                                                                                     |
+| :------------------------------------------------ | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `searchCode(options)`                             | `GET /search/code` with `per_page` clamped 1–20 (default 10). Appends `repo:<owner/name>` qualifiers for `allowedRepos`, or `org:<name>` from the connector's `config.defaultOrg` when the grant scopes no repos. Returns docs whose `content` is a stub line (`[GitHub Code File: <path> in <repo>]`) — the search API returns fragments, not file bodies.  |
+| `getFileContent(owner, repo, path, ref = "main")` | `GET /repos/:owner/:repo/contents/:path?ref=:ref` (leading slashes stripped from `path`). Decodes base64 bodies and returns up to **100 000 chars** of text in `content`.                                                                                                                                                                                    |
 | `getIssueOrPullRequest(owner, repo, issueNumber)` | Fetches the issue and its comments **in parallel** (`Promise.all`); a `pull_request` key on the payload switches the label to "Pull Request". Renders a Markdown discussion: title/state header, author/created line, body, then `**@login** (timestamp): comment` per comment. Comment fetch failure degrades to zero comments; issue fetch failure throws. |
 
-All three return `ConnectorDoc`s with `metadata.repo/path/issueNumber/labels` as appropriate. Repo allowlisting is enforced by `ConnectorService` *before* these clients are invoked (see [connector-platform.md](./connector-platform.md#️-service-actions)).
+All three return `ConnectorDoc`s with `metadata.repo/path/issueNumber/labels` as appropriate. Repo allowlisting is enforced by `ConnectorService` _before_ these clients are invoked (see [connector-platform.md](./connector-platform.md#️-service-actions)).
 
 Mutating GitHub operations (issues, PRs, pushes) are not part of this connector — they live in the separate `github_issue`/git tooling documented in [tool-github.md](../tools/tool-github.md).
 
@@ -30,15 +30,27 @@ Mutating GitHub operations (issues, PRs, pushes) are not part of this connector 
 trashed = false and (name contains '<terms>' or fullText contains '<terms>')
 ```
 
-(single quotes escaped) and, when the grant has `allowedFolders`, ANDs in `('<id>' in parents or ...)`. `pageSize` clamps 1–25 (default 8). Results carry `metadata.mimeType`, `lastModified`, and `author` from the first owner. Note the search doc's `content` is again a stub — the agent must `read_file` for real text:
+(single quotes escaped) and, when the grant has `allowedFolders` (or the connector's `config.domain` is a
+folder id), ANDs in `('<id>' in ancestors or ...)`. `ancestors` rather than `parents` is deliberate: a
+grant scoped to a folder must also find the files in its subfolders. `pageSize` clamps 1–25 (default 8).
+Results carry `metadata.mimeType`, `lastModified`, and `author` from the first owner. Note the search
+doc's `content` is again a stub — the agent must `read_file` for real text:
 
 ```typescript
+const folders = [
+  ...new Set([
+    ...(options.allowedFolders ?? []),
+    ...(options.rootFolderId ? [options.rootFolderId] : []),
+  ]),
+]
 let q = `trashed = false and (name contains '${searchTerms}' or fullText contains '${searchTerms}')`
-if (options.allowedFolders && options.allowedFolders.length > 0) {
-  const folderClauses = options.allowedFolders.map((f) => `'${f}' in parents`).join(" or ")
-  q += ` and (${folderClauses})`
+if (folders.length > 0) {
+  q += ` and (${folders.map((f) => `'${f}' in ancestors`).join(" or ")})`
 }
 ```
+
+A `config.domain` that is a Workspace **domain name** (not a folder id) is not a Drive query filter,
+so it is ignored by the client; only the folder-id form scopes the search.
 
 The request passes `supportsAllDrives: "true"`, `includeItemsFromAllDrives: "true"`, `corpora: "allDrives"` so shared-drive items are included; error bodies are surfaced truncated to 150 chars.
 
@@ -47,12 +59,12 @@ The request passes `supportsAllDrives: "true"`, `includeItemsFromAllDrives: "tru
 1. `GET /files/:id?fields=...` for metadata.
 2. Content by MIME type:
 
-| MIME | Export |
-| :--- | :--- |
-| `application/vnd.google-apps.document` | `export?mimeType=text/plain` |
-| `application/vnd.google-apps.spreadsheet` | `export?mimeType=text/csv` |
-| `application/vnd.google-apps.presentation` | `export?mimeType=text/plain` |
-| anything else | `alt=media` raw download (text, Markdown, JSON…) |
+| MIME                                       | Export                                           |
+| :----------------------------------------- | :----------------------------------------------- |
+| `application/vnd.google-apps.document`     | `export?mimeType=text/plain`                     |
+| `application/vnd.google-apps.spreadsheet`  | `export?mimeType=text/csv`                       |
+| `application/vnd.google-apps.presentation` | `export?mimeType=text/plain`                     |
+| anything else                              | `alt=media` raw download (text, Markdown, JSON…) |
 
 A failed export/download degrades to a `[Could not export …]` placeholder instead of throwing. Content is capped at 100 000 chars "for safe context window".
 
@@ -62,8 +74,15 @@ Sources: `PasswordSource = "onepassword" | "bitwarden" | "protonpass"`. `Connect
 
 ```typescript
 export async function queryPasswordManager(args: {
-  source, action: "search" | "read", query, vault?,
-  token, config: PasswordConfig, orgId, connectorId, signal?
+  source
+  action: "search" | "read"
+  query
+  vault?
+  token
+  config: PasswordConfig
+  orgId
+  connectorId
+  signal?
 }): Promise<unknown>
 ```
 
@@ -99,7 +118,7 @@ Note the vault check runs **before** mode selection and applies in all modes, so
 
 **CLI mode** (`passwordArgv`, `passwords.ts:31-51`): builds argv for the local binaries — `op item list|get --format json --reveal` (1Password), `bw list items|get item` (Bitwarden), `pass-cli item list|view` (Proton Pass) — then runs them via `runCli` (`passwords.ts:105-139`) with a scrubbed environment (`PATH`, `HOME` plus only `OP_SERVICE_ACCOUNT_TOKEN` or `BW_SESSION` when the decrypted token is not the literal `"desktop"`). stdout is capped at 200 000 chars, stderr kept to the last 1 000, `SIGTERM` on `AbortSignal`, and non-JSON output degrades to `{ text }`.
 
-**Desktop fallback** (`passwords.ts:199-221`): if the CLI binary is missing (`ENOENT`) — or the connector is in `computer` mode — the same query is re-issued through `runSecretOnDesktop`. When both the CLI and the desktop fail, the *original* CLI error is the one thrown (desktop errors are only surfaced when the CLI was missing).
+**Desktop fallback** (`passwords.ts:199-221`): if the CLI binary is missing (`ENOENT`) — or the connector is in `computer` mode — the same query is re-issued through `runSecretOnDesktop`. When both the CLI and the desktop fail, the _original_ CLI error is the one thrown (desktop errors are only surfaced when the CLI was missing).
 
 ### Result shaping
 
@@ -110,11 +129,11 @@ Note the vault check runs **before** mode selection and applies in all modes, so
 
 The bridge turns a password read (or an MCP call against a local-only app) into a **job row that the person's own computer picks up** through the Sayabot desktop app. Data model (`packages/db/src/schema/desktop.ts`):
 
-| Table | Role |
-| :--- | :--- |
-| `desktop_hosts` | One row per paired computer: `userId`, `orgId`, `tokenHash`, `permissions`, `lastSeenAt`, `revokedAt`. The app heartbeats every 2.5 s. |
+| Table                 | Role                                                                                                                                                                                       |
+| :-------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `desktop_hosts`       | One row per paired computer: `userId`, `orgId`, `tokenHash`, `permissions`, `lastSeenAt`, `revokedAt`. The app heartbeats every 2.5 s.                                                     |
 | `desktop_secret_jobs` | Password jobs: `source`, `action`, `query`, `vault`, `status` (`queued`→`done`/`failed`), and `resultEnc` — the result sealed with `MESH_KEK`. The vault token is never stored on the row. |
-| `desktop_mcp_calls` | Same pattern for local MCP: `serverId`, `appId`, `method`, `params`, plaintext `result` (no secrets involved). |
+| `desktop_mcp_calls`   | Same pattern for local MCP: `serverId`, `appId`, `method`, `params`, plaintext `result` (no secrets involved).                                                                             |
 
 **Host selection** — `hostForOrg(orgId, preferred?)` (`desktop-bridge.ts:42-59`): uses the connector's `hostId` when given (must belong to the org and not be revoked), otherwise the org's most recently seen non-revoked host. **Liveness** — `desktopOnline(orgId, preferred?, now)` (`desktop-bridge.ts:29-39`): a host is online if `lastSeenAt` is within `DESKTOP_OFFLINE_AFTER_MS = 60_000` (`desktop-bridge.ts:22`); a minute of silence means the lid is shut or the app quit. The engine uses this to skip desktop-only tools instead of stalling a turn on a sleeping laptop.
 
@@ -143,15 +162,16 @@ sequenceDiagram
 
 ## 🧪 Tests
 
-| Test file | Covers |
-| :--- | :--- |
-| `apps/orchestrator/src/connectors/passwords.test.ts` | Argv construction, query/vault guards, summarizers, mode dispatch with mocked `runCli`. |
-| `apps/orchestrator/src/connectors/desktop-online.test.ts` | `desktopOnline`/`hostForOrg` liveness and host selection. |
+| Test file                                                 | Covers                                                                                  |
+| :-------------------------------------------------------- | :-------------------------------------------------------------------------------------- |
+| `apps/orchestrator/src/connectors/passwords.test.ts`      | Argv construction, query/vault guards, summarizers, mode dispatch with mocked `runCli`. |
+| `apps/orchestrator/src/connectors/desktop-online.test.ts` | `desktopOnline`/`hostForOrg` liveness and host selection.                               |
 
 ---
 
 Related docs:
+
 - [Connector platform](./connector-platform.md) — the `ConnectorService` layer that decrypts tokens and enforces grants above these clients
 - [Connector tools](../tools/tool-connectors.md) — `gdrive_*`, `github_*`, `1password_*`/`bitwarden_*`/`protonpass_*` tool surface
-- [Secrets broker](../tools/secrets-broker.md) — the placeholder-based alternative for secret *use* rather than secret *reading*
+- [Secrets broker](../tools/secrets-broker.md) — the placeholder-based alternative for secret _use_ rather than secret _reading_
 - [GitHub tools](../tools/tool-github.md) — mutating GitHub operations

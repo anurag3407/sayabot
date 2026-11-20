@@ -1,12 +1,5 @@
 export type VoiceProvider =
-  | "elevenlabs"
-  | "fish"
-  | "openai"
-  | "gemini"
-  | "xai"
-  | "chatterbox"
-  | "system"
-  | "deepseek"
+  "elevenlabs" | "fish" | "openai" | "gemini" | "xai" | "chatterbox" | "system" | "deepseek"
 
 export interface Voice {
   id: string

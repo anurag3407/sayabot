@@ -44,7 +44,12 @@ export function SiteHeader() {
         <div className="flex h-14 items-center justify-between pl-4 pr-2 sm:pl-5">
           <Link href="/" className="flex items-center gap-2" aria-label="Sayabot home">
             <SayabotMark className="h-7 w-7" />
-            <span className="text-[20px] font-[800] leading-none text-text" style={{ fontFamily: "'Anybody Variable', var(--font-sans)", fontStretch: "80%" }}>sayabot</span>
+            <span
+              className="text-[20px] font-[800] leading-none text-text"
+              style={{ fontFamily: "'Anybody Variable', var(--font-sans)", fontStretch: "80%" }}
+            >
+              sayabot
+            </span>
           </Link>
 
           <nav aria-label="Primary" className="hidden items-center gap-6 lg:flex">
@@ -60,7 +65,10 @@ export function SiteHeader() {
               variant="icon"
               className="h-9 w-9 border-0 bg-transparent text-muted hover:bg-raised/70 hover:text-text"
             />
-            <Link href="/login" className="hidden h-9 items-center rounded-lg px-3 text-[13px] text-muted transition-colors hover:text-text sm:inline-flex">
+            <Link
+              href="/login"
+              className="hidden h-9 items-center rounded-lg px-3 text-[13px] text-muted transition-colors hover:text-text sm:inline-flex"
+            >
               Sign in
             </Link>
             <Link href="/signup" className="l-btn l-btn-primary !h-10 !px-4 !text-[13.5px]">

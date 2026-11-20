@@ -6,7 +6,12 @@ import { ChevronDown } from "lucide-react"
 import { EFFORT_LABELS, type EffortLevel } from "@sayabot/llm/models/effort"
 import { refreshModelListsAction, setAgentModelAction } from "@/lib/actions/agents"
 import { showToast } from "@/components/ui/toast"
-import { choiceLabel, ModelPickerPanel, RailIcon, type ModelValue } from "@/components/agents/model-picker-panel"
+import {
+  choiceLabel,
+  ModelPickerPanel,
+  RailIcon,
+  type ModelValue,
+} from "@/components/agents/model-picker-panel"
 import type { PickerGroup, PickerModel } from "@/lib/model-catalog"
 
 export type { PickerGroup, PickerModel }
@@ -35,7 +40,11 @@ export function AgentModelPicker({
 }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
-  const [value, setValue] = useState<ModelValue>({ keyId: currentKeyId, model: currentModel, effort: currentEffort })
+  const [value, setValue] = useState<ModelValue>({
+    keyId: currentKeyId,
+    model: currentModel,
+    effort: currentEffort,
+  })
   const [pending, startTransition] = useTransition()
   const [refreshing, startRefresh] = useTransition()
   const ref = useRef<HTMLDivElement>(null)
@@ -99,7 +108,11 @@ export function AgentModelPicker({
       >
         {currentGroup ? <RailIcon group={currentGroup} size={13} /> : null}
         <span className="truncate">{choiceLabel(groups, value)}</span>
-        {value.effort ? <span className="text-faint">· {EFFORT_LABELS[value.effort as EffortLevel] ?? value.effort}</span> : null}
+        {value.effort ? (
+          <span className="text-faint">
+            · {EFFORT_LABELS[value.effort as EffortLevel] ?? value.effort}
+          </span>
+        ) : null}
         {!disabled ? <ChevronDown className="h-3 w-3 shrink-0 text-faint" /> : null}
       </button>
 

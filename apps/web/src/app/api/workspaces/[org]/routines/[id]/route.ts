@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server"
-import { getNextCronRun, humanReadableCron, isValidCron, normalizeCronExpression } from "@sayabot/core"
+import {
+  getNextCronRun,
+  humanReadableCron,
+  isValidCron,
+  normalizeCronExpression,
+} from "@sayabot/core"
 import { getOrgAccess } from "@/lib/auth"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 
@@ -15,11 +20,13 @@ export async function GET(
   const [routineRes, runsRes] = await Promise.all([
     supabase
       .from("routines")
-      .select(`
+      .select(
+        `
         *,
         agents ( id, handle, display_name, avatar_url, model ),
         rooms ( id, name, kind )
-      `)
+      `,
+      )
       .eq("id", id)
       .eq("org_id", access.org.id)
       .maybeSingle(),
@@ -123,11 +130,13 @@ export async function PATCH(
     .from("routines")
     .update(updates)
     .eq("id", id)
-    .select(`
+    .select(
+      `
       *,
       agents ( id, handle, display_name, avatar_url, model ),
       rooms ( id, name, kind )
-    `)
+    `,
+    )
     .single()
 
   if (error) {

@@ -3,7 +3,11 @@ import type { PlanLimits } from "@sayabot/core/scanner"
 import type { PickerGroup } from "@/lib/model-catalog"
 import { withMacPlans } from "./mac-plans"
 
-const group = (keyId: string, hostId: string, section: PickerGroup["section"] = "mac"): PickerGroup => ({
+const group = (
+  keyId: string,
+  hostId: string,
+  section: PickerGroup["section"] = "mac",
+): PickerGroup => ({
   keyId,
   provider: "anthropic",
   label: "Claude",
@@ -26,7 +30,10 @@ const claude: PlanLimits = {
 describe("withMacPlans", () => {
   it("adds this Mac's Claude limits to its Claude group", () => {
     const [out] = withMacPlans([group("host:h1:claude-code", "h1")], [claude])
-    expect(out?.plan).toEqual({ plan: "max", windows: [{ label: "5-hour", usedPercent: 42, resetsAt: null }] })
+    expect(out?.plan).toEqual({
+      plan: "max",
+      windows: [{ label: "5-hour", usedPercent: 42, resetsAt: null }],
+    })
   })
 
   it("leaves groups alone with no reading or another app", () => {
@@ -35,7 +42,10 @@ describe("withMacPlans", () => {
   })
 
   it("adds nothing when the workspace has more than one Mac", () => {
-    const out = withMacPlans([group("host:h1:claude-code", "h1"), group("host:h2:claude-code", "h2")], [claude])
+    const out = withMacPlans(
+      [group("host:h1:claude-code", "h1"), group("host:h2:claude-code", "h2")],
+      [claude],
+    )
     expect(out.every((g) => g.plan === undefined)).toBe(true)
   })
 })

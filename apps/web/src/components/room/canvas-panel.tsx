@@ -223,12 +223,8 @@ export function CanvasPanel({
               <Panel defaultSize="38%" minSize="120px" className="min-h-0 overflow-hidden">
                 <div className="flex h-full min-h-0 flex-col">
                   <div className="flex items-center justify-between border-b border-line bg-panel px-3 py-1">
-                    <span className="font-mono text-[11px] text-faint">
-                      preview
-                    </span>
-                    <span className="font-mono text-[11px] text-faint">
-                      {text.length} chars
-                    </span>
+                    <span className="font-mono text-[11px] text-faint">preview</span>
+                    <span className="font-mono text-[11px] text-faint">{text.length} chars</span>
                   </div>
                   <div className="min-h-0 flex-1 overflow-hidden">
                     {selected.kind === "markdown" ? (

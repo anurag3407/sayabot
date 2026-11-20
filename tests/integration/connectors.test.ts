@@ -1,11 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { PgDialect } from "drizzle-orm/pg-core"
-import {
-  encryptSecret,
-  decryptSecret,
-  sealSecret,
-  openSecret,
-} from "@sayabot/llm"
+import { encryptSecret, decryptSecret, sealSecret, openSecret } from "@sayabot/llm"
 import { redactSecrets, createRunScrubber } from "@sayabot/core"
 import type { WorkspaceConnectorRow, AgentConnectorGrantRow } from "@sayabot/db"
 import { ConnectorService } from "../../apps/orchestrator/src/connectors/service"
@@ -217,10 +212,13 @@ describe("Root Connector Lifecycle Integration Suite", () => {
       if (urlStr.startsWith("https://www.googleapis.com/drive/v3/files")) {
         // 1. Export endpoints
         if (urlStr.includes("/export?mimeType=text/plain")) {
-          return new Response("# Q4 Roadmap Document\n\n- Build Connector Mesh\n- Security hardening", {
-            status: 200,
-            headers: { "Content-Type": "text/plain" },
-          })
+          return new Response(
+            "# Q4 Roadmap Document\n\n- Build Connector Mesh\n- Security hardening",
+            {
+              status: 200,
+              headers: { "Content-Type": "text/plain" },
+            },
+          )
         }
         if (urlStr.includes("/export?mimeType=text/csv")) {
           return new Response("Metric,Oct,Nov\nActiveUsers,12000,18500\nRevenue,45000,68000", {
@@ -291,7 +289,11 @@ describe("Root Connector Lifecycle Integration Suite", () => {
           return new Response(
             JSON.stringify({
               ok: true,
-              user: { name: "alice_slack", real_name: "Alice Smith", profile: { display_name: "alice" } },
+              user: {
+                name: "alice_slack",
+                real_name: "Alice Smith",
+                profile: { display_name: "alice" },
+              },
             }),
             { status: 200, headers: { "Content-Type": "application/json" } },
           )
@@ -300,7 +302,11 @@ describe("Root Connector Lifecycle Integration Suite", () => {
           return new Response(
             JSON.stringify({
               ok: true,
-              user: { name: "charlie_slack", real_name: "Charlie Dev", profile: { display_name: "charlie" } },
+              user: {
+                name: "charlie_slack",
+                real_name: "Charlie Dev",
+                profile: { display_name: "charlie" },
+              },
             }),
             { status: 200, headers: { "Content-Type": "application/json" } },
           )
@@ -332,13 +338,35 @@ describe("Root Connector Lifecycle Integration Suite", () => {
         )
       }
 
+      if (urlStr.startsWith("https://slack.com/api/conversations.list")) {
+        // Grant channel names resolve to ids through the workspace channel list.
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            channels: [
+              { id: "C01_general", name: "general" },
+              { id: "C02_eng", name: "eng" },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        )
+      }
+
       if (urlStr.startsWith("https://slack.com/api/conversations.replies")) {
         return new Response(
           JSON.stringify({
             ok: true,
             messages: [
-              { user: "U111", text: "Starting thread about database migrations", ts: "1700000000.000100" },
-              { user: "U222", text: "Agreed, let us ping <@U111> for schema review", ts: "1700000000.000200" },
+              {
+                user: "U111",
+                text: "Starting thread about database migrations",
+                ts: "1700000000.000100",
+              },
+              {
+                user: "U222",
+                text: "Agreed, let us ping <@U111> for schema review",
+                ts: "1700000000.000200",
+              },
             ],
           }),
           { status: 200, headers: { "Content-Type": "application/json" } },
@@ -363,7 +391,8 @@ describe("Root Connector Lifecycle Integration Suite", () => {
       }
 
       if (urlStr.includes("/contents/src/crypto.ts")) {
-        const rawCode = 'export const SECRETS_VERSION = "2.0";\nexport function verify() { return true; }'
+        const rawCode =
+          'export const SECRETS_VERSION = "2.0";\nexport function verify() { return true; }'
         return new Response(
           JSON.stringify({
             name: "crypto.ts",
@@ -457,9 +486,9 @@ describe("Root Connector Lifecycle Integration Suite", () => {
         fetchFn: mockFetch,
       })
 
-      await expect(
-        service.getAgentScope(UNAUTHORIZED_AGENT_ID, "conn-gdrive-1"),
-      ).rejects.toThrow("Access Denied: This agent is not granted access to this connector.")
+      await expect(service.getAgentScope(UNAUTHORIZED_AGENT_ID, "conn-gdrive-1")).rejects.toThrow(
+        "Access Denied: This agent is not granted access to this connector.",
+      )
     })
   })
 
@@ -495,8 +524,9 @@ describe("Root Connector Lifecycle Integration Suite", () => {
       // Verify scope enforcement: allowedFolders clauses injected into search query q
       const url = new URL(searchReq!.url)
       const q = url.searchParams.get("q")
-      expect(q).toContain("'folder-roadmaps-101' in parents")
-      expect(q).toContain("'folder-designs-202' in parents")
+      // `in ancestors` (not `in parents`) so files nested below a granted folder are found.
+      expect(q).toContain("'folder-roadmaps-101' in ancestors")
+      expect(q).toContain("'folder-designs-202' in ancestors")
     })
 
     it("reads Google Doc and exports as text/plain using decrypted token", async () => {
@@ -599,7 +629,7 @@ describe("Root Connector Lifecycle Integration Suite", () => {
           query: "secret discussion",
           channel: "C99_confidential",
         }),
-      ).rejects.toThrow("Channel 'C99_confidential' is outside this agent's allowed channels")
+      ).rejects.toThrow(/Slack channel C99_confidential is outside this agent's allowed list/)
     })
 
     it("reads Slack thread with user resolution and rejects access to unauthorized channels", async () => {
@@ -617,7 +647,9 @@ describe("Root Connector Lifecycle Integration Suite", () => {
           channelId: "C99_confidential",
           threadTs: "1700000000.000100",
         }),
-      ).rejects.toThrow("Access Denied: Agent is not granted access to channel C99_confidential")
+      ).rejects.toThrow(
+        /Access Denied: Slack channel C99_confidential is outside this agent's allowed list/,
+      )
 
       // 2. Authorized channel thread read
       const thread = await service.readSlackThread({
@@ -683,7 +715,9 @@ describe("Root Connector Lifecycle Integration Suite", () => {
           repo: "sayalabs/private-infra",
           path: "src/crypto.ts",
         }),
-      ).rejects.toThrow("Access Denied: Agent is not granted access to repository sayalabs/private-infra")
+      ).rejects.toThrow(
+        "Access Denied: Agent is not granted access to repository sayalabs/private-infra",
+      )
 
       // 2. Authorized file read
       const file = await service.readGitHubFile({
@@ -713,7 +747,9 @@ describe("Root Connector Lifecycle Integration Suite", () => {
           repo: "sayalabs/secret-billing",
           issueNumber: 42,
         }),
-      ).rejects.toThrow("Access Denied: Agent is not granted access to repository sayalabs/secret-billing")
+      ).rejects.toThrow(
+        "Access Denied: Agent is not granted access to repository sayalabs/secret-billing",
+      )
 
       // 2. Authorized issue read
       const issue = await service.readGitHubIssue({

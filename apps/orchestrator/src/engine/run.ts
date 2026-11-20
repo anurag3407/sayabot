@@ -6,16 +6,17 @@ import {
   redactSecrets,
   type ThinkingFold,
 } from "@sayabot/core"
-import {
-  agentRuns,
-  messages,
-  runSteps,
-  runTranscripts,
-  tasks,
-} from "@sayabot/db"
+import { agentRuns, messages, runSteps, runTranscripts, tasks } from "@sayabot/db"
 import { buildProviderOptions, flushLangfuse, recordStepToLangfuse } from "@sayabot/llm"
 import { clampEffort, modelEffortLevels } from "@sayabot/llm/models"
-import { stepCountIs, streamText, type LanguageModelUsage, type ModelMessage, type SystemModelMessage, type ToolSet } from "ai"
+import {
+  stepCountIs,
+  streamText,
+  type LanguageModelUsage,
+  type ModelMessage,
+  type SystemModelMessage,
+  type ToolSet,
+} from "ai"
 import { eq, sql } from "drizzle-orm"
 import { consumeRunInterrupts, registerRun, unregisterRun } from "../active-runs"
 import { ComputerClient } from "../computer/client"
@@ -42,7 +43,12 @@ import {
 import { buildTools } from "../tools"
 import { redactValue, type ToolSpec } from "../tools/audited"
 import { applyRollingCacheBreakpoint, buildEngineContext } from "./context"
-import { CacheMetrics, estimateMessageTokens, estimateToolTokens, resolveContextBudget } from "./budget"
+import {
+  CacheMetrics,
+  estimateMessageTokens,
+  estimateToolTokens,
+  resolveContextBudget,
+} from "./budget"
 import { compactionBoundary, elideOldToolResults } from "./compaction"
 import type { VerificationEvidence } from "./evidence"
 import { summarizeForBudget } from "./summarize"
@@ -99,7 +105,13 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
     args.taskId ? loadTaskBriefContext(args.taskId) : Promise.resolve(""),
   ])
 
-  const maxSteps = Math.max(1, Math.min(200, Math.floor(numericParam(agent.params as Record<string, unknown>, "maxSteps", 60) ?? 60)))
+  const maxSteps = Math.max(
+    1,
+    Math.min(
+      200,
+      Math.floor(numericParam(agent.params as Record<string, unknown>, "maxSteps", 60) ?? 60),
+    ),
+  )
 
   const [run] = await db
     .insert(agentRuns)
@@ -175,7 +187,11 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
   let activeToolNames: () => string[] | undefined = () => undefined
   let closeTools = async () => {}
   const warnings: string[] = []
-  let verification = (): VerificationEvidence => ({ status: "not_required", mutationRevision: 0, checks: [] })
+  let verification = (): VerificationEvidence => ({
+    status: "not_required",
+    mutationRevision: 0,
+    checks: [],
+  })
   const cacheMetrics = new CacheMetrics()
   let compactions = 0
   let peakEstimatedInputTokens = 0
@@ -233,7 +249,15 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
       ...(errorKind ? { errorKind } : {}),
       ...(aborted ? { stopped: true } : {}),
       ...(safeWarnings.length ? { warnings: safeWarnings } : {}),
-      harness: redactValue({ cache: cacheMetrics.snapshot(), verification: verification(), compactions, peakEstimatedInputTokens }, runScrubber),
+      harness: redactValue(
+        {
+          cache: cacheMetrics.snapshot(),
+          verification: verification(),
+          compactions,
+          peakEstimatedInputTokens,
+        },
+        runScrubber,
+      ),
     }
 
     await db
@@ -357,7 +381,9 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
       })
       tools = built.tools
       toolSpecs = built.specs
-      activeToolNames = lean ? leanToolNames(built.activeToolNames, built.specs) : built.activeToolNames
+      activeToolNames = lean
+        ? leanToolNames(built.activeToolNames, built.specs)
+        : built.activeToolNames
       verification = built.verification
       closeTools = built.close
       warnings.push(...built.warnings)
@@ -377,12 +403,25 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
     if (agentCaps.memory) {
       try {
         const memoryService = getMemoryService()
-        const recallQuery = [args.trigger.content, taskBrief].filter(Boolean).join(" ").slice(0, 1000)
+        const recallQuery = [args.trigger.content, taskBrief]
+          .filter(Boolean)
+          .join(" ")
+          .slice(0, 1000)
         // Each source fails on its own (sync throws included) without dropping the others.
-        const settle = <T,>(load: () => Promise<T>, fallback: T): Promise<T> =>
-          Promise.resolve().then(load).catch(() => fallback)
+        const settle = <T>(load: () => Promise<T>, fallback: T): Promise<T> =>
+          Promise.resolve()
+            .then(load)
+            .catch(() => fallback)
         const [pinned, recalled, loops, facts] = await Promise.all([
-          settle(() => memoryService.getPinnedDigest({ orgId: room.orgId, agentId: agent.id, roomId: room.id }), []),
+          settle(
+            () =>
+              memoryService.getPinnedDigest({
+                orgId: room.orgId,
+                agentId: agent.id,
+                roomId: room.id,
+              }),
+            [],
+          ),
           settle(
             () =>
               memoryService.recall({
@@ -398,7 +437,13 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
             [],
           ),
           settle(
-            () => memoryService.getActiveLoops({ orgId: room.orgId, agentId: agent.id, roomId: room.id, limit: 5 }),
+            () =>
+              memoryService.getActiveLoops({
+                orgId: room.orgId,
+                agentId: agent.id,
+                roomId: room.id,
+                limit: 5,
+              }),
             [],
           ),
           // A small fact set is shown whole so the agent never re-asks; a large one by relevance.
@@ -425,7 +470,9 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
         if (loops.length > 0) {
           activeOpenLoopsSummary =
             "Active Commitments & Open Loops:\n" +
-            loops.map((l) => `- [${l.status.toUpperCase()}] (id=${l.id}) ${l.description}`).join("\n")
+            loops
+              .map((l) => `- [${l.status.toUpperCase()}] (id=${l.id}) ${l.description}`)
+              .join("\n")
         }
         if (facts.facts.length > 0) {
           ownerFactsSummary =
@@ -439,11 +486,18 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
         // Mirror room-independent memory into the agent's computer, off the critical path.
         if (agentCaps.computer) {
           runInBackground("memory.mirror", () =>
-            syncMemoryMirror({ orgId: room.orgId, agentId: agent.id, client: new ComputerClient() }),
+            syncMemoryMirror({
+              orgId: room.orgId,
+              agentId: agent.id,
+              client: new ComputerClient(),
+            }),
           )
         }
       } catch (memoryError) {
-        console.warn("[memory] pre-turn context failed:", redactSecrets(runScrubber(String(memoryError))).text)
+        console.warn(
+          "[memory] pre-turn context failed:",
+          redactSecrets(runScrubber(String(memoryError))).text,
+        )
       }
     }
 
@@ -485,7 +539,9 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
       },
     })
 
-    const instructions = initialContext.messages.filter((message): message is SystemModelMessage => message.role === "system")
+    const instructions = initialContext.messages.filter(
+      (message): message is SystemModelMessage => message.role === "system",
+    )
     const initialMessages = initialContext.messages.filter((message) => message.role !== "system")
     const instructionTokens = estimateMessageTokens(instructions)
 
@@ -500,7 +556,8 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
       effort,
     })
     const thinking = providerOptions.anthropic?.thinking as { budgetTokens?: number } | undefined
-    if (thinking?.budgetTokens) thinking.budgetTokens = Math.min(thinking.budgetTokens, modelBudget.outputTokens - 1024)
+    if (thinking?.budgetTokens)
+      thinking.budgetTokens = Math.min(thinking.budgetTokens, modelBudget.outputTokens - 1024)
 
     send({ type: "run.status", runId: run.id, status: "thinking" })
 
@@ -554,19 +611,29 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
         abortSignal: controller.signal,
         maxRetries: 4,
         stopWhen: stepCountIs(passBudget),
-        ...(Object.keys(providerOptions).length > 0 ? { providerOptions: providerOptions as any } : {}),
+        ...(Object.keys(providerOptions).length > 0
+          ? { providerOptions: providerOptions as any }
+          : {}),
         ...(numericParam(params, "temperature") !== undefined
           ? { temperature: numericParam(params, "temperature") }
           : {}),
-        ...(numericParam(params, "topP") !== undefined ? { topP: numericParam(params, "topP") } : {}),
+        ...(numericParam(params, "topP") !== undefined
+          ? { topP: numericParam(params, "topP") }
+          : {}),
         maxOutputTokens: modelBudget.outputTokens,
         onError: ({ error: streamErr }) => {
           errorBox.error = streamErr
         },
         prepareStep: async ({ messages: stepMessages, steps, stepNumber }) => {
           const nextActive = activeToolNames()
-          const activeSpecs = nextActive ? toolSpecs.filter((spec) => nextActive.includes(spec.name)) : toolSpecs
-          const budget = resolveContextBudget(resolved.provider, params, estimateToolTokens(activeSpecs))
+          const activeSpecs = nextActive
+            ? toolSpecs.filter((spec) => nextActive.includes(spec.name))
+            : toolSpecs
+          const budget = resolveContextBudget(
+            resolved.provider,
+            params,
+            estimateToolTokens(activeSpecs),
+          )
           const workingMessages = stepMessages
           const messageBudget = budget.messageTokens - instructionTokens
           const decision = decidePrepareStep({
@@ -609,29 +676,50 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
           })
           if (compacted.compacted > 0) {
             compactions++
-            send({ type: "run.step", runId: run.id, step: stepsCompleted, kind: "model", label: `Summarized ${compacted.compacted} earlier messages; preserved current task and recent tool pairs` })
+            send({
+              type: "run.step",
+              runId: run.id,
+              step: stepsCompleted,
+              kind: "model",
+              label: `Summarized ${compacted.compacted} earlier messages; preserved current task and recent tool pairs`,
+            })
           }
           let finalMessages = compacted.messages
           let estimatedTokens = estimateMessageTokens(finalMessages)
-          peakEstimatedInputTokens = Math.max(peakEstimatedInputTokens, estimatedTokens + budget.toolTokens + instructionTokens)
+          peakEstimatedInputTokens = Math.max(
+            peakEstimatedInputTokens,
+            estimatedTokens + budget.toolTokens + instructionTokens,
+          )
           if (estimatedTokens > messageBudget) {
             const aggressive = elideOldToolResults(finalMessages, 2)
             if (aggressive.elidedCount > 0) {
               finalMessages = aggressive.messages
               estimatedTokens = estimateMessageTokens(finalMessages)
               compactions++
-              send({ type: "run.step", runId: run.id, step: stepsCompleted, kind: "model", label: `Aggressively elided ${aggressive.elidedCount} older tool results to preserve context budget` })
+              send({
+                type: "run.step",
+                runId: run.id,
+                step: stepsCompleted,
+                kind: "model",
+                label: `Aggressively elided ${aggressive.elidedCount} older tool results to preserve context budget`,
+              })
             }
           }
           if (estimatedTokens > messageBudget) {
             const boundary = compactionBoundary(finalMessages, initialMessages.length, 2)
             if (boundary > initialMessages.length) {
-              finalMessages = [...finalMessages.slice(0, initialMessages.length), ...finalMessages.slice(boundary)]
+              finalMessages = [
+                ...finalMessages.slice(0, initialMessages.length),
+                ...finalMessages.slice(boundary),
+              ]
               estimatedTokens = estimateMessageTokens(finalMessages)
               compactions++
             }
           }
-          if (estimatedTokens > messageBudget) throw new Error("Context budget exhausted without safely discardable history. Narrow the task or configure this model's contextWindowTokens.")
+          if (estimatedTokens > messageBudget)
+            throw new Error(
+              "Context budget exhausted without safely discardable history. Narrow the task or configure this model's contextWindowTokens.",
+            )
           const prepared = applyRollingCacheBreakpoint(finalMessages, resolved.provider)
           lastPrepared = prepared
           return {
@@ -644,10 +732,24 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
           recordUsage(step.usage)
           const stepIdx = stepsCompleted
           const isToolStep = Boolean(step.toolCalls && step.toolCalls.length > 0)
-          const hasPlan = step.toolCalls?.some((tc: { toolName: string }) => tc.toolName === "update_plan")
-          const hasSubagent = step.toolCalls?.some((tc: { toolName: string }) => tc.toolName === "spawn_subagent")
-          const hasRecall = step.toolCalls?.some((tc: { toolName: string }) => tc.toolName === "recall" || tc.toolName === "memory")
-          const kind = hasSubagent ? "subagent" : hasPlan ? "plan" : hasRecall ? "recall" : isToolStep ? "tool" : "model"
+          const hasPlan = step.toolCalls?.some(
+            (tc: { toolName: string }) => tc.toolName === "update_plan",
+          )
+          const hasSubagent = step.toolCalls?.some(
+            (tc: { toolName: string }) => tc.toolName === "spawn_subagent",
+          )
+          const hasRecall = step.toolCalls?.some(
+            (tc: { toolName: string }) => tc.toolName === "recall" || tc.toolName === "memory",
+          )
+          const kind = hasSubagent
+            ? "subagent"
+            : hasPlan
+              ? "plan"
+              : hasRecall
+                ? "recall"
+                : isToolStep
+                  ? "tool"
+                  : "model"
           const primaryTool = isToolStep ? step.toolCalls[0] : null
           const inputRef = primaryTool?.toolName ?? null
 
@@ -676,7 +778,10 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
               stepIdx,
               kind,
               name: primaryTool?.toolName ?? (kind === "model" ? resolved.modelName : kind),
-              input: primaryTool && "args" in primaryTool ? (primaryTool as { args: unknown }).args : undefined,
+              input:
+                primaryTool && "args" in primaryTool
+                  ? (primaryTool as { args: unknown }).args
+                  : undefined,
               output: step.text || (isToolStep ? step.toolResults : undefined),
               usage: step.usage
                 ? {
@@ -805,7 +910,11 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
           break
         }
         sentReminders.add("verify")
-        runMessages.push(systemReminder(`${evidence.reason} Inspect the project's checks, call verify_workspace, fix any failures and report only what the execution evidence supports. If checks are unavailable, say so explicitly.`))
+        runMessages.push(
+          systemReminder(
+            `${evidence.reason} Inspect the project's checks, call verify_workspace, fix any failures and report only what the execution evidence supports. If checks are unavailable, say so explicitly.`,
+          ),
+        )
         continue
       }
 
@@ -823,7 +932,7 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
           orgId: room.orgId,
           roomId: room.id,
           taskBrief: taskBrief || args.trigger.content,
-          proposedOutput: `${fullRaw}\n\nExecution evidence: ${JSON.stringify(verification())}`, 
+          proposedOutput: `${fullRaw}\n\nExecution evidence: ${JSON.stringify(verification())}`,
           signal: controller.signal,
           scrub: runScrubber,
           availableToolSpecs: toolSpecs,
@@ -862,7 +971,10 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
           })
         } catch {}
         if (!review.pass) {
-          const findings = review.feedback || review.reasons.map((r) => `- ${r}`).join("\n") || "The critic did not verify the work."
+          const findings =
+            review.feedback ||
+            review.reasons.map((r) => `- ${r}`).join("\n") ||
+            "The critic did not verify the work."
           if (pass + 1 >= MAX_PASSES || stepsCompleted >= maxSteps || criticCycle >= 2) {
             warnings.push(`Critic verification unresolved: ${findings}`)
             break
@@ -892,7 +1004,8 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
       error ??= `Step limit (${maxSteps}) reached before a final response; work is incomplete.`
     }
     if (!aborted && consumeRunInterrupts(run.id).length > 0) {
-      error ??= "A new instruction arrived after the execution budget was exhausted. A follow-up turn is required."
+      error ??=
+        "A new instruction arrived after the execution budget was exhausted. A follow-up turn is required."
     }
     if (
       !aborted &&
@@ -916,7 +1029,8 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
       error = userFacingError(classified, raw, resolved.modelName)
       errorKind = classified.category
       if (classified.limitTokens) errorLimitTokens = classified.limitTokens
-      if (classified.category !== "unknown") console.warn(`[engine] ${classified.category}: ${scrubProviderIds(raw).slice(0, 400)}`)
+      if (classified.category !== "unknown")
+        console.warn(`[engine] ${classified.category}: ${scrubProviderIds(raw).slice(0, 400)}`)
     }
     latencyMs = Date.now() - startedAt
   } finally {
@@ -946,7 +1060,11 @@ export function buildExtractionTranscript(args: {
   reply: string
 }): string {
   const who =
-    args.triggerSender === "human" ? "Human" : args.triggerSender === "agent" ? "Another agent" : "System"
+    args.triggerSender === "human"
+      ? "Human"
+      : args.triggerSender === "agent"
+        ? "Another agent"
+        : "System"
   const parts: string[] = []
   if (args.triggerText.trim()) parts.push(`${who}: ${args.triggerText.trim().slice(0, 2500)}`)
   parts.push(`${args.agentName} (you): ${args.reply.trim().slice(0, 3500)}`)

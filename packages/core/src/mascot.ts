@@ -161,11 +161,13 @@ export function resolveMascotLook(seed: string): {
 
   // Common agent name heuristics
   if (norm.includes("claude")) return { shape: "bubble", tone: "orange", cast: true }
-  if (norm.includes("codex") || norm.includes("gpt")) return { shape: "block", tone: "blue", cast: true }
+  if (norm.includes("codex") || norm.includes("gpt"))
+    return { shape: "block", tone: "blue", cast: true }
   if (norm.includes("cursor")) return { shape: "ledger", tone: "teal", cast: true }
   if (norm.includes("hermes")) return { shape: "peak", tone: "pink", cast: true }
   if (norm.includes("gemini")) return { shape: "bloom", tone: "blue", cast: true }
-  if (norm.includes("chief") || norm.includes("staff")) return { shape: "peak", tone: "coral", cast: true }
+  if (norm.includes("chief") || norm.includes("staff"))
+    return { shape: "peak", tone: "coral", cast: true }
   if (norm.includes("saya")) return { shape: "ghost", tone: "lilac", cast: true }
 
   const picked = sayaPick(seed)

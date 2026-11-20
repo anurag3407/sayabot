@@ -5,7 +5,16 @@ import { getRoomAccess } from "@/lib/auth"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { restoreCanvasInOrchestrator } from "@/lib/orchestrator"
-import { adminRoomAccess, audit, errorMessage, fail, field, ok, optionalField, revalidateOrg } from "@/lib/actions/shared"
+import {
+  adminRoomAccess,
+  audit,
+  errorMessage,
+  fail,
+  field,
+  ok,
+  optionalField,
+  revalidateOrg,
+} from "@/lib/actions/shared"
 import type { ActionResult } from "@/lib/types"
 
 const kindSchema = z.enum(["markdown", "code", "svg", "html"])

@@ -31,12 +31,12 @@ A module-level cache + listener set makes settings a global store (`useSettings.
 
 ## 💾 AsyncStorage keys inventory
 
-| Key | Written by | Contents |
-| :-- | :-- | :-- |
-| `@sayabot/settings_v1` | `saveSettings` via `useSettings`/`applySettings` | The full `AppSettings` JSON (profile, gateway, guardrails, UI, notification flags) |
-| `@sayabot/server_v1` | `saveServer` in `src/core/supabase.ts` | `SavedServer { webApiUrl, name, supabaseUrl, supabaseAnonKey }` — the server the Supabase client points at |
-| `@sayabot/home_cache_v1` | `refreshHome` in `src/hooks/useHome.ts` | The last `HomeData` snapshot for instant cold-start rendering |
-| `@sayabot/push_token` | `enablePush` in `src/core/push.ts` | The registered Expo push token, for later `DELETE /api/mobile/push` |
+| Key                      | Written by                                       | Contents                                                                                                   |
+| :----------------------- | :----------------------------------------------- | :--------------------------------------------------------------------------------------------------------- |
+| `@sayabot/settings_v1`   | `saveSettings` via `useSettings`/`applySettings` | The full `AppSettings` JSON (profile, gateway, guardrails, UI, notification flags)                         |
+| `@sayabot/server_v1`     | `saveServer` in `src/core/supabase.ts`           | `SavedServer { webApiUrl, name, supabaseUrl, supabaseAnonKey }` — the server the Supabase client points at |
+| `@sayabot/home_cache_v1` | `refreshHome` in `src/hooks/useHome.ts`          | The last `HomeData` snapshot for instant cold-start rendering                                              |
+| `@sayabot/push_token`    | `enablePush` in `src/core/push.ts`               | The registered Expo push token, for later `DELETE /api/mobile/push`                                        |
 
 Note the split: "Reset this app" clears only `@sayabot/settings_v1`; the paired server, cached home data, and push token keys are untouched, and Supabase sessions persist in Supabase's own AsyncStorage entries.
 
@@ -80,15 +80,15 @@ Returns `paletteFor(settings.themeMode)` — the static legacy palette — inste
 
 ### Key token values
 
-| Token | Dark (`darkTheme`) | Light (`lightTheme`) |
-| :-- | :-- | :-- |
-| `bg` / `surface` / `card` | `#09090b` / `#111114` / `#17171b` | `#f5f5f7` / `#ffffff` / `#ffffff` |
-| `raised` / `line` / `lineStrong` | `#1f1f24` / `#232329` / `#34343c` | `#ededf1` / `#e4e4ea` / `#d2d2db` |
-| `text` / `muted` / `faint` | `#ededf0` / `#a3a3ad` / `#8b8b96` | `#18181b` / `#5c5c66` / `#7a7a85` |
-| `accent` / `onAccent` | `#9d8cff` / `#09090b` | `#6d5ce8` / `#ffffff` |
+| Token                                            | Dark (`darkTheme`)                | Light (`lightTheme`)              |
+| :----------------------------------------------- | :-------------------------------- | :-------------------------------- |
+| `bg` / `surface` / `card`                        | `#09090b` / `#111114` / `#17171b` | `#f5f5f7` / `#ffffff` / `#ffffff` |
+| `raised` / `line` / `lineStrong`                 | `#1f1f24` / `#232329` / `#34343c` | `#ededf1` / `#e4e4ea` / `#d2d2db` |
+| `text` / `muted` / `faint`                       | `#ededf0` / `#a3a3ad` / `#8b8b96` | `#18181b` / `#5c5c66` / `#7a7a85` |
+| `accent` / `onAccent`                            | `#9d8cff` / `#09090b`             | `#6d5ce8` / `#ffffff`             |
 | `bubbleMine` / `bubbleMineText` / `bubbleTheirs` | `#9d8cff` / `#0f0b24` / `#1c1c21` | `#6d5ce8` / `#ffffff` / `#ffffff` |
-| `ok` / `warn` / `danger` | `#6fd39a` / `#e8c06a` / `#f2756e` | `#2e9a59` / `#a06a12` / `#d64545` |
-| `overlay` | `rgba(0, 0, 0, 0.6)` | `rgba(20, 20, 24, 0.35)` |
+| `ok` / `warn` / `danger`                         | `#6fd39a` / `#e8c06a` / `#f2756e` | `#2e9a59` / `#a06a12` / `#d64545` |
+| `overlay`                                        | `rgba(0, 0, 0, 0.6)`              | `rgba(20, 20, 24, 0.35)`          |
 
 The OLED override only darkens three tokens: `bg: "#000000"`, `surface: "#050505"`, `card: "#0d0d0f"`; everything else stays dark-theme (`theme.ts:96`).
 

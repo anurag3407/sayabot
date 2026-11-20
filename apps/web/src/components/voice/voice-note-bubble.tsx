@@ -179,7 +179,12 @@ export function VoiceNoteBubble({
         <div className="flex items-center gap-1.5">
           <Mic className="h-3 w-3 text-accent" />
           <span>Voice Note</span>
-          {provider ? <span>• {provider}{voice ? ` (${voice})` : ""}</span> : null}
+          {provider ? (
+            <span>
+              • {provider}
+              {voice ? ` (${voice})` : ""}
+            </span>
+          ) : null}
         </div>
 
         {text ? (

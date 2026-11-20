@@ -4,10 +4,7 @@ import {
   renderPasswordResetTemplate,
   renderVerificationTemplate,
 } from "./templates/auth"
-import {
-  renderRoomInviteTemplate,
-  renderWorkspaceInviteTemplate,
-} from "./templates/invites"
+import { renderRoomInviteTemplate, renderWorkspaceInviteTemplate } from "./templates/invites"
 
 export * from "./client"
 export * from "./templates/base"

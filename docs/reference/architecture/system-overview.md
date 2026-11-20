@@ -10,13 +10,13 @@ Source files: `apps/orchestrator/src/index.ts`, `apps/orchestrator/src/http.ts`,
 
 There is no microservice zoo. A production deployment (see `deploy/docker-compose.yml`) is three long-running Node services behind nginx, plus Supabase for the data plane:
 
-| Service | Entry point | Port | Responsibility |
-| :--- | :--- | :--- | :--- |
-| **web** (`@sayabot/web`) | Next.js 16 App Router, `apps/web` | 3000 | Pages, server actions, message insert, Supabase session handling, `/api/v1` bot + MCP proxy routes |
-| **orchestrator** (`@sayabot/orchestrator`) | Hono server, `apps/orchestrator/src/index.ts:62` | 4000 | Turn coordination, agent runs, pg-boss job queues, `/collab` WebSocket (Hocuspocus), MCP gateway, bot HTTP API, routines |
-| **computerd** (`@sayabot/computerd`) | `apps/computerd/src/index.ts` | 4100 | Per-agent sandboxes: smolvm / Docker / e2b backends, agentd file + shell calls |
-| **egress** (`@sayabot/egress`) | `apps/egress/src/index.ts` | 8080 (proxy) / 8081 (admin) | Outbound HTTP proxy for computers: SSRF guard, secret placeholder swapping, response scrubbing |
-| **Supabase** | hosted or bundled (`deploy/docker-compose.supabase.yml`) | 5432 / 6543 | PostgreSQL (Drizzle schemas + RLS), Auth, Realtime broadcast, storage |
+| Service                                    | Entry point                                              | Port                        | Responsibility                                                                                                           |
+| :----------------------------------------- | :------------------------------------------------------- | :-------------------------- | :----------------------------------------------------------------------------------------------------------------------- |
+| **web** (`@sayabot/web`)                   | Next.js 16 App Router, `apps/web`                        | 3000                        | Pages, server actions, message insert, Supabase session handling, `/api/v1` bot + MCP proxy routes                       |
+| **orchestrator** (`@sayabot/orchestrator`) | Hono server, `apps/orchestrator/src/index.ts:62`         | 4000                        | Turn coordination, agent runs, pg-boss job queues, `/collab` WebSocket (Hocuspocus), MCP gateway, bot HTTP API, routines |
+| **computerd** (`@sayabot/computerd`)       | `apps/computerd/src/index.ts`                            | 4100                        | Per-agent sandboxes: smolvm / Docker / e2b backends, agentd file + shell calls                                           |
+| **egress** (`@sayabot/egress`)             | `apps/egress/src/index.ts`                               | 8080 (proxy) / 8081 (admin) | Outbound HTTP proxy for computers: SSRF guard, secret placeholder swapping, response scrubbing                           |
+| **Supabase**                               | hosted or bundled (`deploy/docker-compose.supabase.yml`) | 5432 / 6543                 | PostgreSQL (Drizzle schemas + RLS), Auth, Realtime broadcast, storage                                                    |
 
 Only nginx publishes ports; web and orchestrator talk to each other over the internal Docker network (`deploy/docker-compose.yml:5-8`).
 
@@ -85,12 +85,12 @@ The numbered path for a human message, tying the pieces above together:
 
 pg-boss queues live in the same Postgres database. Their tuning (`apps/orchestrator/src/jobs/index.ts:24-46`):
 
-| Queue | Retry policy | Expiry | Purpose |
-| :--- | :--- | :--- | :--- |
-| `room.message` | `retryLimit: 0` (failures are logged, never re-run — a superseded turn must not resurrect) | 1800 s | turn triggers → `processRoomMessage` |
-| `webhook.deliver` | 5 retries, 10 s delay, backoff | 120 s | outbound webhooks to external bots |
-| `task.wake` | 2 retries | 60 s | task unblock → agent wake; deduped by `singletonKey taskId:agentId` for 30 s |
-| `run.resume` | 3 retries, 5 s delay | 300 s | parked/stale Engine v2 run resumption |
+| Queue             | Retry policy                                                                               | Expiry | Purpose                                                                      |
+| :---------------- | :----------------------------------------------------------------------------------------- | :----- | :--------------------------------------------------------------------------- |
+| `room.message`    | `retryLimit: 0` (failures are logged, never re-run — a superseded turn must not resurrect) | 1800 s | turn triggers → `processRoomMessage`                                         |
+| `webhook.deliver` | 5 retries, 10 s delay, backoff                                                             | 120 s  | outbound webhooks to external bots                                           |
+| `task.wake`       | 2 retries                                                                                  | 60 s   | task unblock → agent wake; deduped by `singletonKey taskId:agentId` for 30 s |
+| `run.resume`      | 3 retries, 5 s delay                                                                       | 300 s  | parked/stale Engine v2 run resumption                                        |
 
 Workers run with `batchSize: 1` and `localConcurrency: 4` each, polling every 1–2 s. In-process schedulers complement the queues: `startRoutineScheduler` (distributed cron via an advisory lock so exactly one instance ticks), `startMeetingScheduler`, `startMemoryScheduler`, and the Discord gateway client.
 
@@ -100,11 +100,11 @@ Workers run with `batchSize: 1` and `localConcurrency: 4` each, polling every 1�
 
 Workspace packages (`packages/*`) are pure libraries; apps consume them with `workspace:*` dependencies:
 
-| Package | Consumed by | Contains |
-| :--- | :--- | :--- |
-| `@sayabot/core` | computerd, egress, mobile, orchestrator, db | Zero-dependency domain logic: turn planning, mention parsing, cron math, redaction, breakers, SSRF lists, plan tables. A `./server` subpath adds Node-only helpers (agent-key hashing, webhook URL checks) |
-| `@sayabot/db` | orchestrator (and web via generated SQL access through Supabase client) | Drizzle schema, `createDb()` pool, migration runner, seed templates |
-| `@sayabot/llm` | orchestrator | Provider registry (17 provider ids), AES-256-GCM crypto, MCP client, Langfuse tracing |
+| Package         | Consumed by                                                             | Contains                                                                                                                                                                                                   |
+| :-------------- | :---------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@sayabot/core` | computerd, egress, mobile, orchestrator, db                             | Zero-dependency domain logic: turn planning, mention parsing, cron math, redaction, breakers, SSRF lists, plan tables. A `./server` subpath adds Node-only helpers (agent-key hashing, webhook URL checks) |
+| `@sayabot/db`   | orchestrator (and web via generated SQL access through Supabase client) | Drizzle schema, `createDb()` pool, migration runner, seed templates                                                                                                                                        |
+| `@sayabot/llm`  | orchestrator                                                            | Provider registry (17 provider ids), AES-256-GCM crypto, MCP client, Langfuse tracing                                                                                                                      |
 
 `@sayabot/core` is deliberately dependency-free so egress and computerd can import it without pulling the ORM. Anything needing `node:*` lives under the `core/server` export (`packages/core/src/server/index.ts`).
 
@@ -130,30 +130,30 @@ All durable state lives in PostgreSQL. Schema ownership is split: **web reads/wr
 
 ## 🧯 Failure modes at a glance
 
-| Failure | What the code does |
-| :--- | :--- |
-| Orchestrator crashes mid-turn | On boot, `recoverStaleRuns()` finds v2 runs with a heartbeat older than 60 s, parks them and re-enqueues `run.resume` |
-| Room lock holder dies | The advisory lock is session-scoped; the connection dies with the process and Postgres releases it, unblocking the next coordinator |
-| Web unavailable while a bot posts | `/v1/...` routes are served by the orchestrator directly; turns continue and the UI catches up from the database |
-| Supabase Realtime down | Broadcast failures are logged, not thrown; turns complete, UI re-syncs from queries |
-| Approval wait outlives a restart | Pending approvals older than 5 minutes are pre-rejected with "Approval expired before the orchestrator restarted" |
-| Canvas socket outlives membership | 30 s sweep closes sockets whose user lost read access |
-| Egress grant cache stale | `vault_changed` SSE invalidation + `/admin/flush` + per-IP identity resets on computer start/stop |
+| Failure                           | What the code does                                                                                                                  |
+| :-------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------- |
+| Orchestrator crashes mid-turn     | On boot, `recoverStaleRuns()` finds v2 runs with a heartbeat older than 60 s, parks them and re-enqueues `run.resume`               |
+| Room lock holder dies             | The advisory lock is session-scoped; the connection dies with the process and Postgres releases it, unblocking the next coordinator |
+| Web unavailable while a bot posts | `/v1/...` routes are served by the orchestrator directly; turns continue and the UI catches up from the database                    |
+| Supabase Realtime down            | Broadcast failures are logged, not thrown; turns complete, UI re-syncs from queries                                                 |
+| Approval wait outlives a restart  | Pending approvals older than 5 minutes are pre-rejected with "Approval expired before the orchestrator restarted"                   |
+| Canvas socket outlives membership | 30 s sweep closes sockets whose user lost read access                                                                               |
+| Egress grant cache stale          | `vault_changed` SSE invalidation + `/admin/flush` + per-IP identity resets on computer start/stop                                   |
 
 ---
 
 ## 🧪 Where behaviour is tested
 
-| Area | Tests |
-| :--- | :--- |
-| Turn planning, debate roles, moderator validation | `packages/core/src/turns.test.ts` |
-| Mention extraction incl. code-fence skipping | `packages/core/src/mentions.test.ts` |
-| Pre-turn circuit breakers | `packages/core/src/breakers.test.ts` (referenced via `checkPreTurnBreakers` usage in `apps/orchestrator/src/coordinator/index.ts:179`) |
-| Interrupt steering vs abort | `apps/orchestrator/src/engine/interrupts.test.ts` |
-| Durable resume / stale runs | `apps/orchestrator/src/engine/resume.test.ts` |
-| Egress SSRF lists | `packages/core/src/server/ssrf.test.ts` |
-| Envelope crypto | `packages/llm/src/crypto.test.ts` |
-| End-to-end approval + chat flows | `e2e/approval.spec.ts`, `e2e/chat.spec.ts`, `e2e/turns.spec.ts` |
+| Area                                              | Tests                                                                                                                                  |
+| :------------------------------------------------ | :------------------------------------------------------------------------------------------------------------------------------------- |
+| Turn planning, debate roles, moderator validation | `packages/core/src/turns.test.ts`                                                                                                      |
+| Mention extraction incl. code-fence skipping      | `packages/core/src/mentions.test.ts`                                                                                                   |
+| Pre-turn circuit breakers                         | `packages/core/src/breakers.test.ts` (referenced via `checkPreTurnBreakers` usage in `apps/orchestrator/src/coordinator/index.ts:179`) |
+| Interrupt steering vs abort                       | `apps/orchestrator/src/engine/interrupts.test.ts`                                                                                      |
+| Durable resume / stale runs                       | `apps/orchestrator/src/engine/resume.test.ts`                                                                                          |
+| Egress SSRF lists                                 | `packages/core/src/server/ssrf.test.ts`                                                                                                |
+| Envelope crypto                                   | `packages/llm/src/crypto.test.ts`                                                                                                      |
+| End-to-end approval + chat flows                  | `e2e/approval.spec.ts`, `e2e/chat.spec.ts`, `e2e/turns.spec.ts`                                                                        |
 
 ---
 

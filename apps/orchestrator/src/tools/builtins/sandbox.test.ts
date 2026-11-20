@@ -30,14 +30,16 @@ describe("sandboxTool and terminalExecTool", () => {
   it("creates tool specs with correct schemas", () => {
     const sTool = sandboxTool({ orgId: "org-1" })
     expect(sTool.name).toBe("code_sandbox")
-    const isDangerousSandbox = typeof sTool.dangerous === "function" ? sTool.dangerous : () => sTool.dangerous
+    const isDangerousSandbox =
+      typeof sTool.dangerous === "function" ? sTool.dangerous : () => sTool.dangerous
     expect(isDangerousSandbox({ backend: "docker", code: "echo hi" })).toBe(false)
     expect(isDangerousSandbox({ backend: "local", code: "echo hi" })).toBe(true)
     expect(isDangerousSandbox({ backend: "docker", code: "rm -rf /" })).toBe(true)
 
     const tTool = terminalExecTool({ orgId: "org-1" })
     expect(tTool.name).toBe("terminal_exec")
-    const isDangerousTerminal = typeof tTool.dangerous === "function" ? tTool.dangerous : () => tTool.dangerous
+    const isDangerousTerminal =
+      typeof tTool.dangerous === "function" ? tTool.dangerous : () => tTool.dangerous
     expect(isDangerousTerminal({ backend: "docker", cmd: "echo hi" })).toBe(false)
     expect(isDangerousTerminal({ backend: "local", cmd: "echo hi" })).toBe(true)
     expect(isDangerousTerminal({ backend: "docker", cmd: "rm -rf /" })).toBe(true)

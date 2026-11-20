@@ -71,8 +71,15 @@ describe("agentd exec", () => {
 
   it("keeps multibyte output intact and returns the real exit code", async (ctx) => {
     if (!socketSupported) return ctx.skip()
-    const frames = await rpc({ op: "exec", cwd: dir, cmd: `printf '世界%.0s' $(seq 1 20000); exit 3` })
-    const out = frames.filter((f) => f.t === "out").map((f) => f.d).join("")
+    const frames = await rpc({
+      op: "exec",
+      cwd: dir,
+      cmd: `printf '世界%.0s' $(seq 1 20000); exit 3`,
+    })
+    const out = frames
+      .filter((f) => f.t === "out")
+      .map((f) => f.d)
+      .join("")
     expect(out).toBe("世界".repeat(20000))
     expect(frames.at(-1)).toMatchObject({ t: "exit", code: 3 })
   })

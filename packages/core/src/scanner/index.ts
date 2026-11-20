@@ -27,12 +27,9 @@ export * from "./plan-limits"
  * (Antigravity SQLite, Claude Code JSONLs, Codex sessions) and produces
  * unified usage records, aggregations, and dashboard event rows.
  */
-export async function scanLocalUsage(
-  options: ScanOptions = {},
-): Promise<ScannedUsageResult> {
+export async function scanLocalUsage(options: ScanOptions = {}): Promise<ScannedUsageResult> {
   const days = options.days !== undefined && options.days > 0 ? options.days : 30
-  const sinceMs =
-    options.sinceMs !== undefined ? options.sinceMs : Date.now() - days * 86_400_000
+  const sinceMs = options.sinceMs !== undefined ? options.sinceMs : Date.now() - days * 86_400_000
 
   const activeProviders: LocalProvider[] =
     options.includeProviders && options.includeProviders.length > 0
@@ -141,10 +138,7 @@ export async function scanLocalUsage(
   for (const rec of records) {
     const t = rec.totals
     const recTokens =
-      t.uncachedInputTokens +
-      t.cachedInputTokens +
-      t.cacheCreationTokens +
-      t.outputTokens
+      t.uncachedInputTokens + t.cachedInputTokens + t.cacheCreationTokens + t.outputTokens
 
     totalTokens += recTokens
     uncachedInputTokens += t.uncachedInputTokens
@@ -228,8 +222,7 @@ export async function scanLocalUsage(
       costUsd: Math.round(group.costUsd * 1e4) / 1e4,
       cacheSavingsUsd: Math.round(group.cacheSavingsUsd * 1e4) / 1e4,
       sessions: group.sessions.size,
-      sharePercent:
-        totalTokens > 0 ? Math.round((group.tokens / totalTokens) * 1000) / 10 : 0,
+      sharePercent: totalTokens > 0 ? Math.round((group.tokens / totalTokens) * 1000) / 10 : 0,
       tokenMix: {
         uncachedInputTokens: group.uncachedInputTokens,
         cachedInputTokens: group.cachedInputTokens,
@@ -248,8 +241,7 @@ export async function scanLocalUsage(
       tokens: group.tokens,
       costUsd: Math.round(group.costUsd * 1e4) / 1e4,
       sessions: group.sessions.size,
-      sharePercent:
-        totalTokens > 0 ? Math.round((group.tokens / totalTokens) * 1000) / 10 : 0,
+      sharePercent: totalTokens > 0 ? Math.round((group.tokens / totalTokens) * 1000) / 10 : 0,
     }
   }
 

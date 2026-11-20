@@ -36,7 +36,10 @@ export const desktopHosts = pgTable(
     appVersion: text("app_version"),
     tokenHash: text("token_hash").notNull(),
     permissions: jsonb("permissions").$type<Record<string, string>>().notNull().default({}),
-    localAgents: jsonb("local_agents").$type<Array<Record<string, unknown>>>().notNull().default([]),
+    localAgents: jsonb("local_agents")
+      .$type<Array<Record<string, unknown>>>()
+      .notNull()
+      .default([]),
     settings: jsonb("settings").$type<DesktopHostSettings>().notNull().default({}),
     /** What Sayabot uses on that computer, measured by the desktop app. */
     storage: jsonb("storage").$type<Record<string, unknown>>().notNull().default({}),

@@ -27,7 +27,8 @@ export function WorksOnForm({
   const [screen, setScreen] = useState(thisComputer)
 
   if (!canEdit) {
-    const label = WORKS_ON_OPTIONS.find(([value]) => value === worksOn)?.[1] ?? worksOn.replaceAll("_", " ")
+    const label =
+      WORKS_ON_OPTIONS.find(([value]) => value === worksOn)?.[1] ?? worksOn.replaceAll("_", " ")
     return <p className="text-xs text-muted-foreground">Works on {label}</p>
   }
 
@@ -43,16 +44,31 @@ export function WorksOnForm({
             worksOn: surface,
             thisComputer: screen,
           })
-          showToast({ tone: result.ok ? "success" : "danger", message: result.ok ? (result.message ?? "Saved") : (result.error ?? "Could not save") })
+          showToast({
+            tone: result.ok ? "success" : "danger",
+            message: result.ok ? (result.message ?? "Saved") : (result.error ?? "Could not save"),
+          })
           router.refresh()
         })
       }}
     >
       <p className="block text-xs text-muted-foreground">Works on</p>
-      <WorksOnPicker orgSlug={orgSlug} worksOn={surface} canAdmin={canEdit} disabled={pending} onChange={setSurface} />
-      <p className="text-xs text-muted-foreground">{WORKS_ON_OPTIONS.find(([value]) => value === surface)?.[2]}</p>
+      <WorksOnPicker
+        orgSlug={orgSlug}
+        worksOn={surface}
+        canAdmin={canEdit}
+        disabled={pending}
+        onChange={setSurface}
+      />
+      <p className="text-xs text-muted-foreground">
+        {WORKS_ON_OPTIONS.find(([value]) => value === surface)?.[2]}
+      </p>
       <label className="flex items-center gap-2 text-xs text-muted-foreground">
-        <input type="checkbox" checked={screen} onChange={(event) => setScreen(event.target.checked)} />
+        <input
+          type="checkbox"
+          checked={screen}
+          onChange={(event) => setScreen(event.target.checked)}
+        />
         This computer can use the Mac screen
       </label>
       <Button size="sm" type="submit" disabled={pending}>

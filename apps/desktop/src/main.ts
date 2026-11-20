@@ -40,7 +40,8 @@ import { readJsonFile, removeJsonFile, writeJsonAtomic } from "./durable-json"
 import { normalizeServerUrl } from "./server-url"
 import { VaultRunner } from "./vault-cli"
 
-const DEFAULT_SERVER_URL = "https://sayabot.sayalabs.in"
+const DEFAULT_SERVER_URL =
+  process.env.SAYABOT_SERVER_URL || process.env.DEFAULT_SERVER_URL || "http://localhost:3000"
 const CONFIG_FILE = "sayabot-config.json"
 const SESSION_FILE = "sayabot-session.json"
 
@@ -135,8 +136,8 @@ async function checkLegacyServer(url: string): Promise<ServerInfo | null> {
     return {
       ok: true,
       url,
-      name: url === DEFAULT_SERVER_URL ? "Sayabot Cloud" : new URL(url).host,
-      edition: url === DEFAULT_SERVER_URL ? "cloud" : "self-hosted",
+      name: url.includes("localhost") ? "Local Server" : new URL(url).host,
+      edition: "self-hosted",
       guestMode: guest?.enabled === true,
     }
   } catch {
@@ -294,7 +295,13 @@ function getUserDataDir(): string {
 function loadConfig(): DesktopConfig {
   try {
     const data = readJsonFile<Partial<DesktopConfig>>(path.join(getUserDataDir(), CONFIG_FILE))
-    if (data) return { serverUrl: DEFAULT_SERVER_URL, enableLocalRunner: true, ...data }
+    if (data) {
+      if (data.serverUrl === "https://sayabot.sayalabs.in") {
+        data.serverUrl = DEFAULT_SERVER_URL
+        data.serverChosen = false
+      }
+      return { serverUrl: DEFAULT_SERVER_URL, enableLocalRunner: true, ...data }
+    }
   } catch (err) {
     console.error("Failed to load desktop config:", err)
   }
@@ -305,19 +312,21 @@ function loadConfig(): DesktopConfig {
 let serverSetupRequested = false
 
 /**
- * First launch uses Sayabot on this Mac. A server address is entered later from Change Server.
- * `serverChosen: false` is an unfinished older prompt, so it is cleared the same way.
+ * First launch: if a server URL is provided via SAYABOT_SERVER_URL environment variable,
+ * connect to it automatically. Otherwise, prompt the user for their self-hosted server address.
  */
 function useThisMacOnFirstLaunch(): void {
   const config = loadConfig()
   if (config.serverChosen === true) return
-  saveConfig({
-    ...config,
-    serverUrl: normalizeServerUrl(config.serverUrl) ?? DEFAULT_SERVER_URL,
-    serverChosen: true,
-    serverName: "This Mac",
-    serverGuestMode: true,
-  })
+  if (process.env.SAYABOT_SERVER_URL) {
+    saveConfig({
+      ...config,
+      serverUrl: normalizeServerUrl(process.env.SAYABOT_SERVER_URL) ?? DEFAULT_SERVER_URL,
+      serverChosen: true,
+      serverName: "This Mac",
+      serverGuestMode: true,
+    })
+  }
 }
 
 function saveConfig(config: DesktopConfig): void {
@@ -685,96 +694,92 @@ export function appMenuTemplate(): MenuItemConstructorOptions[] {
     mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents.canGoForward(),
   )
   return [
-      {
-        label: "Sayabot",
-        submenu: [
-          { label: "About Sayabot", role: "about" },
-          updateMenuItem(),
-          { type: "separator" },
-          {
-            label: "Return to Controller",
-            click: () => loadLocalHtml(),
+    {
+      label: "Sayabot",
+      submenu: [
+        { label: "About Sayabot", role: "about" },
+        updateMenuItem(),
+        { type: "separator" },
+        {
+          label: "Return to Controller",
+          click: () => loadLocalHtml(),
+        },
+        {
+          label: "Open Workspace in Window",
+          click: () => {
+            void openWorkspaceInWindow()
           },
-          {
-            label: "Open Workspace in Window",
-            click: () => {
-              void openWorkspaceInWindow()
-            },
+        },
+        {
+          // Guests: sign in (or sign up) in the browser and bring the guest data along.
+          label: "Sign In to Existing Account…",
+          click: () => void signInFromMenu(),
+        },
+        {
+          label: "Change Server…",
+          click: () => void changeServerFromMenu(),
+        },
+        { type: "separator" },
+        { role: "hide" },
+        { role: "hideOthers" },
+        { role: "unhide" },
+        { type: "separator" },
+        { role: "quit" },
+      ],
+    },
+    {
+      label: "Edit",
+      submenu: [
+        { role: "undo" },
+        { role: "redo" },
+        { type: "separator" },
+        { role: "cut" },
+        { role: "copy" },
+        { role: "paste" },
+        { role: "selectAll" },
+      ],
+    },
+    {
+      label: "History",
+      submenu: [
+        {
+          label: "Back",
+          accelerator: process.platform === "darwin" ? "Command+[" : "Alt+Left",
+          enabled: canGoBack,
+          click: () => {
+            if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents.canGoBack()) {
+              mainWindow.webContents.goBack()
+            }
           },
-          {
-            // Guests: sign in (or sign up) in the browser and bring the guest data along.
-            label: "Sign In to Existing Account…",
-            click: () => void signInFromMenu(),
+        },
+        {
+          label: "Forward",
+          accelerator: process.platform === "darwin" ? "Command+]" : "Alt+Right",
+          enabled: canGoForward,
+          click: () => {
+            if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents.canGoForward()) {
+              mainWindow.webContents.goForward()
+            }
           },
-          {
-            label: "Change Server…",
-            click: () => void changeServerFromMenu(),
-          },
-          { type: "separator" },
-          { role: "hide" },
-          { role: "hideOthers" },
-          { role: "unhide" },
-          { type: "separator" },
-          { role: "quit" },
-        ],
-      },
-      {
-        label: "Edit",
-        submenu: [
-          { role: "undo" },
-          { role: "redo" },
-          { type: "separator" },
-          { role: "cut" },
-          { role: "copy" },
-          { role: "paste" },
-          { role: "selectAll" },
-        ],
-      },
-      {
-        label: "History",
-        submenu: [
-          {
-            label: "Back",
-            accelerator: process.platform === "darwin" ? "Command+[" : "Alt+Left",
-            enabled: canGoBack,
-            click: () => {
-              if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents.canGoBack()) {
-                mainWindow.webContents.goBack()
-              }
-            },
-          },
-          {
-            label: "Forward",
-            accelerator: process.platform === "darwin" ? "Command+]" : "Alt+Right",
-            enabled: canGoForward,
-            click: () => {
-              if (
-                mainWindow &&
-                !mainWindow.isDestroyed() &&
-                mainWindow.webContents.canGoForward()
-              ) {
-                mainWindow.webContents.goForward()
-              }
-            },
-          },
-        ],
-      },
-      {
-        label: "View",
-        submenu: [
-          { role: "reload" },
-          { role: "forceReload" },
-          { role: "toggleDevTools" },
-          { type: "separator" },
-          { role: "resetZoom" },
-          { role: "zoomIn" },
-          { role: "zoomOut" },
-          { type: "separator" },
-          { role: "togglefullscreen" },
-        ],
-      },
-      {
-        label: "Window",
+        },
+      ],
+    },
+    {
+      label: "View",
+      submenu: [
+        { role: "reload" },
+        { role: "forceReload" },
+        { role: "toggleDevTools" },
+        { type: "separator" },
+        { role: "resetZoom" },
+        { role: "zoomIn" },
+        { role: "zoomOut" },
+        { type: "separator" },
+        { role: "togglefullscreen" },
+      ],
+    },
+    {
+      label: "Window",
       submenu: [{ role: "minimize" }, { role: "zoom" }, { role: "close" }],
     },
   ]
@@ -846,7 +851,8 @@ function createWindow() {
       if (
         u.hostname === "accounts.google.com" ||
         u.hostname === "github.com" ||
-        (u.hostname.endsWith(".supabase.co") && (u.pathname.startsWith("/auth/v1/authorize") || u.pathname.includes("/oauth"))) ||
+        (u.hostname.endsWith(".supabase.co") &&
+          (u.pathname.startsWith("/auth/v1/authorize") || u.pathname.includes("/oauth"))) ||
         u.pathname.startsWith("/auth/v1/authorize")
       ) {
         return true
@@ -914,7 +920,9 @@ function accessTokenNearExpiry(accessToken: string, force: boolean): boolean {
 async function hasBrowserSession(serverUrl: string): Promise<boolean> {
   try {
     const cookies = await session.defaultSession.cookies.get({ url: serverUrl })
-    return cookies.some((cookie) => cookie.name.startsWith("sb-") && cookie.name.includes("auth-token"))
+    return cookies.some(
+      (cookie) => cookie.name.startsWith("sb-") && cookie.name.includes("auth-token"),
+    )
   } catch {
     return false
   }
@@ -964,7 +972,9 @@ async function refreshSessionOnce(force = false): Promise<AuthSession | null> {
       // The page often already rotated this token. Deleting the file made the next launch
       // start a new empty guest. Leave the file; the window keeps its own cookies.
       lastRefreshRejected = true
-      console.warn("[Sayabot Desktop] Saved refresh token was rejected. Keeping the window's login.")
+      console.warn(
+        "[Sayabot Desktop] Saved refresh token was rejected. Keeping the window's login.",
+      )
       return null
     }
     if (!res.ok) {
@@ -1011,14 +1021,17 @@ function refreshSessionIfNeeded(force = false): Promise<AuthSession | null> {
 
 // The page refreshes its own cookies. Copy those into the file. Only refresh the file when
 // no window is holding a login, so two refreshes cannot revoke the account.
-setInterval(() => {
-  void (async () => {
-    if (await flushLiveSessionFromPage()) return
-    const saved = loadSession()
-    if (!saved || (await hasBrowserSession(saved.serverUrl))) return
-    await refreshSessionIfNeeded()
-  })()
-}, 15 * 60 * 1000)
+setInterval(
+  () => {
+    void (async () => {
+      if (await flushLiveSessionFromPage()) return
+      const saved = loadSession()
+      if (!saved || (await hasBrowserSession(saved.serverUrl))) return
+      await refreshSessionIfNeeded()
+    })()
+  },
+  15 * 60 * 1000,
+)
 
 async function openWorkspaceInWindow() {
   const saved = loadSession()
@@ -1179,12 +1192,11 @@ let guestInFlight: Promise<{ ok: boolean; error?: string }> | null = null
 ipcMain.handle("auth:guest-status", () => {
   const config = loadConfig()
   const signedIn = Boolean(loadSession())
-  // Sayabot Cloud always allows starting without an account; a self-hosted server says so itself.
   const guestAllowed = config.serverGuestMode !== false
+  const needsServerChoice = (!config.serverChosen || serverSetupRequested) && !signedIn
   return {
-    needsServerChoice: serverSetupRequested && !signedIn,
-    autoStart:
-      !signedIn && !serverSetupRequested && !config.guestDeclined && guestAllowed,
+    needsServerChoice,
+    autoStart: !signedIn && !needsServerChoice && !config.guestDeclined && guestAllowed,
     guestAllowed,
   }
 })
@@ -1198,40 +1210,44 @@ ipcMain.handle("config:cancel-server-setup", () => {
 ipcMain.handle("config:server-info", () => {
   const config = loadConfig()
   const url = normalizeServerUrl(config.serverUrl) ?? DEFAULT_SERVER_URL
+  const name =
+    config.serverName ||
+    (url.includes("localhost") || url.includes("127.0.0.1") ? "Local Server" : new URL(url).host)
   return {
     url,
-    name: config.serverName || (url === DEFAULT_SERVER_URL ? "Sayabot Cloud" : new URL(url).host),
-    isCloud: url === DEFAULT_SERVER_URL,
+    name,
+    isCloud: false,
     chosen: Boolean(config.serverChosen),
   }
 })
 
 ipcMain.handle("config:check-server", (_event, input: string) => checkServer(input))
 
-/** The start screen's choice: Sayabot Cloud, or a server the person typed (checked first). */
+/** The start screen's choice: connect to a self-hosted server typed or default. */
 ipcMain.handle("config:choose-server", async (_event, input: string | null) => {
-  const info = await checkServer(input || DEFAULT_SERVER_URL)
+  const target = input || DEFAULT_SERVER_URL
+  const info = await checkServer(target)
   if (!info.ok) {
-    // Sayabot Cloud being briefly unreachable shouldn't block choosing it.
     if (!input) {
       serverSetupRequested = false
+      const fallbackName = target.includes("localhost") ? "Local Server" : new URL(target).host
       await useServer({
         ok: true,
-        url: DEFAULT_SERVER_URL,
-        name: "Sayabot Cloud",
-        edition: "cloud",
+        url: target,
+        name: fallbackName,
+        edition: "self-hosted",
         guestMode: true,
       })
-      return { ok: true, url: DEFAULT_SERVER_URL, name: "Sayabot Cloud", guestMode: true }
+      return { ok: true, url: target, name: fallbackName, guestMode: true }
     }
     return info
   }
   serverSetupRequested = false
-  await useServer(input ? info : { ...info, name: "Sayabot Cloud" })
+  await useServer(info)
   return {
     ok: true,
     url: info.url,
-    name: input ? info.name : "Sayabot Cloud",
+    name: info.name,
     guestMode: info.guestMode,
   }
 })

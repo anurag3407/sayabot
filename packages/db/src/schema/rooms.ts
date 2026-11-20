@@ -74,7 +74,10 @@ export const rooms = pgTable(
     index("rooms_org_idx").on(t.orgId),
     uniqueIndex("rooms_agent_dm_idx").on(t.agentDmUserId, t.agentDmAgentId),
     check("rooms_turn_cap_check", sql`${t.turnCap} between 1 and 10`),
-    check("rooms_execution_mode_check", sql`${t.executionMode} in ('review_all', 'ask_risky', 'auto', 'turbo')`),
+    check(
+      "rooms_execution_mode_check",
+      sql`${t.executionMode} in ('review_all', 'ask_risky', 'auto', 'turbo')`,
+    ),
   ],
 )
 
@@ -128,10 +131,7 @@ export const roomReads = pgTable(
     archived: boolean("archived").notNull().default(false),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [
-    primaryKey({ columns: [t.userId, t.roomId] }),
-    index("room_reads_room_idx").on(t.roomId),
-  ],
+  (t) => [primaryKey({ columns: [t.userId, t.roomId] }), index("room_reads_room_idx").on(t.roomId)],
 )
 
 /**

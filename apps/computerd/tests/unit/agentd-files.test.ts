@@ -1,7 +1,14 @@
 import { mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
-import { hashBytes, readFilePage, within, writeFileAtomic, editFileAtomic, MAX_FILE_BYTES } from "../../agentd/files"
+import {
+  hashBytes,
+  readFilePage,
+  within,
+  writeFileAtomic,
+  editFileAtomic,
+  MAX_FILE_BYTES,
+} from "../../agentd/files"
 
 let home: string
 let prev: string | undefined
@@ -12,7 +19,8 @@ beforeEach(() => {
   process.env.BOT_HOME = home
 })
 afterEach(() => {
-  if (prev === undefined) delete process.env.BOT_HOME; else process.env.BOT_HOME = prev
+  if (prev === undefined) delete process.env.BOT_HOME
+  else process.env.BOT_HOME = prev
   rmSync(home, { recursive: true, force: true })
 })
 
@@ -27,7 +35,9 @@ describe("within", () => {
 
 describe("hashBytes", () => {
   it("is the sha256 hex digest", () => {
-    expect(hashBytes(new TextEncoder().encode("hello"))).toBe("2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824")
+    expect(hashBytes(new TextEncoder().encode("hello"))).toBe(
+      "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+    )
   })
 })
 
@@ -49,7 +59,9 @@ describe("readFilePage / write / edit round-trip", () => {
   it("writeFileAtomic refuses to overwrite large existing file without allowOverwriteLarge", () => {
     const path = join(home, "large.txt")
     writeFileSync(path, "x".repeat(3000))
-    expect(() => writeFileAtomic({ path, content: "short" })).toThrow(/Refusing to overwrite existing file/)
+    expect(() => writeFileAtomic({ path, content: "short" })).toThrow(
+      /Refusing to overwrite existing file/,
+    )
     expect(readFilePage({ path }).size).toBe(3000)
 
     // Allowed when allowOverwriteLarge is true
@@ -69,7 +81,14 @@ describe("readFilePage / write / edit round-trip", () => {
   it("editFileAtomic rejects a stale hash without writing", () => {
     const path = join(home, "c.txt")
     writeFileSync(path, "original")
-    expect(() => editFileAtomic({ path, oldString: "original", newString: "changed", expectedHash: "0".repeat(64) })).toThrow()
+    expect(() =>
+      editFileAtomic({
+        path,
+        oldString: "original",
+        newString: "changed",
+        expectedHash: "0".repeat(64),
+      }),
+    ).toThrow()
     expect(readFilePage({ path }).content).toContain("original")
   })
 

@@ -24,7 +24,8 @@ export default async function SearchSettingsPage({ params }: { params: Promise<{
         <h2 className="text-[18px] font-medium tracking-tight text-text">Web Search Providers</h2>
         <p className="text-[13px] leading-relaxed text-muted">
           Configure search engines and web extraction APIs for autonomous agents in this workspace.
-          Agents use these providers during turns to search the live web, read current news, and ground code solutions.
+          Agents use these providers during turns to search the live web, read current news, and
+          ground code solutions.
         </p>
       </div>
 

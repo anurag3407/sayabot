@@ -20,7 +20,9 @@ describe("@sayabot/llm public API", () => {
   it("devModelConfig is null without env and populated with it", () => {
     expect(llm.devModelConfig({})).toBeNull()
     // all three vars are required — a missing API key means no dev model
-    expect(llm.devModelConfig({ DEV_OPENAI_COMPAT_BASE_URL: "http://x", DEV_OPENAI_COMPAT_MODEL: "m" })).toBeNull()
+    expect(
+      llm.devModelConfig({ DEV_OPENAI_COMPAT_BASE_URL: "http://x", DEV_OPENAI_COMPAT_MODEL: "m" }),
+    ).toBeNull()
     const cfg = llm.devModelConfig({
       DEV_OPENAI_COMPAT_BASE_URL: "http://localhost:11434/v1",
       DEV_OPENAI_COMPAT_API_KEY: "k",

@@ -91,11 +91,7 @@
             "NSExtensionActivationSupportsImageWithMaxCount": 4,
             "NSExtensionActivationSupportsFileWithMaxCount": 4
           },
-          "androidIntentFilters": [
-            "text/*",
-            "image/*",
-            "application/pdf"
-          ]
+          "androidIntentFilters": ["text/*", "image/*", "application/pdf"]
         }
       ]
     ]

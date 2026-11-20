@@ -15,7 +15,8 @@ type Client =
   | "chatgpt"
   | "prompt"
 
-type TargetApp = "codex" | "hermes" | "claude-code" | "cursor" | "antigravity" | "claude" | "chatgpt" | "generic"
+type TargetApp =
+  "codex" | "hermes" | "claude-code" | "cursor" | "antigravity" | "claude" | "chatgpt" | "generic"
 
 const CLIENTS: { id: Client; label: string }[] = [
   { id: "invite", label: "★ Copy Invitation Message" },
@@ -101,7 +102,8 @@ function snippet(
       }
     case "codex":
       return {
-        steps: "In your project folder, create or edit .codex/config.toml, then open Codex or run `codex`.",
+        steps:
+          "In your project folder, create or edit .codex/config.toml, then open Codex or run `codex`.",
         code: `[mcp_servers.${name}]\nurl = "${setupUrl}"`,
       }
     case "hermes":
@@ -116,35 +118,31 @@ function snippet(
       }
     case "cursor":
       return {
-        steps: "Add this configuration to ~/.cursor/mcp.json (or .cursor/mcp.json in your project).",
-        code: JSON.stringify(
-          { mcpServers: { [name]: { url: setupUrl } } },
-          null,
-          2,
-        ),
+        steps:
+          "Add this configuration to ~/.cursor/mcp.json (or .cursor/mcp.json in your project).",
+        code: JSON.stringify({ mcpServers: { [name]: { url: setupUrl } } }, null, 2),
       }
     case "antigravity":
       return {
         steps: "Add this configuration to ~/.gemini/settings.json.",
-        code: JSON.stringify(
-          { mcpServers: { [name]: { httpUrl: setupUrl } } },
-          null,
-          2,
-        ),
+        code: JSON.stringify({ mcpServers: { [name]: { httpUrl: setupUrl } } }, null, 2),
       }
     case "claude":
       return {
-        steps: "Settings → Connectors → Add custom connector. Paste this URL, leave OAuth empty, then enable the connector in a chat.",
+        steps:
+          "Settings → Connectors → Add custom connector. Paste this URL, leave OAuth empty, then enable the connector in a chat.",
         code: setupUrl,
       }
     case "chatgpt":
       return {
-        steps: "Settings → Apps & Connectors → Advanced → turn on Developer mode → Create. Paste this URL, choose “No authentication”, then add it to a chat.",
+        steps:
+          "Settings → Apps & Connectors → Advanced → turn on Developer mode → Create. Paste this URL, choose “No authentication”, then add it to a chat.",
         code: setupUrl,
       }
     case "prompt":
       return {
-        steps: "Paste this kickoff prompt into your agent's chat once connected so it begins working immediately:",
+        steps:
+          "Paste this kickoff prompt into your agent's chat once connected so it begins working immediately:",
         code: `You are @${handle}, a teammate in my Saaya room "${roomName}" (connected via connector "${name}").
 1. Call check_in first to see unread mentions, tasks, and team members.
 2. Call get_room_messages to read recent discussion.
@@ -252,7 +250,8 @@ export function McpConnect({
 
       {client === "invite" ? (
         <p className="font-mono text-[11px] text-faint">
-          The link contains your private agent key. When pasted into Codex, Hermes, or Claude Code, the agent fetches its instructions, joins the room, and starts checking in!
+          The link contains your private agent key. When pasted into Codex, Hermes, or Claude Code,
+          the agent fetches its instructions, joins the room, and starts checking in!
         </p>
       ) : null}
     </div>

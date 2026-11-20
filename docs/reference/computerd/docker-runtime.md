@@ -13,26 +13,26 @@ Source files: `apps/computerd/src/docker.ts`, `apps/computerd/src/backends/docke
 ```typescript
 if (env.DOCKER_HOST) return env.DOCKER_HOST
 const candidates = [
-  "/var/run/docker.sock",                       // VPS / compose / standard Linux
-  join(home, ".docker/run/docker.sock"),        // Docker Desktop (macOS)
-  join(home, ".orbstack/run/docker.sock"),      // OrbStack
-  join(home, ".colima/default/docker.sock"),    // Colima
-  join(home, ".rd/docker.sock"),                // Rancher Desktop
+  "/var/run/docker.sock", // VPS / compose / standard Linux
+  join(home, ".docker/run/docker.sock"), // Docker Desktop (macOS)
+  join(home, ".orbstack/run/docker.sock"), // OrbStack
+  join(home, ".colima/default/docker.sock"), // Colima
+  join(home, ".rd/docker.sock"), // Rancher Desktop
 ]
 for (const p of candidates) if (exists(p)) return `unix://${p}`
-return "http://docker-proxy:2375"               // TCP proxy service name
+return "http://docker-proxy:2375" // TCP proxy service name
 ```
 
 1. `DOCKER_HOST` wins if set.
 2. Otherwise the first existing socket path wins:
 
-| Candidate | Runtime |
-| :--- | :--- |
-| `/var/run/docker.sock` | VPS / compose / standard Linux daemon |
-| `~/.docker/run/docker.sock` | Docker Desktop (macOS) |
-| `~/.orbstack/run/docker.sock` | OrbStack |
-| `~/.colima/default/docker.sock` | Colima |
-| `~/.rd/docker.sock` | Rancher Desktop |
+| Candidate                       | Runtime                               |
+| :------------------------------ | :------------------------------------ |
+| `/var/run/docker.sock`          | VPS / compose / standard Linux daemon |
+| `~/.docker/run/docker.sock`     | Docker Desktop (macOS)                |
+| `~/.orbstack/run/docker.sock`   | OrbStack                              |
+| `~/.colima/default/docker.sock` | Colima                                |
+| `~/.rd/docker.sock`             | Rancher Desktop                       |
 
 3. Fallback: `http://docker-proxy:2375` (a TCP proxy service name).
 
@@ -48,19 +48,19 @@ Socket URLs (`/path` or `unix://path`) are routed through `unixRequest` (`docker
 - JSON content types are parsed; other bodies are returned as the raw `Response` (callers stream them, e.g. exec attach). Parsed JSON responses cancel any unconsumed body (`res.body?.cancel()`) so sockets do not leak.
 - `inspectContainer` maps a 404 to `null` instead of throwing (`docker.ts:155-162`).
 
-| Method | Engine API | Notes |
-| :--- | :--- | :--- |
-| `inspectContainer(idOrName)` | `GET /containers/{id}/json` | `null` on 404 |
-| `listContainers(label, all = false)` | `GET /containers/json` | label-filtered summaries; computerd filters on `saaya.agent` |
-| `createContainer(config)` | `POST /containers/create?name=…` | full `DockerContainerConfig` body |
-| `startContainer` / `stopContainer(t)` / `removeContainer(force, v=true)` | `POST …/start`, `POST …/stop?t=`, `DELETE /containers/{id}` | stop timeout, force+volume removal |
-| `removeVolume(name, force)` | `DELETE /volumes/{name}` | used by "delete disk" |
-| `inspectNetwork(name)` / `createNetwork(name, internal)` | `GET`/`POST /networks/…` | creates the internal `botnet` bridge on first use |
-| `info()` | `GET /info` | `MemTotal` (auto capacity), `NCPU`, `Runtimes` (gVisor detection) |
-| `version()` | `GET /version` | `ApiVersion` gates the volume-subpath fast path (≥ 1.45) |
-| `execCreate(idOrName, cmd)` | `POST /containers/{id}/exec` | `AttachStdout`/`AttachStderr`, returns exec id |
-| `execStart(execId)` | `POST /exec/{id}/start` | raw streamed `Response` (multiplexed attach stream) |
-| `ping()` | `GET /_ping` | boolean reachability probe used by backend auto-selection |
+| Method                                                                   | Engine API                                                  | Notes                                                             |
+| :----------------------------------------------------------------------- | :---------------------------------------------------------- | :---------------------------------------------------------------- |
+| `inspectContainer(idOrName)`                                             | `GET /containers/{id}/json`                                 | `null` on 404                                                     |
+| `listContainers(label, all = false)`                                     | `GET /containers/json`                                      | label-filtered summaries; computerd filters on `saaya.agent`      |
+| `createContainer(config)`                                                | `POST /containers/create?name=…`                            | full `DockerContainerConfig` body                                 |
+| `startContainer` / `stopContainer(t)` / `removeContainer(force, v=true)` | `POST …/start`, `POST …/stop?t=`, `DELETE /containers/{id}` | stop timeout, force+volume removal                                |
+| `removeVolume(name, force)`                                              | `DELETE /volumes/{name}`                                    | used by "delete disk"                                             |
+| `inspectNetwork(name)` / `createNetwork(name, internal)`                 | `GET`/`POST /networks/…`                                    | creates the internal `botnet` bridge on first use                 |
+| `info()`                                                                 | `GET /info`                                                 | `MemTotal` (auto capacity), `NCPU`, `Runtimes` (gVisor detection) |
+| `version()`                                                              | `GET /version`                                              | `ApiVersion` gates the volume-subpath fast path (≥ 1.45)          |
+| `execCreate(idOrName, cmd)`                                              | `POST /containers/{id}/exec`                                | `AttachStdout`/`AttachStderr`, returns exec id                    |
+| `execStart(execId)`                                                      | `POST /exec/{id}/start`                                     | raw streamed `Response` (multiplexed attach stream)               |
+| `ping()`                                                                 | `GET /_ping`                                                | boolean reachability probe used by backend auto-selection         |
 
 ### Container config shape
 
@@ -72,14 +72,14 @@ Socket URLs (`/path` or `unix://path`) are routed through `unixRequest` (`docker
 
 The concrete container spec built on this client lives in `backends/docker.ts` (full treatment in [backends.md](backends.md)); the resource-naming facts:
 
-| Resource | Name / value | Defined at |
-| :--- | :--- | :--- |
-| Container | `bot-${agentId}` | `backends/docker.ts:38` |
-| Disk volume | `saaya-bot-${agentId}`, bind-mounted `…:/home/bot:rw` | `backends/docker.ts:39`, `:234` |
-| Control volume | `saaya-agentd`, subpath-mounted per container at `/run/agentd-ctl` | `backends/docker.ts:35`, `:191-203` |
-| CA bundle | `saaya-egress-ca` volume, read-only at `/usr/local/share/ca-certificates/saaya` | `backends/docker.ts:235` |
-| Network | `COMPUTER_NETWORK` (default `botnet`, internal bridge) | `backends/docker.ts:149-156` |
-| gVisor | `COMPUTER_DOCKER_RUNTIME=runsc`, or `auto` picks `runsc` when present in `info().Runtimes` | `backends/docker.ts:111-120` |
+| Resource       | Name / value                                                                               | Defined at                          |
+| :------------- | :----------------------------------------------------------------------------------------- | :---------------------------------- |
+| Container      | `bot-${agentId}`                                                                           | `backends/docker.ts:38`             |
+| Disk volume    | `saaya-bot-${agentId}`, bind-mounted `…:/home/bot:rw`                                      | `backends/docker.ts:39`, `:234`     |
+| Control volume | `saaya-agentd`, subpath-mounted per container at `/run/agentd-ctl`                         | `backends/docker.ts:35`, `:191-203` |
+| CA bundle      | `saaya-egress-ca` volume, read-only at `/usr/local/share/ca-certificates/saaya`            | `backends/docker.ts:235`            |
+| Network        | `COMPUTER_NETWORK` (default `botnet`, internal bridge)                                     | `backends/docker.ts:149-156`        |
+| gVisor         | `COMPUTER_DOCKER_RUNTIME=runsc`, or `auto` picks `runsc` when present in `info().Runtimes` | `backends/docker.ts:111-120`        |
 
 The fast path (agentd Unix socket) requires a **volume subpath mount**, which needs Docker Engine API ≥ 1.45, the `runc` runtime (gVisor cannot share the host-side mount), and a host-visible `AGENTD_CTL_ROOT`; otherwise computerd falls back to `docker exec /opt/agentd/agentd-cli` (`backends/docker.ts:163-183`).
 
@@ -115,7 +115,7 @@ export interface DockerMount {
   Source: string
   Target: string
   ReadOnly?: boolean
-  VolumeOptions?: { Subpath?: string }   // used for the per-container agentd-ctl subpath
+  VolumeOptions?: { Subpath?: string } // used for the per-container agentd-ctl subpath
 }
 
 export interface DockerContainerConfig {
@@ -125,18 +125,18 @@ export interface DockerContainerConfig {
   Env?: string[]
   Labels?: Record<string, string>
   HostConfig?: {
-    Runtime?: string           // "runsc" selects gVisor
-    NetworkMode?: string       // "botnet"
+    Runtime?: string // "runsc" selects gVisor
+    NetworkMode?: string // "botnet"
     ReadonlyRootfs?: boolean
     Tmpfs?: Record<string, string>
-    Binds?: string[]           // volume:/home/bot + egress CA
+    Binds?: string[] // volume:/home/bot + egress CA
     Mounts?: DockerMount[]
     NanoCpus?: number
     Memory?: number
     MemorySwap?: number
     PidsLimit?: number
     CapDrop?: string[]
-    SecurityOpt?: string[]     // no-new-privileges
+    SecurityOpt?: string[] // no-new-privileges
     RestartPolicy?: { Name: string }
   }
 }
@@ -146,12 +146,12 @@ export interface DockerContainerConfig {
 
 ## 🧯 Error Semantics
 
-| Condition | What happens |
-| :--- | :--- |
-| Docker daemon down (EACCES/ECONNREFUSED/ENOENT on the socket) | `DockerBackend.inspect` converts it to `BackendUnavailableError` → HTTP 503 "docker daemon is not reachable — start Docker Desktop/OrbStack, or set COMPUTER_BACKEND" (`backends/docker.ts:77-88`) |
-| Container missing on exec create (404) or not running (409) | converted to `ComputerGoneError`, triggering the lifecycle's wake-and-retry |
-| `docker stop` on an already-stopped (304) or missing (404) container | tolerated — sleep is idempotent |
-| `removeContainer` / `removeVolume` failures | swallowed; removal is best-effort so a bad volume never wedges the lifecycle |
+| Condition                                                            | What happens                                                                                                                                                                                       |
+| :------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Docker daemon down (EACCES/ECONNREFUSED/ENOENT on the socket)        | `DockerBackend.inspect` converts it to `BackendUnavailableError` → HTTP 503 "docker daemon is not reachable — start Docker Desktop/OrbStack, or set COMPUTER_BACKEND" (`backends/docker.ts:77-88`) |
+| Container missing on exec create (404) or not running (409)          | converted to `ComputerGoneError`, triggering the lifecycle's wake-and-retry                                                                                                                        |
+| `docker stop` on an already-stopped (304) or missing (404) container | tolerated — sleep is idempotent                                                                                                                                                                    |
+| `removeContainer` / `removeVolume` failures                          | swallowed; removal is best-effort so a bad volume never wedges the lifecycle                                                                                                                       |
 
 ## 🧵 Concurrency Notes
 

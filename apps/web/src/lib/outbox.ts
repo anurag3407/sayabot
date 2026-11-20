@@ -25,7 +25,10 @@ export async function enqueueOutbox(item: OutboxItem): Promise<void> {
 
 async function removeOutbox(id: string): Promise<void> {
   const items = await readOutbox()
-  await set(KEY, items.filter((item) => item.id !== id))
+  await set(
+    KEY,
+    items.filter((item) => item.id !== id),
+  )
 }
 
 export async function flushOutbox(): Promise<{ sent: number; failed: number }> {

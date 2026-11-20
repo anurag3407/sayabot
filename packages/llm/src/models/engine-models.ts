@@ -191,7 +191,10 @@ export function listPriceFor(
  * An engine's models from the Sayabot manifest, for a CLI this process cannot run itself (one on
  * someone's Mac reports only its version). Marks models that version is too old for.
  */
-export function engineCatalogFromManifest(engine: ManifestEngine, version: string | null): EngineCatalog {
+export function engineCatalogFromManifest(
+  engine: ManifestEngine,
+  version: string | null,
+): EngineCatalog {
   return manifestCatalog(engine, version)
 }
 

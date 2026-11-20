@@ -88,19 +88,19 @@ openssl rand -hex 32      # ORCHESTRATOR_INTERNAL_SECRET
 
 Core Platform Variables:
 
-| Variable                        | Used by               | Notes                                                                                                                             |
-| ------------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `NEXT_PUBLIC_SUPABASE_URL`      | web, orchestrator     | Supabase project URL                                                                                                              |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | web                   | browser and SSR client                                                                                                            |
-| `SUPABASE_SERVICE_ROLE_KEY`     | web, orchestrator     | server only, never expose to client                                                                                               |
-| `DATABASE_URL`                  | web, orchestrator, db | PostgreSQL connection string (**Port 5432 Session Pooler**)                                                                       |
-| `DATABASE_POOL_MAX`             | web, orchestrator     | optional, connection pool limit per process (default: `15`–`30`)                                                                  |
+| Variable                        | Used by               | Notes                                                                                                                                 |
+| ------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`      | web, orchestrator     | Supabase project URL                                                                                                                  |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | web                   | browser and SSR client                                                                                                                |
+| `SUPABASE_SERVICE_ROLE_KEY`     | web, orchestrator     | server only, never expose to client                                                                                                   |
+| `DATABASE_URL`                  | web, orchestrator, db | PostgreSQL connection string (**Port 5432 Session Pooler**)                                                                           |
+| `DATABASE_POOL_MAX`             | web, orchestrator     | optional, connection pool limit per process (default: `15`–`30`)                                                                      |
 | `SAYABOT_KEK`                   | web, orchestrator     | 32-byte Base64 key for AES-256-GCM envelope encryption (`workspace_connectors`, `vaults`, bot credentials). Legacy alias: `MESH_KEK`. |
-| `SAYABOT_DOMAIN`                | deploy, nginx         | Public hostname for self-hosted deployments (e.g. `sayabot.example.com`). Legacy alias: `MESH_DOMAIN`.                             |
-| `ORCHESTRATOR_INTERNAL_SECRET`  | web, orchestrator     | 32-byte Hex secret authenticating internal `/internal/*` routes                                                                   |
-| `ORCHESTRATOR_URL`              | web                   | e.g. `https://sayabot-orch.fly.dev` or `http://orchestrator:4000`                                                                 |
-| `NEXT_PUBLIC_COLLAB_URL`        | web                   | e.g. `wss://sayabot-orch.fly.dev/collab`                                                                                          |
-| `NEXT_PUBLIC_SITE_URL`          | web                   | public app URL for auth callbacks and invite links                                                                                |
+| `SAYABOT_DOMAIN`                | deploy, nginx         | Public hostname for self-hosted deployments (e.g. `sayabot.example.com`). Legacy alias: `MESH_DOMAIN`.                                |
+| `ORCHESTRATOR_INTERNAL_SECRET`  | web, orchestrator     | 32-byte Hex secret authenticating internal `/internal/*` routes                                                                       |
+| `ORCHESTRATOR_URL`              | web                   | e.g. `https://sayabot-orch.fly.dev` or `http://orchestrator:4000`                                                                     |
+| `NEXT_PUBLIC_COLLAB_URL`        | web                   | e.g. `wss://sayabot-orch.fly.dev/collab`                                                                                              |
+| `NEXT_PUBLIC_SITE_URL`          | web                   | public app URL for auth callbacks and invite links                                                                                    |
 
 Workspace Connector Variables:
 

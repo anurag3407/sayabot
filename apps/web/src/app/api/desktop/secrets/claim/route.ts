@@ -30,25 +30,55 @@ export async function POST(request: Request) {
     .eq("status", "queued")
     .select("id, org_id, connector_id, source, action, query, vault")
     .maybeSingle()
-  if (!job || job.org_id !== host.org_id || !SOURCES.has(job.source)) return NextResponse.json({ job: null })
+  if (!job || job.org_id !== host.org_id || !SOURCES.has(job.source))
+    return NextResponse.json({ job: null })
 
   const { data: connector } = await admin
     .from("workspace_connectors")
     .select("ciphertext, iv, tag, org_id, source, status")
     .eq("id", job.connector_id)
     .maybeSingle()
-  if (!connector || connector.org_id !== host.org_id || connector.source !== job.source || connector.status !== "active") {
-    await admin.from("desktop_secret_jobs").update({ status: "failed", error: "Connector is not available", finished_at: new Date().toISOString() }).eq("id", job.id)
+  if (
+    !connector ||
+    connector.org_id !== host.org_id ||
+    connector.source !== job.source ||
+    connector.status !== "active"
+  ) {
+    await admin
+      .from("desktop_secret_jobs")
+      .update({
+        status: "failed",
+        error: "Connector is not available",
+        finished_at: new Date().toISOString(),
+      })
+      .eq("id", job.id)
     return NextResponse.json({ job: null })
   }
   let token = ""
   try {
-    token = decryptSecret({ ciphertext: connector.ciphertext, iv: connector.iv, tag: connector.tag }, getKek())
+    token = decryptSecret(
+      { ciphertext: connector.ciphertext, iv: connector.iv, tag: connector.tag },
+      getKek(),
+    )
   } catch {
-    await admin.from("desktop_secret_jobs").update({ status: "failed", error: "Could not read the saved key", finished_at: new Date().toISOString() }).eq("id", job.id)
+    await admin
+      .from("desktop_secret_jobs")
+      .update({
+        status: "failed",
+        error: "Could not read the saved key",
+        finished_at: new Date().toISOString(),
+      })
+      .eq("id", job.id)
     return NextResponse.json({ job: null })
   }
   return NextResponse.json({
-    job: { id: job.id, source: job.source, action: job.action, query: job.query, vault: job.vault, token },
+    job: {
+      id: job.id,
+      source: job.source,
+      action: job.action,
+      query: job.query,
+      vault: job.vault,
+      token,
+    },
   })
 }

@@ -12,7 +12,6 @@ export interface UsageTokenTotals {
   reasoningTokens: number
 }
 
-
 export interface ScannedUsageRecord {
   id: string
   provider: LocalProvider
@@ -141,4 +140,3 @@ export interface ScannedUsageResult {
   scannedAt: string
   providersScanned: LocalProvider[]
 }
-

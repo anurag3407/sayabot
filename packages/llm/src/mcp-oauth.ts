@@ -37,7 +37,8 @@ export function sealMcpOAuthState(state: McpOAuthState, kek: string): string {
 
 export function openMcpOAuthState(sealed: string, kek: string): McpOAuthState {
   const parsed = JSON.parse(openSecret(sealed, kek)) as McpOAuthState
-  if (!parsed || typeof parsed.redirectUrl !== "string") throw new Error("Unreadable MCP sign-in state")
+  if (!parsed || typeof parsed.redirectUrl !== "string")
+    throw new Error("Unreadable MCP sign-in state")
   return parsed
 }
 
@@ -155,11 +156,16 @@ export class StoredMcpOAuthProvider implements OAuthClientProvider {
     return this.current.authorizationServer
   }
 
-  async saveAuthorizationServerInformation(authorizationServer: OAuthAuthorizationServerInformation) {
+  async saveAuthorizationServerInformation(
+    authorizationServer: OAuthAuthorizationServerInformation,
+  ) {
     await this.save({ authorizationServer })
   }
 
-  async validateAuthorizationServerURL(_serverUrl: string | URL, authorizationServerUrl: string | URL) {
+  async validateAuthorizationServerURL(
+    _serverUrl: string | URL,
+    authorizationServerUrl: string | URL,
+  ) {
     await assertSafeOAuthUrl(authorizationServerUrl)
   }
 
@@ -225,7 +231,8 @@ export async function beginMcpOAuth(args: {
     },
   })
   const result = await auth(provider, { serverUrl: args.serverUrl, fetchFn: safeOAuthFetch })
-  if (result === "REDIRECT" && !authorizationUrl) throw new Error("The app did not return a sign-in page")
+  if (result === "REDIRECT" && !authorizationUrl)
+    throw new Error("The app did not return a sign-in page")
   return { authorizationUrl: result === "REDIRECT" ? authorizationUrl : null }
 }
 

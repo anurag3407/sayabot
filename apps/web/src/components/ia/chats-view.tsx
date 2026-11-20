@@ -44,7 +44,10 @@ function Handoffs({ orgSlug, handoffs }: { orgSlug: string; handoffs: BotChatVie
                     <p className="mt-0.5 line-clamp-4 text-muted">{message.content}</p>
                   </div>
                 ))}
-                <Link href={`/${orgSlug}/r/${handoff.roomId}`} className="inline-block text-[13px] text-accent">
+                <Link
+                  href={`/${orgSlug}/r/${handoff.roomId}`}
+                  className="inline-block text-[13px] text-accent"
+                >
                   Open room
                 </Link>
               </div>
@@ -91,7 +94,9 @@ export function ChatsView({
               />
             ))}
           </div>
-          <h1 className="mt-6 text-[22px] font-medium tracking-[-0.02em]">Pick up where you left off</h1>
+          <h1 className="mt-6 text-[22px] font-medium tracking-[-0.02em]">
+            Pick up where you left off
+          </h1>
           <p className="mt-2 max-w-sm text-[14px] leading-relaxed text-muted">
             {inboxCount > 0
               ? `${inboxCount} ${inboxCount === 1 ? "item needs" : "items need"} your decision. Choose a chat to keep going.`

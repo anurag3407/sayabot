@@ -12,11 +12,11 @@ Source files: `src/navigation/RootNavigator.tsx`, `src/navigation/TabNavigator.t
 
 `RootNavigator` renders one `Stack.Navigator` inside a themed `NavigationContainer` (ref stored in `navigationRef`, `onReady={flushPendingNavigation}`) and picks its screens from three states (`RootNavigator.tsx:134-163`):
 
-| State | Screen(s) |
-| :-- | :-- |
-| Not authenticated (`!session && !demoMode`) | `Auth` — `AuthScreen` receives `onEnterDemo={() => setDemoMode(true)}` |
-| Authenticated but `!settings.onboarded` | `Onboarding` (`OnboardingScreen`) |
-| Authenticated and onboarded | `MainTabs`, `Chat`, `AgentProfile`, `WebPage`, `ShareTarget` (bottom-sheet modal), `Usage`, `Computers`, `AdvancedSettings` |
+| State                                       | Screen(s)                                                                                                                   |
+| :------------------------------------------ | :-------------------------------------------------------------------------------------------------------------------------- |
+| Not authenticated (`!session && !demoMode`) | `Auth` — `AuthScreen` receives `onEnterDemo={() => setDemoMode(true)}`                                                      |
+| Authenticated but `!settings.onboarded`     | `Onboarding` (`OnboardingScreen`)                                                                                           |
+| Authenticated and onboarded                 | `MainTabs`, `Chat`, `AgentProfile`, `WebPage`, `ShareTarget` (bottom-sheet modal), `Usage`, `Computers`, `AdvancedSettings` |
 
 Shared `screenOptions`: headers hidden, `contentStyle` background `theme.bg`, `animation: "slide_from_right"`, `fullScreenGestureEnabled` (`RootNavigator.tsx:126-132`). The three settings-ish screens (`Usage`, `Computers`, `AdvancedSettings`) re-enable native headers with `headerBackTitle: "More"` and theme-colored tint (`RootNavigator.tsx:147-161`). While `loading || settingsLoading`, a full-screen `ActivityIndicator` splash shows instead (`RootNavigator.tsx:105-118`).
 
@@ -28,12 +28,12 @@ The whole container is wrapped in `<AppLockGate>` (`RootNavigator.tsx:123`). `Si
 
 `createBottomTabNavigator` with four tabs (`TabNavigator.tsx:49-61`):
 
-| Tab name | Label | Icon (lucide) | Screen |
-| :-- | :-- | :-- | :-- |
-| `HomeTab` | Chats | `MessageCircle` | `HomeScreen` |
-| `InboxTab` | Inbox | `Bell` | `InboxScreen` |
-| `TasksTab` | Tasks | `CheckSquare` | `TasksScreen` |
-| `MoreTab` | More | `Ellipsis` | `MoreScreen` |
+| Tab name   | Label | Icon (lucide)   | Screen        |
+| :--------- | :---- | :-------------- | :------------ |
+| `HomeTab`  | Chats | `MessageCircle` | `HomeScreen`  |
+| `InboxTab` | Inbox | `Bell`          | `InboxScreen` |
+| `TasksTab` | Tasks | `CheckSquare`   | `TasksScreen` |
+| `MoreTab`  | More  | `Ellipsis`      | `MoreScreen`  |
 
 - The Inbox tab shows a live badge: `questions.length + approvals` from `useInbox(settings.orgSlug)` (`TabNavigator.tsx:23-24, 56-58`).
 - iOS gets a translucent tab bar (`position: "absolute"`, transparent background) with an `expo-blur` `BlurView` background tinted per theme; Android uses a solid `theme.surface` bar (`TabNavigator.tsx:31-42`).
@@ -58,6 +58,7 @@ The phone can sign in against Sayabot Cloud or a self-hosted server, so the Supa
   3. **Sayabot Cloud, first launch.** When the built-in URL is a placeholder (`isPlaceholderSupabaseUrl` in `src/core/server-url.ts`), startup waits for `checkServer(ENV.WEB_API_URL)` (8 s timeout) and switches to Cloud's project. Otherwise it keeps the built-in values and fetches Cloud's answer in the background.
 
   So Cloud's Supabase project always comes from Cloud itself, the same way a self-hosted server's does. A build made without `EXPO_PUBLIC_SUPABASE_URL` can still sign in. Before this change, such builds (APK 1.1.0) compared the placeholder URL with Cloud's and rejected every code with "This copy of the app is set up for a different Sayabot server".
+
 - `saveServer(server | null)` persists or clears the record `{ webApiUrl, name, supabaseUrl, supabaseAnonKey }` (`supabase.ts:85-88`, `12-17`).
 
 ---

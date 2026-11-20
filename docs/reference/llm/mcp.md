@@ -10,16 +10,16 @@ Source files: `packages/llm/src/mcp.ts` (367 lines), `packages/llm/src/mcp.test.
 
 ```typescript
 export interface McpServerConfig {
-  id: string                          // unique per connect call
+  id: string // unique per connect call
   name: string
   transport: "http" | "sse" | "stdio"
-  url: string                         // non-stdio
-  headers?: Record<string, string>    // e.g. a bearer token for "static"-auth servers
-  command?: string                    // stdio: local programs only
+  url: string // non-stdio
+  headers?: Record<string, string> // e.g. a bearer token for "static"-auth servers
+  command?: string // stdio: local programs only
   args?: string[]
   env?: Record<string, string>
-  authProvider?: OAuthClientProvider  // sign-in servers: bearer token + 401 refresh (see mcp-oauth.md)
-  dangerousTools: string[]            // tool names that wait for a person's OK
+  authProvider?: OAuthClientProvider // sign-in servers: bearer token + 401 refresh (see mcp-oauth.md)
+  dangerousTools: string[] // tool names that wait for a person's OK
 }
 ```
 
@@ -80,16 +80,16 @@ export function mcpToolName(serverName: string, toolName: string): string
 
 (`mcp.ts:77-81`.) `"GitHub" + "list_issues"` → `github__list_issues`; `"My Server" + "Get-Item"` → `my_server__Get-Item`; non-ASCII or overlong names are sanitized/truncated to `/^[a-zA-Z0-9_-]{1,64}$/`.
 
-Collisions (two servers with the same slug, or tools that sanitize to the same name, including `__proto__`/`constructor`) are resolved deterministically: candidates are ordered preferring an *unchanged legacy* name, then by server name, id, and original tool name; each subsequent collision gets a deterministic 12-char SHA-256 suffix (`mcp.ts:333-352`). A test pins that reordering the input configs yields identical `tools` keys and `meta`, and that a server advertising a tool literally named like a generated suffix cannot steal the reserved name.
+Collisions (two servers with the same slug, or tools that sanitize to the same name, including `__proto__`/`constructor`) are resolved deterministically: candidates are ordered preferring an _unchanged legacy_ name, then by server name, id, and original tool name; each subsequent collision gets a deterministic 12-char SHA-256 suffix (`mcp.ts:333-352`). A test pins that reordering the input configs yields identical `tools` keys and `meta`, and that a server advertising a tool literally named like a generated suffix cannot steal the reserved name.
 
 ### Result
 
 ```typescript
 export interface McpToolsResult {
-  tools: ToolSet                 // AI SDK tools; execute() routes to the owning server
+  tools: ToolSet // AI SDK tools; execute() routes to the owning server
   meta: Record<string, McpToolMeta>
   errors: { serverName: string; message: string }[]
-  call: (serverId, toolName, args, signal?) => Promise<unknown>  // raw-text convenience path
+  call: (serverId, toolName, args, signal?) => Promise<unknown> // raw-text convenience path
   close: () => Promise<void>
 }
 
@@ -97,8 +97,8 @@ export interface McpToolMeta {
   serverId: string
   serverName: string
   originalName: string
-  dangerous: boolean             // from server.dangerousTools via isDangerousMcpTool
-  annotations?: McpToolAnnotations  // display-only server claims
+  dangerous: boolean // from server.dangerousTools via isDangerousMcpTool
+  annotations?: McpToolAnnotations // display-only server claims
 }
 ```
 
@@ -117,11 +117,11 @@ export interface McpToolMeta {
 
 Fail-closed vs. keep-alive (`mcp.ts:322-330`):
 
-| Outcome | Connection |
-| :-- | :-- |
-| `McpToolError` (tool-level `isError`) | **Kept** — a failed operation says nothing about the transport |
+| Outcome                                                         | Connection                                                      |
+| :-------------------------------------------------------------- | :-------------------------------------------------------------- |
+| `McpToolError` (tool-level `isError`)                           | **Kept** — a failed operation says nothing about the transport  |
 | Caller cancelled only (`callSignal.aborted && !signal.aborted`) | **Kept** — cancelling one request says nothing about the server |
-| Transport rejection, malformed response, timeout | **Removed and closed**; later calls throw "not connected" |
+| Transport rejection, malformed response, timeout                | **Removed and closed**; later calls throw "not connected"       |
 
 Lifecycle: `close()` aborts the lifetime signal (ending all in-flight calls), closes every client within `closeTimeoutMs`, and is idempotent (returns the same promise). An external `options.signal` close triggers the same path (`mcp.ts:196-210`). Tests pin: closing twice closes the client once; closing aborts an active call; a pre-aborted external signal never starts SDK work or egress checks.
 
@@ -131,12 +131,12 @@ Lifecycle: `close()` aborts the lifetime signal (ending all in-flight calls), cl
 
 The suite mocks `@ai-sdk/mcp` (`createMCPClient`) and `assertSafeEgressHost`:
 
-| Suite | Pins |
-| :-- | :-- |
-| Naming | `mcpToolName` slugification; deterministic sorted tool order regardless of input order; collision suffixes stable across runs and reorderings; suffix names cannot steal reserved common names; annotations sanitized without touching `dangerousTools` |
-| Discovery | Paged listing carries `params.cursor` and `options: { timeout, maxTotalTimeout }` matching the budget; initialization signal + `maxRetries: 0`; duplicate / repeated-cursor / >1000-tool catalogs fail closed with the client closed exactly once |
-| Network validation | `http://`, `ftp://`, `file://`, `user:pass@`, `#fragment`, `not-a-url` all rejected before `createMCPClient`; SSRF checked (even in tests); transport `redirect: "error"`; `ALLOW_LOCAL_MCP=true` permits `http://localhost` only — never non-HTTP protocols; unsupported transports and duplicate ids rejected |
-| Lifecycle | Discovery failures close the bad client and keep good ones; raw args forwarded, text/resource results joined (`"one\ntwo\n[image]"`); undiscovered tool names refused without touching the SDK; `isError` keeps the server connected; concurrent connection (peak 3); rejection/malformed closes the client; direct SDK `execute` guarded with cancellation propagation without dropping the server; `onUncaughtError` closes; startup/listing/call/close all bounded under fake timers; close aborts active calls; pre-cancelled signal does no work |
+| Suite              | Pins                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| :----------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Naming             | `mcpToolName` slugification; deterministic sorted tool order regardless of input order; collision suffixes stable across runs and reorderings; suffix names cannot steal reserved common names; annotations sanitized without touching `dangerousTools`                                                                                                                                                                                                                                                                                               |
+| Discovery          | Paged listing carries `params.cursor` and `options: { timeout, maxTotalTimeout }` matching the budget; initialization signal + `maxRetries: 0`; duplicate / repeated-cursor / >1000-tool catalogs fail closed with the client closed exactly once                                                                                                                                                                                                                                                                                                     |
+| Network validation | `http://`, `ftp://`, `file://`, `user:pass@`, `#fragment`, `not-a-url` all rejected before `createMCPClient`; SSRF checked (even in tests); transport `redirect: "error"`; `ALLOW_LOCAL_MCP=true` permits `http://localhost` only — never non-HTTP protocols; unsupported transports and duplicate ids rejected                                                                                                                                                                                                                                       |
+| Lifecycle          | Discovery failures close the bad client and keep good ones; raw args forwarded, text/resource results joined (`"one\ntwo\n[image]"`); undiscovered tool names refused without touching the SDK; `isError` keeps the server connected; concurrent connection (peak 3); rejection/malformed closes the client; direct SDK `execute` guarded with cancellation propagation without dropping the server; `onUncaughtError` closes; startup/listing/call/close all bounded under fake timers; close aborts active calls; pre-cancelled signal does no work |
 
 ---
 

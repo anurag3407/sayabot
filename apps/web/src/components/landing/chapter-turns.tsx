@@ -11,12 +11,24 @@ import { SectionHead } from "./section-head"
 const { claude, codex, hermes, cursor } = DEMO_AGENTS
 
 const LINES = [
-  { from: claude.name, to: codex.handle, text: "Auth tests fail on the refresh path. Can you take those?" },
+  {
+    from: claude.name,
+    to: codex.handle,
+    text: "Auth tests fail on the refresh path. Can you take those?",
+  },
   { from: codex.name, to: hermes.handle, text: "Claimed. Is the staging key rotated yet?" },
-  { from: hermes.name, to: claude.handle, text: "Not yet. Rotating needs a person, so I'm asking." },
+  {
+    from: hermes.name,
+    to: claude.handle,
+    text: "Not yet. Rotating needs a person, so I'm asking.",
+  },
 ]
 const GUESTS = [cursor.name, "Your own bot", "Gemini CLI"]
-const CUT_TRACE = ["human.message      received", "session.supersede  ok", "run.abort          in-flight"]
+const CUT_TRACE = [
+  "human.message      received",
+  "session.supersede  ok",
+  "run.abort          in-flight",
+]
 
 /** Seats run clockwise around the far side of the table. You sit at the near edge. */
 function seat(index: number, count: number) {
@@ -43,7 +55,11 @@ export function ChapterTurns() {
     const timer = window.setTimeout(() => {
       const next = (turn + 1) % roster.length
       setTurn(next)
-      const line = LINES.find((item) => item.from === roster[next]) ?? { from: roster[next]!, to: null, text: "Here. Reading the room first." }
+      const line = LINES.find((item) => item.from === roster[next]) ?? {
+        from: roster[next]!,
+        to: null,
+        text: "Here. Reading the room first.",
+      }
       setLog((list) => [...list.slice(-2), line as (typeof LINES)[number]])
     }, 2500)
     return () => window.clearTimeout(timer)
@@ -78,7 +94,12 @@ export function ChapterTurns() {
             lead="A coordinator runs the queue, so agents hand off, ask and answer in order. Only the agent holding the lamp can speak. The moment you talk, it comes to you."
           />
           <div className="mt-8 flex flex-wrap items-center gap-3" data-reveal>
-            <button type="button" onClick={cutIn} disabled={cut} className="l-btn l-btn-primary disabled:opacity-60">
+            <button
+              type="button"
+              onClick={cutIn}
+              disabled={cut}
+              className="l-btn l-btn-primary disabled:opacity-60"
+            >
               <Hand className="h-4 w-4" /> {cut ? "You have the room" : "Cut in"}
             </button>
             {GUESTS.map((guest) => {
@@ -107,13 +128,36 @@ export function ChapterTurns() {
               const place = seat(index, roster.length)
               const speaking = !cut && turn === index
               return (
-                <div key={name} className="tn-seat" style={{ left: `${place.left}%`, top: `${place.top}%`, zIndex: Math.round(place.top) }}>
-                  <LiveMascot seed={name} figure shadow lit={speaking} mood={cut ? "sleep" : speaking ? "busy" : "idle"} delay={index * 0.4} className="block w-full" />
+                <div
+                  key={name}
+                  className="tn-seat"
+                  style={{
+                    left: `${place.left}%`,
+                    top: `${place.top}%`,
+                    zIndex: Math.round(place.top),
+                  }}
+                >
+                  <LiveMascot
+                    seed={name}
+                    figure
+                    shadow
+                    lit={speaking}
+                    mood={cut ? "sleep" : speaking ? "busy" : "idle"}
+                    delay={index * 0.4}
+                    className="block w-full"
+                  />
                 </div>
               )
             })}
-            <div ref={baton} className="tn-baton z-[90]" style={{ left: "24%", top: "30%" }} aria-hidden />
-            <span className="l-chip absolute left-1/2 top-[84%] z-[91] -translate-x-1/2 ![background:#ffd08a] !font-medium !text-[#1a1016]">You</span>
+            <div
+              ref={baton}
+              className="tn-baton z-[90]"
+              style={{ left: "24%", top: "30%" }}
+              aria-hidden
+            />
+            <span className="l-chip absolute left-1/2 top-[84%] z-[91] -translate-x-1/2 ![background:#ffd08a] !font-medium !text-[#1a1016]">
+              You
+            </span>
           </div>
 
           <div className="l-card mt-4 min-h-[172px] p-5 font-[450]" aria-live="polite">
@@ -121,10 +165,14 @@ export function ChapterTurns() {
               <div className="space-y-1 font-mono text-[13px] text-text/90">
                 {CUT_TRACE.map((line, index) => (
                   <p key={line} className="l-enter" style={{ animationDelay: `${index * 0.14}s` }}>
-                    <span className="text-[#ffd08a]">› </span>{line}
+                    <span className="text-[#ffd08a]">› </span>
+                    {line}
                   </p>
                 ))}
-                <p className="l-enter pt-1 font-sans text-[13.5px] text-muted" style={{ animationDelay: "0.5s" }}>
+                <p
+                  className="l-enter pt-1 font-sans text-[13.5px] text-muted"
+                  style={{ animationDelay: "0.5s" }}
+                >
                   You never wait for a bot to finish. A new message wins.
                 </p>
               </div>

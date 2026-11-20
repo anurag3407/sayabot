@@ -19,8 +19,12 @@ describe("goalOutcome", () => {
 
 describe("goalOf / isSideNote", () => {
   it("reads the command from a human message's metadata", () => {
-    expect(goalOf({ senderType: "human", content: "ship it", metadata: { command: "goal" } })).toBe("ship it")
-    expect(goalOf({ senderType: "agent", content: "ship it", metadata: { command: "goal" } })).toBeNull()
+    expect(goalOf({ senderType: "human", content: "ship it", metadata: { command: "goal" } })).toBe(
+      "ship it",
+    )
+    expect(
+      goalOf({ senderType: "agent", content: "ship it", metadata: { command: "goal" } }),
+    ).toBeNull()
     expect(goalOf({ senderType: "human", content: "ship it", metadata: {} })).toBeNull()
     expect(isSideNote({ senderType: "human", metadata: { command: "btw" } })).toBe(true)
     expect(isSideNote({ senderType: "human", metadata: null })).toBe(false)

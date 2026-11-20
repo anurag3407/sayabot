@@ -52,14 +52,38 @@ const TINT: Record<string, string> = {
   copilot: "#e8e8e8",
 }
 
-function ProviderMark({ provider, label, size = 30 }: { provider: string; label: string; size?: number }) {
+function ProviderMark({
+  provider,
+  label,
+  size = 30,
+}: {
+  provider: string
+  label: string
+  size?: number
+}) {
   const theme = useTheme()
   const tint = TINT[provider] ?? theme.accent
   const letter = (label.replace(/^the /i, "").trim()[0] ?? "?").toUpperCase()
   const light = tint === "#fff" || tint === "#c8c8d0" || tint === "#e8e8e8"
   return (
-    <View style={{ width: size, height: size, borderRadius: size * 0.3, backgroundColor: tint, alignItems: "center", justifyContent: "center" }}>
-      <Text weight="700" style={{ color: light ? "#111" : "#fff", fontSize: size < 24 ? 11 : 13, lineHeight: size < 24 ? 13 : 16 }}>
+    <View
+      style={{
+        width: size,
+        height: size,
+        borderRadius: size * 0.3,
+        backgroundColor: tint,
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <Text
+        weight="700"
+        style={{
+          color: light ? "#111" : "#fff",
+          fontSize: size < 24 ? 11 : 13,
+          lineHeight: size < 24 ? 13 : 16,
+        }}
+      >
         {letter}
       </Text>
     </View>
@@ -71,7 +95,8 @@ function modelMeta(model: PickerModel): string | undefined {
   const ctx = contextLabel(model.contextWindow)
   if (ctx) bits.push(ctx)
   if (model.free) bits.push("Free")
-  else if (model.price) bits.push(`$${money(model.price.inputPerMillion)} / $${money(model.price.outputPerMillion)}`)
+  else if (model.price)
+    bits.push(`$${money(model.price.inputPerMillion)} / $${money(model.price.outputPerMillion)}`)
   if (model.orgBlocked) bits.push("Blocked by org")
   if (model.needsCliUpdate) bits.push("Update app")
   if (model.listing === "new") bits.push("New")
@@ -95,7 +120,12 @@ export function ModelPicker({
   /** Set on an agent page: changes that bot's model everywhere. */
   agentId?: string
   onSaved?: () => void
-  trigger: (props: { label: string; overridden: boolean; canEdit: boolean | null; open: () => void }) => ReactNode
+  trigger: (props: {
+    label: string
+    overridden: boolean
+    canEdit: boolean | null
+    open: () => void
+  }) => ReactNode
 }) {
   const theme = useTheme()
   const cacheKey = `${orgSlug}/${roomId ?? ""}/${agentId ?? ""}`
@@ -153,14 +183,26 @@ export function ModelPicker({
 
   const groups = lists?.groups ?? []
   const sections = SECTION_ORDER.filter((s) => groups.some((g) => g.section === s))
-  const activeSection = section && sections.includes(section) ? section : (groups.find((g) => g.keyId === effective?.keyId)?.section ?? sections[0] ?? null)
+  const activeSection =
+    section && sections.includes(section)
+      ? section
+      : (groups.find((g) => g.keyId === effective?.keyId)?.section ?? sections[0] ?? null)
   const inSection = groups.filter((g) => g.section === activeSection)
-  const active = inSection.find((g) => g.keyId === (keyId === undefined ? effective?.keyId : keyId)) ?? inSection[0]
+  const active =
+    inSection.find((g) => g.keyId === (keyId === undefined ? effective?.keyId : keyId)) ??
+    inSection[0]
   const q = query.trim().toLowerCase()
-  const visibleModels = (active?.models ?? []).filter((m) => !q || m.label.toLowerCase().includes(q) || m.id.toLowerCase().includes(q))
+  const visibleModels = (active?.models ?? []).filter(
+    (m) => !q || m.label.toLowerCase().includes(q) || m.id.toLowerCase().includes(q),
+  )
   const folded = !q && visibleModels.length > 6 && !showAll
-  const shown = folded ? visibleModels.filter((m) => m.listing !== "older").slice(0, 6) : visibleModels.filter((m) => q || showAll || m.listing !== "older")
-  const levels = effortOptions(active, active?.models.find((m) => m.id === (effective?.model ?? "")))
+  const shown = folded
+    ? visibleModels.filter((m) => m.listing !== "older").slice(0, 6)
+    : visibleModels.filter((m) => q || showAll || m.listing !== "older")
+  const levels = effortOptions(
+    active,
+    active?.models.find((m) => m.id === (effective?.model ?? "")),
+  )
 
   async function save(next: ModelValue | null) {
     if (!bot || !lists?.canEdit || saving) return
@@ -169,7 +211,13 @@ export function ModelPicker({
     const patched: Lists = {
       ...lists,
       bots: lists.bots.map((b) =>
-        b.id !== target ? b : next === null ? { ...b, chat: null } : scope === "default" || !roomId ? { ...b, bot: next, chat: null } : { ...b, chat: next },
+        b.id !== target
+          ? b
+          : next === null
+            ? { ...b, chat: null }
+            : scope === "default" || !roomId
+              ? { ...b, bot: next, chat: null }
+              : { ...b, chat: next },
       ),
     }
     setLists(patched)
@@ -229,13 +277,23 @@ export function ModelPicker({
           <IconButton
             label="Refresh models"
             size={36}
-            icon={loading ? <ActivityIndicator color={theme.text} /> : <RefreshCw size={16} color={theme.text} />}
+            icon={
+              loading ? (
+                <ActivityIndicator color={theme.text} />
+              ) : (
+                <RefreshCw size={16} color={theme.text} />
+              )
+            }
             onPress={() => void load(true)}
           />
         }
       >
         {editable.length > 1 ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 12 }}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: 8, paddingBottom: 12 }}
+          >
             {editable.map((b) => {
               const on = b.id === bot?.id
               return (
@@ -280,8 +338,16 @@ export function ModelPicker({
               {!bot.chat ? <Check size={16} color={theme.text} /> : null}
             </Pressable>
             <View style={{ flexDirection: "row", gap: 8 }}>
-              <Chip label="Only this chat" selected={scope === "chat"} onPress={() => setScope("chat")} />
-              <Chip label="Everywhere" selected={scope === "default"} onPress={() => setScope("default")} />
+              <Chip
+                label="Only this chat"
+                selected={scope === "chat"}
+                onPress={() => setScope("chat")}
+              />
+              <Chip
+                label="Everywhere"
+                selected={scope === "default"}
+                onPress={() => setScope("default")}
+              />
             </View>
           </View>
         ) : null}
@@ -296,10 +362,16 @@ export function ModelPicker({
             {error}
           </Text>
         ) : null}
-        {loading && !lists ? <ActivityIndicator color={theme.accent} style={{ marginVertical: 24 }} /> : null}
+        {loading && !lists ? (
+          <ActivityIndicator color={theme.accent} style={{ marginVertical: 24 }} />
+        ) : null}
 
         {sections.length ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 12 }}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: 8, paddingBottom: 12 }}
+          >
             {sections.map((s) => (
               <Chip
                 key={s}
@@ -317,7 +389,11 @@ export function ModelPicker({
         ) : null}
 
         {inSection.length > 1 ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 12 }}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: 8, paddingBottom: 12 }}
+          >
             {inSection.map((g) => (
               <Chip
                 key={g.keyId ?? "server"}
@@ -336,7 +412,9 @@ export function ModelPicker({
         {active ? (
           <View style={{ marginBottom: 8 }}>
             <Text variant="caption" tone="muted">
-              {[active.detail, active.account, active.version ? `v${active.version}` : null].filter(Boolean).join(" · ")}
+              {[active.detail, active.account, active.version ? `v${active.version}` : null]
+                .filter(Boolean)
+                .join(" · ")}
             </Text>
             {active.notice ? (
               <Text variant="caption" tone="danger">
@@ -381,25 +459,33 @@ export function ModelPicker({
 
         <Group>
           {shown.map((m) => {
-            const selected = active?.keyId === effective?.keyId && (m.id || null) === (effective?.model || null)
+            const selected =
+              active?.keyId === effective?.keyId && (m.id || null) === (effective?.model || null)
             const blocked = Boolean(m.orgBlocked)
             return (
               <Row
                 key={m.id || "auto"}
-                icon={active ? <ProviderMark provider={active.provider} label={m.label} /> : undefined}
+                icon={
+                  active ? <ProviderMark provider={active.provider} label={m.label} /> : undefined
+                }
                 iconBg="transparent"
                 title={m.label || "Automatic"}
                 subtitle={modelMeta(m)}
                 chevron={false}
                 right={selected ? <Check size={16} color={theme.text} /> : undefined}
-                onPress={lists?.canEdit && !blocked && !saving ? () => pick(m.id || null) : undefined}
+                onPress={
+                  lists?.canEdit && !blocked && !saving ? () => pick(m.id || null) : undefined
+                }
               />
             )
           })}
           {!shown.length && !loading ? <Row title="No models" chevron={false} /> : null}
         </Group>
         {folded ? (
-          <Pressable onPress={() => setShowAll(true)} style={{ marginTop: -space.md, marginBottom: space.lg }}>
+          <Pressable
+            onPress={() => setShowAll(true)}
+            style={{ marginTop: -space.md, marginBottom: space.lg }}
+          >
             <Text variant="subhead" tone="accent" weight="600">
               Show all {visibleModels.length} models
             </Text>
@@ -433,10 +519,19 @@ export function ModelPicker({
             <Text variant="footnote" tone="muted" style={{ marginBottom: 8 }}>
               Thinking effort. Tap the model again to keep this level.
             </Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 8 }}
+            >
               <Chip label="Default" selected={effort === null} onPress={() => setEffort(null)} />
               {levels.map((level) => (
-                <Chip key={level} label={EFFORT_LABELS[level] ?? level} selected={effort === level} onPress={() => setEffort(level)} />
+                <Chip
+                  key={level}
+                  label={EFFORT_LABELS[level] ?? level}
+                  selected={effort === level}
+                  onPress={() => setEffort(level)}
+                />
               ))}
             </ScrollView>
           </View>
@@ -474,7 +569,11 @@ export function ChatModelButton({ orgSlug, roomId }: { orgSlug: string; roomId: 
             borderColor: overridden ? theme.accent : theme.lineStrong,
           })}
         >
-          {overridden ? <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: theme.accent }} /> : <ChevronUp size={14} color={theme.muted} />}
+          {overridden ? (
+            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: theme.accent }} />
+          ) : (
+            <ChevronUp size={14} color={theme.muted} />
+          )}
           <Text variant="caption" weight="600" numberOfLines={1} style={{ maxWidth: 220 }}>
             {label}
           </Text>

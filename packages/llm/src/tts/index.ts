@@ -43,7 +43,9 @@ export async function listProviderVoices(
       return deepseek.listVoices()
     case "elevenlabs":
     default:
-      return creds.elevenlabsKey ? elevenlabs.listVoices(creds.elevenlabsKey, undefined, signal) : []
+      return creds.elevenlabsKey
+        ? elevenlabs.listVoices(creds.elevenlabsKey, undefined, signal)
+        : []
   }
 }
 

@@ -1,12 +1,5 @@
 import { describe, expect, it } from "vitest"
-import {
-  decryptSecret,
-  encryptSecret,
-  last4,
-  openSecret,
-  parseKek,
-  sealSecret,
-} from "./crypto"
+import { decryptSecret, encryptSecret, last4, openSecret, parseKek, sealSecret } from "./crypto"
 
 const kek = Buffer.alloc(32, 7).toString("base64")
 

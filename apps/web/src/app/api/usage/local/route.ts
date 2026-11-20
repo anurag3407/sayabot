@@ -58,7 +58,10 @@ export async function GET(request: Request) {
       {
         ok: false,
         available: true,
-        error: error instanceof Error ? error.message : "Could not read this computer's coding tool logs",
+        error:
+          error instanceof Error
+            ? error.message
+            : "Could not read this computer's coding tool logs",
         records: [],
         summary: {
           totalTokens: 0,

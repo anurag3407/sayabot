@@ -1,6 +1,5 @@
 import type { ProviderLimitGroup, ScannedUsageRecord } from "./types"
 
-
 function formatDurationRemaining(ms: number): string {
   if (ms <= 0) return "Resetting now"
   const totalMins = Math.floor(ms / 60_000)
@@ -19,9 +18,7 @@ function formatDurationRemaining(ms: number): string {
 }
 
 /** Computes local subscription limits and pooled rolling windows from recent usage records */
-export function estimateLocalLimits(
-  records: ScannedUsageRecord[],
-): ProviderLimitGroup[] {
+export function estimateLocalLimits(records: ScannedUsageRecord[]): ProviderLimitGroup[] {
   const now = Date.now()
   const fiveHoursMs = 5 * 3600 * 1000
   const sevenDaysMs = 7 * 86400 * 1000
@@ -40,18 +37,12 @@ export function estimateLocalLimits(
 
     const tokens5h = recent5h.reduce(
       (sum, r) =>
-        sum +
-        r.totals.uncachedInputTokens +
-        r.totals.cachedInputTokens +
-        r.totals.outputTokens,
+        sum + r.totals.uncachedInputTokens + r.totals.cachedInputTokens + r.totals.outputTokens,
       0,
     )
     const tokens7d = recent7d.reduce(
       (sum, r) =>
-        sum +
-        r.totals.uncachedInputTokens +
-        r.totals.cachedInputTokens +
-        r.totals.outputTokens,
+        sum + r.totals.uncachedInputTokens + r.totals.cachedInputTokens + r.totals.outputTokens,
       0,
     )
 
@@ -120,18 +111,12 @@ export function estimateLocalLimits(
 
     const tokens5h = recent5h.reduce(
       (sum, r) =>
-        sum +
-        r.totals.uncachedInputTokens +
-        r.totals.cachedInputTokens +
-        r.totals.outputTokens,
+        sum + r.totals.uncachedInputTokens + r.totals.cachedInputTokens + r.totals.outputTokens,
       0,
     )
     const tokens7d = recent7d.reduce(
       (sum, r) =>
-        sum +
-        r.totals.uncachedInputTokens +
-        r.totals.cachedInputTokens +
-        r.totals.outputTokens,
+        sum + r.totals.uncachedInputTokens + r.totals.cachedInputTokens + r.totals.outputTokens,
       0,
     )
 
@@ -190,10 +175,7 @@ export function estimateLocalLimits(
     const recent7d = codexRecs.filter((r) => r.timestampMs >= now - sevenDaysMs)
     const tokens7d = recent7d.reduce(
       (sum, r) =>
-        sum +
-        r.totals.uncachedInputTokens +
-        r.totals.cachedInputTokens +
-        r.totals.outputTokens,
+        sum + r.totals.uncachedInputTokens + r.totals.cachedInputTokens + r.totals.outputTokens,
       0,
     )
     const used7d = Math.min(100, Math.round((tokens7d / 10_000_000) * 100))

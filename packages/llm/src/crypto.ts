@@ -10,7 +10,9 @@ export interface EncryptedSecret {
 export function parseKek(kek: string): Buffer {
   const key = Buffer.from(kek, "base64")
   if (key.length !== 32) {
-    throw new Error("SAYABOT_KEK (or MESH_KEK) must decode to exactly 32 bytes (generate with: openssl rand -base64 32)")
+    throw new Error(
+      "SAYABOT_KEK (or MESH_KEK) must decode to exactly 32 bytes (generate with: openssl rand -base64 32)",
+    )
   }
   return key
 }
@@ -27,11 +29,7 @@ export function encryptSecret(plaintext: string, kek: string): EncryptedSecret {
 }
 
 export function decryptSecret(secret: EncryptedSecret, kek: string): string {
-  const decipher = createDecipheriv(
-    "aes-256-gcm",
-    parseKek(kek),
-    Buffer.from(secret.iv, "base64"),
-  )
+  const decipher = createDecipheriv("aes-256-gcm", parseKek(kek), Buffer.from(secret.iv, "base64"))
   decipher.setAuthTag(Buffer.from(secret.tag, "base64"))
   return Buffer.concat([
     decipher.update(Buffer.from(secret.ciphertext, "base64")),

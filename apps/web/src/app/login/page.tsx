@@ -12,7 +12,15 @@ export const dynamic = "force-dynamic"
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string; error?: string; verified?: string; force?: string; reauth?: string; switch?: string; merge?: string }>
+  searchParams: Promise<{
+    next?: string
+    error?: string
+    verified?: string
+    force?: string
+    reauth?: string
+    switch?: string
+    merge?: string
+  }>
 }) {
   const params = await searchParams
   const isForce = params.force === "true" || params.reauth === "true" || params.switch === "true"
@@ -46,7 +54,8 @@ export default async function LoginPage({
               role="status"
               className="mt-6 max-w-[42ch] border-l-2 border-emerald-500 pl-3 text-[13px] leading-relaxed text-emerald-400"
             >
-              Your email has been verified! Sign in with your password to continue to your workspace.
+              Your email has been verified! Sign in with your password to continue to your
+              workspace.
             </p>
           ) : params.error ? (
             <p
@@ -55,7 +64,8 @@ export default async function LoginPage({
             >
               {params.error === "auth"
                 ? "Sign-in did not complete. The verification link or session may have expired. Try again."
-                : params.error.toLowerCase().includes("code verifier") || params.error.toLowerCase().includes("pkce")
+                : params.error.toLowerCase().includes("code verifier") ||
+                    params.error.toLowerCase().includes("pkce")
                   ? "Your email is verified! Please sign in with your email and password below."
                   : decodeURIComponent(params.error)}
             </p>

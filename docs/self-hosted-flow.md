@@ -19,12 +19,12 @@ Follow [`deploy/README.md`](../deploy/README.md). Copy `deploy/.env.production.e
 
 There are two ways to expose it:
 
-|                         | Open ports + Let's Encrypt (default)                  | Cloudflare Tunnel                   |
-| ----------------------- | ----------------------------------------------------- | ----------------------------------- |
-| Ports open on the VPS   | 22, 80, 443                                           | 22 only                             |
+|                         | Open ports + Let's Encrypt (default)                     | Cloudflare Tunnel                   |
+| ----------------------- | -------------------------------------------------------- | ----------------------------------- |
+| Ports open on the VPS   | 22, 80, 443                                              | 22 only                             |
 | Certificate             | `deploy/scripts/init-letsencrypt.sh`, renewed by certbot | Cloudflare's, nothing to renew      |
-| Turn it on              | nothing to set                                        | set `CLOUDFLARE_TUNNEL_TOKEN`       |
-| SSO in front of the app | no                                                    | optional, through Cloudflare Access |
+| Turn it on              | nothing to set                                           | set `CLOUDFLARE_TUNNEL_TOKEN`       |
+| SSO in front of the app | no                                                       | optional, through Cloudflare Access |
 
 **Tunnel setup:**
 

@@ -18,7 +18,8 @@ export default async function ProvidersPage({ params }: { params: Promise<{ org:
   ])
   const agentCounts: Record<string, number> = {}
   for (const agent of agents) {
-    if (agent.providerKeyId) agentCounts[agent.providerKeyId] = (agentCounts[agent.providerKeyId] ?? 0) + 1
+    if (agent.providerKeyId)
+      agentCounts[agent.providerKeyId] = (agentCounts[agent.providerKeyId] ?? 0) + 1
   }
   return (
     <ProvidersView

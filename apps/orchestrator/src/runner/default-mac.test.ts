@@ -41,7 +41,10 @@ describe("defaultMacRunner", () => {
   })
 
   it("runs on the Mac even when this bot may not use the Mac screen", async () => {
-    results.push([{ userId: "u1" }], [host({ runnerEnabled: true, localDefault: { app: "claude-code" } })])
+    results.push(
+      [{ userId: "u1" }],
+      [host({ runnerEnabled: true, localDefault: { app: "claude-code" } })],
+    )
     expect(await defaultMacRunner(screenOff)).toEqual({
       hostId: "11111111-1111-1111-1111-111111111111",
       app: "claude-code",
@@ -88,7 +91,12 @@ describe("localRunnerConfig", () => {
   const hostId = "11111111-1111-1111-1111-111111111111"
 
   it("carries the model and an effort the app takes", () => {
-    expect(localRunnerConfig({ runner: { hostId, app: "claude-code", model: "claude-opus-5-5" }, effort: "high" })).toEqual({
+    expect(
+      localRunnerConfig({
+        runner: { hostId, app: "claude-code", model: "claude-opus-5-5" },
+        effort: "high",
+      }),
+    ).toEqual({
       hostId,
       app: "claude-code",
       model: "claude-opus-5-5",
@@ -97,12 +105,23 @@ describe("localRunnerConfig", () => {
   })
 
   it("runs a local model with no effort and drops unsafe or default models", () => {
-    expect(localRunnerConfig({ runner: { hostId, app: "ollama", model: "llama3.2:latest" }, effort: "high" })).toEqual({
+    expect(
+      localRunnerConfig({
+        runner: { hostId, app: "ollama", model: "llama3.2:latest" },
+        effort: "high",
+      }),
+    ).toEqual({
       hostId,
       app: "ollama",
       model: "llama3.2:latest",
     })
-    expect(localRunnerConfig({ runner: { hostId, app: "codex", model: "default" } })).toEqual({ hostId, app: "codex" })
-    expect(localRunnerConfig({ runner: { hostId, app: "codex", model: "$(whoami)" } })).toEqual({ hostId, app: "codex" })
+    expect(localRunnerConfig({ runner: { hostId, app: "codex", model: "default" } })).toEqual({
+      hostId,
+      app: "codex",
+    })
+    expect(localRunnerConfig({ runner: { hostId, app: "codex", model: "$(whoami)" } })).toEqual({
+      hostId,
+      app: "codex",
+    })
   })
 })

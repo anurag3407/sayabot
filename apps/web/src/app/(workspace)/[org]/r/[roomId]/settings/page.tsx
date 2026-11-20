@@ -183,8 +183,12 @@ export default async function RoomSettingsPage({
                     return (
                       <li key={agent.id} className="py-3">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="w-5 font-mono text-[11px] text-faint">{position + 1}</span>
-                          <span className="font-mono text-[12px] font-medium text-text">@{agent.handle}</span>
+                          <span className="w-5 font-mono text-[11px] text-faint">
+                            {position + 1}
+                          </span>
+                          <span className="font-mono text-[12px] font-medium text-text">
+                            @{agent.handle}
+                          </span>
                           <span className="text-[12px] text-muted">{agent.displayName}</span>
                           {agent.id === leadId ? (
                             <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[11px] font-medium text-accent">
@@ -203,7 +207,9 @@ export default async function RoomSettingsPage({
                                   : "rounded-full bg-raised px-2 py-0.5 text-[11px] text-muted"
                               }
                               title={
-                                seen ? `Last called in ${relativeTime(seen)}` : "Hasn't connected yet"
+                                seen
+                                  ? `Last called in ${relativeTime(seen)}`
+                                  : "Hasn't connected yet"
                               }
                             >
                               {open

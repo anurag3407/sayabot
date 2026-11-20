@@ -11,15 +11,34 @@ import { radius, space, useTheme } from "../ui/theme"
 /** The few technical settings people occasionally need, in plain words. */
 export function AdvancedScreen() {
   const theme = useTheme()
-  const { settings, updateSettings, runDiagnostics, gatewayPing, databasePing, testingConnection, resetAll } = useSettings()
-  const { isChecking, isUpdateAvailable, latestVersion, currentVersion, checkForUpdates } = useAppUpdates()
+  const {
+    settings,
+    updateSettings,
+    runDiagnostics,
+    gatewayPing,
+    databasePing,
+    testingConnection,
+    resetAll,
+  } = useSettings()
+  const { isChecking, isUpdateAvailable, latestVersion, currentVersion, checkForUpdates } =
+    useAppUpdates()
   const [server, setServer] = useState(settings.webApiUrl)
   const [pushBusy, setPushBusy] = useState(false)
   const [pushNote, setPushNote] = useState<string | null>(null)
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: theme.bg }} contentContainerStyle={{ padding: space.lg, paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
-      <Group title="Notifications" footer={pushNote ?? "Questions and approvals reach this phone, with Answer and Allow right on the alert."}>
+    <ScrollView
+      style={{ flex: 1, backgroundColor: theme.bg }}
+      contentContainerStyle={{ padding: space.lg, paddingBottom: 60 }}
+      keyboardShouldPersistTaps="handled"
+    >
+      <Group
+        title="Notifications"
+        footer={
+          pushNote ??
+          "Questions and approvals reach this phone, with Answer and Allow right on the alert."
+        }
+      >
         <ToggleRow
           icon={<BellRing size={16} color={theme.text} />}
           title="Alerts on this phone"
@@ -51,7 +70,14 @@ export function AdvancedScreen() {
               autoCapitalize="none"
               autoCorrect={false}
               keyboardType="url"
-              style={{ flex: 1, height: 44, borderRadius: radius.md, backgroundColor: theme.raised, paddingHorizontal: 12, color: theme.text }}
+              style={{
+                flex: 1,
+                height: 44,
+                borderRadius: radius.md,
+                backgroundColor: theme.raised,
+                paddingHorizontal: 12,
+                color: theme.text,
+              }}
             />
           </View>
           <View style={{ flexDirection: "row", gap: 8 }}>
@@ -61,15 +87,24 @@ export function AdvancedScreen() {
               disabled={server.trim() === settings.webApiUrl}
               onPress={() => {
                 const next = server.trim().replace(/\/+$/, "")
-                if (!/^https?:\/\//i.test(next)) return Alert.alert("Use an address that starts with https://")
+                if (!/^https?:\/\//i.test(next))
+                  return Alert.alert("Use an address that starts with https://")
                 void updateSettings({ webApiUrl: next })
               }}
             />
-            <Button title="Test connection" size="sm" variant="secondary" loading={testingConnection} icon={<Wifi size={14} color={theme.text} />} onPress={() => void runDiagnostics(server.trim())} />
+            <Button
+              title="Test connection"
+              size="sm"
+              variant="secondary"
+              loading={testingConnection}
+              icon={<Wifi size={14} color={theme.text} />}
+              onPress={() => void runDiagnostics(server.trim())}
+            />
           </View>
           {gatewayPing || databasePing ? (
             <Text variant="footnote" tone={gatewayPing?.ok && databasePing?.ok ? "ok" : "danger"}>
-              Server {gatewayPing?.ok ? `OK (${gatewayPing.latencyMs} ms)` : "unreachable"} · Data {databasePing?.ok ? `OK (${databasePing.latencyMs} ms)` : "unreachable"}
+              Server {gatewayPing?.ok ? `OK (${gatewayPing.latencyMs} ms)` : "unreachable"} · Data{" "}
+              {databasePing?.ok ? `OK (${databasePing.latencyMs} ms)` : "unreachable"}
             </Text>
           ) : null}
         </View>

@@ -37,7 +37,7 @@ describe("admitServerTurn", () => {
 
   it("when the month is used up, answers with a friendly upgrade note", async () => {
     vi.stubEnv("SAYABOT_EDITION", "cloud")
-    vi.stubEnv("SAYABOT_DOMAIN", "sayabot.sayalabs.in")
+    vi.stubEnv("SAYABOT_DOMAIN", "sayabot.example.com")
     selects.push([], [{ slug: "acme" }]) // no plan row = Free
     executes.push({ rows: [{ allowed: false, used: 300 }] })
     const result = await admitServerTurn("org-1")
@@ -47,7 +47,7 @@ describe("admitServerTurn", () => {
     expect(result.message).toContain("300 server replies")
     expect(result.message).toContain("Agents that run on your Mac keep working")
     expect(result.message).toContain(
-      "upgrade to Pro: [Plan & billing](https://sayabot.sayalabs.in/acme/settings/billing)",
+      "upgrade to Pro: [Plan & billing](https://sayabot.example.com/acme/settings/billing)",
     )
   })
 

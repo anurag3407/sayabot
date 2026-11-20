@@ -15,8 +15,8 @@ The three-column envelope used by tables that store secrets in dedicated columns
 ```typescript
 export interface EncryptedSecret {
   ciphertext: string // Base64
-  iv: string         // Base64, 12 random bytes
-  tag: string        // Base64, 16-byte GCM auth tag
+  iv: string // Base64, 12 random bytes
+  tag: string // Base64, 16-byte GCM auth tag
 }
 ```
 
@@ -69,7 +69,7 @@ export function parseKek(kek: string): Buffer {
 
 (`packages/llm/src/crypto.ts:10-16`.)
 
-- The canonical env var is **`SAYABOT_KEK`**; **`MESH_KEK`** is the legacy alias. The alias resolution happens at *call sites* that read the environment (for example `apps/web/src/lib/env.ts` and the orchestrator's env helpers), not inside this module — `parseKek` itself accepts any base64 string.
+- The canonical env var is **`SAYABOT_KEK`**; **`MESH_KEK`** is the legacy alias. The alias resolution happens at _call sites_ that read the environment (for example `apps/web/src/lib/env.ts` and the orchestrator's env helpers), not inside this module — `parseKek` itself accepts any base64 string.
 - The key **must decode to exactly 32 bytes** (256 bits). Anything else throws with the generation hint `openssl rand -base64 32`.
 - Errors are thrown eagerly by every encrypt/decrypt call, since all four functions call `parseKek` first.
 - The key is never logged and never included in error messages.
@@ -118,14 +118,14 @@ export function last4(value: string): string {
 
 ## ⚠️ Error modes
 
-| Situation | Behaviour |
-| :-- | :-- |
-| KEK missing / empty at the call site | Callers throw before reaching crypto; `parseKek("")` decodes to a 0-byte buffer and throws the 32-bytes error |
-| KEK not 32 bytes after base64 decode | `Error("SAYABOT_KEK (or MESH_KEK) must decode to exactly 32 bytes …")` from every encrypt/decrypt call |
-| Wrong KEK on decrypt | `decipher.final()` throws (GCM auth failure) — the test suite pins this |
-| Tampered ciphertext or tag | Same GCM auth failure; nothing is returned |
-| `openSecret` on garbage / non-JSON blob | `JSON.parse` throws |
-| Key/IV/tag not valid Base64 on decrypt | `Buffer.from` yields partial bytes; decipher throws on malformed lengths |
+| Situation                               | Behaviour                                                                                                     |
+| :-------------------------------------- | :------------------------------------------------------------------------------------------------------------ |
+| KEK missing / empty at the call site    | Callers throw before reaching crypto; `parseKek("")` decodes to a 0-byte buffer and throws the 32-bytes error |
+| KEK not 32 bytes after base64 decode    | `Error("SAYABOT_KEK (or MESH_KEK) must decode to exactly 32 bytes …")` from every encrypt/decrypt call        |
+| Wrong KEK on decrypt                    | `decipher.final()` throws (GCM auth failure) — the test suite pins this                                       |
+| Tampered ciphertext or tag              | Same GCM auth failure; nothing is returned                                                                    |
+| `openSecret` on garbage / non-JSON blob | `JSON.parse` throws                                                                                           |
+| Key/IV/tag not valid Base64 on decrypt  | `Buffer.from` yields partial bytes; decipher throws on malformed lengths                                      |
 
 ---
 
@@ -133,14 +133,14 @@ export function last4(value: string): string {
 
 The suite derives a dummy KEK as `Buffer.alloc(32, 7).toString("base64")` — no real key is ever used in tests. The exact cases (`packages/llm/src/crypto.test.ts:13-51`):
 
-| Test | Asserts |
-| :-- | :-- |
+| Test                                            | Asserts                                                                                                                                         |
+| :---------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------- |
 | `round-trips a column envelope with a fresh IV` | Two `encryptSecret` calls on the same plaintext give different `iv` and `ciphertext`; `decryptSecret` returns the original `sk-test-1234567890` |
-| `rejects a tampered ciphertext or tag` | Replacing `tag` with `Buffer.alloc(16, 1).toString("base64")` throws; replacing `ciphertext` with `Buffer.from("tampered")` throws |
-| `fails with the wrong key` | A KEK of `Buffer.alloc(32, 8)` throws on decrypt |
-| `validates the key length` | `parseKek` of a 16-byte key throws with a message matching `/32 bytes/` |
-| `round-trips the single-column envelope` | `sealSecret(JSON.stringify({ token: "abc" }))` → `openSecret` returns `'{"token":"abc"}'` |
-| `returns the last four characters` | `last4("sk-abcdefgh1234")` is `"1234"` |
+| `rejects a tampered ciphertext or tag`          | Replacing `tag` with `Buffer.alloc(16, 1).toString("base64")` throws; replacing `ciphertext` with `Buffer.from("tampered")` throws              |
+| `fails with the wrong key`                      | A KEK of `Buffer.alloc(32, 8)` throws on decrypt                                                                                                |
+| `validates the key length`                      | `parseKek` of a 16-byte key throws with a message matching `/32 bytes/`                                                                         |
+| `round-trips the single-column envelope`        | `sealSecret(JSON.stringify({ token: "abc" }))` → `openSecret` returns `'{"token":"abc"}'`                                                       |
+| `returns the last four characters`              | `last4("sk-abcdefgh1234")` is `"1234"`                                                                                                          |
 
 The integration suite (`packages/llm/tests/integration/index.test.ts:13-18`) additionally checks that `sealSecret`/`openSecret` round-trip through the package's public entry point and that the sealed blob does not contain the plaintext.
 
@@ -148,12 +148,12 @@ The integration suite (`packages/llm/tests/integration/index.test.ts:13-18`) add
 
 ## 🛡️ Where each shape is used
 
-| Table / column | Shape | Writer | Reader |
-| :-- | :-- | :-- | :-- |
-| `provider_keys.ciphertext/iv/tag` | Three-column envelope | `apps/web/src/lib/provider-key-store.ts` (`encryptSecret`) | `providerKeyToApiKey()` in `packages/llm/src/registry.ts:185` (`decryptSecret`) |
-| `workspace_connectors.ciphertext/iv/tag` | Three-column envelope | Connector OAuth setup in `apps/web` | `apps/orchestrator/src/connectors/service.ts` (`decryptSecret`) |
-| `mcp_servers.headers_enc`, `oauth_enc` | Sealed single column | `sealSecret` / `sealMcpOAuthState` | `openSecret` / `openMcpOAuthState` at turn time |
-| Vault / `$SECRET{...}` broker | Sealed single column | `apps/orchestrator/src/tools/secrets.ts` | `use_secret` tool resolves placeholders without exposing plaintext to the model |
+| Table / column                           | Shape                 | Writer                                                     | Reader                                                                          |
+| :--------------------------------------- | :-------------------- | :--------------------------------------------------------- | :------------------------------------------------------------------------------ |
+| `provider_keys.ciphertext/iv/tag`        | Three-column envelope | `apps/web/src/lib/provider-key-store.ts` (`encryptSecret`) | `providerKeyToApiKey()` in `packages/llm/src/registry.ts:185` (`decryptSecret`) |
+| `workspace_connectors.ciphertext/iv/tag` | Three-column envelope | Connector OAuth setup in `apps/web`                        | `apps/orchestrator/src/connectors/service.ts` (`decryptSecret`)                 |
+| `mcp_servers.headers_enc`, `oauth_enc`   | Sealed single column  | `sealSecret` / `sealMcpOAuthState`                         | `openSecret` / `openMcpOAuthState` at turn time                                 |
+| Vault / `$SECRET{...}` broker            | Sealed single column  | `apps/orchestrator/src/tools/secrets.ts`                   | `use_secret` tool resolves placeholders without exposing plaintext to the model |
 
 ---
 

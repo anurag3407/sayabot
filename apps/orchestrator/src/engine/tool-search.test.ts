@@ -1,11 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { z } from "zod"
 import type { ToolSpec } from "../tools/audited"
-import {
-  partitionToolsForSearch,
-  TOOL_SEARCH_THRESHOLD,
-  ToolIndex,
-} from "./tool-search"
+import { partitionToolsForSearch, TOOL_SEARCH_THRESHOLD, ToolIndex } from "./tool-search"
 
 function makeMockSpec(name: string, description: string): ToolSpec {
   return {

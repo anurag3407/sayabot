@@ -151,14 +151,11 @@ export function TerminalSandboxConfig({
   orgSlug: string
   savedConfig?: OrgToolConfigView | null
 }) {
-  const [selectedBackend, setSelectedBackend] = useState<string>(
-    savedConfig?.provider || "local",
-  )
+  const [selectedBackend, setSelectedBackend] = useState<string>(savedConfig?.provider || "local")
   const [apiKeyInput, setApiKeyInput] = useState<string>("")
   const [baseUrlInput, setBaseUrlInput] = useState<string>(savedConfig?.baseUrl || "")
 
-  const activeOption =
-    SANDBOX_OPTIONS.find((b) => b.id === selectedBackend) ?? SANDBOX_OPTIONS[0]!
+  const activeOption = SANDBOX_OPTIONS.find((b) => b.id === selectedBackend) ?? SANDBOX_OPTIONS[0]!
 
   const hasSavedKey = Boolean(savedConfig?.last4 && savedConfig?.provider === selectedBackend)
 
@@ -231,7 +228,8 @@ export function TerminalSandboxConfig({
                 </span>
               </h3>
               <p className="mt-0.5 text-[11px] text-muted">
-                Agents with sandbox capability will execute all code and shell commands in this environment.
+                Agents with sandbox capability will execute all code and shell commands in this
+                environment.
               </p>
             </div>
             {activeOption.docsUrl && (
@@ -267,7 +265,9 @@ export function TerminalSandboxConfig({
               <Field
                 label={activeOption.keyLabel || "API Key / Token"}
                 htmlFor="sandbox-key"
-                hint={hasSavedKey ? `Saved: •••• ${savedConfig?.last4}` : "Encrypted with AES-256-GCM"}
+                hint={
+                  hasSavedKey ? `Saved: •••• ${savedConfig?.last4}` : "Encrypted with AES-256-GCM"
+                }
               >
                 <Input
                   id="sandbox-key"
@@ -275,7 +275,9 @@ export function TerminalSandboxConfig({
                   type="password"
                   value={apiKeyInput}
                   onChange={(e) => setApiKeyInput(e.target.value)}
-                  placeholder={hasSavedKey ? "Leave blank to keep saved key" : activeOption.keyPlaceholder}
+                  placeholder={
+                    hasSavedKey ? "Leave blank to keep saved key" : activeOption.keyPlaceholder
+                  }
                 />
               </Field>
             )}

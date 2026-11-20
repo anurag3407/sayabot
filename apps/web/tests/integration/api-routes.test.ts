@@ -23,10 +23,14 @@ describe("web API routes (no auth required)", () => {
     expect(res.status).toBe(200)
     const body = (await res.json()) as any
     expect(body.response_types_supported).toEqual(["code"])
-    expect(body.grant_types_supported).toEqual(expect.arrayContaining(["authorization_code", "refresh_token"]))
+    expect(body.grant_types_supported).toEqual(
+      expect.arrayContaining(["authorization_code", "refresh_token"]),
+    )
     expect(body.code_challenge_methods_supported).toEqual(["S256"])
     expect(body.token_endpoint_auth_methods_supported).toEqual(["none"])
-    expect(body.scopes_supported).toEqual(expect.arrayContaining(["room:read", "tasks:write", "secrets:use"]))
+    expect(body.scopes_supported).toEqual(
+      expect.arrayContaining(["room:read", "tasks:write", "secrets:use"]),
+    )
     expect(body.issuer).toMatch(/^https?:\/\//)
     expect(body.authorization_endpoint).toBe(body.issuer + "/oauth/authorize")
   })
@@ -44,7 +48,9 @@ describe("POST /api/push + /api/messages auth gates", () => {
   it("rejects unauthenticated push subscriptions with 401 (no DB hit)", async () => {
     vi.resetModules()
     vi.doMock("../../src/lib/supabase/server", () => ({
-      createSupabaseServerClient: async () => ({ auth: { getUser: async () => ({ data: { user: null } }) } }),
+      createSupabaseServerClient: async () => ({
+        auth: { getUser: async () => ({ data: { user: null } }) },
+      }),
     }))
     const { POST } = await import("../../src/app/api/push/route")
     const res = await POST(new Request("http://x/api/push", { method: "POST", body: "{}" }))
@@ -54,7 +60,9 @@ describe("POST /api/push + /api/messages auth gates", () => {
   it("rejects unauthenticated /api/v1/computers/:agentId/exec with 401", async () => {
     vi.resetModules()
     vi.doMock("../../src/lib/supabase/server", () => ({
-      createSupabaseServerClient: async () => ({ auth: { getUser: async () => ({ data: { user: null } }) } }),
+      createSupabaseServerClient: async () => ({
+        auth: { getUser: async () => ({ data: { user: null } }) },
+      }),
     }))
     const { POST } = await import("../../src/app/api/v1/[...path]/route")
     const res = await POST(
@@ -71,10 +79,9 @@ describe("POST /api/push + /api/messages auth gates", () => {
 
   it("rejects unauthorized /api/v1/tools/raw endpoints with 403", async () => {
     const { POST } = await import("../../src/app/api/v1/[...path]/route")
-    const res = await POST(
-      new Request("http://x/api/v1/tools/arbitrary", { method: "POST" }),
-      { params: Promise.resolve({ path: ["tools", "arbitrary"] }) },
-    )
+    const res = await POST(new Request("http://x/api/v1/tools/arbitrary", { method: "POST" }), {
+      params: Promise.resolve({ path: ["tools", "arbitrary"] }),
+    })
     expect(res.status).toBe(403)
   })
 })

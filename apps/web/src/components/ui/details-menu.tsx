@@ -73,14 +73,19 @@ export function DetailsMenu({
   }, [open])
 
   return (
-    <details ref={ref} className={className} onToggle={(event) => setOpen(event.currentTarget.open)}>
+    <details
+      ref={ref}
+      className={className}
+      onToggle={(event) => setOpen(event.currentTarget.open)}
+    >
       <summary
         className={summaryClassName}
         aria-label={summaryLabel}
         title={summaryLabel}
         aria-haspopup="menu"
         onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " " || event.key === "ArrowDown") openedByKey.current = true
+          if (event.key === "Enter" || event.key === " " || event.key === "ArrowDown")
+            openedByKey.current = true
           if (event.key === "ArrowDown" && ref.current && !ref.current.open) {
             event.preventDefault()
             ref.current.open = true

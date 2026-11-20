@@ -28,12 +28,19 @@ export async function resolveRoutineDelivery(
   if (typeof connectorId !== "string" || !/^[0-9a-f-]{36}$/i.test(connectorId)) return null
   if (typeof chatId !== "string" || !chatId.trim() || chatId.length > 80) return null
   const [connector] = await getDb()
-    .select({ source: workspaceConnectors.source, status: workspaceConnectors.status, config: workspaceConnectors.config })
+    .select({
+      source: workspaceConnectors.source,
+      status: workspaceConnectors.status,
+      config: workspaceConnectors.config,
+    })
     .from(workspaceConnectors)
     .where(and(eq(workspaceConnectors.id, connectorId), eq(workspaceConnectors.orgId, orgId)))
     .limit(1)
-  if (!connector || connector.status !== "active" || !MESSAGING_SOURCES.has(connector.source)) return null
-  const inbound = ((connector.config ?? {}) as { inbound?: { enabled?: boolean; allowedChats?: string[] } }).inbound
+  if (!connector || connector.status !== "active" || !MESSAGING_SOURCES.has(connector.source))
+    return null
+  const inbound = (
+    (connector.config ?? {}) as { inbound?: { enabled?: boolean; allowedChats?: string[] } }
+  ).inbound
   if (!inbound?.enabled) return null
   if (inbound.allowedChats?.length && !inbound.allowedChats.includes(chatId.trim())) return null
   return { platform: connector.source, connectorId, chatId: chatId.trim(), externalId: "" }
@@ -45,21 +52,13 @@ export async function runRoutineNow(
   const db = getDb()
   const now = new Date()
 
-  const [routine] = await db
-    .select()
-    .from(routines)
-    .where(eq(routines.id, routineId))
-    .limit(1)
+  const [routine] = await db.select().from(routines).where(eq(routines.id, routineId)).limit(1)
 
   if (!routine) {
     return { success: false, error: "Routine not found" }
   }
 
-  const [agent] = await db
-    .select()
-    .from(agents)
-    .where(eq(agents.id, routine.agentId))
-    .limit(1)
+  const [agent] = await db.select().from(agents).where(eq(agents.id, routine.agentId)).limit(1)
 
   if (!agent) {
     return { success: false, error: `Assigned agent ${routine.agentId} not found` }
@@ -187,7 +186,9 @@ async function scanRoutinesOnce(): Promise<void> {
       timezone: routines.timezone,
     })
     .from(routines)
-    .where(and(eq(routines.enabled, true), eq(routines.lastStatus, "idle"), isNull(routines.nextRunAt)))
+    .where(
+      and(eq(routines.enabled, true), eq(routines.lastStatus, "idle"), isNull(routines.nextRunAt)),
+    )
     .limit(20)
 
   for (const item of uninitialized) {
@@ -197,7 +198,13 @@ async function scanRoutinesOnce(): Promise<void> {
         await db
           .update(routines)
           .set({ nextRunAt: nextRun, updatedAt: now })
-          .where(and(eq(routines.id, item.id), eq(routines.lastStatus, "idle"), isNull(routines.nextRunAt)))
+          .where(
+            and(
+              eq(routines.id, item.id),
+              eq(routines.lastStatus, "idle"),
+              isNull(routines.nextRunAt),
+            ),
+          )
       }
     }
   }
@@ -235,10 +242,9 @@ async function guardedScan(): Promise<void> {
   const pool = getPool()
   const client = await pool.connect()
   try {
-    const { rows } = await client.query(
-      "select pg_try_advisory_lock(hashtext($1)) as locked",
-      [ROUTINES_LOCK],
-    )
+    const { rows } = await client.query("select pg_try_advisory_lock(hashtext($1)) as locked", [
+      ROUTINES_LOCK,
+    ])
     if (!rows[0]?.locked) return
     try {
       await scanRoutinesOnce()

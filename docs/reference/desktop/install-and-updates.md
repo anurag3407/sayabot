@@ -14,27 +14,27 @@ Source files: `apps/desktop/src/updater.ts`, `src/mac-install.ts`, wiring in `sr
 
 The `DesktopUpdater` is constructed in `main.ts` (`src/main.ts:452-478`) with injected dependencies, so the state machine itself has no Electron or network code and is fully unit-tested (`updater.test.ts`):
 
-| Dep | Provided by `main.ts` |
-| :--- | :--- |
-| `currentVersion` / `arch` | `app.getVersion()` / `process.arch` |
-| `fetchVersion` | `GET <updateServerBase()>/api/version` — base is the session's `serverUrl`, else the config's, else `https://sayabot.sayalabs.in` (trailing slashes stripped) |
-| `download` | `downloadFile` from `mac-install.ts` |
-| `inspect` | `inspectDmg` from `mac-install.ts` |
-| `install` | `installTarget` + `canReplace` + `runDetached(stageMacUpdate(...))` + `quitForUpdate()` |
-| `dmgPath` | `temp/sayabot-updates/Sayabot-<version>.dmg` |
+| Dep                       | Provided by `main.ts`                                                                                                                                                                                             |
+| :------------------------ | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `currentVersion` / `arch` | `app.getVersion()` / `process.arch`                                                                                                                                                                               |
+| `fetchVersion`            | `GET <updateServerBase()>/api/version` — base is the session's `serverUrl`, else the config's, else `DEFAULT_SERVER_URL` (`process.env.SAYABOT_SERVER_URL` or `http://localhost:3000`, trailing slashes stripped) |
+| `download`                | `downloadFile` from `mac-install.ts`                                                                                                                                                                              |
+| `inspect`                 | `inspectDmg` from `mac-install.ts`                                                                                                                                                                                |
+| `install`                 | `installTarget` + `canReplace` + `runDetached(stageMacUpdate(...))` + `quitForUpdate()`                                                                                                                           |
+| `dmgPath`                 | `temp/sayabot-updates/Sayabot-<version>.dmg`                                                                                                                                                                      |
 
 ## 🚦 The State Machine (`DesktopUpdater`, `src/updater.ts:71`)
 
 One `UpdateState` is shared by the menu (`updateMenuItem`, `src/main.ts:544`), the macOS notification, and the renderer (broadcast on `app:update-state` to every window on every change, `src/main.ts:489-503`), so they can never disagree:
 
-| Status | Extra fields | Set when |
-| :--- | :--- | :--- |
-| `idle` | `checkedAt` | No update, or up-to-date after a check |
-| `checking` | — | A check is in flight (menu shows a disabled item) |
-| `available` | `latest`, `notes` | The server's `latestDesktopVersion` is a strictly newer semver; `notes` is trimmed `releaseNotes` |
-| `downloading` | `latest`, `percent` (number or null) | DMG download in progress; percent is de-duplicated before broadcast |
-| `installing` | `latest` | DMG verified; the helper is about to swap the app |
-| `error` | `message`, `latest` (null unless a check succeeded first) | Any failure in check/download/verify/install |
+| Status        | Extra fields                                              | Set when                                                                                          |
+| :------------ | :-------------------------------------------------------- | :------------------------------------------------------------------------------------------------ |
+| `idle`        | `checkedAt`                                               | No update, or up-to-date after a check                                                            |
+| `checking`    | —                                                         | A check is in flight (menu shows a disabled item)                                                 |
+| `available`   | `latest`, `notes`                                         | The server's `latestDesktopVersion` is a strictly newer semver; `notes` is trimmed `releaseNotes` |
+| `downloading` | `latest`, `percent` (number or null)                      | DMG download in progress; percent is de-duplicated before broadcast                               |
+| `installing`  | `latest`                                                  | DMG verified; the helper is about to swap the app                                                 |
+| `error`       | `message`, `latest` (null unless a check succeeded first) | Any failure in check/download/verify/install                                                      |
 
 ```
 idle → checking → available → downloading → installing   (success path)
@@ -90,12 +90,12 @@ The script, with `set -uo pipefail` and everything logged to `~/Library/Logs/Say
 
 Files involved, at a glance:
 
-| Path | Role |
-| :--- | :--- |
-| `temp/sayabot-updates/Sayabot-<version>.dmg` | downloaded update (deleted by the helper on success) |
-| `temp/sayabot-update-XXXX/install.sh` | the staged helper script (0o755, in a fresh mkdtemp dir) |
-| `~/Library/Logs/Sayabot/update.log` | the helper's complete log — the only place install failures are visible after the app quits |
-| `/Applications/Sayabot.app` → `.new` → `.old` | the swap dance |
+| Path                                          | Role                                                                                        |
+| :-------------------------------------------- | :------------------------------------------------------------------------------------------ |
+| `temp/sayabot-updates/Sayabot-<version>.dmg`  | downloaded update (deleted by the helper on success)                                        |
+| `temp/sayabot-update-XXXX/install.sh`         | the staged helper script (0o755, in a fresh mkdtemp dir)                                    |
+| `~/Library/Logs/Sayabot/update.log`           | the helper's complete log — the only place install failures are visible after the app quits |
+| `/Applications/Sayabot.app` → `.new` → `.old` | the swap dance                                                                              |
 
 ---
 

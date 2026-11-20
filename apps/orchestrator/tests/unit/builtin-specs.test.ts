@@ -1,6 +1,8 @@
 import { beforeAll, describe, expect, it } from "vitest"
 
 beforeAll(() => {
+  // Hermetic: this shell may export PORT=0, which would fail the schema's positive().
+  delete process.env.PORT
   process.env.DATABASE_URL = "postgres://u:p@h/db"
   process.env.MESH_KEK = "k"
   process.env.SUPABASE_URL = "https://x.supabase.co"
@@ -39,8 +41,12 @@ describe("builtin tool specs (no network, schema + danger surface)", () => {
     const t = sandboxTool()
     expect(t.schema.safeParse({ language: "python", code: "print(1)" }).success).toBe(true)
     expect(t.schema.safeParse({ language: "ruby", code: "x" }).success).toBe(false)
-    expect(t.schema.safeParse({ language: "bash", code: "x", timeoutSeconds: 61 }).success).toBe(false)
-    expect(t.schema.safeParse({ language: "bash", code: "x", timeoutSeconds: 60 }).success).toBe(true)
+    expect(t.schema.safeParse({ language: "bash", code: "x", timeoutSeconds: 61 }).success).toBe(
+      false,
+    )
+    expect(t.schema.safeParse({ language: "bash", code: "x", timeoutSeconds: 60 }).success).toBe(
+      true,
+    )
   })
 
   it("web_search: query bounds", () => {
@@ -56,7 +62,9 @@ describe("builtin tool specs (no network, schema + danger surface)", () => {
     expect(t.schema.safeParse({ url: "https://example.com" }).success).toBe(true)
     expect(t.schema.safeParse({ url: "not-a-url" }).success).toBe(false)
     expect(t.schema.safeParse({ url: "https://example.com", maxChars: 50_000 }).success).toBe(true)
-    expect(t.schema.safeParse({ url: "https://example.com", maxChars: 100_001 }).success).toBe(false)
+    expect(t.schema.safeParse({ url: "https://example.com", maxChars: 100_001 }).success).toBe(
+      false,
+    )
   })
 
   it("computerTools: standard profile has no browser tools, browser profile does", () => {
@@ -82,7 +90,9 @@ describe("builtin tool specs (no network, schema + danger surface)", () => {
     expect(std).not.toContain("browser_open")
     expect(br).toContain("browser_open")
     // git_commit / git_push are the dangerous ones
-    const byName = Object.fromEntries(computerTools({ ...args, profile: "standard" }).map((t) => [t.name, t]))
+    const byName = Object.fromEntries(
+      computerTools({ ...args, profile: "standard" }).map((t) => [t.name, t]),
+    )
     expect(byName.git_commit!.dangerous).toBe(true)
     expect(byName.git_push!.dangerous).toBe(true)
     expect(byName.fs_read!.dangerous).toBe(false)

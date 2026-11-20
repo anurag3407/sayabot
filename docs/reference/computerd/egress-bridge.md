@@ -8,7 +8,7 @@ Source files: `apps/computerd/src/egress-bridge.ts`, `apps/computerd/src/identit
 
 ## 🧩 Why Rewriting Works
 
-Egress binds identity to the **TCP connection**, not to individual requests: the first request on a connection carries `Proxy-Authorization`, and keep-alive requests that follow inherit the connection's identity (a `WeakMap<Socket, identity>` on the egress side, `apps/egress/src/index.ts:103`). So the bridge only needs to rewrite the *first* request head of each connection; everything after that is a blind byte pipe.
+Egress binds identity to the **TCP connection**, not to individual requests: the first request on a connection carries `Proxy-Authorization`, and keep-alive requests that follow inherit the connection's identity (a `WeakMap<Socket, identity>` on the egress side, `apps/egress/src/index.ts:103`). So the bridge only needs to rewrite the _first_ request head of each connection; everything after that is a blind byte pipe.
 
 `rewriteProxyHead(buf, authorization)` (`egress-bridge.ts:12-23`) implements the rewrite:
 
@@ -19,7 +19,7 @@ export function rewriteProxyHead(buf: Buffer, authorization: string): Buffer | n
   const end = buf.indexOf("\r\n\r\n")
   if (end < 0) {
     if (buf.length > MAX_HEAD) throw new Error("proxy request head too large")
-    return null                       // keep buffering until the head is complete
+    return null // keep buffering until the head is complete
   }
   const head = buf.subarray(0, end).toString("latin1")
   const [requestLine = "", ...headers] = head.split("\r\n")
@@ -68,7 +68,10 @@ const auth = this.authorizationFor(agentId)
 const server = createServer((guest) => this.forward(guest, auth))
 await new Promise<void>((resolve, reject) => {
   server.once("error", reject)
-  server.listen(socketPath, () => { server.off("error", reject); resolve() })
+  server.listen(socketPath, () => {
+    server.off("error", reject)
+    resolve()
+  })
 })
 chmodSync(socketPath, 0o600)
 ```
@@ -115,13 +118,13 @@ private forward(guest: Socket, auth: string) {
 
 ### Security properties
 
-| Property | Mechanism |
-| :--- | :--- |
-| Credential never in the guest | The `Proxy-Authorization` value is injected on the host side of the socket; the VM only sees an outbound TCP proxy at `127.0.0.1:8080` |
-| Guest cannot escalate | Guest-supplied `Proxy-Authorization` headers are stripped before the host credential is appended |
-| One identity per socket | The credential is bound at `listen()` time per `agentId`; a socket path cannot serve two agents |
-| Attribution survives keep-alive | Egress binds identity per TCP connection; every request on the rewritten connection belongs to the same agent |
-| Guest-local only | Socket mode `0600` inside a `0700` directory under `~/.saaya/vm/<agentId>/` |
+| Property                        | Mechanism                                                                                                                              |
+| :------------------------------ | :------------------------------------------------------------------------------------------------------------------------------------- |
+| Credential never in the guest   | The `Proxy-Authorization` value is injected on the host side of the socket; the VM only sees an outbound TCP proxy at `127.0.0.1:8080` |
+| Guest cannot escalate           | Guest-supplied `Proxy-Authorization` headers are stripped before the host credential is appended                                       |
+| One identity per socket         | The credential is bound at `listen()` time per `agentId`; a socket path cannot serve two agents                                        |
+| Attribution survives keep-alive | Egress binds identity per TCP connection; every request on the rewritten connection belongs to the same agent                          |
+| Guest-local only                | Socket mode `0600` inside a `0700` directory under `~/.saaya/vm/<agentId>/`                                                            |
 
 ---
 

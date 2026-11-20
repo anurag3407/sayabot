@@ -106,15 +106,20 @@ export function CompleteAuth({ next }: { next: string }) {
   }, [next])
 
   if (!error) {
-    return (
-      <WorkspaceSkeleton label="Opening your workspace" />
-    )
+    return <WorkspaceSkeleton label="Opening your workspace" />
   }
 
   return (
     <div className="w-full max-w-sm rounded-2xl border border-line bg-panel p-6 shadow-2xl text-center space-y-4">
       <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-danger/10 border border-danger/20 text-danger">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
           <circle cx="12" cy="12" r="10" />
           <line x1="12" y1="8" x2="12" y2="12" />
           <line x1="12" y1="16" x2="12.01" y2="16" />

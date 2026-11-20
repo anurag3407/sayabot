@@ -12,14 +12,14 @@ Source files: `apps/web/src/lib/auth.ts`, `apps/web/src/proxy.ts`, `apps/web/src
 
 **Server components** use `apps/web/src/lib/auth.ts`:
 
-| Helper | Behaviour |
-| :--- | :--- |
-| `getCurrentUser()` | `supabase.auth.getUser()` from the cookie-bound server client; `null` when signed out. Wrapped in React `cache()`, so it runs once per request |
-| `requireUser(nextPath?)` | redirects to `/login` when signed out |
-| `getOrgAccess(slug)` | looks up `org_members` joined with `orgs`; returns `{ org, role, user }` or `null`; `requireOrgAccess` 404s when missing. Calls without `options` share one per-request lookup (`cache()`), so the layout and page do not repeat it |
-| `isOrgAdmin(role)` | `role === "owner" \|\| role === "admin"` |
-| `requireOrgAdmin(slug)` | non-admins are redirected to `/{slug}/settings`; each settings page calls it itself because layouts are not guaranteed to re-run (`auth.ts:115-123`) |
-| `getRoomAccess(slug, roomId)` | org access + the room row (must match `org_id`) + `room_members.role`; computes `canAdmin = roomRole === "admin" || isOrgAdmin(org.role)` |
+| Helper                        | Behaviour                                                                                                                                                                                                                           |
+| :---------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `getCurrentUser()`            | `supabase.auth.getUser()` from the cookie-bound server client; `null` when signed out. Wrapped in React `cache()`, so it runs once per request                                                                                      |
+| `requireUser(nextPath?)`      | redirects to `/login` when signed out                                                                                                                                                                                               |
+| `getOrgAccess(slug)`          | looks up `org_members` joined with `orgs`; returns `{ org, role, user }` or `null`; `requireOrgAccess` 404s when missing. Calls without `options` share one per-request lookup (`cache()`), so the layout and page do not repeat it |
+| `isOrgAdmin(role)`            | `role === "owner" \|\| role === "admin"`                                                                                                                                                                                            |
+| `requireOrgAdmin(slug)`       | non-admins are redirected to `/{slug}/settings`; each settings page calls it itself because layouts are not guaranteed to re-run (`auth.ts:115-123`)                                                                                |
+| `getRoomAccess(slug, roomId)` | org access + the room row (must match `org_id`) + `room_members.role`; computes `canAdmin = roomRole === "admin"                                                                                                                    |     | isOrgAdmin(org.role)` |
 
 Profiles add display name, avatar and notification preferences (`getProfile`); anonymous Supabase users (`user.is_anonymous === true`) surface as guests (`isGuest`, used by desktop guest mode).
 
@@ -34,10 +34,10 @@ Profiles add display name, avatar and notification preferences (`getProfile`); a
 
 All agent-facing HTTP (`/v1/rooms/:roomId/messages`, `/v1/rooms/:roomId/messages/stream`, MCP) authenticates with `authenticateAgentKey(authorization)` (`apps/orchestrator/src/bot/auth.ts:22-88`). Two token families are accepted:
 
-| Family | Prefix | Storage | Checks |
-| :--- | :--- | :--- | :--- |
-| **OAuth access token** | `mesh_at_…` or `sayabot_at_…` | `oauth_tokens` (`kind: "access"`, SHA-256 `tokenHash`) | hash match, not revoked, `expiresAt > now`; returns `scopes` and `roomIds` from the token row |
-| **Direct API key** | `mesh_ak_…`, `saaya_ak_…`, or `sayabot_ak_…` | `agent_api_keys` (`prefix` = first 16 chars, `keyHash` = SHA-256) | lookup by prefix, not revoked, not expired, then **constant-time hex compare** of hashes (`safeEqualHex`); `lastUsedAt` is updated fire-and-forget |
+| Family                 | Prefix                                       | Storage                                                           | Checks                                                                                                                                             |
+| :--------------------- | :------------------------------------------- | :---------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **OAuth access token** | `mesh_at_…` or `sayabot_at_…`                | `oauth_tokens` (`kind: "access"`, SHA-256 `tokenHash`)            | hash match, not revoked, `expiresAt > now`; returns `scopes` and `roomIds` from the token row                                                      |
+| **Direct API key**     | `mesh_ak_…`, `saaya_ak_…`, or `sayabot_ak_…` | `agent_api_keys` (`prefix` = first 16 chars, `keyHash` = SHA-256) | lookup by prefix, not revoked, not expired, then **constant-time hex compare** of hashes (`safeEqualHex`); `lastUsedAt` is updated fire-and-forget |
 
 Key generation lives in `packages/core/src/server/agent-key.ts`: `generateAgentApiKey()` mints `mesh_ak_` + 32 random bytes (base64url) and returns `{ token, prefix, hash, last4 }` — only the hash and prefix touch the database, so a DB leak never yields a usable key. Sibling generators mint bot-invite codes (`bi_…`, not credentials — joining still needs approval), poll tokens (`bp_…`), pairing codes (8 chars, modulo-bias-free), device tokens (`sd_…`) and workspace join codes (`j_…`).
 
@@ -112,7 +112,7 @@ Pairing uses short codes from `packages/core/src/server/agent-key.ts`: `generate
 
 Adding an external MCP bot is a two-step exchange, designed so no secret is embedded in a shareable link:
 
-1. A human creates an "Add an agent" link containing a **bot invite code** (`bi_…`, `generateBotInviteCode()` — explicitly documented as *not* a credential, `agent-key.ts:28-31`). The bot submits it via `/bot` routes, creating a pending request that a human approves in the Inbox.
+1. A human creates an "Add an agent" link containing a **bot invite code** (`bi_…`, `generateBotInviteCode()` — explicitly documented as _not_ a credential, `agent-key.ts:28-31`). The bot submits it via `/bot` routes, creating a pending request that a human approves in the Inbox.
 2. On approval the bot collects its real API key using a one-time **poll token** (`bp_…`, issued hashed) — proving it is the same client that asked to join.
 3. From then on it authenticates with a standard `mesh_ak_`/`sayabot_at_` token as described above.
 
@@ -135,13 +135,13 @@ The service-role key and the anon key are separate secrets; only the anon key is
 
 ## 🧪 What the tests cover
 
-| Behaviour | Test file / suite |
-| :--- | :--- |
-| Agent key generation, prefix/hash/last4 invariants | `packages/core/src/server/agent-key.test.ts` |
-| Webhook URL auth preconditions (credentials stripped, scheme checks) | `packages/core/src/server/webhook.test.ts` |
-| Route auth (session vs bearer, guest merge) | `apps/web/src/lib/auth-helpers.test.ts`, `e2e/api-guard.spec.ts` |
-| Room visibility gating (bot message 403s, canvas 4403) | `e2e/api-guard.spec.ts`, `e2e/navigation.spec.ts` |
-| Desktop guest mode flags | `apps/web/src/lib/desktop-bridge.test.ts` |
+| Behaviour                                                            | Test file / suite                                                |
+| :------------------------------------------------------------------- | :--------------------------------------------------------------- |
+| Agent key generation, prefix/hash/last4 invariants                   | `packages/core/src/server/agent-key.test.ts`                     |
+| Webhook URL auth preconditions (credentials stripped, scheme checks) | `packages/core/src/server/webhook.test.ts`                       |
+| Route auth (session vs bearer, guest merge)                          | `apps/web/src/lib/auth-helpers.test.ts`, `e2e/api-guard.spec.ts` |
+| Room visibility gating (bot message 403s, canvas 4403)               | `e2e/api-guard.spec.ts`, `e2e/navigation.spec.ts`                |
+| Desktop guest mode flags                                             | `apps/web/src/lib/desktop-bridge.test.ts`                        |
 
 ---
 

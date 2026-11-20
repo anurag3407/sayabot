@@ -12,7 +12,11 @@ import { ThemeToggle } from "@/components/theme-toggle"
 
 export const metadata: Metadata = { title: "Profile & alerts" }
 
-export default async function ProfileSettingsPage({ params }: { params: Promise<{ org: string }> }) {
+export default async function ProfileSettingsPage({
+  params,
+}: {
+  params: Promise<{ org: string }>
+}) {
   const { org: orgSlug } = await params
   const access = await requireOrgAccess(orgSlug)
   const orgs = await listUserOrgs(access.user.id)
@@ -56,7 +60,10 @@ export default async function ProfileSettingsPage({ params }: { params: Promise<
         </p>
       </Section>
 
-      <Section title="Your workspaces" description="Every workspace you belong to, and your role in each.">
+      <Section
+        title="Your workspaces"
+        description="Every workspace you belong to, and your role in each."
+      >
         <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line">
           {orgs.map((org) => (
             <li key={org.id}>
@@ -66,24 +73,38 @@ export default async function ProfileSettingsPage({ params }: { params: Promise<
               >
                 <span className="min-w-0 truncate">
                   {org.name}
-                  {org.slug === orgSlug ? <span className="ml-2 text-[11px] text-accent">current</span> : null}
+                  {org.slug === orgSlug ? (
+                    <span className="ml-2 text-[11px] text-accent">current</span>
+                  ) : null}
                 </span>
-                <span className="shrink-0 font-mono text-[11px] capitalize text-faint">{org.role}</span>
+                <span className="shrink-0 font-mono text-[11px] capitalize text-faint">
+                  {org.role}
+                </span>
               </Link>
             </li>
           ))}
         </ul>
-        <Link href="/new-workspace" className={cn(buttonVariants({ variant: "outline", size: "sm" }), "mt-3")}>
+        <Link
+          href="/new-workspace"
+          className={cn(buttonVariants({ variant: "outline", size: "sm" }), "mt-3")}
+        >
           New workspace
         </Link>
       </Section>
 
       <Section
         title="Sign-in & security"
-        description={access.user.email ? `Signed in as ${access.user.email}.` : "Signed in with an external provider."}
+        description={
+          access.user.email
+            ? `Signed in as ${access.user.email}.`
+            : "Signed in with an external provider."
+        }
       >
         <div className="flex flex-wrap gap-2">
-          <Link href="/forgot-password" className={buttonVariants({ variant: "outline", size: "sm" })}>
+          <Link
+            href="/forgot-password"
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
             Change password
           </Link>
           <form action={signOutAction}>

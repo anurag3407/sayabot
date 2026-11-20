@@ -49,7 +49,8 @@ export const SEARCH_PROVIDERS: ProviderMeta[] = [
   {
     id: "duckduckgo",
     name: "DuckDuckGo",
-    description: "Keyless, zero-cost web search via DuckDuckGo. Works out of the box with zero configuration.",
+    description:
+      "Keyless, zero-cost web search via DuckDuckGo. Works out of the box with zero configuration.",
     badge: "Free",
     requiresKey: false,
   },
@@ -65,7 +66,8 @@ export const SEARCH_PROVIDERS: ProviderMeta[] = [
   {
     id: "context",
     name: "Context.dev",
-    description: "Live web search, citation extraction, and markdown conversion designed for AI agents.",
+    description:
+      "Live web search, citation extraction, and markdown conversion designed for AI agents.",
     badge: "AI Search",
     requiresKey: true,
     keyPlaceholder: "ctx_… (from context.dev)",
@@ -74,7 +76,8 @@ export const SEARCH_PROVIDERS: ProviderMeta[] = [
   {
     id: "tavily",
     name: "Tavily",
-    description: "AI-native search engine built for agents with synthesis and clean extracted context.",
+    description:
+      "AI-native search engine built for agents with synthesis and clean extracted context.",
     badge: "AI Search",
     requiresKey: true,
     keyPlaceholder: "tvly-…",
@@ -83,7 +86,8 @@ export const SEARCH_PROVIDERS: ProviderMeta[] = [
   {
     id: "brave",
     name: "Brave Search",
-    description: "Independent, privacy-focused search index with fast results and 2,000 free queries/mo.",
+    description:
+      "Independent, privacy-focused search index with fast results and 2,000 free queries/mo.",
     badge: "Search API",
     requiresKey: true,
     keyPlaceholder: "BSA…",
@@ -92,7 +96,8 @@ export const SEARCH_PROVIDERS: ProviderMeta[] = [
   {
     id: "searxng",
     name: "SearXNG",
-    description: "Open-source privacy metasearch engine. Connect to any public or self-hosted instance.",
+    description:
+      "Open-source privacy metasearch engine. Connect to any public or self-hosted instance.",
     badge: "Self-Hosted",
     requiresKey: false,
     requiresUrl: true,
@@ -102,7 +107,8 @@ export const SEARCH_PROVIDERS: ProviderMeta[] = [
   {
     id: "whoogle",
     name: "Whoogle Search",
-    description: "Self-hosted private Google search proxy with zero ads or tracking. Run via Docker.",
+    description:
+      "Self-hosted private Google search proxy with zero ads or tracking. Run via Docker.",
     badge: "Self-Hosted",
     requiresKey: false,
     requiresUrl: true,
@@ -112,7 +118,8 @@ export const SEARCH_PROVIDERS: ProviderMeta[] = [
   {
     id: "serper",
     name: "Serper (Google Search)",
-    description: "Fast Google Search API returning organic results, knowledge graphs, and snippets.",
+    description:
+      "Fast Google Search API returning organic results, knowledge graphs, and snippets.",
     badge: "Search API",
     requiresKey: true,
     keyPlaceholder: "Your Serper API key",
@@ -170,11 +177,16 @@ function decodeHtmlEntities(text: string): string {
     .replace(/&nbsp;/g, " ")
 }
 
-async function searchDuckDuckGo(query: string, count: number, signal?: AbortSignal): Promise<SearchResultItem[]> {
+async function searchDuckDuckGo(
+  query: string,
+  count: number,
+  signal?: AbortSignal,
+): Promise<SearchResultItem[]> {
   const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`
   const response = await fetch(url, {
     headers: {
-      "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "User-Agent":
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
       Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
       "Accept-Language": "en-US,en;q=0.9",
     },
@@ -195,7 +207,9 @@ async function searchDuckDuckGo(query: string, count: number, signal?: AbortSign
   for (const block of blocks) {
     if (results.length >= count) break
     const titleMatch =
-      block.match(/<a class="result__url"[^>]*href="([^"]+)"[\s\S]*?<h2 class="result__title">([\s\S]*?)<\/h2>/i) ||
+      block.match(
+        /<a class="result__url"[^>]*href="([^"]+)"[\s\S]*?<h2 class="result__title">([\s\S]*?)<\/h2>/i,
+      ) ||
       block.match(/<h2 class="result__title">[\s\S]*?<a[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i)
     const snippetMatch = block.match(/<a class="result__snippet"[^>]*>([\s\S]*?)<\/a>/i)
     if (!titleMatch) continue
@@ -350,7 +364,8 @@ async function searchWhoogle(
   } catch {}
 
   const results: SearchResultItem[] = []
-  const linkRegex = /<a[^>]+href="([^"]+)"[^>]*>[\s\S]*?<h3[^>]*>([\s\S]*?)<\/h3>[\s\S]*?<\/a>[\s\S]*?(?:<div[^>]*class="[^"]*snippet[^"]*"[^>]*>([\s\S]*?)<\/div>|<p[^>]*>([\s\S]*?)<\/p>)?/gi
+  const linkRegex =
+    /<a[^>]+href="([^"]+)"[^>]*>[\s\S]*?<h3[^>]*>([\s\S]*?)<\/h3>[\s\S]*?<\/a>[\s\S]*?(?:<div[^>]*class="[^"]*snippet[^"]*"[^>]*>([\s\S]*?)<\/div>|<p[^>]*>([\s\S]*?)<\/p>)?/gi
   let match: RegExpExecArray | null
   while ((match = linkRegex.exec(text)) !== null && results.length < count) {
     let href = match[1] || ""
@@ -504,14 +519,17 @@ async function searchContextDev(
   }).catch(() => null)
 
   if (!response || !response.ok) {
-    response = await fetch(`https://api.context.dev/v1/search?query=${encodeURIComponent(query)}&limit=${count}`, {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "X-API-Key": apiKey,
-        Accept: "application/json",
+    response = await fetch(
+      `https://api.context.dev/v1/search?query=${encodeURIComponent(query)}&limit=${count}`,
+      {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "X-API-Key": apiKey,
+          Accept: "application/json",
+        },
+        signal,
       },
-      signal,
-    })
+    )
   }
 
   if (!response.ok) {
@@ -524,7 +542,8 @@ async function searchContextDev(
   const results: SearchResultItem[] = rawResults.slice(0, count).map((r: any) => ({
     title: r.title ?? r.name ?? "",
     url: r.url ?? r.link ?? "",
-    description: r.description ?? r.snippet ?? r.markdown?.slice(0, 300) ?? r.text?.slice(0, 300) ?? "",
+    description:
+      r.description ?? r.snippet ?? r.markdown?.slice(0, 300) ?? r.text?.slice(0, 300) ?? "",
   }))
 
   return {
@@ -576,7 +595,12 @@ async function searchPerplexity(
     },
     body: JSON.stringify({
       model: "sonar",
-      messages: [{ role: "user", content: `Search the web and provide concise findings with source URLs for: ${query}` }],
+      messages: [
+        {
+          role: "user",
+          content: `Search the web and provide concise findings with source URLs for: ${query}`,
+        },
+      ],
     }),
     signal,
   })
@@ -596,7 +620,11 @@ async function searchPerplexity(
     description: answer.slice(0, 300),
   }))
   if (results.length === 0 && answer) {
-    results.push({ title: "Perplexity Search Result", url: "https://perplexity.ai", description: answer })
+    results.push({
+      title: "Perplexity Search Result",
+      url: "https://perplexity.ai",
+      description: answer,
+    })
   }
   return { results, answer }
 }
@@ -607,12 +635,15 @@ async function searchBing(
   apiKey: string,
   signal?: AbortSignal,
 ): Promise<SearchResultItem[]> {
-  const response = await fetch(`https://api.bing.microsoft.com/v7.0/search?q=${encodeURIComponent(query)}&count=${count}`, {
-    headers: {
-      "Ocp-Apim-Subscription-Key": apiKey,
+  const response = await fetch(
+    `https://api.bing.microsoft.com/v7.0/search?q=${encodeURIComponent(query)}&count=${count}`,
+    {
+      headers: {
+        "Ocp-Apim-Subscription-Key": apiKey,
+      },
+      signal,
     },
-    signal,
-  })
+  )
   if (!response.ok) {
     const text = await response.text().catch(() => "")
     throw new Error(`Bing search failed (${response.status}): ${text.slice(0, 200)}`)
@@ -655,7 +686,8 @@ export async function executeWebSearch(args: {
       }
       case "brave": {
         const key = apiKey || getEnv().BRAVE_SEARCH_API_KEY
-        if (!key) throw new Error("Brave Search API key is missing. Configure it in Settings → Tools.")
+        if (!key)
+          throw new Error("Brave Search API key is missing. Configure it in Settings → Tools.")
         results = await searchBrave(args.query, count, key, args.signal)
         break
       }
@@ -678,25 +710,29 @@ export async function executeWebSearch(args: {
         break
       }
       case "tinyfish": {
-        if (!apiKey) throw new Error("TinyFish API key is missing. Configure it in Settings → Search.")
+        if (!apiKey)
+          throw new Error("TinyFish API key is missing. Configure it in Settings → Search.")
         results = await searchTinyFish(args.query, count, apiKey, args.signal)
         break
       }
       case "context":
       case "context_dev": {
-        if (!apiKey) throw new Error("Context.dev API key is missing. Configure it in Settings → Search.")
+        if (!apiKey)
+          throw new Error("Context.dev API key is missing. Configure it in Settings → Search.")
         const res = await searchContextDev(args.query, count, apiKey, args.signal)
         results = res.results
         answer = res.answer
         break
       }
       case "firecrawl": {
-        if (!apiKey) throw new Error("Firecrawl API key is missing. Configure it in Settings → Tools.")
+        if (!apiKey)
+          throw new Error("Firecrawl API key is missing. Configure it in Settings → Tools.")
         results = await searchFirecrawl(args.query, count, apiKey, args.signal)
         break
       }
       case "perplexity": {
-        if (!apiKey) throw new Error("Perplexity API key is missing. Configure it in Settings → Tools.")
+        if (!apiKey)
+          throw new Error("Perplexity API key is missing. Configure it in Settings → Tools.")
         const res = await searchPerplexity(args.query, count, apiKey, args.signal)
         results = res.results
         answer = res.answer
@@ -717,7 +753,10 @@ export async function executeWebSearch(args: {
     // If a configured paid provider fails, try falling back to DuckDuckGo so agents aren't stranded
     if (provider !== "duckduckgo") {
       try {
-        console.warn(`[web_search] provider ${provider} failed, falling back to DuckDuckGo:`, (err as Error).message)
+        console.warn(
+          `[web_search] provider ${provider} failed, falling back to DuckDuckGo:`,
+          (err as Error).message,
+        )
         results = await searchDuckDuckGo(args.query, count, args.signal)
         return {
           provider: `${provider} (fell back to DuckDuckGo)`,
@@ -760,7 +799,9 @@ export function webSearchTool(
     execute: async (input: { query: string; count?: number }, signal?: AbortSignal) => {
       let config: OrgToolConfig | null = null
       if (orgId) {
-        config = await resolveToolCredential({ orgId, agentId, tool: "web_search" }).catch(() => null)
+        config = await resolveToolCredential({ orgId, agentId, tool: "web_search" }).catch(
+          () => null,
+        )
       }
 
       const envBrave = getEnv().BRAVE_SEARCH_API_KEY
@@ -892,7 +933,11 @@ export async function fetchProviderCredits(args: {
         })
         if (!res.ok) {
           const errText = await res.text().catch(() => "")
-          return { ok: false, provider: "serper", error: `Serper error (${res.status}): ${errText.slice(0, 100)}` }
+          return {
+            ok: false,
+            provider: "serper",
+            error: `Serper error (${res.status}): ${errText.slice(0, 100)}`,
+          }
         }
         const data = (await res.json()) as { credits?: number; rateLimit?: number }
         const credits = data.credits ?? 0
@@ -920,7 +965,11 @@ export async function fetchProviderCredits(args: {
         })
         if (!res.ok) {
           const errText = await res.text().catch(() => "")
-          return { ok: false, provider: "firecrawl", error: `Firecrawl error (${res.status}): ${errText.slice(0, 100)}` }
+          return {
+            ok: false,
+            provider: "firecrawl",
+            error: `Firecrawl error (${res.status}): ${errText.slice(0, 100)}`,
+          }
         }
         const data = (await res.json()) as {
           success?: boolean
@@ -932,7 +981,9 @@ export async function fetchProviderCredits(args: {
           ok: true,
           provider: "firecrawl",
           plan: "Active Firecrawl Team",
-          credits: total ? `${remaining.toLocaleString()} / ${total.toLocaleString()} credits` : `${remaining.toLocaleString()} credits remaining`,
+          credits: total
+            ? `${remaining.toLocaleString()} / ${total.toLocaleString()} credits`
+            : `${remaining.toLocaleString()} credits remaining`,
           remaining,
           total,
           details: "Verified Firecrawl credentials & credit balance",
@@ -955,7 +1006,11 @@ export async function fetchProviderCredits(args: {
         })
         if (!res.ok) {
           const errText = await res.text().catch(() => "")
-          return { ok: false, provider: "brave", error: `Brave Search error (${res.status}): ${errText.slice(0, 100)}` }
+          return {
+            ok: false,
+            provider: "brave",
+            error: `Brave Search error (${res.status}): ${errText.slice(0, 100)}`,
+          }
         }
         const remainingHeader = res.headers.get("x-ratelimit-remaining")
         const limitHeader = res.headers.get("x-ratelimit-limit")
@@ -964,9 +1019,14 @@ export async function fetchProviderCredits(args: {
           ok: true,
           provider: "brave",
           plan: "Brave Search (2,000 free/mo)",
-          credits: remaining !== undefined ? `${remaining.toLocaleString()} queries remaining in window` : "Active (2,000 queries/mo free)",
+          credits:
+            remaining !== undefined
+              ? `${remaining.toLocaleString()} queries remaining in window`
+              : "Active (2,000 queries/mo free)",
           remaining,
-          details: limitHeader ? `Rate limit: ${limitHeader}` : "Verified active Brave subscription token",
+          details: limitHeader
+            ? `Rate limit: ${limitHeader}`
+            : "Verified active Brave subscription token",
         }
       } catch (e) {
         return { ok: false, provider: "brave", error: (e as Error).message }
@@ -1007,9 +1067,14 @@ export async function fetchProviderCredits(args: {
         })
         if (!testRes.ok) {
           const errText = await testRes.text().catch(() => "")
-          return { ok: false, provider: "context", error: `Context.dev returned (${testRes.status}): ${errText.slice(0, 100)}` }
+          return {
+            ok: false,
+            provider: "context",
+            error: `Context.dev returned (${testRes.status}): ${errText.slice(0, 100)}`,
+          }
         }
-        const remHeader = testRes.headers.get("x-ratelimit-remaining") || testRes.headers.get("x-credits-remaining")
+        const remHeader =
+          testRes.headers.get("x-ratelimit-remaining") || testRes.headers.get("x-credits-remaining")
         return {
           ok: true,
           provider: "context",
@@ -1034,7 +1099,11 @@ export async function fetchProviderCredits(args: {
         })
         if (!res.ok) {
           const errText = await res.text().catch(() => "")
-          return { ok: false, provider: "tinyfish", error: `TinyFish error (${res.status}): ${errText.slice(0, 100)}` }
+          return {
+            ok: false,
+            provider: "tinyfish",
+            error: `TinyFish error (${res.status}): ${errText.slice(0, 100)}`,
+          }
         }
         const remHeader = res.headers.get("x-ratelimit-remaining")
         return {
@@ -1060,7 +1129,11 @@ export async function fetchProviderCredits(args: {
         })
         if (!res.ok) {
           const errText = await res.text().catch(() => "")
-          return { ok: false, provider: "tavily", error: `Tavily error (${res.status}): ${errText.slice(0, 100)}` }
+          return {
+            ok: false,
+            provider: "tavily",
+            error: `Tavily error (${res.status}): ${errText.slice(0, 100)}`,
+          }
         }
         return {
           ok: true,
@@ -1088,7 +1161,11 @@ export async function fetchProviderCredits(args: {
         })
         if (!res.ok) {
           const errText = await res.text().catch(() => "")
-          return { ok: false, provider: "exa", error: `Exa error (${res.status}): ${errText.slice(0, 100)}` }
+          return {
+            ok: false,
+            provider: "exa",
+            error: `Exa error (${res.status}): ${errText.slice(0, 100)}`,
+          }
         }
         return {
           ok: true,
@@ -1103,7 +1180,8 @@ export async function fetchProviderCredits(args: {
     }
 
     case "perplexity": {
-      if (!apiKey) return { ok: false, provider: "perplexity", error: "Missing Perplexity API key." }
+      if (!apiKey)
+        return { ok: false, provider: "perplexity", error: "Missing Perplexity API key." }
       try {
         const res = await fetch("https://api.perplexity.ai/models", {
           headers: { Authorization: `Bearer ${apiKey}` },
@@ -1111,7 +1189,11 @@ export async function fetchProviderCredits(args: {
         })
         if (!res.ok) {
           const errText = await res.text().catch(() => "")
-          return { ok: false, provider: "perplexity", error: `Perplexity error (${res.status}): ${errText.slice(0, 100)}` }
+          return {
+            ok: false,
+            provider: "perplexity",
+            error: `Perplexity error (${res.status}): ${errText.slice(0, 100)}`,
+          }
         }
         return {
           ok: true,
@@ -1134,7 +1216,11 @@ export async function fetchProviderCredits(args: {
         })
         if (!res.ok) {
           const errText = await res.text().catch(() => "")
-          return { ok: false, provider: "bing", error: `Bing error (${res.status}): ${errText.slice(0, 100)}` }
+          return {
+            ok: false,
+            provider: "bing",
+            error: `Bing error (${res.status}): ${errText.slice(0, 100)}`,
+          }
         }
         return {
           ok: true,

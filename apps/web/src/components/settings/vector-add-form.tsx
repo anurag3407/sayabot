@@ -218,9 +218,7 @@ export function VectorAddForm({
                     {AUTH_LABEL[item.auth]}
                   </span>
                 </div>
-                <p className="mt-1.5 text-[11.5px] leading-snug text-muted">
-                  {item.detail}
-                </p>
+                <p className="mt-1.5 text-[11.5px] leading-snug text-muted">{item.detail}</p>
               </div>
 
               <div className="mt-2.5 flex items-center justify-between pt-2 border-t border-line/40 text-[11px]">
@@ -236,7 +234,9 @@ export function VectorAddForm({
         <ActionForm
           key={choice.value}
           action={saveVectorProvider}
-          submitLabel={choice.auth === "none" ? `Use ${choice.name}` : `Save & Activate ${choice.name}`}
+          submitLabel={
+            choice.auth === "none" ? `Use ${choice.name}` : `Save & Activate ${choice.name}`
+          }
           resetOnSuccess
           className="rounded-2xl border border-line bg-surface/40 p-4 space-y-4"
         >

@@ -10,27 +10,27 @@ Source files: `apps/desktop/src/local-agents.ts`, `src/injector.ts`
 
 Each of the 19 CLI apps is an `AgentSpec`: `{ id, name, bin, run, keyEnv, signedIn }`. `run` is how the [local runner](./runner-and-stream.md) starts it — `{ kind: "tools" }` (Claude Code, Codex), `{ kind: "plain" }` (print-mode CLIs), or `{ kind: "acp", args }` (Agent Client Protocol, handled by `acp.ts`).
 
-| id | Name | bin | Run mode | Sign-in checked via (paths relative to `$HOME`; `XDG_*`/app-specific env overrides honoured) |
-| :--- | :--- | :--- | :--- | :--- |
-| `claude-code` | Claude Code | `claude` | tools | `~/.claude/.credentials.json`, `~/.claude.json` containing `"oauthAccount"`, or Keychain service `Claude Code-credentials` |
-| `codex` | Codex | `codex` | tools | `auth.json` under `$CODEX_HOME` (default `~/.codex`) |
-| `copilot` | GitHub Copilot | `copilot` | acp `--acp --stdio` | `config.json` under `$COPILOT_HOME` with `loggedInUsers`/`lastLoggedInUser`, or Keychain `copilot-cli` |
-| `command-code` | Command Code | `command-code` | acp `acp` | `~/.commandcode/auth.json` with an `apiKey` |
-| `cursor` | Cursor | `cursor-agent` | plain | Keychain `cursor-access-token` or `~/.cursor/cli-config.json` with `authInfo` |
-| `gemini` | Gemini CLI | `gemini` | plain | `~/.gemini/oauth_creds.json` |
-| `opencode` | OpenCode | `opencode` | plain | `auth.json`, `opencode.json` (config) or `opencode.db` under XDG data/config |
-| `mistral-vibe` | Mistral (Vibe) | `vibe-acp` | acp | `$VIBE_HOME` (default `~/.vibe`) `whoami_cache.json`, `.env` with `MISTRAL_API_KEY`, or Keychain `ai.mistral.vibe` |
-| `grok` | Grok | `grok` | acp `agent stdio` | `auth.json` under `$GROK_HOME` (default `~/.grok`) |
-| `kimi` | Kimi Code | `kimi` | acp `acp` | credentials dir under `$KIMI_CODE_HOME` (default `~/.kimi-code`) matching `/^kimi-code.*\.json$/` |
-| `kiro` | Kiro | `kiro-cli` | acp `acp --agent-engine=v3 --auth-method=cli` | `kiro-cli/data.sqlite3` under `~/Library/Application Support` (macOS) or XDG data |
-| `droid` | Droid (Factory) | `droid` | acp `exec -o acp` | `~/.factory/auth.json` or `auth.v2.*` |
-| `devin` | Devin | `devin` | acp `acp` | XDG config `devin/credentials.toml` |
-| `cline` | Cline | `cline` | acp `--acp --auto-approve false` | providers.json under `$CLINE_DIR` (default `~/.cline`) with `apiKey`/`accessToken` |
-| `qwen` | Qwen Code | `qwen` | acp `--acp` | `~/.qwen/oauth_creds.json` or `settings.json` |
-| `hermes` | Hermes | `hermes` | acp `acp` | `~/.hermes/config.yaml` or `auth.json` |
-| `omp` | OMP (Oh My Pi) | `omp` | acp `acp` | `~/.omp/agent` |
-| `pi` | pi | `pi` | plain | `~/.pi/agent/auth.json` containing a JSON object |
-| `deepseek` | DeepSeek Harness | `dsh` | acp `--profile acp` | `.credentials.yaml` or `.env` with `DEEPSEEK_API_KEY` under `$DSH_HOME` (default `~/.dsh`) |
+| id             | Name             | bin            | Run mode                                      | Sign-in checked via (paths relative to `$HOME`; `XDG_*`/app-specific env overrides honoured)                               |
+| :------------- | :--------------- | :------------- | :-------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------- |
+| `claude-code`  | Claude Code      | `claude`       | tools                                         | `~/.claude/.credentials.json`, `~/.claude.json` containing `"oauthAccount"`, or Keychain service `Claude Code-credentials` |
+| `codex`        | Codex            | `codex`        | tools                                         | `auth.json` under `$CODEX_HOME` (default `~/.codex`)                                                                       |
+| `copilot`      | GitHub Copilot   | `copilot`      | acp `--acp --stdio`                           | `config.json` under `$COPILOT_HOME` with `loggedInUsers`/`lastLoggedInUser`, or Keychain `copilot-cli`                     |
+| `command-code` | Command Code     | `command-code` | acp `acp`                                     | `~/.commandcode/auth.json` with an `apiKey`                                                                                |
+| `cursor`       | Cursor           | `cursor-agent` | plain                                         | Keychain `cursor-access-token` or `~/.cursor/cli-config.json` with `authInfo`                                              |
+| `gemini`       | Gemini CLI       | `gemini`       | plain                                         | `~/.gemini/oauth_creds.json`                                                                                               |
+| `opencode`     | OpenCode         | `opencode`     | plain                                         | `auth.json`, `opencode.json` (config) or `opencode.db` under XDG data/config                                               |
+| `mistral-vibe` | Mistral (Vibe)   | `vibe-acp`     | acp                                           | `$VIBE_HOME` (default `~/.vibe`) `whoami_cache.json`, `.env` with `MISTRAL_API_KEY`, or Keychain `ai.mistral.vibe`         |
+| `grok`         | Grok             | `grok`         | acp `agent stdio`                             | `auth.json` under `$GROK_HOME` (default `~/.grok`)                                                                         |
+| `kimi`         | Kimi Code        | `kimi`         | acp `acp`                                     | credentials dir under `$KIMI_CODE_HOME` (default `~/.kimi-code`) matching `/^kimi-code.*\.json$/`                          |
+| `kiro`         | Kiro             | `kiro-cli`     | acp `acp --agent-engine=v3 --auth-method=cli` | `kiro-cli/data.sqlite3` under `~/Library/Application Support` (macOS) or XDG data                                          |
+| `droid`        | Droid (Factory)  | `droid`        | acp `exec -o acp`                             | `~/.factory/auth.json` or `auth.v2.*`                                                                                      |
+| `devin`        | Devin            | `devin`        | acp `acp`                                     | XDG config `devin/credentials.toml`                                                                                        |
+| `cline`        | Cline            | `cline`        | acp `--acp --auto-approve false`              | providers.json under `$CLINE_DIR` (default `~/.cline`) with `apiKey`/`accessToken`                                         |
+| `qwen`         | Qwen Code        | `qwen`         | acp `--acp`                                   | `~/.qwen/oauth_creds.json` or `settings.json`                                                                              |
+| `hermes`       | Hermes           | `hermes`       | acp `acp`                                     | `~/.hermes/config.yaml` or `auth.json`                                                                                     |
+| `omp`          | OMP (Oh My Pi)   | `omp`          | acp `acp`                                     | `~/.omp/agent`                                                                                                             |
+| `pi`           | pi               | `pi`           | plain                                         | `~/.pi/agent/auth.json` containing a JSON object                                                                           |
+| `deepseek`     | DeepSeek Harness | `dsh`          | acp `--profile acp`                           | `.credentials.yaml` or `.env` with `DEEPSEEK_API_KEY` under `$DSH_HOME` (default `~/.dsh`)                                 |
 
 `keyEnv` lists API keys each app accepts **instead of** a sign-in; `hasEnv` only checks that a variable is non-empty in the app's own environment — the values are never opened. Keychain probes run `/usr/bin/security find-generic-password -s <service>` on macOS only (`keychainHas` returns false on Windows) and check only the exit code. Sign-in files under the home directory still count on Windows.
 
@@ -46,19 +46,19 @@ The TypeScript shapes the rest of the app consumes:
 
 ```typescript
 export interface LocalAgent {
-  id: string                       // spec id, e.g. "claude-code"
-  name: string                     // display name, e.g. "Claude Code"
-  binary: string | null            // resolved path, or null when not installed
+  id: string // spec id, e.g. "claude-code"
+  name: string // display name, e.g. "Claude Code"
+  binary: string | null // resolved path, or null when not installed
   status: "ready" | "signed_out" | "not_installed"
-  version: string | null           // "x.y" or "x.y.z" from `--version`
-  account?: string | null          // "you@example.com · Org" when the app exposes it
-  models?: ReportedModel[]         // model list, when it could be read
+  version: string | null // "x.y" or "x.y.z" from `--version`
+  account?: string | null // "you@example.com · Org" when the app exposes it
+  models?: ReportedModel[] // model list, when it could be read
 }
 
 export type RunMode =
-  | { kind: "tools" }                                  // Claude Code, Codex
-  | { kind: "plain" }                                  // print-mode CLIs
-  | { kind: "acp"; args: readonly string[] }           // Agent Client Protocol apps
+  | { kind: "tools" } // Claude Code, Codex
+  | { kind: "plain" } // print-mode CLIs
+  | { kind: "acp"; args: readonly string[] } // Agent Client Protocol apps
 ```
 
 `ReportedModel` comes from [local-mcp-and-models.md](./local-mcp-and-models.md). `main.ts` strips `binary` and `run` before the list goes to the server — the heartbeat only carries `{ id, name, status, version, account?, models? }` (`src/main.ts:187-195`).

@@ -11,9 +11,7 @@ describe("Planning Tool (E8)", () => {
   })
 
   it("does not nudge when a plan already exists", () => {
-    const plan: PlanItem[] = [
-      { id: "1", title: "Write tests", status: "in_progress" },
-    ]
+    const plan: PlanItem[] = [{ id: "1", title: "Write tests", status: "in_progress" }]
     expect(shouldNudgePlan(12, plan)).toBe(false)
   })
 

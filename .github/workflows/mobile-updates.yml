@@ -2,13 +2,13 @@ name: Mobile Updates & Release
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
     inputs:
       action:
         description: 'Action to run: "update" (OTA), "build-apk", or "sync-apk"'
         required: true
-        default: 'sync-apk'
+        default: "sync-apk"
         type: choice
         options:
           - update

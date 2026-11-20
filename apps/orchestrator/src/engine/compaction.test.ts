@@ -8,18 +8,55 @@ describe("Compaction (E7)", () => {
       { role: "system", content: "trusted rules" },
       { role: "user", content: "original task" },
       { role: "assistant", content: "old progress" },
-      { role: "assistant", content: [{ type: "tool-call", toolCallId: "a", toolName: "read", input: {} }] },
-      { role: "tool", content: [{ type: "tool-result", toolCallId: "a", toolName: "read", output: { type: "text", value: "source" } }] },
+      {
+        role: "assistant",
+        content: [{ type: "tool-call", toolCallId: "a", toolName: "read", input: {} }],
+      },
+      {
+        role: "tool",
+        content: [
+          {
+            type: "tool-result",
+            toolCallId: "a",
+            toolName: "read",
+            output: { type: "text", value: "source" },
+          },
+        ],
+      },
       { role: "assistant", content: "latest" },
     ]
     expect(compactionBoundary(messages, 2, 2)).toBe(3)
-    const result = compactTranscript({ messages, protectedPrefixCount: 2, keepLastMessages: 2, summary: { goal: "task", decisions: [], filesTouched: [], openQuestions: [], planStatus: "", factsLearned: [] } })
+    const result = compactTranscript({
+      messages,
+      protectedPrefixCount: 2,
+      keepLastMessages: 2,
+      summary: {
+        goal: "task",
+        decisions: [],
+        filesTouched: [],
+        openQuestions: [],
+        planStatus: "",
+        factsLearned: [],
+      },
+    })
     expect(result.messages.slice(0, 2)).toEqual(messages.slice(0, 2))
     expect(result.messages.slice(-3)).toEqual(messages.slice(-3))
   })
 
   it("never rewrites a failed tool result as a successful completion", () => {
-    const messages: ModelMessage[] = [{ role: "tool", content: [{ type: "tool-result", toolCallId: "a", toolName: "test", output: { type: "json", value: { exit_code: 1, error: "assertion failed" } } }] }]
+    const messages: ModelMessage[] = [
+      {
+        role: "tool",
+        content: [
+          {
+            type: "tool-result",
+            toolCallId: "a",
+            toolName: "test",
+            output: { type: "json", value: { exit_code: 1, error: "assertion failed" } },
+          },
+        ],
+      },
+    ]
     const result = elideOldToolResults(messages, 0)
     expect(JSON.stringify(result.messages)).toContain("failed")
     expect(JSON.stringify(result.messages)).not.toContain("completed")

@@ -11,22 +11,26 @@ This guide explains room turn mechanics, live collaborative canvases, multi-tier
 Every Sayabot room has an active **Turn Mode** that governs how and when AI agents speak.
 
 ### 1. `mentions` Mode (Default)
+
 - Agents only respond when explicitly `@mentioned` by a human or another agent (e.g., `@pocket-saya`, `@coder`).
 - Keeps discussions focused and prevents agents from chattering unnecessarily.
-- An agent can wake up a teammate by mentioning them in its response (e.g., *"@coder, I've outlined the API spec on the canvas, please implement the endpoints"*).
+- An agent can wake up a teammate by mentioning them in its response (e.g., _"@coder, I've outlined the API spec on the canvas, please implement the endpoints"_).
 
 ### 2. `debate` Mode
+
 - Designed for architectural reviews, design brainstorming, and multi-perspective problem solving.
 - Multiple agents take sequential turns evaluating a proposition or pull request.
 - Agents can challenge each other's assumptions, propose counter-examples, and reach consensus before presenting conclusions to human team members.
 
 ### 3. `moderated` Mode (shown as "Lead agent")
+
 - One agent made in Sayabot is the room's **lead agent** (`rooms.moderator_agent_id`), picked in room settings.
 - A message that @mentions nobody goes to the lead. It reads what each agent in the room is for (its bio, else its instructions) and whether it answers now. Then it hands the message to the best fit, for example documentation to a writer and code to a coder, or gives the floor back to the people. A message that needs several agents ("document this, then fix the bug") can go to up to three, who answer in order.
 - Each handoff shows in the room ("@lead asked @writer to take this: …"). An @mention always goes straight to that agent.
 - Invited apps (Claude Code, Cursor… connected over MCP) can be handed work but can't lead. If such an app isn't open, the room says so, and the app replies when its owner opens it.
 
 ### Setting up a room
+
 A room starts with just a name. Agents (ready-made specialists, existing ones, or your own app), where each one runs, the lead agent, tools and people are all set in the room's settings. See [room-settings-ui](reference/web/pages/room-settings-ui.md).
 
 ---
@@ -52,14 +56,15 @@ Alongside the chat stream, every room features a **Live Canvas** (`split-view`).
 
 ### Supported Canvas Artifact Types
 
-| Kind | Editor / Renderer | Use Case |
-| :--- | :--- | :--- |
-| **`markdown`** | Monaco Editor / GFM Renderer | Architecture docs, PRDs, runbooks, meeting notes. |
-| **`code`** | Monaco Code Editor | Code snippets, SQL queries, configs (TypeScript, Python, Go, Rust). |
-| **`svg`** | Live Vector Renderer | Flowcharts, system architecture diagrams, UI mockups. |
-| **`html`** | Sandboxed IFrame Preview | Interactive generative UI widgets, landing page previews, charts. |
+| Kind           | Editor / Renderer            | Use Case                                                            |
+| :------------- | :--------------------------- | :------------------------------------------------------------------ |
+| **`markdown`** | Monaco Editor / GFM Renderer | Architecture docs, PRDs, runbooks, meeting notes.                   |
+| **`code`**     | Monaco Code Editor           | Code snippets, SQL queries, configs (TypeScript, Python, Go, Rust). |
+| **`svg`**      | Live Vector Renderer         | Flowcharts, system architecture diagrams, UI mockups.               |
+| **`html`**     | Sandboxed IFrame Preview     | Interactive generative UI widgets, landing page previews, charts.   |
 
 ### How Agents Interact with Canvases
+
 Agents do not need to replace entire files when making small changes. They use fine-grained canvas tools:
 
 - **`canvas_read`**: Inspects the current text snapshot of a canvas document.
@@ -88,13 +93,13 @@ graph TD
 
 1. **Personal Scope (`user`)**:
    - Stores knowledge specific to an individual user.
-   - Example: *"Alice prefers concise TypeScript examples without classes."*
+   - Example: _"Alice prefers concise TypeScript examples without classes."_
 2. **Room Scope (`room`)**:
    - Stores decisions and context relevant to a specific team room or project.
-   - Example: *"In this repository, we use pnpm and Drizzle ORM, not Prisma."*
+   - Example: _"In this repository, we use pnpm and Drizzle ORM, not Prisma."_
 3. **Organization Scope (`org`)**:
    - Company-wide rules, policies, and knowledge available to all agents across all rooms.
-   - Example: *"Production deploys only occur on Tuesdays and Thursdays."*
+   - Example: _"Production deploys only occur on Tuesdays and Thursdays."_
 
 ### Agent Memory Tools
 
@@ -103,6 +108,7 @@ graph TD
 - **`memory_delete`**: Prunes outdated or superseded knowledge.
 
 ### Chat Slash Command (`/remember`)
+
 Humans can explicitly teach agents in real time:
 
 ```
@@ -110,6 +116,7 @@ Humans can explicitly teach agents in real time:
 ```
 
 **Examples**:
+
 ```bash
 /remember room We deploy the frontend to Cloudflare Pages and the backend to Fly.io
 /remember user I prefer unit tests written with Vitest rather than Jest
@@ -133,13 +140,17 @@ Sayabot rooms incorporate a real-time Kanban task management system to keep mult
 ```
 
 ### 1. Atomic Task Claiming (`tasks_claim`)
+
 When multiple agents collaborate in a room, race conditions are prevented through atomic task claiming in PostgreSQL. An agent claims a task before beginning work; other agents see the task locked to that agent's handle.
 
 ### 2. The `stuck` State & Escalation
+
 If an agent encounters a blocker it cannot resolve (e.g. failing build, missing API credentials, conflicting requirements), it transitions the task status to `stuck` and posts an urgent notification tagging human teammates for guidance.
 
 ### 3. Human Decision Requests (`request_human_decision`)
+
 For strategic decisions that should not be automated (e.g., choosing a third-party vendor, spending budget, or selecting an irreversible database migration approach), agents call `request_human_decision`:
+
 - The agent presents the trade-offs and options clearly.
 - A **Decision Card** appears in the room with interactive response buttons.
 - The agent pauses until a human selects an option, after which the agent automatically resumes execution.
@@ -151,11 +162,13 @@ For strategic decisions that should not be automated (e.g., choosing a third-par
 Safety is a core tenet of Sayabot. Tools capable of causing irreversible side effects are classified with `dangerous: true`.
 
 ### Guarded Operations Include:
+
 - Destructive bash commands: `rm -rf`, `DROP TABLE`, `mkfs`, `dd`.
 - Git publishing: `git_commit` and `git_push`.
 - Outbound external dispatches: sending emails, posting to external Slack/Discord channels, or triggering production deploys.
 
 ### How Approval Works:
+
 1. When an agent attempts a dangerous action, the orchestrator runner pauses turn execution.
 2. An interactive **Approval Gate Card** renders in the room chat displaying:
    - Tool name (e.g. `computer_shell`).

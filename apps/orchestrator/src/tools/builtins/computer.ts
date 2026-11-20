@@ -1,9 +1,31 @@
 import { readFileSync } from "node:fs"
-import { desktopHome, isDestructiveCommand, redactSecrets, resolveComputer, type ComputerAvailability, type WorksOn } from "@sayabot/core"
+import {
+  desktopHome,
+  isDestructiveCommand,
+  redactSecrets,
+  resolveComputer,
+  type ComputerAvailability,
+  type WorksOn,
+} from "@sayabot/core"
 import { canvases, canvasVersions } from "@sayabot/db"
 import { z } from "zod"
-import { getComputerClient, type CodeIntelligenceArgs, type EditFileArgs, type ReadFileArgs } from "../../computer/client"
-import { boatCatCommand, boatClickCommand, boatListCommand, boatReadCommand, boatWriteCommand, captureBoatScreen, numberBoatLines, planBoatEdit, runBoatShell } from "../../computers/boat-shell"
+import {
+  getComputerClient,
+  type CodeIntelligenceArgs,
+  type EditFileArgs,
+  type ReadFileArgs,
+} from "../../computer/client"
+import {
+  boatCatCommand,
+  boatClickCommand,
+  boatListCommand,
+  boatReadCommand,
+  boatWriteCommand,
+  captureBoatScreen,
+  numberBoatLines,
+  planBoatEdit,
+  runBoatShell,
+} from "../../computers/boat-shell"
 import { captureE2bScreen, runE2bShell } from "../../computers/e2b"
 import { runVpsShell, type VpsTarget } from "../../computers/vps"
 import { getDb } from "../../db"
@@ -35,7 +57,12 @@ export function shellQuote(value: string): string {
 }
 
 /** Literal (non-regex, no `$` patterns) string replacement. */
-export function replaceLiteral(content: string, search: string, replacement: string, all: boolean): string {
+export function replaceLiteral(
+  content: string,
+  search: string,
+  replacement: string,
+  all: boolean,
+): string {
   if (all) return content.split(search).join(replacement)
   const idx = content.indexOf(search)
   if (idx === -1) return content
@@ -69,12 +96,16 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
     if (decision.action !== "use") return null
     const vps = args.vps
     if (decision.surface === "vps" && vps) {
-      return { name: "VPS", run: (command, timeoutMs) => runVpsShell(vps, agentId, command, timeoutMs) }
+      return {
+        name: "VPS",
+        run: (command, timeoutMs) => runVpsShell(vps, agentId, command, timeoutMs),
+      }
     }
     if (decision.surface === "e2b") {
       return {
         name: "E2B sandbox",
-        run: (command, timeoutMs) => runE2bShell({ orgId, agentId, params: args.params, command, timeoutMs }),
+        run: (command, timeoutMs) =>
+          runE2bShell({ orgId, agentId, params: args.params, command, timeoutMs }),
       }
     }
     return null
@@ -92,28 +123,52 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
     }
     if (decision.surface === "boat") {
       if (decision.action === "use") {
-        return { ok: false, error: "This tool uses the local VM. On a Boat, use computer_shell, fs_read, fs_write, or fs_edit." }
+        return {
+          ok: false,
+          error:
+            "This tool uses the local VM. On a Boat, use computer_shell, fs_read, fs_write, or fs_edit.",
+        }
       }
-      return { ok: false, error: decision.reason || "This bot's files are on its Boat. Call select_computer with boat. Auto does not wake one." }
+      return {
+        ok: false,
+        error:
+          decision.reason ||
+          "This bot's files are on its Boat. Call select_computer with boat. Auto does not wake one.",
+      }
     }
     if (decision.surface === "vps") {
       if (decision.action === "use") {
         return {
           ok: false,
-          error: "This tool uses the local VM. On your VPS, use computer_shell, fs_read, fs_write, or fs_edit. Sayabot does not turn that server off.",
+          error:
+            "This tool uses the local VM. On your VPS, use computer_shell, fs_read, fs_write, or fs_edit. Sayabot does not turn that server off.",
         }
       }
-      return { ok: false, error: "This bot's desktop is your VPS. Call select_computer with vps. Sayabot does not turn that server off." }
+      return {
+        ok: false,
+        error:
+          "This bot's desktop is your VPS. Call select_computer with vps. Sayabot does not turn that server off.",
+      }
     }
     if (decision.surface === "e2b") {
       if (decision.action === "use") {
-        return { ok: false, error: "This tool uses the local VM. On the E2B sandbox, use computer_shell, fs_read, fs_write, or fs_edit." }
+        return {
+          ok: false,
+          error:
+            "This tool uses the local VM. On the E2B sandbox, use computer_shell, fs_read, fs_write, or fs_edit.",
+        }
       }
-      return { ok: false, error: decision.reason || "This bot works on an E2B sandbox. Call select_computer with e2b." }
+      return {
+        ok: false,
+        error:
+          decision.reason || "This bot works on an E2B sandbox. Call select_computer with e2b.",
+      }
     }
     return {
       ok: false,
-      error: decision.reason || "No local VM is ready. Call select_computer to create one. Auto does not create a desktop.",
+      error:
+        decision.reason ||
+        "No local VM is ready. Call select_computer to create one. Auto does not create a desktop.",
     }
   }
 
@@ -138,7 +193,9 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
         if (decision.action !== "use") {
           return {
             ok: false,
-            error: decision.reason || "Call select_computer with boat. Auto does not create or wake one.",
+            error:
+              decision.reason ||
+              "Call select_computer with boat. Auto does not create or wake one.",
           }
         }
         return runBoatShell({
@@ -151,7 +208,11 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
       }
       if (decision.surface === "e2b") {
         if (decision.action !== "use") {
-          return { ok: false, error: decision.reason || "Call select_computer with e2b. Auto does not create a sandbox." }
+          return {
+            ok: false,
+            error:
+              decision.reason || "Call select_computer with e2b. Auto does not create a sandbox.",
+          }
         }
         const ran = await runE2bShell({
           orgId,
@@ -161,12 +222,18 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
           timeoutMs: (input.timeoutSeconds || 60) * 1000,
           background: input.background === true,
         })
-        return { ok: ran.ok, output: ran.output, exit_code: ran.exitCode, ...(ran.background ? { background: true } : {}) }
+        return {
+          ok: ran.ok,
+          output: ran.output,
+          exit_code: ran.exitCode,
+          ...(ran.background ? { background: true } : {}),
+        }
       }
       if (input.background) {
         return {
           ok: false,
-          error: "A background command runs on a Boat or an E2B sandbox that is already awake. Call select_computer with boat or e2b.",
+          error:
+            "A background command runs on a Boat or an E2B sandbox that is already awake. Call select_computer with boat or e2b.",
         }
       }
       if (decision.surface === "this_computer") {
@@ -176,18 +243,28 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
         if (decision.action !== "use") {
           return {
             ok: false,
-            error: "This bot's desktop is your VPS. Call select_computer with vps. Sayabot does not turn that server off.",
+            error:
+              "This bot's desktop is your VPS. Call select_computer with vps. Sayabot does not turn that server off.",
           }
         }
         if (!args.vps) return { ok: false, error: "No VPS is set in Settings → AI providers." }
-        const command = input.cwd ? `cd ${shellQuote(input.cwd)} && ${input.command}` : input.command
-        const ran = await runVpsShell(args.vps, agentId, command, (input.timeoutSeconds || 60) * 1000)
+        const command = input.cwd
+          ? `cd ${shellQuote(input.cwd)} && ${input.command}`
+          : input.command
+        const ran = await runVpsShell(
+          args.vps,
+          agentId,
+          command,
+          (input.timeoutSeconds || 60) * 1000,
+        )
         return { ok: ran.ok, output: ran.output }
       }
       if (decision.surface !== "local_vm" || decision.action !== "use") {
         return {
           ok: false,
-          error: decision.reason || "No local VM is ready. Call select_computer to create one. Auto does not create a desktop.",
+          error:
+            decision.reason ||
+            "No local VM is ready. Call select_computer to create one. Auto does not create a desktop.",
         }
       }
       const blocked = await useLocalVm()
@@ -220,21 +297,31 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
         duration_ms: result.durationMs,
         truncated: result.truncated,
         ...(result.timedOut
-          ? { timed_out: true, note: `Command was killed after ${input.timeoutSeconds || 60}s. Raise timeoutSeconds (max 300) or narrow the command.` }
+          ? {
+              timed_out: true,
+              note: `Command was killed after ${input.timeoutSeconds || 60}s. Raise timeoutSeconds (max 300) or narrow the command.`,
+            }
           : {}),
       }
     },
   }
 
-  const readSchema = z.object({
-    path: z.string().min(1),
-    startLine: z.number().int().positive().optional(),
-    endLine: z.number().int().positive().optional(),
-    maxBytes: z.number().int().positive().max(2_000_000).default(256_000),
-  }).refine((input) => input.endLine === undefined || input.endLine >= (input.startLine ?? 1), { message: "endLine must be >= startLine" })
+  const readSchema = z
+    .object({
+      path: z.string().min(1),
+      startLine: z.number().int().positive().optional(),
+      endLine: z.number().int().positive().optional(),
+      maxBytes: z.number().int().positive().max(2_000_000).default(256_000),
+    })
+    .refine((input) => input.endLine === undefined || input.endLine >= (input.startLine ?? 1), {
+      message: "endLine must be >= startLine",
+    })
   const fsReadTool: ToolSpec = {
     name: "fs_read",
-    description: describeWithDoc("fs_read", "Read a UTF-8 file page with numbered lines. startLine/endLine are 1-based inclusive; pages contain at most 2000 complete lines and maxBytes source bytes (numbering adds display bytes). Returns full-file SHA-256 hash, exact totalLines/size, bytesReturned, startLine/endLine, truncated, hasMore and nextStartLine. Files over 32 MiB and binaries are refused. A page hash can guard fs_edit; omitted content is never treated as the whole file."),
+    description: describeWithDoc(
+      "fs_read",
+      "Read a UTF-8 file page with numbered lines. startLine/endLine are 1-based inclusive; pages contain at most 2000 complete lines and maxBytes source bytes (numbering adds display bytes). Returns full-file SHA-256 hash, exact totalLines/size, bytesReturned, startLine/endLine, truncated, hasMore and nextStartLine. Files over 32 MiB and binaries are refused. A page hash can guard fs_edit; omitted content is never treated as the whole file.",
+    ),
     schema: readSchema,
     dangerous: false,
     execute: async (input: ReadFileArgs) => {
@@ -262,25 +349,49 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
         const command = boatReadCommand(input.path, input.startLine, input.endLine)
         if (!command) return { ok: false, error: `That path cannot be read on the ${server.name}.` }
         const ran = await server.run(command)
-        if (!ran.ok) return { ok: false, error: ran.output || `The ${server.name} did not read that file.` }
-        return { path: input.path, content: numberBoatLines(ran.stdout, input.startLine ?? 1), encoding: "utf8" }
+        if (!ran.ok)
+          return { ok: false, error: ran.output || `The ${server.name} did not read that file.` }
+        return {
+          path: input.path,
+          content: numberBoatLines(ran.stdout, input.startLine ?? 1),
+          encoding: "utf8",
+        }
       }
       const blocked = await useLocalVm()
       if (blocked) return blocked
       const file = await client.readFile(agentId, input)
-      if (file.encoding !== "utf8" || file.linesReturned === undefined || file.startLine === undefined) throw new Error("Invalid text page response")
-      return { ...file, content: file.linesReturned ? file.content.split("\n").map((line, idx) => `${file.startLine! + idx} | ${line}`).join("\n") : "" }
+      if (
+        file.encoding !== "utf8" ||
+        file.linesReturned === undefined ||
+        file.startLine === undefined
+      )
+        throw new Error("Invalid text page response")
+      return {
+        ...file,
+        content: file.linesReturned
+          ? file.content
+              .split("\n")
+              .map((line, idx) => `${file.startLine! + idx} | ${line}`)
+              .join("\n")
+          : "",
+      }
     },
   }
 
   const fsEditTool: ToolSpec = {
     name: "fs_edit",
-    description: describeWithDoc("fs_edit", "Atomically edit a complete UTF-8 file up to 5 MiB, optionally guarded by expectedHash from fs_read. Tries exact literal matching first; duplicate matches require replaceAll. whitespace=true permits a fallback only for one unique complete line block, ignoring leading/trailing spaces/tabs and CRLF differences, not internal whitespace. Ambiguous/overlapping matches, stale hashes and oversized files are rejected without writing. Returns matchMode, replacements and new hash."),
+    description: describeWithDoc(
+      "fs_edit",
+      "Atomically edit a complete UTF-8 file up to 5 MiB, optionally guarded by expectedHash from fs_read. Tries exact literal matching first; duplicate matches require replaceAll. whitespace=true permits a fallback only for one unique complete line block, ignoring leading/trailing spaces/tabs and CRLF differences, not internal whitespace. Ambiguous/overlapping matches, stale hashes and oversized files are rejected without writing. Returns matchMode, replacements and new hash.",
+    ),
     schema: z.object({
       path: z.string().min(1),
       oldString: z.string().min(1).max(5_000_000),
       newString: z.string().max(5_000_000),
-      expectedHash: z.string().regex(/^[a-f0-9]{64}$/).optional(),
+      expectedHash: z
+        .string()
+        .regex(/^[a-f0-9]{64}$/)
+        .optional(),
       replaceAll: z.boolean().default(false),
       whitespace: z.boolean().default(false),
     }),
@@ -290,26 +401,53 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
       if (decision.surface === "boat" && decision.action === "use") {
         const readCommand = boatCatCommand(input.path)
         if (!readCommand) return { ok: false, error: "That path cannot be read on the Boat." }
-        const read = await runBoatShell({ orgId, agentId, params: args.params, command: readCommand, detached: false })
+        const read = await runBoatShell({
+          orgId,
+          agentId,
+          params: args.params,
+          command: readCommand,
+          detached: false,
+        })
         if (read.ok === false) return read
         const content = typeof read.output === "string" ? read.output : ""
         const planned = planBoatEdit(input.path, content, input)
         if ("error" in planned) return { ok: false, error: planned.error }
-        const wrote = await runBoatShell({ orgId, agentId, params: args.params, command: planned.command, detached: false })
+        const wrote = await runBoatShell({
+          orgId,
+          agentId,
+          params: args.params,
+          command: planned.command,
+          detached: false,
+        })
         if (wrote.ok === false) return wrote
-        return { ok: true, path: input.path, replacements: planned.replacements, hash: planned.hash, matchMode: "exact" }
+        return {
+          ok: true,
+          path: input.path,
+          replacements: planned.replacements,
+          hash: planned.hash,
+          matchMode: "exact",
+        }
       }
       const server = readyServer()
       if (server) {
         const readCommand = boatCatCommand(input.path)
-        if (!readCommand) return { ok: false, error: `That path cannot be read on the ${server.name}.` }
+        if (!readCommand)
+          return { ok: false, error: `That path cannot be read on the ${server.name}.` }
         const read = await server.run(readCommand)
-        if (!read.ok) return { ok: false, error: read.output || `The ${server.name} did not read that file.` }
+        if (!read.ok)
+          return { ok: false, error: read.output || `The ${server.name} did not read that file.` }
         const planned = planBoatEdit(input.path, read.stdout, input)
         if ("error" in planned) return { ok: false, error: planned.error }
         const wrote = await server.run(planned.command)
-        if (!wrote.ok) return { ok: false, error: wrote.output || `The ${server.name} did not write that file.` }
-        return { ok: true, path: input.path, replacements: planned.replacements, hash: planned.hash, matchMode: "exact" }
+        if (!wrote.ok)
+          return { ok: false, error: wrote.output || `The ${server.name} did not write that file.` }
+        return {
+          ok: true,
+          path: input.path,
+          replacements: planned.replacements,
+          hash: planned.hash,
+          matchMode: "exact",
+        }
       }
       const blocked = await useLocalVm()
       if (blocked) return blocked
@@ -340,7 +478,12 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
     maxResults: z.number().int().min(1).max(1000).default(200),
   }
   const codePosition = { line: z.number().int().positive(), column: z.number().int().positive() }
-  const codeTool = (name: string, action: CodeIntelligenceArgs["action"], description: string, schema: ToolSpec["schema"]): ToolSpec => ({
+  const codeTool = (
+    name: string,
+    action: CodeIntelligenceArgs["action"],
+    description: string,
+    schema: ToolSpec["schema"],
+  ): ToolSpec => ({
     name,
     description: `${description} TypeScript/JavaScript only, using the TypeScript compiler language service. Paths are absolute. Positions are 1-based UTF-16; range ends are exclusive. projectRoot defaults to the nearest tsconfig/jsconfig directory, or the file's directory if absent. Confined to that root (including imports/config symlinks); no plugins/scripts run. Bounded to 512 files, 24 MiB total, 2 MiB/file. maxResults defaults to 200 (max 1000).`,
     schema,
@@ -352,21 +495,53 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
     },
   })
   const codeTools = [
-    codeTool("code_outline", "outline", "Return AST-derived declaration outlines: items with name, kind, container and range, plus total/truncated and file hash.", z.object(codeBase)),
-    codeTool("code_definition", "definition", "Resolve the symbol at line/column to definition locations. Returns items, total/truncated and file hash.", z.object({ ...codeBase, ...codePosition })),
-    codeTool("code_references", "references", "Find semantic references to the symbol at line/column, including write-access markers. Returns items, total/truncated and file hash.", z.object({ ...codeBase, ...codePosition })),
-    codeTool("code_diagnostics", "diagnostics", "Return file syntax/semantic and compiler-option diagnostics with codes, categories, messages and ranges; items, total/truncated and hash. Does not run builds or linters.", z.object(codeBase)),
-    codeTool("code_rename_preview", "rename_preview", "Preview semantic identifier rename to newName without writing. Returns canRename, preview, edits with oldText/newText, exclusive ranges and per-file hashes. Comments/strings are excluded. Refuses partial previews exceeding maxResults. Review edits; this is not a collision-free refactoring guarantee.", z.object({ ...codeBase, ...codePosition, newName: z.string().min(1).max(200) })),
+    codeTool(
+      "code_outline",
+      "outline",
+      "Return AST-derived declaration outlines: items with name, kind, container and range, plus total/truncated and file hash.",
+      z.object(codeBase),
+    ),
+    codeTool(
+      "code_definition",
+      "definition",
+      "Resolve the symbol at line/column to definition locations. Returns items, total/truncated and file hash.",
+      z.object({ ...codeBase, ...codePosition }),
+    ),
+    codeTool(
+      "code_references",
+      "references",
+      "Find semantic references to the symbol at line/column, including write-access markers. Returns items, total/truncated and file hash.",
+      z.object({ ...codeBase, ...codePosition }),
+    ),
+    codeTool(
+      "code_diagnostics",
+      "diagnostics",
+      "Return file syntax/semantic and compiler-option diagnostics with codes, categories, messages and ranges; items, total/truncated and hash. Does not run builds or linters.",
+      z.object(codeBase),
+    ),
+    codeTool(
+      "code_rename_preview",
+      "rename_preview",
+      "Preview semantic identifier rename to newName without writing. Returns canRename, preview, edits with oldText/newText, exclusive ranges and per-file hashes. Comments/strings are excluded. Refuses partial previews exceeding maxResults. Review edits; this is not a collision-free refactoring guarantee.",
+      z.object({ ...codeBase, ...codePosition, newName: z.string().min(1).max(200) }),
+    ),
   ]
 
   const fsWriteTool: ToolSpec = {
     name: "fs_write",
-    description:
-      describeWithDoc("fs_write", "Create or overwrite a file in your container environment."),
+    description: describeWithDoc(
+      "fs_write",
+      "Create or overwrite a file in your container environment.",
+    ),
     schema: z.object({
       path: z.string().min(1),
       content: z.string().max(2_000_000),
-      allowOverwriteLarge: z.boolean().optional().describe("Set to true if deliberately overwriting an existing file larger than 2KB (prevents accidental truncation)"),
+      allowOverwriteLarge: z
+        .boolean()
+        .optional()
+        .describe(
+          "Set to true if deliberately overwriting an existing file larger than 2KB (prevents accidental truncation)",
+        ),
     }),
     dangerous: false,
     execute: async (input: { path: string; content: string; allowOverwriteLarge?: boolean }) => {
@@ -379,21 +554,27 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
       const server = readyServer()
       if (server) {
         const command = boatWriteCommand(input.path, input.content)
-        if (!command) return { ok: false, error: `That path cannot be written on the ${server.name}.` }
+        if (!command)
+          return { ok: false, error: `That path cannot be written on the ${server.name}.` }
         const ran = await server.run(command)
-        return ran.ok ? { ok: true, path: input.path } : { ok: false, error: ran.output || `The ${server.name} did not write that file.` }
+        return ran.ok
+          ? { ok: true, path: input.path }
+          : { ok: false, error: ran.output || `The ${server.name} did not write that file.` }
       }
       const blocked = await useLocalVm()
       if (blocked) return blocked
-      const result = await client.writeFile(agentId, { path: input.path, content: input.content, allowOverwriteLarge: input.allowOverwriteLarge })
+      const result = await client.writeFile(agentId, {
+        path: input.path,
+        content: input.content,
+        allowOverwriteLarge: input.allowOverwriteLarge,
+      })
       return { ok: true, path: input.path, ...result }
     },
   }
 
   const fsGlobTool: ToolSpec = {
     name: "fs_glob",
-    description:
-      describeWithDoc(
+    description: describeWithDoc(
       "fs_glob",
       "Find files matching a glob pattern in the container filesystem, newest first. Patterns containing '/' match against the full path (e.g. '*/src/*.ts').",
     ),
@@ -421,8 +602,7 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
 
   const fsGrepTool: ToolSpec = {
     name: "fs_grep",
-    description:
-      describeWithDoc(
+    description: describeWithDoc(
       "fs_grep",
       "Search for a regex pattern across files using ripgrep, with line numbers.",
     ),
@@ -448,7 +628,9 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
         query: input.query,
         path: base,
         output: res.stdout || "(no matches found)",
-        ...(lines >= 400 ? { note: "Output capped at 400 lines. Narrow the path or pattern." } : {}),
+        ...(lines >= 400
+          ? { note: "Output capped at 400 lines. Narrow the path or pattern." }
+          : {}),
       }
     },
   }
@@ -514,8 +696,7 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
 
   const gitPushTool: ToolSpec = {
     name: "git_push",
-    description:
-      "Push committed changes to remote git repository through Secret Broker proxy.",
+    description: "Push committed changes to remote git repository through Secret Broker proxy.",
     schema: z.object({
       cwd: z.string().optional().default("/home/bot"),
       remote: z.string().optional().default("origin"),
@@ -537,7 +718,8 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
   // Aliases for backwards compatibility
   const readFileTool: ToolSpec = {
     name: "computer_read_file",
-    description: "Read a raw UTF-8 page (compatibility alias to fs_read, without line-number prefixes). Returns the same full-file hash, totalLines, truncated and nextStartLine metadata. Use startLine/endLine and maxBytes for pagination.",
+    description:
+      "Read a raw UTF-8 page (compatibility alias to fs_read, without line-number prefixes). Returns the same full-file hash, totalLines, truncated and nextStartLine metadata. Use startLine/endLine and maxBytes for pagination.",
     schema: readSchema,
     dangerous: false,
     execute: async (input: ReadFileArgs) => {
@@ -545,16 +727,27 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
       if (decision.surface === "boat" && decision.action === "use") {
         const command = boatReadCommand(input.path, input.startLine, input.endLine)
         if (!command) return { ok: false, error: "That path cannot be read on the Boat." }
-        const result = await runBoatShell({ orgId, agentId, params: args.params, command, detached: false })
+        const result = await runBoatShell({
+          orgId,
+          agentId,
+          params: args.params,
+          command,
+          detached: false,
+        })
         if (result.ok === false) return result
-        return { path: input.path, content: typeof result.output === "string" ? result.output : "", encoding: "utf8" }
+        return {
+          path: input.path,
+          content: typeof result.output === "string" ? result.output : "",
+          encoding: "utf8",
+        }
       }
       const server = readyServer()
       if (server) {
         const command = boatReadCommand(input.path, input.startLine, input.endLine)
         if (!command) return { ok: false, error: `That path cannot be read on the ${server.name}.` }
         const ran = await server.run(command)
-        if (!ran.ok) return { ok: false, error: ran.output || `The ${server.name} did not read that file.` }
+        if (!ran.ok)
+          return { ok: false, error: ran.output || `The ${server.name} did not read that file.` }
         return { path: input.path, content: ran.stdout, encoding: "utf8" }
       }
       const blocked = await useLocalVm()
@@ -570,7 +763,10 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
     schema: z.object({
       path: z.string().min(1),
       content: z.string().max(1_000_000),
-      allowOverwriteLarge: z.boolean().optional().describe("Set to true if deliberately overwriting an existing file larger than 2KB"),
+      allowOverwriteLarge: z
+        .boolean()
+        .optional()
+        .describe("Set to true if deliberately overwriting an existing file larger than 2KB"),
     }),
     dangerous: false,
     execute: async (input: { path: string; content: string; allowOverwriteLarge?: boolean }) => {
@@ -583,13 +779,20 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
       const server = readyServer()
       if (server) {
         const command = boatWriteCommand(input.path, input.content)
-        if (!command) return { ok: false, error: `That path cannot be written on the ${server.name}.` }
+        if (!command)
+          return { ok: false, error: `That path cannot be written on the ${server.name}.` }
         const ran = await server.run(command)
-        return ran.ok ? { ok: true, path: input.path } : { ok: false, error: ran.output || `The ${server.name} did not write that file.` }
+        return ran.ok
+          ? { ok: true, path: input.path }
+          : { ok: false, error: ran.output || `The ${server.name} did not write that file.` }
       }
       const blocked = await useLocalVm()
       if (blocked) return blocked
-      return client.writeFile(agentId, { path: input.path, content: input.content, allowOverwriteLarge: input.allowOverwriteLarge })
+      return client.writeFile(agentId, {
+        path: input.path,
+        content: input.content,
+        allowOverwriteLarge: input.allowOverwriteLarge,
+      })
     },
   }
 
@@ -610,9 +813,12 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
       }
       const server = readyServer()
       if (server) {
-        if (!command) return { ok: false, error: `That path cannot be listed on the ${server.name}.` }
+        if (!command)
+          return { ok: false, error: `That path cannot be listed on the ${server.name}.` }
         const ran = await server.run(command)
-        return ran.ok ? { ok: true, output: ran.stdout } : { ok: false, error: ran.output || `The ${server.name} did not list that directory.` }
+        return ran.ok
+          ? { ok: true, output: ran.stdout }
+          : { ok: false, error: ran.output || `The ${server.name} did not list that directory.` }
       }
       const blocked = await useLocalVm()
       if (blocked) return blocked
@@ -676,7 +882,8 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
 
   const seeTool: ToolSpec = {
     name: "computer_screenshot",
-    description: "See the Boat or E2B desktop. The picture is the screen the agent can click. A sleeping Boat is not woken.",
+    description:
+      "See the Boat or E2B desktop. The picture is the screen the agent can click. A sleeping Boat is not woken.",
     schema: z.object({}),
     dangerous: false,
     execute: async () => {
@@ -685,7 +892,11 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
         return captureE2bScreen({ orgId, agentId, params: args.params })
       }
       if (decision.surface !== "boat" || decision.action !== "use") {
-        return { ok: false, error: "A Boat screenshot needs a Boat that is already awake. Call select_computer with boat. Auto does not wake one." }
+        return {
+          ok: false,
+          error:
+            "A Boat screenshot needs a Boat that is already awake. Call select_computer with boat. Auto does not wake one.",
+        }
       }
       return captureBoatScreen({ orgId, agentId, params: args.params })
     },
@@ -693,7 +904,8 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
 
   const clickTool: ToolSpec = {
     name: "computer_click",
-    description: "Click a point on the Boat or E2B desktop. x and y are pixels. A sleeping Boat is not woken.",
+    description:
+      "Click a point on the Boat or E2B desktop. x and y are pixels. A sleeping Boat is not woken.",
     schema: z.object({
       x: z.number().int().min(0).max(32767),
       y: z.number().int().min(0).max(32767),
@@ -701,16 +913,31 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
       count: z.number().int().min(1).max(3).default(1),
     }),
     dangerous: false,
-    execute: async (input: { x: number; y: number; button?: "left" | "middle" | "right"; count?: number }) => {
+    execute: async (input: {
+      x: number
+      y: number
+      button?: "left" | "middle" | "right"
+      count?: number
+    }) => {
       const decision = resolveComputer(args.worksOn, args.available)
       if (decision.surface === "e2b" && decision.action === "use") {
         const command = boatClickCommand(input.x, input.y, input.button ?? "left", input.count ?? 1)
         if (!command) return { ok: false, error: "That point is not on the E2B screen." }
-        const ran = await runE2bShell({ orgId, agentId, params: args.params, command, timeoutMs: 15_000 })
+        const ran = await runE2bShell({
+          orgId,
+          agentId,
+          params: args.params,
+          command,
+          timeoutMs: 15_000,
+        })
         return { ok: ran.ok, output: ran.output }
       }
       if (decision.surface !== "boat" || decision.action !== "use") {
-        return { ok: false, error: "A Boat click needs a Boat that is already awake. Call select_computer with boat. Auto does not wake one." }
+        return {
+          ok: false,
+          error:
+            "A Boat click needs a Boat that is already awake. Call select_computer with boat. Auto does not wake one.",
+        }
       }
       const command = boatClickCommand(input.x, input.y, input.button ?? "left", input.count ?? 1)
       if (!command) return { ok: false, error: "That point is not on the Boat screen." }
@@ -847,12 +1074,22 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
     description:
       "Execute model-generated Python or JavaScript code snippets using pre-imported browser helpers (page.goto, page.click, page.screenshot, page.evaluate). Returns stdout, logs, and evaluated return values.",
     schema: z.object({
-      code: z.string().min(1).describe("Python or JavaScript code to execute against the active Chromium page context"),
-      language: z.enum(["python", "javascript"]).default("python").describe("Script language ('python' or 'javascript')"),
+      code: z
+        .string()
+        .min(1)
+        .describe("Python or JavaScript code to execute against the active Chromium page context"),
+      language: z
+        .enum(["python", "javascript"])
+        .default("python")
+        .describe("Script language ('python' or 'javascript')"),
       timeoutSeconds: z.number().int().min(1).max(120).default(30).optional(),
     }),
     dangerous: false,
-    execute: async (input: { code: string; language?: "python" | "javascript"; timeoutSeconds?: number }) => {
+    execute: async (input: {
+      code: string
+      language?: "python" | "javascript"
+      timeoutSeconds?: number
+    }) => {
       const blocked = await useLocalVm()
       if (blocked) return blocked
       return client.browser(agentId, "exec", input)
@@ -864,8 +1101,16 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
     description:
       "Execute direct low-level Chrome DevTools Protocol (CDP) JSON-RPC commands (DOM inspection, network request interception, cookies, storage, emulation, and performance tracing).",
     schema: z.object({
-      method: z.string().min(1).describe("CDP method name (e.g. 'Network.getCookies', 'Page.captureScreenshot', 'DOM.getDocument', 'Emulation.setDeviceMetricsOverride')"),
-      params: z.record(z.string(), z.unknown()).default({}).describe("JSON-RPC parameter object for the CDP method call"),
+      method: z
+        .string()
+        .min(1)
+        .describe(
+          "CDP method name (e.g. 'Network.getCookies', 'Page.captureScreenshot', 'DOM.getDocument', 'Emulation.setDeviceMetricsOverride')",
+        ),
+      params: z
+        .record(z.string(), z.unknown())
+        .default({})
+        .describe("JSON-RPC parameter object for the CDP method call"),
     }),
     dangerous: false,
     execute: async (input: { method: string; params?: Record<string, unknown> }) => {
@@ -880,8 +1125,13 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
     description:
       "Intercept and interact with JavaScript modal dialogs (window.alert(), window.confirm(), window.prompt(), or beforeunload).",
     schema: z.object({
-      action: z.enum(["accept", "dismiss"]).describe("Whether to accept (OK) or dismiss (Cancel) the active dialog"),
-      promptText: z.string().optional().describe("Text value to submit into a window.prompt() input box before accepting"),
+      action: z
+        .enum(["accept", "dismiss"])
+        .describe("Whether to accept (OK) or dismiss (Cancel) the active dialog"),
+      promptText: z
+        .string()
+        .optional()
+        .describe("Text value to submit into a window.prompt() input box before accepting"),
     }),
     dangerous: false,
     execute: async (input: { action: "accept" | "dismiss"; promptText?: string }) => {
@@ -896,9 +1146,22 @@ export function computerTools(args: ComputerToolsArgs): ToolSpec[] {
     description:
       "Safely auto-fill encrypted vault credentials (passwords, API tokens, 2FA codes) into browser input fields without exposing the secret plaintext to the model conversation context (zero token leakage).",
     schema: z.object({
-      secretName: z.string().min(1).describe("The name of the vault secret (e.g., 'ADMIN_PASSWORD', 'STRIPE_KEY', 'GITHUB_TOKEN')"),
-      selector: z.string().min(1).describe("CSS selector of the target input element (e.g. 'input[name=password]', '#login-pass')"),
-      submit: z.boolean().default(false).describe("Whether to automatically submit the form or press Enter after filling"),
+      secretName: z
+        .string()
+        .min(1)
+        .describe(
+          "The name of the vault secret (e.g., 'ADMIN_PASSWORD', 'STRIPE_KEY', 'GITHUB_TOKEN')",
+        ),
+      selector: z
+        .string()
+        .min(1)
+        .describe(
+          "CSS selector of the target input element (e.g. 'input[name=password]', '#login-pass')",
+        ),
+      submit: z
+        .boolean()
+        .default(false)
+        .describe("Whether to automatically submit the form or press Enter after filling"),
     }),
     dangerous: false,
     execute: async (input: { secretName: string; selector: string; submit?: boolean }) => {

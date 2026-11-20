@@ -58,7 +58,7 @@ Deduplicated via an `inflight` Map keyed by cleaned code — several screens mou
 1. Validates the code is exactly 8 characters (error: "Codes have 8 letters and numbers. Check the one on your computer.") (`pairing.ts:35`).
 2. `POST {server}/api/mobile/pair` with `{ code, deviceName, platform }`, where `deviceName` is derived from `Platform.constants` (Android: brand + model, e.g. "Google Pixel 8"; iOS: "iPhone") and `platform` is `"iOS" | "Android"` (`pairing.ts:8-16`, `37-41`).
 3. Parses the response `{ error?, token_hash?, org_slug?, device_id?, device_token?, supabase_url? }`; failure throws the server's error message or `Could not sign in (HTTP <status>)` (`pairing.ts:42-50`).
-4. **Supabase mismatch branch** (`pairing.ts:51-69`): when the answer's `supabase_url` differs from the app's current Supabase host, the code came from another Sayabot server. The phone runs `checkServer(server)`, redeems the `token_hash` with `verifyOtp({ type: "magiclink" })` on a *newly built* client for that server's Supabase, persists `webApiUrl` (+ `orgSlug` when returned), `deviceId`, and `deviceToken` into settings via `applySettings`, saves the `SavedServer`, and restarts the app — landing on the new server already signed in.
+4. **Supabase mismatch branch** (`pairing.ts:51-69`): when the answer's `supabase_url` differs from the app's current Supabase host, the code came from another Sayabot server. The phone runs `checkServer(server)`, redeems the `token_hash` with `verifyOtp({ type: "magiclink" })` on a _newly built_ client for that server's Supabase, persists `webApiUrl` (+ `orgSlug` when returned), `deviceId`, and `deviceToken` into settings via `applySettings`, saves the `SavedServer`, and restarts the app — landing on the new server already signed in.
 5. **Same-Supabase branch** (`pairing.ts:71-78`): redeems the token hash with the current `supabase` client and applies `webApiUrl` / `orgSlug` / `deviceId` / `deviceToken` settings without a restart.
 
 `deviceId`/`deviceToken` are what future `GET /api/mobile/device` revocation checks send (see [Navigation & auth](navigation-and-auth.md)).
@@ -72,12 +72,12 @@ Deduplicated via an `inflight` Map keyed by cleaned code — several screens mou
 
 ### What pairing persists (and what it does not)
 
-| Store | Written during pairing | Cleared |
-| :-- | :-- | :-- |
-| Settings (`@sayabot/settings_v1`) | `webApiUrl`, `orgSlug` (when the pairing carries one), `deviceId`, `deviceToken` — via `applySettings` | never by pairing |
-| Saved server (`@sayabot/server_v1`) | only in the Supabase-mismatch branch (`saveServer(check.server)`) | only by `useCloud()` |
-| Supabase session | created by `verifyOtp` on the matching client | only by sign-out / `useServer` / `useCloud` |
-| Push token cache | untouched | — |
+| Store                               | Written during pairing                                                                                 | Cleared                                     |
+| :---------------------------------- | :----------------------------------------------------------------------------------------------------- | :------------------------------------------ |
+| Settings (`@sayabot/settings_v1`)   | `webApiUrl`, `orgSlug` (when the pairing carries one), `deviceId`, `deviceToken` — via `applySettings` | never by pairing                            |
+| Saved server (`@sayabot/server_v1`) | only in the Supabase-mismatch branch (`saveServer(check.server)`)                                      | only by `useCloud()`                        |
+| Supabase session                    | created by `verifyOtp` on the matching client                                                          | only by sign-out / `useServer` / `useCloud` |
+| Push token cache                    | untouched                                                                                              | —                                           |
 
 Note the same-Supabase branch never restarts the app: the existing screens simply re-render against the new settings, which is why org-scoped hooks (`useHome`, `useInbox`) watch `settings.orgSlug` for changes (see [Home & chat](home-and-chat.md) and [Inbox, tasks & usage](inbox-tasks-usage.md)).
 
@@ -112,7 +112,7 @@ The unit suites `tests/unit/server-url.test.ts` and `tests/unit/server-check.tes
 A three-step first-run flow (`STEPS = ["hello", "how", "look"]`, `OnboardingScreen.tsx:13`), shown by `RootNavigator` when signed in but `!settings.onboarded`:
 
 1. **`hello`** — three `Mascot` avatars (`hermes`, working `scout`, `writer`) and the pitch "Your AI team, in your pocket" (`OnboardingScreen.tsx:38-52`).
-2. **`how`** — three explainer cards: *Answer* (agent questions land in your Inbox), *Hand out work* (New task → pick who does it), *Check in* (a pulsing ring means an agent is working) (`OnboardingScreen.tsx:53-71`).
+2. **`how`** — three explainer cards: _Answer_ (agent questions land in your Inbox), _Hand out work_ (New task → pick who does it), _Check in_ (a pulsing ring means an agent is working) (`OnboardingScreen.tsx:53-71`).
 3. **`look`** — "Make it yours" preference chips, all changeable later in More (`OnboardingScreen.tsx:72-106`):
    - Theme mode chips for `system` (labeled "Automatic"), `light`, `dark` writing `settings.themeMode`.
    - A push-alerts chip calling `enablePush(true)` from `src/core/push.ts`; on success it flips `alertsOn` and persists `pushNotifications: true`.
@@ -130,11 +130,11 @@ Related docs: [Navigation & auth](navigation-and-auth.md), [Overview](overview.m
 
 Phone pairing is free on every server, with no plan check in `/api/mobile/pair`. How a phone reaches each setup:
 
-| Setup | What the phone uses | Reach |
-| :-- | :-- | :-- |
-| Sayabot Cloud (the Mac app's default) | `https://sayabot.sayalabs.in` | anywhere |
-| Self-hosted with a domain (`deploy/docker-compose.yml` + nginx) | the domain | anywhere |
-| Sayabot running on a Mac (`pnpm dev` / local) | `http://<Mac's Wi-Fi IP>:<port>`, put into the QR by `createPhonePairingAction` | same Wi-Fi |
-| Same Mac + `cloudflared tunnel --url http://localhost:3000` | `https://<random>.trycloudflare.com` (open the web app there first, so the QR carries it) | anywhere, until the tunnel restarts |
+| Setup                                                           | What the phone uses                                                                       | Reach                               |
+| :-------------------------------------------------------------- | :---------------------------------------------------------------------------------------- | :---------------------------------- |
+| Cloud / public domain server                                    | server domain                                                                             | anywhere                            |
+| Self-hosted with a domain (`deploy/docker-compose.yml` + nginx) | the domain                                                                                | anywhere                            |
+| Sayabot running on a Mac (`pnpm dev` / local)                   | `http://<Mac's Wi-Fi IP>:<port>`, put into the QR by `createPhonePairingAction`           | same Wi-Fi                          |
+| Same Mac + `cloudflared tunnel --url http://localhost:3000`     | `https://<random>.trycloudflare.com` (open the web app there first, so the QR carries it) | anywhere, until the tunnel restarts |
 
 A typed code is sent to the phone's current server. If the phone is still on Sayabot Cloud and Cloud answers 410 for a code made by another server, `pairOnce` appends "If your computer runs its own Sayabot, tap Change server and enter the address shown under the code." Scanning the QR avoids this, because the link carries `server=`.

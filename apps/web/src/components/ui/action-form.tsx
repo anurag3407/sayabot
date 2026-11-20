@@ -45,7 +45,9 @@ export function ActionForm({
     <form ref={ref} action={formAction} className={cn("space-y-3", className)}>
       {children}
       {state && !state.ok ? <InlineAlert tone="danger">{state.error}</InlineAlert> : null}
-      {state?.ok && state.warning ? <InlineAlert tone="warning">{state.warning}</InlineAlert> : null}
+      {state?.ok && state.warning ? (
+        <InlineAlert tone="warning">{state.warning}</InlineAlert>
+      ) : null}
       <div className="flex flex-wrap items-center gap-3">
         {confirmLabel ? (
           <ConfirmButton

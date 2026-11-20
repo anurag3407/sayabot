@@ -12,20 +12,20 @@ The interface has 14 flags (`capabilities.ts:3-18`) — 13 booleans plus the `co
 
 ```typescript
 export interface AgentCapabilities {
-  canvas: boolean      // live shared canvas read/patch tools
-  tasks: boolean       // task board CRUD & atomic claiming
-  sandbox: boolean     // ephemeral code-execution sandbox
-  webSearch: boolean   // multi-engine search & page scraping
-  document: boolean    // document tools
-  github: boolean      // GitHub issue/PR tools
-  postgres: boolean    // PostgreSQL schema inspection & queries
-  mcp: boolean         // external MCP servers
+  canvas: boolean // live shared canvas read/patch tools
+  tasks: boolean // task board CRUD & atomic claiming
+  sandbox: boolean // ephemeral code-execution sandbox
+  webSearch: boolean // multi-engine search & page scraping
+  document: boolean // document tools
+  github: boolean // GitHub issue/PR tools
+  postgres: boolean // PostgreSQL schema inspection & queries
+  mcp: boolean // external MCP servers
   computer: false | { profile: "standard" | "browser" }
-  secrets: boolean     // secret broker (`use_secret`)
-  memory: boolean      // personal/room/org memory
-  subagents: boolean   // parallel subagent delegation
-  cron: boolean        // background routine scheduling
-  connectors: boolean  // workspace connectors (Drive/Slack/GitHub/Jira/Notion)
+  secrets: boolean // secret broker (`use_secret`)
+  memory: boolean // personal/room/org memory
+  subagents: boolean // parallel subagent delegation
+  cron: boolean // background routine scheduling
+  connectors: boolean // workspace connectors (Drive/Slack/GitHub/Jira/Notion)
 }
 ```
 
@@ -41,14 +41,14 @@ export interface AgentCapabilities {
 
 The workhorse used by the orchestrator (`apps/orchestrator/src/tools/index.ts:225`, both context builders, and `engine/run.ts`). It never throws:
 
-| Input | Result |
-| :--- | :--- |
-| `null`, `undefined`, non-object (`"string"`, numbers, arrays) | a fresh copy of `DEFAULT_CAPABILITIES` |
-| Object | per-key copy: `typeof raw.key === "boolean" ? raw.key : DEFAULT_CAPABILITIES.key` |
-| `raw.computer` an object with `profile` exactly `"standard"` or `"browser"` | `{ profile }` |
-| Anything else for `computer` (including truthy junk) | `false` |
+| Input                                                                       | Result                                                                            |
+| :-------------------------------------------------------------------------- | :-------------------------------------------------------------------------------- |
+| `null`, `undefined`, non-object (`"string"`, numbers, arrays)               | a fresh copy of `DEFAULT_CAPABILITIES`                                            |
+| Object                                                                      | per-key copy: `typeof raw.key === "boolean" ? raw.key : DEFAULT_CAPABILITIES.key` |
+| `raw.computer` an object with `profile` exactly `"standard"` or `"browser"` | `{ profile }`                                                                     |
+| Anything else for `computer` (including truthy junk)                        | `false`                                                                           |
 
-Unknown keys are ignored (the test asserts `parsed.unknownKey === undefined`), and an invalid `computer` silently degrades to `false` rather than disabling the whole agent. Note the asymmetry with the Zod schema: `parseCapabilities` treats *missing* keys as defaults and *invalid* keys as defaults too, whereas Zod would fail on a bad type unless you call `.safeParse`.
+Unknown keys are ignored (the test asserts `parsed.unknownKey === undefined`), and an invalid `computer` silently degrades to `false` rather than disabling the whole agent. Note the asymmetry with the Zod schema: `parseCapabilities` treats _missing_ keys as defaults and _invalid_ keys as defaults too, whereas Zod would fail on a bad type unless you call `.safeParse`.
 
 The web app reuses the same interface for the agent settings page (`apps/web/src/app/(workspace)/[org]/agents/[agentId]/page.tsx`) and the server actions that save agents and templates (`apps/web/src/lib/actions/agents.ts`, `actions/templates.ts`), so the UI, the API, and the tool builder all validate through one module.
 
@@ -71,21 +71,21 @@ const caps = parseCapabilities(agent.capabilities)
 
 `buildTools()` in `apps/orchestrator/src/tools/index.ts` first runs `const caps = parseCapabilities(args.agent.capabilities)` (`tools/index.ts:225`) and then conditionally spreads each tool factory into the spec list. The mapping:
 
-| Capability | Gates |
-| :--- | :--- |
-| `connectors` | the connector tool bundle (`tools/index.ts:232`) |
-| `canvas` | `canvas_read` / `canvas_write` / `canvas_patch` (`:331`) |
-| `sandbox && !computer` | ephemeral sandbox tools (`:338`) — the sandbox tools are *replaced* by the computer bundle when a persistent sandbox is granted |
-| `webSearch` | `web_search` / `web_fetch` (`:344`) |
-| `document` | document tools (`:350`) |
-| `github`, `postgres`, `tasks`, `secrets`, `memory`, `cron` | the correspondingly named builtin tools (`:353-389`) |
-| `computer` | the `computer_*` / `fs_*` bundle plus, on engine V2, verification and workspace tools carrying the chosen `profile` (`:363-378`) |
-| `subagents` | `spawn_subagent`, and only in combination with the V2 engine check at `:405` |
-| `mcp` | MCP server tools (`:423`) |
+| Capability                                                 | Gates                                                                                                                            |
+| :--------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------- |
+| `connectors`                                               | the connector tool bundle (`tools/index.ts:232`)                                                                                 |
+| `canvas`                                                   | `canvas_read` / `canvas_write` / `canvas_patch` (`:331`)                                                                         |
+| `sandbox && !computer`                                     | ephemeral sandbox tools (`:338`) — the sandbox tools are _replaced_ by the computer bundle when a persistent sandbox is granted  |
+| `webSearch`                                                | `web_search` / `web_fetch` (`:344`)                                                                                              |
+| `document`                                                 | document tools (`:350`)                                                                                                          |
+| `github`, `postgres`, `tasks`, `secrets`, `memory`, `cron` | the correspondingly named builtin tools (`:353-389`)                                                                             |
+| `computer`                                                 | the `computer_*` / `fs_*` bundle plus, on engine V2, verification and workspace tools carrying the chosen `profile` (`:363-378`) |
+| `subagents`                                                | `spawn_subagent`, and only in combination with the V2 engine check at `:405`                                                     |
+| `mcp`                                                      | MCP server tools (`:423`)                                                                                                        |
 
 Two details worth knowing:
 
-- **Dynamic danger**, not capability, drives approval: the `ToolSpec.dangerous` flag decides the human-approval gate (see the top-level docs), while capabilities decide *inclusion*. A capability never bypasses the approval gate.
+- **Dynamic danger**, not capability, drives approval: the `ToolSpec.dangerous` flag decides the human-approval gate (see the top-level docs), while capabilities decide _inclusion_. A capability never bypasses the approval gate.
 - The `document !== false` check at `:350` means the document tool appears unless the flag is explicitly `false` — a distinction `parseCapabilities` makes moot by filling defaults, but which shows the defensive style used.
 
 The web app reads the same interface for the agent settings UI, and `@sayabot/db` stores the JSON column typed as `AgentCapabilities` — change the interface here and both sides compile-fail until updated.
@@ -102,14 +102,14 @@ const MENTION_RE = /(^|[^\w@])@([a-zA-Z][\w-]{0,38})/g
 
 Anatomy of the pattern:
 
-| Piece | Purpose |
-| :--- | :--- |
-| `(^|[^\w@])` | The char before `@` must be line start, or a non-word char that is **not** another `@` — this is what rejects emails (`a@b.com`) and double-`@` escapes (`@@nope`) |
-| `@` | The literal mention sigil |
-| `[a-zA-Z]` | Handles must start with a letter (no `@1`, `@_x`) |
+| Piece         | Purpose                                                                |
+| :------------ | :--------------------------------------------------------------------- |
+| `(^           | [^\w@])`                                                               | The char before `@` must be line start, or a non-word char that is **not** another `@` — this is what rejects emails (`a@b.com`) and double-`@` escapes (`@@nope`) |
+| `@`           | The literal mention sigil                                              |
+| `[a-zA-Z]`    | Handles must start with a letter (no `@1`, `@_x`)                      |
 | `[\w-]{0,38}` | Word chars and hyphens after, capped so the handle is at most 39 chars |
 
-Before matching, the text has fenced code blocks (```` ```…``` ```` → stripped via ```` /```[\s\S]*?```/g ````) and inline code (`` `…` ``) removed, so code samples never summon bots — the test pins `"ping @alice\n```\n@bob …\n```\nand `@carol` inline"` resolving to only `alice`.
+Before matching, the text has fenced code blocks (` ```…``` ` → stripped via `/```[\s\S]*?```/g`) and inline code (`` `…` ``) removed, so code samples never summon bots — the test pins `"ping @alice\n```\n@bob …\n```\nand `@carol` inline"` resolving to only `alice`.
 
 ### `resolveMentions(text, roomAgents): AgentRef[]`
 
@@ -124,12 +124,12 @@ Maps raw handles onto the room roster (`mentions.ts:27-45`):
 
 Given a room roster `alice`/`bob` (both `kind: "llm"`) and `carol` (`kind: "external"`) — the exact roster the tests use — external webhook bots resolve identically to LLM agents; only `AgentRef.kind` differs:
 
-| Message text | `resolveMentions` result |
-| :--- | :--- |
-| `"@carol @alice"` | `[carol, alice]` — mention order preserved, external kind irrelevant |
-| `"@alice and @all_bots"` | `[alice, bob, carol]` — `@all_bots` expands in roster order, alice already queued |
-| `"@dave @bob"` | `[bob]` — dave is not a room agent and is dropped |
-| `"mail a@b.com or @@nope"` | `[]` — not mentions |
+| Message text               | `resolveMentions` result                                                          |
+| :------------------------- | :-------------------------------------------------------------------------------- |
+| `"@carol @alice"`          | `[carol, alice]` — mention order preserved, external kind irrelevant              |
+| `"@alice and @all_bots"`   | `[alice, bob, carol]` — `@all_bots` expands in roster order, alice already queued |
+| `"@dave @bob"`             | `[bob]` — dave is not a room agent and is dropped                                 |
+| `"mail a@b.com or @@nope"` | `[]` — not mentions                                                               |
 
 The result feeds `planMentionsTurn`/`planDebateTurns` directly (see [./turns.md](./turns.md)), and the web app calls `extractHandles` when persisting a message to fill its `mentions` array (`apps/web/src/lib/message-send.ts:59`) — the same array the external-bot webhook payload carries.
 

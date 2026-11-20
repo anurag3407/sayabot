@@ -76,7 +76,8 @@ export default async function SearchPage({
         {results.length ? (
           <>
             <p className="mt-6 font-mono text-[12px] text-faint">
-              {results.length === 50 ? "first 50 results" : `${results.length} results`} · newest first
+              {results.length === 50 ? "first 50 results" : `${results.length} results`} · newest
+              first
             </p>
             <ul className="mt-2 divide-y divide-line border-y border-line">
               {results.map((result) => {

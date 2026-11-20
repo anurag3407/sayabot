@@ -13,9 +13,13 @@ type Chip = "arm" | "intel" | "unknown"
  */
 async function detectChip(): Promise<Chip> {
   try {
-    const uaData = (navigator as Navigator & {
-      userAgentData?: { getHighEntropyValues: (hints: string[]) => Promise<{ architecture?: string }> }
-    }).userAgentData
+    const uaData = (
+      navigator as Navigator & {
+        userAgentData?: {
+          getHighEntropyValues: (hints: string[]) => Promise<{ architecture?: string }>
+        }
+      }
+    ).userAgentData
     if (uaData) {
       const { architecture } = await uaData.getHighEntropyValues(["architecture"])
       if (architecture === "arm") return "arm"
@@ -36,7 +40,15 @@ async function detectChip(): Promise<Chip> {
   return "unknown"
 }
 
-export function MacDownload({ armUrl, intelUrl, installCmd }: { armUrl: string; intelUrl: string; installCmd: string }) {
+export function MacDownload({
+  armUrl,
+  intelUrl,
+  installCmd,
+}: {
+  armUrl: string
+  intelUrl: string
+  installCmd: string
+}) {
   const [chip, setChip] = useState<Chip>("unknown")
   useEffect(() => {
     void detectChip().then(setChip)
@@ -54,7 +66,9 @@ export function MacDownload({ armUrl, intelUrl, installCmd }: { armUrl: string; 
       >
         <ArrowDownToLine className="h-4 w-4" />
         <span>Download for Mac</span>
-        <span className="text-xs text-neutral-500">{intel ? "Intel" : chip === "arm" ? "Apple chip" : ""}</span>
+        <span className="text-xs text-neutral-500">
+          {intel ? "Intel" : chip === "arm" ? "Apple chip" : ""}
+        </span>
       </a>
       <p className="text-center text-[11px] text-neutral-500">
         {intel ? "Mac with an Apple chip (M1 or newer)?" : "Older Mac with an Intel chip?"}{" "}
@@ -65,8 +79,9 @@ export function MacDownload({ armUrl, intelUrl, installCmd }: { armUrl: string; 
       <ol className="space-y-1.5 text-[12px] leading-relaxed text-neutral-300">
         <li>1. Open the downloaded file and drag Sayabot into Applications.</li>
         <li>
-          2. Open Sayabot. If macOS says it can&apos;t check the app, click <strong>Done</strong>, then open{" "}
-          <strong>System Settings → Privacy &amp; Security</strong> and click <strong>Open Anyway</strong>.
+          2. Open Sayabot. If macOS says it can&apos;t check the app, click <strong>Done</strong>,
+          then open <strong>System Settings → Privacy &amp; Security</strong> and click{" "}
+          <strong>Open Anyway</strong>.
         </li>
         <li>3. Sign in, and your bots can use the Claude Code or Codex on this Mac.</li>
       </ol>
@@ -75,7 +90,9 @@ export function MacDownload({ armUrl, intelUrl, installCmd }: { armUrl: string; 
           Comfortable with Terminal? Install with one line instead
         </summary>
         <div className="mt-2 flex min-w-0 items-start gap-2">
-          <span className="min-w-0 flex-1 break-all font-mono text-[11px] leading-relaxed text-neutral-200">{installCmd}</span>
+          <span className="min-w-0 flex-1 break-all font-mono text-[11px] leading-relaxed text-neutral-200">
+            {installCmd}
+          </span>
           <CopyButton text={installCmd} label="copy" className="shrink-0 text-neutral-400" />
         </div>
       </details>

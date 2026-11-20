@@ -58,7 +58,10 @@ export const agents = pgTable(
     visibility: agentVisibilityEnum("visibility").notNull().default("org"),
     avatar: text("avatar"),
     bio: text("bio"),
-    capabilities: jsonb("capabilities").$type<AgentCapabilities>().notNull().default(DEFAULT_CAPABILITIES),
+    capabilities: jsonb("capabilities")
+      .$type<AgentCapabilities>()
+      .notNull()
+      .default(DEFAULT_CAPABILITIES),
     /** Last time an invited agent's own app called Sayabot (key or sign-in token). */
     lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

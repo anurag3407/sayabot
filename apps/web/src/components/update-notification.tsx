@@ -1,6 +1,14 @@
 "use client"
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react"
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react"
 import { ArrowDownToLine, RefreshCw, X } from "lucide-react"
 import { showToast } from "@/components/ui/toast"
 import { onWebUpdate } from "@/lib/web-update"
@@ -215,7 +223,10 @@ function UpdateToast({
           </p>
           <div className="mt-2 h-1 overflow-hidden rounded-full bg-line">
             <div
-              className={cn("h-full rounded-full bg-accent transition-[width]", percent === null && "w-1/3 animate-pulse")}
+              className={cn(
+                "h-full rounded-full bg-accent transition-[width]",
+                percent === null && "w-1/3 animate-pulse",
+              )}
               style={percent !== null ? { width: `${Math.max(3, percent)}%` } : undefined}
             />
           </div>
@@ -234,14 +245,21 @@ function UpdateToast({
       <div role="alert" className={card}>
         <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-danger" />
         <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-medium text-text">Sayabot {desktop.latest} didn&apos;t install</p>
+          <p className="text-[13px] font-medium text-text">
+            Sayabot {desktop.latest} didn&apos;t install
+          </p>
           <p className="mt-0.5 text-[12px] leading-relaxed text-muted">{desktop.message}</p>
           <button type="button" onClick={install} className={cn(primary, "mt-2")}>
             <RefreshCw className="h-3 w-3" />
             Try again
           </button>
         </div>
-        <button type="button" onClick={() => onLater(`error:${desktop.latest}`)} aria-label="Dismiss" className={quiet}>
+        <button
+          type="button"
+          onClick={() => onLater(`error:${desktop.latest}`)}
+          aria-label="Dismiss"
+          className={quiet}
+        >
           <X className="h-3.5 w-3.5" />
         </button>
       </div>
@@ -256,7 +274,9 @@ function UpdateToast({
           <span className="relative inline-flex h-2 w-2 rounded-full bg-ok" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-medium text-text">Sayabot {desktop.latest} for Mac is ready</p>
+          <p className="text-[13px] font-medium text-text">
+            Sayabot {desktop.latest} for Mac is ready
+          </p>
           <p className="mt-0.5 text-[12px] text-muted">
             You have {desktop.current}. It installs in about a minute and reopens by itself.
           </p>

@@ -24,13 +24,16 @@ export function ShareTargetScreen({ navigation }: any) {
   const [error, setError] = useState<string | null>(null)
 
   const files: Picked[] = (shareIntent.files ?? []).map((f) => ({
-    uri: f.path.startsWith("file://") || f.path.startsWith("content://") ? f.path : `file://${f.path}`,
+    uri:
+      f.path.startsWith("file://") || f.path.startsWith("content://") ? f.path : `file://${f.path}`,
     name: f.fileName || "file",
     type: f.mimeType || "application/octet-stream",
     size: f.size,
     isImage: (f.mimeType || "").startsWith("image/"),
   }))
-  const sharedText = [shareIntent.text, shareIntent.webUrl].filter((t, i, a) => t && a.indexOf(t) === i).join("\n")
+  const sharedText = [shareIntent.text, shareIntent.webUrl]
+    .filter((t, i, a) => t && a.indexOf(t) === i)
+    .join("\n")
   const chats = data?.chats ?? []
   const agents = new Map((data?.agents ?? []).map((a) => [a.id, a]))
 
@@ -46,7 +49,8 @@ export function ShareTargetScreen({ navigation }: any) {
     setError(null)
     try {
       const links: string[] = []
-      for (const f of files.slice(0, 6)) links.push(attachmentMarkdown(await uploadToRoom(chat.id, f)))
+      for (const f of files.slice(0, 6))
+        links.push(attachmentMarkdown(await uploadToRoom(chat.id, f)))
       const content = [note.trim(), sharedText, ...links].filter(Boolean).join("\n")
       if (!content) throw new Error("Nothing to send")
       await postRoomMessage(data.org.slug, chat.id, content)
@@ -63,7 +67,14 @@ export function ShareTargetScreen({ navigation }: any) {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.bg, paddingTop: insets.top }}>
-      <View style={{ height: 52, flexDirection: "row", alignItems: "center", paddingHorizontal: space.md }}>
+      <View
+        style={{
+          height: 52,
+          flexDirection: "row",
+          alignItems: "center",
+          paddingHorizontal: space.md,
+        }}
+      >
         <Text variant="headline" style={{ flex: 1, marginLeft: 6 }}>
           Send to a chat
         </Text>
@@ -73,9 +84,23 @@ export function ShareTargetScreen({ navigation }: any) {
         <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
           {files.map((f, i) =>
             f.isImage ? (
-              <Image key={i} source={{ uri: f.uri }} style={{ width: 64, height: 64, borderRadius: 12, backgroundColor: theme.raised }} />
+              <Image
+                key={i}
+                source={{ uri: f.uri }}
+                style={{ width: 64, height: 64, borderRadius: 12, backgroundColor: theme.raised }}
+              />
             ) : (
-              <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 6, padding: 10, borderRadius: 12, backgroundColor: theme.card }}>
+              <View
+                key={i}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: 10,
+                  borderRadius: 12,
+                  backgroundColor: theme.card,
+                }}
+              >
                 <FileText size={16} color={theme.muted} />
                 <Text variant="footnote" numberOfLines={1} style={{ maxWidth: 200 }}>
                   {f.name}
@@ -85,7 +110,12 @@ export function ShareTargetScreen({ navigation }: any) {
           )}
         </View>
         {sharedText ? (
-          <Text variant="subhead" tone="muted" numberOfLines={4} style={{ backgroundColor: theme.card, padding: 12, borderRadius: radius.md }}>
+          <Text
+            variant="subhead"
+            tone="muted"
+            numberOfLines={4}
+            style={{ backgroundColor: theme.card, padding: 12, borderRadius: radius.md }}
+          >
             {sharedText}
           </Text>
         ) : null}
@@ -95,10 +125,21 @@ export function ShareTargetScreen({ navigation }: any) {
           placeholder="Add a note, like “@hermes summarise this”"
           placeholderTextColor={theme.faint}
           multiline
-          style={{ minHeight: 48, borderRadius: radius.md, backgroundColor: theme.raised, padding: 12, color: theme.text, fontSize: 16 }}
+          style={{
+            minHeight: 48,
+            borderRadius: radius.md,
+            backgroundColor: theme.raised,
+            padding: 12,
+            color: theme.text,
+            fontSize: 16,
+          }}
         />
       </View>
-      <Text variant="footnote" tone="muted" style={{ marginHorizontal: space.lg, marginTop: space.lg, marginBottom: 6 }}>
+      <Text
+        variant="footnote"
+        tone="muted"
+        style={{ marginHorizontal: space.lg, marginTop: space.lg, marginBottom: 6 }}
+      >
         Choose a chat
       </Text>
       <FlatList

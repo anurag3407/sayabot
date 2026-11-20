@@ -29,10 +29,17 @@ export function LandingFooter() {
       <p
         aria-hidden
         className="fn-word mt-6 select-none whitespace-nowrap text-center font-[800] leading-[0.82] text-text"
-        style={{ fontFamily: "var(--display)", fontStretch: "76%", fontSize: "clamp(4rem, 19.5vw, 20rem)", marginBottom: "-0.05em" }}
+        style={{
+          fontFamily: "var(--display)",
+          fontStretch: "76%",
+          fontSize: "clamp(4rem, 19.5vw, 20rem)",
+          marginBottom: "-0.05em",
+        }}
       >
         {WORD.map((letter, index) => (
-          <span key={index} className="fn-letter inline-block">{letter}</span>
+          <span key={index} className="fn-letter inline-block">
+            {letter}
+          </span>
         ))}
       </p>
     </footer>

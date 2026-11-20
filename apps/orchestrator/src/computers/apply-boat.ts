@@ -17,12 +17,16 @@ export async function applyBoatDecision(
     if (decision.action === "wake") {
       if (!currentId) return { ok: false, error: "This Boat has no id to wake" }
       const resumed = await client.resume(currentId)
-      const box = BOAT_READY_STATES.has(resumed.state) ? resumed : await client.waitUntilReady(resumed.id || currentId)
+      const box = BOAT_READY_STATES.has(resumed.state)
+        ? resumed
+        : await client.waitUntilReady(resumed.id || currentId)
       return { ok: true, boatId: box.id, state: box.state }
     }
     if (decision.action === "provision") {
       const created = await client.create(name)
-      const box = BOAT_READY_STATES.has(created.state) ? created : await client.waitUntilReady(created.id)
+      const box = BOAT_READY_STATES.has(created.state)
+        ? created
+        : await client.waitUntilReady(created.id)
       return { ok: true, boatId: box.id, state: box.state }
     }
     return { ok: false, error: "This Boat is already running" }

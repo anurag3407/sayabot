@@ -28,7 +28,10 @@ export async function loadFactsForRoom(orgId: string, roomId: string): Promise<K
     })
     .from(ownerFacts)
     .where(
-      and(eq(ownerFacts.orgId, orgId), or(isNull(ownerFacts.roomId), eq(ownerFacts.roomId, roomId))),
+      and(
+        eq(ownerFacts.orgId, orgId),
+        or(isNull(ownerFacts.roomId), eq(ownerFacts.roomId, roomId)),
+      ),
     )
     .limit(500)
   return factsVisibleInRoom(
@@ -71,7 +74,13 @@ export async function saveAgentFact(input: {
   const [existing] = await db
     .select({ id: ownerFacts.id, source: ownerFacts.source, value: ownerFacts.value })
     .from(ownerFacts)
-    .where(and(eq(ownerFacts.orgId, input.orgId), eq(ownerFacts.roomId, input.roomId), eq(ownerFacts.key, key)))
+    .where(
+      and(
+        eq(ownerFacts.orgId, input.orgId),
+        eq(ownerFacts.roomId, input.roomId),
+        eq(ownerFacts.key, key),
+      ),
+    )
     .limit(1)
 
   if (existing && existing.source !== "agent") {

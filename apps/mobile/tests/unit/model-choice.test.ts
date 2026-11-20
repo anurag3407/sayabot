@@ -1,6 +1,11 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
-import { buttonLabel, choiceLabel, fitEffort, type PickerGroup } from "../../src/core/model-choice.ts"
+import {
+  buttonLabel,
+  choiceLabel,
+  fitEffort,
+  type PickerGroup,
+} from "../../src/core/model-choice.ts"
 
 const groups: PickerGroup[] = [
   {
@@ -28,8 +33,14 @@ const groups: PickerGroup[] = [
 
 test("names a server model and a Mac model the way the web picker does", () => {
   assert.equal(choiceLabel(groups, { keyId: null, model: "saya-opus", effort: null }), "Saya Opus")
-  assert.equal(choiceLabel(groups, { keyId: "host:mac:claude-code", model: "opus", effort: null }), "Claude Opus 5.5 · Claude")
-  assert.equal(buttonLabel(groups, { keyId: "host:mac:claude-code", model: "opus", effort: null }), "Claude Opus 5.5 · Mac")
+  assert.equal(
+    choiceLabel(groups, { keyId: "host:mac:claude-code", model: "opus", effort: null }),
+    "Claude Opus 5.5 · Claude",
+  )
+  assert.equal(
+    buttonLabel(groups, { keyId: "host:mac:claude-code", model: "opus", effort: null }),
+    "Claude Opus 5.5 · Mac",
+  )
   assert.equal(buttonLabel(groups, null), "Model")
 })
 

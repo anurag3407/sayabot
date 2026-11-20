@@ -22,9 +22,13 @@ import { effectiveProvider } from "@/lib/format"
 
 describe("effectiveProvider", () => {
   it("recovers OpenRouter and Copilot from their base URLs", () => {
-    expect(effectiveProvider("openai-compatible", "https://openrouter.ai/api/v1")).toBe("openrouter")
+    expect(effectiveProvider("openai-compatible", "https://openrouter.ai/api/v1")).toBe(
+      "openrouter",
+    )
     expect(effectiveProvider("openai-compatible", "https://api.githubcopilot.com")).toBe("copilot")
-    expect(effectiveProvider("openai-compatible", "http://localhost:11434/v1")).toBe("openai-compatible")
+    expect(effectiveProvider("openai-compatible", "http://localhost:11434/v1")).toBe(
+      "openai-compatible",
+    )
     expect(effectiveProvider("anthropic", null)).toBe("anthropic")
   })
 })

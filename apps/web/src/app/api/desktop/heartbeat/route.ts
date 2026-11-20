@@ -17,9 +17,12 @@ function reportedModels(rows: unknown[]): Array<Record<string, unknown>> {
       : []
     out.push({
       id: row.id,
-      label: typeof row.label === "string" && row.label.trim() ? row.label.trim().slice(0, 120) : row.id,
+      label:
+        typeof row.label === "string" && row.label.trim() ? row.label.trim().slice(0, 120) : row.id,
       ...(effort.length ? { effort } : {}),
-      ...(typeof row.defaultEffort === "string" && EFFORT.test(row.defaultEffort) ? { defaultEffort: row.defaultEffort } : {}),
+      ...(typeof row.defaultEffort === "string" && EFFORT.test(row.defaultEffort)
+        ? { defaultEffort: row.defaultEffort }
+        : {}),
       ...(row.isDefault === true ? { isDefault: true } : {}),
     })
   }
@@ -44,7 +47,8 @@ export async function POST(request: Request) {
   const permissions: Record<string, string> = {}
   if (body.permissions && typeof body.permissions === "object") {
     for (const [k, v] of Object.entries(body.permissions as Record<string, unknown>)) {
-      if (typeof v === "string" && PERMISSION_VALUES.has(v) && /^[a-z_]{1,30}$/.test(k)) permissions[k] = v
+      if (typeof v === "string" && PERMISSION_VALUES.has(v) && /^[a-z_]{1,30}$/.test(k))
+        permissions[k] = v
     }
   }
   const localAgents = Array.isArray(body.localAgents)
@@ -57,7 +61,9 @@ export async function POST(request: Request) {
           name: String(a.name ?? "").slice(0, 60),
           status: String(a.status ?? "").slice(0, 20),
           version: a.version ? String(a.version).slice(0, 20) : null,
-          ...(typeof a.account === "string" && a.account ? { account: a.account.slice(0, 160) } : {}),
+          ...(typeof a.account === "string" && a.account
+            ? { account: a.account.slice(0, 160) }
+            : {}),
           ...(Array.isArray(a.models) ? { models: reportedModels(a.models) } : {}),
         }))
     : host.local_agents
@@ -66,7 +72,8 @@ export async function POST(request: Request) {
   let storage: Record<string, unknown> | undefined
   if (body.storage && typeof body.storage === "object") {
     const raw = body.storage as Record<string, unknown>
-    const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? Math.round(v) : 0)
+    const num = (v: unknown) =>
+      typeof v === "number" && Number.isFinite(v) && v >= 0 ? Math.round(v) : 0
     const appData = (raw.appData ?? {}) as Record<string, unknown>
     storage = {
       measuredAt: new Date().toISOString(),
@@ -111,7 +118,9 @@ export async function POST(request: Request) {
   const { data: viewers } = viewerIds.length
     ? await admin.from("profiles").select("id, display_name").in("id", viewerIds)
     : { data: [] }
-  const names = new Map(((viewers ?? []) as { id: string; display_name: string }[]).map((v) => [v.id, v.display_name]))
+  const names = new Map(
+    ((viewers ?? []) as { id: string; display_name: string }[]).map((v) => [v.id, v.display_name]),
+  )
 
   const { count: queuedJobs } = await admin
     .from("local_runner_jobs")

@@ -7,7 +7,11 @@ import { Blocks, ChevronRight, Laptop, Loader2, Plug, RefreshCw, Wrench } from "
 import { saveProviderKey } from "@/lib/actions/keys"
 import { ACCOUNT_PROVIDERS } from "@/lib/ai-accounts"
 import { MAC_ACCESS_LABEL } from "@sayabot/core"
-import { LOCAL_STATUS_LABEL, type LocalAgentReport, type LocalAgentsResponse } from "@/lib/local-agents-shared"
+import {
+  LOCAL_STATUS_LABEL,
+  type LocalAgentReport,
+  type LocalAgentsResponse,
+} from "@/lib/local-agents-shared"
 import { InviteBotDialog } from "@/components/room/invite-bot-dialog"
 import { ManageAccountsModal } from "@/components/room/model-picker"
 import { ProviderIcon } from "@/components/room/model-picker/provider-icons"
@@ -77,7 +81,9 @@ function LocalAgents({
     let cancelled = false
     setState(null)
     fetch("/api/providers/local", { cache: "no-store" })
-      .then((res) => (res.ok ? (res.json() as Promise<LocalAgentsResponse>) : { available: false, agents: [] }))
+      .then((res) =>
+        res.ok ? (res.json() as Promise<LocalAgentsResponse>) : { available: false, agents: [] },
+      )
       .then((data) => !cancelled && setState(data))
       .catch(() => !cancelled && setState({ available: false, agents: [] }))
     return () => {
@@ -86,7 +92,11 @@ function LocalAgents({
   }, [refreshKey])
 
   if (!state) {
-    return <p className="rounded-xl border border-line bg-panel p-4 text-[13px] text-faint">Looking for agent apps on this computer…</p>
+    return (
+      <p className="rounded-xl border border-line bg-panel p-4 text-[13px] text-faint">
+        Looking for agent apps on this computer…
+      </p>
+    )
   }
   if (!state.available) {
     return (
@@ -97,8 +107,8 @@ function LocalAgents({
           <Link href="/download" className="text-text underline-offset-2 hover:underline">
             Sayabot Mac app
           </Link>{" "}
-          and sign in. Apps already signed in on your Mac, like Claude Code, Codex and Gemini CLI, show up here by
-          themselves and answer on your own subscription, with no API key.
+          and sign in. Apps already signed in on your Mac, like Claude Code, Codex and Gemini CLI,
+          show up here by themselves and answer on your own subscription, with no API key.
         </p>
       </div>
     )
@@ -123,8 +133,9 @@ function LocalAgents({
       <>
         {macHeader}
         <p className="rounded-xl border border-line bg-panel p-4 text-[13px] leading-relaxed text-muted">
-          No signed-in agent apps found{state.source === "mac" ? ` on ${state.hostName}` : ""}. Open Claude Code, Codex or
-          Gemini CLI in a terminal once and sign in; it shows up here within a minute.
+          No signed-in agent apps found{state.source === "mac" ? ` on ${state.hostName}` : ""}. Open
+          Claude Code, Codex or Gemini CLI in a terminal once and sign in; it shows up here within a
+          minute.
         </p>
       </>
     )
@@ -159,13 +170,25 @@ function LocalAgents({
                       ? `Installed${agent.version ? ` · ${agent.version}` : ""}`
                       : "Not on this computer"}
               </p>
-              {agent.access ? <p className="text-[11.5px] text-faint/80">{MAC_ACCESS_LABEL[agent.access]}</p> : null}
+              {agent.access ? (
+                <p className="text-[11.5px] text-faint/80">{MAC_ACCESS_LABEL[agent.access]}</p>
+              ) : null}
             </div>
-            <span className={cn("hidden rounded-full px-2.5 py-1 text-[12px] sm:inline", STATUS_TONE[agent.status])}>
+            <span
+              className={cn(
+                "hidden rounded-full px-2.5 py-1 text-[12px] sm:inline",
+                STATUS_TONE[agent.status],
+              )}
+            >
               {LOCAL_STATUS_LABEL[agent.status]}
             </span>
             {agent.status === "ready" || agent.status === "installed" ? (
-              <Button size="sm" variant="secondary" disabled={!rooms.length} onClick={() => setInviting(agent)}>
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={!rooms.length}
+                onClick={() => setInviting(agent)}
+              >
                 Add to a room
               </Button>
             ) : null}
@@ -176,7 +199,12 @@ function LocalAgents({
       {inviting && rooms.length > 1 ? (
         <div className="mt-2 flex items-center gap-2 text-[13px] text-muted">
           <span>Room for {inviting.name}:</span>
-          <Select value={roomId} onChange={(event) => setRoomId(event.target.value)} className="max-w-xs" aria-label="Room">
+          <Select
+            value={roomId}
+            onChange={(event) => setRoomId(event.target.value)}
+            className="max-w-xs"
+            aria-label="Room"
+          >
             {rooms.map((r) => (
               <option key={r.id} value={r.id}>
                 #{r.name}
@@ -223,7 +251,8 @@ function MoreProviders({ agents }: { agents: LocalAgentReport[] }) {
       <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-[13px] text-muted hover:text-text">
         <span>More providers</span>
         <span className="text-faint">
-          {agents.length} <span className="inline-block transition-transform group-open:rotate-90">›</span>
+          {agents.length}{" "}
+          <span className="inline-block transition-transform group-open:rotate-90">›</span>
         </span>
       </summary>
       <ul className="divide-y divide-line border-t border-line">
@@ -232,13 +261,17 @@ function MoreProviders({ agents }: { agents: LocalAgentReport[] }) {
             <Tile icon={agent.icon} />
             <div className="min-w-0 flex-1">
               <p className="text-[14px] font-medium text-text">{agent.name}</p>
-              {agent.access ? <p className="text-[12px] text-faint">{MAC_ACCESS_LABEL[agent.access]}</p> : null}
+              {agent.access ? (
+                <p className="text-[12px] text-faint">{MAC_ACCESS_LABEL[agent.access]}</p>
+              ) : null}
               {agent.install ? (
                 <code className="mt-1 block truncate rounded-md bg-raised px-2 py-1 font-mono text-[11.5px] text-muted">
                   {agent.install}
                 </code>
               ) : null}
-              {agent.setupHint ? <p className="mt-1 text-[11.5px] text-faint">Then: {agent.setupHint}</p> : null}
+              {agent.setupHint ? (
+                <p className="mt-1 text-[11.5px] text-faint">Then: {agent.setupHint}</p>
+              ) : null}
             </div>
           </li>
         ))}
@@ -267,7 +300,10 @@ function ApiKeyRow({
   keys: ProviderKeyView[]
   agentCounts: Record<string, number>
 }) {
-  const [state, formAction, pending] = useActionState<ActionResult | null, FormData>(saveProviderKey, null)
+  const [state, formAction, pending] = useActionState<ActionResult | null, FormData>(
+    saveProviderKey,
+    null,
+  )
   const ref = useRef<HTMLFormElement>(null)
   const router = useRouter()
   useEffect(() => {
@@ -279,7 +315,8 @@ function ApiKeyRow({
   const used = keys.reduce((n, k) => n + (agentCounts[k.id] ?? 0), 0)
   const status = keys.length ? (
     <StatusPill tone="ok">
-      {keys.length === 1 ? "Ready" : `${keys.length} keys`} · {used ? `${used} ${used === 1 ? "bot" : "bots"}` : "no bots yet"}
+      {keys.length === 1 ? "Ready" : `${keys.length} keys`} ·{" "}
+      {used ? `${used} ${used === 1 ? "bot" : "bots"}` : "no bots yet"}
     </StatusPill>
   ) : (
     <StatusPill tone="idle">Not set up</StatusPill>
@@ -295,7 +332,10 @@ function ApiKeyRow({
       {keys.length ? (
         <ul className="mb-3 space-y-2">
           {keys.map((key) => (
-            <li key={key.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-line bg-ink px-3 py-2">
+            <li
+              key={key.id}
+              className="flex flex-wrap items-center gap-2 rounded-lg border border-line bg-ink px-3 py-2"
+            >
               <div className="min-w-0 flex-1">
                 <p className="text-[13px] text-text">{key.label}</p>
                 <p className="truncate text-[11px] text-faint">
@@ -303,7 +343,11 @@ function ApiKeyRow({
                   {key.baseUrl ? ` · ${key.baseUrl}` : ""} · {agentCounts[key.id] ?? 0} bots
                 </p>
               </div>
-              <TestKeyButton orgSlug={orgSlug} keyId={key.id} provider={effectiveProvider(key.provider, key.baseUrl)} />
+              <TestKeyButton
+                orgSlug={orgSlug}
+                keyId={key.id}
+                provider={effectiveProvider(key.provider, key.baseUrl)}
+              />
               <DeleteKeyButton orgSlug={orgSlug} keyId={key.id} />
             </li>
           ))}
@@ -316,7 +360,11 @@ function ApiKeyRow({
         {isServer ? (
           <Input
             name="baseUrl"
-            placeholder={info.id === "cloudflare" ? "https://api.cloudflare.com/client/v4/accounts/<id>/ai/v1" : "http://localhost:1234/v1"}
+            placeholder={
+              info.id === "cloudflare"
+                ? "https://api.cloudflare.com/client/v4/accounts/<id>/ai/v1"
+                : "http://localhost:1234/v1"
+            }
             required={info.id === "openai-compatible"}
             aria-label={`${info.name} address`}
             spellCheck={false}
@@ -335,7 +383,12 @@ function ApiKeyRow({
           />
           <div className="flex items-center gap-2">
             {info.keyUrl ? (
-              <a href={info.keyUrl} target="_blank" rel="noreferrer" className="px-1 text-[12.5px] text-muted hover:text-text hover:underline">
+              <a
+                href={info.keyUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="px-1 text-[12.5px] text-muted hover:text-text hover:underline"
+              >
                 Get a key ↗
               </a>
             ) : null}
@@ -375,11 +428,14 @@ export function ProvidersView({
   const [accountsOpen, setAccountsOpen] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
   const router = useRouter()
-  const keysFor = (id: string) => keys.filter((k) => effectiveProvider(k.provider, k.baseUrl) === id)
+  const keysFor = (id: string) =>
+    keys.filter((k) => effectiveProvider(k.provider, k.baseUrl) === id)
   const apiProviders = PROVIDERS.filter((p) => !p.needsBaseUrl)
   const servers = PROVIDERS.filter((p) => p.needsBaseUrl)
   // Ready first, the way people scan for what is already working.
-  const ordered = [...apiProviders].sort((a, b) => Number(keysFor(b.id).length > 0) - Number(keysFor(a.id).length > 0))
+  const ordered = [...apiProviders].sort(
+    (a, b) => Number(keysFor(b.id).length > 0) - Number(keysFor(a.id).length > 0),
+  )
 
   return (
     <div className="space-y-8">
@@ -425,16 +481,28 @@ export function ProvidersView({
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-[14px] font-medium text-text">Sign in with a plan you pay for</p>
-            <p className="text-[12px] text-faint">ChatGPT, GitHub Copilot, OpenRouter: sign in once and use the models in your plan</p>
+            <p className="text-[12px] text-faint">
+              ChatGPT, GitHub Copilot, OpenRouter: sign in once and use the models in your plan
+            </p>
           </div>
           <ChevronRight className="h-4 w-4 text-faint" />
         </button>
       </ProviderSection>
 
-      <ProviderSection id="ai-providers" title="AI providers" description="Keys for the models your bots run on.">
+      <ProviderSection
+        id="ai-providers"
+        title="AI providers"
+        description="Keys for the models your bots run on."
+      >
         <ProviderList>
           {ordered.map((info) => (
-            <ApiKeyRow key={info.id} info={info} orgSlug={orgSlug} keys={keysFor(info.id)} agentCounts={agentCounts} />
+            <ApiKeyRow
+              key={info.id}
+              info={info}
+              orgSlug={orgSlug}
+              keys={keysFor(info.id)}
+              agentCounts={agentCounts}
+            />
           ))}
         </ProviderList>
       </ProviderSection>
@@ -446,7 +514,13 @@ export function ProvidersView({
       >
         <ProviderList>
           {servers.map((info) => (
-            <ApiKeyRow key={info.id} info={info} orgSlug={orgSlug} keys={keysFor(info.id)} agentCounts={agentCounts} />
+            <ApiKeyRow
+              key={info.id}
+              info={info}
+              orgSlug={orgSlug}
+              keys={keysFor(info.id)}
+              agentCounts={agentCounts}
+            />
           ))}
         </ProviderList>
       </ProviderSection>
@@ -464,7 +538,12 @@ export function ProvidersView({
           {(
             [
               ["connectors", "Connected apps", "Gmail, Slack, GitHub, Drive and more", Plug],
-              ["tools", "Tools and MCP servers", "Web search, MCP servers and built-in tools", Wrench],
+              [
+                "tools",
+                "Tools and MCP servers",
+                "Web search, MCP servers and built-in tools",
+                Wrench,
+              ],
               ["bots", "Your own bots", "Bring a bot you run yourself into rooms", Blocks],
             ] as const
           ).map(([segment, title, subtitle, Icon]) => (
@@ -474,7 +553,10 @@ export function ProvidersView({
               title={title}
               subtitle={subtitle}
               status={
-                <Link href={`/${orgSlug}/settings/${segment}`} className="text-[12.5px] font-medium text-accent hover:underline">
+                <Link
+                  href={`/${orgSlug}/settings/${segment}`}
+                  className="text-[12.5px] font-medium text-accent hover:underline"
+                >
                   Open →
                 </Link>
               }

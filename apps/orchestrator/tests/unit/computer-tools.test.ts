@@ -254,7 +254,10 @@ describe("computer_shell placement", () => {
       available: idleDesktop,
       params: null,
     }).find((tool) => tool.name === "computer_shell")
-    const result = (await shell?.execute({ command: "ls" }, undefined, undefined)) as { ok: boolean; error: string }
+    const result = (await shell?.execute({ command: "ls" }, undefined, undefined)) as {
+      ok: boolean
+      error: string
+    }
     expect(result.ok).toBe(false)
     expect(result.error).toContain("select_computer")
     expect(ensure).not.toHaveBeenCalled()
@@ -262,7 +265,10 @@ describe("computer_shell placement", () => {
 
   it("does not create a local VM when Auto reads a file and none is ready", async () => {
     const ensure = vi.fn()
-    vi.spyOn(clientModule, "getComputerClient").mockReturnValue({ ensure, readFile: vi.fn() } as never)
+    vi.spyOn(clientModule, "getComputerClient").mockReturnValue({
+      ensure,
+      readFile: vi.fn(),
+    } as never)
     const read = computerTools({
       agentId: "agent-1",
       orgId: "org-1",
@@ -272,14 +278,18 @@ describe("computer_shell placement", () => {
       available: idleDesktop,
       params: null,
     }).find((tool) => tool.name === "fs_read")
-    const result = (await read?.execute({ path: "/home/bot/a.txt" }, undefined, undefined)) as { ok: boolean }
+    const result = (await read?.execute({ path: "/home/bot/a.txt" }, undefined, undefined)) as {
+      ok: boolean
+    }
     expect(result.ok).toBe(false)
     expect(ensure).not.toHaveBeenCalled()
   })
 
   it("uses the local VM that is already ready and keeps its volume", async () => {
     const ensure = vi.fn().mockResolvedValue({ status: "running" })
-    const exec = vi.fn().mockResolvedValue({ stdout: "ok", stderr: "", exitCode: 0, durationMs: 1, truncated: false })
+    const exec = vi
+      .fn()
+      .mockResolvedValue({ stdout: "ok", stderr: "", exitCode: 0, durationMs: 1, truncated: false })
     vi.spyOn(clientModule, "getComputerClient").mockReturnValue({ ensure, exec } as never)
     const shell = computerTools({
       agentId: "agent-1",
@@ -290,7 +300,9 @@ describe("computer_shell placement", () => {
       available: { ...idleDesktop, localVmReady: true },
       params: null,
     }).find((tool) => tool.name === "computer_shell")
-    const result = (await shell?.execute({ command: "ls" }, undefined, undefined)) as { stdout: string }
+    const result = (await shell?.execute({ command: "ls" }, undefined, undefined)) as {
+      stdout: string
+    }
     expect(result.stdout).toBe("ok")
     expect(ensure).toHaveBeenCalledWith("agent-1", "org-1", "standard")
   })

@@ -14,7 +14,15 @@ export default async function PhonesPage({ params }: { params: Promise<{ org: st
     .eq("user_id", access.user.id)
     .eq("status", "paired")
     .order("paired_at", { ascending: false })
-  const phones = ((data ?? []) as { id: string; device_name: string | null; platform: string | null; paired_at: string | null; last_seen_at: string | null }[]).map((row) => ({
+  const phones = (
+    (data ?? []) as {
+      id: string
+      device_name: string | null
+      platform: string | null
+      paired_at: string | null
+      last_seen_at: string | null
+    }[]
+  ).map((row) => ({
     id: row.id,
     deviceName: row.device_name ?? "Phone",
     platform: row.platform,

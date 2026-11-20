@@ -1,7 +1,19 @@
 import { createServer, type Server } from "node:http"
 import { afterEach, describe, expect, it } from "vitest"
 import { BoatClient } from "./boat"
-import { boatActivity, boatCatCommand, boatClickCommand, boatCommandOk, boatListCommand, boatReadCommand, boatWriteCommand, numberBoatLines, panelShotCommand, planBoatEdit, rememberBoatUse } from "./boat-shell"
+import {
+  boatActivity,
+  boatCatCommand,
+  boatClickCommand,
+  boatCommandOk,
+  boatListCommand,
+  boatReadCommand,
+  boatWriteCommand,
+  numberBoatLines,
+  panelShotCommand,
+  planBoatEdit,
+  rememberBoatUse,
+} from "./boat-shell"
 
 let server: Server | null = null
 afterEach(async () => {
@@ -26,7 +38,9 @@ describe("boat file read", () => {
     })
     expect("command" in edited && edited.replacements).toBe(1)
     expect("command" in edited && edited.command.includes("beta")).toBe(false)
-    expect(planBoatEdit("/home/bot/note.txt", "alpha alpha", { oldString: "alpha", newString: "b" })).toEqual({
+    expect(
+      planBoatEdit("/home/bot/note.txt", "alpha alpha", { oldString: "alpha", newString: "b" }),
+    ).toEqual({
       error: "That text appears more than once.",
     })
     const shot = panelShotCommand()
@@ -42,7 +56,11 @@ describe("boat file read", () => {
     const params: Record<string, unknown> = { computer: { boatId: "box-1" } }
     rememberBoatUse(params, true, "t1")
     rememberBoatUse(params, false, "t2")
-    expect(params.computer).toMatchObject({ boatId: "box-1", lastUsedAt: "t2", backgroundStartedAt: "t1" })
+    expect(params.computer).toMatchObject({
+      boatId: "box-1",
+      lastUsedAt: "t2",
+      backgroundStartedAt: "t1",
+    })
     expect(boatListCommand("/home/bot", 2)).toBe("find '/home/bot' -mindepth 1 -maxdepth 2")
     expect(boatListCommand("home")).toBeNull()
   })
@@ -71,7 +89,9 @@ describe("boat shell", () => {
     const result = await client.command("box-1", "sleep 30", true)
     expect(result).toEqual({ pid: "42" })
     expect(JSON.parse(body)).toEqual({ command: "sleep 30", detached: true })
-    expect(boatActivity({ boatId: "box-1" }, { detached: true, now: "2026-11-15T00:00:00.000Z" })).toEqual({
+    expect(
+      boatActivity({ boatId: "box-1" }, { detached: true, now: "2026-11-15T00:00:00.000Z" }),
+    ).toEqual({
       boatId: "box-1",
       lastUsedAt: "2026-11-15T00:00:00.000Z",
       backgroundStartedAt: "2026-11-15T00:00:00.000Z",

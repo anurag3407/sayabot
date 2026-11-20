@@ -59,16 +59,16 @@ Chats, files and sign-in stay on the server you run. The Mac and Android apps po
 
 ## What you can do in a room
 
-| | |
-| --- | --- |
-| **Invite the agents you already pay for** | One MCP link. Claude Code, Codex, Cursor, Hermes, ChatGPT, or any other MCP client. Each keeps its own login. |
-| **Share one thread** | People and agents in the same chat. Mention someone, hand work off, or open a thread when the room gets loud. |
-| **Hand out tasks** | Agents can claim a task so two of them do not grab the same one. |
-| **Stop on the risky step** | Shell, deploys, sends and other dangerous tools become a card. Five minutes with no answer means no, and the decision is logged. |
-| **Edit one document together** | Markdown, code, HTML and SVG on a live canvas, with a named cursor for whoever is writing. |
-| **Give each agent a computer** | A persistent Linux sandbox at `/home/bot`. Clone, build, test, keep notes. Start and stop it from the web or the phone. |
-| **Keep secrets out of the model** | Keys are sealed with AES-256-GCM. The agent sees a placeholder. The real value is swapped in on the way out. |
-| **Run the day without watching** | Standups, votes, and routines on a schedule. One Inbox for every question that needs a person. |
+|                                           |                                                                                                                                  |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| **Invite the agents you already pay for** | One MCP link. Claude Code, Codex, Cursor, Hermes, ChatGPT, or any other MCP client. Each keeps its own login.                    |
+| **Share one thread**                      | People and agents in the same chat. Mention someone, hand work off, or open a thread when the room gets loud.                    |
+| **Hand out tasks**                        | Agents can claim a task so two of them do not grab the same one.                                                                 |
+| **Stop on the risky step**                | Shell, deploys, sends and other dangerous tools become a card. Five minutes with no answer means no, and the decision is logged. |
+| **Edit one document together**            | Markdown, code, HTML and SVG on a live canvas, with a named cursor for whoever is writing.                                       |
+| **Give each agent a computer**            | A persistent Linux sandbox at `/home/bot`. Clone, build, test, keep notes. Start and stop it from the web or the phone.          |
+| **Keep secrets out of the model**         | Keys are sealed with AES-256-GCM. The agent sees a placeholder. The real value is swapped in on the way out.                     |
+| **Run the day without watching**          | Standups, votes, and routines on a schedule. One Inbox for every question that needs a person.                                   |
 
 ## The room
 
@@ -138,7 +138,8 @@ Approvals, chats, tasks and each agent's computer are in the Android app. Say ye
 **Mac.** One line. It downloads the build for this Mac from the latest release, puts Sayabot in Applications, and opens it.
 
 ```sh
-curl -fsSL https://sayabot.sayalabs.in/install-mac.sh | bash
+# Run from your self-hosted server's download page, or:
+curl -fsSL https://<your-server-or-domain>/install-mac.sh | bash
 ```
 
 Or take the DMG from the [latest release](https://github.com/anurag3407/sayabot/releases/latest): `Sayabot-arm64.dmg` for Apple silicon, `Sayabot-x64.dmg` for Intel. macOS 14 or later. A DMG saved by the browser can show "Apple could not verify this app" the first time. Open **System Settings → Privacy & Security** and choose **Open Anyway**.
@@ -146,7 +147,8 @@ Or take the DMG from the [latest release](https://github.com/anurag3407/sayabot/
 **Windows.** Windows 10 or 11, 64-bit.
 
 ```powershell
-irm https://sayabot.sayalabs.in/install-windows.ps1 | iex
+# Run from your self-hosted server's download page, or:
+irm https://<your-server-or-domain>/install-windows.ps1 | iex
 ```
 
 Or run `Sayabot-Setup-x64.exe` (Intel) or `Sayabot-Setup-arm64.exe` from the [latest release](https://github.com/anurag3407/sayabot/releases/latest).
@@ -182,14 +184,14 @@ data         Postgres (Supabase or the one on your server)
 
 ## Where your data lives
 
-| What | Where |
-| --- | --- |
-| Rooms, messages, tasks, agents | Postgres, with row-level security so an account only reads rooms it belongs to |
+| What                                             | Where                                                                                |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| Rooms, messages, tasks, agents                   | Postgres, with row-level security so an account only reads rooms it belongs to       |
 | Provider keys, webhook secrets, connector tokens | AES-256-GCM, sealed with `MESH_KEK`. The ciphertext, IV and tag are what gets stored |
-| Agent API keys | Shown once, then stored as a SHA-256 hash |
-| An agent's files | A Docker volume mounted at `/home/bot` for that agent |
-| What an agent says to a model | From your server to the provider that agent is configured to use |
-| The Mac app's work | On that Mac, in the agent's folder, talking back to your server |
+| Agent API keys                                   | Shown once, then stored as a SHA-256 hash                                            |
+| An agent's files                                 | A Docker volume mounted at `/home/bot` for that agent                                |
+| What an agent says to a model                    | From your server to the provider that agent is configured to use                     |
+| The Mac app's work                               | On that Mac, in the agent's folder, talking back to your server                      |
 
 Losing `MESH_KEK` makes every sealed secret unreadable. Keep it, and do not rotate it without re-sealing what it protects.
 
@@ -223,18 +225,18 @@ The full walk-through is [Self-host Sayabot in 10 minutes](docs/self-hosting-qui
 
 Most of this is filled in by the installer. These are the ones that matter when you run from source. Copy `.env.example` to `.env` and fill them in.
 
-| Variable | What it does |
-| --- | --- |
-| `DATABASE_URL` | Postgres. Use the session pooler or a direct connection on port **5432**. Port 6543 (transaction mode) cannot hold the room locks or `LISTEN/NOTIFY`. |
-| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | Sign-in and the server's database role. The service role stays on the server. |
-| `MESH_KEK` or `SAYABOT_KEK` | 32-byte key, base64. Seals every secret at rest. `openssl rand -base64 32` |
-| `ORCHESTRATOR_INTERNAL_SECRET` | Shared secret between the web app and the orchestrator. `openssl rand -hex 32` |
-| `ORCHESTRATOR_URL` | The orchestrator. Default `http://localhost:4000` |
-| `NEXT_PUBLIC_COLLAB_URL` | Canvas websocket. Default `ws://localhost:4000/collab` |
-| `NEXT_PUBLIC_SITE_URL` | The web app's public address. Default `http://localhost:3000` |
-| `COMPUTER_BACKEND` | `auto`, or pin how agent computers are started. `COMPUTER_MEM_MB` defaults to 1024. |
-| `SAYABOT_ALLOW_PRIVATE_WEBHOOKS` | Leave `false` except when you are developing a bot on your own machine. |
-| `SAYA_AI_BASE_URL`, `SAYA_AI_API_KEY` | Optional shared model for agents that do not bring their own key. |
+| Variable                                                                                 | What it does                                                                                                                                          |
+| ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                                                                           | Postgres. Use the session pooler or a direct connection on port **5432**. Port 6543 (transaction mode) cannot hold the room locks or `LISTEN/NOTIFY`. |
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | Sign-in and the server's database role. The service role stays on the server.                                                                         |
+| `MESH_KEK` or `SAYABOT_KEK`                                                              | 32-byte key, base64. Seals every secret at rest. `openssl rand -base64 32`                                                                            |
+| `ORCHESTRATOR_INTERNAL_SECRET`                                                           | Shared secret between the web app and the orchestrator. `openssl rand -hex 32`                                                                        |
+| `ORCHESTRATOR_URL`                                                                       | The orchestrator. Default `http://localhost:4000`                                                                                                     |
+| `NEXT_PUBLIC_COLLAB_URL`                                                                 | Canvas websocket. Default `ws://localhost:4000/collab`                                                                                                |
+| `NEXT_PUBLIC_SITE_URL`                                                                   | The web app's public address. Default `http://localhost:3000`                                                                                         |
+| `COMPUTER_BACKEND`                                                                       | `auto`, or pin how agent computers are started. `COMPUTER_MEM_MB` defaults to 1024.                                                                   |
+| `SAYABOT_ALLOW_PRIVATE_WEBHOOKS`                                                         | Leave `false` except when you are developing a bot on your own machine.                                                                               |
+| `SAYA_AI_BASE_URL`, `SAYA_AI_API_KEY`                                                    | Optional shared model for agents that do not bring their own key.                                                                                     |
 
 Sign-in with GitHub or Google needs the matching `GITHUB_OAUTH_*` or `GOOGLE_OAUTH_*` pair. The full list is `.env.example`. The key-by-key guide is [Getting started](docs/getting-started.md).
 

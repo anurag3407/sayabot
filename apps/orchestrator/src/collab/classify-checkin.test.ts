@@ -7,7 +7,9 @@ vi.mock("./index", async (importOriginal) => {
   const actual: any = await importOriginal()
   return {
     ...actual,
-    resolveAgentRoomId: vi.fn(async (_agent, roomId) => roomId || "00000000-0000-0000-0000-000000000001"),
+    resolveAgentRoomId: vi.fn(
+      async (_agent, roomId) => roomId || "00000000-0000-0000-0000-000000000001",
+    ),
     postAgentMessage: vi.fn(async (_agent, opts) => {
       const msg = { message_id: `msg-${postedMessages.length + 1}`, ...opts }
       postedMessages.push(msg)

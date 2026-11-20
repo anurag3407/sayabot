@@ -17,6 +17,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context"
 import { ChevronRight, Eye, EyeOff, Lock, Mail, QrCode, Server, X } from "lucide-react-native"
 import { PairScanner } from "../components/PairScanner"
+import { ENV } from "../config/env"
 import type { PairLink } from "../core/pair-link"
 import { setDemoMode } from "../core/session-mode"
 import { checkServer, useCloud, useServer } from "../core/server"
@@ -129,15 +130,16 @@ export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
   const friendlyAuthError = (err: unknown, fallback: string): string => {
     const message = err instanceof Error ? err.message : fallback
     if (/network request failed|failed to fetch|network error|timed? ?out/i.test(message)) {
-      return `Couldn't reach ${serverName ?? "Sayabot Cloud"}. Check your connection and try again.`
+      const target =
+        serverName ??
+        (settings.webApiUrl ? settings.webApiUrl.replace(/^https?:\/\//, "") : "the server")
+      return `Couldn't reach ${target}. Check your connection and try again.`
     }
     return message
   }
 
-  // On Sayabot Cloud the field starts empty (nobody types the Cloud address); on your own
-  // server it shows the current address so it's easy to correct.
   const openServerSheet = () => {
-    setServerUrlInput(serverName ? settings.webApiUrl : "")
+    setServerUrlInput(settings.webApiUrl || "")
     setServerCheck(null)
     setServerModal(true)
   }
@@ -212,9 +214,7 @@ export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
 
   const serverLabel =
     serverName ??
-    (settings.webApiUrl === "https://sayabot.sayalabs.in"
-      ? "Sayabot Cloud"
-      : settings.webApiUrl.replace(/^https?:\/\//, ""))
+    (settings.webApiUrl ? settings.webApiUrl.replace(/^https?:\/\//, "") : "Choose server")
 
   const handleDemoSignIn = async () => {
     setLoading(true)
@@ -531,8 +531,11 @@ export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
             </View>
 
             <Text style={styles.modalDesc}>
-              Now using {serverName ?? "Sayabot Cloud"}. To use a Sayabot that you or your team
-              host, enter its address. You sign in on that server, and your data stays there.
+              {serverName
+                ? `Now using ${serverName}. Enter your server address below to switch servers.`
+                : settings.webApiUrl
+                  ? `Now using ${settings.webApiUrl.replace(/^https?:\/\//, "")}. Enter your server address below to switch servers.`
+                  : "Enter your server address below to connect to your self-hosted Sayabot instance."}
             </Text>
 
             <TextInput
@@ -565,13 +568,13 @@ export function AuthScreen({ onEnterDemo }: AuthScreenProps) {
             ) : null}
 
             <View style={styles.modalActions}>
-              {serverName ? (
+              {serverName && ENV.WEB_API_URL ? (
                 <TouchableOpacity
                   style={styles.modalCancelBtn}
                   onPress={() => void useCloud()}
                   disabled={serverBusy}
                 >
-                  <Text style={styles.modalCancelText}>Use Sayabot Cloud</Text>
+                  <Text style={styles.modalCancelText}>Reset to default</Text>
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity

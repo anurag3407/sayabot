@@ -2,10 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
-import {
-  formatMinutes,
-  parseTimeToMinutes,
-} from "@sayabot/core"
+import { formatMinutes, parseTimeToMinutes } from "@sayabot/core"
 import { requireUser } from "@/lib/auth"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { queueRoomMessage } from "@/lib/orchestrator"
@@ -89,14 +86,15 @@ export async function setupWorkspaceAction(
     })
     if (roomMemberError) throw new Error(roomMemberError.message)
 
-    await admin.from("room_reads").upsert(
-      { user_id: user.id, room_id: room.id, last_read_at: new Date().toISOString() },
-      { onConflict: "user_id,room_id" },
-    )
-    await admin.from("room_schedules").upsert(
-      { room_id: room.id, timezone },
-      { onConflict: "room_id" },
-    )
+    await admin
+      .from("room_reads")
+      .upsert(
+        { user_id: user.id, room_id: room.id, last_read_at: new Date().toISOString() },
+        { onConflict: "user_id,room_id" },
+      )
+    await admin
+      .from("room_schedules")
+      .upsert({ room_id: room.id, timezone }, { onConflict: "room_id" })
     const { data: profile } = await admin
       .from("profiles")
       .select("preferences")
@@ -152,16 +150,32 @@ export async function saveRoomScheduleAction(
   const eveningEnd = parseTimeToMinutes(field(formData, "eveningEnd") || "17:30")
   const checkinStart = parseTimeToMinutes(field(formData, "checkinStart") || "09:00")
   const checkinEnd = parseTimeToMinutes(field(formData, "checkinEnd") || "17:30")
-  const interval = z.coerce.number().int().min(15).max(480).safeParse(field(formData, "checkinInterval") || "60")
-  const duration = z.coerce.number().int().min(5).max(60).safeParse(field(formData, "checkinDuration") || "10")
-  if (morningStart === null || morningEnd === null || eveningStart === null || eveningEnd === null) {
+  const interval = z.coerce
+    .number()
+    .int()
+    .min(15)
+    .max(480)
+    .safeParse(field(formData, "checkinInterval") || "60")
+  const duration = z.coerce
+    .number()
+    .int()
+    .min(5)
+    .max(60)
+    .safeParse(field(formData, "checkinDuration") || "10")
+  if (
+    morningStart === null ||
+    morningEnd === null ||
+    eveningStart === null ||
+    eveningEnd === null
+  ) {
     return fail("Use valid meeting times")
   }
   if (morningEnd <= morningStart || eveningEnd <= eveningStart) {
     return fail("Each meeting must end after it starts")
   }
   if (checkinStart === null || checkinEnd === null) return fail("Use valid check-in times")
-  if (!interval.success || !duration.success) return fail("Choose a valid check-in interval and length")
+  if (!interval.success || !duration.success)
+    return fail("Choose a valid check-in interval and length")
   const checkinMode = field(formData, "checkinMode") === "digest" ? "digest" : "stream"
   const admin = createAdminClient()
   const { error } = await admin.from("room_schedules").upsert(
@@ -223,10 +237,7 @@ export async function finishOnboardingAction(
   if (existing?.length) {
     return ok("Room ready", { path: `/${orgSlug}/r/${roomId}` })
   }
-  const { data: agents } = await admin
-    .from("room_agents")
-    .select("agent_id")
-    .eq("room_id", roomId)
+  const { data: agents } = await admin.from("room_agents").select("agent_id").eq("room_id", roomId)
   const room = check.access.room
   let messageId: string | null = null
   if (agents?.length) {

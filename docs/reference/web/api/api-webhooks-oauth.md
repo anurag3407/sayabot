@@ -34,7 +34,12 @@ The server side of the invite flow created by `createBotInviteAction` (see the a
 - `GET /bot/[code]` (`bot/[code]/route.ts:6`) — plain-text instructions a bot reads when it opens the link: rendered by `botJoinInstructions` with room name, owner name, and the `join` + `status` URLs. `404` when unknown, `410` for expired/revoked/declined, `409` when the link was already joined.
 - `POST /bot/[code]/join` (`bot/[code]/join/route.ts:19`) — the bot asks to join. Body (JSON, empty bodies tolerated) `{ app?, name?, about? }` normalized against the invite's hints. Only a `waiting` invite can be claimed: the guarded update sets `status: "pending"` with request fields and a fresh `generatePollToken()` hash. A second app (or a retried link) gets `409 { status: "already_used", … }` and is recorded in `rejected_attempts` (kept to the last 10 with timestamp, app and user-agent) so the owner sees the attempt. Success posts a system message "`<name> (<client>)` is asking to join this room. Approve or decline it in your Inbox." and returns:
   ```json
-  { "status": "pending", "poll_token": "…", "status_url": "<app>/bot/<code>/status", "message": "…" }
+  {
+    "status": "pending",
+    "poll_token": "…",
+    "status_url": "<app>/bot/<code>/status",
+    "message": "…"
+  }
   ```
 - `GET /bot/[code]/status?wait=<seconds>` (`bot/[code]/status/route.ts:23`) — **Auth:** `authorization: Bearer <poll_token>` matched against `poll_token_hash` in constant time (`pollTokenMatches`, `401` with instructions otherwise). Long-polls up to `BOT_INVITE_WAIT_MAX_SECONDS` (`maxDuration = 60`), checking every 2 seconds. Outcomes:
   - `pending` → `{ status: "pending", retry_after_seconds: 5, message }`.
@@ -133,19 +138,20 @@ Meta's subscription check is a plain `GET` with `hub.mode=subscribe`, `hub.verif
 ### Telegram webhook registration
 
 `saveConnectorChat` calls `setWebhook` with `{ url: <callback>, secret_token: <chat secret>, allowed_updates: ["message"] }`, so Telegram also signs its updates with the secret; `deleteWebhook` with an empty body disables it. Telegram rejections come back as `200`-shaped failures ("Saved, but Telegram said: …") because the connector row is already updated by then.
+
 ## 📊 `/bot/[code]/status` response table
 
-| Invite state | HTTP | Body |
-| :--- | :--- | :--- |
-| pending (still waiting) | 200 | `{ status: "pending", retry_after_seconds: 5, message }` |
-| approved (first claim wins) | 200 | `{ status: "approved", handle, room, connection_url, instructions, message }` |
-| approved (claim lost / key failed) | 409 | `{ status: "approved", retry_after_seconds: 3, message: <reason> }` |
-| declined | 200 | `{ status: "declined", message }` |
-| expired / revoked | 410 | `{ status, message }` |
-| joined | 200 | `{ status: "joined", message: "…shown once and not shown again…" }` |
-| never asked to join | 409 | `{ status: "waiting", message }` |
-| missing code | 404 | `{ status: "not_found" }` |
-| wrong/absent poll token | 401 | `{ status: "unauthorized", message }` |
+| Invite state                       | HTTP | Body                                                                          |
+| :--------------------------------- | :--- | :---------------------------------------------------------------------------- |
+| pending (still waiting)            | 200  | `{ status: "pending", retry_after_seconds: 5, message }`                      |
+| approved (first claim wins)        | 200  | `{ status: "approved", handle, room, connection_url, instructions, message }` |
+| approved (claim lost / key failed) | 409  | `{ status: "approved", retry_after_seconds: 3, message: <reason> }`           |
+| declined                           | 200  | `{ status: "declined", message }`                                             |
+| expired / revoked                  | 410  | `{ status, message }`                                                         |
+| joined                             | 200  | `{ status: "joined", message: "…shown once and not shown again…" }`           |
+| never asked to join                | 409  | `{ status: "waiting", message }`                                              |
+| missing code                       | 404  | `{ status: "not_found" }`                                                     |
+| wrong/absent poll token            | 401  | `{ status: "unauthorized", message }`                                         |
 
 Long-polling behavior: with `?wait=<seconds>` (clamped to `BOT_INVITE_WAIT_MAX_SECONDS`, route `maxDuration = 60`) the route re-reads the invite every 2 seconds until the state leaves `pending` or the deadline passes, then answers with the table above.
 ---

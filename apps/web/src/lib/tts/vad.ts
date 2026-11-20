@@ -78,7 +78,11 @@ function writeString(view: DataView, offset: number, string: string) {
   }
 }
 
-function downsampleBuffer(buffer: Float32Array, inputRate: number, outputRate: number): Float32Array {
+function downsampleBuffer(
+  buffer: Float32Array,
+  inputRate: number,
+  outputRate: number,
+): Float32Array {
   if (outputRate === inputRate) {
     return buffer
   }
@@ -134,7 +138,9 @@ export async function startRecording(options: VadOptions = {}): Promise<Recordin
     },
   })
 
-  const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+  const AudioContextClass =
+    window.AudioContext ||
+    (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
   const audioContext = new AudioContextClass()
   const source = audioContext.createMediaStreamSource(stream)
 

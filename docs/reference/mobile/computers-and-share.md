@@ -40,7 +40,7 @@ The underlying computer lifecycle (Docker/smolvm/e2b, `/home/bot` persistence) i
 
 `WebPageScreen` takes `{ path, title }` params and renders the corresponding Sayabot web page inside a `react-native-webview` (`WebPageScreen.tsx:15-52`):
 
-- **Session handover**: the target URL is built by `signedInWebUrl(path)` from `src/core/api.ts` — `{base}/auth/complete?next=<path>#access_token=…&refresh_token=…` when a Supabase session exists, or the plain path otherwise. Tokens travel in the URL *fragment*, which browsers keep client-side and never send to the server (`WebPageScreen.tsx:23-25`; `api.ts:82-89`).
+- **Session handover**: the target URL is built by `signedInWebUrl(path)` from `src/core/api.ts` — `{base}/auth/complete?next=<path>#access_token=…&refresh_token=…` when a Supabase session exists, or the plain path otherwise. Tokens travel in the URL _fragment_, which browsers keep client-side and never send to the server (`WebPageScreen.tsx:23-25`; `api.ts:82-89`).
 - **WebView flags**: `allowsInlineMediaPlayback` with `mediaPlaybackRequiresUserAction: false` (remote-desktop audio/video), `mediaCapturePermissionGrantType: "grantIfSameHostElsePrompt"`, `allowsBackForwardNavigationGestures`, `setSupportMultipleWindows: false`, `pullToRefreshEnabled`, `originWhitelist: ["https://*", "http://*"]` (`WebPageScreen.tsx:39-51`).
 - A themed header offers Back and Reload (`RotateCw` re-runs `ref.current?.reload()`); an `ActivityIndicator` overlays until `onLoadEnd` (`WebPageScreen.tsx:29-57`).
 
@@ -64,13 +64,13 @@ The endpoint of the OS-level "Share to Sayabot" integration. The `expo-share-int
 
 ## 🧭 Entry points & wiring
 
-| Screen | Stack route | Presented by | Params |
-| :-- | :-- | :-- | :-- |
-| ComputersScreen | `Computers` | MoreScreen row | none |
-| WebPageScreen | `WebPage` | Computers "Open screen", (potentially any caller passing a web path) | `{ path, title }` |
-| ShareTargetScreen | `ShareTarget` | OS share intent via `SignedInEffects` | none |
-| AgentProfileScreen | `AgentProfile` | Home agent strip, home search results | `{ agent: HomeAgent, orgSlug }` |
-| AdvancedScreen | `AdvancedSettings` | MoreScreen row | none |
+| Screen             | Stack route        | Presented by                                                         | Params                          |
+| :----------------- | :----------------- | :------------------------------------------------------------------- | :------------------------------ |
+| ComputersScreen    | `Computers`        | MoreScreen row                                                       | none                            |
+| WebPageScreen      | `WebPage`          | Computers "Open screen", (potentially any caller passing a web path) | `{ path, title }`               |
+| ShareTargetScreen  | `ShareTarget`      | OS share intent via `SignedInEffects`                                | none                            |
+| AgentProfileScreen | `AgentProfile`     | Home agent strip, home search results                                | `{ agent: HomeAgent, orgSlug }` |
+| AdvancedScreen     | `AdvancedSettings` | MoreScreen row                                                       | none                            |
 
 `ShareTargetScreen` caps shared files at 6 by the composer's own attachment cap (`slice(0, 6)` in ChatScreen picking; the share screen uploads `files.slice(0, 6)`), uploads sequentially, and posts a single message — so the receiving chat sees one bubble with inline `![…]` / `[📎 …]` links exactly like a hand-attached message. The screen renders only when the home snapshot has chats; with no chat selected the Send button stays disabled (`ShareTargetScreen.tsx:128`).
 

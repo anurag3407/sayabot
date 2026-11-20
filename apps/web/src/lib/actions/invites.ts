@@ -1,13 +1,7 @@
 "use server"
 
-import {
-  formatInvitationMessage,
-  getClientConfigSnippet,
-  normalizeClient,
-} from "@sayabot/core"
-import {
-  generateAgentApiKey,
-} from "@sayabot/core/server"
+import { formatInvitationMessage, getClientConfigSnippet, normalizeClient } from "@sayabot/core"
+import { generateAgentApiKey } from "@sayabot/core/server"
 import {
   adminRoomAccess,
   audit,
@@ -46,7 +40,9 @@ export async function createRoomBotKey(
   }
 
   // 2. Create external agent
-  const displayName = rawHandle ? rawHandle.charAt(0).toUpperCase() + rawHandle.slice(1) : client.label
+  const displayName = rawHandle
+    ? rawHandle.charAt(0).toUpperCase() + rawHandle.slice(1)
+    : client.label
   const { data: agent, error: agentError } = await admin
     .from("agents")
     .insert({
@@ -85,7 +81,15 @@ export async function createRoomBotKey(
     prefix: keyPrefix,
     key_hash: keyHash,
     room_ids: [roomId],
-    scopes: ["room:read", "room:write", "tasks:read", "tasks:write", "canvas:read", "canvas:write", "secrets:use"],
+    scopes: [
+      "room:read",
+      "room:write",
+      "tasks:read",
+      "tasks:write",
+      "canvas:read",
+      "canvas:write",
+      "secrets:use",
+    ],
     label: `${client.label} connection key for #${check.access.room.name}`,
   })
 

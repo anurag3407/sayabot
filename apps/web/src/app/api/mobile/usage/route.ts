@@ -13,13 +13,21 @@ export async function GET(request: Request) {
   const who = await userFromRequest(request)
   if (!who) return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   const url = new URL(request.url)
-  const access = await getOrgAccess(url.searchParams.get("orgSlug") ?? "", { client: who.client, user: who.user })
+  const access = await getOrgAccess(url.searchParams.get("orgSlug") ?? "", {
+    client: who.client,
+    user: who.user,
+  })
   if (!access) return NextResponse.json({ error: "workspace not found" }, { status: 404 })
-  const days = [7, 30, 90].includes(Number(url.searchParams.get("days"))) ? Number(url.searchParams.get("days")) : 30
+  const days = [7, 30, 90].includes(Number(url.searchParams.get("days")))
+    ? Number(url.searchParams.get("days"))
+    : 30
   const tzOffset = Math.max(-840, Math.min(840, Number(url.searchParams.get("tzOffset")) || 0))
   const since = new Date(Date.now() - days * 86_400_000).toISOString()
 
-  const { data: rollupData } = await who.client.rpc("usage_rollup", { p_org: access.org.id, p_since: since })
+  const { data: rollupData } = await who.client.rpc("usage_rollup", {
+    p_org: access.org.id,
+    p_since: since,
+  })
   const rollup = ((rollupData ?? []) as Record<string, unknown>[]).map((r) => ({
     agent_id: (r.agent_id as string | null) ?? null,
     room_id: (r.room_id as string | null) ?? null,
@@ -45,8 +53,15 @@ export async function GET(request: Request) {
       .order("created_at", { ascending: false })
       .range(from, from + 999)
     if (error) break
-    for (const e of (data ?? []) as { input_tokens: number; output_tokens: number; cost_usd: number | string; created_at: string }[]) {
-      const local = new Date(new Date(e.created_at).getTime() - tzOffset * 60_000).toISOString().slice(0, 10)
+    for (const e of (data ?? []) as {
+      input_tokens: number
+      output_tokens: number
+      cost_usd: number | string
+      created_at: string
+    }[]) {
+      const local = new Date(new Date(e.created_at).getTime() - tzOffset * 60_000)
+        .toISOString()
+        .slice(0, 10)
       const b = byDay.get(local) ?? { tokens: 0, cost: 0, runs: 0 }
       b.tokens += (e.input_tokens || 0) + (e.output_tokens || 0)
       b.cost += Number(e.cost_usd) || 0
@@ -61,12 +76,30 @@ export async function GET(request: Request) {
     series.push({ day, ...(byDay.get(day) ?? { tokens: 0, cost: 0, runs: 0 }) })
   }
 
-  const { data: agents } = await who.client.from("agents").select("id, handle, display_name").eq("org_id", access.org.id)
-  const names = new Map(((agents ?? []) as { id: string; handle: string; display_name: string }[]).map((a) => [a.id, a]))
+  const { data: agents } = await who.client
+    .from("agents")
+    .select("id, handle, display_name")
+    .eq("org_id", access.org.id)
+  const names = new Map(
+    ((agents ?? []) as { id: string; handle: string; display_name: string }[]).map((a) => [
+      a.id,
+      a,
+    ]),
+  )
   const perAgent = [...usageByAgent(rollup).entries()]
-    .map(([id, u]) => ({ id, handle: names.get(id)?.handle ?? "agent", name: names.get(id)?.display_name ?? "Agent", tokens: u.inputTokens + u.outputTokens, runs: u.requests, costUsd: u.costUsd }))
+    .map(([id, u]) => ({
+      id,
+      handle: names.get(id)?.handle ?? "agent",
+      name: names.get(id)?.display_name ?? "Agent",
+      tokens: u.inputTokens + u.outputTokens,
+      runs: u.requests,
+      costUsd: u.costUsd,
+    }))
     .sort((a, b) => b.tokens - a.tokens)
-  const models = new Map<string, { model: string; provider: string; tokens: number; costUsd: number }>()
+  const models = new Map<
+    string,
+    { model: string; provider: string; tokens: number; costUsd: number }
+  >()
   for (const r of rollup) {
     const k = `${r.provider}:${r.model}`
     const m = models.get(k) ?? { model: r.model, provider: r.provider, tokens: 0, costUsd: 0 }

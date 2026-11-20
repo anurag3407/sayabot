@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest"
-import {
-  DEFAULT_CAPABILITIES,
-  agentCapabilitiesSchema,
-  parseCapabilities,
-} from "./capabilities"
+import { DEFAULT_CAPABILITIES, agentCapabilitiesSchema, parseCapabilities } from "./capabilities"
 
 describe("capabilities", () => {
   it("defaults to full capabilities with computer & secrets disabled", () => {

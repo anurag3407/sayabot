@@ -10,14 +10,14 @@ Source files: `apps/web/src/components/room/model-picker/*`, `apps/web/src/compo
 
 `buildModelCatalog(orgId, keys, inUse, hosts, serverApps)` is the core: it assembles `PickerGroup[]` — one rail entry per provider account — in six sections:
 
-| Section | `keyId` shape | Content |
-| :--- | :--- | :--- |
-| `server` | `null` | Saya AI: the server operator's models from `sayaAiPublic()` ("Provided by this server · no key needed"). Agents store the **alias**, never the real id, so `.env` changes follow on the next turn. Model id `""` means Automatic. |
-| `subscription` | `cli:<app>` | Claude Code / Codex / Cursor signed in **on the server**. Models from the engine's own catalog (`engineModelCatalog` — Codex asks the CLI, Claude Code/Cursor read the manifest), with `PickerPlan` showing plan name + 5-hour/weekly usage windows (`loadEnginePlanUsage`). |
-| `key` | `<providerKeyId>` | Each saved `provider_keys` row. Models come from the provider's **live** `/models` endpoint using the decrypted key (`keySecrets` decrypts only for the request, `model-catalog.ts:263`); fallback to `MODEL_SUGGESTIONS`/models.dev. Detail shows `•••• <last4>`. |
-| `mac` | `host:<hostId>:<app>` | Apps signed in on the user's own Macs (from `desktop_hosts.local_agents`, reported by Sayabot for Mac): Claude, Codex, Gemini, OpenCode, Cursor. Model list = what the app reported (`source: "live"`), else engine manifest (`"manifest"`), else static suggestions. |
-| `local` | `host:<hostId>:<app>` | Ollama / LM Studio on those Macs — all models marked `free: true`. |
-| `computer` | `host:<hostId>` | A Mac with nothing signed in yet ("No signed-in app found on this computer yet"). |
+| Section        | `keyId` shape         | Content                                                                                                                                                                                                                                                                      |
+| :------------- | :-------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `server`       | `null`                | Saya AI: the server operator's models from `sayaAiPublic()` ("Provided by this server · no key needed"). Agents store the **alias**, never the real id, so `.env` changes follow on the next turn. Model id `""` means Automatic.                                            |
+| `subscription` | `cli:<app>`           | Claude Code / Codex / Cursor signed in **on the server**. Models from the engine's own catalog (`engineModelCatalog` — Codex asks the CLI, Claude Code/Cursor read the manifest), with `PickerPlan` showing plan name + 5-hour/weekly usage windows (`loadEnginePlanUsage`). |
+| `key`          | `<providerKeyId>`     | Each saved `provider_keys` row. Models come from the provider's **live** `/models` endpoint using the decrypted key (`keySecrets` decrypts only for the request, `model-catalog.ts:263`); fallback to `MODEL_SUGGESTIONS`/models.dev. Detail shows `•••• <last4>`.           |
+| `mac`          | `host:<hostId>:<app>` | Apps signed in on the user's own Macs (from `desktop_hosts.local_agents`, reported by Sayabot for Mac): Claude, Codex, Gemini, OpenCode, Cursor. Model list = what the app reported (`source: "live"`), else engine manifest (`"manifest"`), else static suggestions.        |
+| `local`        | `host:<hostId>:<app>` | Ollama / LM Studio on those Macs — all models marked `free: true`.                                                                                                                                                                                                           |
+| `computer`     | `host:<hostId>`       | A Mac with nothing signed in yet ("No signed-in app found on this computer yet").                                                                                                                                                                                            |
 
 Key behaviours:
 
@@ -33,12 +33,12 @@ Key behaviours:
 
 Three module-level tables map CLI/app ids to picker groups (kept in sync with `model-choice.ts`):
 
-| Registry | Entries | Used for |
-| :--- | :--- | :--- |
-| `RUNNER_APPS` / `APP_NAME` | `claude-code` → "Claude Code", `codex` → "Codex", `gemini` → "Gemini CLI", `opencode` → "OpenCode", `cursor` → "Cursor" | Detail lines and version badges |
-| `MAC_APPS` (`model-catalog.ts:130`) | each app → `{ provider, label, engine?, suggestions? }` — e.g. `claude-code` maps to provider `anthropic` with engine `claude-code`; `gemini` maps to provider `google` with `MODEL_SUGGESTIONS.google` as fallback | Mac subscription groups |
-| `LOCAL_MODEL_APPS` | `ollama`, `lmstudio` | Local model groups (models reported live by the Mac heartbeat) |
-| `CLI_ENGINES` / `PLAN_ENGINES` | server-side apps with a CLI; plan usage is loaded only for `claude-code` and `codex` | Server subscription groups |
+| Registry                            | Entries                                                                                                                                                                                                             | Used for                                                       |
+| :---------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :------------------------------------------------------------- |
+| `RUNNER_APPS` / `APP_NAME`          | `claude-code` → "Claude Code", `codex` → "Codex", `gemini` → "Gemini CLI", `opencode` → "OpenCode", `cursor` → "Cursor"                                                                                             | Detail lines and version badges                                |
+| `MAC_APPS` (`model-catalog.ts:130`) | each app → `{ provider, label, engine?, suggestions? }` — e.g. `claude-code` maps to provider `anthropic` with engine `claude-code`; `gemini` maps to provider `google` with `MODEL_SUGGESTIONS.google` as fallback | Mac subscription groups                                        |
+| `LOCAL_MODEL_APPS`                  | `ollama`, `lmstudio`                                                                                                                                                                                                | Local model groups (models reported live by the Mac heartbeat) |
+| `CLI_ENGINES` / `PLAN_ENGINES`      | server-side apps with a CLI; plan usage is loaded only for `claude-code` and `codex`                                                                                                                                | Server subscription groups                                     |
 
 `macAppModels()` (`model-catalog.ts:158`) decides the group's `source`: models **reported by the app itself** (`ReportedModel[]`, with per-model effort lists and `isDefault`) → `"live"`; else the engine manifest via `engineCatalogFromManifest(engine, version)` → `"manifest"`; else static `MODEL_SUGGESTIONS` → `"static"`. A first row `<App> default` (named after the app's current default model when known) always leads. Model lists are deduped through `addModel` (trimmed ids, `Set`-guarded).
 

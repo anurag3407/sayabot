@@ -10,19 +10,19 @@ Source files: `packages/llm/src/models/plan-usage.ts` (412 lines)
 
 ## 📤 Exported surface
 
-| Export | Purpose |
-| :-- | :-- |
-| `CLAUDE_USAGE_URL` | `https://api.anthropic.com/api/oauth/usage` (`plan-usage.ts:20`) |
-| `CODEX_USAGE_URL` | `https://chatgpt.com/backend-api/wham/usage` (`plan-usage.ts:21`) |
-| `PlanEngine` | `"claude-code" \| "codex"` |
-| `UsageWindow` | `{ label, usedPercent, resetsAt: string \| null }` |
-| `PlanUsage` | `{ engine, ok, plan: string \| null, windows, error?, checkedAt }` |
-| `parseClaudeUsage(body)` | Anthropic response → `{ plan, windows }` |
-| `parseCodexUsage(body)` | OpenAI response → `{ plan, windows }` |
-| `planLabel(value)` | Sanitizes a plan name; `null` if it looks like a credential |
-| `fetchEnginePlanUsage(engine, deps?)` | Full read: credential → HTTP → parse |
-| `loadEnginePlanUsage(engine, { force? })` | 45-second cached wrapper |
-| `clearPlanUsageCache()` | Resets the cache (tests) |
+| Export                                    | Purpose                                                            |
+| :---------------------------------------- | :----------------------------------------------------------------- |
+| `CLAUDE_USAGE_URL`                        | `https://api.anthropic.com/api/oauth/usage` (`plan-usage.ts:20`)   |
+| `CODEX_USAGE_URL`                         | `https://chatgpt.com/backend-api/wham/usage` (`plan-usage.ts:21`)  |
+| `PlanEngine`                              | `"claude-code" \| "codex"`                                         |
+| `UsageWindow`                             | `{ label, usedPercent, resetsAt: string \| null }`                 |
+| `PlanUsage`                               | `{ engine, ok, plan: string \| null, windows, error?, checkedAt }` |
+| `parseClaudeUsage(body)`                  | Anthropic response → `{ plan, windows }`                           |
+| `parseCodexUsage(body)`                   | OpenAI response → `{ plan, windows }`                              |
+| `planLabel(value)`                        | Sanitizes a plan name; `null` if it looks like a credential        |
+| `fetchEnginePlanUsage(engine, deps?)`     | Full read: credential → HTTP → parse                               |
+| `loadEnginePlanUsage(engine, { force? })` | 45-second cached wrapper                                           |
+| `clearPlanUsageCache()`                   | Resets the cache (tests)                                           |
 
 ---
 
@@ -30,18 +30,18 @@ Source files: `packages/llm/src/models/plan-usage.ts` (412 lines)
 
 ```typescript
 export interface UsageWindow {
-  label: string           // "5-hour", "Weekly", "Opus · weekly", "Code review · 5-hour", "Extra usage"…
-  usedPercent: number     // clamped to 0..100
+  label: string // "5-hour", "Weekly", "Opus · weekly", "Code review · 5-hour", "Extra usage"…
+  usedPercent: number // clamped to 0..100
   resetsAt: string | null // ISO timestamp when known
 }
 
 export interface PlanUsage {
   engine: PlanEngine
   ok: boolean
-  plan: string | null     // "max", "pro", "plus"… as the vendor names it; null when unknown
-  windows: UsageWindow[]  // 5-hour, weekly, per-model and extra-usage windows
-  error?: string          // set when ok is false
-  checkedAt: string       // ISO timestamp of this read
+  plan: string | null // "max", "pro", "plus"… as the vendor names it; null when unknown
+  windows: UsageWindow[] // 5-hour, weekly, per-model and extra-usage windows
+  error?: string // set when ok is false
+  checkedAt: string // ISO timestamp of this read
 }
 ```
 
@@ -70,20 +70,20 @@ Reads `$CODEX_HOME or ~/.codex/auth.json`: `tokens.access_token` (or top-level `
 
 `fetchJson()` (`plan-usage.ts:306-322`) sends `user-agent: Sayabot`, `redirect: "error"`, an 8-second `AbortSignal.timeout` (`PROVIDER_TIMEOUT_MS`), and parses at most the first 1 MB of the body. Auth headers per engine (`plan-usage.ts:361-372`):
 
-| Engine | Endpoint | Headers |
-| :-- | :-- | :-- |
-| Claude Code | `CLAUDE_USAGE_URL` | `Authorization: Bearer <token>`, `Accept: application/json`, `anthropic-beta: oauth-2025-04-20` |
-| Codex | `CODEX_USAGE_URL` | `Authorization: Bearer <token>`, `Accept: application/json`, `ChatGPT-Account-Id: <accountId>` when known |
+| Engine      | Endpoint           | Headers                                                                                                   |
+| :---------- | :----------------- | :-------------------------------------------------------------------------------------------------------- |
+| Claude Code | `CLAUDE_USAGE_URL` | `Authorization: Bearer <token>`, `Accept: application/json`, `anthropic-beta: oauth-2025-04-20`           |
+| Codex       | `CODEX_USAGE_URL`  | `Authorization: Bearer <token>`, `Accept: application/json`, `ChatGPT-Account-Id: <accountId>` when known |
 
 Failure rows (`errorRow`, `plan-usage.ts:324-326`):
 
-| Condition | `error` |
-| :-- | :-- |
-| No token, credential expired | `Sign in again in Claude Code` / `… Codex` |
-| No token, none saved | `Claude Code is not signed in` / `Codex is not signed in` |
-| HTTP 401 / 403 | `Sign in again in <product>` |
-| Status 0 (network) or ≥ 500 | `Could not reach <product>` |
-| Other non-OK / unparseable body | `<product> returned an unexpected usage response` |
+| Condition                       | `error`                                                   |
+| :------------------------------ | :-------------------------------------------------------- |
+| No token, credential expired    | `Sign in again in Claude Code` / `… Codex`                |
+| No token, none saved            | `Claude Code is not signed in` / `Codex is not signed in` |
+| HTTP 401 / 403                  | `Sign in again in <product>`                              |
+| Status 0 (network) or ≥ 500     | `Could not reach <product>`                               |
+| Other non-OK / unparseable body | `<product> returned an unexpected usage response`         |
 
 ---
 
@@ -130,14 +130,14 @@ Consumers:
 
 `src/models/models.test.ts`, `describe("plan usage")` (`src/models/models.test.ts:297-368`):
 
-| Test | Pins |
-| :-- | :-- |
-| `parses Claude windows, per-model windows and the plan` | `subscription_type: "max"` → plan `max`; windows exactly `["5-hour" 42%, "Weekly" 100% (130 clamped), "Opus · weekly" 10%, "Extra usage" 25% (500/2000)]`; `seven_day_oauth_apps` excluded; `resets_at` ISO-normalized |
-| `parses Codex windows by their length` | `plan_type: "pro"`; `limit_window_seconds: 18_000` → "5-hour", `604_800` → "Weekly"; `reset_at` epoch-seconds → ISO |
-| `never treats a credential as a plan name` | `planLabel("Bearer abc")` and `planLabel("sk-ant-123")` → `null`; `planLabel("plus")` → `"plus"` |
-| `sends the token only in the header and keeps it out of the result` | `JSON.stringify(row)` does not contain the token; the fetch got `Authorization: Bearer tok-secret` and `ChatGPT-Account-Id: acct` |
-| `falls back to the plan saved beside the login` | Anthropic's answer without a plan + credential `plan: "max"` → row plan `max` |
-| `asks to sign in again on 401 and when the login expired` | 401 → `{ ok: false, error: "Sign in again in Claude Code" }`; expired credential → same message |
+| Test                                                                | Pins                                                                                                                                                                                                                   |
+| :------------------------------------------------------------------ | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `parses Claude windows, per-model windows and the plan`             | `subscription_type: "max"` → plan `max`; windows exactly `["5-hour" 42%, "Weekly" 100% (130 clamped), "Opus · weekly" 10%, "Extra usage" 25% (500/2000)]`; `seven_day_oauth_apps` excluded; `resets_at` ISO-normalized |
+| `parses Codex windows by their length`                              | `plan_type: "pro"`; `limit_window_seconds: 18_000` → "5-hour", `604_800` → "Weekly"; `reset_at` epoch-seconds → ISO                                                                                                    |
+| `never treats a credential as a plan name`                          | `planLabel("Bearer abc")` and `planLabel("sk-ant-123")` → `null`; `planLabel("plus")` → `"plus"`                                                                                                                       |
+| `sends the token only in the header and keeps it out of the result` | `JSON.stringify(row)` does not contain the token; the fetch got `Authorization: Bearer tok-secret` and `ChatGPT-Account-Id: acct`                                                                                      |
+| `falls back to the plan saved beside the login`                     | Anthropic's answer without a plan + credential `plan: "max"` → row plan `max`                                                                                                                                          |
+| `asks to sign in again on 401 and when the login expired`           | 401 → `{ ok: false, error: "Sign in again in Claude Code" }`; expired credential → same message                                                                                                                        |
 
 ---
 

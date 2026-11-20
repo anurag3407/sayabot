@@ -10,12 +10,12 @@ App: [`apps/desktop`](../apps/desktop) · Builder: `electron-builder` 26 · Bund
 
 ## 1. Why we need it
 
-| | Unsigned (today) | Signed + notarized |
-| --- | --- | --- |
-| First open | "Apple could not verify 'Sayabot' is free of malware". User must go to **System Settings → Privacy & Security → Open Anyway** | Opens normally |
-| Screen recording / Accessibility / Apple Events permissions | Can reset on every rebuild (no stable identity) | Granted once, kept across updates |
-| Native auto-updates (`electron-updater` / Squirrel.Mac) | Not possible, Squirrel refuses unsigned apps | Possible |
-| Trust | "Unidentified developer" | Shows our name or company |
+|                                                             | Unsigned (today)                                                                                                              | Signed + notarized                |
+| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
+| First open                                                  | "Apple could not verify 'Sayabot' is free of malware". User must go to **System Settings → Privacy & Security → Open Anyway** | Opens normally                    |
+| Screen recording / Accessibility / Apple Events permissions | Can reset on every rebuild (no stable identity)                                                                               | Granted once, kept across updates |
+| Native auto-updates (`electron-updater` / Squirrel.Mac)     | Not possible, Squirrel refuses unsigned apps                                                                                  | Possible                          |
+| Trust                                                       | "Unidentified developer"                                                                                                      | Shows our name or company         |
 
 Note: on macOS 15 (Sequoia) and later, **Control-click → Open no longer bypasses Gatekeeper**.
 Unsigned apps can only be opened through System Settings → Privacy & Security → **Open Anyway**.
@@ -71,14 +71,16 @@ This is the certificate for apps distributed **outside** the Mac App Store. It i
 Development" or "Mac App Distribution" certificate. Only the **Account Holder** role can create it.
 
 **Easiest (Xcode):**
+
 1. Xcode → Settings → Accounts → add the Apple ID → select the team → **Manage Certificates…**
 2. Click **+** → **Developer ID Application**.
 3. It's now in your login Keychain as `Developer ID Application: <Name> (<TEAM_ID>)`.
 
 **Without Xcode:**
-1. Keychain Access → Certificate Assistant → *Request a Certificate From a Certificate Authority* →
+
+1. Keychain Access → Certificate Assistant → _Request a Certificate From a Certificate Authority_ →
    save to disk.
-2. developer.apple.com → Certificates → **+** → *Developer ID Application* (G2 Sub-CA) → upload the CSR.
+2. developer.apple.com → Certificates → **+** → _Developer ID Application_ (G2 Sub-CA) → upload the CSR.
 3. Download the `.cer` and double-click it to install.
 
 Check that it's there:
@@ -91,7 +93,7 @@ security find-identity -v -p codesigning
 ### Export it for CI
 
 Keychain Access → My Certificates → right-click the Developer ID Application cert (expand it so the
-**private key** is included) → *Export…* → `.p12` → set a strong password.
+**private key** is included) → _Export…_ → `.p12` → set a strong password.
 
 ```bash
 base64 -i DeveloperID.p12 | pbcopy   # paste into the CSC_LINK GitHub secret
@@ -114,21 +116,21 @@ password and doesn't break when 2FA or passwords change.
 2. Download `AuthKey_XXXXXXXXXX.p8`. **You can only download it once.**
 3. Note the **Key ID** and the **Issuer ID** (shown above the table).
 
-| Env var | Value |
-| --- | --- |
-| `APPLE_API_KEY` | Path to the `.p8` file |
-| `APPLE_API_KEY_ID` | Key ID |
-| `APPLE_API_ISSUER` | Issuer ID (UUID) |
+| Env var            | Value                  |
+| ------------------ | ---------------------- |
+| `APPLE_API_KEY`    | Path to the `.p8` file |
+| `APPLE_API_KEY_ID` | Key ID                 |
+| `APPLE_API_ISSUER` | Issuer ID (UUID)       |
 
 ### Option B: Apple ID + app-specific password
 
 1. <https://account.apple.com> → Sign-In and Security → **App-Specific Passwords** → generate one.
 
-| Env var | Value |
-| --- | --- |
-| `APPLE_ID` | Apple ID email |
+| Env var                       | Value                 |
+| ----------------------------- | --------------------- |
+| `APPLE_ID`                    | Apple ID email        |
 | `APPLE_APP_SPECIFIC_PASSWORD` | `xxxx-xxxx-xxxx-xxxx` |
-| `APPLE_TEAM_ID` | Team ID from step 2 |
+| `APPLE_TEAM_ID`               | Team ID from step 2   |
 
 ---
 
@@ -225,13 +227,13 @@ Last check: download the DMG through a browser (so it gets the quarantine flag) 
 
 Add these **repository secrets**:
 
-| Secret | Contents |
-| --- | --- |
-| `CSC_LINK` | base64 of the `.p12` (step 3) |
-| `CSC_KEY_PASSWORD` | `.p12` password |
+| Secret             | Contents                            |
+| ------------------ | ----------------------------------- |
+| `CSC_LINK`         | base64 of the `.p12` (step 3)       |
+| `CSC_KEY_PASSWORD` | `.p12` password                     |
 | `APPLE_API_KEY_P8` | contents of `AuthKey_XXXXXXXXXX.p8` |
-| `APPLE_API_KEY_ID` | Key ID |
-| `APPLE_API_ISSUER` | Issuer ID |
+| `APPLE_API_KEY_ID` | Key ID                              |
+| `APPLE_API_ISSUER` | Issuer ID                           |
 
 Then create `.github/workflows/desktop-release.yml`:
 
@@ -303,16 +305,16 @@ Release (`softprops/action-gh-release`).
 
 ## 9. Troubleshooting
 
-| Symptom | Fix |
-| --- | --- |
-| `skipped macOS application code signing … cannot find valid "Developer ID Application" identity` | Cert not in Keychain, or it's an "Apple Development" cert. Re-check `security find-identity -v -p codesigning`. In CI, check that `CSC_LINK` is the base64 `.p12` **with private key**. |
-| `The binary is not signed with a valid Developer ID certificate` | A helper or native binary wasn't signed. Make sure it sits inside the `.app` (electron-builder signs everything in `Contents/`). |
-| `The executable does not have the hardened runtime enabled` | `hardenedRuntime: true` missing (already set; don't remove it). |
-| `The executable requests the com.apple.security.get-task-allow entitlement` | Remove that key from the entitlements plist. |
-| Notarization hangs or fails with no detail | Get the log: `xcrun notarytool log <submission-id> --key $APPLE_API_KEY --key-id $APPLE_API_KEY_ID --issuer $APPLE_API_ISSUER` |
-| App crashes on launch only after signing | Usually a missing entitlement: `allow-jit` / `allow-unsigned-executable-memory`, or `disable-library-validation` for unsigned native addons. Check Console.app for "Code Signature Invalid". |
-| Typing into apps during remote desktop stops working after signing | `com.apple.security.automation.apple-events` missing (section 5.2). |
-| `errSecInternalComponent` in CI | Keychain locked. electron-builder creates a temp keychain from `CSC_LINK`; don't also import the cert manually. |
+| Symptom                                                                                          | Fix                                                                                                                                                                                          |
+| ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `skipped macOS application code signing … cannot find valid "Developer ID Application" identity` | Cert not in Keychain, or it's an "Apple Development" cert. Re-check `security find-identity -v -p codesigning`. In CI, check that `CSC_LINK` is the base64 `.p12` **with private key**.      |
+| `The binary is not signed with a valid Developer ID certificate`                                 | A helper or native binary wasn't signed. Make sure it sits inside the `.app` (electron-builder signs everything in `Contents/`).                                                             |
+| `The executable does not have the hardened runtime enabled`                                      | `hardenedRuntime: true` missing (already set; don't remove it).                                                                                                                              |
+| `The executable requests the com.apple.security.get-task-allow entitlement`                      | Remove that key from the entitlements plist.                                                                                                                                                 |
+| Notarization hangs or fails with no detail                                                       | Get the log: `xcrun notarytool log <submission-id> --key $APPLE_API_KEY --key-id $APPLE_API_KEY_ID --issuer $APPLE_API_ISSUER`                                                               |
+| App crashes on launch only after signing                                                         | Usually a missing entitlement: `allow-jit` / `allow-unsigned-executable-memory`, or `disable-library-validation` for unsigned native addons. Check Console.app for "Code Signature Invalid". |
+| Typing into apps during remote desktop stops working after signing                               | `com.apple.security.automation.apple-events` missing (section 5.2).                                                                                                                          |
+| `errSecInternalComponent` in CI                                                                  | Keychain locked. electron-builder creates a temp keychain from `CSC_LINK`; don't also import the cert manually.                                                                              |
 
 ---
 

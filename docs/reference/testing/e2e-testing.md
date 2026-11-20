@@ -103,14 +103,14 @@ pnpm typecheck:e2e
 
 Environment for the full lane (read from `.env` by `dotenv/config` in the config and global setup):
 
-| Variable | Read by | Purpose |
-| :--- | :--- | :--- |
-| `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | global-setup, fixtures | Supabase admin client for seeding and magic links |
-| `E2E_USER_A_EMAIL`, `E2E_USER_B_EMAIL` | global-setup | the two seeded users (A = owner/admin, B = member) |
-| `E2E_ORG_SLUG` | global-setup | org slug, default `mesh-e2e` |
-| `E2E_BASE_URL` | config, specs | web target, default `http://localhost:3000` |
-| `ORCHESTRATOR_URL`, `COMPUTERD_URL`, `EGRESS_URL` | `api/health.spec.ts` | service targets, defaults `:4000`, `:4100`, `:8081` |
-| `E2E_SMOKE` | config, root script | selects the smoke lane |
+| Variable                                                | Read by                | Purpose                                             |
+| :------------------------------------------------------ | :--------------------- | :-------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | global-setup, fixtures | Supabase admin client for seeding and magic links   |
+| `E2E_USER_A_EMAIL`, `E2E_USER_B_EMAIL`                  | global-setup           | the two seeded users (A = owner/admin, B = member)  |
+| `E2E_ORG_SLUG`                                          | global-setup           | org slug, default `mesh-e2e`                        |
+| `E2E_BASE_URL`                                          | config, specs          | web target, default `http://localhost:3000`         |
+| `ORCHESTRATOR_URL`, `COMPUTERD_URL`, `EGRESS_URL`       | `api/health.spec.ts`   | service targets, defaults `:4000`, `:4100`, `:8081` |
+| `E2E_SMOKE`                                             | config, root script    | selects the smoke lane                              |
 
 CI runs only `pnpm test:e2e:api` (and `continue-on-error: true` at that) plus `pnpm typecheck:e2e` — the seeded lane is a local activity because it mutates a real Supabase project.
 
@@ -118,7 +118,7 @@ Note the seeded lane is **stateful by design**: `global-setup.ts` deletes the or
 
 ## 🐞 Debugging Failures
 
-The config sets `trace: "retain-on-failure"` and `video: "retain-on-failure"` with the `list` reporter, so after a failing run the artifacts are under `playwright-report/` and `test-results/` in the repo root (standard Playwright layout); open the trace with `pnpm exec playwright show-trace <trace.zip>`. Because the seeded specs wait on real agent turns, the two most common non-product failures are timing (the 150s turn timeouts in `turns.spec.ts` exist because LLM-backed turns can be slow) and Supabase state (a stale org from a previous run is wiped by `global-setup.ts`, but a *concurrent* run is not). `.e2e-state.json` is also handy for manual inspection — the approve/reject tool-call IDs in it can be cross-checked against `tool_calls` rows in Supabase.
+The config sets `trace: "retain-on-failure"` and `video: "retain-on-failure"` with the `list` reporter, so after a failing run the artifacts are under `playwright-report/` and `test-results/` in the repo root (standard Playwright layout); open the trace with `pnpm exec playwright show-trace <trace.zip>`. Because the seeded specs wait on real agent turns, the two most common non-product failures are timing (the 150s turn timeouts in `turns.spec.ts` exist because LLM-backed turns can be slow) and Supabase state (a stale org from a previous run is wiped by `global-setup.ts`, but a _concurrent_ run is not). `.e2e-state.json` is also handy for manual inspection — the approve/reject tool-call IDs in it can be cross-checked against `tool_calls` rows in Supabase.
 
 ---
 

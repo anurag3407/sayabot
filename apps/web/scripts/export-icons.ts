@@ -271,10 +271,26 @@ await Promise.all([
   png(rounded, out("apps/mobile/assets/mark.png"), 256),
   png(glyph, out("apps/mobile/assets/notification-icon.png"), 96),
   ...ANDROID_DENSITIES.flatMap((d) => [
-    webp(adaptive, out(`apps/mobile/android/app/src/main/res/mipmap-${d.name}/ic_launcher_foreground.webp`), d.foreground),
-    webp(rounded, out(`apps/mobile/android/app/src/main/res/mipmap-${d.name}/ic_launcher.webp`), d.icon),
-    webp(circle, out(`apps/mobile/android/app/src/main/res/mipmap-${d.name}/ic_launcher_round.webp`), d.icon),
-    png(splash, out(`apps/mobile/android/app/src/main/res/drawable-${d.name}/splashscreen_logo.png`), d.splash),
+    webp(
+      adaptive,
+      out(`apps/mobile/android/app/src/main/res/mipmap-${d.name}/ic_launcher_foreground.webp`),
+      d.foreground,
+    ),
+    webp(
+      rounded,
+      out(`apps/mobile/android/app/src/main/res/mipmap-${d.name}/ic_launcher.webp`),
+      d.icon,
+    ),
+    webp(
+      circle,
+      out(`apps/mobile/android/app/src/main/res/mipmap-${d.name}/ic_launcher_round.webp`),
+      d.icon,
+    ),
+    png(
+      splash,
+      out(`apps/mobile/android/app/src/main/res/drawable-${d.name}/splashscreen_logo.png`),
+      d.splash,
+    ),
   ]),
 ])
 

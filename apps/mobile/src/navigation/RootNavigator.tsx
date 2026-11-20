@@ -19,7 +19,12 @@ import { ShareTargetScreen } from "../screens/ShareTargetScreen"
 import { UsageScreen } from "../screens/UsageScreen"
 import { WebPageScreen } from "../screens/WebPageScreen"
 import { flushPendingNavigation, navigateWhenReady, navigationRef } from "../core/nav"
-import { configureNotifications, enablePush, handleNotificationResponse, showWorkingStatus } from "../core/push"
+import {
+  configureNotifications,
+  enablePush,
+  handleNotificationResponse,
+  showWorkingStatus,
+} from "../core/push"
 import { useHome } from "../hooks/useHome"
 import { AppLockGate } from "../components/AppLockGate"
 import { useSettings } from "../hooks/useSettings"
@@ -37,8 +42,12 @@ function SignedInEffects() {
   // Push: categories, taps and button presses (including the one that launched the app).
   useEffect(() => {
     void configureNotifications()
-    const sub = Notifications.addNotificationResponseReceivedListener((r) => void handleNotificationResponse(r))
-    void Notifications.getLastNotificationResponseAsync().then((r) => r && void handleNotificationResponse(r))
+    const sub = Notifications.addNotificationResponseReceivedListener(
+      (r) => void handleNotificationResponse(r),
+    )
+    void Notifications.getLastNotificationResponseAsync().then(
+      (r) => r && void handleNotificationResponse(r),
+    )
     return () => sub.remove()
   }, [])
   useEffect(() => {
@@ -55,8 +64,16 @@ function SignedInEffects() {
   }, [])
   useQuickActionCallback((action) => {
     if (action.id === "inbox") navigateWhenReady("MainTabs", { screen: "InboxTab" })
-    if (action.id === "new-chat") navigateWhenReady("MainTabs", { screen: "HomeTab", params: { action: "new-chat", at: Date.now() } })
-    if (action.id === "new-task") navigateWhenReady("MainTabs", { screen: "TasksTab", params: { action: "new-task", at: Date.now() } })
+    if (action.id === "new-chat")
+      navigateWhenReady("MainTabs", {
+        screen: "HomeTab",
+        params: { action: "new-chat", at: Date.now() },
+      })
+    if (action.id === "new-task")
+      navigateWhenReady("MainTabs", {
+        screen: "TasksTab",
+        params: { action: "new-task", at: Date.now() },
+      })
   })
 
   // "Share to Sayabot" from another app.
@@ -68,7 +85,9 @@ function SignedInEffects() {
   const working = (data?.agents ?? []).filter((a) => a.workingRoomId)
   const workingText = working.length
     ? `${working.map((a) => a.name).join(", ")} ${working.length === 1 ? "is" : "are"} working${
-        working[0] ? ` in ${data?.chats.find((c) => c.id === working[0]!.workingRoomId)?.name ?? "a chat"}` : ""
+        working[0]
+          ? ` in ${data?.chats.find((c) => c.id === working[0]!.workingRoomId)?.name ?? "a chat"}`
+          : ""
       }…`
     : null
   useEffect(() => {
@@ -143,21 +162,46 @@ export function RootNavigator() {
               <Stack.Screen name="Chat" component={ChatScreen} />
               <Stack.Screen name="AgentProfile" component={AgentProfileScreen} />
               <Stack.Screen name="WebPage" component={WebPageScreen} />
-              <Stack.Screen name="ShareTarget" component={ShareTargetScreen} options={{ presentation: "modal", animation: "slide_from_bottom" }} />
+              <Stack.Screen
+                name="ShareTarget"
+                component={ShareTargetScreen}
+                options={{ presentation: "modal", animation: "slide_from_bottom" }}
+              />
               <Stack.Screen
                 name="Usage"
                 component={UsageScreen}
-                options={{ headerShown: true, title: "Usage", headerBackTitle: "More", headerTintColor: theme.accent, headerStyle: { backgroundColor: theme.surface }, headerTitleStyle: { color: theme.text } }}
+                options={{
+                  headerShown: true,
+                  title: "Usage",
+                  headerBackTitle: "More",
+                  headerTintColor: theme.accent,
+                  headerStyle: { backgroundColor: theme.surface },
+                  headerTitleStyle: { color: theme.text },
+                }}
               />
               <Stack.Screen
                 name="Computers"
                 component={ComputersScreen}
-                options={{ headerShown: true, title: "Computers", headerBackTitle: "More", headerTintColor: theme.accent, headerStyle: { backgroundColor: theme.surface }, headerTitleStyle: { color: theme.text } }}
+                options={{
+                  headerShown: true,
+                  title: "Computers",
+                  headerBackTitle: "More",
+                  headerTintColor: theme.accent,
+                  headerStyle: { backgroundColor: theme.surface },
+                  headerTitleStyle: { color: theme.text },
+                }}
               />
               <Stack.Screen
                 name="AdvancedSettings"
                 component={AdvancedScreen}
-                options={{ headerShown: true, title: "Advanced", headerBackTitle: "More", headerTintColor: theme.accent, headerStyle: { backgroundColor: theme.surface }, headerTitleStyle: { color: theme.text } }}
+                options={{
+                  headerShown: true,
+                  title: "Advanced",
+                  headerBackTitle: "More",
+                  headerTintColor: theme.accent,
+                  headerStyle: { backgroundColor: theme.surface },
+                  headerTitleStyle: { color: theme.text },
+                }}
               />
             </>
           )}

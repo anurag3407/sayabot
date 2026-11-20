@@ -46,7 +46,8 @@ export function selectComputerTool(opts: SelectComputerOptions): ToolSpec {
         decision.action !== "none"
           ? await opts.apply?.(decision)
           : undefined
-      if (opts.params && carried) rememberSelectedDesktop(opts.available, opts.params, decision, carried)
+      if (opts.params && carried)
+        rememberSelectedDesktop(opts.available, opts.params, decision, carried)
       return {
         ok: decision.action !== "none" && carried?.ok !== false,
         surface: decision.surface,

@@ -20,6 +20,8 @@ describe("password managers", () => {
   })
 
   it("search results are titles and ids", () => {
-    expect(summarizeItems([{ id: "1", title: "Wifi", password: "nope" }])).toEqual([{ id: "1", title: "Wifi" }])
+    expect(summarizeItems([{ id: "1", title: "Wifi", password: "nope" }])).toEqual([
+      { id: "1", title: "Wifi" },
+    ])
   })
 })

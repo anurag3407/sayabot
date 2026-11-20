@@ -38,7 +38,11 @@ export function formatInvitationMessage(ctx: {
   ].join("\n")
 }
 
-export function getClientConfigSnippet(client: string, connectionUrl: string, connectorName: string): string {
+export function getClientConfigSnippet(
+  client: string,
+  connectionUrl: string,
+  connectorName: string,
+): string {
   const info = normalizeClient(client)
   switch (info.id) {
     case "claude-code":

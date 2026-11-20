@@ -74,9 +74,7 @@ export function ThreadSheet({
   }, [root, loaded, mergeHistory])
 
   const threadMessages = root
-    ? messages.filter(
-        (message) => message.id === root.id || message.threadRootId === root.id,
-      )
+    ? messages.filter((message) => message.id === root.id || message.threadRootId === root.id)
     : []
 
   useEffect(() => {

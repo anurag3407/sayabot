@@ -10,33 +10,33 @@ Source files: `apps/computerd/src/lifecycle.ts`, `apps/computerd/src/capacity.ts
 
 `loadConfig(env)` (`lifecycle.ts:56-90`) builds a `ComputerdConfig`. Every value has a production-sane default:
 
-| Config field | Env var | Default | Notes |
-| :--- | :--- | :--- | :--- |
-| `backend` | `COMPUTER_BACKEND` | `"auto"` | anything other than `docker` / `smolvm` / `e2b` falls back to `auto` |
-| `orchestratorUrl` | `ORCHESTRATOR_URL` | `http://orchestrator:4000` | used for state notifications + grants-env |
-| `internalSecret` | `ORCHESTRATOR_INTERNAL_SECRET` | `""` | shared secret both directions |
-| `egressAdminUrl` | `EGRESS_ADMIN_URL` | `http://egress:8081` in Docker, else `http://127.0.0.1:8081` | identity resets |
-| `egressProxyUrl` | `EGRESS_PROXY_URL` | `http://egress:8080` in Docker, else `http://127.0.0.1:8080` | smolvm egress bridge target |
-| `imageTag` | `COMPUTE_IMAGE_TAG` | `latest` | `saaya/computer:<tag>` |
-| `network` | `COMPUTER_NETWORK` | `botnet` | Docker network |
-| `memMb` | `COMPUTER_MEM_MB` | `1024` | per-computer memory cap |
-| `cpus` | `COMPUTER_CPUS` | `1` | per-computer CPU cap |
-| `maxRunning` | `COMPUTER_MAX_RUNNING` | `"auto"` | fixed number or auto-sized from host memory |
-| `memFraction` | `COMPUTER_MEM_FRACTION` | `0.6` | clamped to `[0.05, 0.95]` |
-| `idleMs` | `COMPUTER_IDLE_MS` | `600_000` (10 min) | idle sleep threshold; `0` disables sweeping |
-| `evictGraceMs` | `COMPUTER_EVICT_GRACE_MS` | `60_000` | LRU protection window |
-| `admitTimeoutMs` | `COMPUTER_ADMIT_TIMEOUT_MS` | `60_000` | how long `ensure` waits for a free slot |
-| `ctlRoot` | `AGENTD_CTL_ROOT` | unset | host view of the agentd control volume; unset = socket fast path off for Docker |
-| `ctlVolume` | `AGENTD_CTL_VOLUME` | `saaya-agentd` | shared volume name |
-| `dockerRuntime` | `COMPUTER_DOCKER_RUNTIME` (or `RUNSC_ENABLED=true`) | `runc` | `runsc` selects gVisor |
-| `smolvmBin` | `SMOLVM_BIN` | `smolvm` | CLI binary |
-| `smolvmImage` | `SMOLVM_IMAGE` | `saaya/computer:<tag>` | registry ref or `docker save` tarball |
-| `smolvmRunDir` | `SMOLVM_RUN_DIR` | `~/.saaya/vm` | per-VM socket directory |
-| `storageGb` | `COMPUTER_DISK_GB` | unset (backend default) | minimum 1 GB |
-| `e2bApiKey` | `E2B_API_KEY` | unset | required for the e2b backend |
-| `e2bTemplate` | `E2B_TEMPLATE` | `base` | E2B sandbox template |
-| `e2bMaxRunning` | `E2B_MAX_RUNNING` | `20` | e2b concurrency cap |
-| `agentdBundleDir` | `AGENTD_BUNDLE_DIR` | `dist/agentd/` | agentd bundle pushed into E2B sandboxes |
+| Config field      | Env var                                             | Default                                                      | Notes                                                                           |
+| :---------------- | :-------------------------------------------------- | :----------------------------------------------------------- | :------------------------------------------------------------------------------ |
+| `backend`         | `COMPUTER_BACKEND`                                  | `"auto"`                                                     | anything other than `docker` / `smolvm` / `e2b` falls back to `auto`            |
+| `orchestratorUrl` | `ORCHESTRATOR_URL`                                  | `http://orchestrator:4000`                                   | used for state notifications + grants-env                                       |
+| `internalSecret`  | `ORCHESTRATOR_INTERNAL_SECRET`                      | `""`                                                         | shared secret both directions                                                   |
+| `egressAdminUrl`  | `EGRESS_ADMIN_URL`                                  | `http://egress:8081` in Docker, else `http://127.0.0.1:8081` | identity resets                                                                 |
+| `egressProxyUrl`  | `EGRESS_PROXY_URL`                                  | `http://egress:8080` in Docker, else `http://127.0.0.1:8080` | smolvm egress bridge target                                                     |
+| `imageTag`        | `COMPUTE_IMAGE_TAG`                                 | `latest`                                                     | `saaya/computer:<tag>`                                                          |
+| `network`         | `COMPUTER_NETWORK`                                  | `botnet`                                                     | Docker network                                                                  |
+| `memMb`           | `COMPUTER_MEM_MB`                                   | `1024`                                                       | per-computer memory cap                                                         |
+| `cpus`            | `COMPUTER_CPUS`                                     | `1`                                                          | per-computer CPU cap                                                            |
+| `maxRunning`      | `COMPUTER_MAX_RUNNING`                              | `"auto"`                                                     | fixed number or auto-sized from host memory                                     |
+| `memFraction`     | `COMPUTER_MEM_FRACTION`                             | `0.6`                                                        | clamped to `[0.05, 0.95]`                                                       |
+| `idleMs`          | `COMPUTER_IDLE_MS`                                  | `600_000` (10 min)                                           | idle sleep threshold; `0` disables sweeping                                     |
+| `evictGraceMs`    | `COMPUTER_EVICT_GRACE_MS`                           | `60_000`                                                     | LRU protection window                                                           |
+| `admitTimeoutMs`  | `COMPUTER_ADMIT_TIMEOUT_MS`                         | `60_000`                                                     | how long `ensure` waits for a free slot                                         |
+| `ctlRoot`         | `AGENTD_CTL_ROOT`                                   | unset                                                        | host view of the agentd control volume; unset = socket fast path off for Docker |
+| `ctlVolume`       | `AGENTD_CTL_VOLUME`                                 | `saaya-agentd`                                               | shared volume name                                                              |
+| `dockerRuntime`   | `COMPUTER_DOCKER_RUNTIME` (or `RUNSC_ENABLED=true`) | `runc`                                                       | `runsc` selects gVisor                                                          |
+| `smolvmBin`       | `SMOLVM_BIN`                                        | `smolvm`                                                     | CLI binary                                                                      |
+| `smolvmImage`     | `SMOLVM_IMAGE`                                      | `saaya/computer:<tag>`                                       | registry ref or `docker save` tarball                                           |
+| `smolvmRunDir`    | `SMOLVM_RUN_DIR`                                    | `~/.saaya/vm`                                                | per-VM socket directory                                                         |
+| `storageGb`       | `COMPUTER_DISK_GB`                                  | unset (backend default)                                      | minimum 1 GB                                                                    |
+| `e2bApiKey`       | `E2B_API_KEY`                                       | unset                                                        | required for the e2b backend                                                    |
+| `e2bTemplate`     | `E2B_TEMPLATE`                                      | `base`                                                       | E2B sandbox template                                                            |
+| `e2bMaxRunning`   | `E2B_MAX_RUNNING`                                   | `20`                                                         | e2b concurrency cap                                                             |
+| `agentdBundleDir` | `AGENTD_BUNDLE_DIR`                                 | `dist/agentd/`                                               | agentd bundle pushed into E2B sandboxes                                         |
 
 `inDocker()` detects the compose environment via `/.dockerenv` (`lifecycle.ts:52-54`) to pick service-name vs localhost egress URLs.
 
@@ -48,13 +48,13 @@ Error types exported here: `CapacityError` (thrown by admission, HTTP 503) and `
 
 `ComputerState` is the status vocabulary reported to the orchestrator: `"none" | "starting" | "running" | "stopped" | "error"` (`lifecycle.ts:14`). Internally, `ComputerLifecycle` keeps:
 
-| Field | Purpose |
-| :--- | :--- |
-| `ready: Map<agentId, Ready>` | computers believed to be running (id, ip, ctlSocket) |
-| `usage: Map<agentId, ComputerUsage>` | `lastUsedAt` + `inflight` counters for capacity decisions |
-| `booting: Map<agentId, Promise>` | coalesces concurrent `ensure` calls for the same agent into one boot |
-| `reserved: Set<agentId>` | agents holding an admission slot while still booting |
-| `admission: Mutex` | serializes slot accounting so the cap cannot be overshot |
+| Field                                | Purpose                                                              |
+| :----------------------------------- | :------------------------------------------------------------------- |
+| `ready: Map<agentId, Ready>`         | computers believed to be running (id, ip, ctlSocket)                 |
+| `usage: Map<agentId, ComputerUsage>` | `lastUsedAt` + `inflight` counters for capacity decisions            |
+| `booting: Map<agentId, Promise>`     | coalesces concurrent `ensure` calls for the same agent into one boot |
+| `reserved: Set<agentId>`             | agents holding an admission slot while still booting                 |
+| `admission: Mutex`                   | serializes slot accounting so the cap cannot be overshot             |
 
 ```mermaid
 stateDiagram-v2
@@ -99,7 +99,7 @@ stateDiagram-v2
 
 1. Acquire the admission `Mutex`.
 2. Compute `maxRunning()` — a fixed config value, or (auto) `backend.autoMaxRunning(memMb, memFraction)`, cached after first success, falling back to `4` on error (`lifecycle.ts:190-202`).
-3. Count running computers from `backend.listRunning()` (usage entries for unknown agents are initialized as *just used*, so computers discovered after a computerd restart are not immediately evicted, `lifecycle.ts:205-213`), excluding the caller and counting `reserved` booting agents.
+3. Count running computers from `backend.listRunning()` (usage entries for unknown agents are initialized as _just used_, so computers discovered after a computerd restart are not immediately evicted, `lifecycle.ts:205-213`), excluding the caller and counting `reserved` booting agents.
 4. If `others.length + reserved.size < max`, reserve and return.
 5. Otherwise ask `pickEvictionVictim()` for the least recently used computer idle for at least `evictGraceMs`; if found, `sleepComputer(victim, 5)` and reserve.
 6. No victim: release the lock, sleep 1 s, retry. Past the deadline throw:
@@ -143,12 +143,12 @@ sequenceDiagram
 
 ## 😴 Sleep, Stop, Remove, Sweep
 
-| Operation | Implementation |
-| :--- | :--- |
-| `sleepComputer(agentId, timeoutSec = 10)` (`lifecycle.ts:344-351`) | Drops `ready` + `usage`, `backend.sleep()` (container stop / VM stop / E2B pause — disk kept), `forgetEgressIdentity(ip)`, `notify("stopped")` |
-| `stop(agentId)` (`lifecycle.ts:353-357`) | Public stop; errors logged, never thrown |
-| `remove(agentId, deleteDisk = false)` (`lifecycle.ts:359-368`) | `backend.remove()` (with disk deletion when asked), identity forget, `notify("none")` |
-| `sweepIdle()` (`lifecycle.ts:371-382`) | No-op when `idleMs <= 0`; otherwise sleeps every running computer whose `inflight === 0` and idle time ≥ `idleMs` (`idleComputers()`), returning the slept agent ids |
+| Operation                                                          | Implementation                                                                                                                                                       |
+| :----------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sleepComputer(agentId, timeoutSec = 10)` (`lifecycle.ts:344-351`) | Drops `ready` + `usage`, `backend.sleep()` (container stop / VM stop / E2B pause — disk kept), `forgetEgressIdentity(ip)`, `notify("stopped")`                       |
+| `stop(agentId)` (`lifecycle.ts:353-357`)                           | Public stop; errors logged, never thrown                                                                                                                             |
+| `remove(agentId, deleteDisk = false)` (`lifecycle.ts:359-368`)     | `backend.remove()` (with disk deletion when asked), identity forget, `notify("none")`                                                                                |
+| `sweepIdle()` (`lifecycle.ts:371-382`)                             | No-op when `idleMs <= 0`; otherwise sleeps every running computer whose `inflight === 0` and idle time ≥ `idleMs` (`idleComputers()`), returning the slept agent ids |
 
 `capacity()` (`lifecycle.ts:384-399`) builds the `/v1/capacity` payload: backend kind + `describe()`, effective `maxRunning`, running count, `idleMs`, and per-computer `{ agentId, inflight, idleForMs, transport: "socket" | "exec" }` (socket when the backend exposed a ctl socket).
 

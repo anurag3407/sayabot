@@ -7,9 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/field"
 import { PlusIcon, SearchIcon } from "@/components/ui/icons"
 import { cn } from "@/lib/format"
-import {
-  CURATED_BOT_TEMPLATES,
-} from "@/lib/curated-bot-templates"
+import { CURATED_BOT_TEMPLATES } from "@/lib/curated-bot-templates"
 import { Bot, Cable, Sparkles, Store, Terminal } from "lucide-react"
 
 export interface BotTemplateItem {
@@ -110,7 +108,8 @@ export function BotStoreView({
             Ready-Made Bots
           </h1>
           <p className="mt-1 text-[14px] text-muted">
-            Add specialized bots to your workspace. Each bot has a dedicated role, tools, and joins your rooms.
+            Add specialized bots to your workspace. Each bot has a dedicated role, tools, and joins
+            your rooms.
           </p>
         </header>
 
@@ -251,8 +250,12 @@ export function BotStoreView({
           {!filtered.length ? (
             <div className="rounded-xl border border-dashed border-line p-8 text-center">
               <Bot className="mx-auto h-8 w-8 text-faint" />
-              <p className="mt-2 text-[14px] font-medium text-text">No bots match &ldquo;{query}&rdquo;</p>
-              <p className="mt-1 text-[13px] text-muted">Try a different search term or category filter.</p>
+              <p className="mt-2 text-[14px] font-medium text-text">
+                No bots match &ldquo;{query}&rdquo;
+              </p>
+              <p className="mt-1 text-[13px] text-muted">
+                Try a different search term or category filter.
+              </p>
               <Button
                 variant="secondary"
                 size="sm"
@@ -276,7 +279,8 @@ export function BotStoreView({
             </span>
             <h3 className="mt-3 text-[15px] font-medium text-text">Build a custom bot</h3>
             <p className="mt-1 text-[13px] leading-relaxed text-muted">
-              Design a tailored persona from scratch with custom instructions, provider keys, and fine-grained tool capabilities.
+              Design a tailored persona from scratch with custom instructions, provider keys, and
+              fine-grained tool capabilities.
             </p>
             <Link
               href={`/${orgSlug}/agents/new`}
@@ -290,9 +294,12 @@ export function BotStoreView({
             <span className="grid h-9 w-9 place-items-center rounded-xl bg-m-blue/10 text-m-blue">
               <Terminal className="h-4 w-4" />
             </span>
-            <h3 className="mt-3 text-[15px] font-medium text-text">Invite external coding agents</h3>
+            <h3 className="mt-3 text-[15px] font-medium text-text">
+              Invite external coding agents
+            </h3>
             <p className="mt-1 text-[13px] leading-relaxed text-muted">
-              Claude Code, Hermes, Codex, and Cursor join your rooms as they are on their own plan. Just open a room and select &ldquo;Add agent&rdquo;.
+              Claude Code, Hermes, Codex, and Cursor join your rooms as they are on their own plan.
+              Just open a room and select &ldquo;Add agent&rdquo;.
             </p>
             <Link
               href={`/${orgSlug}`}

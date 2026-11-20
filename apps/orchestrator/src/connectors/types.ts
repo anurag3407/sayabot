@@ -14,6 +14,7 @@ export type ConnectorSource =
   | "backblaze_b2"
   | "s3_storage"
   | "huggingface"
+  | "composio"
 
 /** Sources with native tools in the orchestrator. Jira is reached through the Atlassian app. */
 export const NATIVE_CONNECTOR_SOURCES: ConnectorSource[] = [
@@ -31,6 +32,7 @@ export const NATIVE_CONNECTOR_SOURCES: ConnectorSource[] = [
   "backblaze_b2",
   "s3_storage",
   "huggingface",
+  "composio",
 ]
 
 export const STORAGE_CONNECTOR_SOURCES: ConnectorSource[] = [
@@ -80,6 +82,8 @@ export interface ConnectorScopeConfig {
   allowedRecipients?: string[]
   /** Password-manager vault names or ids this agent may read. */
   allowedVaults?: string[]
+  /** Composio app (toolkit) slugs this agent may use, e.g. ["gmail", "googlecalendar"]. Empty = all. */
+  allowedApps?: string[]
   /** Cloud storage bucket prefix/folder path this agent is restricted to, e.g. "reports/" or "agent-data/". */
   allowedPrefixes?: string[]
   /** No send tools at all, even with approval. */

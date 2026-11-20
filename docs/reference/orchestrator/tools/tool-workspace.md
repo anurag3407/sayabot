@@ -19,19 +19,19 @@ export const WORKTREE_ROOT = "/home/bot/.saaya/worktrees"
 - `absolutePath`: strings of 1–4,096 chars that must start with `/` and contain no control characters (`workspace.ts:6-10`).
 - `workspaceScopeSchema` (`workspace.ts:12-19`, `.strict()`) validates the shared scope triple returned by a fork:
 
-| Field | Constraint |
-| :--- | :--- |
-| `repo` | canonical absolute path (the original repository root) |
+| Field      | Constraint                                                                                                      |
+| :--------- | :-------------------------------------------------------------------------------------------------------------- |
+| `repo`     | canonical absolute path (the original repository root)                                                          |
 | `worktree` | must match `^/home/bot/.saaya/worktrees/[0-9a-f-]{36}$` — precisely a generated fork path under `WORKTREE_ROOT` |
-| `baseSha` | 40- or 64-char lowercase hex (git or SHA-256 checksum) |
+| `baseSha`  | 40- or 64-char lowercase hex (git or SHA-256 checksum)                                                          |
 
 Metadata (the fork manifest) is stored **outside the checkout** (`ROOT/.<uuid>.json`) so worker edits can never leak it into a diff (`workspace.ts:32-34`).
 
 ## 🍴 `workspace_fork` (`workspace.ts:168-175`)
 
-| Parameter | Type | Description |
- | :--- | :--- | :--- |
-| `repo` | absolute path | Explicit original repository root |
+| Parameter | Type          | Description                       |
+| :-------- | :------------ | :-------------------------------- |
+| `repo`    | absolute path | Explicit original repository root |
 
 Guarantees enforced by the embedded script (`WORKSPACE_SCRIPT`, `workspace.ts:35-145`):
 
@@ -41,21 +41,21 @@ Guarantees enforced by the embedded script (`WORKSPACE_SCRIPT`, `workspace.ts:35
 4. Creates `ROOT` with mode `0700`, then `git worktree add --detach -- <ROOT>/<uuid4> <base>`; writes the manifest JSON `{ repo, worktree, baseSha, agentId, orgId, roomId }` with an exclusive create (`"x"` mode).
 5. Postcondition check: if the original `HEAD` moved during the fork, the worktree is **retained** for manual inspection and the operation fails (`"Original HEAD changed during fork; worktree retained at <path>"`, `workspace.ts:97-100`).
 
-Returns `{ repo, worktree, baseSha, status: "forked", autoMerge: false, originalReset: false, isolation: "git_worktree_only", note }` — the note states: *"No merge, apply or reset performed. Shared git metadata and shell access are not sandboxed; ignored files are not copied."* (`workspace.ts:138-141`)
+Returns `{ repo, worktree, baseSha, status: "forked", autoMerge: false, originalReset: false, isolation: "git_worktree_only", note }` — the note states: _"No merge, apply or reset performed. Shared git metadata and shell access are not sandboxed; ignored files are not copied."_ (`workspace.ts:138-141`)
 
 ## 🔬 `workspace_inspect` (`workspace.ts:176-182`)
 
-| Parameter | Type | Default | Description |
- | :--- | :--- | :--- | :--- |
-| `repo` | absolute path | — | The original repository root |
-| `worktree` | absolute path | — | Generated worktree path from the fork |
-| `baseSha` | 40/64-char hex | — | Base commit recorded at fork time |
-| `maxDiffBytes` | int 1–200,000 | `100,000` | Cap on the returned diff payload |
+| Parameter      | Type           | Default   | Description                           |
+| :------------- | :------------- | :-------- | :------------------------------------ |
+| `repo`         | absolute path  | —         | The original repository root          |
+| `worktree`     | absolute path  | —         | Generated worktree path from the fork |
+| `baseSha`      | 40/64-char hex | —         | Base commit recorded at fork time     |
+| `maxDiffBytes` | int 1–200,000  | `100,000` | Cap on the returned diff payload      |
 
 Verifications before any data is returned (`workspace.ts:107-137`):
 
 - Manifest identity: the on-disk `.json` record must equal `{ repo, worktree, baseSha, agentId, orgId, roomId }` exactly — owner, path and base must all match (`"Workspace identity, owner or base does not match the tracked fork"`).
-- Staleness: if the original repo's `HEAD` changed since the fork, inspection is refused (`"Original HEAD changed since fork; refusing stale workspace inspection"`) and re-checked *again* after diffing, so a mid-inspection edit never yields a patch against a moved parent.
+- Staleness: if the original repo's `HEAD` changed since the fork, inspection is refused (`"Original HEAD changed since fork; refusing stale workspace inspection"`) and re-checked _again_ after diffing, so a mid-inspection edit never yields a patch against a moved parent.
 - Registration: the target must remain a **registered detached worktree** of the original repo (from `git worktree list --porcelain`), with the same git common dir; unprunable, not detached-less.
 - Ancestry: `git merge-base --is-ancestor base head` must hold.
 
@@ -78,13 +78,19 @@ Returns:
 Both tools share one `execute(operation, input, signal)`:
 
 ```typescript
-await client.ensure(args.agentId, args.orgId, args.profile)   // warm the computer
-const result = await client.exec(args.agentId, {
-  cmd: `python3 -c ${quote(WORKSPACE_SCRIPT)} ${quote(JSON.stringify({ ...parsed, ...args, operation }))}`,
-  timeoutMs: 90_000,
-}, signal)
+await client.ensure(args.agentId, args.orgId, args.profile) // warm the computer
+const result = await client.exec(
+  args.agentId,
+  {
+    cmd: `python3 -c ${quote(WORKSPACE_SCRIPT)} ${quote(JSON.stringify({ ...parsed, ...args, operation }))}`,
+    timeoutMs: 90_000,
+  },
+  signal,
+)
 if (result.exitCode !== 0 || result.truncated) {
-  throw new Error(`workspace_${operation} failed${result.truncated ? " (output truncated)" : ""}: ${result.stderr.slice(0, 4000)}`)
+  throw new Error(
+    `workspace_${operation} failed${result.truncated ? " (output truncated)" : ""}: ${result.stderr.slice(0, 4000)}`,
+  )
 }
 return JSON.parse(result.stdout)
 ```
@@ -101,11 +107,19 @@ The test suite maps `WORKTREE_ROOT` onto a temp directory and runs the **real sc
 tools = workspaceTools({ agentId: "agent", orgId: "org", roomId: "room", profile: "standard" })
 
 // Fork a clean repo → { repo, worktree: WORKTREE_ROOT/<uuid>, baseSha, status: "forked" }
-const scope = await tools[0]!.execute({ repo }) as { repo: string; worktree: string; baseSha: string }
+const scope = (await tools[0]!.execute({ repo })) as {
+  repo: string
+  worktree: string
+  baseSha: string
+}
 
 // Inspect after editing the worktree → status/diff/untracked, diff capped by maxDiffBytes
-const report = await tools[1]!.execute({ repo: scope.repo, worktree: scope.worktree,
-  baseSha: scope.baseSha, maxDiffBytes: 50_000 })
+const report = await tools[1]!.execute({
+  repo: scope.repo,
+  worktree: scope.worktree,
+  baseSha: scope.baseSha,
+  maxDiffBytes: 50_000,
+})
 
 // A dirty original refuses to fork:
 // "Original repository is dirty; commit or preserve changes explicitly before forking/inspecting"
@@ -115,26 +129,26 @@ Typical agent sequence: `fs_read` the repo → `workspace_fork` → edit files i
 
 ## 🗃️ Tables and events
 
-| Concern | Details |
- | :--- | :--- |
-| DB tables | none — the fork manifest is a JSON file in the VM (`/home/bot/.saaya/worktrees/.<uuid>.json`); audit rows land in `tool_calls` via the wrapper |
-| computerd endpoints | `/v1/computers/:agentId/ensure`, `/v1/computers/:agentId/exec` |
-| Realtime events | standard audit events only |
+| Concern             | Details                                                                                                                                        |
+| :------------------ | :--------------------------------------------------------------------------------------------------------------------------------------------- |
+| DB tables           | none — the fork manifest is a JSON file in the VM (`/home/bot/.saaya/worktrees/.<uuid>.json`); audit rows land in `tool_calls` via the wrapper |
+| computerd endpoints | `/v1/computers/:agentId/ensure`, `/v1/computers/:agentId/exec`                                                                                 |
+| Realtime events     | standard audit events only                                                                                                                     |
 
 ## ⚠️ Error modes
 
-| Condition | Result |
- | :--- | :--- |
-| Dirty original repo (or sparse/assume-unchanged files) | fork fails with the "dirty" message; nothing created |
+| Condition                                                | Result                                                                                                                            |
+| :------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------- |
+| Dirty original repo (or sparse/assume-unchanged files)   | fork fails with the "dirty" message; nothing created                                                                              |
 | Repo path is a symlink, non-absolute, or not a repo root | `"Paths must be canonical absolute paths, without symlinks or traversal"` / `"repo must be an explicit non-bare repository root"` |
-| Forking a generated workspace | `"Cannot fork a generated workspace"` |
-| Original HEAD moved during fork/inspect | operation fails; a retained worktree path is reported for forks |
-| Manifest mismatch (owner/base/path) | `"Workspace identity, owner or base does not match the tracked fork"` |
-| `git` subcommand failure / timeout | `"git <cmd> failed: <stderr>"`; tool-level failure wrapped as `workspace_<op> failed: …` |
+| Forking a generated workspace                            | `"Cannot fork a generated workspace"`                                                                                             |
+| Original HEAD moved during fork/inspect                  | operation fails; a retained worktree path is reported for forks                                                                   |
+| Manifest mismatch (owner/base/path)                      | `"Workspace identity, owner or base does not match the tracked fork"`                                                             |
+| `git` subcommand failure / timeout                       | `"git <cmd> failed: <stderr>"`; tool-level failure wrapped as `workspace_<op> failed: …`                                          |
 
 ## ⚠️ Notes
 
-1. **Isolation is real but bounded.** `isolation: "git_worktree_only"` means separation of *changes*, not a security sandbox: the worktree shares the repo's git metadata dir and the VM's shell. The `note` field says this explicitly, and the code comment (`workspace.ts:32-34`) calls it "change separation, not a security boundary".
+1. **Isolation is real but bounded.** `isolation: "git_worktree_only"` means separation of _changes_, not a security sandbox: the worktree shares the repo's git metadata dir and the VM's shell. The `note` field says this explicitly, and the code comment (`workspace.ts:32-34`) calls it "change separation, not a security boundary".
 2. **Never merges or resets.** Applying or discarding forked work is always an explicit agent action through other tools (`git_*`, `fs_*`); `autoMerge`/`originalReset` are constant `false` in the response.
 3. **Untracked files are reported, not diffed** — `diffIncludesUntracked` is always `false`; the agent lists them and reads them separately.
 4. The scope schema is exported (`workspaceScopeSchema`) so other engine components (e.g. review steps) can validate a fork triple without re-deriving the rules.

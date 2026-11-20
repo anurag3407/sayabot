@@ -10,7 +10,8 @@ async function ownSession(request: Request, id: string) {
     .select("id, viewer_user_id, status, answer, error")
     .eq("id", id)
     .maybeSingle()
-  if (!data || data.viewer_user_id !== who.user.id) return { error: NextResponse.json({ error: "not found" }, { status: 404 }) }
+  if (!data || data.viewer_user_id !== who.user.id)
+    return { error: NextResponse.json({ error: "not found" }, { status: 404 }) }
   return { session: data }
 }
 
@@ -20,7 +21,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const result = await ownSession(request, id)
   if ("error" in result) return result.error
   const s = result.session
-  return NextResponse.json({ status: s.status, answer: s.status === "answered" ? s.answer : null, error: s.error })
+  return NextResponse.json({
+    status: s.status,
+    answer: s.status === "answered" ? s.answer : null,
+    error: s.error,
+  })
 }
 
 /** The viewer hangs up. */
@@ -29,6 +34,9 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   const result = await ownSession(request, id)
   if ("error" in result) return result.error
   const now = new Date().toISOString()
-  await createAdminClient().from("remote_sessions").update({ status: "ended", updated_at: now, ended_at: now }).eq("id", id)
+  await createAdminClient()
+    .from("remote_sessions")
+    .update({ status: "ended", updated_at: now, ended_at: now })
+    .eq("id", id)
   return NextResponse.json({ ok: true })
 }

@@ -1,5 +1,11 @@
 import "server-only"
-import { isSayaModel, MAC_CLI_APP_IDS, MAC_CLI_APPS, sayaModelLabel, sayaModelValue } from "@sayabot/core"
+import {
+  isSayaModel,
+  MAC_CLI_APP_IDS,
+  MAC_CLI_APPS,
+  sayaModelLabel,
+  sayaModelValue,
+} from "@sayabot/core"
 import { EFFORT_LEVELS } from "@sayabot/llm/models/effort"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { sayaAi } from "@/lib/env"
@@ -94,11 +100,16 @@ export async function resolveModelChoice(input: {
   // Claude Code / Codex signed in on the machine Sayabot itself runs on.
   if (keyId?.startsWith("cli:")) {
     const app = keyId.slice(4)
-    if (!(SERVER_APPS as readonly string[]).includes(app)) return { ok: false, error: "Pick Claude Code, Codex or Cursor" }
+    if (!(SERVER_APPS as readonly string[]).includes(app))
+      return { ok: false, error: "Pick Claude Code, Codex or Cursor" }
     if (!localDetectionAllowed(input.requestHost)) {
-      return { ok: false, error: "Apps on this computer are only available when Sayabot runs on your own machine" }
+      return {
+        ok: false,
+        error: "Apps on this computer are only available when Sayabot runs on your own machine",
+      }
     }
-    if (model && model !== "default" && !MODEL_ID.test(model)) return { ok: false, error: "That model id isn't valid" }
+    if (model && model !== "default" && !MODEL_ID.test(model))
+      return { ok: false, error: "That model id isn't valid" }
     return {
       ok: true,
       choice: {
@@ -114,12 +125,24 @@ export async function resolveModelChoice(input: {
 
   // A saved API key of this workspace.
   if (keyId) {
-    const { data: key } = await admin.from("provider_keys").select("id, org_id").eq("id", keyId).maybeSingle()
-    if (!key || key.org_id !== input.orgId) return { ok: false, error: "That provider account isn't in this workspace" }
+    const { data: key } = await admin
+      .from("provider_keys")
+      .select("id, org_id")
+      .eq("id", keyId)
+      .maybeSingle()
+    if (!key || key.org_id !== input.orgId)
+      return { ok: false, error: "That provider account isn't in this workspace" }
     if (!model) return { ok: false, error: "Pick a model" }
     return {
       ok: true,
-      choice: { providerKeyId: key.id, agentModel: model, runner: null, effort, label: model, macOwnerUserId: null },
+      choice: {
+        providerKeyId: key.id,
+        agentModel: model,
+        runner: null,
+        effort,
+        label: model,
+        macOwnerUserId: null,
+      },
     }
   }
 

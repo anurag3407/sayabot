@@ -16,8 +16,7 @@ export default async function ResetPasswordPage() {
         {user ? (
           <>
             <p className="mt-2 text-[13px] leading-relaxed text-muted">
-              Use at least 8 characters. This changes the password for this account on every
-              device.
+              Use at least 8 characters. This changes the password for this account on every device.
             </p>
             <div className="mt-6 rounded-md border border-line bg-panel p-5">
               <ResetPasswordForm email={user.email ?? null} />

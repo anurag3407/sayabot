@@ -32,7 +32,9 @@ describe("pairing codes", () => {
 
   it("formats for display and builds a deep link", () => {
     expect(formatPairingCode("ABCD2345")).toBe("ABCD-2345")
-    expect(pairingDeepLink("ABCD2345", "https://x.test/")).toBe("sayabot://pair?code=ABCD2345&server=https%3A%2F%2Fx.test")
+    expect(pairingDeepLink("ABCD2345", "https://x.test/")).toBe(
+      "sayabot://pair?code=ABCD2345&server=https%3A%2F%2Fx.test",
+    )
   })
 
   it("device tokens hash consistently", () => {

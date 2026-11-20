@@ -129,7 +129,9 @@ export async function resolveAgentRoomId(
     return roomsList[0].id
   }
   if (roomsList.length === 0) {
-    throw new CollabError("You have not been added to any rooms yet. Ask the room owner to add you in Room Settings.")
+    throw new CollabError(
+      "You have not been added to any rooms yet. Ask the room owner to add you in Room Settings.",
+    )
   }
   throw new CollabError(
     `Please specify room_id: you belong to multiple rooms (${roomsList.map((r) => `${r.name}: ${r.id}`).join(", ")})`,
@@ -172,7 +174,13 @@ function compact(m: ContextMessage) {
 
 export async function getRoomMessages(
   agent: CollabAgent,
-  args: { roomId?: string; room?: string; threadId?: string | null; limit?: number; markAsRead?: boolean },
+  args: {
+    roomId?: string
+    room?: string
+    threadId?: string | null
+    limit?: number
+    markAsRead?: boolean
+  },
 ) {
   const roomId = await resolveAgentRoomId(agent, args.roomId || args.room)
   const conversation = await loadConversation({
@@ -230,7 +238,9 @@ export async function getInbox(agent: CollabAgent, args: { markAsRead?: boolean 
   })
 
   const senderAgentIds = [
-    ...new Set(unread.filter((m) => m.senderType === "agent" && m.senderId).map((m) => m.senderId!)),
+    ...new Set(
+      unread.filter((m) => m.senderType === "agent" && m.senderId).map((m) => m.senderId!),
+    ),
   ]
   const senderAgents = senderAgentIds.length
     ? await db
@@ -491,7 +501,12 @@ async function loadTaskInOrg(agent: CollabAgent, taskId: string) {
 
 export async function listTasks(
   agent: CollabAgent,
-  args: { roomId?: string; room?: string; status?: "open" | "in_progress" | "stuck" | "done"; mine?: boolean },
+  args: {
+    roomId?: string
+    room?: string
+    status?: "open" | "in_progress" | "stuck" | "done"
+    mine?: boolean
+  },
 ) {
   const roomId = await resolveAgentRoomId(agent, args.roomId || args.room)
   const conditions = [eq(tasks.roomId, roomId)]
@@ -518,7 +533,13 @@ export async function listTasks(
 
 export async function createTask(
   agent: CollabAgent,
-  args: { roomId?: string; room?: string; title: string; description?: string; assignToMe?: boolean },
+  args: {
+    roomId?: string
+    room?: string
+    title: string
+    description?: string
+    assignToMe?: boolean
+  },
 ) {
   const roomId = await resolveAgentRoomId(agent, args.roomId || args.room)
   const isAssigned = args.assignToMe !== false
@@ -533,7 +554,12 @@ export async function createTask(
     metadata: { source: "agent", createdByAgent: agent.agentId },
     actor: { type: "agent", id: agent.agentId },
   })
-  return { id: res.task.id, ref: `MESH-${res.task.number}`, title: res.task.title, status: res.task.status }
+  return {
+    id: res.task.id,
+    ref: `MESH-${res.task.number}`,
+    title: res.task.title,
+    status: res.task.status,
+  }
 }
 
 /**
@@ -639,9 +665,12 @@ export async function assignTask(
     for (const person of namesakes) {
       if (await canUserReadRoom(person.id, task.roomId)) eligible.push(person.id)
     }
-    if (eligible.length === 0) throw new CollabError(`human user "${humanName}" is not in this room`)
+    if (eligible.length === 0)
+      throw new CollabError(`human user "${humanName}" is not in this room`)
     if (eligible.length > 1) {
-      throw new CollabError(`more than one person in this room is named "${humanName}"; ask the room owner who should take it`)
+      throw new CollabError(
+        `more than one person in this room is named "${humanName}"; ask the room owner who should take it`,
+      )
     }
     assigneeUserId = eligible[0]!
   } else {
@@ -776,7 +805,10 @@ export async function requestHumanDecision(
   },
 ) {
   const roomId = await resolveAgentRoomId(agent, args.roomId || args.room)
-  const options = [...new Set((args.options ?? []).map((o) => o.trim()).filter(Boolean))].slice(0, 6)
+  const options = [...new Set((args.options ?? []).map((o) => o.trim()).filter(Boolean))].slice(
+    0,
+    6,
+  )
   const effectiveFoldKey = computeFoldKey(args.question, args.foldKey)
   const items = sanitizeAskItems(args.items ?? [])
 
@@ -829,15 +861,17 @@ export async function requestHumanDecision(
       .set({ askedCount: nextCount, updatedAt: new Date() })
       .where(eq(tasks.id, existing.id))
 
-    await getDb().insert(taskEvents).values({
-      taskId: existing.id,
-      actorType: "agent",
-      actorId: agent.agentId,
-      fromStatus: "open",
-      toStatus: "open",
-      reason: "repeated ask folded into existing request",
-      metadata: { askedCount: nextCount, repeatedQuestion: args.question },
-    })
+    await getDb()
+      .insert(taskEvents)
+      .values({
+        taskId: existing.id,
+        actorType: "agent",
+        actorId: agent.agentId,
+        fromStatus: "open",
+        toStatus: "open",
+        reason: "repeated ask folded into existing request",
+        metadata: { askedCount: nextCount, repeatedQuestion: args.question },
+      })
 
     return {
       request_id: existing.id,
@@ -873,21 +907,29 @@ export async function requestHumanDecision(
 
   if (!row) throw new CollabError("could not create the request")
 
-  await getDb().insert(taskEvents).values({
-    taskId: row.id,
-    actorType: "agent",
-    actorId: agent.agentId,
-    fromStatus: null,
-    toStatus: "open",
-    reason: "human decision requested",
-    metadata: {
-      foldKey: effectiveFoldKey,
-      options,
-      ...(args.taskId ? { taskId: args.taskId } : {}),
-    },
-  })
+  await getDb()
+    .insert(taskEvents)
+    .values({
+      taskId: row.id,
+      actorType: "agent",
+      actorId: agent.agentId,
+      fromStatus: null,
+      toStatus: "open",
+      reason: "human decision requested",
+      metadata: {
+        foldKey: effectiveFoldKey,
+        options,
+        ...(args.taskId ? { taskId: args.taskId } : {}),
+      },
+    })
 
-  notifyHumansNeeded({ roomId, agentId: agent.agentId, kind: "request", detail: args.question, refId: row.id })
+  notifyHumansNeeded({
+    roomId,
+    agentId: agent.agentId,
+    kind: "request",
+    detail: args.question,
+    refId: row.id,
+  })
   return {
     request_id: row.id,
     ref: `MESH-${row.number}`,
@@ -929,7 +971,9 @@ async function requestStructuredDecision(
         expiresAt: tasks.expiresAt,
       })
       .from(tasks)
-      .where(and(eq(tasks.roomId, args.roomId), eq(tasks.kind, "request"), eq(tasks.status, "open")))
+      .where(
+        and(eq(tasks.roomId, args.roomId), eq(tasks.kind, "request"), eq(tasks.status, "open")),
+      )
       .orderBy(desc(tasks.createdAt))
       .limit(50),
   ])
@@ -991,7 +1035,10 @@ async function requestStructuredDecision(
       roomId: args.roomId,
       agentId: agent.agentId,
       kind: "request",
-      detail: plan.toAsk.map((i) => i.question).join(" · ").slice(0, 200),
+      detail: plan.toAsk
+        .map((i) => i.question)
+        .join(" · ")
+        .slice(0, 200),
       refId: mergeTarget.id,
     })
     return {
@@ -1040,7 +1087,13 @@ async function requestStructuredDecision(
     reason: "human decision requested",
     metadata: { foldKey: args.foldKey, keys: plan.toAsk.map((i) => i.key) },
   })
-  notifyHumansNeeded({ roomId: args.roomId, agentId: agent.agentId, kind: "request", detail: args.question, refId: row.id })
+  notifyHumansNeeded({
+    roomId: args.roomId,
+    agentId: agent.agentId,
+    kind: "request",
+    detail: args.question,
+    refId: row.id,
+  })
   return {
     request_id: row.id,
     ref: `MESH-${row.number}`,
@@ -1054,7 +1107,10 @@ async function requestStructuredDecision(
   }
 }
 
-export async function getOwnerFacts(agent: CollabAgent, args: { roomId?: string; room?: string } = {}) {
+export async function getOwnerFacts(
+  agent: CollabAgent,
+  args: { roomId?: string; room?: string } = {},
+) {
   const roomId = await resolveAgentRoomId(agent, args.roomId || args.room)
   const facts = await loadFactsForRoom(agent.orgId, roomId)
   return {
@@ -1097,7 +1153,9 @@ export async function getRequestStatus(agent: CollabAgent, args: { requestId: st
     answer: typeof task.metadata.answer === "string" ? task.metadata.answer : null,
     answered_at: typeof task.metadata.answeredAt === "string" ? task.metadata.answeredAt : null,
     ...(items.length
-      ? { items: items.map((i) => ({ key: i.key, question: i.question, answer: i.answer ?? null })) }
+      ? {
+          items: items.map((i) => ({ key: i.key, question: i.question, answer: i.answer ?? null })),
+        }
       : {}),
   }
 }
@@ -1113,10 +1171,15 @@ export interface VoteState {
 
 function tally(vote: VoteState) {
   const counts = Object.fromEntries(vote.options.map((o) => [o, 0])) as Record<string, number>
-  for (const ballot of Object.values(vote.ballots)) counts[ballot.option] = (counts[ballot.option] ?? 0) + 1
+  for (const ballot of Object.values(vote.ballots))
+    counts[ballot.option] = (counts[ballot.option] ?? 0) + 1
   const max = Math.max(0, ...Object.values(counts))
   const leaders = max > 0 ? Object.keys(counts).filter((o) => counts[o] === max) : []
-  return { counts, leading: leaders.length === 1 ? leaders[0] : null, tied: leaders.length > 1 ? leaders : [] }
+  return {
+    counts,
+    leading: leaders.length === 1 ? leaders[0] : null,
+    tied: leaders.length > 1 ? leaders : [],
+  }
 }
 
 export async function startVote(
@@ -1125,7 +1188,12 @@ export async function startVote(
 ) {
   const options = [...new Set(args.options.map((o) => o.trim()).filter(Boolean))].slice(0, 8)
   if (options.length < 2) throw new CollabError("a vote needs at least two options")
-  const vote: VoteState = { question: args.question.slice(0, 300), options, ballots: {}, closed: false }
+  const vote: VoteState = {
+    question: args.question.slice(0, 300),
+    options,
+    ballots: {},
+    closed: false,
+  }
   const list = options.map((o, i) => `${i + 1}. ${o}`).join("\n")
   const result = await postAgentMessage(agent, {
     roomId: args.roomId,
@@ -1170,7 +1238,12 @@ export async function castVote(
     .returning({ metadata: messages.metadata })
   await broadcast(row.roomId, { type: "message.done", messageId: row.id, status: "complete" })
   const state = (updated?.metadata?.vote as VoteState | undefined) ?? vote
-  return { vote_id: row.id, your_vote: option, ...tally(state), voters: Object.keys(state.ballots).length }
+  return {
+    vote_id: row.id,
+    your_vote: option,
+    ...tally(state),
+    voters: Object.keys(state.ballots).length,
+  }
 }
 
 export async function getVote(agent: CollabAgent, args: { voteId: string }) {
@@ -1186,7 +1259,11 @@ export async function getVote(agent: CollabAgent, args: { voteId: string }) {
   return {
     question: vote.question,
     options: vote.options,
-    ballots: Object.values(vote.ballots).map((b) => ({ by: `@${b.handle}`, option: b.option, reason: b.reason })),
+    ballots: Object.values(vote.ballots).map((b) => ({
+      by: `@${b.handle}`,
+      option: b.option,
+      reason: b.reason,
+    })),
     ...tally(vote),
   }
 }

@@ -43,12 +43,17 @@ function summarizeToolOutcome(output: unknown): string {
   return "output omitted, success not inferred"
 }
 
-export function compactionBoundary(messages: ModelMessage[], protectedPrefixCount = 0, keepLastMessages = 8): number {
+export function compactionBoundary(
+  messages: ModelMessage[],
+  protectedPrefixCount = 0,
+  keepLastMessages = 8,
+): number {
   let boundary = Math.max(protectedPrefixCount, messages.length - keepLastMessages)
   const callLocations = new Map<string, number>()
   messages.forEach((message, index) => {
     if (message.role === "assistant" && Array.isArray(message.content)) {
-      for (const part of message.content) if (part.type === "tool-call") callLocations.set(part.toolCallId, index)
+      for (const part of message.content)
+        if (part.type === "tool-call") callLocations.set(part.toolCallId, index)
     }
   })
   for (let index = boundary; index < messages.length; index++) {
@@ -57,7 +62,8 @@ export function compactionBoundary(messages: ModelMessage[], protectedPrefixCoun
     for (const part of message.content) {
       if (part.type !== "tool-result") continue
       const callIndex = callLocations.get(part.toolCallId)
-      if (callIndex !== undefined && callIndex >= protectedPrefixCount && callIndex < boundary) boundary = callIndex
+      if (callIndex !== undefined && callIndex >= protectedPrefixCount && callIndex < boundary)
+        boundary = callIndex
     }
   }
   return boundary
@@ -130,10 +136,7 @@ export function elideOldToolResults(
  * Formats a structured compacted state into a clean model message.
  */
 export function formatCompactedSummary(summary: CompactedSummary): string {
-  const parts = [
-    `[Compacted Run Summary]`,
-    `Goal: ${summary.goal}`,
-  ]
+  const parts = [`[Compacted Run Summary]`, `Goal: ${summary.goal}`]
 
   if (summary.activeMode) {
     parts.push(`Active Mode: ${summary.activeMode}`)
@@ -156,7 +159,9 @@ export function formatCompactedSummary(summary: CompactedSummary): string {
   }
 
   if (summary.pendingVerifications && summary.pendingVerifications.length > 0) {
-    parts.push(`Pending Verifications:\n${summary.pendingVerifications.map((v) => `- ${v}`).join("\n")}`)
+    parts.push(
+      `Pending Verifications:\n${summary.pendingVerifications.map((v) => `- ${v}`).join("\n")}`,
+    )
   }
 
   if (summary.planStatus) {
@@ -193,8 +198,13 @@ export function compactTranscript(args: CompactTranscriptArgs): CompactTranscrip
   }
 
   const firstNonSystem = elidedMessages.findIndex((message) => message.role !== "system")
-  const protectedPrefixCount = args.protectedPrefixCount ?? (firstNonSystem < 0 ? elidedMessages.length : firstNonSystem)
-  const compactedThroughIdx = compactionBoundary(elidedMessages, protectedPrefixCount, args.keepLastMessages ?? 4)
+  const protectedPrefixCount =
+    args.protectedPrefixCount ?? (firstNonSystem < 0 ? elidedMessages.length : firstNonSystem)
+  const compactedThroughIdx = compactionBoundary(
+    elidedMessages,
+    protectedPrefixCount,
+    args.keepLastMessages ?? 4,
+  )
   if (compactedThroughIdx <= protectedPrefixCount) {
     return { messages: elidedMessages, elidedCount, compactedThroughIdx: 0, extractedFacts: [] }
   }

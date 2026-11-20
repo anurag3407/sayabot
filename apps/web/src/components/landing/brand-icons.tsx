@@ -34,7 +34,16 @@ export function WindowsIcon({ className }: Props) {
 
 export function LinuxIcon({ className }: Props) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
       <rect x="3" y="4" width="18" height="16" rx="3" />
       <path d="m7.5 9.5 3 2.5-3 2.5M13 15h3.5" />
     </svg>

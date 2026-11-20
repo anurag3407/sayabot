@@ -23,7 +23,9 @@ const defs = (p) => `<defs>
 const BODY = `${rr(196, 318, 600, 470, 220)}M300,742C300,812 270,858 228,884C318,888 392,858 440,806Z`
 const eyes = (x1, x2, y, w, h, glint = true) =>
   `<g fill="${INK}"><rect x="${x1 - w / 2}" y="${y - h / 2}" width="${w}" height="${h}" rx="${w / 2}"/><rect x="${x2 - w / 2}" y="${y - h / 2}" width="${w}" height="${h}" rx="${w / 2}"/></g>` +
-  (glint ? `<g fill="#fff"><circle cx="${x1 + 10}" cy="${y - h * 0.24}" r="${w * 0.2}"/><circle cx="${x2 + 10}" cy="${y - h * 0.24}" r="${w * 0.2}"/></g>` : "")
+  (glint
+    ? `<g fill="#fff"><circle cx="${x1 + 10}" cy="${y - h * 0.24}" r="${w * 0.2}"/><circle cx="${x2 + 10}" cy="${y - h * 0.24}" r="${w * 0.2}"/></g>`
+    : "")
 
 // Characters — `p` prefixes gradient ids so several icons can share a page.
 const art = {
@@ -50,7 +52,8 @@ const art = {
 
 const svg = (inner, p) =>
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024"><title>Sayabot</title>${defs(p)}${inner}</svg>\n`
-const full = (a, p, small) => `<rect width="1024" height="1024" fill="url(#${p}bg)"/>${art[a](p, small)}`
+const full = (a, p, small) =>
+  `<rect width="1024" height="1024" fill="url(#${p}bg)"/>${art[a](p, small)}`
 const rounded = (a, p, small) =>
   `<clipPath id="${p}clip"><rect width="1024" height="1024" rx="229"/></clipPath><g clip-path="url(#${p}clip)">${full(a, p, small)}</g>`
 // macOS Big Sur+ grid: 824 tile centered on 1024 canvas with a soft shadow.
@@ -76,7 +79,11 @@ const files = {
 
 ;(async () => {
   for (const [n, s] of Object.entries(files)) fs.writeFileSync(path.join(OUT, "svg", `${n}.svg`), s)
-  const r = (n, size) => sharp(Buffer.from(files[n])).resize(size, size).png().toFile(path.join(OUT, "png", `${n}-${size}.png`))
+  const r = (n, size) =>
+    sharp(Buffer.from(files[n]))
+      .resize(size, size)
+      .png()
+      .toFile(path.join(OUT, "png", `${n}-${size}.png`))
   await Promise.all([
     ...[1024, 512, 192, 180].map((s) => r("sayabot-icon", s)),
     r("sayabot-icon-macos", 1024),

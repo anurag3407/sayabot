@@ -29,7 +29,7 @@ flowchart TD
 3. **Control connection** (`src/index.ts:29-46`): a dedicated client is checked out of the pool permanently and `LISTEN`s on two channels:
    - `mesh_room_interrupt` → `abortRoomRuns(payload.roomId)` (`src/active-runs.ts`)
    - `mesh_stop_run` → `abortRun(payload.runId)`
-   Malformed payloads are silently ignored; connection errors are logged.
+     Malformed payloads are silently ignored; connection errors are logged.
 4. **`startJobs()`** initializes the room message job queue (`src/jobs/index.ts`).
 5. **Stale run recovery**: `recoverStaleRuns()` is dynamically imported from `./engine/resume` and rescues runs orphaned by a restart, logging `[recovery] rescued N stale runs` (`src/index.ts:49-54`).
 6. **Collab + schedulers**: `setCollabEnqueue(enqueueRoomMessage)` lets the collaboration layer enqueue room messages; then `startDiscordGateway()`, `startMeetingScheduler()`, `startRoutineScheduler()`, and `startMemoryScheduler()` start.
@@ -43,44 +43,44 @@ flowchart TD
 
 `createApp()` assembles a single Hono app. Global middleware:
 
-| Middleware | Path | Behaviour |
-| :--- | :--- | :--- |
-| `bodyLimit` | `/v1/*` | Max request body 2,000,000 bytes (`src/http.ts:108`) |
-| `bodyLimit` | `/internal/*` | Max request body 200,000 bytes (`src/http.ts:109`) |
-| internal auth | `/internal/*` | Rejects with 401 unless `isInternalRequest(...)` passes (`src/http.ts:115-120`) |
-| `app.onError` | all | Logs `[http] unhandled error`, returns `{"error":"internal error"}` with 500 (`src/http.ts:403-406`) |
+| Middleware    | Path          | Behaviour                                                                                            |
+| :------------ | :------------ | :--------------------------------------------------------------------------------------------------- |
+| `bodyLimit`   | `/v1/*`       | Max request body 2,000,000 bytes (`src/http.ts:108`)                                                 |
+| `bodyLimit`   | `/internal/*` | Max request body 200,000 bytes (`src/http.ts:109`)                                                   |
+| internal auth | `/internal/*` | Rejects with 401 unless `isInternalRequest(...)` passes (`src/http.ts:115-120`)                      |
+| `app.onError` | all           | Logs `[http] unhandled error`, returns `{"error":"internal error"}` with 500 (`src/http.ts:403-406`) |
 
 ### Route inventory
 
-| Method & Path | Handler | Auth | Purpose |
-| :--- | :--- | :--- | :--- |
-| `GET /health` | inline (`src/http.ts:111`) | none | Returns `{ ok, service: "sayabot-orchestrator", activeRuns }` (count from `activeRunIds()`). |
-| `POST /internal/room-message` | inline (`src/http.ts:122`) | internal | Validates `{ roomId, messageId }` (both UUIDs), loads the message via `loadMessage()`, requires it to be a human message in that room, calls `interruptRoom(roomId)` then `enqueueRoomMessage(...)`; returns 202 `{ queued: true }`. |
-| `POST /internal/inbound` | inline (`src/http.ts:139`) | internal | Connector webhook ingress for `telegram` / `whatsapp` only. Parses raw payload with `eventsFromPayload()`, accepts up to 10 events via `acceptInbound()`. Raw body capped at 100,000 chars. |
-| `POST /internal/runs/:runId/stop` | inline (`src/http.ts:160`) | internal | `abortRun(runId)` locally + `notify("mesh_stop_run", { runId })` so every orchestrator instance aborts the run. |
-| `POST /internal/routines/:id/run` | inline (`src/http.ts:167`) | internal (re-checked inline → 403) | Triggers `runRoutineNow(routineId)` immediately; 400 with the routine's error on failure. |
-| `POST /internal/tasks/mutate` | inline (`src/http.ts:179`) | internal | Validates the full `taskMutateSchema` (status/title/assignees/dueAt/unblockNeeds/blockedBy/outcome/metadata) and applies it through `applyTaskMutation()`. |
-| `POST /internal/agents/:agentId/test` | inline (`src/http.ts:194`) | internal | Agent connectivity test. Rejects external agents. If `agentCliRunner()` returns a CLI runner, runs `runCliOnce()` with the prompt "Reply with the single word: ok"; otherwise resolves the model via `resolveAgentModel()` and calls `generateText` with `maxOutputTokens: 200` and a 25 s timeout. Responses are scrubbed with `redactSecrets()` and truncated (300 chars text / 500 chars error). |
-| `POST /internal/tools/test-web-search` | inline (`src/http.ts:236`) | internal | Tests search providers; falls back to stored credentials from `resolveToolCredential({ orgId, tool: "web_search" })` when no key is passed, then runs `executeWebSearch` with `count: 3`. |
-| `POST /internal/tools/test-document-ocr` | inline (`src/http.ts:273`) | internal | Tests OCR providers (docling/marker/tesseract skip credential lookup); calls `executeDocumentExtract` with `fallbackToVision: true`. |
-| `POST /internal/canvases/:canvasId/restore` | inline (`src/http.ts:312`) | internal + room auth | Loads the canvas, validates a `{ userId, snapshot ≤ 1,000,000 chars }` body, checks `canUserReadRoom(userId, canvas.roomId)` (403 otherwise), then `restoreCanvasSnapshot()`. |
-| `POST /v1/tools/:toolCallId/approve` | inline (`src/http.ts:331`) | internal | Approval-gate resolution: updates `tool_calls` to `approved`/`rejected` with `resolvedAt` (only from `pending_approval`), `notify("tool_call_resolved", ...)`, and calls `resolveApprovalWaiter(toolCallId, status)`. |
-| `GET /internal/runs/:runId/trace` | inline (`src/http.ts:362`) | internal | Debug trace: returns the `agent_runs` row, ordered `run_steps`, and `run_transcripts.plan`. |
-| `POST /v1/rooms/:roomId/messages` | `botRoutes` (`src/bot/routes.ts:72`) | agent API key | Bot-API message post. Authenticates via `authenticateAgentKey`, requires room membership (`isAgentInRoom`), resolves threads (`thread_id` / `reply_to`), and posts through `postAgentMessage` (201). |
-| `POST /v1/rooms/:roomId/messages/stream` | `botRoutes` (`src/bot/routes.ts:106`) | agent API key | Streaming ingest for external bot runs. Requires `application/x-ndjson` or `text/event-stream` content type (415 otherwise). Inserts a `streaming` message row, parses deltas with `BotStreamParser`, redacts secrets, broadcasts `message.delta` (sequenced) and `message.done` realtime events, persists the accumulated content at most once per second, then `notifyBotReply`. Ends 400 if the stream failed or produced no content. |
-| `GET /v1/mcp` and `GET /v1/mcp/:token` | `mcpRoutes` (`src/mcp/server.ts:866-867`) | none / token | Renders MCP server instructions. |
-| `POST /v1/mcp` and `POST /v1/mcp/:token` | `mcpRoutes` (`src/mcp/server.ts:870-871`) | token-optional | Serves the MCP (Model Context Protocol) endpoint. `DELETE /v1/mcp*` responds 405 with `Allow: GET, POST`. |
-| `POST /internal/egress/identity` | `internalRoutes` (`src/internal/routes.ts:35`) | internal | Egress identity registration (computerd proxy credentials). |
-| `POST /internal/egress/resolve` | `internalRoutes` (`src/internal/routes.ts:78`) | internal | Resolves an egress caller IP/credential to an agent. |
-| `POST /internal/egress/approval` | `internalRoutes` (`src/internal/routes.ts:159`) | internal | Egress-side approval escalation. |
-| `POST /internal/egress/violation` | `internalRoutes` (`src/internal/routes.ts:234`) | internal | Reports SSRF policy violations. |
-| `POST /internal/egress/usage` | `internalRoutes` (`src/internal/routes.ts:289`) | internal | Egress usage accounting. |
-| `GET /internal/egress/stream` | `internalRoutes` (`src/internal/routes.ts:299`) | internal | SSE stream of egress events to the dashboard. |
-| `POST /internal/computer/state` | `internalRoutes` (`src/internal/routes.ts:355`) | internal | Computerd reports computer lifecycle state. |
-| `GET /internal/computer/:agentId/grants-env` | `internalRoutes` (`src/internal/routes.ts:393`) | internal | Returns agent connector grant environment for computerd. |
-| `POST /internal/tasks/wake` | `internalRoutes` (`src/internal/routes.ts:428`) | internal | Wakes a room/task waiting on a human decision. |
-| `POST /internal/local-jobs/:jobId/events` | `localJobRoutes` (`src/internal/local-jobs.ts:41`) | internal | Ingests events from local (desktop) job runners. |
-| `POST /internal/local-jobs/:jobId/approval` | `localJobRoutes` (`src/internal/local-jobs.ts:57`) | internal | Approval callbacks from local job runners. |
+| Method & Path                                | Handler                                            | Auth                               | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| :------------------------------------------- | :------------------------------------------------- | :--------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /health`                                | inline (`src/http.ts:111`)                         | none                               | Returns `{ ok, service: "sayabot-orchestrator", activeRuns }` (count from `activeRunIds()`).                                                                                                                                                                                                                                                                                                                                             |
+| `POST /internal/room-message`                | inline (`src/http.ts:122`)                         | internal                           | Validates `{ roomId, messageId }` (both UUIDs), loads the message via `loadMessage()`, requires it to be a human message in that room, calls `interruptRoom(roomId)` then `enqueueRoomMessage(...)`; returns 202 `{ queued: true }`.                                                                                                                                                                                                     |
+| `POST /internal/inbound`                     | inline (`src/http.ts:139`)                         | internal                           | Connector webhook ingress for `telegram` / `whatsapp` only. Parses raw payload with `eventsFromPayload()`, accepts up to 10 events via `acceptInbound()`. Raw body capped at 100,000 chars.                                                                                                                                                                                                                                              |
+| `POST /internal/runs/:runId/stop`            | inline (`src/http.ts:160`)                         | internal                           | `abortRun(runId)` locally + `notify("mesh_stop_run", { runId })` so every orchestrator instance aborts the run.                                                                                                                                                                                                                                                                                                                          |
+| `POST /internal/routines/:id/run`            | inline (`src/http.ts:167`)                         | internal (re-checked inline → 403) | Triggers `runRoutineNow(routineId)` immediately; 400 with the routine's error on failure.                                                                                                                                                                                                                                                                                                                                                |
+| `POST /internal/tasks/mutate`                | inline (`src/http.ts:179`)                         | internal                           | Validates the full `taskMutateSchema` (status/title/assignees/dueAt/unblockNeeds/blockedBy/outcome/metadata) and applies it through `applyTaskMutation()`.                                                                                                                                                                                                                                                                               |
+| `POST /internal/agents/:agentId/test`        | inline (`src/http.ts:194`)                         | internal                           | Agent connectivity test. Rejects external agents. If `agentCliRunner()` returns a CLI runner, runs `runCliOnce()` with the prompt "Reply with the single word: ok"; otherwise resolves the model via `resolveAgentModel()` and calls `generateText` with `maxOutputTokens: 200` and a 25 s timeout. Responses are scrubbed with `redactSecrets()` and truncated (300 chars text / 500 chars error).                                      |
+| `POST /internal/tools/test-web-search`       | inline (`src/http.ts:236`)                         | internal                           | Tests search providers; falls back to stored credentials from `resolveToolCredential({ orgId, tool: "web_search" })` when no key is passed, then runs `executeWebSearch` with `count: 3`.                                                                                                                                                                                                                                                |
+| `POST /internal/tools/test-document-ocr`     | inline (`src/http.ts:273`)                         | internal                           | Tests OCR providers (docling/marker/tesseract skip credential lookup); calls `executeDocumentExtract` with `fallbackToVision: true`.                                                                                                                                                                                                                                                                                                     |
+| `POST /internal/canvases/:canvasId/restore`  | inline (`src/http.ts:312`)                         | internal + room auth               | Loads the canvas, validates a `{ userId, snapshot ≤ 1,000,000 chars }` body, checks `canUserReadRoom(userId, canvas.roomId)` (403 otherwise), then `restoreCanvasSnapshot()`.                                                                                                                                                                                                                                                            |
+| `POST /v1/tools/:toolCallId/approve`         | inline (`src/http.ts:331`)                         | internal                           | Approval-gate resolution: updates `tool_calls` to `approved`/`rejected` with `resolvedAt` (only from `pending_approval`), `notify("tool_call_resolved", ...)`, and calls `resolveApprovalWaiter(toolCallId, status)`.                                                                                                                                                                                                                    |
+| `GET /internal/runs/:runId/trace`            | inline (`src/http.ts:362`)                         | internal                           | Debug trace: returns the `agent_runs` row, ordered `run_steps`, and `run_transcripts.plan`.                                                                                                                                                                                                                                                                                                                                              |
+| `POST /v1/rooms/:roomId/messages`            | `botRoutes` (`src/bot/routes.ts:72`)               | agent API key                      | Bot-API message post. Authenticates via `authenticateAgentKey`, requires room membership (`isAgentInRoom`), resolves threads (`thread_id` / `reply_to`), and posts through `postAgentMessage` (201).                                                                                                                                                                                                                                     |
+| `POST /v1/rooms/:roomId/messages/stream`     | `botRoutes` (`src/bot/routes.ts:106`)              | agent API key                      | Streaming ingest for external bot runs. Requires `application/x-ndjson` or `text/event-stream` content type (415 otherwise). Inserts a `streaming` message row, parses deltas with `BotStreamParser`, redacts secrets, broadcasts `message.delta` (sequenced) and `message.done` realtime events, persists the accumulated content at most once per second, then `notifyBotReply`. Ends 400 if the stream failed or produced no content. |
+| `GET /v1/mcp` and `GET /v1/mcp/:token`       | `mcpRoutes` (`src/mcp/server.ts:866-867`)          | none / token                       | Renders MCP server instructions.                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `POST /v1/mcp` and `POST /v1/mcp/:token`     | `mcpRoutes` (`src/mcp/server.ts:870-871`)          | token-optional                     | Serves the MCP (Model Context Protocol) endpoint. `DELETE /v1/mcp*` responds 405 with `Allow: GET, POST`.                                                                                                                                                                                                                                                                                                                                |
+| `POST /internal/egress/identity`             | `internalRoutes` (`src/internal/routes.ts:35`)     | internal                           | Egress identity registration (computerd proxy credentials).                                                                                                                                                                                                                                                                                                                                                                              |
+| `POST /internal/egress/resolve`              | `internalRoutes` (`src/internal/routes.ts:78`)     | internal                           | Resolves an egress caller IP/credential to an agent.                                                                                                                                                                                                                                                                                                                                                                                     |
+| `POST /internal/egress/approval`             | `internalRoutes` (`src/internal/routes.ts:159`)    | internal                           | Egress-side approval escalation.                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `POST /internal/egress/violation`            | `internalRoutes` (`src/internal/routes.ts:234`)    | internal                           | Reports SSRF policy violations.                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `POST /internal/egress/usage`                | `internalRoutes` (`src/internal/routes.ts:289`)    | internal                           | Egress usage accounting.                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `GET /internal/egress/stream`                | `internalRoutes` (`src/internal/routes.ts:299`)    | internal                           | SSE stream of egress events to the dashboard.                                                                                                                                                                                                                                                                                                                                                                                            |
+| `POST /internal/computer/state`              | `internalRoutes` (`src/internal/routes.ts:355`)    | internal                           | Computerd reports computer lifecycle state.                                                                                                                                                                                                                                                                                                                                                                                              |
+| `GET /internal/computer/:agentId/grants-env` | `internalRoutes` (`src/internal/routes.ts:393`)    | internal                           | Returns agent connector grant environment for computerd.                                                                                                                                                                                                                                                                                                                                                                                 |
+| `POST /internal/tasks/wake`                  | `internalRoutes` (`src/internal/routes.ts:428`)    | internal                           | Wakes a room/task waiting on a human decision.                                                                                                                                                                                                                                                                                                                                                                                           |
+| `POST /internal/local-jobs/:jobId/events`    | `localJobRoutes` (`src/internal/local-jobs.ts:41`) | internal                           | Ingests events from local (desktop) job runners.                                                                                                                                                                                                                                                                                                                                                                                         |
+| `POST /internal/local-jobs/:jobId/approval`  | `localJobRoutes` (`src/internal/local-jobs.ts:57`) | internal                           | Approval callbacks from local job runners.                                                                                                                                                                                                                                                                                                                                                                                               |
 
 `src/http.ts` also exports `getDbForHealth()` as a convenience accessor used by external health probes.
 
@@ -96,34 +96,34 @@ Configuration is a single Zod schema validated once by `getEnv()` and cached (`r
 
 Validation failures throw with one line per issue: `Invalid orchestrator environment:\n<path>: <message>`.
 
-| Variable | Type / Default | Notes |
-| :--- | :--- | :--- |
-| `DATABASE_URL` | string, required | PostgreSQL connection string for `createDb`. |
-| `MESH_KEK` | string, required (min 1) | Master envelope-encryption key (see aliasing above). |
-| `SAYABOT_KEK` | optional | Aliased to the same raw value as `MESH_KEK`. |
-| `SUPABASE_URL` | URL, required | Falls back to `NEXT_PUBLIC_SUPABASE_URL`. |
-| `SUPABASE_SERVICE_ROLE_KEY` | string, required (min 1) | Service-role key for Supabase Auth verification. |
-| `ORCHESTRATOR_INTERNAL_SECRET` | string, required (min 16) | Shared secret for `/internal/*` routes. |
-| `PORT` | number, default `4000` | HTTP listen port (`z.coerce.number()`). |
-| `COMPUTERD_URL` | default `http://localhost:4100` | computerd daemon base URL. |
-| `EGRESS_URL` | default `http://localhost:8081` | Egress control API. |
-| `EGRESS_PROXY_URL` | default `http://localhost:8080` | Egress forward proxy. |
-| `COMPUTE_ENABLED` | optional, `"true"` → true | Enables computer/sandbox backends. |
-| `E2B_API_KEY` | optional | E2B cloud sandbox backend key. |
-| `BRAVE_SEARCH_API_KEY` | optional | Brave search provider key. |
-| `MESH_ALLOW_PRIVATE_WEBHOOKS` | optional, `"true"` → true | Aliased with `SAYABOT_ALLOW_PRIVATE_WEBHOOKS`. |
-| `SAYABOT_ALLOW_PRIVATE_WEBHOOKS` | optional, `"true"` → true | Allows webhook URLs on private networks. |
-| `DEV_OPENAI_COMPAT_BASE_URL` | optional | Local OpenAI-compatible dev endpoint. |
-| `DEV_OPENAI_COMPAT_API_KEY` | optional | Key for the dev endpoint. |
-| `DEV_OPENAI_COMPAT_MODEL` | optional | Model id for the dev endpoint. |
-| `CLOUDFLARE_ACCOUNT_ID` | optional | Cloudflare Workers AI account. |
-| `CLOUDFLARE_API_TOKEN` | optional | Cloudflare API token. |
-| `CLOUDFLARE_AI_GATEWAY_ID` | optional | AI Gateway routing id. |
-| `CLOUDFLARE_BROWSER_RENDERING_ENDPOINT` | optional | Browser Rendering REST endpoint. |
-| `CLOUDFLARE_R2_BUCKET` | optional | R2 bucket for artifacts. |
-| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | optional | Web-push VAPID public key. |
-| `VAPID_PRIVATE_KEY` | optional | Web-push VAPID private key. |
-| `VAPID_SUBJECT` | optional | Web-push `mailto:`/`https:` subject. |
+| Variable                                | Type / Default                  | Notes                                                |
+| :-------------------------------------- | :------------------------------ | :--------------------------------------------------- |
+| `DATABASE_URL`                          | string, required                | PostgreSQL connection string for `createDb`.         |
+| `MESH_KEK`                              | string, required (min 1)        | Master envelope-encryption key (see aliasing above). |
+| `SAYABOT_KEK`                           | optional                        | Aliased to the same raw value as `MESH_KEK`.         |
+| `SUPABASE_URL`                          | URL, required                   | Falls back to `NEXT_PUBLIC_SUPABASE_URL`.            |
+| `SUPABASE_SERVICE_ROLE_KEY`             | string, required (min 1)        | Service-role key for Supabase Auth verification.     |
+| `ORCHESTRATOR_INTERNAL_SECRET`          | string, required (min 16)       | Shared secret for `/internal/*` routes.              |
+| `PORT`                                  | number, default `4000`          | HTTP listen port (`z.coerce.number()`).              |
+| `COMPUTERD_URL`                         | default `http://localhost:4100` | computerd daemon base URL.                           |
+| `EGRESS_URL`                            | default `http://localhost:8081` | Egress control API.                                  |
+| `EGRESS_PROXY_URL`                      | default `http://localhost:8080` | Egress forward proxy.                                |
+| `COMPUTE_ENABLED`                       | optional, `"true"` → true       | Enables computer/sandbox backends.                   |
+| `E2B_API_KEY`                           | optional                        | E2B cloud sandbox backend key.                       |
+| `BRAVE_SEARCH_API_KEY`                  | optional                        | Brave search provider key.                           |
+| `MESH_ALLOW_PRIVATE_WEBHOOKS`           | optional, `"true"` → true       | Aliased with `SAYABOT_ALLOW_PRIVATE_WEBHOOKS`.       |
+| `SAYABOT_ALLOW_PRIVATE_WEBHOOKS`        | optional, `"true"` → true       | Allows webhook URLs on private networks.             |
+| `DEV_OPENAI_COMPAT_BASE_URL`            | optional                        | Local OpenAI-compatible dev endpoint.                |
+| `DEV_OPENAI_COMPAT_API_KEY`             | optional                        | Key for the dev endpoint.                            |
+| `DEV_OPENAI_COMPAT_MODEL`               | optional                        | Model id for the dev endpoint.                       |
+| `CLOUDFLARE_ACCOUNT_ID`                 | optional                        | Cloudflare Workers AI account.                       |
+| `CLOUDFLARE_API_TOKEN`                  | optional                        | Cloudflare API token.                                |
+| `CLOUDFLARE_AI_GATEWAY_ID`              | optional                        | AI Gateway routing id.                               |
+| `CLOUDFLARE_BROWSER_RENDERING_ENDPOINT` | optional                        | Browser Rendering REST endpoint.                     |
+| `CLOUDFLARE_R2_BUCKET`                  | optional                        | R2 bucket for artifacts.                             |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY`          | optional                        | Web-push VAPID public key.                           |
+| `VAPID_PRIVATE_KEY`                     | optional                        | Web-push VAPID private key.                          |
+| `VAPID_SUBJECT`                         | optional                        | Web-push `mailto:`/`https:` subject.                 |
 
 Note: boolean-style variables use `.transform((v) => v === "true")`, so any value other than the exact string `true` is false.
 
@@ -161,7 +161,7 @@ export async function withRoomLock<T>(roomId: string, fn: () => Promise<T>): Pro
 Key properties:
 
 - **Session-scoped advisory lock** keyed on `hashtext("mesh:room:<roomId>")::bigint`. A dedicated client is checked out of the pool for the duration because session locks live on a single physical connection — pooled `.query()` calls could land on different connections and fail to unlock.
-- The `finally` block guarantees unlock *and* client release even if `fn()` throws (the unlock itself is nested in its own `finally` so the client is always released).
+- The `finally` block guarantees unlock _and_ client release even if `fn()` throws (the unlock itself is nested in its own `finally` so the client is always released).
 - The coordinator wraps the whole turn execution in this lock — see [coordinator.md](./coordinator.md).
 
 ---

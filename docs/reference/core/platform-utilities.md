@@ -14,11 +14,11 @@ Source files: `packages/core/src/cloud-handoff.ts`, `packages/core/src/workspace
 
 The state machine deciding the next migration step from three booleans — `cloudReady`, `copied` (a copy is sitting on Cloud and not restored), `planActive`:
 
-| State | Result |
-| :--- | :--- |
-| Cloud ready + plan active + not yet copied | `"copy_to_cloud"` |
-| Copy exists but the plan lapsed | `"copy_back"` |
-| Everything else (including already-copied-and-active) | `"none"` |
+| State                                                 | Result            |
+| :---------------------------------------------------- | :---------------- |
+| Cloud ready + plan active + not yet copied            | `"copy_to_cloud"` |
+| Copy exists but the plan lapsed                       | `"copy_back"`     |
+| Everything else (including already-copied-and-active) | `"none"`          |
 
 Because `copied` is cleared on restore, a resubscribe later produces a fresh `"copy_to_cloud"`.
 
@@ -80,8 +80,8 @@ SAYA_AI_NAME=Saya AI
 ### Parsing and resolution
 
 - **`parseSayaModels(raw, name?)`** (`saya-ai.ts:67`) — splits on commas/newlines; each entry is `alias=<id>|<label>` (label optional). Entries without `alias=` use the lowercased model id. Aliases must match `^[a-z0-9][a-z0-9._-]{0,39}$` after slugification; bad or **duplicate** aliases are skipped rather than failing the server. A missing label becomes `"<name> <Title Case Alias>"` for alias-prefixed entries or the raw id otherwise.
-- **`readSayaAiConfig(env)`** (`saya-ai.ts:92`) — server-side reader returning `SayaAiConfig | null` (null when no base URL or no models resolve — the feature is simply off). Handles the single-model shorthand (label becomes the provider name) and the `DEV_OPENAI_COMPAT_*` fallback, where that legacy model *wins over* `SAYA_AI_MODELS` since the latter would point at an unconfigured endpoint. Protocol defaults to `openai-compatible` unless the env value is one of the three known protocols; trailing slashes are stripped from the base URL. `defaultAlias` is `SAYA_AI_DEFAULT` when that alias exists, else the first model; `fastAlias` is `SAYA_AI_FAST`, else an existing `"fast"` alias, else the default.
-- **`resolveSayaModel(config, stored)`** (`saya-ai.ts:144`) — what an agent's stored value means *right now*: `saya/<alias>` → that alias; `null` or an alias the operator has since removed → the current default, so a config change never breaks an agent (three-level fallback ending at `models[0]`).
+- **`readSayaAiConfig(env)`** (`saya-ai.ts:92`) — server-side reader returning `SayaAiConfig | null` (null when no base URL or no models resolve — the feature is simply off). Handles the single-model shorthand (label becomes the provider name) and the `DEV_OPENAI_COMPAT_*` fallback, where that legacy model _wins over_ `SAYA_AI_MODELS` since the latter would point at an unconfigured endpoint. Protocol defaults to `openai-compatible` unless the env value is one of the three known protocols; trailing slashes are stripped from the base URL. `defaultAlias` is `SAYA_AI_DEFAULT` when that alias exists, else the first model; `fastAlias` is `SAYA_AI_FAST`, else an existing `"fast"` alias, else the default.
+- **`resolveSayaModel(config, stored)`** (`saya-ai.ts:144`) — what an agent's stored value means _right now_: `saya/<alias>` → that alias; `null` or an alias the operator has since removed → the current default, so a config change never breaks an agent (three-level fallback ending at `models[0]`).
 - **`resolveSayaFastModel(config)`** — resolves the configured fast alias for background work.
 
 ### Public surface (what leaves the server)
@@ -96,8 +96,8 @@ SAYA_AI_NAME=Saya AI
 
 ```typescript
 export type Edition = "self-hosted" | "cloud"
-export function readEdition(env): Edition            // SAYABOT_EDITION ?? NEXT_PUBLIC_SAYABOT_EDITION
-export function publicEdition(): Edition             // build-time NEXT_PUBLIC_SAYABOT_EDITION only
+export function readEdition(env): Edition // SAYABOT_EDITION ?? NEXT_PUBLIC_SAYABOT_EDITION
+export function publicEdition(): Edition // build-time NEXT_PUBLIC_SAYABOT_EDITION only
 ```
 
 The value is trimmed, lowercased, and compared to `"cloud"` — anything else (unset, `"enterprise"`, garbage) is **`self-hosted`**, the default: no plans, no limits, no billing, nothing talking to Sayabot Cloud. `publicEdition` exists for the browser, where the value is baked into the build so Next can inline it.
@@ -106,11 +106,11 @@ The value is trimmed, lowercased, and compared to `"cloud"` — anything else (u
 
 `PLANS` (`edition.ts:55`) defines the three Sayabot Cloud plans (per workspace per month):
 
-| Plan | Price | `serverTurnsPerMonth` | `agents` | `computers` | `members` |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| `free` | $0 | 300 | 3 | 0 | 3 |
-| `pro` | $12 | 3 000 | 20 | 2 | 5 |
-| `team` | $39 | 15 000 | `null` (unlimited) | 10 | 50 |
+| Plan   | Price | `serverTurnsPerMonth` | `agents`           | `computers` | `members` |
+| :----- | :---- | :-------------------- | :----------------- | :---------- | :-------- |
+| `free` | $0    | 300                   | 3                  | 0           | 3         |
+| `pro`  | $12   | 3 000                 | 20                 | 2           | 5         |
+| `team` | $39   | 15 000                | `null` (unlimited) | 10          | 50        |
 
 `serverTurnsPerMonth` counts agent replies that run **on the server** (server models, your keys, agent computers); replies on the person's own Mac don't count. Each plan carries marketing `highlights` and a `priceLabel` that should match the Stripe prices in `STRIPE_PRICE_PRO` / `STRIPE_PRICE_TEAM`.
 
@@ -132,14 +132,14 @@ The value is trimmed, lowercased, and compared to `"cloud"` — anything else (u
 
 All token generation in one place; hashes are **SHA-256 hex** (`hashAgentApiKey`), so the DB stores only hashes:
 
-| Export | Format | Purpose |
-| :--- | :--- | :--- |
-| `generateAgentApiKey()` | `mesh_ak_<32-byte base64url>` + `{ prefix: token.slice(0,16), hash, last4 }` | The agent's API key (the `mesh_ak_` family also matched by the redactor) |
-| `generateBotInviteCode()` | `bi_<18-byte base64url>` | Public-ish code in an "Add an agent" link — explicitly **not a credential**; joining still needs approval |
-| `generatePollToken()` | `bp_<32-byte base64url>` + hash | Handed to the bot that asked to join; proves it is the same bot when it collects its key (see [invites-pairing-and-remote.md](./invites-pairing-and-remote.md)) |
-| `generatePairingCode(alphabet?, length?)` | 8 chars from `23456789ABCDEFGHJKMNPQRSTUVWXYZ` | Phone pairing; rejection-sampled (`byte >= 256 - 256 % len` skipped) so there is **no modulo bias** |
-| `generateDeviceToken()` | `sd_<32-byte base64url>` + hash | Long-lived secret a paired phone keeps to check it hasn't been removed |
-| `generateJoinCode()` | `j_<18-byte base64url>` | Workspace invite link (`/join/<code>`). Opening it asks to join; a workspace admin approves. The code is long because it is a grant. |
+| Export                                    | Format                                                                       | Purpose                                                                                                                                                         |
+| :---------------------------------------- | :--------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `generateAgentApiKey()`                   | `mesh_ak_<32-byte base64url>` + `{ prefix: token.slice(0,16), hash, last4 }` | The agent's API key (the `mesh_ak_` family also matched by the redactor)                                                                                        |
+| `generateBotInviteCode()`                 | `bi_<18-byte base64url>`                                                     | Public-ish code in an "Add an agent" link — explicitly **not a credential**; joining still needs approval                                                       |
+| `generatePollToken()`                     | `bp_<32-byte base64url>` + hash                                              | Handed to the bot that asked to join; proves it is the same bot when it collects its key (see [invites-pairing-and-remote.md](./invites-pairing-and-remote.md)) |
+| `generatePairingCode(alphabet?, length?)` | 8 chars from `23456789ABCDEFGHJKMNPQRSTUVWXYZ`                               | Phone pairing; rejection-sampled (`byte >= 256 - 256 % len` skipped) so there is **no modulo bias**                                                             |
+| `generateDeviceToken()`                   | `sd_<32-byte base64url>` + hash                                              | Long-lived secret a paired phone keeps to check it hasn't been removed                                                                                          |
+| `generateJoinCode()`                      | `j_<18-byte base64url>`                                                      | Workspace invite link (`/join/<code>`). Opening it asks to join; a workspace admin approves. The code is long because it is a grant.                            |
 
 `agentKeyPrefix(token)` returns the first 16 characters (the lookup/display prefix stored alongside the hash).
 
@@ -150,7 +150,7 @@ Standard Webhooks-style HMAC signing for outbound webhooks:
 ```typescript
 export const WEBHOOK_TOLERANCE_SECONDS = 300
 
-export function generateWebhookSecret(): string   // 32 random bytes, base64 — the HMAC key
+export function generateWebhookSecret(): string // 32 random bytes, base64 — the HMAC key
 export function signWebhook({ secret, id, timestamp, body }): string
 // → "v1,<base64 HMAC-SHA256(secret, `${id}.${timestamp}.${body}`)>"
 
@@ -172,7 +172,7 @@ The last line of defence before the server fetches an agent-supplied URL.
 3. Literal IPs (v4 or v6, bracketed or not) go straight through `isPrivateIp`.
 4. Otherwise `dns.lookup(host, { all: true })` resolves — DNS failure or an empty answer throws — and **every** resolved address must pass `isPrivateIp`, else `SSRF blocked: <host> resolved to restricted IP <ip>`.
 
-`ssrf.test.ts` covers the full IPv4/IPv6 matrix including the adjacent-public-IP negatives (`192.0.1.1` is *not* private) and the bracketed/IPv4-mapped metadata addresses.
+`ssrf.test.ts` covers the full IPv4/IPv6 matrix including the adjacent-public-IP negatives (`192.0.1.1` is _not_ private) and the bracketed/IPv4-mapped metadata addresses.
 
 ---
 

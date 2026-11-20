@@ -73,10 +73,15 @@ export function githubTool(orgId: string, agentId?: string): ToolSpec {
         if (!body || typeof body !== "object" || !("content" in body)) {
           throw new Error("path is not a file")
         }
-        const content = Buffer.from(String((body as { content: string }).content), "base64").toString(
-          "utf8",
-        )
-        return { path: input.path, sha: (body as { sha?: string }).sha, content: content.slice(0, 40_000) }
+        const content = Buffer.from(
+          String((body as { content: string }).content),
+          "base64",
+        ).toString("utf8")
+        return {
+          path: input.path,
+          sha: (body as { sha?: string }).sha,
+          content: content.slice(0, 40_000),
+        }
       }
       if (input.action === "list_issues") {
         const state = input.state ?? "open"
@@ -107,15 +112,19 @@ export function githubTool(orgId: string, agentId?: string): ToolSpec {
         existing.status === 200 && existing.body && typeof existing.body === "object"
           ? (existing.body as { sha?: string }).sha
           : undefined
-      const { status, body } = await githubFetch(token, `${repoPath}/contents/${encodePath(input.path)}`, {
-        method: "PUT",
-        body: JSON.stringify({
-          message: input.message,
-          content: Buffer.from(input.content, "utf8").toString("base64"),
-          branch: input.branch,
-          ...(sha ? { sha } : {}),
-        }),
-      })
+      const { status, body } = await githubFetch(
+        token,
+        `${repoPath}/contents/${encodePath(input.path)}`,
+        {
+          method: "PUT",
+          body: JSON.stringify({
+            message: input.message,
+            content: Buffer.from(input.content, "utf8").toString("base64"),
+            branch: input.branch,
+            ...(sha ? { sha } : {}),
+          }),
+        },
+      )
       if (status !== 200 && status !== 201) {
         throw new Error(`GitHub returned ${status}: ${JSON.stringify(body)}`)
       }

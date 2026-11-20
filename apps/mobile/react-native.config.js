@@ -3,10 +3,10 @@ module.exports = {
     expo: {
       platforms: {
         android: {
-          packageImportPath: 'import expo.modules.ExpoModulesPackage;',
-          packageInstance: 'new ExpoModulesPackage()',
+          packageImportPath: "import expo.modules.ExpoModulesPackage;",
+          packageInstance: "new ExpoModulesPackage()",
         },
       },
     },
   },
-};
+}

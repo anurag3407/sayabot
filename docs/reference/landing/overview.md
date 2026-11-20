@@ -6,20 +6,20 @@ Source files: `apps/landing/next.config.ts`, `apps/landing/package.json`, `apps/
 
 ## Running and building
 
-| Command | What it does |
-| :-- | :-- |
-| `pnpm --filter @sayabot/landing dev` | Next dev server on port 3100 |
-| `pnpm --filter @sayabot/landing build` | Static export to `apps/landing/out/` (deploy anywhere: Cloudflare Pages, nginx, S3) |
-| `pnpm --filter @sayabot/landing typecheck` / `lint` | `tsc --noEmit` / `eslint src` |
+| Command                                             | What it does                                                                        |
+| :-------------------------------------------------- | :---------------------------------------------------------------------------------- |
+| `pnpm --filter @sayabot/landing dev`                | Next dev server on port 3100                                                        |
+| `pnpm --filter @sayabot/landing build`              | Static export to `apps/landing/out/` (deploy anywhere: Cloudflare Pages, nginx, S3) |
+| `pnpm --filter @sayabot/landing typecheck` / `lint` | `tsc --noEmit` / `eslint src`                                                       |
 
 `next.config.ts` sets `output: "export"`, `images.unoptimized`, and `transpilePackages: ["@sayabot/core"]`. Turbo caches `out/**` for `build`.
 
 Build-time env (both optional):
 
-| Variable | Default | Used for |
-| :-- | :-- | :-- |
-| `NEXT_PUBLIC_APP_URL` | `https://sayabot.sayalabs.in` | Web app links (`/login`, `/signup`, `/privacy`, `/terms`, `/security`) |
-| `NEXT_PUBLIC_SITE_URL` | `https://sayabot.tech` | `metadataBase` for Open Graph URLs |
+| Variable               | Default                                         | Used for                                                               |
+| :--------------------- | :---------------------------------------------- | :--------------------------------------------------------------------- |
+| `NEXT_PUBLIC_APP_URL`  | `http://localhost:3000` (or self-hosted domain) | Web app links (`/login`, `/signup`, `/privacy`, `/terms`, `/security`) |
+| `NEXT_PUBLIC_SITE_URL` | `https://sayabot.tech`                          | `metadataBase` for Open Graph URLs                                     |
 
 ## Deployment & CI/CD
 
@@ -76,6 +76,7 @@ Build-time env (both optional):
 ## SEO, AI Search (GEO) & Browser Tabs
 
 `apps/landing` is optimized for search engines, AI search engines (Perplexity, ChatGPT Search, Claude, Gemini), and browser tab rendering:
+
 - **Browser Tab Lifecycle** (`src/components/tab-title.tsx`): On document `visibilitychange`, inactive tabs show `"⚡ Still working while you're away... | Sayabot"`. On refocus, briefly displays `"👋 Welcome back! | Sayabot"` before restoring the primary title.
 - **PWA Manifests**: `public/site.webmanifest` and `public/manifest.json` configured with standalone display and theme color `#08080a`.
 - **Structured Data (JSON-LD)**: 4 active schemas embedded in `src/app/layout.tsx`: `WebSite` (canonical URL `https://sayabot.tech`), `Organization` (Sayalabs), `SoftwareApplication` (Sayabot v1.0.0, price $0, multi-OS), and `SoftwareSourceCode` (GitHub repository). Restricted `FAQPage` schema is omitted per Google Search policy.

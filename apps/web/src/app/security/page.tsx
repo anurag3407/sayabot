@@ -51,17 +51,17 @@ export default function SecurityPage() {
       <DocSection title="Operations">
         <p>
           The operator controls Supabase, the hosting provider, backups, the encryption key, model
-          providers, network policy and which tools are enabled. Keep the encryption KEK stable and private.
-          Rotating it without re-encrypting stored secrets makes them unreadable. Review the
-          deployment documentation before exposing an installation to the internet.
+          providers, network policy and which tools are enabled. Keep the encryption KEK stable and
+          private. Rotating it without re-encrypting stored secrets makes them unreadable. Review
+          the deployment documentation before exposing an installation to the internet.
         </p>
       </DocSection>
       <DocSection title="Reporting">
         <p>
           A problem on this deployment goes to whoever operates it. Include the affected room,
-          account and time, but do not include live secrets. A vulnerability in the Sayabot
-          software itself goes to sayalabs.studio@gmail.com. Please follow SECURITY.md in the
-          repository and do not open a public issue.
+          account and time, but do not include live secrets. A vulnerability in the Sayabot software
+          itself goes to sayalabs.studio@gmail.com. Please follow SECURITY.md in the repository and
+          do not open a public issue.
         </p>
       </DocSection>
       <DocSection title="No certification claim">

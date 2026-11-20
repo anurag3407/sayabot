@@ -13,24 +13,24 @@ Source files: `packages/llm/src/index.ts`, `packages/llm/package.json`
 `packages/llm/src/index.ts` is eight re-export lines, one per module:
 
 ```typescript
-export * from "./crypto"          // encryptSecret / decryptSecret / sealSecret / openSecret / parseKek / last4
-export * from "./copilot"         // copilotSessionToken / copilotFetch / isCopilotBaseUrl / COPILOT_API_BASE ...
-export * from "./registry"        // createLanguageModel / sayaModelConfig / devModelConfig / providerKeyToApiKey ...
-export * from "./mcp"             // connectMcpServers / mcpToolName / isDangerousMcpTool / McpToolError ...
-export * from "./langfuse"        // getLangfuseClient / recordStepToLangfuse / recordScoreToLangfuse / flushLangfuse
-export * from "./mcp-oauth"       // StoredMcpOAuthProvider / beginMcpOAuth / completeMcpOAuth / sealMcpOAuthState ...
-export * from "./local-apps"      // LOCAL_APPS / findLocalApp / localAppArgv
+export * from "./crypto" // encryptSecret / decryptSecret / sealSecret / openSecret / parseKek / last4
+export * from "./copilot" // copilotSessionToken / copilotFetch / isCopilotBaseUrl / COPILOT_API_BASE ...
+export * from "./registry" // createLanguageModel / sayaModelConfig / devModelConfig / providerKeyToApiKey ...
+export * from "./mcp" // connectMcpServers / mcpToolName / isDangerousMcpTool / McpToolError ...
+export * from "./langfuse" // getLangfuseClient / recordStepToLangfuse / recordScoreToLangfuse / flushLangfuse
+export * from "./mcp-oauth" // StoredMcpOAuthProvider / beginMcpOAuth / completeMcpOAuth / sealMcpOAuthState ...
+export * from "./local-apps" // LOCAL_APPS / findLocalApp / localAppArgv
 export * from "./connector-secret" // unwrapConnectorSecret / wrapConnectorSecret
 ```
 
 `package.json` declares four entry points, so client bundles can never accidentally pull the Node-only model-catalog code:
 
-| Export path | Module | Node-only? |
-| :-- | :-- | :-- |
-| `@sayabot/llm` | `src/index.ts` (the 8 modules above) | Mostly (crypto helpers are pure) |
-| `@sayabot/llm/models` | `src/models/index.ts` | Yes — reads files, spawns CLIs (`src/models/index.ts:1-13`) |
-| `@sayabot/llm/models/effort` | `src/models/effort.ts` | No — pure constants and helpers |
-| `@sayabot/llm/local-apps` | `src/local-apps.ts` | No — static catalog data |
+| Export path                  | Module                               | Node-only?                                                  |
+| :--------------------------- | :----------------------------------- | :---------------------------------------------------------- |
+| `@sayabot/llm`               | `src/index.ts` (the 8 modules above) | Mostly (crypto helpers are pure)                            |
+| `@sayabot/llm/models`        | `src/models/index.ts`                | Yes — reads files, spawns CLIs (`src/models/index.ts:1-13`) |
+| `@sayabot/llm/models/effort` | `src/models/effort.ts`               | No — pure constants and helpers                             |
+| `@sayabot/llm/local-apps`    | `src/local-apps.ts`                  | No — static catalog data                                    |
 
 Dependencies (`packages/llm/package.json:18-30`): the Vercel AI SDK (`ai@7`) plus `@ai-sdk/anthropic`, `@ai-sdk/cerebras`, `@ai-sdk/google`, `@ai-sdk/groq`, `@ai-sdk/mcp`, `@ai-sdk/openai` and `@ai-sdk/openai-compatible`; `langfuse@3`; `zod@4`; and `@sayabot/core` for shared types (`Provider`, Saya AI config parsing, `assertSafeEgressHost`). Scripts: `pnpm --filter @sayabot/llm test` (Vitest), `catalog:snapshot` (rewrites the bundled models.dev snapshot), `typecheck`, `lint`.
 
@@ -38,17 +38,17 @@ Dependencies (`packages/llm/package.json:18-30`): the Vercel AI SDK (`ai@7`) plu
 
 ## 🏗️ Module map
 
-| Module | Responsibility | Reference doc |
-| :-- | :-- | :-- |
-| `src/crypto.ts` | AES-256-GCM envelope encryption (`EncryptedSecret { ciphertext, iv, tag }`), single-column sealing, KEK parsing | [crypto.md](./crypto.md) |
-| `src/registry.ts` | Provider → AI SDK model factory for all 17 providers, provider capability table, provider-options builder (thinking budgets, reasoning effort, cache breakpoints) | [registry-and-models.md](./registry-and-models.md) |
-| `src/models/*` | Model-catalog discovery: models.dev feed, Sayabot's own engine manifest, CLI model lists (Claude Code / Codex), live provider `/models` lists, effort ladder, listing rules, plan usage | [registry-and-models.md](./registry-and-models.md), [plan-usage.md](./plan-usage.md) |
-| `src/mcp.ts` | MCP client gateway: connects servers over http/sse/stdio, discovers and renames tools, bounded timeouts, fail-closed semantics | [mcp.md](./mcp.md) |
-| `src/mcp-oauth.ts` | OAuth 2.1 sign-in for MCP servers (discovery, dynamic registration, PKCE, refresh) with all state sealed on the `mcp_servers` row | [mcp-oauth.md](./mcp-oauth.md) |
-| `src/langfuse.ts` | Tracing: one Langfuse trace per run, generations for model steps, spans for tool steps, scores | [langfuse.md](./langfuse.md) |
-| `src/copilot.ts` | GitHub Copilot token broker: swaps a saved GitHub token for a short-lived Copilot token per call | [copilot-and-local-apps.md](./copilot-and-local-apps.md) |
-| `src/local-apps.ts` | Fixed catalog of 7 local MCP apps (Airtable, Brave Search, Resend, Firecrawl, Obsidian, Paper, Apple apps) | [copilot-and-local-apps.md](./copilot-and-local-apps.md) |
-| `src/connector-secret.ts` | Packing a connector token plus inbound-webhook secret into one plaintext string before sealing | [connector-secret.md](./connector-secret.md) |
+| Module                    | Responsibility                                                                                                                                                                          | Reference doc                                                                        |
+| :------------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------- |
+| `src/crypto.ts`           | AES-256-GCM envelope encryption (`EncryptedSecret { ciphertext, iv, tag }`), single-column sealing, KEK parsing                                                                         | [crypto.md](./crypto.md)                                                             |
+| `src/registry.ts`         | Provider → AI SDK model factory for all 17 providers, provider capability table, provider-options builder (thinking budgets, reasoning effort, cache breakpoints)                       | [registry-and-models.md](./registry-and-models.md)                                   |
+| `src/models/*`            | Model-catalog discovery: models.dev feed, Sayabot's own engine manifest, CLI model lists (Claude Code / Codex), live provider `/models` lists, effort ladder, listing rules, plan usage | [registry-and-models.md](./registry-and-models.md), [plan-usage.md](./plan-usage.md) |
+| `src/mcp.ts`              | MCP client gateway: connects servers over http/sse/stdio, discovers and renames tools, bounded timeouts, fail-closed semantics                                                          | [mcp.md](./mcp.md)                                                                   |
+| `src/mcp-oauth.ts`        | OAuth 2.1 sign-in for MCP servers (discovery, dynamic registration, PKCE, refresh) with all state sealed on the `mcp_servers` row                                                       | [mcp-oauth.md](./mcp-oauth.md)                                                       |
+| `src/langfuse.ts`         | Tracing: one Langfuse trace per run, generations for model steps, spans for tool steps, scores                                                                                          | [langfuse.md](./langfuse.md)                                                         |
+| `src/copilot.ts`          | GitHub Copilot token broker: swaps a saved GitHub token for a short-lived Copilot token per call                                                                                        | [copilot-and-local-apps.md](./copilot-and-local-apps.md)                             |
+| `src/local-apps.ts`       | Fixed catalog of 7 local MCP apps (Airtable, Brave Search, Resend, Firecrawl, Obsidian, Paper, Apple apps)                                                                              | [copilot-and-local-apps.md](./copilot-and-local-apps.md)                             |
+| `src/connector-secret.ts` | Packing a connector token plus inbound-webhook secret into one plaintext string before sealing                                                                                          | [connector-secret.md](./connector-secret.md)                                         |
 
 ---
 
@@ -83,26 +83,26 @@ flowchart LR
 
 ### Orchestrator (`apps/orchestrator`)
 
-| File | Imports | Use |
-| :-- | :-- | :-- |
-| `src/runner/llm.ts` | `createLanguageModel`, `devModelConfig`, `providerKeyToApiKey`, `sayaModelConfig` | Resolves the agent's model config into an AI SDK model for the turn |
-| `src/engine/run.ts` | `buildProviderOptions`, `flushLangfuse`, `recordStepToLangfuse`, `clampEffort`, `modelEffortLevels` | Applies effort/cache options per step and traces each step to Langfuse |
-| `src/tools/index.ts` | `connectMcpServers`, `findLocalApp`, `isDangerousMcpTool`, `mcpToolName`, `openMcpOAuthState`, `sealMcpOAuthState`, `StoredMcpOAuthProvider`, `openSecret` | Builds the MCP tool surface for a room; marks tools dangerous; refreshes OAuth tokens mid-run |
-| `src/connectors/service.ts`, `src/connectors/inbound.ts`, `discord-gateway.ts` | `decryptSecret`, `unwrapConnectorSecret` | Opens connector credentials and splits token / inbound webhook secret |
-| `src/tools/builtins/use-secret.ts`, `src/tools/secrets.ts` | `openSecret`, `sealSecret` | Secret broker: resolves `$SECRET{...}` placeholders without exposing plaintext to the model |
-| `src/usage.ts` | `listPriceFor` | Prices each run's token usage against list prices |
-| `src/runner/cli.ts`, `src/runner/cli-agent.ts` | engine catalog helpers | Runs Claude Code / Codex CLI agents with the models their account offers |
+| File                                                                           | Imports                                                                                                                                                    | Use                                                                                           |
+| :----------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------- |
+| `src/runner/llm.ts`                                                            | `createLanguageModel`, `devModelConfig`, `providerKeyToApiKey`, `sayaModelConfig`                                                                          | Resolves the agent's model config into an AI SDK model for the turn                           |
+| `src/engine/run.ts`                                                            | `buildProviderOptions`, `flushLangfuse`, `recordStepToLangfuse`, `clampEffort`, `modelEffortLevels`                                                        | Applies effort/cache options per step and traces each step to Langfuse                        |
+| `src/tools/index.ts`                                                           | `connectMcpServers`, `findLocalApp`, `isDangerousMcpTool`, `mcpToolName`, `openMcpOAuthState`, `sealMcpOAuthState`, `StoredMcpOAuthProvider`, `openSecret` | Builds the MCP tool surface for a room; marks tools dangerous; refreshes OAuth tokens mid-run |
+| `src/connectors/service.ts`, `src/connectors/inbound.ts`, `discord-gateway.ts` | `decryptSecret`, `unwrapConnectorSecret`                                                                                                                   | Opens connector credentials and splits token / inbound webhook secret                         |
+| `src/tools/builtins/use-secret.ts`, `src/tools/secrets.ts`                     | `openSecret`, `sealSecret`                                                                                                                                 | Secret broker: resolves `$SECRET{...}` placeholders without exposing plaintext to the model   |
+| `src/usage.ts`                                                                 | `listPriceFor`                                                                                                                                             | Prices each run's token usage against list prices                                             |
+| `src/runner/cli.ts`, `src/runner/cli-agent.ts`                                 | engine catalog helpers                                                                                                                                     | Runs Claude Code / Codex CLI agents with the models their account offers                      |
 
 ### Web (`apps/web`)
 
-| File | Imports | Use |
-| :-- | :-- | :-- |
-| `src/lib/provider-key-store.ts` | `encryptSecret`, `decryptSecret`, `last4` | Stores BYOK keys in `provider_keys` (three-column envelope) and shows `…1234` in UI |
-| `src/lib/model-catalog.ts` | `@sayabot/llm/models` (engine catalogs, listings, plan usage, provider model lists) | Builds the agent-model-picker payload |
-| `src/lib/mcp-oauth.ts` | `beginMcpOAuth`, `completeMcpOAuth`, `serverIdFromMcpOAuthState` | Runs the browser side of MCP sign-in; `/api/mcp/oauth/callback` completes it |
-| `src/app/api/connectors/*` | `encryptSecret`, `decryptSecret`, `unwrapConnectorSecret`, `wrapConnectorSecret`, `last4` | Connector credential storage and display |
-| `src/lib/marketplace.ts` | `LOCAL_APPS` (via `@sayabot/llm/local-apps`) | The MCP app catalog on the marketplace page |
-| `src/components/agents/*` | `EFFORT_LABELS`, `EFFORT_LEVELS`, `type EffortLevel` | Renders the effort selector |
+| File                            | Imports                                                                                   | Use                                                                                 |
+| :------------------------------ | :---------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------- |
+| `src/lib/provider-key-store.ts` | `encryptSecret`, `decryptSecret`, `last4`                                                 | Stores BYOK keys in `provider_keys` (three-column envelope) and shows `…1234` in UI |
+| `src/lib/model-catalog.ts`      | `@sayabot/llm/models` (engine catalogs, listings, plan usage, provider model lists)       | Builds the agent-model-picker payload                                               |
+| `src/lib/mcp-oauth.ts`          | `beginMcpOAuth`, `completeMcpOAuth`, `serverIdFromMcpOAuthState`                          | Runs the browser side of MCP sign-in; `/api/mcp/oauth/callback` completes it        |
+| `src/app/api/connectors/*`      | `encryptSecret`, `decryptSecret`, `unwrapConnectorSecret`, `wrapConnectorSecret`, `last4` | Connector credential storage and display                                            |
+| `src/lib/marketplace.ts`        | `LOCAL_APPS` (via `@sayabot/llm/local-apps`)                                              | The MCP app catalog on the marketplace page                                         |
+| `src/components/agents/*`       | `EFFORT_LABELS`, `EFFORT_LEVELS`, `type EffortLevel`                                      | Renders the effort selector                                                         |
 
 ---
 

@@ -17,12 +17,12 @@ Source files: `apps/computerd/src/backends/smolvm.ts`, `apps/computerd/src/egres
 
 ### Naming and paths
 
-| Constant | Value |
-| :--- | :--- |
-| `machineName(agentId)` | `saaya-${agentId}` (`smolvm.ts:82`) |
-| `GUEST_AGENTD_SOCK` | `/run/agentd.sock` (inside the VM, exposed to the host) |
-| `GUEST_EGRESS_SOCK` | `/run/saaya/egress.sock` (host socket mounted into the VM) |
-| `defaultRunDir()` | `~/.saaya/vm` (`SMOLVM_RUN_DIR`), per-machine dir `<runDir>/<agentId>` containing `ctl.sock` and `egress.sock` (`smolvm.ts:86-88`, `108-117`) |
+| Constant               | Value                                                                                                                                         |
+| :--------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------- |
+| `machineName(agentId)` | `saaya-${agentId}` (`smolvm.ts:82`)                                                                                                           |
+| `GUEST_AGENTD_SOCK`    | `/run/agentd.sock` (inside the VM, exposed to the host)                                                                                       |
+| `GUEST_EGRESS_SOCK`    | `/run/saaya/egress.sock` (host socket mounted into the VM)                                                                                    |
+| `defaultRunDir()`      | `~/.saaya/vm` (`SMOLVM_RUN_DIR`), per-machine dir `<runDir>/<agentId>` containing `ctl.sock` and `egress.sock` (`smolvm.ts:86-88`, `108-117`) |
 
 Unix socket paths are capped at ~104 bytes on macOS, so `start()` warns when the ctl path approaches the limit and suggests a shorter `SMOLVM_RUN_DIR` (`smolvm.ts:175-179`).
 
@@ -102,11 +102,11 @@ For a VM that is already running (e.g. computerd restarted), attach re-opens the
 
 ## 😴 Sleep / Remove / Describe
 
-| Operation | Behaviour |
-| :--- | :--- |
-| `sleep(agentId, timeoutSec)` (`smolvm.ts:298-309`) | `machine stop --name … -t <timeoutSec>` (60 s CLI timeout); "not running / stopped / no such machine / not found" in the output is tolerated |
+| Operation                                           | Behaviour                                                                                                                                                                                                         |
+| :-------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sleep(agentId, timeoutSec)` (`smolvm.ts:298-309`)  | `machine stop --name … -t <timeoutSec>` (60 s CLI timeout); "not running / stopped / no such machine / not found" in the output is tolerated                                                                      |
 | `remove(agentId, deleteDisk)` (`smolvm.ts:315-320`) | **A VM's disk belongs to the machine**, so "remove but keep files" is just a stop; `deleteDisk: true` runs `machine delete --name … --force`, closes the egress listener, and deletes the per-agent run directory |
-| `describe()` (`smolvm.ts:322-329`) | `isolation: "microVM (own kernel)"`, `fastPath: true`, `egress: "no network; per-agent socket → egress (proxy credential added by computerd)"`, plus the image ref |
+| `describe()` (`smolvm.ts:322-329`)                  | `isolation: "microVM (own kernel)"`, `fastPath: true`, `egress: "no network; per-agent socket → egress (proxy credential added by computerd)"`, plus the image ref                                                |
 
 ---
 
@@ -138,15 +138,15 @@ The `auto` selector uses this before trying Docker (see [backends.md](backends.m
 
 ## 🖥️ Why a microVM (and what changes vs Docker)
 
-| Concern | smolvm behaviour | Docker counterpart |
-| :--- | :--- | :--- |
-| Kernel | per-VM, attacker-controlled syscalls stay in the guest | host kernel, guarded by gVisor (optional) |
-| Network | none by construction — the mounted egress socket is the only egress | `botnet` internal bridge + proxy env vars |
-| Egress identity | HMAC proxy credential injected host-side | container IP, cached by egress (reset on reuse) |
-| Fast path | always available (`--expose-socket`) | gated on Engine ≥ 1.45 + runc + `AGENTD_CTL_ROOT` |
-| Sleep | VM stops; disk is the machine's own | container stops; disk is a named volume |
-| Remove without disk | just stops the VM | force-removes the container, keeps the volume |
-| Memory accounting | elastic (balloon), cap doubled in auto sizing | hard `Memory`/`MemorySwap` limit |
+| Concern             | smolvm behaviour                                                    | Docker counterpart                                |
+| :------------------ | :------------------------------------------------------------------ | :------------------------------------------------ |
+| Kernel              | per-VM, attacker-controlled syscalls stay in the guest              | host kernel, guarded by gVisor (optional)         |
+| Network             | none by construction — the mounted egress socket is the only egress | `botnet` internal bridge + proxy env vars         |
+| Egress identity     | HMAC proxy credential injected host-side                            | container IP, cached by egress (reset on reuse)   |
+| Fast path           | always available (`--expose-socket`)                                | gated on Engine ≥ 1.45 + runc + `AGENTD_CTL_ROOT` |
+| Sleep               | VM stops; disk is the machine's own                                 | container stops; disk is a named volume           |
+| Remove without disk | just stops the VM                                                   | force-removes the container, keeps the volume     |
+| Memory accounting   | elastic (balloon), cap doubled in auto sizing                       | hard `Memory`/`MemorySwap` limit                  |
 
 The security model consequences (credential never in the guest, no network surface to attack) are described platform-wide in the [security model](../architecture/security-model.md).
 

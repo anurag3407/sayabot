@@ -53,7 +53,8 @@ await control.query("LISTEN vault_changed")
 await startJobs()
 void import("./engine/resume").then(({ recoverStaleRuns }) =>
   recoverStaleRuns().then(
-    (res) => res.recoveredCount > 0 && console.log(`[recovery] rescued ${res.recoveredCount} stale runs`),
+    (res) =>
+      res.recoveredCount > 0 && console.log(`[recovery] rescued ${res.recoveredCount} stale runs`),
     (err) => console.error("[recovery] failed to recover stale runs", err),
   ),
 )
@@ -64,13 +65,10 @@ startRoutineScheduler()
 startMemoryScheduler()
 
 const app = createApp()
-const server = serve(
-  { fetch: app.fetch, port: env.PORT },
-  (info) => {
-    console.log(`[sayabot] orchestrator listening on :${info.port}`)
-    console.log(`[sayabot] canvas sync at ws://localhost:${info.port}/collab`)
-  },
-)
+const server = serve({ fetch: app.fetch, port: env.PORT }, (info) => {
+  console.log(`[sayabot] orchestrator listening on :${info.port}`)
+  console.log(`[sayabot] canvas sync at ws://localhost:${info.port}/collab`)
+})
 
 const wss = new WebSocketServer({ noServer: true, maxPayload: 2 * 1024 * 1024 })
 
@@ -94,7 +92,9 @@ server.on("upgrade", (req: IncomingMessage, socket: Duplex, head: Buffer) => {
     try {
       const connection = hocuspocus.handleConnection(ws, toFetchRequest(req))
       ws.on("message", (data) => connection.handleMessage(new Uint8Array(data as Buffer)))
-      ws.on("close", (code, reason) => connection.handleClose({ code, reason: reason.toString() } as CloseEvent))
+      ws.on("close", (code, reason) =>
+        connection.handleClose({ code, reason: reason.toString() } as CloseEvent),
+      )
       ws.on("pong", () => connection.touch())
       ws.on("error", (error) => console.error("[collab] socket error", error))
     } catch (error) {

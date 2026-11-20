@@ -16,17 +16,31 @@ let worktrees: string
 let tools: ReturnType<typeof workspaceTools>
 
 async function git(cwd: string, ...args: string[]) {
-  return (await exec("git", ["-C", cwd, ...args], { env: {
-    ...process.env, GIT_AUTHOR_NAME: "Test", GIT_AUTHOR_EMAIL: "test@example.invalid",
-    GIT_COMMITTER_NAME: "Test", GIT_COMMITTER_EMAIL: "test@example.invalid",
-  } })).stdout.trim()
+  return (
+    await exec("git", ["-C", cwd, ...args], {
+      env: {
+        ...process.env,
+        GIT_AUTHOR_NAME: "Test",
+        GIT_AUTHOR_EMAIL: "test@example.invalid",
+        GIT_COMMITTER_NAME: "Test",
+        GIT_COMMITTER_EMAIL: "test@example.invalid",
+      },
+    })
+  ).stdout.trim()
 }
-function local(path: string) { return path.replace(WORKTREE_ROOT, worktrees) }
+function local(path: string) {
+  return path.replace(WORKTREE_ROOT, worktrees)
+}
 async function fork() {
-  return await tools[0]!.execute({ repo }) as { repo: string; worktree: string; baseSha: string }
+  return (await tools[0]!.execute({ repo })) as { repo: string; worktree: string; baseSha: string }
 }
 async function inspect(scope: { repo: string; worktree: string; baseSha: string }, extra = {}) {
-  return await tools[1]!.execute({ repo: scope.repo, worktree: scope.worktree, baseSha: scope.baseSha, ...extra }) as Record<string, any>
+  return (await tools[1]!.execute({
+    repo: scope.repo,
+    worktree: scope.worktree,
+    baseSha: scope.baseSha,
+    ...extra,
+  })) as Record<string, any>
 }
 
 beforeEach(async () => {
@@ -45,14 +59,26 @@ beforeEach(async () => {
     // commands run unchanged inside this test's temporary directory.
     try {
       const result = await exec("/bin/sh", ["-c", args.cmd.replaceAll(WORKTREE_ROOT, worktrees)], {
-        signal, timeout: 90_000, maxBuffer: 2_000_000,
+        signal,
+        timeout: 90_000,
+        maxBuffer: 2_000_000,
       })
-      return { stdout: result.stdout.replaceAll(worktrees, WORKTREE_ROOT), stderr: result.stderr,
-        exitCode: 0, durationMs: 1, truncated: false }
+      return {
+        stdout: result.stdout.replaceAll(worktrees, WORKTREE_ROOT),
+        stderr: result.stderr,
+        exitCode: 0,
+        durationMs: 1,
+        truncated: false,
+      }
     } catch (error) {
       const result = error as { stdout?: string; stderr?: string; code?: number }
-      return { stdout: result.stdout ?? "", stderr: result.stderr ?? String(error),
-        exitCode: result.code ?? 1, durationMs: 1, truncated: false }
+      return {
+        stdout: result.stdout ?? "",
+        stderr: result.stderr ?? String(error),
+        exitCode: result.code ?? 1,
+        durationMs: 1,
+        truncated: false,
+      }
     }
   })
   tools = workspaceTools(owner)
@@ -64,9 +90,17 @@ afterEach(async () => {
 
 describe("workspace tools with real temporary git worktrees", () => {
   it("forks detached, inspects changes and never changes original files, branch or HEAD", async () => {
-    const before = { head: await git(repo, "rev-parse", "HEAD"), branch: await git(repo, "symbolic-ref", "HEAD") }
+    const before = {
+      head: await git(repo, "rev-parse", "HEAD"),
+      branch: await git(repo, "symbolic-ref", "HEAD"),
+    }
     const scope = await fork()
-    expect(scope).toMatchObject({ repo, baseSha: before.head, autoMerge: false, originalReset: false })
+    expect(scope).toMatchObject({
+      repo,
+      baseSha: before.head,
+      autoMerge: false,
+      originalReset: false,
+    })
     expect(scope.worktree).toMatch(new RegExp(`^${WORKTREE_ROOT}/[a-f0-9-]{36}$`))
     await expect(git(local(scope.worktree), "symbolic-ref", "HEAD")).rejects.toThrow()
     await writeFile(join(local(scope.worktree), "tracked.txt"), "worker change\n")
@@ -78,25 +112,32 @@ describe("workspace tools with real temporary git worktrees", () => {
     expect(result.untracked).toEqual(["new.txt"])
     expect(result.diffIncludesUntracked).toBe(false)
     expect(result.status).toContain("M  tracked.txt")
-    expect(result).toMatchObject({ autoMerge: false, originalReset: false, isolation: "git_worktree_only" })
+    expect(result).toMatchObject({
+      autoMerge: false,
+      originalReset: false,
+      isolation: "git_worktree_only",
+    })
     expect(await git(repo, "status", "--porcelain")).toBe("")
     expect(await git(repo, "rev-parse", "HEAD")).toBe(before.head)
     expect(await git(repo, "symbolic-ref", "HEAD")).toBe(before.branch)
     expect(await readFile(join(repo, "tracked.txt"), "utf8")).toBe("original\n")
     expect(client.ensure).toHaveBeenCalledWith(owner.agentId, owner.orgId, owner.profile)
-    expect(tools.map(t => t.name)).toEqual(["workspace_fork", "workspace_inspect"])
+    expect(tools.map((t) => t.name)).toEqual(["workspace_fork", "workspace_inspect"])
   })
 
-  it.each(["unstaged", "staged", "untracked"])("refuses a %s original without dropping changes", async (kind) => {
-    const file = join(repo, kind === "untracked" ? "new.txt" : "tracked.txt")
-    await writeFile(file, "must survive\n")
-    if (kind === "staged") await git(repo, "add", "tracked.txt")
-    const before = await git(repo, "status", "--porcelain")
-    await expect(fork()).rejects.toThrow("dirty")
-    expect(await readFile(file, "utf8")).toBe("must survive\n")
-    expect(await git(repo, "status", "--porcelain")).toBe(before)
-    expect(await git(repo, "worktree", "list", "--porcelain")).not.toContain(worktrees)
-  })
+  it.each(["unstaged", "staged", "untracked"])(
+    "refuses a %s original without dropping changes",
+    async (kind) => {
+      const file = join(repo, kind === "untracked" ? "new.txt" : "tracked.txt")
+      await writeFile(file, "must survive\n")
+      if (kind === "staged") await git(repo, "add", "tracked.txt")
+      const before = await git(repo, "status", "--porcelain")
+      await expect(fork()).rejects.toThrow("dirty")
+      expect(await readFile(file, "utf8")).toBe("must survive\n")
+      expect(await git(repo, "status", "--porcelain")).toBe(before)
+      expect(await git(repo, "worktree", "list", "--porcelain")).not.toContain(worktrees)
+    },
+  )
 
   it("refuses hidden assume-unchanged modifications", async () => {
     await git(repo, "update-index", "--assume-unchanged", "tracked.txt")
@@ -120,14 +161,19 @@ describe("workspace tools with real temporary git worktrees", () => {
     const scope = await fork()
     await expect(inspect({ ...scope, baseSha: "0".repeat(40) })).rejects.toThrow("does not match")
     const otherRoom = workspaceTools({ ...owner, roomId: "other-room" })
-    await expect(otherRoom[1]!.execute({ repo, worktree: scope.worktree, baseSha: scope.baseSha })).rejects.toThrow("does not match")
+    await expect(
+      otherRoom[1]!.execute({ repo, worktree: scope.worktree, baseSha: scope.baseSha }),
+    ).rejects.toThrow("does not match")
     const foreign = `${WORKTREE_ROOT}/00000000-0000-4000-8000-000000000000`
     await mkdir(local(foreign))
     await expect(inspect({ ...scope, worktree: foreign })).rejects.toThrow("failed")
     const metadata = join(worktrees, `.${scope.worktree.split("/").at(-1)}.json`)
     const forged = JSON.parse(await readFile(metadata, "utf8"))
     forged.worktree = local(foreign)
-    await writeFile(join(worktrees, ".00000000-0000-4000-8000-000000000000.json"), JSON.stringify(forged))
+    await writeFile(
+      join(worktrees, ".00000000-0000-4000-8000-000000000000.json"),
+      JSON.stringify(forged),
+    )
     // Even a copied manifest cannot turn an arbitrary directory into a worktree.
     await expect(inspect({ ...scope, worktree: foreign })).rejects.toThrow("failed")
   })
@@ -167,12 +213,19 @@ describe("workspace tools with real temporary git worktrees", () => {
   it("fails on exec errors/truncated transport output, invalid input and cancellation", async () => {
     await expect(tools[0]!.execute({ repo: "relative" })).rejects.toThrow()
     await expect(tools[0]!.execute({ repo: `${repo}\n` })).rejects.toThrow()
-    await expect(tools[1]!.execute({ repo, worktree: `${WORKTREE_ROOT}/../escape`, baseSha: "0".repeat(40) })).rejects.toThrow()
+    await expect(
+      tools[1]!.execute({ repo, worktree: `${WORKTREE_ROOT}/../escape`, baseSha: "0".repeat(40) }),
+    ).rejects.toThrow()
     const controller = new AbortController()
     controller.abort()
     await expect(tools[0]!.execute({ repo }, controller.signal)).rejects.toThrow()
     expect(client.exec).not.toHaveBeenCalled()
-    client.exec.mockResolvedValueOnce({ stdout: "{}", stderr: "git failed", exitCode: 1, truncated: false })
+    client.exec.mockResolvedValueOnce({
+      stdout: "{}",
+      stderr: "git failed",
+      exitCode: 1,
+      truncated: false,
+    })
     await expect(fork()).rejects.toThrow("git failed")
     client.exec.mockResolvedValueOnce({ stdout: "{}", stderr: "", exitCode: 0, truncated: true })
     await expect(fork()).rejects.toThrow("truncated")

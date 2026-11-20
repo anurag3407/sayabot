@@ -1,10 +1,15 @@
 "use server"
 
 import { z } from "zod"
-import { createMCPClient } from "@ai-sdk/mcp"
 import { openSecret, sealSecret } from "@sayabot/llm"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getKek } from "@/lib/env"
+import {
+  assertMcpTestable,
+  callMcpServerTool,
+  listMcpServerTools,
+  STDIO_TOOLS_MESSAGE,
+} from "@/lib/mcp-client"
 import { mcpAuthProviderFor } from "@/lib/mcp-oauth"
 import {
   adminOrgAccess,
@@ -34,7 +39,9 @@ const builtinToolSchema = z.enum([
   "terminal_sandbox",
 ])
 
-function parseHeaders(text: string): { ok: true; value: Record<string, string> } | { ok: false; error: string } {
+function parseHeaders(
+  text: string,
+): { ok: true; value: Record<string, string> } | { ok: false; error: string } {
   if (!text.trim()) return { ok: true, value: {} }
   const parsed = parseJsonObject(text)
   if (!parsed.ok) return parsed
@@ -51,14 +58,6 @@ async function loadServer(orgId: string, serverId: string) {
   const { data } = await admin.from("mcp_servers").select("*").eq("id", serverId).maybeSingle()
   if (!data || data.org_id !== orgId) return null
   return data
-}
-
-function headersFor(row: { headers_enc: string | null }): Record<string, string> {
-  if (!row.headers_enc) return {}
-  const parsed = JSON.parse(openSecret(row.headers_enc, getKek())) as {
-    headers?: Record<string, string>
-  }
-  return parsed.headers ?? {}
 }
 
 export async function addMcpServer(
@@ -165,30 +164,16 @@ export async function listMcpTools(orgSlug: string, serverId: string): Promise<A
   const row = await loadServer(check.access.org.id, serverId)
   if (!row) return fail("MCP server not found")
   if (row.transport === "stdio") {
-    return ok("This program runs when an agent uses it.", { tools: [] })
+    return ok(STDIO_TOOLS_MESSAGE, { tools: [] })
   }
-  let client
   try {
-    client = await createMCPClient({
-      transport: {
-        type: row.transport,
-        url: row.url,
-        headers: headersFor(row),
-        redirect: "error",
-        authProvider: mcpAuthProviderFor(row),
-      },
+    const tools = await listMcpServerTools(row, {
+      kek: getKek(),
+      authProvider: mcpAuthProviderFor(row),
     })
-    const result = await client.listTools()
-    return ok(`${result.tools.length} tools`, {
-      tools: result.tools.map((tool) => ({
-        name: tool.name,
-        description: tool.description ?? "",
-      })),
-    })
+    return ok(`${tools.length} tools`, { tools })
   } catch (error) {
     return fail(`Could not reach ${row.name}: ${errorMessage(error)}`)
-  } finally {
-    await client?.close().catch(() => {})
   }
 }
 
@@ -202,6 +187,12 @@ export async function invokeMcpTool(
   if ("error" in check) return fail(check.error)
   const row = await loadServer(check.access.org.id, serverId)
   if (!row) return fail("MCP server not found")
+  // A local program has no web-side transport; running it is the orchestrator's job.
+  try {
+    assertMcpTestable(row)
+  } catch (error) {
+    return fail(errorMessage(error))
+  }
   let args: Record<string, unknown> = {}
   if (argsJson.trim()) {
     try {
@@ -214,28 +205,18 @@ export async function invokeMcpTool(
       return fail("Arguments must be valid JSON")
     }
   }
-  let client
   try {
-    client = await createMCPClient({
-      transport: {
-        type: row.transport,
-        url: row.url,
-        headers: headersFor(row),
-        redirect: "error",
-        authProvider: mcpAuthProviderFor(row),
-      },
-    })
-    const result = (await client.callTool({
-      name: toolName,
-      arguments: args,
-    })) as { content?: unknown[]; isError?: boolean }
+    const result = await callMcpServerTool(
+      row,
+      { kek: getKek(), authProvider: mcpAuthProviderFor(row) },
+      toolName,
+      args,
+    )
     return ok(result.isError ? "Tool returned an error" : "Tool result", {
-      content: result.content ?? [],
+      content: result.content,
     })
   } catch (error) {
     return fail(`Tool call failed: ${errorMessage(error)}`)
-  } finally {
-    await client?.close().catch(() => {})
   }
 }
 
@@ -325,7 +306,13 @@ export async function saveOrgToolConfig(
           if (old.apiKey) config.apiKey = old.apiKey
         } catch {}
       }
-      if (!config.apiKey && provider !== "docling" && provider !== "marker" && provider !== "tesseract" && provider !== "vision_llm") {
+      if (
+        !config.apiKey &&
+        provider !== "docling" &&
+        provider !== "marker" &&
+        provider !== "tesseract" &&
+        provider !== "vision_llm"
+      ) {
         return fail(`Please enter an API key for ${provider}`)
       }
     }
@@ -409,7 +396,9 @@ export async function testWebSearchAction(
       try {
         const old = JSON.parse(openSecret(existing.config_enc, getKek()))
         apiKey = old.keys?.[provider] || (old.provider === provider ? old.apiKey : undefined)
-        if (!baseUrl) baseUrl = old.baseUrls?.[provider] || (old.provider === provider ? old.baseUrl : undefined)
+        if (!baseUrl)
+          baseUrl =
+            old.baseUrls?.[provider] || (old.provider === provider ? old.baseUrl : undefined)
       } catch {}
     }
   }
@@ -459,7 +448,9 @@ export async function fetchSearchProviderCreditsAction(
       try {
         const old = JSON.parse(openSecret(existing.config_enc, getKek()))
         apiKey = old.keys?.[provider] || (old.provider === provider ? old.apiKey : undefined)
-        if (!baseUrl) baseUrl = old.baseUrls?.[provider] || (old.provider === provider ? old.baseUrl : undefined)
+        if (!baseUrl)
+          baseUrl =
+            old.baseUrls?.[provider] || (old.provider === provider ? old.baseUrl : undefined)
       } catch {}
     }
   }
@@ -580,5 +571,9 @@ export async function setMcpServerRoomAction(input: {
     metadata: { roomId: input.roomId },
   })
   revalidateOrg(input.orgSlug)
-  return ok(input.roomId ? `${server.name} now works only in this room` : `${server.name} now works in every room`)
+  return ok(
+    input.roomId
+      ? `${server.name} now works only in this room`
+      : `${server.name} now works in every room`,
+  )
 }

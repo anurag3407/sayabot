@@ -78,7 +78,7 @@ describe("documentTools", () => {
     })
 
     expect(result.fallback).toBe(true)
-    expect(result.warning).toContain("Primary engine \"docling\" was unavailable")
+    expect(result.warning).toContain('Primary engine "docling" was unavailable')
     expect(result.provider).toBe("vision_llm")
     expect(result.markdown).toContain("Document Extract (Vision AI)")
   })

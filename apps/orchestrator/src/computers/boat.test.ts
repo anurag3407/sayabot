@@ -10,12 +10,24 @@ afterEach(async () => {
   server = null
 })
 
-function listen(handler: (body: string, url: string, method: string, auth: string) => { status: number; json: unknown }): Promise<string> {
+function listen(
+  handler: (
+    body: string,
+    url: string,
+    method: string,
+    auth: string,
+  ) => { status: number; json: unknown },
+): Promise<string> {
   server = createServer((req, res) => {
     const chunks: Buffer[] = []
     req.on("data", (chunk) => chunks.push(chunk))
     req.on("end", () => {
-      const result = handler(Buffer.concat(chunks).toString("utf8"), req.url ?? "", req.method ?? "GET", req.headers.authorization ?? "")
+      const result = handler(
+        Buffer.concat(chunks).toString("utf8"),
+        req.url ?? "",
+        req.method ?? "GET",
+        req.headers.authorization ?? "",
+      )
       res.writeHead(result.status, { "content-type": "application/json" })
       res.end(JSON.stringify(result.json))
     })
@@ -42,7 +54,10 @@ describe("BoatClient", () => {
       }
       if (url === "/sandboxes/bx_testbox1/commands") {
         const parsed = JSON.parse(body) as { detached?: boolean }
-        return { status: 200, json: parsed.detached ? { pid: "p1" } : { exitCode: 0, output: "ok" } }
+        return {
+          status: 200,
+          json: parsed.detached ? { pid: "p1" } : { exitCode: 0, output: "ok" },
+        }
       }
       return { status: 404, json: { error: "missing" } }
     })
@@ -61,7 +76,10 @@ describe("BoatClient", () => {
   it("reads the sandbox id when Boat nests it", async () => {
     const api = await listen((_body, url, method) => {
       if (url === "/sandboxes" && method === "POST") {
-        return { status: 202, json: { sandbox: { id: "bx_nested", name: "sayabot", state: "ready" } } }
+        return {
+          status: 202,
+          json: { sandbox: { id: "bx_nested", name: "sayabot", state: "ready" } },
+        }
       }
       if (url === "/sandboxes/bx_nested/resume") {
         return { status: 200, json: { sandbox: { id: "bx_nested", state: "running" } } }
@@ -79,7 +97,9 @@ describe("BoatClient", () => {
       token: "boat_test",
       api: "http://boat.test/api/v1",
       fetch: async (url, init) => {
-        expect(String(url)).toBe("http://boat.test/api/v1/sandboxes/box-1/artifacts?path=%2Ftmp%2Fsayabot-screen.jpg")
+        expect(String(url)).toBe(
+          "http://boat.test/api/v1/sandboxes/box-1/artifacts?path=%2Ftmp%2Fsayabot-screen.jpg",
+        )
         expect(new Headers(init?.headers).get("authorization")).toBe("Bearer boat_test")
         return new Response(jpeg, { status: 200, headers: { "content-type": "image/jpeg" } })
       },

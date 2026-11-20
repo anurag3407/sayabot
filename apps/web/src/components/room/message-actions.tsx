@@ -113,10 +113,17 @@ export function PokeBotButton({
   }
   return (
     <div className="mt-2 flex items-center gap-2">
-      <Button size="sm" variant="outline" disabled={state === "sending" || state === "sent"} onClick={poke}>
+      <Button
+        size="sm"
+        variant="outline"
+        disabled={state === "sending" || state === "sent"}
+        onClick={poke}
+      >
         {state === "sent" ? "Poked" : state === "sending" ? "Poking…" : `Poke @${handle}`}
       </Button>
-      {state === "failed" ? <span className="text-[12px] text-danger">Could not send the poke</span> : null}
+      {state === "failed" ? (
+        <span className="text-[12px] text-danger">Could not send the poke</span>
+      ) : null}
     </div>
   )
 }

@@ -13,13 +13,13 @@ Source files: `packages/llm/src/mcp-oauth.ts` (260 lines), `packages/llm/src/mcp
 ```typescript
 export interface McpOAuthState {
   redirectUrl: string
-  clientInformation?: OAuthClientInformation   // dynamic registration result
+  clientInformation?: OAuthClientInformation // dynamic registration result
   dynamicallyRegistered?: boolean
   authorizationServer?: OAuthAuthorizationServerInformation
-  tokens?: OAuthTokens                         // access + refresh token
-  tokensSavedAt?: number                       // when tokens.expires_in is measured from, ms since epoch
-  codeVerifier?: string                        // PKCE verifier between begin and complete
-  state?: string                               // CSRF state ("<serverId>.<nonce>")
+  tokens?: OAuthTokens // access + refresh token
+  tokensSavedAt?: number // when tokens.expires_in is measured from, ms since epoch
+  codeVerifier?: string // PKCE verifier between begin and complete
+  state?: string // CSRF state ("<serverId>.<nonce>")
 }
 ```
 
@@ -31,7 +31,8 @@ export function sealMcpOAuthState(state: McpOAuthState, kek: string): string {
 }
 export function openMcpOAuthState(sealed: string, kek: string): McpOAuthState {
   const parsed = JSON.parse(openSecret(sealed, kek)) as McpOAuthState
-  if (!parsed || typeof parsed.redirectUrl !== "string") throw new Error("Unreadable MCP sign-in state")
+  if (!parsed || typeof parsed.redirectUrl !== "string")
+    throw new Error("Unreadable MCP sign-in state")
   return parsed
 }
 ```
@@ -40,10 +41,10 @@ export function openMcpOAuthState(sealed: string, kek: string): McpOAuthState {
 
 On the database side (`packages/db/src/schema/tools.ts:16-47`):
 
-| Column | Meaning |
-| :-- | :-- |
-| `auth_kind` | `"static"` (headers or nothing) or `"oauth"` (browser sign-in, this module) |
-| `oauth_enc` | The sealed `McpOAuthState` blob |
+| Column        | Meaning                                                                                                    |
+| :------------ | :--------------------------------------------------------------------------------------------------------- |
+| `auth_kind`   | `"static"` (headers or nothing) or `"oauth"` (browser sign-in, this module)                                |
+| `oauth_enc`   | The sealed `McpOAuthState` blob                                                                            |
 | `auth_status` | `"ok"`, `"pending"` (sign-in started, waiting for the callback) or `"signed_out"` (tokens gone or refused) |
 
 ---
@@ -66,17 +67,17 @@ export function serverIdFromMcpOAuthState(state: string): string | null
 
 `StoredMcpOAuthProvider implements OAuthClientProvider` from `@ai-sdk/mcp` (`mcp-oauth.ts:81-194`). It is the bridge between the SDK's `auth()` flow and the persisted blob. Constructed with `{ serverId, state, persist, onRedirect?, clientName? }`; every mutation patches `this.current` and then **must** `persist(current)` before the promise settles.
 
-| SDK hook | Behaviour |
-| :-- | :-- |
-| `redirectUrl` / `clientMetadata` | Public client: `client_name: "Sayabot"` (or `clientName` option), `redirect_uris: [redirectUrl]`, `grant_types: ["authorization_code", "refresh_token"]`, `response_types: ["code"]`, `token_endpoint_auth_method: "none"` (`mcp-oauth.ts:98-106`) |
-| `tokens()` / `saveTokens(tokens)` | Returns the stored tokens (the SDK refreshes on a 401). Saving keeps the **old refresh token when the server sends no new one** (`tokens.refresh_token ?? current.tokens?.refresh_token`), stamps `tokensSavedAt`, and clears `codeVerifier`/`state` (`mcp-oauth.ts:118-127`) |
-| `redirectToAuthorization(url)` | Calls `onRedirect` — the web app sends the person to that URL; headless runs use it to mark the app signed out |
-| `saveCodeVerifier` / `codeVerifier` | Stores the PKCE verifier; reading a missing one throws `"Sign-in expired. Start it again."` — never an empty verifier (`mcp-oauth.ts:133-140`) |
-| `clientInformation` / `saveClientInformation` | Dynamic registration result; saving sets `dynamicallyRegistered: true` |
-| `authorizationServerInformation` / `saveAuthorizationServerInformation` | Cached auth-server metadata |
-| `validateAuthorizationServerURL(_serverUrl, authServerUrl)` | Runs `assertSafeOAuthUrl` on the *authorization server* URL — plain HTTP is refused (`mcp-oauth.ts:162-164`) |
-| `state()` / `storedState()` | Generates `<serverId>.<nonce>`, persists it, returns it |
-| `invalidateCredentials(scope)` | Clears parts of the blob per scope: `"all"`, `"client"` (+ `dynamicallyRegistered`), `"tokens"` (+ `tokensSavedAt`), or the `verifier` (`mcp-oauth.ts:176-193`) |
+| SDK hook                                                                | Behaviour                                                                                                                                                                                                                                                                     |
+| :---------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `redirectUrl` / `clientMetadata`                                        | Public client: `client_name: "Sayabot"` (or `clientName` option), `redirect_uris: [redirectUrl]`, `grant_types: ["authorization_code", "refresh_token"]`, `response_types: ["code"]`, `token_endpoint_auth_method: "none"` (`mcp-oauth.ts:98-106`)                            |
+| `tokens()` / `saveTokens(tokens)`                                       | Returns the stored tokens (the SDK refreshes on a 401). Saving keeps the **old refresh token when the server sends no new one** (`tokens.refresh_token ?? current.tokens?.refresh_token`), stamps `tokensSavedAt`, and clears `codeVerifier`/`state` (`mcp-oauth.ts:118-127`) |
+| `redirectToAuthorization(url)`                                          | Calls `onRedirect` — the web app sends the person to that URL; headless runs use it to mark the app signed out                                                                                                                                                                |
+| `saveCodeVerifier` / `codeVerifier`                                     | Stores the PKCE verifier; reading a missing one throws `"Sign-in expired. Start it again."` — never an empty verifier (`mcp-oauth.ts:133-140`)                                                                                                                                |
+| `clientInformation` / `saveClientInformation`                           | Dynamic registration result; saving sets `dynamicallyRegistered: true`                                                                                                                                                                                                        |
+| `authorizationServerInformation` / `saveAuthorizationServerInformation` | Cached auth-server metadata                                                                                                                                                                                                                                                   |
+| `validateAuthorizationServerURL(_serverUrl, authServerUrl)`             | Runs `assertSafeOAuthUrl` on the _authorization server_ URL — plain HTTP is refused (`mcp-oauth.ts:162-164`)                                                                                                                                                                  |
+| `state()` / `storedState()`                                             | Generates `<serverId>.<nonce>`, persists it, returns it                                                                                                                                                                                                                       |
+| `invalidateCredentials(scope)`                                          | Clears parts of the blob per scope: `"all"`, `"client"` (+ `dynamicallyRegistered`), `"tokens"` (+ `tokensSavedAt`), or the `verifier` (`mcp-oauth.ts:176-193`)                                                                                                               |
 
 `snapshot` returns a shallow copy of the current state, which `completeMcpOAuth` hands back to the caller for storage.
 
@@ -143,11 +144,11 @@ The orchestrator builds a `StoredMcpOAuthProvider` from the row's `oauth_enc` an
 
 Uses a dummy KEK (`Buffer.alloc(32, 7).toString("base64")`) and a fixed server UUID:
 
-| Suite | Pins |
-| :-- | :-- |
-| `isDangerousMcpTool` (re-exported from `mcp.ts`) | Exact-name gating; `"*"` gates everything; `"@writes"` passes read verbs (`search`, `get_page`, `list-issues`, `getIssue`, `fetch_doc`, `read_file`) and gates writes (`create_page`, `update_issue`, `delete_doc`, `send_email`, `listen`, `getaway`, `execute_sql`) |
-| `MCP sign-in state` | `sealMcpOAuthState` output contains no `access_token`; `openMcpOAuthState` round-trips; state format `<serverId>.<nonce>` with uuid extraction and `null` for non-uuid |
-| `StoredMcpOAuthProvider` | Every change reaches `persist`; a refresh without a new refresh token keeps the old one (`refresh_token: "r1"` survives); `state()` binds the server id and stores it; `clientMetadata` is a public client (`token_endpoint_auth_method: "none"`, the two grant types, the redirect URI); missing PKCE verifier throws `/expired/`; `validateAuthorizationServerURL` rejects plain HTTP with `/HTTPS/` |
+| Suite                                            | Pins                                                                                                                                                                                                                                                                                                                                                                                                   |
+| :----------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `isDangerousMcpTool` (re-exported from `mcp.ts`) | Exact-name gating; `"*"` gates everything; `"@writes"` passes read verbs (`search`, `get_page`, `list-issues`, `getIssue`, `fetch_doc`, `read_file`) and gates writes (`create_page`, `update_issue`, `delete_doc`, `send_email`, `listen`, `getaway`, `execute_sql`)                                                                                                                                  |
+| `MCP sign-in state`                              | `sealMcpOAuthState` output contains no `access_token`; `openMcpOAuthState` round-trips; state format `<serverId>.<nonce>` with uuid extraction and `null` for non-uuid                                                                                                                                                                                                                                 |
+| `StoredMcpOAuthProvider`                         | Every change reaches `persist`; a refresh without a new refresh token keeps the old one (`refresh_token: "r1"` survives); `state()` binds the server id and stores it; `clientMetadata` is a public client (`token_endpoint_auth_method: "none"`, the two grant types, the redirect URI); missing PKCE verifier throws `/expired/`; `validateAuthorizationServerURL` rejects plain HTTP with `/HTTPS/` |
 
 ---
 

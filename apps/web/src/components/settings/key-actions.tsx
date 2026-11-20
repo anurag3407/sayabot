@@ -44,7 +44,9 @@ export function TestKeyButton({
       {result ? (
         <span
           role="status"
-          className={result.ok ? "max-w-xs text-[12px] text-ok" : "max-w-xs text-[12px] text-danger"}
+          className={
+            result.ok ? "max-w-xs text-[12px] text-ok" : "max-w-xs text-[12px] text-danger"
+          }
         >
           {result.ok ? result.message : result.error}
         </span>

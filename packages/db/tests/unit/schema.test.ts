@@ -5,7 +5,19 @@ import * as schema from "../../src/schema/index"
 describe("drizzle schema registry", () => {
   it("exports every table group", () => {
     const names = Object.keys(schema)
-    for (const expected of ["orgs", "rooms", "agents", "messages", "tasks", "canvases", "vaultSecrets", "memories", "toolCalls", "orgRoleEnum", "providerEnum"]) {
+    for (const expected of [
+      "orgs",
+      "rooms",
+      "agents",
+      "messages",
+      "tasks",
+      "canvases",
+      "vaultSecrets",
+      "memories",
+      "toolCalls",
+      "orgRoleEnum",
+      "providerEnum",
+    ]) {
       expect(names, expected).toContain(expected)
     }
   })
@@ -40,7 +52,11 @@ describe("drizzle schema registry", () => {
 
   it("room kind / turn mode enums mirror core constants", async () => {
     const core = await import("@sayabot/core")
-    expect([...(schema.roomKindEnum as unknown as { enumValues: string[] }).enumValues].sort()).toEqual([...core.ROOM_KINDS].sort())
-    expect([...(schema.turnModeEnum as unknown as { enumValues: string[] }).enumValues].sort()).toEqual([...core.TURN_MODES].sort())
+    expect(
+      [...(schema.roomKindEnum as unknown as { enumValues: string[] }).enumValues].sort(),
+    ).toEqual([...core.ROOM_KINDS].sort())
+    expect(
+      [...(schema.turnModeEnum as unknown as { enumValues: string[] }).enumValues].sort(),
+    ).toEqual([...core.TURN_MODES].sort())
   })
 })

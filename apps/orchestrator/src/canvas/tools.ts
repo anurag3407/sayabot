@@ -66,7 +66,8 @@ export function canvasWriteTool(args: CanvasToolArgs): ToolSpec {
           if (input.content) text.insert(0, input.content)
           newText = text.toString()
         })
-        if (connection.document) await persistCanvasState(input.canvasId, connection.document, newText)
+        if (connection.document)
+          await persistCanvasState(input.canvasId, connection.document, newText)
         await recordVersion(input.canvasId, args.agentId, newText)
         return {
           ok: true,
@@ -110,9 +111,15 @@ export function canvasPatchTool(args: CanvasToolArgs): ToolSpec {
           }
           newText = text.toString()
         })
-        if (connection.document) await persistCanvasState(input.canvasId, connection.document, newText)
+        if (connection.document)
+          await persistCanvasState(input.canvasId, connection.document, newText)
         await recordVersion(input.canvasId, args.agentId, newText)
-        return { ok: true, canvasId: input.canvasId, edits: input.edits.length, characters: newText.length }
+        return {
+          ok: true,
+          canvasId: input.canvasId,
+          edits: input.edits.length,
+          characters: newText.length,
+        }
       } finally {
         await connection.disconnect()
       }
@@ -139,14 +146,12 @@ export async function restoreCanvasSnapshot(args: {
       newText = text.toString()
     })
     if (connection.document) await persistCanvasState(args.canvasId, connection.document, newText)
-    await getDb()
-      .insert(canvasVersions)
-      .values({
-        canvasId: args.canvasId,
-        authorType: "human",
-        authorId: args.userId,
-        snapshotText: newText,
-      })
+    await getDb().insert(canvasVersions).values({
+      canvasId: args.canvasId,
+      authorType: "human",
+      authorId: args.userId,
+      snapshotText: newText,
+    })
     return { characters: newText.length }
   } finally {
     await connection.disconnect()

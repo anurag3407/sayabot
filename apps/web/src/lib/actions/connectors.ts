@@ -2,8 +2,14 @@
 
 import { z } from "zod"
 import { randomBytes } from "node:crypto"
-import { S3Client, HeadBucketCommand, ListObjectsV2Command } from "@aws-sdk/client-s3"
-import { encryptSecret, decryptSecret, last4, unwrapConnectorSecret, wrapConnectorSecret } from "@sayabot/llm"
+import {
+  encryptSecret,
+  decryptSecret,
+  last4,
+  unwrapConnectorSecret,
+  wrapConnectorSecret,
+} from "@sayabot/llm"
+import { probeConnector } from "@/lib/connectors/probe"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getAppUrl, getKek } from "@/lib/env"
 import {
@@ -34,6 +40,7 @@ const connectorSourceSchema = z.enum([
   "backblaze_b2",
   "s3_storage",
   "huggingface",
+  "composio",
 ])
 
 export async function saveWorkspaceConnector(
@@ -46,7 +53,9 @@ export async function saveWorkspaceConnector(
 
   const sourceParsed = connectorSourceSchema.safeParse(field(formData, "source"))
   if (!sourceParsed.success) {
-    return fail("Choose a supported connector source (Google Drive, Slack, GitHub, Discord, Telegram, WhatsApp, 1Password, Bitwarden, Proton Pass)")
+    return fail(
+      "Choose a supported connector source (Google Drive, Slack, GitHub, Discord, Telegram, WhatsApp, 1Password, Bitwarden, Proton Pass)",
+    )
   }
   const source = sourceParsed.data
 
@@ -126,6 +135,22 @@ export async function saveWorkspaceConnector(
     const repoId = optionalField(formData, "repoId")
     if (repoId) config.repoId = repoId
   }
+  if (source === "composio") {
+    const baseUrl = optionalField(formData, "composioBaseUrl")
+    const userId = optionalField(formData, "composioUserId")
+    if (baseUrl) {
+      let parsed: URL
+      try {
+        parsed = new URL(baseUrl)
+      } catch {
+        return fail("The Composio API base URL must be an https URL")
+      }
+      if (parsed.protocol !== "https:")
+        return fail("The Composio API base URL must be an https URL")
+      config.baseUrl = `${parsed.origin}${parsed.pathname.replace(/\/+$/, "")}`
+    }
+    if (userId) config.userId = userId.slice(0, 120)
+  }
 
   const passwordSources = new Set(["onepassword", "bitwarden", "protonpass"])
   const onComputer = formData.get("onComputer") === "on" || source === "protonpass"
@@ -149,12 +174,15 @@ export async function saveWorkspaceConnector(
       if (parsed.protocol !== "https:") return fail("1Password Connect needs an https URL")
       config.connectUrl = `${parsed.origin}${parsed.pathname.replace(/\/+$/, "")}`
     }
-    if (source === "bitwarden") config.region = optionalField(formData, "region") === "eu" ? "eu" : "us"
+    if (source === "bitwarden")
+      config.region = optionalField(formData, "region") === "eu" ? "eu" : "us"
   } else if (rawToken.length < 4) {
     return fail("Access token, bot token, or service key is required")
   }
   if (source === "telegram" && !/^\d+:[A-Za-z0-9_-]{20,}$/.test(rawToken)) {
-    return fail("That doesn't look like a Telegram bot token. @BotFather gives one like 123456:ABC…")
+    return fail(
+      "That doesn't look like a Telegram bot token. @BotFather gives one like 123456:ABC…",
+    )
   }
 
   const encrypted = encryptSecret(rawToken, getKek())
@@ -177,7 +205,10 @@ export async function saveWorkspaceConnector(
     if (previousConfig.inbound && !config.inbound) config.inbound = previousConfig.inbound
     try {
       const previous = unwrapConnectorSecret(
-        decryptSecret({ ciphertext: existing.ciphertext, iv: existing.iv, tag: existing.tag }, getKek()),
+        decryptSecret(
+          { ciphertext: existing.ciphertext, iv: existing.iv, tag: existing.tag },
+          getKek(),
+        ),
       )
       if (previous.inboundSecret) {
         const again = encryptSecret(wrapConnectorSecret(rawToken, previous.inboundSecret), getKek())
@@ -270,10 +301,7 @@ export async function deleteWorkspaceConnector(input: {
     return fail("Connector not found")
   }
 
-  const { error } = await admin
-    .from("workspace_connectors")
-    .delete()
-    .eq("id", input.connectorId)
+  const { error } = await admin.from("workspace_connectors").delete().eq("id", input.connectorId)
 
   if (error) return fail(errorMessage(error))
 
@@ -332,160 +360,13 @@ export async function testWorkspaceConnector(
   }
 
   const startTime = Date.now()
-  let responseDetail = ""
 
   try {
-    if (connector.source === "google_drive") {
-      const res = await fetch("https://www.googleapis.com/drive/v3/about?fields=user", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: "application/json",
-        },
-      })
-      if (!res.ok) {
-        throw new Error(`Google API returned HTTP ${res.status}: ${await res.text()}`)
-      }
-      const data = (await res.json()) as { user?: { displayName?: string; emailAddress?: string } }
-      responseDetail = data.user?.emailAddress ? `Connected as ${data.user.emailAddress}` : "Google Drive API active"
-    } else if (connector.source === "slack") {
-      const res = await fetch("https://slack.com/api/auth.test", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: "application/json",
-        },
-      })
-      if (!res.ok) {
-        throw new Error(`Slack API returned HTTP ${res.status}: ${await res.text()}`)
-      }
-      const data = (await res.json()) as { ok: boolean; team?: string; user?: string; error?: string }
-      if (!data.ok) {
-        throw new Error(`Slack error: ${data.error ?? "unknown"}`)
-      }
-      responseDetail = `Connected to workspace "${data.team}" as @${data.user}`
-    } else if (connector.source === "github") {
-      const res = await fetch("https://api.github.com/user", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: "application/vnd.github+json",
-          "User-Agent": "Saaya-Enterprise-Connectors",
-        },
-      })
-      if (!res.ok) {
-        throw new Error(`GitHub API returned HTTP ${res.status}: ${await res.text()}`)
-      }
-      const data = (await res.json()) as { login?: string }
-      responseDetail = data.login ? `Connected as GitHub user @${data.login}` : "GitHub API active"
-    } else if (connector.source === "discord") {
-      const res = await fetch("https://discord.com/api/v10/users/@me", {
-        headers: { Authorization: `Bot ${token}`, "User-Agent": "Sayabot (https://sayabot.com, 1.0)" },
-      })
-      if (!res.ok) throw new Error(`Discord returned HTTP ${res.status}${res.status === 401 ? " (check the bot token)" : ""}`)
-      const data = (await res.json()) as { username?: string }
-      responseDetail = data.username ? `Connected as bot ${data.username}` : "Discord bot active"
-    } else if (connector.source === "telegram") {
-      // The token is part of Telegram's URL; never echo the response URL or body back.
-      const res = await fetch(`https://api.telegram.org/bot${token}/getMe`)
-      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; result?: { username?: string }; description?: string }
-      if (!res.ok || !data.ok) throw new Error(`Telegram: ${data.description ?? `HTTP ${res.status}`}`)
-      responseDetail = data.result?.username ? `Connected as @${data.result.username}` : "Telegram bot active"
-    } else if (connector.source === "onepassword" || connector.source === "bitwarden" || connector.source === "protonpass") {
-      const passwordConfig = (connector.config ?? {}) as { authMode?: string; connectUrl?: string; region?: string }
-      if (passwordConfig.authMode === "computer" || token === "desktop") {
-        responseDetail = "Saved for the app signed in on a computer with Sayabot open"
-      } else if (connector.source === "onepassword" && passwordConfig.connectUrl) {
-        const res = await fetch(`${passwordConfig.connectUrl.replace(/\/+$/, "")}/v1/vaults`, { headers: { Authorization: `Bearer ${token}` } })
-        if (!res.ok) throw new Error(`1Password Connect returned HTTP ${res.status}`)
-        responseDetail = "1Password Connect answered"
-      } else if (connector.source === "bitwarden") {
-        const host = passwordConfig.region === "eu" ? "https://api.bitwarden.eu" : "https://api.bitwarden.com"
-        const res = await fetch(`${host}/public/secrets`, { headers: { Authorization: `Bearer ${token}` } })
-        if (!res.ok) throw new Error(`Bitwarden returned HTTP ${res.status}`)
-        responseDetail = "Bitwarden Secrets Manager answered"
-      } else {
-        responseDetail = "Saved. It will run through the app on your computer."
-      }
-    } else if (connector.source === "whatsapp") {
-      const phoneNumberId = (connector.config as { phoneNumberId?: string } | null)?.phoneNumberId
-      if (!phoneNumberId) throw new Error("Phone number ID is missing")
-      const res = await fetch(
-        `https://graph.facebook.com/v21.0/${encodeURIComponent(phoneNumberId)}?fields=display_phone_number,verified_name`,
-        { headers: { Authorization: `Bearer ${token}` } },
-      )
-      const data = (await res.json().catch(() => ({}))) as {
-        display_phone_number?: string
-        verified_name?: string
-        error?: { message?: string }
-      }
-      if (!res.ok) throw new Error(`WhatsApp: ${data.error?.message ?? `HTTP ${res.status}`}`)
-      responseDetail = `Sending as ${data.verified_name ?? "business"} (${data.display_phone_number ?? phoneNumberId})`
-    } else if (connector.source === "supabase") {
-      const cfg = (connector.config ?? {}) as { projectUrl?: string; bucket?: string }
-      const projectUrl = (cfg.projectUrl || process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/+$/, "")
-      const bucket = cfg.bucket || "sayabot-storage"
-      if (!projectUrl) throw new Error("Supabase Project URL is missing")
-      const res = await fetch(`${projectUrl}/storage/v1/bucket`, {
-        headers: { Authorization: `Bearer ${token}`, apikey: token },
-      })
-      if (!res.ok) {
-        const err = await res.text()
-        throw new Error(`Supabase Storage returned HTTP ${res.status}: ${err.slice(0, 100)}`)
-      }
-      responseDetail = `Connected to Supabase bucket "${bucket}" (1 GB Free)`
-    } else if (
-      connector.source === "cloudflare_r2" ||
-      connector.source === "backblaze_b2" ||
-      connector.source === "s3_storage"
-    ) {
-      const cfg = (connector.config ?? {}) as {
-        endpoint?: string
-        accountId?: string
-        accessKeyId?: string
-        keyId?: string
-        bucket?: string
-        region?: string
-      }
-      const rawEndpoint = cfg.endpoint || (cfg.accountId ? `https://${cfg.accountId}.r2.cloudflarestorage.com` : undefined)
-      const endpoint = rawEndpoint?.startsWith("http") ? rawEndpoint : rawEndpoint ? `https://${rawEndpoint}` : undefined
-      const accessKeyId = cfg.accessKeyId || cfg.keyId
-      const bucket = cfg.bucket
-      if (!bucket) throw new Error("Bucket name is required")
-      if (!accessKeyId) throw new Error("Access Key ID / Key ID is required")
-
-      const s3 = new S3Client({
-        endpoint,
-        region: cfg.region || "auto",
-        credentials: {
-          accessKeyId,
-          secretAccessKey: token,
-        },
-      })
-
-      try {
-        await s3.send(new HeadBucketCommand({ Bucket: bucket }))
-      } catch {
-        await s3.send(new ListObjectsV2Command({ Bucket: bucket, MaxKeys: 1 }))
-      }
-
-      const label =
-        connector.source === "cloudflare_r2"
-          ? "Cloudflare R2 (10 GB Free, $0 Egress)"
-          : connector.source === "backblaze_b2"
-            ? "Backblaze B2 (10 GB Free)"
-            : "S3 Storage"
-      responseDetail = `Connected to bucket "${bucket}" on ${label}`
-    } else if (connector.source === "huggingface") {
-      const cfg = (connector.config ?? {}) as { repoId?: string }
-      const res = await fetch("https://huggingface.co/api/whoami-v2", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (!res.ok) {
-        throw new Error(`Hugging Face API returned HTTP ${res.status}`)
-      }
-      const data = (await res.json().catch(() => ({}))) as { name?: string }
-      responseDetail = `Connected to Hugging Face as @${data.name ?? "user"}${cfg.repoId ? ` (${cfg.repoId})` : ""}`
-    } else {
-      responseDetail = "Connection verified"
-    }
+    const responseDetail = await probeConnector({
+      source: connector.source,
+      token,
+      config: (connector.config ?? {}) as Record<string, unknown>,
+    })
 
     const latencyMs = Date.now() - startTime
     await admin
@@ -537,6 +418,7 @@ export async function saveAgentConnectorGrant(
   const allowedRecipientsRaw = optionalField(formData, "allowedRecipients")
   const allowedVaultsRaw = optionalField(formData, "allowedVaults")
   const allowedPrefixesRaw = optionalField(formData, "allowedPrefixes")
+  const allowedAppsRaw = optionalField(formData, "allowedApps")
 
   const scopeConfig: Record<string, unknown> = {}
   if (allowedFoldersRaw) {
@@ -574,10 +456,24 @@ export async function saveAgentConnectorGrant(
     scopeConfig.allowedRecipients = numbers
   }
   if (allowedVaultsRaw) {
-    const vaults = allowedVaultsRaw.split(/[\n,]/).map((s) => s.trim()).filter(Boolean).slice(0, 20)
+    const vaults = allowedVaultsRaw
+      .split(/[\n,]/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .slice(0, 20)
     const bad = vaults.find((name) => name.length > 80 || name.startsWith("-"))
     if (bad) return fail("That vault name isn't allowed")
     scopeConfig.allowedVaults = vaults
+  }
+  if (allowedAppsRaw) {
+    const apps = allowedAppsRaw
+      .split(/[\n,]/)
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean)
+      .slice(0, 100)
+    const bad = apps.find((slug) => !/^[a-z0-9][a-z0-9_-]{0,63}$/.test(slug))
+    if (bad) return fail(`"${bad}" isn't a Composio app slug`)
+    scopeConfig.allowedApps = apps
   }
   if (optionalField(formData, "readOnly")) scopeConfig.readOnly = true
 
@@ -612,14 +508,12 @@ export async function saveAgentConnectorGrant(
 
     if (error) return fail(errorMessage(error))
   } else {
-    const { error } = await admin
-      .from("agent_connector_grants")
-      .insert({
-        org_id: check.access.org.id,
-        agent_id: agentId,
-        connector_id: connectorId,
-        scope_config: scopeConfig,
-      })
+    const { error } = await admin.from("agent_connector_grants").insert({
+      org_id: check.access.org.id,
+      agent_id: agentId,
+      connector_id: connectorId,
+      scope_config: scopeConfig,
+    })
 
     if (error) return fail(errorMessage(error))
   }
@@ -654,10 +548,7 @@ export async function deleteAgentConnectorGrant(input: {
     return fail("Grant not found")
   }
 
-  const { error } = await admin
-    .from("agent_connector_grants")
-    .delete()
-    .eq("id", input.grantId)
+  const { error } = await admin.from("agent_connector_grants").delete().eq("id", input.grantId)
 
   if (error) return fail(errorMessage(error))
 
@@ -686,17 +577,41 @@ export async function saveConnectorChat(
   const agentId = field(formData, "agentId")
   const enabled = formData.get("enabled") === "on"
   const admin = createAdminClient()
-  const { data: connector } = await admin.from("workspace_connectors").select("*").eq("id", connectorId).maybeSingle()
+  const { data: connector } = await admin
+    .from("workspace_connectors")
+    .select("*")
+    .eq("id", connectorId)
+    .maybeSingle()
   if (!connector || connector.org_id !== check.access.org.id) return fail("Connector not found")
-  if (connector.source !== "telegram" && connector.source !== "discord" && connector.source !== "whatsapp") {
+  if (
+    connector.source !== "telegram" &&
+    connector.source !== "discord" &&
+    connector.source !== "whatsapp"
+  ) {
     return fail("Only Telegram, Discord and WhatsApp can chat with an agent")
   }
-  const { data: room } = await admin.from("rooms").select("id").eq("id", roomId).eq("org_id", check.access.org.id).maybeSingle()
+  const { data: room } = await admin
+    .from("rooms")
+    .select("id")
+    .eq("id", roomId)
+    .eq("org_id", check.access.org.id)
+    .maybeSingle()
   if (!room) return fail("Pick a room in this workspace")
-  const { data: agent } = await admin.from("agents").select("id, handle").eq("id", agentId).eq("org_id", check.access.org.id).maybeSingle()
+  const { data: agent } = await admin
+    .from("agents")
+    .select("id, handle")
+    .eq("id", agentId)
+    .eq("org_id", check.access.org.id)
+    .maybeSingle()
   if (!agent) return fail("Pick an agent in this workspace")
-  const { data: member } = await admin.from("room_agents").select("agent_id").eq("room_id", roomId).eq("agent_id", agentId).maybeSingle()
-  if (!member) return fail("Add that agent to the room first. Mention rooms only wake agents who are in them.")
+  const { data: member } = await admin
+    .from("room_agents")
+    .select("agent_id")
+    .eq("room_id", roomId)
+    .eq("agent_id", agentId)
+    .maybeSingle()
+  if (!member)
+    return fail("Add that agent to the room first. Mention rooms only wake agents who are in them.")
 
   const allowedChats = (optionalField(formData, "allowedChats") ?? "")
     .split(/[\n,]/)
@@ -708,14 +623,20 @@ export async function saveConnectorChat(
 
   let plain: string
   try {
-    plain = decryptSecret({ ciphertext: connector.ciphertext, iv: connector.iv, tag: connector.tag }, getKek())
+    plain = decryptSecret(
+      { ciphertext: connector.ciphertext, iv: connector.iv, tag: connector.tag },
+      getKek(),
+    )
   } catch {
     return fail("Could not read the saved token")
   }
   const current = unwrapConnectorSecret(plain)
   const inboundSecret = current.inboundSecret ?? randomBytes(24).toString("base64url")
   const sealed = encryptSecret(wrapConnectorSecret(current.token, inboundSecret), getKek())
-  const config = { ...((connector.config ?? {}) as Record<string, unknown>), inbound: { enabled, roomId, agentId, allowedChats } }
+  const config = {
+    ...((connector.config ?? {}) as Record<string, unknown>),
+    inbound: { enabled, roomId, agentId, allowedChats },
+  }
   const { error } = await admin
     .from("workspace_connectors")
     .update({
@@ -734,11 +655,18 @@ export async function saveConnectorChat(
     const res = await fetch(`https://api.telegram.org/bot${current.token}/${endpoint}`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(enabled ? { url: callback, secret_token: inboundSecret, allowed_updates: ["message"] } : {}),
+      body: JSON.stringify(
+        enabled ? { url: callback, secret_token: inboundSecret, allowed_updates: ["message"] } : {},
+      ),
     }).catch(() => null)
-    const data = (await res?.json().catch(() => null)) as { ok?: boolean; description?: string } | null
+    const data = (await res?.json().catch(() => null)) as {
+      ok?: boolean
+      description?: string
+    } | null
     if (!res?.ok || !data?.ok) {
-      const detail = (data?.description ?? "Telegram did not accept the webhook").split(current.token).join("[token]")
+      const detail = (data?.description ?? "Telegram did not accept the webhook")
+        .split(current.token)
+        .join("[token]")
       return fail(`Saved, but Telegram said: ${detail}`)
     }
   }
@@ -746,17 +674,21 @@ export async function saveConnectorChat(
   revalidateOrg(orgSlug)
   if (!enabled) return ok("Chat with this bot is off")
   if (connector.source === "discord") {
-    return ok(`Messages to the bot now start a turn with @${agent.handle}. Turn on Message Content Intent, and leave the Sayabot server running.`)
+    return ok(
+      `Messages to the bot now start a turn with @${agent.handle}. Turn on Message Content Intent, and leave the Sayabot server running.`,
+    )
   }
   if (connector.source === "whatsapp") {
-    return ok(`In Meta, set the callback URL to ${callback} and the verify token to the same secret that's in that URL.`)
+    return ok(
+      `In Meta, set the callback URL to ${callback} and the verify token to the same secret that's in that URL.`,
+    )
   }
-  return ok(`Telegram is pointed at this workspace. Messages to the bot start a turn with @${agent.handle}.`)
+  return ok(
+    `Telegram is pointed at this workspace. Messages to the bot start a turn with @${agent.handle}.`,
+  )
 }
 
-export async function connectBuiltinSupabaseStorage(
-  orgSlug: string,
-): Promise<ActionResult> {
+export async function connectBuiltinSupabaseStorage(orgSlug: string): Promise<ActionResult> {
   const check = await adminOrgAccess(orgSlug)
   if ("error" in check) return fail(check.error)
 

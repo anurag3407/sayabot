@@ -12,7 +12,10 @@ Source files: `packages/llm/src/connector-secret.ts` (24 lines)
 
 ```typescript
 /** A connector's stored secret is either the token itself, or a token plus a chat-webhook secret. */
-export function unwrapConnectorSecret(plain: string): { token: string; inboundSecret: string | null } {
+export function unwrapConnectorSecret(plain: string): {
+  token: string
+  inboundSecret: string | null
+} {
   const trimmed = plain.trim()
   if (trimmed.startsWith("{")) {
     try {
@@ -72,12 +75,12 @@ flowchart LR
 
 Consumers (all via `@sayabot/llm`):
 
-| Site | Direction | Use |
-| :-- | :-- | :-- |
-| `apps/web/src/lib/actions/connectors.ts:133-137, 597-599, 266` | wrap + unwrap | Saves a rotated token while preserving the existing `inboundSecret`; stores a new inbound secret by re-sealing `wrapConnectorSecret(current.token, inboundSecret)`; displays `last4` of the token |
-| `apps/web/src/app/api/messaging/[platform]/[connectorId]/route.ts:27` | unwrap | Inbound webhook route verifies the request against `inboundSecret` (never the token) |
-| `apps/orchestrator/src/connectors/inbound.ts:126` | unwrap | Orchestrator-side webhook verification |
-| `apps/orchestrator/src/connectors/discord-gateway.ts:46` | unwrap | Gateway uses the bot token; the inbound secret stays available |
+| Site                                                                  | Direction     | Use                                                                                                                                                                                               |
+| :-------------------------------------------------------------------- | :------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `apps/web/src/lib/actions/connectors.ts:133-137, 597-599, 266`        | wrap + unwrap | Saves a rotated token while preserving the existing `inboundSecret`; stores a new inbound secret by re-sealing `wrapConnectorSecret(current.token, inboundSecret)`; displays `last4` of the token |
+| `apps/web/src/app/api/messaging/[platform]/[connectorId]/route.ts:27` | unwrap        | Inbound webhook route verifies the request against `inboundSecret` (never the token)                                                                                                              |
+| `apps/orchestrator/src/connectors/inbound.ts:126`                     | unwrap        | Orchestrator-side webhook verification                                                                                                                                                            |
+| `apps/orchestrator/src/connectors/discord-gateway.ts:46`              | unwrap        | Gateway uses the bot token; the inbound secret stays available                                                                                                                                    |
 
 The orchestrator's `ConnectorService` (Tier-1 credential decryption in the [connectors guide](../../connectors.md)) decrypts and unwraps in the same two steps, keeping the token and the webhook secret on separate code paths so neither is logged or sent to the model.
 

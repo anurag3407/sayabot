@@ -27,16 +27,16 @@ The initial schema. Creates 15 enum types (`0000_...sql:1-15`): `agent_kind` (`l
 
 Creates tables:
 
-| Table | Notes |
-| :--- | :--- |
-| `orgs`, `profiles`, `org_members` | Identity core; `org_members` PK `(org_id, user_id)`. |
-| `provider_keys` | AES envelope `ciphertext`/`iv`/`tag`/`last4`. |
-| `agents`, `agent_api_keys`, `org_tool_configs` | Agents with `handle`, webhooks (`webhook_url`, `webhook_secret_enc`); API keys with `prefix` unique + `key_hash`. |
-| `rooms`, `room_members`, `room_agents` | Rooms with `turn_cap` CHECK (1–10), `moderator_agent_id`, `debate_order`. |
-| `messages`, `turn_sessions`, `agent_runs` | Messaging + orchestration core. |
-| `canvases`, `canvas_versions` | Canvas with `ydoc_state bytea`. |
-| `mcp_servers`, `tool_calls` | Tool layer. |
-| `audit_logs`, `model_pricing`, `usage_events`, `webhook_deliveries` | Ops layer; `model_pricing` PK `(provider, model)`. |
+| Table                                                               | Notes                                                                                                             |
+| :------------------------------------------------------------------ | :---------------------------------------------------------------------------------------------------------------- |
+| `orgs`, `profiles`, `org_members`                                   | Identity core; `org_members` PK `(org_id, user_id)`.                                                              |
+| `provider_keys`                                                     | AES envelope `ciphertext`/`iv`/`tag`/`last4`.                                                                     |
+| `agents`, `agent_api_keys`, `org_tool_configs`                      | Agents with `handle`, webhooks (`webhook_url`, `webhook_secret_enc`); API keys with `prefix` unique + `key_hash`. |
+| `rooms`, `room_members`, `room_agents`                              | Rooms with `turn_cap` CHECK (1–10), `moderator_agent_id`, `debate_order`.                                         |
+| `messages`, `turn_sessions`, `agent_runs`                           | Messaging + orchestration core.                                                                                   |
+| `canvases`, `canvas_versions`                                       | Canvas with `ydoc_state bytea`.                                                                                   |
+| `mcp_servers`, `tool_calls`                                         | Tool layer.                                                                                                       |
+| `audit_logs`, `model_pricing`, `usage_events`, `webhook_deliveries` | Ops layer; `model_pricing` PK `(provider, model)`.                                                                |
 
 Then adds all foreign keys (`0000_...sql:275-314`) and indexes (`0000_...sql:315-338`), including unique `agents_org_handle_idx`, `org_tool_configs_org_tool_idx`, and composite room/created-time indexes.
 
@@ -287,21 +287,21 @@ Creates `agent_reads` (PK `(agent_id, room_id)`, `last_read_at`, `updated_at`) w
 
 ## Dependency and ordering summary
 
-| After | Because |
-| :--- | :--- |
-| All Drizzle migrations before all SQL files | `src/migrate.ts` runs the Drizzle phase first; SQL scripts alter those tables. |
-| `0001_functions.sql` → `0005_ia.sql`, `0019`, `0020` | `set_updated_at()` trigger function must exist. |
-| `0002_rls.sql` helpers → most later policies | `is_org_member` / `can_read_room` / `is_room_member` are referenced by 0005–0034. |
-| `0008` after `0005` and `0007` | Extends `tasks`/`room_schedules` (0005) and `agent_reads` (0007, Drizzle 0003). |
-| `0009` after Drizzle 0000 | Uses the `provider` enum for `agent_templates.default_provider`. |
-| `0011`/`0012` after `0002` | Memory policies call the RLS helpers. |
-| `0030` after `0018` and `0024` | `messaging_inbound` references `workspace_connectors`; `desktop_secret_jobs`/`desktop_mcp_calls` reference `desktop_hosts`. |
-| `0031` after Supabase `auth` schema | `merge_guest_into_user` reads `auth.users`. |
-| `0032`/`0035` after `0024` | Extend `local_runner_jobs`. |
-| `0033` after `0002` | Member-read policies use `org_members`. |
-| `0040` after `0023` | `workspace_join_requests.invite_id` references `workspace_invites`. |
-| `0035` after Drizzle 0000 | Extends `room_agents`. |
-| `0029` standalone | `ALTER TYPE ... ADD VALUE` cannot run in a transaction, so the file contains only that statement. |
+| After                                                | Because                                                                                                                     |
+| :--------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------- |
+| All Drizzle migrations before all SQL files          | `src/migrate.ts` runs the Drizzle phase first; SQL scripts alter those tables.                                              |
+| `0001_functions.sql` → `0005_ia.sql`, `0019`, `0020` | `set_updated_at()` trigger function must exist.                                                                             |
+| `0002_rls.sql` helpers → most later policies         | `is_org_member` / `can_read_room` / `is_room_member` are referenced by 0005–0034.                                           |
+| `0008` after `0005` and `0007`                       | Extends `tasks`/`room_schedules` (0005) and `agent_reads` (0007, Drizzle 0003).                                             |
+| `0009` after Drizzle 0000                            | Uses the `provider` enum for `agent_templates.default_provider`.                                                            |
+| `0011`/`0012` after `0002`                           | Memory policies call the RLS helpers.                                                                                       |
+| `0030` after `0018` and `0024`                       | `messaging_inbound` references `workspace_connectors`; `desktop_secret_jobs`/`desktop_mcp_calls` reference `desktop_hosts`. |
+| `0031` after Supabase `auth` schema                  | `merge_guest_into_user` reads `auth.users`.                                                                                 |
+| `0032`/`0035` after `0024`                           | Extend `local_runner_jobs`.                                                                                                 |
+| `0033` after `0002`                                  | Member-read policies use `org_members`.                                                                                     |
+| `0040` after `0023`                                  | `workspace_join_requests.invite_id` references `workspace_invites`.                                                         |
+| `0035` after Drizzle 0000                            | Extends `room_agents`.                                                                                                      |
+| `0029` standalone                                    | `ALTER TYPE ... ADD VALUE` cannot run in a transaction, so the file contains only that statement.                           |
 
 Realtime publication additions across the catalog: `messages`, `tool_calls`, `canvases` (`0003`); `meetings`, `tasks`, `task_comments` (`0005`); `task_events` (`0008`).
 

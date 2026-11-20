@@ -80,9 +80,9 @@ describe("planDebateTurns", () => {
   })
 
   it("uses a single producer role for a one-agent debate", () => {
-    expect(
-      planDebateTurns({ roomAgents: agents, debateOrder: null, text: "@alice" }),
-    ).toEqual([{ agentId: "a", role: "producer" }])
+    expect(planDebateTurns({ roomAgents: agents, debateOrder: null, text: "@alice" })).toEqual([
+      { agentId: "a", role: "producer" },
+    ])
   })
 })
 
@@ -94,9 +94,9 @@ describe("orderDebateAgents", () => {
 
 describe("moderated mode", () => {
   it("honours explicit mentions", () => {
-    expect(
-      planModeratedMentions({ text: "@bob", roomAgents: agents }),
-    ).toEqual([{ agentId: "b", role: "responder" }])
+    expect(planModeratedMentions({ text: "@bob", roomAgents: agents })).toEqual([
+      { agentId: "b", role: "responder" },
+    ])
   })
 
   it("validates moderator choices and falls back to the human", () => {

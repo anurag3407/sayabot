@@ -15,20 +15,10 @@ import { orgs, profiles } from "./identity"
 import { rooms } from "./rooms"
 
 export type UnblockNeeds =
-  | "human_answer"
-  | "another_agent"
-  | "credential"
-  | "external_access"
-  | "time"
-  | "other"
+  "human_answer" | "another_agent" | "credential" | "external_access" | "time" | "other"
 
 export type OutcomeKind =
-  | "artifact"
-  | "submission"
-  | "external_change"
-  | "decision"
-  | "none"
-  | "legacy"
+  "artifact" | "submission" | "external_change" | "decision" | "none" | "legacy"
 
 export const tasks = pgTable(
   "tasks",
@@ -65,9 +55,7 @@ export const tasks = pgTable(
     }),
     createdBy: uuid("created_by").references(() => profiles.id, { onDelete: "set null" }),
     dueAt: timestamp("due_at", { withTimezone: true }),
-    statusChangedAt: timestamp("status_changed_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    statusChangedAt: timestamp("status_changed_at", { withTimezone: true }).notNull().defaultNow(),
     completedAt: timestamp("completed_at", { withTimezone: true }),
     unblockNeeds: text("unblock_needs").$type<UnblockNeeds>(),
     unblockDetail: text("unblock_detail"),
@@ -127,4 +115,3 @@ export const taskComments = pgTable(
   },
   (t) => [index("task_comments_task_idx").on(t.taskId, t.createdAt)],
 )
-

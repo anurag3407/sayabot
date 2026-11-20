@@ -1,6 +1,6 @@
 # Connector Tools
 
-Connector tools let an agent search and act on the workspace's external platforms — Google Drive, Slack, GitHub, Discord, Telegram, WhatsApp, and the password managers (1Password, Bitwarden, Proton Pass). Every tool delegates to `ConnectorService`, which decrypts the workspace connector's OAuth/API token per call (AES-256-GCM under `MESH_KEK`), validates the agent's grant in `agent_connector_grants`, and enforces the grant's scope (allowed folders, channels, repos, recipients, vaults, read-only). Reads are safe; anything that mutates the outside world — posting to Slack/Discord/Telegram/WhatsApp, reading a password — is `dangerous: true` and passes the human approval gate.
+Connector tools let an agent search and act on the workspace's external platforms — Google Drive, Slack, GitHub, Discord, Telegram, WhatsApp, the password managers (1Password, Bitwarden, Proton Pass), and the Composio connected-apps catalog (Gmail, Google Calendar, Notion, Linear, HubSpot, Jira, …). Every tool delegates to `ConnectorService`, which decrypts the workspace connector's OAuth/API token per call (AES-256-GCM under `MESH_KEK`), validates the agent's grant in `agent_connector_grants`, and enforces the grant's scope (allowed folders, channels, repos, recipients, vaults, read-only). Reads are safe; anything that mutates the outside world — posting to Slack/Discord/Telegram/WhatsApp, reading a password — is `dangerous: true` and passes the human approval gate.
 
 Source files: `apps/orchestrator/src/tools/builtins/connectors.ts`, `apps/orchestrator/src/connectors/service.ts`, `apps/orchestrator/src/connectors/types.ts`, `apps/orchestrator/src/tools/index.ts:232-260`
 
@@ -17,18 +17,25 @@ agent_connector_grants ⋈ workspace_connectors
 
 and passes the **distinct `source` list** into `connectorTools({ orgId, agentId, roomId, sources })`. Each source then contributes its tool subset (`connectors.ts:357-404`):
 
-| Source | Tools registered |
-| :--- | :--- |
-| `google_drive` | `gdrive_search`, `gdrive_read_file` |
-| `slack` | `slack_search`, `slack_read_thread`, `slack_send_message` |
-| `github` | `github_search_code`, `github_get_file`, `github_get_issue_or_pr` |
-| `discord` | `discord_list_channels`, `discord_read_messages`, `discord_send_message` |
-| `telegram` | `telegram_read_messages`, `telegram_send_message` |
-| `whatsapp` | `whatsapp_send_message`, `whatsapp_send_template` |
-| `onepassword` / `bitwarden` / `protonpass` | `<source>_search`, `<source>_read` |
-| `supabase` / `cloudflare_r2` / `backblaze_b2` / `s3_storage` / `huggingface` | `storage_list_files`, `storage_read_file`, `storage_upload_file`, `storage_delete_file` (`dangerous: true`) |
+| Source                                                                       | Tools registered                                                                                                                                                                                                                                                                            |
+| :--------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `google_drive`                                                               | `gdrive_search`, `gdrive_read_file`                                                                                                                                                                                                                                                         |
+| `slack`                                                                      | `slack_search`, `slack_read_thread`, `slack_send_message`                                                                                                                                                                                                                                   |
+| `github`                                                                     | `github_search_code`, `github_get_file`, `github_get_issue_or_pr`                                                                                                                                                                                                                           |
+| `discord`                                                                    | `discord_list_channels`, `discord_read_messages`, `discord_send_message`                                                                                                                                                                                                                    |
+| `telegram`                                                                   | `telegram_read_messages`, `telegram_send_message`                                                                                                                                                                                                                                           |
+| `whatsapp`                                                                   | `whatsapp_send_message`, `whatsapp_send_template`                                                                                                                                                                                                                                           |
+| `onepassword` / `bitwarden` / `protonpass`                                   | `<source>_search`, `<source>_read`                                                                                                                                                                                                                                                          |
+| `supabase` / `cloudflare_r2` / `backblaze_b2` / `s3_storage` / `huggingface` | `storage_list_files`, `storage_read_file` (reads); `storage_upload_file`, `storage_delete_file` (both `dangerous: true` — a write lands in a bucket the whole workspace can read) — target the connector the agent was granted (`ConnectorService.getStorageTarget`), scope from that grant |
+| `composio`                                                                   | `composio_list_apps`, `composio_search_tools` (reads), `composio_execute_tool`, `composio_connect_app` (`dangerous: true`) — see [Connected apps](../platform/connectors-apps.md)                                                                                                           |
 
 When called without `sources` (e.g. from tests), the default is `["google_drive", "slack", "github"]` (`connectors.ts:358`). Jira is reachable through the Atlassian marketplace app rather than native tools (`connectors/types.ts:13`).
+
+`tests/integration/connector-dispatch.test.ts` asserts this table against the **real** registry: it builds the agent's tool set with `buildTools()` (grants in, specs and `toAuditedTools` out) and then calls `tools[name].execute(...)`, so a tool that exists in `connectors.ts` but is never registered — or is registered with the wrong `dangerous` flag — fails the suite. Dangerous calls are approved through the same `pending_approval` row an operator sees, and grant violations are asserted to come back as `{ ok: false, error }` results with no vendor request.
+
+`tests/integration/connector-turn.test.ts` then drives the same table through a full engine turn (`runEngineTurn`) with a scripted model: the connector's tool must be in the tool list the provider receives (name, description, schema), the emitted call must be gated by approval, and its vendor result or refusal must come back in the next request's prompt. That is the layer where a registered tool can still fail to reach the model — including the `find_tools` catalog path once the tool set exceeds 40.
+
+Storage tools are built by `storageTools` when `caps.storage` is on, not by `connectorTools`. It asks `ConnectorService.getStorageTarget({ orgId, agentId, preferredProvider })` for the connector to use — the agent's granted storage connector (its `storageProvider` param wins among several), otherwise the workspace's first active one — and reads `allowedPrefixes` / `readOnly` from that same connector's grant. With no active storage connector the tool list is empty, so the storage tools never point at a provider the agent was not granted while another one is configured.
 
 ## 🔐 Scope enforcement (`src/connectors/service.ts`)
 
@@ -39,13 +46,13 @@ Every tool call runs the same two-step check inside `ConnectorService`:
 
 ```typescript
 export interface ConnectorScopeConfig {
-  allowedFolders?: string[]     // Google Drive folder ids
-  allowedChannels?: string[]    // Slack/Discord channel ids or Telegram chat ids
-  allowedRepos?: string[]       // GitHub "owner/name"
-  allowedRecipients?: string[]  // WhatsApp numbers, country code first
-  allowedVaults?: string[]      // password-manager vault names/ids
-  allowedPrefixes?: string[]    // cloud storage folder/path prefixes
-  readOnly?: boolean            // no send or mutation tools at all, even with approval
+  allowedFolders?: string[] // Google Drive folder ids
+  allowedChannels?: string[] // Slack/Discord channel ids or Telegram chat ids
+  allowedRepos?: string[] // GitHub "owner/name"
+  allowedRecipients?: string[] // WhatsApp numbers, country code first
+  allowedVaults?: string[] // password-manager vault names/ids
+  allowedPrefixes?: string[] // cloud storage folder/path prefixes
+  readOnly?: boolean // no send or mutation tools at all, even with approval
 }
 ```
 
@@ -57,17 +64,17 @@ Sends additionally pass `assertCanSend` (throws on `readOnly`) and `assertChanne
 
 **`gdrive_search`** — safe. Search files, spreadsheets and meeting notes.
 
-| Parameter | Type | Default | Description |
-| :--- | :--- | :--- | :--- |
-| `query` | string (min 1) | — | Search keywords or document title |
-| `limit` | int 1–20 | `8` | Max results |
+| Parameter | Type           | Default | Description                       |
+| :-------- | :------------- | :------ | :-------------------------------- |
+| `query`   | string (min 1) | —       | Search keywords or document title |
+| `limit`   | int 1–20       | `8`     | Max results                       |
 
 Searches within `scope.allowedFolders` (`service.ts:100-109`). Returns `{ query, count, files: [{ id, title, url, mime_type, last_modified, author }] }`.
 
 **`gdrive_read_file`** — safe.
 
-| Parameter | Type | Description |
-| :--- | :--- | :--- |
+| Parameter | Type           | Description                              |
+| :-------- | :------------- | :--------------------------------------- |
 | `file_id` | string (min 1) | Google Drive file ID from search results |
 
 Returns `{ id, title, url, content, metadata }`; scope grant is verified but folders are not re-checked for a direct read (`service.ts:111-121`).
@@ -76,29 +83,29 @@ Returns `{ id, title, url, content, metadata }`; scope grant is verified but fol
 
 **`slack_search`** — safe. Search messages across allowed channels.
 
-| Parameter | Type | Default | Description |
-| :--- | :--- | :--- | :--- |
-| `query` | string (min 1) | — | Search terms or topic |
-| `limit` | int 1–20 | `10` | Max results |
+| Parameter | Type           | Default | Description           |
+| :-------- | :------------- | :------ | :-------------------- |
+| `query`   | string (min 1) | —       | Search terms or topic |
+| `limit`   | int 1–20       | `10`    | Max results           |
 
 Returns `{ query, count, messages: [{ id, title, url, content, channel, author, thread_ts }] }`.
 
 **`slack_read_thread`** — safe.
 
-| Parameter | Type | Description |
-| :--- | :--- | :--- |
+| Parameter    | Type           | Description                       |
+| :----------- | :------------- | :-------------------------------- |
 | `channel_id` | string (min 1) | Slack channel ID (e.g. `C123456`) |
-| `thread_ts` | string (min 1) | Thread parent timestamp |
+| `thread_ts`  | string (min 1) | Thread parent timestamp           |
 
-Channel must be in `allowedChannels` when the grant restricts them, otherwise `"Access Denied: Agent is not granted access to channel <id>"` (`service.ts:152-169`). Returns `{ id, title, url, discussion, reply_count }`.
+Channel must be in `allowedChannels` when the grant restricts them, otherwise `"Access Denied: Slack channel <id> is outside this agent's allowed list (<ids>)."` (`service.ts:395`). Grant entries may be channel names; they are resolved to ids through `conversations.list` before the check, so `#general` and `C01234567` both work. Returns `{ id, title, url, discussion, reply_count }`.
 
 **`slack_send_message`** — **dangerous** (approval gate). Post as the workspace bot.
 
-| Parameter | Type | Description |
-| :--- | :--- | :--- |
-| `channel` | string (min 1) | Channel ID (`C123…`) or name without `#` |
-| `text` | string (1–40,000) | Message text (Slack mrkdwn) |
-| `thread_ts` | string | optional; reply inside that thread |
+| Parameter   | Type              | Description                              |
+| :---------- | :---------------- | :--------------------------------------- |
+| `channel`   | string (min 1)    | Channel ID (`C123…`) or name without `#` |
+| `text`      | string (1–40,000) | Message text (Slack mrkdwn)              |
+| `thread_ts` | string            | optional; reply inside that thread       |
 
 Requires a non-read-only grant and in-scope channel; returns `{ ok: true, channel, ts }`.
 
@@ -106,29 +113,29 @@ Requires a non-read-only grant and in-scope channel; returns `{ ok: true, channe
 
 **`github_search_code`** — safe. Code search across allowed repos (`scope.allowedRepos` passed to the connector, `service.ts:173-188`).
 
-| Parameter | Type | Default |
-| :--- | :--- | :--- |
-| `query` | string (min 1) | — |
-| `limit` | int 1–20 | `10` |
+| Parameter | Type           | Default |
+| :-------- | :------------- | :------ |
+| `query`   | string (min 1) | —       |
+| `limit`   | int 1–20       | `10`    |
 
 Returns `{ query, count, items: [{ id, title, url, repo, path }] }`.
 
 **`github_get_file`** — safe.
 
-| Parameter | Type | Default | Description |
-| :--- | :--- | :--- | :--- |
-| `repo` | string (min 1) | — | `owner/name` |
-| `path` | string (min 1) | — | File path relative to repo root |
-| `ref` | string | `"main"` | Branch, tag, or commit SHA |
+| Parameter | Type           | Default  | Description                     |
+| :-------- | :------------- | :------- | :------------------------------ |
+| `repo`    | string (min 1) | —        | `owner/name`                    |
+| `path`    | string (min 1) | —        | File path relative to repo root |
+| `ref`     | string         | `"main"` | Branch, tag, or commit SHA      |
 
 Repo must be in `allowedRepos` when set (`service.ts:190-212`). Returns `{ title, url, content, metadata }`.
 
 **`github_get_issue_or_pr`** — safe.
 
-| Parameter | Type | Description |
-| :--- | :--- | :--- |
-| `repo` | string (min 1) | `owner/name` |
-| `issue_number` | int ≥ 1 | Issue or PR number |
+| Parameter      | Type           | Description        |
+| :------------- | :------------- | :----------------- |
+| `repo`         | string (min 1) | `owner/name`       |
+| `issue_number` | int ≥ 1        | Issue or PR number |
 
 Same repo allowlist; returns `{ id, title, url, content, metadata }`.
 
@@ -138,27 +145,27 @@ Same repo allowlist; returns `{ id, title, url, content, metadata }`.
 
 **`discord_list_channels`** — safe.
 
-| Parameter | Type | Description |
-| :--- | :--- | :--- |
+| Parameter  | Type             | Description                                         |
+| :--------- | :--------------- | :-------------------------------------------------- |
 | `guild_id` | string, optional | Server ID; defaults to the one set on the connector |
 
 With no guild configured it returns `{ guilds: [...], channels: [] }`; otherwise `{ guilds: [], channels: [...] }` filtered to `allowedChannels` (`service.ts:291-304`).
 
 **`discord_read_messages`** — safe.
 
-| Parameter | Type | Default | Description |
-| :--- | :--- | :--- | :--- |
-| `channel_id` | string (min 1) | — | Discord channel ID |
-| `limit` | int 1–100 | `25` | Max messages, newest first |
+| Parameter    | Type           | Default | Description                |
+| :----------- | :------------- | :------ | :------------------------- |
+| `channel_id` | string (min 1) | —       | Discord channel ID         |
+| `limit`      | int 1–100      | `25`    | Max messages, newest first |
 
 Returns `{ channel_id, count, messages }`.
 
 **`discord_send_message`** — **dangerous**.
 
-| Parameter | Type | Description |
-| :--- | :--- | :--- |
-| `channel_id` | string (min 1) | Discord channel ID |
-| `content` | string (1–2,000) | Message text (Discord markdown) |
+| Parameter    | Type             | Description                     |
+| :----------- | :--------------- | :------------------------------ |
+| `channel_id` | string (min 1)   | Discord channel ID              |
+| `content`    | string (1–2,000) | Message text (Discord markdown) |
 
 `assertCanSend` + `assertChannel` apply; returns `{ ok: true, ...sent }`.
 
@@ -166,18 +173,18 @@ Returns `{ channel_id, count, messages }`.
 
 **`telegram_read_messages`** — safe.
 
-| Parameter | Type | Default | Description |
-| :--- | :--- | :--- | :--- |
-| `limit` | int 1–100 | `25` | Messages people sent the bot in the last 24 h, each with its chat ID |
+| Parameter | Type      | Default | Description                                                          |
+| :-------- | :-------- | :------ | :------------------------------------------------------------------- |
+| `limit`   | int 1–100 | `25`    | Messages people sent the bot in the last 24 h, each with its chat ID |
 
 Messages are filtered to `allowedChannels` (chat IDs) when set (`service.ts:325-330`).
 
 **`telegram_send_message`** — **dangerous**.
 
-| Parameter | Type | Description |
-| :--- | :--- | :--- |
-| `chat_id` | string (min 1) | Numeric chat ID from `telegram_read_messages`, or `@channelname` |
-| `text` | string (1–4,096) | Message text |
+| Parameter | Type             | Description                                                      |
+| :-------- | :--------------- | :--------------------------------------------------------------- |
+| `chat_id` | string (min 1)   | Numeric chat ID from `telegram_read_messages`, or `@channelname` |
+| `text`    | string (1–4,096) | Message text                                                     |
 
 Returns `{ ok: true, message_id }`.
 
@@ -185,51 +192,68 @@ Returns `{ ok: true, message_id }`.
 
 **`whatsapp_send_message`** — **dangerous**. Text from the business number; works only within the 24-hour customer service window (otherwise use the template tool).
 
-| Parameter | Type | Description |
-| :--- | :--- | :--- |
-| `to` | string (min 7) | Phone number with country code, e.g. `+14155550123` |
-| `text` | string (1–4,096) | Message text |
+| Parameter | Type             | Description                                         |
+| :-------- | :--------------- | :-------------------------------------------------- |
+| `to`      | string (min 7)   | Phone number with country code, e.g. `+14155550123` |
+| `text`    | string (1–4,096) | Message text                                        |
 
 **`whatsapp_send_template`** — **dangerous**. Sends an approved template (needed to start a conversation).
 
-| Parameter | Type | Default | Description |
-| :--- | :--- | :--- | :--- |
-| `to` | string (min 7) | — | Phone number with country code |
-| `template` | string (min 1) | — | Template name as approved in WhatsApp Manager, e.g. `hello_world` |
-| `language` | string (2–10) | `"en_US"` | Template language |
+| Parameter  | Type           | Default   | Description                                                       |
+| :--------- | :------------- | :-------- | :---------------------------------------------------------------- |
+| `to`       | string (min 7) | —         | Phone number with country code                                    |
+| `template` | string (min 1) | —         | Template name as approved in WhatsApp Manager, e.g. `hello_world` |
+| `language` | string (2–10)  | `"en_US"` | Template language                                                 |
 
 Both normalize the number (`normalizePhone`) and require it to be in `scope.allowedRecipients` when the grant restricts recipients (`service.ts:339-359`); returns `{ ok: true, message_id }`.
 
 ### Password managers (`onepassword` / `bitwarden` / `protonpass`)
 
-Two parameterized tools are generated per source (`connectors.ts:368-395`). `NATIVE_CONNECTOR_SOURCES` (`types.ts:14-24`) lists all nine native sources.
+Two parameterized tools are generated per source (`connectors.ts:368-395`). `NATIVE_CONNECTOR_SOURCES` (`types.ts:20-36`) lists every native source, including `composio`.
 
 **`<source>_search`** — safe. Find items by name; **returns titles and ids only, never the secret**.
 
-| Parameter | Type | Description |
-| :--- | :--- | :--- |
-| `query` | string (1–200) | Item name or fragment |
-| `vault` | string (≤ 80), optional | Vault name/id, when the agent is limited to some vaults |
+| Parameter | Type                    | Description                                             |
+| :-------- | :---------------------- | :------------------------------------------------------ |
+| `query`   | string (1–200)          | Item name or fragment                                   |
+| `vault`   | string (≤ 80), optional | Vault name/id, when the agent is limited to some vaults |
 
 Grant `allowedVaults` override the connector config's vault list (`service.ts:371-395`).
 
 **`<source>_read`** — **dangerous** (approval gate, because the result includes the password).
 
-| Parameter | Type | Description |
-| :--- | :--- | :--- |
-| `query` | string (1–200) | Item id or exact name from search |
-| `vault` | string (≤ 80), optional | Vault name/id |
+| Parameter | Type                    | Description                       |
+| :-------- | :---------------------- | :-------------------------------- |
+| `query`   | string (1–200)          | Item id or exact name from search |
+| `vault`   | string (≤ 80), optional | Vault name/id                     |
 
 Executes `service.queryPassword({ ..., action: "read", signal })`.
 
+### Connected apps (`composio`)
+
+Four tools, registered when the agent holds a grant on a `composio` connector (see [Connected apps](../platform/connectors-apps.md)).
+
+**`composio_list_apps`** — safe. `{ search?, limit? }`; the catalog filtered to `allowedApps`, each app with `connected` and its account status.
+
+**`composio_search_tools`** — safe. **Dangerous**, per tool: `composio_execute_tool` runs whatever the slug does, and `composio_connect_app` hands out a sign-in link.
+
+| Tool                    | Parameters                                           | Notes                                                                            |
+| :---------------------- | :--------------------------------------------------- | :------------------------------------------------------------------------------- |
+| `composio_list_apps`    | `search?` (≤ 100), `limit?` (1–100, default 50)      | filtered to `scope.allowedApps`                                                  |
+| `composio_search_tools` | `app` (slug), `query?`, `limit?` (1–100, default 25) | each result has `write: boolean` derived from the slug                           |
+| `composio_execute_tool` | `tool` (slug), `arguments?`, `connected_account_id?` | **dangerous**; `readOnly` grants refuse writes, `allowedApps` refuses other apps |
+| `composio_connect_app`  | `app` (slug)                                         | **dangerous**; returns `{ toolkit, url }` for the person to open                 |
+
+Execution always uses the workspace's Composio user (`config.userId` or `org:<orgId>`); a caller cannot pass its own `user_id`, which is what keeps one org's connected accounts out of another's reach.
+
 ## 📊 Tables, events, errors
 
-| Concern | Details |
-| :--- | :--- |
-| DB tables | `workspace_connectors` (credentials + status), `agent_connector_grants` (agent ↔ connector + `scopeConfig`); read per call |
-| Realtime events | none emitted by the tools themselves; only the standard audit events (`tool.started` / `tool.finished` / `tool.approval_requested` for dangerous sends) |
-| Secrets | tokens decrypted per call, never persisted to `tool_calls` (audit layer redacts args/results) |
-| Common errors | `"No connector configured for '<source>' in this workspace."`, `"Connector '<name>' is currently <status>."`, `"Access Denied: This agent is not granted access to this connector."`, `"Access Denied: this agent has read-only access to <Slack/Discord/…>."`, `"Access Denied: <label> <channel> is outside this agent's allowed list (…)."`, `"Access Denied: +<number> is not one of the numbers this agent may message."` |
+| Concern         | Details                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| :-------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| DB tables       | `workspace_connectors` (credentials + status), `agent_connector_grants` (agent ↔ connector + `scopeConfig`); read per call                                                                                                                                                                                                                                                                                                     |
+| Realtime events | none emitted by the tools themselves; only the standard audit events (`tool.started` / `tool.finished` / `tool.approval_requested` for dangerous sends)                                                                                                                                                                                                                                                                        |
+| Secrets         | tokens decrypted per call, never persisted to `tool_calls` (audit layer redacts args/results)                                                                                                                                                                                                                                                                                                                                  |
+| Common errors   | `"No connector configured for '<source>' in this workspace."`, `"Connector '<name>' is currently <status>."`, `"Access Denied: This agent is not granted access to this connector."`, `"Access Denied: this agent has read-only access to <Slack/Discord/…>."`, `"Access Denied: <label> <channel> is outside this agent's allowed list (…)."`, `"Access Denied: +<number> is not one of the numbers this agent may message."` |
 
 ## 🧪 Examples (from `builtins/connectors.test.ts`)
 
@@ -238,21 +262,29 @@ Executes `service.queryPassword({ ..., action: "read", signal })`.
 // (connectors.test.ts:40-57):
 const tools = connectorTools(defaultOpts)
 expect(tools.map((t) => t.name)).toEqual([
-  "gdrive_search", "gdrive_read_file",
-  "slack_search", "slack_read_thread", "slack_send_message",
-  "github_search_code", "github_get_file", "github_get_issue_or_pr",
+  "gdrive_search",
+  "gdrive_read_file",
+  "slack_search",
+  "slack_read_thread",
+  "slack_send_message",
+  "github_search_code",
+  "github_get_file",
+  "github_get_issue_or_pr",
 ])
 for (const tool of tools) {
   expect(tool.dangerous).toBe(tool.name === "slack_send_message")
 }
 
 // Messaging sources: every *_send_* tool is gated (connectors.test.ts:774-791)
-for (const tool of connectorTools({ ...defaultOpts, sources: ["discord", "telegram", "whatsapp"] })) {
+for (const tool of connectorTools({
+  ...defaultOpts,
+  sources: ["discord", "telegram", "whatsapp"],
+})) {
   expect(tool.dangerous).toBe(/_send_/.test(tool.name))
 }
 
 // Out-of-scope reads reject at the service layer, e.g.
-// "Access Denied: Agent is not granted access to channel C01234567" (connectors.test.ts:460-465)
+// "Access Denied: Slack channel C01234567 is outside this agent's allowed list (C01234567, C07654321)." (connectors.test.ts:460-465)
 ```
 
 Related docs: [./tool-system.md](./tool-system.md) · [./tool-github.md](./tool-github.md) · [./approvals.md](./approvals.md) · [./secrets-broker.md](./secrets-broker.md) · [../../database/schema-connectors-and-vault.md](../../database/schema-connectors-and-vault.md) · [../../connectors.md](../../../connectors.md)

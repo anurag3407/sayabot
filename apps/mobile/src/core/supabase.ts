@@ -81,6 +81,7 @@ function switchClient(url: string, anonKey: string): void {
 }
 
 async function loadCloudConfig(): Promise<SavedServer | null> {
+  if (!ENV.WEB_API_URL) return null
   try {
     const raw = await AsyncStorage.getItem(CLOUD_KEY)
     if (!raw) return null
@@ -93,8 +94,9 @@ async function loadCloudConfig(): Promise<SavedServer | null> {
   }
 }
 
-/** Asks Sayabot Cloud which Supabase project it signs people in on, and remembers the answer. */
+/** Asks the default server which Supabase project it signs people in on, and remembers the answer. */
 async function fetchCloudConfig(): Promise<SavedServer | null> {
+  if (!ENV.WEB_API_URL) return null
   const check = await checkServer(ENV.WEB_API_URL)
   if (!check.ok) return null
   const cloud: SavedServer = { ...check.server, webApiUrl: ENV.WEB_API_URL }
@@ -105,10 +107,8 @@ async function fetchCloudConfig(): Promise<SavedServer | null> {
 /**
  * Called once at startup, before anything signs in or subscribes.
  *
- * A self-hosted server uses its saved Supabase. Sayabot Cloud is treated the same way: its
- * Supabase comes from Cloud's /api/instance (cached), so a build made without
- * EXPO_PUBLIC_SUPABASE_URL (or with a stale one) still signs in on the right project. The
- * values baked into the build are only a fallback for a first launch with no network.
+ * A self-hosted server uses its saved Supabase.
+ * The values baked into the build are only a fallback for a first launch with no network.
  */
 export async function restoreServerClient(): Promise<SavedServer | null> {
   const saved = await loadSavedServer()
@@ -116,6 +116,7 @@ export async function restoreServerClient(): Promise<SavedServer | null> {
     switchClient(saved.supabaseUrl, saved.supabaseAnonKey)
     return saved
   }
+  if (!ENV.WEB_API_URL) return null
   const cached = await loadCloudConfig()
   if (cached) {
     switchClient(cached.supabaseUrl, cached.supabaseAnonKey)
@@ -124,7 +125,7 @@ export async function restoreServerClient(): Promise<SavedServer | null> {
     return null
   }
   if (isPlaceholderSupabaseUrl(ENV.SUPABASE_URL)) {
-    // Nothing usable built in: wait for Cloud's answer (checkServer gives up after 8 seconds).
+    // Nothing usable built in: wait for default server's answer (checkServer gives up after 8 seconds).
     const cloud = await fetchCloudConfig().catch(() => null)
     if (cloud) switchClient(cloud.supabaseUrl, cloud.supabaseAnonKey)
   } else {

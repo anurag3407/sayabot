@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./mcp": "./src/mcp.ts",
     "./local-apps": "./src/local-apps.ts",
     "./models": "./src/models/index.ts",
     "./models/effort": "./src/models/effort.ts"

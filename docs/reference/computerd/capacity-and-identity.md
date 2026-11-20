@@ -12,13 +12,13 @@ The module's docstring states the model: every agent keeps its own container, di
 
 ### Types and functions
 
-| Export | Signature | Behaviour |
-| :--- | :--- | :--- |
-| `ComputerUsage` | `{ agentId, lastUsedAt, inflight }` | per-agent usage record maintained by the lifecycle's `touch()` |
-| `autoMaxRunning` | `(memTotalBytes, memPerBotMb, fraction) => number` (`capacity.ts:19-27`) | `floor(memTotal * fraction / (memPerBotMb * 1 MiB))`, minimum 1; returns 4 for invalid input. Used when `COMPUTER_MAX_RUNNING=auto` |
-| `idleComputers` | `(usage, now, idleMs) => ComputerUsage[]` (`capacity.ts:30-36`) | computers with `inflight === 0` and `now - lastUsedAt >= idleMs` — the idle-sleep candidate set |
-| `pickEvictionVictim` | `(usage, now, graceMs) => ComputerUsage \| null` (`capacity.ts:43-51`) | among computers idle for at least `graceMs`, the one with the smallest `lastUsedAt`. A computer used within the grace window is **protected**: between tool calls the model may think for many seconds, and evicting then would kill background work |
-| `Mutex` | `lock(): Promise<() => void>` (`capacity.ts:54-67`) | minimal promise-chain mutex so concurrent admissions cannot overshoot the cap |
+| Export               | Signature                                                                | Behaviour                                                                                                                                                                                                                                            |
+| :------------------- | :----------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ComputerUsage`      | `{ agentId, lastUsedAt, inflight }`                                      | per-agent usage record maintained by the lifecycle's `touch()`                                                                                                                                                                                       |
+| `autoMaxRunning`     | `(memTotalBytes, memPerBotMb, fraction) => number` (`capacity.ts:19-27`) | `floor(memTotal * fraction / (memPerBotMb * 1 MiB))`, minimum 1; returns 4 for invalid input. Used when `COMPUTER_MAX_RUNNING=auto`                                                                                                                  |
+| `idleComputers`      | `(usage, now, idleMs) => ComputerUsage[]` (`capacity.ts:30-36`)          | computers with `inflight === 0` and `now - lastUsedAt >= idleMs` — the idle-sleep candidate set                                                                                                                                                      |
+| `pickEvictionVictim` | `(usage, now, graceMs) => ComputerUsage \| null` (`capacity.ts:43-51`)   | among computers idle for at least `graceMs`, the one with the smallest `lastUsedAt`. A computer used within the grace window is **protected**: between tool calls the model may think for many seconds, and evicting then would kill background work |
+| `Mutex`              | `lock(): Promise<() => void>` (`capacity.ts:54-67`)                      | minimal promise-chain mutex so concurrent admissions cannot overshoot the cap                                                                                                                                                                        |
 
 ### How the numbers combine
 
@@ -34,26 +34,26 @@ The lifecycle applies these through `maxRunning()` (cached after first computati
 
 The policy rations **running computers**, not existence:
 
-| Resource | Policy |
-| :--- | :--- |
-| Containers / VMs running at once | capped by `maxRunning` (admission + eviction) |
-| Disks (`/home/bot`) | one per agent, never shared, never rationed — they persist through sleep, eviction, and computerd restarts |
-| Network identity | one per agent (container IP on Docker, proxy credential on smolvm) |
-| In-flight calls | tracked per agent (`inflight`) only to protect busy computers from eviction/sleep |
+| Resource                         | Policy                                                                                                     |
+| :------------------------------- | :--------------------------------------------------------------------------------------------------------- |
+| Containers / VMs running at once | capped by `maxRunning` (admission + eviction)                                                              |
+| Disks (`/home/bot`)              | one per agent, never shared, never rationed — they persist through sleep, eviction, and computerd restarts |
+| Network identity                 | one per agent (container IP on Docker, proxy credential on smolvm)                                         |
+| In-flight calls                  | tracked per agent (`inflight`) only to protect busy computers from eviction/sleep                          |
 
 The `Mutex` matters because admission is not atomic otherwise: two concurrent `ensure` calls could both count the same free slot and overshoot the cap. Every admission decision is made while holding the mutex, and booting computers are counted through the `reserved` set even though they do not yet appear in `backend.listRunning()`.
 
 ### Defaults recap
 
-| Env var | Default | Feeds into |
-| :--- | :--- | :--- |
-| `COMPUTER_MAX_RUNNING` | `auto` | fixed cap or auto sizing |
-| `COMPUTER_MEM_MB` | `1024` | memory per computer |
-| `COMPUTER_MEM_FRACTION` | `0.6` (clamped 0.05–0.95) | share of host memory usable |
-| `COMPUTER_IDLE_MS` | `600_000` | idle sleep threshold |
-| `COMPUTER_EVICT_GRACE_MS` | `60_000` | LRU protection window |
-| `COMPUTER_ADMIT_TIMEOUT_MS` | `60_000` | admission deadline before HTTP 503 |
-| `E2B_MAX_RUNNING` | `20` | e2b cap |
+| Env var                     | Default                   | Feeds into                         |
+| :-------------------------- | :------------------------ | :--------------------------------- |
+| `COMPUTER_MAX_RUNNING`      | `auto`                    | fixed cap or auto sizing           |
+| `COMPUTER_MEM_MB`           | `1024`                    | memory per computer                |
+| `COMPUTER_MEM_FRACTION`     | `0.6` (clamped 0.05–0.95) | share of host memory usable        |
+| `COMPUTER_IDLE_MS`          | `600_000`                 | idle sleep threshold               |
+| `COMPUTER_EVICT_GRACE_MS`   | `60_000`                  | LRU protection window              |
+| `COMPUTER_ADMIT_TIMEOUT_MS` | `60_000`                  | admission deadline before HTTP 503 |
+| `E2B_MAX_RUNNING`           | `20`                      | e2b cap                            |
 
 `GET /v1/capacity` on computerd surfaces the result: backend, effective `maxRunning`, running count, idle window, and per-computer `inflight` / `idleForMs` / transport.
 
@@ -87,11 +87,11 @@ export class ProxyIdentity {
 }
 ```
 
-| Method | Definition | Purpose |
-| :--- | :--- | :--- |
-| `secret(agentId)` | `HMAC-SHA256(key, "saaya-egress:" + agentId)` as hex (`identity.ts:16-18`) | the per-agent credential value |
-| `secretHash(agentId)` | `SHA-256(secret)` hex (`identity.ts:21-23`) | the same hash the orchestrator computes (`hashAgentApiKey` in `@sayabot/core`); the orchestrator stores **only the hash** |
-| `proxyAuthorization(agentId)` | `Basic base64("saaya:" + secret)` (`identity.ts:25-27`) | the literal header value computerd injects into proxied traffic |
+| Method                        | Definition                                                                 | Purpose                                                                                                                   |
+| :---------------------------- | :------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------ |
+| `secret(agentId)`             | `HMAC-SHA256(key, "saaya-egress:" + agentId)` as hex (`identity.ts:16-18`) | the per-agent credential value                                                                                            |
+| `secretHash(agentId)`         | `SHA-256(secret)` hex (`identity.ts:21-23`)                                | the same hash the orchestrator computes (`hashAgentApiKey` in `@sayabot/core`); the orchestrator stores **only the hash** |
+| `proxyAuthorization(agentId)` | `Basic base64("saaya:" + secret)` (`identity.ts:25-27`)                    | the literal header value computerd injects into proxied traffic                                                           |
 
 Design properties (from the module docstring):
 
@@ -139,7 +139,7 @@ A 16 GB host with defaults (`COMPUTER_MEM_MB=1024`, `COMPUTER_MEM_FRACTION=0.6`)
 5. Ten minutes of silence later, the 30-second sweep puts agent 1 (idle ≥ `COMPUTER_IDLE_MS`) to sleep as well.
 6. Agent 3's next call goes through `ensure` → the computer is not in `ready` → `backend.start()` boots it again in about a second (Docker) or ~1 s VM boot (smolvm) — same disk, same identity, no admission wait because a slot is free.
 
-Failure path: if all computers are *in flight* (nobody evictable) for the whole `COMPUTER_ADMIT_TIMEOUT_MS` (60 s), agent 10's request fails with `CapacityError` → HTTP 503 with the message naming `COMPUTER_MAX_RUNNING` as the knob.
+Failure path: if all computers are _in flight_ (nobody evictable) for the whole `COMPUTER_ADMIT_TIMEOUT_MS` (60 s), agent 10's request fails with `CapacityError` → HTTP 503 with the message naming `COMPUTER_MAX_RUNNING` as the knob.
 
 ---
 

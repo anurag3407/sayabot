@@ -105,16 +105,23 @@ export class ComputerClient {
       } catch {
         // ignore
       }
-      throw new Error(`Computerd error (${res.status} ${res.statusText}): ${errBody || "Unknown error"}`)
+      throw new Error(
+        `Computerd error (${res.status} ${res.statusText}): ${errBody || "Unknown error"}`,
+      )
     }
 
     const data: unknown = await res.json()
-    if (!data || typeof data !== "object" || Array.isArray(data)) throw new Error("Invalid computerd response")
+    if (!data || typeof data !== "object" || Array.isArray(data))
+      throw new Error("Invalid computerd response")
     if ("error" in data) throw new Error(`Computerd error: ${String(data.error)}`)
     return data as T
   }
 
-  async ensure(agentId: string, orgId: string, profile: "standard" | "browser"): Promise<{ status: string; ip?: string }> {
+  async ensure(
+    agentId: string,
+    orgId: string,
+    profile: "standard" | "browser",
+  ): Promise<{ status: string; ip?: string }> {
     return this.request<{ status: string; ip?: string }>(`/v1/computers/${agentId}/ensure`, {
       method: "POST",
       body: JSON.stringify({ orgId, profile }),
@@ -166,7 +173,8 @@ export class ComputerClient {
     const consume = (line: string) => {
       if (!line.trim()) return
       const frame = JSON.parse(line)
-      if (!frame || typeof frame !== "object" || Array.isArray(frame)) throw new Error("Invalid exec frame")
+      if (!frame || typeof frame !== "object" || Array.isArray(frame))
+        throw new Error("Invalid exec frame")
       if ("error" in frame) throw new Error(`Execution failed: ${String(frame.error)}`)
       if (exitCode !== undefined) throw new Error("Unexpected frame after exec exit")
       if (frame.t === "out" || frame.t === "err") {
@@ -175,9 +183,15 @@ export class ComputerClient {
         else stderr += frame.d
         args.onChunk?.(frame.d)
       } else if (frame.t === "exit") {
-        if (!Number.isInteger(frame.code) || frame.code < 0 || frame.code > 255) throw new Error("Invalid exec exit code")
-        if (frame.durationMs !== undefined && (!Number.isFinite(frame.durationMs) || frame.durationMs < 0)) throw new Error("Invalid exec duration")
-        if (frame.truncated !== undefined && typeof frame.truncated !== "boolean") throw new Error("Invalid exec truncation flag")
+        if (!Number.isInteger(frame.code) || frame.code < 0 || frame.code > 255)
+          throw new Error("Invalid exec exit code")
+        if (
+          frame.durationMs !== undefined &&
+          (!Number.isFinite(frame.durationMs) || frame.durationMs < 0)
+        )
+          throw new Error("Invalid exec duration")
+        if (frame.truncated !== undefined && typeof frame.truncated !== "boolean")
+          throw new Error("Invalid exec truncation flag")
         exitCode = frame.code
         durationMs = frame.durationMs ?? 0
         truncated = frame.truncated ?? false
@@ -207,10 +221,7 @@ export class ComputerClient {
     }
   }
 
-  async readFile(
-    agentId: string,
-    args: ReadFileArgs,
-  ): Promise<FilePage> {
+  async readFile(agentId: string, args: ReadFileArgs): Promise<FilePage> {
     return this.request(`/v1/computers/${agentId}/files/read`, {
       method: "POST",
       body: JSON.stringify(args),
@@ -219,7 +230,13 @@ export class ComputerClient {
 
   async writeFile(
     agentId: string,
-    args: { path: string; content: string; encoding?: "utf8" | "base64"; mode?: number; allowOverwriteLarge?: boolean },
+    args: {
+      path: string
+      content: string
+      encoding?: "utf8" | "base64"
+      mode?: number
+      allowOverwriteLarge?: boolean
+    },
   ): Promise<{ bytes: number }> {
     return this.request(`/v1/computers/${agentId}/files/write`, {
       method: "POST",
@@ -227,16 +244,39 @@ export class ComputerClient {
     })
   }
 
-  async editFile(agentId: string, args: EditFileArgs): Promise<{ ok: boolean; path: string; bytes: number; hash: string; previousHash: string; replacements: number; matchMode: string }> {
-    return this.request(`/v1/computers/${agentId}/files/edit`, { method: "POST", body: JSON.stringify(args) })
+  async editFile(
+    agentId: string,
+    args: EditFileArgs,
+  ): Promise<{
+    ok: boolean
+    path: string
+    bytes: number
+    hash: string
+    previousHash: string
+    replacements: number
+    matchMode: string
+  }> {
+    return this.request(`/v1/computers/${agentId}/files/edit`, {
+      method: "POST",
+      body: JSON.stringify(args),
+    })
   }
 
   async applyPatch(agentId: string, args: ApplyPatchArgs): Promise<ApplyPatchResult> {
-    return this.request(`/v1/computers/${agentId}/files/patch`, { method: "POST", body: JSON.stringify(args) })
+    return this.request(`/v1/computers/${agentId}/files/patch`, {
+      method: "POST",
+      body: JSON.stringify(args),
+    })
   }
 
-  async codeIntelligence(agentId: string, args: CodeIntelligenceArgs): Promise<Record<string, unknown>> {
-    return this.request(`/v1/computers/${agentId}/code`, { method: "POST", body: JSON.stringify(args) })
+  async codeIntelligence(
+    agentId: string,
+    args: CodeIntelligenceArgs,
+  ): Promise<Record<string, unknown>> {
+    return this.request(`/v1/computers/${agentId}/code`, {
+      method: "POST",
+      body: JSON.stringify(args),
+    })
   }
 
   async listFiles(
@@ -249,7 +289,11 @@ export class ComputerClient {
     })
   }
 
-  async browser(agentId: string, action: string, params: Record<string, unknown>): Promise<unknown> {
+  async browser(
+    agentId: string,
+    action: string,
+    params: Record<string, unknown>,
+  ): Promise<unknown> {
     return this.request(`/v1/computers/${agentId}/browser`, {
       method: "POST",
       body: JSON.stringify({ action, ...params }),

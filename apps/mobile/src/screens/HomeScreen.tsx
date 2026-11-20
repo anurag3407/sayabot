@@ -14,7 +14,17 @@ import {
 } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { BlurView } from "expo-blur"
-import { Archive, Bell, ChevronDown, Hash, MessageCirclePlus, Pin, Plus, Search, X } from "lucide-react-native"
+import {
+  Archive,
+  Bell,
+  ChevronDown,
+  Hash,
+  MessageCirclePlus,
+  Pin,
+  Plus,
+  Search,
+  X,
+} from "lucide-react-native"
 import { currentWebApiUrl } from "../core/settings"
 import { supabase } from "../core/supabase"
 import { shortTime, useHome, type HomeAgent, type HomeChat } from "../hooks/useHome"
@@ -132,7 +142,12 @@ function ChatRow({
       <View style={{ flex: 1, minWidth: 0 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           {chat.pinned ? <Pin size={12} color={theme.faint} /> : null}
-          <Text variant="headline" numberOfLines={1} style={{ flex: 1 }} weight={chat.unread ? "700" : "600"}>
+          <Text
+            variant="headline"
+            numberOfLines={1}
+            style={{ flex: 1 }}
+            weight={chat.unread ? "700" : "600"}
+          >
             {chat.name}
           </Text>
           <Text variant="caption" tone={chat.unread ? "accent" : "faint"}>
@@ -140,11 +155,24 @@ function ChatRow({
           </Text>
         </View>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 2 }}>
-          <Text variant="subhead" tone={working ? "accent" : chat.unread ? "text" : "muted"} numberOfLines={2} style={{ flex: 1 }}>
+          <Text
+            variant="subhead"
+            tone={working ? "accent" : chat.unread ? "text" : "muted"}
+            numberOfLines={2}
+            style={{ flex: 1 }}
+          >
             {preview}
           </Text>
           {chat.questions ? (
-            <View style={{ paddingHorizontal: 7, height: 20, borderRadius: 10, backgroundColor: theme.warnSoft, justifyContent: "center" }}>
+            <View
+              style={{
+                paddingHorizontal: 7,
+                height: 20,
+                borderRadius: 10,
+                backgroundColor: theme.warnSoft,
+                justifyContent: "center",
+              }}
+            >
               <Text variant="caption" tone="warn" weight="700">
                 {chat.questions} ?
               </Text>
@@ -180,15 +208,24 @@ export function HomeScreen({ navigation, route }: any) {
   const chats = data?.chats ?? []
   const results = q
     ? {
-        chats: chats.filter((c) => c.name.toLowerCase().includes(q) || c.lastMessage?.preview.toLowerCase().includes(q)),
-        agents: (data?.agents ?? []).filter((a) => a.name.toLowerCase().includes(q) || a.handle.includes(q)),
+        chats: chats.filter(
+          (c) =>
+            c.name.toLowerCase().includes(q) || c.lastMessage?.preview.toLowerCase().includes(q),
+        ),
+        agents: (data?.agents ?? []).filter(
+          (a) => a.name.toLowerCase().includes(q) || a.handle.includes(q),
+        ),
       }
     : null
 
-  const openChat = (chat: { id: string; name: string }) => navigation.navigate("Chat", { roomId: chat.id, roomName: chat.name, orgSlug })
+  const openChat = (chat: { id: string; name: string }) =>
+    navigation.navigate("Chat", { roomId: chat.id, roomName: chat.name, orgSlug })
   const openAgent = (agent: HomeAgent) => navigation.navigate("AgentProfile", { agent, orgSlug })
 
-  async function setRead(chat: HomeChat, patch: { pinned?: boolean; archived?: boolean; markRead?: boolean }) {
+  async function setRead(
+    chat: HomeChat,
+    patch: { pinned?: boolean; archived?: boolean; markRead?: boolean },
+  ) {
     const {
       data: { user },
     } = await supabase.auth.getUser()
@@ -207,7 +244,11 @@ export function HomeScreen({ navigation, route }: any) {
     void refresh()
   }
 
-  const smallTitleOpacity = scrollY.interpolate({ inputRange: [40, 70], outputRange: [0, 1], extrapolate: "clamp" })
+  const smallTitleOpacity = scrollY.interpolate({
+    inputRange: [40, 70],
+    outputRange: [0, 1],
+    extrapolate: "clamp",
+  })
   const headerHeight = insets.top + 52
 
   const header = (
@@ -405,7 +446,11 @@ export function HomeScreen({ navigation, route }: any) {
         </View>
       ) : null}
       {error && !data ? (
-        <Text variant="footnote" tone="danger" style={{ marginHorizontal: space.lg, marginBottom: space.md }}>
+        <Text
+          variant="footnote"
+          tone="danger"
+          style={{ marginHorizontal: space.lg, marginBottom: space.md }}
+        >
           {error}
         </Text>
       ) : null}
@@ -419,7 +464,12 @@ export function HomeScreen({ navigation, route }: any) {
         keyExtractor={(c) => c.id}
         ListHeaderComponent={header}
         renderItem={({ item }) => (
-          <ChatRow chat={item} agents={agents} onPress={() => openChat(item)} onLongPress={() => setActionsFor(item)} />
+          <ChatRow
+            chat={item}
+            agents={agents}
+            onPress={() => openChat(item)}
+            onLongPress={() => setActionsFor(item)}
+          />
         )}
         ListEmptyComponent={
           loading && !data ? null : (
@@ -432,7 +482,9 @@ export function HomeScreen({ navigation, route }: any) {
           )
         }
         contentContainerStyle={{ paddingBottom: 140 }}
-        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}
+        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
+          useNativeDriver: true,
+        })}
         scrollEventThrottle={16}
         refreshControl={
           <RefreshControl
@@ -450,36 +502,76 @@ export function HomeScreen({ navigation, route }: any) {
       />
 
       {/* Compact bar: small title fades in once the big title scrolls under it. */}
-      <View style={[StyleSheet.absoluteFillObject, { height: headerHeight, bottom: undefined }]} pointerEvents="box-none">
-        <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: smallTitleOpacity }]} pointerEvents="none">
+      <View
+        style={[StyleSheet.absoluteFillObject, { height: headerHeight, bottom: undefined }]}
+        pointerEvents="box-none"
+      >
+        <Animated.View
+          style={[StyleSheet.absoluteFillObject, { opacity: smallTitleOpacity }]}
+          pointerEvents="none"
+        >
           {Platform.OS === "ios" ? (
-            <BlurView tint={theme.dark ? "dark" : "light"} intensity={60} style={StyleSheet.absoluteFillObject} />
+            <BlurView
+              tint={theme.dark ? "dark" : "light"}
+              intensity={60}
+              style={StyleSheet.absoluteFillObject}
+            />
           ) : (
-            <View style={[StyleSheet.absoluteFillObject, { backgroundColor: theme.bg, opacity: 0.96 }]} />
+            <View
+              style={[StyleSheet.absoluteFillObject, { backgroundColor: theme.bg, opacity: 0.96 }]}
+            />
           )}
-          <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: StyleSheet.hairlineWidth, backgroundColor: theme.line }} />
+          <View
+            style={{
+              position: "absolute",
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: StyleSheet.hairlineWidth,
+              backgroundColor: theme.line,
+            }}
+          />
         </Animated.View>
-        <View style={{ marginTop: insets.top, height: 52, flexDirection: "row", alignItems: "center", paddingHorizontal: space.lg }}>
+        <View
+          style={{
+            marginTop: insets.top,
+            height: 52,
+            flexDirection: "row",
+            alignItems: "center",
+            paddingHorizontal: space.lg,
+          }}
+        >
           <Animated.View style={{ flex: 1, opacity: smallTitleOpacity }}>
             <Text variant="headline" center>
               Chats
             </Text>
           </Animated.View>
           <View style={{ position: "absolute", right: space.lg }}>
-            <IconButton label="New chat" icon={<MessageCirclePlus size={19} color={theme.text} />} onPress={() => setNewChatOpen(true)} />
+            <IconButton
+              label="New chat"
+              icon={<MessageCirclePlus size={19} color={theme.text} />}
+              onPress={() => setNewChatOpen(true)}
+            />
           </View>
         </View>
       </View>
 
       {/* Search results replace the list in place while typing. */}
       {results ? (
-        <View style={[StyleSheet.absoluteFillObject, { top: headerHeight, backgroundColor: theme.bg }]}>
+        <View
+          style={[StyleSheet.absoluteFillObject, { top: headerHeight, backgroundColor: theme.bg }]}
+        >
           <FlatList
-            data={[...results.agents.map((a) => ({ type: "agent" as const, a })), ...results.chats.map((c) => ({ type: "chat" as const, c }))]}
+            data={[
+              ...results.agents.map((a) => ({ type: "agent" as const, a })),
+              ...results.chats.map((c) => ({ type: "chat" as const, c })),
+            ]}
             keyExtractor={(item) => (item.type === "agent" ? `a-${item.a.id}` : `c-${item.c.id}`)}
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={{ paddingBottom: 160 }}
-            ListEmptyComponent={<EmptyState title="Nothing found" body={`No chat or agent matches “${query}”.`} />}
+            ListEmptyComponent={
+              <EmptyState title="Nothing found" body={`No chat or agent matches “${query}”.`} />
+            }
             renderItem={({ item }) =>
               item.type === "agent" ? (
                 <Row
@@ -509,7 +601,17 @@ export function HomeScreen({ navigation, route }: any) {
       ) : null}
 
       {/* Bottom search: where the thumb is, riding on the keyboard. */}
-      <View style={{ position: "absolute", left: space.lg, right: space.lg, bottom: space.md, flexDirection: "row", alignItems: "center", gap: 8 }}>
+      <View
+        style={{
+          position: "absolute",
+          left: space.lg,
+          right: space.lg,
+          bottom: space.md,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 8,
+        }}
+      >
         <View
           style={{
             flex: 1,
@@ -525,9 +627,18 @@ export function HomeScreen({ navigation, route }: any) {
           }}
         >
           {Platform.OS === "ios" ? (
-            <BlurView tint={theme.dark ? "dark" : "light"} intensity={70} style={StyleSheet.absoluteFillObject} />
+            <BlurView
+              tint={theme.dark ? "dark" : "light"}
+              intensity={70}
+              style={StyleSheet.absoluteFillObject}
+            />
           ) : (
-            <View style={[StyleSheet.absoluteFillObject, { backgroundColor: theme.card, opacity: 0.97 }]} />
+            <View
+              style={[
+                StyleSheet.absoluteFillObject,
+                { backgroundColor: theme.card, opacity: 0.97 },
+              ]}
+            />
           )}
           <Search size={17} color={theme.muted} />
           <TextInput
@@ -556,7 +667,12 @@ export function HomeScreen({ navigation, route }: any) {
         ) : null}
       </View>
 
-      <Sheet visible={workspaceOpen} onClose={() => setWorkspaceOpen(false)} title="Workspaces" height={0.5}>
+      <Sheet
+        visible={workspaceOpen}
+        onClose={() => setWorkspaceOpen(false)}
+        title="Workspaces"
+        height={0.5}
+      >
         <Group>
           {(data?.orgs ?? []).map((org) => (
             <Row
@@ -573,7 +689,12 @@ export function HomeScreen({ navigation, route }: any) {
         </Group>
       </Sheet>
 
-      <Sheet visible={Boolean(actionsFor)} onClose={() => setActionsFor(null)} title={actionsFor?.name} height={0.42}>
+      <Sheet
+        visible={Boolean(actionsFor)}
+        onClose={() => setActionsFor(null)}
+        title={actionsFor?.name}
+        height={0.42}
+      >
         {actionsFor ? (
           <Group>
             <Row
@@ -650,20 +771,42 @@ function NewChatSheet({
         data: { user },
       } = await supabase.auth.getUser()
       if (!user) throw new Error("Sign in first")
-      const { data: org } = await supabase.from("orgs").select("id").eq("slug", orgSlug).maybeSingle()
+      const { data: org } = await supabase
+        .from("orgs")
+        .select("id")
+        .eq("slug", orgSlug)
+        .maybeSingle()
       const orgId = org?.id
       if (!orgId) throw new Error("No workspace found")
-      const clean = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48)
+      const clean = name
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 48)
       if (!clean) throw new Error("Give it a name, like job-hunt")
       const { data: room, error: roomError } = await supabase
         .from("rooms")
-        .insert({ org_id: orgId, name: clean, kind: "private", turn_mode: "mentions", timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC", created_by: user.id })
+        .insert({
+          org_id: orgId,
+          name: clean,
+          kind: "private",
+          turn_mode: "mentions",
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+          created_by: user.id,
+        })
         .select("id, name")
         .single()
       if (roomError || !room) throw roomError ?? new Error("Could not create the chat")
-      await supabase.from("room_members").insert({ room_id: room.id, user_id: user.id, role: "admin" })
+      await supabase
+        .from("room_members")
+        .insert({ room_id: room.id, user_id: user.id, role: "admin" })
       if (picked.length) {
-        await supabase.from("room_agents").insert(picked.map((agentId, position) => ({ room_id: room.id, agent_id: agentId, position })))
+        await supabase
+          .from("room_agents")
+          .insert(
+            picked.map((agentId, position) => ({ room_id: room.id, agent_id: agentId, position })),
+          )
       }
       haptic.success()
       setName("")
@@ -688,7 +831,14 @@ function NewChatSheet({
         placeholder="Like job-hunt"
         placeholderTextColor={theme.faint}
         autoFocus
-        style={{ height: 48, borderRadius: radius.md, backgroundColor: theme.raised, paddingHorizontal: 14, color: theme.text, fontSize: 16 }}
+        style={{
+          height: 48,
+          borderRadius: radius.md,
+          backgroundColor: theme.raised,
+          paddingHorizontal: 14,
+          color: theme.text,
+          fontSize: 16,
+        }}
       />
       {agents.length ? (
         <>
@@ -704,7 +854,9 @@ function NewChatSheet({
                   label={agent.name}
                   selected={on}
                   icon={<Mascot seed={agent.handle} size={20} shadow={true} />}
-                  onPress={() => setPicked((p) => (on ? p.filter((id) => id !== agent.id) : [...p, agent.id]))}
+                  onPress={() =>
+                    setPicked((p) => (on ? p.filter((id) => id !== agent.id) : [...p, agent.id]))
+                  }
                 />
               )
             })}
@@ -719,8 +871,13 @@ function NewChatSheet({
           {error}
         </Text>
       ) : null}
-      <Button title="Create chat" onPress={create} loading={busy} disabled={!name.trim()} style={{ marginTop: space.xl }} />
+      <Button
+        title="Create chat"
+        onPress={create}
+        loading={busy}
+        disabled={!name.trim()}
+        style={{ marginTop: space.xl }}
+      />
     </Sheet>
   )
 }
-

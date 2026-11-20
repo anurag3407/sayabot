@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest"
-import { RUN_RESUME_QUEUE, ROOM_MESSAGE_QUEUE, TASK_WAKE_QUEUE, WEBHOOK_QUEUE, enqueueRoomMessage, enqueueRunResume, enqueueWebhook } from "../../src/jobs"
+import {
+  RUN_RESUME_QUEUE,
+  ROOM_MESSAGE_QUEUE,
+  TASK_WAKE_QUEUE,
+  WEBHOOK_QUEUE,
+  enqueueRoomMessage,
+  enqueueRunResume,
+  enqueueWebhook,
+} from "../../src/jobs"
 
 describe("job queue names + enqueue guards (no boss started)", () => {
   it("queue names are stable strings", () => {

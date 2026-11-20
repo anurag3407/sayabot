@@ -58,7 +58,7 @@ sayabot/
 
 | Package / App       | NPM Filter              | Role & Dependencies                                                                                                                                                                                 |
 | :------------------ | :---------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `apps/landing`      | `@sayabot/landing`      | Public marketing site: one static, animated page with links to downloads, the web app and GitHub. No auth or API. Depends on `@sayabot/core` (mascot geometry). |
+| `apps/landing`      | `@sayabot/landing`      | Public marketing site: one static, animated page with links to downloads, the web app and GitHub. No auth or API. Depends on `@sayabot/core` (mascot geometry).                                     |
 | `apps/web`          | `@sayabot/web`          | User interface: Room chat, real-time Yjs Monaco collaborative canvas, n8n-style visual workflow editor, settings, connector OAuth flows. Depends on `@sayabot/core`, `@sayabot/db`, `@sayabot/llm`. |
 | `apps/orchestrator` | `@sayabot/orchestrator` | Core execution engine: Hono REST/SSE server, Turn Coordinator, room PostgreSQL advisory locks, Agent Loop V2 (planner, critic, subagents), tool execution, connectors, Hermes cron scheduler.       |
 | `apps/computerd`    | `@sayabot/computerd`    | Computer sandbox daemon: Manages persistent Docker containers (`saaya-bot-${agentId}`), mounts `/home/bot`, runs `agentd` socket server for command execution and file edits.                       |
@@ -591,23 +591,23 @@ The `docs/reference/` tree is generated from a full read of the codebase and des
 
 ### 9.2 Documentation Map — where each kind of change must be documented
 
-| Code you changed | Reference docs to update |
-| :--- | :--- |
-| `packages/core/src/*` | `docs/reference/core/*.md` |
-| `packages/db/src/schema/*` or `packages/db/sql/*` | `docs/reference/database/*.md` (schema doc + `migrations-catalog.md`) |
-| `packages/llm/src/*` | `docs/reference/llm/*.md` |
-| `apps/orchestrator/src/engine/*`, `coordinator/*`, `runner/*` | `docs/reference/orchestrator/engine/*.md` |
-| `apps/orchestrator/src/tools/*` (new/changed tool) | `docs/reference/orchestrator/tools/*.md` (+ the tool inventory table in `tool-system.md`) |
-| `apps/orchestrator/src/connectors/*`, `bot/*`, `mcp/*`, `canvas/*`, `collab/*`, `internal/*`, `jobs/*`, `scheduler/*`, `memory/*`, `computers/*` | `docs/reference/orchestrator/{platform,memory,computers}/*.md` |
-| `apps/landing/*` | `docs/reference/landing/*.md` |
-| `apps/web` pages/components | `docs/reference/web/pages/*.md` |
-| `apps/web` server actions / API routes | `docs/reference/web/{actions,api}/*.md` |
-| `apps/computerd/*` | `docs/reference/computerd/*.md` |
-| `apps/egress/*` | `docs/reference/egress/*.md` |
-| `apps/mobile/*` | `docs/reference/mobile/*.md` |
-| `apps/desktop/*` | `docs/reference/desktop/*.md` |
-| Cross-cutting architecture (turn flow, realtime, auth, security, config) | `docs/reference/architecture/*.md` |
-| `deploy/*`, `tests/*`, `e2e/*` | `docs/reference/{operations,testing}/*.md` |
+| Code you changed                                                                                                                                 | Reference docs to update                                                                  |
+| :----------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------- |
+| `packages/core/src/*`                                                                                                                            | `docs/reference/core/*.md`                                                                |
+| `packages/db/src/schema/*` or `packages/db/sql/*`                                                                                                | `docs/reference/database/*.md` (schema doc + `migrations-catalog.md`)                     |
+| `packages/llm/src/*`                                                                                                                             | `docs/reference/llm/*.md`                                                                 |
+| `apps/orchestrator/src/engine/*`, `coordinator/*`, `runner/*`                                                                                    | `docs/reference/orchestrator/engine/*.md`                                                 |
+| `apps/orchestrator/src/tools/*` (new/changed tool)                                                                                               | `docs/reference/orchestrator/tools/*.md` (+ the tool inventory table in `tool-system.md`) |
+| `apps/orchestrator/src/connectors/*`, `bot/*`, `mcp/*`, `canvas/*`, `collab/*`, `internal/*`, `jobs/*`, `scheduler/*`, `memory/*`, `computers/*` | `docs/reference/orchestrator/{platform,memory,computers}/*.md`                            |
+| `apps/landing/*`                                                                                                                                 | `docs/reference/landing/*.md`                                                             |
+| `apps/web` pages/components                                                                                                                      | `docs/reference/web/pages/*.md`                                                           |
+| `apps/web` server actions / API routes                                                                                                           | `docs/reference/web/{actions,api}/*.md`                                                   |
+| `apps/computerd/*`                                                                                                                               | `docs/reference/computerd/*.md`                                                           |
+| `apps/egress/*`                                                                                                                                  | `docs/reference/egress/*.md`                                                              |
+| `apps/mobile/*`                                                                                                                                  | `docs/reference/mobile/*.md`                                                              |
+| `apps/desktop/*`                                                                                                                                 | `docs/reference/desktop/*.md`                                                             |
+| Cross-cutting architecture (turn flow, realtime, auth, security, config)                                                                         | `docs/reference/architecture/*.md`                                                        |
+| `deploy/*`, `tests/*`, `e2e/*`                                                                                                                   | `docs/reference/{operations,testing}/*.md`                                                |
 
 The authoritative index of every reference doc is `docs/README.md` — when you add or remove a doc file, update that index in the same change.
 
@@ -652,4 +652,4 @@ Context is a budget. This repo is large (~800 source files); most tasks touch a 
 
 ### 10.4 The exception
 
-When the task IS to change code, you still must read enough of the real code to make a correct change (§10.1 step 2) — docs are a map, not a substitute for the lines you're editing. The rule is *read only what matters*, not *don't read code*.
+When the task IS to change code, you still must read enough of the real code to make a correct change (§10.1 step 2) — docs are a map, not a substitute for the lines you're editing. The rule is _read only what matters_, not _don't read code_.

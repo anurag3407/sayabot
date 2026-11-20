@@ -25,7 +25,7 @@ One column, top to bottom:
 
 - **WorkspaceSwitcher** — a `DetailsMenu` pill (`rounded-full`, `bg-white/6`) with a happy Mascot seeded by the org name and a popover listing the user's orgs (`/<slug>` links) plus "New workspace" (`/new-workspace`). The menu is positioned against the header (`left-2.5 right-2.5 top-full`), so in the desktop app it spans the sidebar under the traffic-light inset instead of covering only the right half of Search. Rows are unique by org id; when two workspaces share a name, the slug is shown beside it.
 - **Plan gauges** — `TopBarPlanRings` sits between the switcher and the "+" menu (Mac app only, when a plan has a reading). One `rounded-xl` box, icon only: each mark has a thin ring for what's left, and the control links to `/${org}/analytics`. See [Analytics / Usage UI](./analytics-usage-ui.md).
-- **"+" menu** — New bot (`${base}/agents/new`, with a ⌘N kbd hint) and New group chat (`${base}/chats/new`). A global keydown also binds plain `⌘/Ctrl+N` (no shift/alt) to new-bot; only the *visible* sidebar instance answers, checked via `searchInput.current?.offsetParent`.
+- **"+" menu** — New bot (`${base}/agents/new`, with a ⌘N kbd hint) and New group chat (`${base}/chats/new`). A global keydown also binds plain `⌘/Ctrl+N` (no shift/alt) to new-bot; only the _visible_ sidebar instance answers, checked via `searchInput.current?.offsetParent`.
 - **Search** — a filter input (`/` focuses it, Escape clears) that falls through to full-message search on Enter (`${base}/search?q=…`) with a "Nothing matches. Press Enter to search every message." empty state; a ⌘K chip opens the palette.
 - **Inbox row** — always-visible Inbox link with a `99+`-capped accent badge.
 - **Foldable sections** — `Section` wraps each list with `useFolded` (fold state persisted in `localStorage` under `sayabot:sidebar:<id>`); a hover-revealed "+" links to the create page.
@@ -48,13 +48,13 @@ A second, roomier list component (used by mobile/home surfaces) with two modes: 
 
 A native `<dialog>` (`mt-[12vh]`, `max-w 640px`) with a combobox input and a grouped `role="listbox"`. Commands are built from five groups (`GROUP_ORDER`):
 
-| Group | Contents |
-| :--- | :--- |
-| Actions | New chat, Create an agent, Search messages and files |
-| Chats | every non-archived chat (`#name` or DM name), hint = unread count or first two agent names, keywords from agent names |
-| Agents | every bot, hint `@handle`, keyword `external` for MCP bots |
-| Go to | the passed `pages` (ALL_PAGES) plus a hard-coded Usage entry |
-| Settings | every link from `visibleSettingsGroups(isAdmin)` (`lib/settings-nav.ts`), keywords from their descriptions |
+| Group    | Contents                                                                                                              |
+| :------- | :-------------------------------------------------------------------------------------------------------------------- |
+| Actions  | New chat, Create an agent, Search messages and files                                                                  |
+| Chats    | every non-archived chat (`#name` or DM name), hint = unread count or first two agent names, keywords from agent names |
+| Agents   | every bot, hint `@handle`, keyword `external` for MCP bots                                                            |
+| Go to    | the passed `pages` (ALL_PAGES) plus a hard-coded Usage entry                                                          |
+| Settings | every link from `visibleSettingsGroups(isAdmin)` (`lib/settings-nav.ts`), keywords from their descriptions            |
 
 Scoring (`score()`, `command-palette.tsx:35-51`): prefix match 100, substring 80 minus position (with a +15 word-boundary bonus), subsequence 20 — "so 'gen' finds '#general' before 'agents'"; keyword/hint matches are weighted 0.6/0.7. Empty query limits each of Chats/Agents to 5 and hides Settings; a query caps results at 30. Keyboard: ↑/↓ wrap, Enter runs, mouse hover moves the selection; scrolling keeps the active item in view. Zero results offers "Search messages for it instead" → `${base}/search?q=<query>`.
 
@@ -65,10 +65,13 @@ Sayabot Cloud only (fed by `planUsageNotice` in the org layout — admins only, 
 ## 🧰 UI Kit (`components/ui/`)
 
 ### `button.tsx` — `Button`
+
 CVA variants: `primary` (accent bg), `secondary` (raised + border, the default), `outline`, `ghost`, `danger`, `quiet`; sizes `sm`/`md`/`lg`/`icon`/`icon-sm` (mobile-first heights, smaller at `md:`). Defaults `type="button"`. Also exports `buttonVariants` for non-button elements.
 
 ### Theme System (`theme-provider.tsx`, `theme-toggle.tsx`)
+
 Sayabot supports seamless switching between dark mode, light mode, and system preference:
+
 - **`ThemeProvider` & `ThemeScript`** (`components/theme-provider.tsx`): React context exposing `{ theme, resolvedTheme, setTheme, toggleTheme }`. Persists selection in `localStorage` under `sayabot-theme` (`"system" | "dark" | "light"`). An inlined `<ThemeScript />` executes synchronously in `<head>` to prevent Flash of Unstyled Theme (FOUT) before hydration.
 - **`ThemeToggle`** (`components/theme-toggle.tsx`): Tri-mode component with variants:
   - `icon`: Compact toggle button cycling between themes (used in public headers).
@@ -77,15 +80,19 @@ Sayabot supports seamless switching between dark mode, light mode, and system pr
 - **Color tokens & Tailwind CSS v4 variables** (`app/globals.css`): Light mode adapts `--color-void` (#f5f5f7), `--color-ink` (#ffffff), `--color-panel` (#ffffff), `--color-raised` (#ededf1), `--color-line` (#e4e4ea), `--color-text` (#18181b), and high-contrast `--color-accent` (#6d5ce8), with dynamic Monaco editor (`mesh-light` vs `mesh-dark`) and Mermaid diagram themes.
 
 ### `avatar.tsx` — `Avatar`, `AvatarStack`, `PresenceLine`
+
 `Avatar({ name, kind, size, src })`: `kind="system"` renders a bordered `*` glyph; `kind="agent"` renders the seeded `Mascot`; humans render initials (`initials()` from `lib/format.ts`) or the uploaded `src` image in a circle. Sizes sm/md/lg (24/28/40px). `AvatarStack` shows up to `max` (default 5) overlapping avatars with typing-highlight rings and a `+N` overflow. `PresenceLine` renders "X is typing" / "N people are typing" / "just you" / "N others here".
 
 ### `field.tsx` — `Label`, `Input`, `Textarea`, `Select`, `Field`, `HelpText`
+
 Shared `controlClass` (panel bg, control border, accent focus). `Label` is mono with an optional right-aligned `hint`. `Field({ label, htmlFor, hint, error })` wraps a control with label + `role="alert"` error paragraph.
 
 ### `icons.tsx`
+
 ~18 hand-drawn 20×20 stroke icons at 18px default: Send, Plus, Close, ChevronDown/Up, Check, Stop, Reply, History, Canvas, Rooms, Agents, Analytics, Shield, Sliders, Menu, Copy, Key, Bot, Tools, Logout, Search, Trace — all `aria-hidden` with currentColor stroke.
 
 ### `mascot.tsx` — the Saya family
+
 The brand identity renderer: `Mascot({ seed, shape, color, mood, lit, figure, shadow, blink, live, rare, label, svgRef, children })`. It draws from the shared geometry in `@sayabot/core` ([core/mascot](../../core/mascot.md)), so web, landing, mobile and the exported brand files are identical.
 
 - A seed string goes through `resolveMascotLook`. Names in the art-directed cast (Saya, Nova, Claude Code, Codex, Hermes, Cursor, and the character names) keep that shape and colour. Every other name goes through `sayaPick` (FNV-1a) for a **shape** (ghost, peak, ledger, bubble, hoot, bloom, sprout, block) and a **tone** (eight palettes, each a base, a darker shade and a pale eye tint), so an agent keeps the same look everywhere. `shape` overrides the shape. A cast name still keeps its colour unless `color` is set; otherwise the shape's default tone is used. `color` takes any CSS colour and mixes the shade and eye tint from it with `color-mix(in oklab, …)`.
@@ -97,50 +104,65 @@ The brand identity renderer: `Mascot({ seed, shape, color, mood, lit, figure, sh
 - All Saya CSS (halo, motion) lives in `app/globals.css`, so the workspace and the old in-app landing share it; every animation stops under `prefers-reduced-motion`.
 
 ### Brand files (`apps/web/scripts/export-mascots.ts`)
+
 `pnpm --filter @sayabot/web brand:mascots` renders the real `Mascot` into standalone SVGs in `apps/web/public/brand/mascots/` (served at `/brand/mascots/*`): `<name>.svg` (static, halo lit) and `<name>-live.svg` (embedded CSS animation: hover, blink; Nova also shimmers and sparkles) for Saya, Nova, Pip, Moss, Juno, Tofu, Nori, Bean, Olive and Miso; standing `saya-figure` / `nova-figure` (+ `-live`); Saya's moods (`saya-happy|busy|sleep|alert|thinking.svg`); a `cast.svg` contact sheet; and a README naming each character. The script resolves CSS variables and `color-mix(in oklab, …)` to hex (its `TOKENS` map mirrors `globals.css`), namespaces ids, pads the viewBox so halos, extras and shadows are not clipped, and copies the live Pip/Nova/Moss into the Mac app's renderer. Third-party tool names from the in-app cast are left out. Regenerate after changing the component.
 
 ### App icons (`apps/web/scripts/export-icons.ts`)
+
 `pnpm --filter @sayabot/web brand:icons` draws the Saya app icon (Saya the ghost on an ink tile with a lilac glow) from the shared geometry with `sharp` and writes every platform's files in one run: `assets/branding/saya-icon/*.svg` (rounded, square, mac, maskable, notification glyph, plus a README); web `public/icon.svg`, `favicon.ico` (16/32/48 PNG-in-ICO), `icon-192.png`, `icon-512.png`, `apple-touch-icon.png`, `maskable-512.png`; landing `public/icon.svg`, `favicon.ico`, `apple-touch-icon.png`, `og.png` (1200×630 cast card); desktop `assets/icon.png` (padded macOS squircle), `build/icon.ico`, `src/renderer/mark.svg`; mobile `assets/icon.png`, `adaptive-icon.png`, `splash-icon.png`, `favicon.png`, `mark.png`, `notification-icon.png` (alpha-only white glyph). Re-run after changing the mark. The in-app `SayabotMark` (`landing/mesh-mark.tsx`) draws the same tile inline.
 
 ### `live-mascot.tsx` — `LiveMascot`, `useInView`
+
 `LiveMascot` wraps `Mascot` so its eyes follow the pointer (one rAF-throttled `pointermove` listener shared by every instance, only with a fine pointer) and it smiles on hover; pass `live` for the idle motion, while the landing page uses `float`. `useInView` is an `IntersectionObserver` boolean. The home empty state (`ia/chats-view.tsx`) shows your first two bots flanking Nova as live mascots.
 
 ### `mascot-loader.tsx` — `MascotLoader`
+
 The Sayabot loader (`role="status"`, `aria-live="polite"`): Pip, Nova and Moss stand on glow pools and pass the lit lamp down the line every 720 ms (the one holding it hops), while a step line ("Waking up your bots…") rotates every 2.2 s above a sweeping accent bar (`loader-sweep`). `compact` shrinks it. Static under reduced motion. Opening a workspace uses `WorkspaceSkeleton` instead.
 
 ### `status.tsx` — `StatusBadge`, `Kbd`
+
 `StatusBadge({ status, label })` is a mono chip whose color comes from `statusTone()` (`lib/format.ts`): ok for `complete/done/approved`, warn for `streaming/running/pending_approval`, danger for `error/rejected`, accent for `halted`, muted otherwise; underscores become spaces. `Kbd` is a small styled `<kbd>`.
 
 ### `empty.tsx` — `EmptyState`, `InlineAlert`
+
 `EmptyState({ title, body, action })` is a left-bordered text block (used by search, files, inbox). `InlineAlert({ tone })` renders neutral/success/warning/danger notices (`danger` gets `role="alert"`).
 
 ### `skeleton.tsx` — `Skeleton`, `PageSkeleton`, `RoomSkeleton`, `WorkspaceSkeleton`, `SetupSkeleton`
+
 Pulsing placeholders. `RoomSkeleton` (`role="status"`) backs the room `loading.tsx`. `PageSkeleton` backs `(workspace)/[org]/loading.tsx` and the list routes (tasks, inbox, files, agents, meetings, routines, marketplace, search, analytics, account, new chat, new agent). `WorkspaceSkeleton` is the full shell (sidebar plus a room) shown while a workspace is created or opened: onboarding submit, resuming onboarding, `/new-workspace` submit, and `/auth/complete`. `SetupSkeleton` backs `onboarding/loading.tsx` and `new-workspace/loading.tsx`.
 
 ### `toast.tsx` — `showToast`, `Toaster`
+
 A custom-event bus (`mesh:toast`): any code can `showToast({ message, tone?, action?, durationMs? })` without context. `Toaster` (mounted once in the root layout) listens, keeps at most 4 visible, auto-dismisses after 5 s (or per `durationMs`), renders top-right cards with tone borders and an optional action link/button, and is `aria-live="polite"`. Actions carry `{ label, href? , onClick? }` — used for the archive **Undo**.
 
 ### `details-menu.tsx` — `DetailsMenu`
+
 A `<details>` dropdown that closes on outside pointerdown and Escape (returning focus to the summary) and when a menu item, link or button inside is chosen (typing in a field does not close it). Its document listeners exist only while it is open, and its children render only while open: the sidebar has one per chat, and permanently attached listeners made every click and key press fan out across the list. Keyboard: ArrowDown on the summary opens it and focuses the first item; ArrowUp/ArrowDown/Home/End move between items; the summary carries `aria-haspopup="menu"`. Powers the sidebar popovers, workspace switcher, account menu, per-row menus and the composer's "+" and execution-mode menus.
 
 ### `summary-focus-guard.tsx` — `SummaryFocusGuard`
+
 Mounted once in the root layout. Chromium paints the keyboard focus ring on a `<summary>` even after a mouse click, which left a thick accent ring around every dropdown and disclosure. The guard marks a summary pressed with a pointer (`data-pointer`, capture-phase `pointerdown`) and clears the mark on any key press or when the summary loses focus; `globals.css` hides the ring for `summary[data-pointer]:focus-visible`, so keyboard users still see it.
 
 ### Surfaces and palette (`app/globals.css`)
+
 The app runs on a cool graphite scale (`--color-void #09090b` → `--color-hover #27272d`) with an **iris** accent (`--color-accent #9d8cff`, `-strong #b6a9ff`, `-soft #1d1a33`), chosen for contrast (faint text stays ≥ 4.5:1 on panels). The marketing page (`.l-page` in `landing.css`) keeps its ember accent. `.surface-pop` is the one look for popovers and menus (translucent panel, strong hairline, deep shadow, backdrop blur) and `.pop-in` / `.fade-in` are their entrance animations.
 
 ### `action-form.tsx` — `ActionForm`
+
 Standard wrapper for form-action server actions with the `(_prev, formData) => ActionResult` signature: `useActionState` wiring, error/warning `InlineAlert`s, success toast (`state.message`) with optional `resetOnSuccess`, an optional `confirmLabel`/`confirmWarning` that swaps the submit button for a `ConfirmButton`, plus `footer` and `submitVariant` props.
 
 ### `confirm-button.tsx` — `ConfirmButton`
+
 Two-step destructive button: first click swaps to warning text + danger confirm ("autoFocus") + Cancel; the confirm state auto-resets after `RESET_AFTER_MS = 8_000` unless pending. With `submit: true` it renders a form submit button instead of calling `onConfirm` (used inside forms).
 
 ### `copy-button.tsx` — `CopyButton`
+
 Clipboard write with `idle/copied/failed` states ("copied" for 1.5 s, "copy failed" for 2 s), mono styling, `aria-live="polite"`.
 
 ## 🪛 Formatting & Identity Helpers
 
 ### `lib/format.ts`
+
 - `cn()` — clsx + tailwind-merge.
 - `initials(name)` — first+last initial letters (or first two chars), uppercase; "?" when empty.
 - `relativeTime(iso)` — "now" → "Nm ago" → "Nh ago" → "Nd ago" → short date.
@@ -152,18 +174,23 @@ Clipboard write with `idle/copied/failed` states ("copied" for 1.5 s, "copy fail
 - `effectiveProvider(provider, baseUrl)` — recovers the real provider behind "openai-compatible" keys (OpenRouter, Copilot) via `providerForBaseUrl` from `lib/ai-accounts.ts`.
 
 ### `lib/datetime.ts`
+
 `toDateTimeLocalValue(date)` and `dateTimeLocalToIso(value)` — round-tripping for `datetime-local` inputs (schedule forms) in the browser's own time zone.
 
 ### `lib/human-handle.ts`
+
 `humanHandle(name)` — NFKD-normalized, diacritic-stripped, slugified (max 38 chars) mention handle for people; `humanMention(name)` prefixes `@`.
 
 ### `lib/agent-handle.ts`
+
 `handleFromName(name)` — agent-handle suggestion: slugify, strip leading non-letters, cap at 39 chars ("Suggests a valid agent @handle from its display name"). Unit-tested in `tests/unit/handles.test.ts`.
 
 ### `lib/image-avatar.ts`
+
 `readAvatarFile(file)` — client-side avatar upload pipeline: accept PNG/JPEG/WebP only, decode via `createImageBitmap` (falling back to `Image`), center-crop to 256×256 on a canvas, encode WebP at 0.82 quality, and reject data URLs above `MAX_DATA_URL = 300_000` chars. Returns the data URL for the profile form.
 
 ### `lib/brand-logos.ts`
+
 `BrandLogoSpec` map (`name`, `color`, SVG `path`) of official Simple Icons glyphs — GitHub, Slack, Google Drive (alias `google_drive`), Notion, Linear, Atlassian, Stripe, Sentry, Discord, Cloudflare, Canva, Telegram, WhatsApp — with `brandLogo(id)` lookup. Consumed by `components/connectors/brand-logo.tsx` (marketplace tiles) and connector settings.
 
 ## Related docs

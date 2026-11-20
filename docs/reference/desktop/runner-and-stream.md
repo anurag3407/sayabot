@@ -14,25 +14,25 @@ After every heartbeat, `main.ts` calls `runner.maybeRun(queuedJobs, settings.run
 interface Job {
   id: string
   prompt: string
-  app: string                 // e.g. "claude-code", "codex", "gemini", "ollama"
-  model?: string | null       // null/absent keeps the app's own default
-  effort?: string | null      // thinking effort, for apps that take one
+  app: string // e.g. "claude-code", "codex", "gemini", "ollama"
+  model?: string | null // null/absent keeps the app's own default
+  effort?: string | null // thinking effort, for apps that take one
   agentHandle: string
   agentName?: string
-  mcp?: { url: string; token: string } | null   // Sayabot room tools for this run
-  allow?: string[]            // owner's "always allow" rules (Claude --allowedTools syntax)
-  room?: { id, name, path } | null
+  mcp?: { url: string; token: string } | null // Sayabot room tools for this run
+  allow?: string[] // owner's "always allow" rules (Claude --allowedTools syntax)
+  room?: { id; name; path } | null
 }
 ```
 
 Dispatch (`src/runner.ts:258-263`):
 
-| Condition | Path |
-| :--- | :--- |
-| `app === "claude-code"` or `"codex"` | `runWithTools` — room tools, live steps, approvals |
+| Condition                                           | Path                                                 |
+| :-------------------------------------------------- | :--------------------------------------------------- |
+| `app === "claude-code"` or `"codex"`                | `runWithTools` — room tools, live steps, approvals   |
 | `localServerUrl(app)` is set (`ollama`, `lmstudio`) | `runLocalModel` — OpenAI-style local chat completion |
-| `spec.run.kind === "acp"` | `runAcp` — Agent Client Protocol client |
-| anything else | `runPlain` — plain text CLIs |
+| `spec.run.kind === "acp"`                           | `runAcp` — Agent Client Protocol client              |
+| anything else                                       | `runPlain` — plain text CLIs                         |
 
 Model/effort pass validation before reaching a command line: `jobModel` (`src/runner.ts:88`) accepts ids matching `/^[\w.:/@+[\]-]{1,160}$/` (and maps `"default"` → null); `jobEffort` accepts only `/^[a-z]{1,10}$/`.
 
@@ -119,14 +119,14 @@ ACP `agent_thought_chunk` updates are `thinking` on `acpUpdate` (`src/acp.ts`). 
 
 `commandFor` (`src/runner.ts:97`) builds argv per app (all with the validated model flag where supported):
 
-| App | Command | Prompt delivery |
-| :--- | :--- | :--- |
-| `codex` (plain path) | `codex exec --skip-git-repo-check --output-last-message <file> -` | stdin |
-| `gemini` | `gemini [-m model] -p "Answer the request given on standard input."` | stdin |
-| `opencode` | `opencode run [-m model] <last 100k chars of prompt>` | argv |
-| `pi` | `pi -p [--model model] <last 100k chars>` | argv |
-| `cursor` | `cursor-agent -p --output-format text [--model model]` — deliberately no `--force`, so Cursor proposes but never applies changes | argv |
-| `claude-code` (default) | `claude -p --output-format text [--model model]` | stdin |
+| App                     | Command                                                                                                                          | Prompt delivery |
+| :---------------------- | :------------------------------------------------------------------------------------------------------------------------------- | :-------------- |
+| `codex` (plain path)    | `codex exec --skip-git-repo-check --output-last-message <file> -`                                                                | stdin           |
+| `gemini`                | `gemini [-m model] -p "Answer the request given on standard input."`                                                             | stdin           |
+| `opencode`              | `opencode run [-m model] <last 100k chars of prompt>`                                                                            | argv            |
+| `pi`                    | `pi -p [--model model] <last 100k chars>`                                                                                        | argv            |
+| `cursor`                | `cursor-agent -p --output-format text [--model model]` — deliberately no `--force`, so Cursor proposes but never applies changes | argv            |
+| `claude-code` (default) | `claude -p --output-format text [--model model]`                                                                                 | stdin           |
 
 stdout accumulates (capped 200,000) and is posted as progress every 1.5 s with cancel polling. For Codex the `--output-last-message` file (if written) replaces the accumulated text as the final answer, then is unlinked. Exit 0 with non-empty text → `done`; otherwise `failed` with `failureHint`.
 

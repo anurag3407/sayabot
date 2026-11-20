@@ -10,13 +10,17 @@ export interface PasswordConfig {
   hostId?: string
   region?: "us" | "eu"
   allowedVaults?: string[]
+  /** Override the Bitwarden API origin. Tests point this at a local stub server. */
+  apiBaseUrl?: string
 }
 
 /** Names and ids only. A leading dash would become a CLI flag. */
 export function assertSecretQuery(query: string): string {
   const value = query.trim()
-  if (value.length < 1 || value.length > 200) throw new Error("Give an item name or id (200 characters or less)")
-  if (value.startsWith("-") || /[\r\n\0]/.test(value)) throw new Error("That item name isn't allowed")
+  if (value.length < 1 || value.length > 200)
+    throw new Error("Give an item name or id (200 characters or less)")
+  if (value.startsWith("-") || /[\r\n\0]/.test(value))
+    throw new Error("That item name isn't allowed")
   return value
 }
 
@@ -24,7 +28,8 @@ export function assertVaultName(vault?: string): string | undefined {
   if (!vault) return undefined
   const value = vault.trim()
   if (!value) return undefined
-  if (value.length > 80 || value.startsWith("-") || /[\r\n\0]/.test(value)) throw new Error("That vault name isn't allowed")
+  if (value.length > 80 || value.startsWith("-") || /[\r\n\0]/.test(value))
+    throw new Error("That vault name isn't allowed")
   return value
 }
 
@@ -34,16 +39,21 @@ export function passwordArgv(
   query: string,
   vault?: string,
 ): { bin: string; args: string[] } {
-  const q = action === "search" && source === "onepassword" && !query.trim() ? "" : assertSecretQuery(query)
+  const q =
+    action === "search" && source === "onepassword" && !query.trim() ? "" : assertSecretQuery(query)
   const v = assertVaultName(vault)
   if (source === "onepassword") {
     if (action === "search") {
       return { bin: "op", args: ["item", "list", "--format", "json", ...(v ? ["--vault", v] : [])] }
     }
-    return { bin: "op", args: ["item", "get", q, "--format", "json", "--reveal", ...(v ? ["--vault", v] : [])] }
+    return {
+      bin: "op",
+      args: ["item", "get", q, "--format", "json", "--reveal", ...(v ? ["--vault", v] : [])],
+    }
   }
   if (source === "bitwarden") {
-    if (action === "search") return { bin: "bw", args: ["list", "items", "--search", q || assertSecretQuery(query)] }
+    if (action === "search")
+      return { bin: "bw", args: ["list", "items", "--search", q || assertSecretQuery(query)] }
     return { bin: "bw", args: ["get", "item", q] }
   }
   if (action === "search") return { bin: "pass-cli", args: ["item", "list"] }
@@ -54,7 +64,7 @@ export function summarizeItems(value: unknown): { id: string; title: string }[] 
   const list = Array.isArray(value)
     ? value
     : value && typeof value === "object" && Array.isArray((value as { data?: unknown }).data)
-      ? ((value as { data: unknown[] }).data)
+      ? (value as { data: unknown[] }).data
       : []
   return list.slice(0, 40).flatMap((item) => {
     if (!item || typeof item !== "object") return []
@@ -73,10 +83,16 @@ export function summarizeItem(value: unknown): Record<string, unknown> {
     ? row.fields.slice(0, 30).flatMap((field) => {
         if (!field || typeof field !== "object") return []
         const f = field as Record<string, unknown>
-        return [{ label: String(f.label ?? f.id ?? f.purpose ?? "field").slice(0, 80), value: String(f.value ?? "").slice(0, 2_000) }]
+        return [
+          {
+            label: String(f.label ?? f.id ?? f.purpose ?? "field").slice(0, 80),
+            value: String(f.value ?? "").slice(0, 2_000),
+          },
+        ]
       })
     : undefined
-  const login = row.login && typeof row.login === "object" ? (row.login as Record<string, unknown>) : undefined
+  const login =
+    row.login && typeof row.login === "object" ? (row.login as Record<string, unknown>) : undefined
   return {
     id: row.id ?? row.uuid,
     title: row.title ?? row.name ?? row.key,
@@ -88,11 +104,16 @@ export function summarizeItem(value: unknown): Record<string, unknown> {
   }
 }
 
-async function httpJson(url: string, token: string): Promise<unknown> {
+async function httpJson(url: string, token: string, allowLocal = false): Promise<unknown> {
   const parsed = new URL(url)
-  if (parsed.protocol !== "https:") throw new Error("Password manager APIs must use HTTPS")
-  await assertSafeEgressHost(parsed.hostname)
-  const res = await fetch(parsed, { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } })
+  if (parsed.protocol !== "https:" && !allowLocal) {
+    throw new Error("Password manager APIs must use HTTPS")
+  }
+  // A test endpoint override may be a loopback stub; production never sets allowLocal.
+  if (!allowLocal) await assertSafeEgressHost(parsed.hostname)
+  const res = await fetch(parsed, {
+    headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+  })
   const body = await res.text()
   if (!res.ok) throw new Error(`Password manager returned HTTP ${res.status}`)
   try {
@@ -102,7 +123,12 @@ async function httpJson(url: string, token: string): Promise<unknown> {
   }
 }
 
-function runCli(bin: string, args: string[], env: Record<string, string>, signal?: AbortSignal): Promise<unknown> {
+function runCli(
+  bin: string,
+  args: string[],
+  env: Record<string, string>,
+  signal?: AbortSignal,
+): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const child = spawn(bin, args, {
       env: { PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "", ...env },
@@ -146,7 +172,9 @@ function runCli(bin: string, args: string[], env: Record<string, string>, signal
 function finish(action: "search" | "read", query: string, value: unknown): unknown {
   if (action === "read") return summarizeItem(value)
   const needle = query.trim().toLowerCase()
-  const items = summarizeItems(value).filter((item) => !needle || `${item.title} ${item.id}`.toLowerCase().includes(needle))
+  const items = summarizeItems(value).filter(
+    (item) => !needle || `${item.title} ${item.id}`.toLowerCase().includes(needle),
+  )
   return { items }
 }
 
@@ -160,8 +188,11 @@ export async function queryPasswordManager(args: {
   orgId: string
   connectorId: string
   signal?: AbortSignal
+  /** Test seam: allow a non-HTTPS, loopback endpoint supplied by `endpoints`. */
+  allowLocalBase?: boolean
 }): Promise<unknown> {
   const vault = assertVaultName(args.vault)
+  const local = args.allowLocalBase === true
   if (args.config.allowedVaults?.length && vault && !args.config.allowedVaults.includes(vault)) {
     throw new Error(`Vault "${vault}" is outside this agent's allowed vaults`)
   }
@@ -170,28 +201,42 @@ export async function queryPasswordManager(args: {
   if (args.source === "onepassword" && mode === "api" && args.config.connectUrl) {
     const base = args.config.connectUrl.replace(/\/+$/, "")
     if (args.action === "search") {
-      const vaults = await httpJson(`${base}/v1/vaults`, args.token)
+      const vaults = await httpJson(`${base}/v1/vaults`, args.token, local)
       const lists = summarizeItems(vaults)
       const found = []
       for (const one of lists.slice(0, 8)) {
         if (!one.id) continue
-        const items = await httpJson(`${base}/v1/vaults/${encodeURIComponent(one.id)}/items`, args.token)
+        const items = await httpJson(
+          `${base}/v1/vaults/${encodeURIComponent(one.id)}/items`,
+          args.token,
+          local,
+        )
         found.push(...summarizeItems(items))
       }
       return finish("search", args.query, found)
     }
     if (!vault) throw new Error("1Password Connect needs a vault id as well as the item id")
-    const item = await httpJson(`${base}/v1/vaults/${encodeURIComponent(vault)}/items/${encodeURIComponent(assertSecretQuery(args.query))}`, args.token)
+    const item = await httpJson(
+      `${base}/v1/vaults/${encodeURIComponent(vault)}/items/${encodeURIComponent(assertSecretQuery(args.query))}`,
+      args.token,
+      local,
+    )
     return summarizeItem(item)
   }
 
   if (args.source === "bitwarden" && mode === "api") {
-    const host = args.config.region === "eu" ? "https://api.bitwarden.eu" : "https://api.bitwarden.com"
+    const host =
+      args.config.apiBaseUrl?.replace(/\/+$/, "") ??
+      (args.config.region === "eu" ? "https://api.bitwarden.eu" : "https://api.bitwarden.com")
     if (args.action === "search") {
-      const data = await httpJson(`${host}/public/secrets`, args.token)
+      const data = await httpJson(`${host}/public/secrets`, args.token, local)
       return finish("search", args.query, data)
     }
-    const item = await httpJson(`${host}/public/secrets/${encodeURIComponent(assertSecretQuery(args.query))}`, args.token)
+    const item = await httpJson(
+      `${host}/public/secrets/${encodeURIComponent(assertSecretQuery(args.query))}`,
+      args.token,
+      local,
+    )
     return summarizeItem(item)
   }
 
@@ -205,7 +250,8 @@ export async function queryPasswordManager(args: {
     const value = await runCli(argv.bin, argv.args, env, args.signal)
     return finish(args.action, args.query, value)
   } catch (error) {
-    const missing = error instanceof Error && "code" in error && (error as { code?: string }).code === "ENOENT"
+    const missing =
+      error instanceof Error && "code" in error && (error as { code?: string }).code === "ENOENT"
     if (!missing && mode !== "computer") throw error
     try {
       const value = await runSecretOnDesktop({
@@ -213,7 +259,10 @@ export async function queryPasswordManager(args: {
         connectorId: args.connectorId,
         source: args.source,
         action: args.action,
-        query: args.action === "search" && args.source === "onepassword" && !args.query.trim() ? "" : assertSecretQuery(args.query),
+        query:
+          args.action === "search" && args.source === "onepassword" && !args.query.trim()
+            ? ""
+            : assertSecretQuery(args.query),
         vault,
         hostId: args.config.hostId,
         signal: args.signal,

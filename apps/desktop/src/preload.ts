@@ -18,7 +18,11 @@ export interface DesktopBridge {
   getSession: () => Promise<AuthSession | null>
   startBrowserAuth: () => Promise<void>
   /** Whether the controller should start a guest session by itself (no session, not declined). */
-  getGuestStatus: () => Promise<{ autoStart: boolean; needsServerChoice: boolean; guestAllowed: boolean }>
+  getGuestStatus: () => Promise<{
+    autoStart: boolean
+    needsServerChoice: boolean
+    guestAllowed: boolean
+  }>
   getServerInfo: () => Promise<{ url: string; name: string; isCloud: boolean; chosen: boolean }>
   checkServer: (input: string) => Promise<ServerCheck>
   chooseServer: (input: string | null) => Promise<ServerCheck>

@@ -1,5 +1,11 @@
 import { availabilityFromParams, parseCapabilities, worksOnFromParams } from "@sayabot/core"
-import { agentConnectorGrants, agents, mcpServers, orgComputerSettings, workspaceConnectors } from "@sayabot/db"
+import {
+  agentConnectorGrants,
+  agents,
+  mcpServers,
+  orgComputerSettings,
+  workspaceConnectors,
+} from "@sayabot/db"
 import {
   connectMcpServers,
   findLocalApp,
@@ -100,7 +106,9 @@ async function loadMcpConfigs(args: BuildToolsArgs) {
     }
     const local = findLocalApp(row.catalogApp)
     if (local) {
-      const dangerousTools = row.dangerousTools.length ? row.dangerousTools : [...local.dangerousTools]
+      const dangerousTools = row.dangerousTools.length
+        ? row.dangerousTools
+        : [...local.dangerousTools]
       if (local.where === "desktop") {
         desktop.push({
           id: row.id,
@@ -127,7 +135,9 @@ async function loadMcpConfigs(args: BuildToolsArgs) {
     let authProvider: StoredMcpOAuthProvider | undefined
     if (row.authKind === "oauth") {
       if (row.authStatus !== "ok" || !row.oauthEnc) {
-        warnings.push(`${row.name} needs a workspace admin to sign in again (Marketplace → ${row.name})`)
+        warnings.push(
+          `${row.name} needs a workspace admin to sign in again (Marketplace → ${row.name})`,
+        )
         continue
       }
       try {
@@ -170,7 +180,9 @@ async function toolsForDesktopApp(row: DesktopLocalApp, orgId: string): Promise<
       method: "tools/list",
       hostId: row.hostId,
     })) as { tools?: Array<{ name?: string; description?: string }> }
-    listed = (result?.tools ?? []).flatMap((tool) => (tool.name ? [{ name: tool.name, description: tool.description }] : []))
+    listed = (result?.tools ?? []).flatMap((tool) =>
+      tool.name ? [{ name: tool.name, description: tool.description }] : [],
+    )
     await getDb()
       .update(mcpServers)
       .set({ toolCache: { at: new Date().toISOString(), tools: listed }, updatedAt: new Date() })
@@ -199,7 +211,12 @@ async function toolsForDesktopApp(row: DesktopLocalApp, orgId: string): Promise<
  * redirect to its sign-in page, which a run cannot follow: mark the app signed out so the
  * Marketplace shows "Sign in again" instead of failing every run quietly.
  */
-function mcpOAuthProvider(serverId: string, name: string, state: Parameters<typeof sealMcpOAuthState>[0], kek: string) {
+function mcpOAuthProvider(
+  serverId: string,
+  name: string,
+  state: Parameters<typeof sealMcpOAuthState>[0],
+  kek: string,
+) {
   const db = getDb()
   return new StoredMcpOAuthProvider({
     serverId,
@@ -240,7 +257,10 @@ export async function buildTools(args: BuildToolsArgs): Promise<BuiltTools> {
           source: workspaceConnectors.source,
         })
         .from(agentConnectorGrants)
-        .innerJoin(workspaceConnectors, eq(agentConnectorGrants.connectorId, workspaceConnectors.id))
+        .innerJoin(
+          workspaceConnectors,
+          eq(agentConnectorGrants.connectorId, workspaceConnectors.id),
+        )
         .where(
           and(
             eq(agentConnectorGrants.orgId, args.orgId),
@@ -325,12 +345,17 @@ export async function buildTools(args: BuildToolsArgs): Promise<BuiltTools> {
             try {
               await getComputerClient().ensure(args.agent.id, args.orgId, "standard")
             } catch (error) {
-              return { ok: false, error: error instanceof Error ? error.message : "The local VM did not start" }
+              return {
+                ok: false,
+                error: error instanceof Error ? error.message : "The local VM did not start",
+              }
             }
           }
           const params = (args.agent.params as Record<string, unknown> | null) ?? {}
           const computer =
-            params.computer && typeof params.computer === "object" ? (params.computer as Record<string, unknown>) : {}
+            params.computer && typeof params.computer === "object"
+              ? (params.computer as Record<string, unknown>)
+              : {}
           await getDb()
             .update(agents)
             .set({ params: { ...params, computer: { ...computer, localVmReady: true, volume } } })
@@ -343,7 +368,9 @@ export async function buildTools(args: BuildToolsArgs): Promise<BuiltTools> {
           if (ran.ok) {
             const params = (args.agent.params as Record<string, unknown> | null) ?? {}
             const computer =
-              params.computer && typeof params.computer === "object" ? (params.computer as Record<string, unknown>) : {}
+              params.computer && typeof params.computer === "object"
+                ? (params.computer as Record<string, unknown>)
+                : {}
             await getDb()
               .update(agents)
               .set({ params: { ...params, computer: { ...computer, vpsReady: true } } })
@@ -414,8 +441,17 @@ export async function buildTools(args: BuildToolsArgs): Promise<BuiltTools> {
       : []),
     ...(caps.computer && isV2
       ? [
-          ...verificationTools({ agentId: args.agent.id, orgId: args.orgId, profile: caps.computer.profile }),
-          ...workspaceTools({ agentId: args.agent.id, orgId: args.orgId, roomId: args.roomId, profile: caps.computer.profile }),
+          ...verificationTools({
+            agentId: args.agent.id,
+            orgId: args.orgId,
+            profile: caps.computer.profile,
+          }),
+          ...workspaceTools({
+            agentId: args.agent.id,
+            orgId: args.orgId,
+            roomId: args.roomId,
+            profile: caps.computer.profile,
+          }),
         ]
       : []),
     ...(caps.secrets ? [useSecretTool({ agentId: args.agent.id, orgId: args.orgId })] : []),
@@ -450,9 +486,7 @@ export async function buildTools(args: BuildToolsArgs): Promise<BuiltTools> {
           ...skillTools({ orgId: args.orgId, agentId: args.agent.id }),
         ]
       : []),
-    ...(isV2 &&
-    caps.subagents &&
-    args.runtime.runId
+    ...(isV2 && caps.subagents && args.runtime.runId
       ? [
           spawnSubagentTool({
             parentRunId: args.runtime.runId,
@@ -475,7 +509,9 @@ export async function buildTools(args: BuildToolsArgs): Promise<BuiltTools> {
 
     const mcp = await connectMcpServers(configs)
     closeMcp = mcp.close
-    warnings.push(...mcp.errors.map((e) => `MCP server "${e.serverName}" unavailable: ${e.message}`))
+    warnings.push(
+      ...mcp.errors.map((e) => `MCP server "${e.serverName}" unavailable: ${e.message}`),
+    )
 
     for (const [name, definition] of Object.entries(mcp.tools)) {
       if (specs.some((s) => s.name === name)) {
@@ -489,7 +525,9 @@ export async function buildTools(args: BuildToolsArgs): Promise<BuiltTools> {
         description:
           ((definition as { description?: string }).description ?? "") ||
           `MCP tool ${meta.originalName} from ${meta.serverName}`,
-        schema: (definition as { inputSchema?: z.ZodType }).inputSchema ?? z.record(z.string(), z.unknown()),
+        schema:
+          (definition as { inputSchema?: z.ZodType }).inputSchema ??
+          z.record(z.string(), z.unknown()),
         // Server hints may add an approval gate, never remove one.
         dangerous: meta.dangerous || meta.annotations?.destructiveHint === true,
         execute: async (input: Record<string, unknown>, signal?: AbortSignal) => {
@@ -519,7 +557,9 @@ export async function buildTools(args: BuildToolsArgs): Promise<BuiltTools> {
     }
   }
 
-  allSpecs = [...specs, ...extraSpecs].sort((a, b) => a.name.localeCompare(b.name)).map((spec) => evidence.wrap(spec))
+  allSpecs = [...specs, ...extraSpecs]
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((spec) => evidence.wrap(spec))
   const partition = isV2 ? partitionToolsForSearch(allSpecs) : undefined
   const registered = partition ? partition.all : allSpecs
   const tools = toAuditedTools(registered, args.runtime)

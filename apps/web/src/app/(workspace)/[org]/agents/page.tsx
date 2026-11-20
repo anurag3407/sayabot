@@ -60,14 +60,22 @@ export default async function AgentsPage({
   const usage = usageByAgent(rollup ?? [])
   const maxTokens = Math.max(1, ...[...usage.values()].map((u) => u.inputTokens + u.outputTokens))
   const totals = [...usage.values()].reduce(
-    (acc, u) => ({ tokens: acc.tokens + u.inputTokens + u.outputTokens, cost: acc.cost + u.costUsd, requests: acc.requests + u.requests }),
+    (acc, u) => ({
+      tokens: acc.tokens + u.inputTokens + u.outputTokens,
+      cost: acc.cost + u.costUsd,
+      requests: acc.requests + u.requests,
+    }),
     { tokens: 0, cost: 0, requests: 0 },
   )
   // An agent with no key and no server default answers through the first signed-in app here.
-  const fallbackApp = devModelConfigured() ? null : serverApps.find((a) => a.cli && a.status === "ready")
+  const fallbackApp = devModelConfigured()
+    ? null
+    : serverApps.find((a) => a.cli && a.status === "ready")
   const currentOf = (a: (typeof agents)[number]) =>
     runnerOf(a) ??
-    (!a.providerKeyId && fallbackApp ? { keyId: `cli:${fallbackApp.id}`, model: "default" } : { keyId: a.providerKeyId, model: a.model })
+    (!a.providerKeyId && fallbackApp
+      ? { keyId: `cli:${fallbackApp.id}`, model: "default" }
+      : { keyId: a.providerKeyId, model: a.model })
   const pickerGroups = catalog.length
     ? catalog
     : keys.map((key) => ({
@@ -90,23 +98,35 @@ export default async function AgentsPage({
               Your AI teammates. Pick each one&apos;s model, see what it uses, and add new ones.
             </p>
           </div>
-          {canEdit ? <AddAgentChooser orgSlug={orgSlug} rooms={addableRooms.map((r) => ({ id: r.id, name: r.name }))} /> : null}
+          {canEdit ? (
+            <AddAgentChooser
+              orgSlug={orgSlug}
+              rooms={addableRooms.map((r) => ({ id: r.id, name: r.name }))}
+            />
+          ) : null}
         </div>
 
         <div className="mt-5 grid grid-cols-3 gap-2 rounded-xl border border-line bg-panel p-4">
           <div>
             <p className="text-[12px] text-faint">Tokens · 30 days</p>
-            <p className="mt-0.5 text-[18px] font-semibold text-text">{formatTokens(totals.tokens)}</p>
+            <p className="mt-0.5 text-[18px] font-semibold text-text">
+              {formatTokens(totals.tokens)}
+            </p>
           </div>
           <div>
             <p className="text-[12px] text-faint">Replies & runs</p>
-            <p className="mt-0.5 text-[18px] font-semibold text-text">{totals.requests.toLocaleString()}</p>
+            <p className="mt-0.5 text-[18px] font-semibold text-text">
+              {totals.requests.toLocaleString()}
+            </p>
           </div>
           <div>
             <p className="text-[12px] text-faint">Spend</p>
             <p className="mt-0.5 text-[18px] font-semibold text-text">{formatUsd(totals.cost)}</p>
           </div>
-          <Link href={`/${orgSlug}/analytics`} className="col-span-3 mt-1 text-[12px] text-muted hover:text-text">
+          <Link
+            href={`/${orgSlug}/analytics`}
+            className="col-span-3 mt-1 text-[12px] text-muted hover:text-text"
+          >
             Full usage breakdown →
           </Link>
         </div>
@@ -123,26 +143,37 @@ export default async function AgentsPage({
             {agents.length === 0 ? (
               <EmptyState
                 title="No agents yet"
-                body={canEdit ? "Press Add agent to create one or invite one you already use." : "Ask a workspace admin to add one."}
+                body={
+                  canEdit
+                    ? "Press Add agent to create one or invite one you already use."
+                    : "Ask a workspace admin to add one."
+                }
               />
             ) : (
               <ul className="divide-y divide-line border-y border-line">
                 {agents.map((agent) => {
                   const u = usage.get(agent.id)
                   const tokens = u ? u.inputTokens + u.outputTokens : 0
-                  const activeRecently = u?.lastAt ? Date.now() - new Date(u.lastAt).getTime() < 86_400_000 : false
+                  const activeRecently = u?.lastAt
+                    ? Date.now() - new Date(u.lastAt).getTime() < 86_400_000
+                    : false
                   return (
                     <li key={agent.id} className="py-4">
                       <div className="flex items-start gap-3">
                         <div className="relative">
                           <Mascot seed={agent.handle} className="h-11 w-11" />
                           {activeRecently ? (
-                            <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-void bg-ok" title="Active today" />
+                            <span
+                              className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-void bg-ok"
+                              title="Active today"
+                            />
                           ) : null}
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="flex flex-wrap items-baseline gap-2">
-                            <span className="text-[15px] font-medium text-text">{agent.displayName}</span>
+                            <span className="text-[15px] font-medium text-text">
+                              {agent.displayName}
+                            </span>
                             <span className="text-[12px] text-muted">@{agent.handle}</span>
                             <span className="rounded-full bg-raised px-2 py-0.5 text-[11px] text-muted">
                               {agent.kind === "external" ? "Invited" : "Created here"}
@@ -156,7 +187,11 @@ export default async function AgentsPage({
                                 groups={pickerGroups}
                                 currentKeyId={currentOf(agent).keyId}
                                 currentModel={currentOf(agent).model}
-                                currentEffort={typeof agent.params.effort === "string" ? agent.params.effort : null}
+                                currentEffort={
+                                  typeof agent.params.effort === "string"
+                                    ? agent.params.effort
+                                    : null
+                                }
                                 disabled={!canEdit}
                               />
                             ) : (
@@ -164,19 +199,34 @@ export default async function AgentsPage({
                                 Uses its own app&apos;s model
                               </span>
                             )}
-                            {canEdit && agent.kind === "llm" ? <AgentTestButton orgSlug={orgSlug} agentId={agent.id} /> : null}
+                            {canEdit && agent.kind === "llm" ? (
+                              <AgentTestButton orgSlug={orgSlug} agentId={agent.id} />
+                            ) : null}
                           </div>
                           <div className="mt-3">
                             {u ? (
                               <>
-                                <div className="h-1.5 w-full max-w-md overflow-hidden rounded-full bg-raised" aria-hidden>
-                                  <div className="h-full rounded-full bg-accent" style={{ width: `${Math.max(2, (tokens / maxTokens) * 100)}%` }} />
+                                <div
+                                  className="h-1.5 w-full max-w-md overflow-hidden rounded-full bg-raised"
+                                  aria-hidden
+                                >
+                                  <div
+                                    className="h-full rounded-full bg-accent"
+                                    style={{ width: `${Math.max(2, (tokens / maxTokens) * 100)}%` }}
+                                  />
                                 </div>
                                 <p className="mt-1.5 text-[12px] text-muted">
-                                  {formatTokens(tokens)} tokens · {u.requests.toLocaleString()} {u.requests === 1 ? "run" : "runs"} ·{" "}
-                                  {formatUsd(u.costUsd)}
-                                  {u.topModel ? <span className="text-faint"> · mostly {u.topModel}</span> : null}
-                                  {u.lastAt ? <span className="text-faint"> · last active {relativeTime(u.lastAt)}</span> : null}
+                                  {formatTokens(tokens)} tokens · {u.requests.toLocaleString()}{" "}
+                                  {u.requests === 1 ? "run" : "runs"} · {formatUsd(u.costUsd)}
+                                  {u.topModel ? (
+                                    <span className="text-faint"> · mostly {u.topModel}</span>
+                                  ) : null}
+                                  {u.lastAt ? (
+                                    <span className="text-faint">
+                                      {" "}
+                                      · last active {relativeTime(u.lastAt)}
+                                    </span>
+                                  ) : null}
                                 </p>
                               </>
                             ) : (
@@ -222,7 +272,11 @@ export default async function AgentsPage({
 
                               {agent.kind === "llm" ? (
                                 <>
-                                  <input type="hidden" name="providerKeyId" value={agent.providerKeyId ?? ""} />
+                                  <input
+                                    type="hidden"
+                                    name="providerKeyId"
+                                    value={agent.providerKeyId ?? ""}
+                                  />
                                   <input type="hidden" name="model" value={agent.model ?? ""} />
                                 </>
                               ) : (
@@ -236,7 +290,10 @@ export default async function AgentsPage({
                               )}
 
                               {agent.kind === "llm" ? (
-                                <Field label="what is this agent for?" htmlFor={`prompt-${agent.id}`}>
+                                <Field
+                                  label="what is this agent for?"
+                                  htmlFor={`prompt-${agent.id}`}
+                                >
                                   <Textarea
                                     id={`prompt-${agent.id}`}
                                     name="systemPrompt"
@@ -251,40 +308,43 @@ export default async function AgentsPage({
                                   Advanced
                                 </summary>
                                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                                <Field label="model parameters (JSON)" htmlFor={`params-${agent.id}`}>
-                                  <Textarea
-                                    id={`params-${agent.id}`}
-                                    name="params"
-                                    defaultValue={JSON.stringify(agent.params, null, 2)}
-                                    className="min-h-20 font-mono text-[12px]"
-                                  />
-                                </Field>
-                                <fieldset>
-                                  <legend className="mb-1.5 font-mono text-[12px] text-muted">
-                                    MCP servers
-                                  </legend>
-                                  <div className="space-y-1 border border-line bg-panel p-2">
-                                    {mcpServers.length === 0 ? (
-                                      <p className="text-[12px] text-faint">None registered.</p>
-                                    ) : (
-                                      mcpServers.map((server) => (
-                                        <label
-                                          key={server.id}
-                                          className="flex items-center justify-between gap-2 text-[12px] text-muted"
-                                        >
-                                          <span>{server.name}</span>
-                                          <input
-                                            type="checkbox"
-                                            name="toolIds"
-                                            value={server.id}
-                                            defaultChecked={agent.toolIds.includes(server.id)}
-                                            className="h-3.5 w-3.5 accent-[var(--color-accent)]"
-                                          />
-                                        </label>
-                                      ))
-                                    )}
-                                  </div>
-                                </fieldset>
+                                  <Field
+                                    label="model parameters (JSON)"
+                                    htmlFor={`params-${agent.id}`}
+                                  >
+                                    <Textarea
+                                      id={`params-${agent.id}`}
+                                      name="params"
+                                      defaultValue={JSON.stringify(agent.params, null, 2)}
+                                      className="min-h-20 font-mono text-[12px]"
+                                    />
+                                  </Field>
+                                  <fieldset>
+                                    <legend className="mb-1.5 font-mono text-[12px] text-muted">
+                                      MCP servers
+                                    </legend>
+                                    <div className="space-y-1 border border-line bg-panel p-2">
+                                      {mcpServers.length === 0 ? (
+                                        <p className="text-[12px] text-faint">None registered.</p>
+                                      ) : (
+                                        mcpServers.map((server) => (
+                                          <label
+                                            key={server.id}
+                                            className="flex items-center justify-between gap-2 text-[12px] text-muted"
+                                          >
+                                            <span>{server.name}</span>
+                                            <input
+                                              type="checkbox"
+                                              name="toolIds"
+                                              value={server.id}
+                                              defaultChecked={agent.toolIds.includes(server.id)}
+                                              className="h-3.5 w-3.5 accent-[var(--color-accent)]"
+                                            />
+                                          </label>
+                                        ))
+                                      )}
+                                    </div>
+                                  </fieldset>
                                 </div>
                               </details>
                             </ActionForm>
@@ -312,9 +372,7 @@ export default async function AgentsPage({
                 description="Agents can only reply in rooms they belong to. They reply in the order they were added."
               >
                 {agents.length === 0 || addableRooms.length === 0 ? (
-                  <p className="text-[13px] text-muted">
-                    Create an agent and a room first.
-                  </p>
+                  <p className="text-[13px] text-muted">Create an agent and a room first.</p>
                 ) : (
                   <ActionForm action={addAgentToRoom} submitLabel="Add to room">
                     <input type="hidden" name="orgSlug" value={orgSlug} />
@@ -344,9 +402,7 @@ export default async function AgentsPage({
                         </Select>
                       </Field>
                     </div>
-                    <HelpText>
-                      For debate rooms, set the speaking order in room settings.
-                    </HelpText>
+                    <HelpText>For debate rooms, set the speaking order in room settings.</HelpText>
                   </ActionForm>
                 )}
               </Section>

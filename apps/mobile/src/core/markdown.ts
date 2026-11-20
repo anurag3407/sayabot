@@ -65,4 +65,3 @@ export function parseBlocks(input: string): Block[] {
   flush()
   return blocks
 }
-

@@ -4,12 +4,7 @@ import type { ToolSpec } from "../audited"
 import { resolveToolCredential, type OrgToolConfig } from "../secrets"
 
 export type DocumentOcrProvider =
-  | "docling"
-  | "marker"
-  | "tesseract"
-  | "vision_llm"
-  | "mistral_ocr"
-  | "aws_textract"
+  "docling" | "marker" | "tesseract" | "vision_llm" | "mistral_ocr" | "aws_textract"
 
 export interface DocumentProviderMeta {
   id: DocumentOcrProvider
@@ -214,7 +209,7 @@ async function executeDocling(
   }
 
   if (options.maxPages) {
-    (payload.options as Record<string, unknown>).max_num_pages = options.maxPages
+    ;(payload.options as Record<string, unknown>).max_num_pages = options.maxPages
   }
 
   const res = await fetch(endpoint, {
@@ -226,7 +221,9 @@ async function executeDocling(
 
   if (!res.ok) {
     const errorText = await res.text().catch(() => "")
-    throw new Error(`Docling service responded with status ${res.status}: ${errorText.slice(0, 300)}`)
+    throw new Error(
+      `Docling service responded with status ${res.status}: ${errorText.slice(0, 300)}`,
+    )
   }
 
   const data = (await res.json()) as any
@@ -271,7 +268,9 @@ async function executeMarker(
 
   if (!res.ok) {
     const errorText = await res.text().catch(() => "")
-    throw new Error(`Marker service responded with status ${res.status}: ${errorText.slice(0, 300)}`)
+    throw new Error(
+      `Marker service responded with status ${res.status}: ${errorText.slice(0, 300)}`,
+    )
   }
 
   const data = (await res.json()) as any
@@ -312,7 +311,9 @@ async function executeMistralOcr(
 
   if (!res.ok) {
     const errorText = await res.text().catch(() => "")
-    throw new Error(`Mistral OCR API responded with status ${res.status}: ${errorText.slice(0, 300)}`)
+    throw new Error(
+      `Mistral OCR API responded with status ${res.status}: ${errorText.slice(0, 300)}`,
+    )
   }
 
   const data = (await res.json()) as any
@@ -353,9 +354,12 @@ async function executeVisionLlm(
 
 // ── Orchestrator Main Dispatcher ────────────────────────────────────────────
 
-export async function executeDocumentExtract(args: ExecuteDocumentArgs): Promise<DocumentExtractOutput> {
+export async function executeDocumentExtract(
+  args: ExecuteDocumentArgs,
+): Promise<DocumentExtractOutput> {
   const provider = args.provider || "docling"
-  const baseUrl = args.baseUrl || (provider === "marker" ? "http://localhost:5002" : "http://localhost:5001")
+  const baseUrl =
+    args.baseUrl || (provider === "marker" ? "http://localhost:5002" : "http://localhost:5001")
   const fallbackEnabled = args.fallbackToVision !== false
 
   try {
@@ -379,8 +383,12 @@ export async function executeDocumentExtract(args: ExecuteDocumentArgs): Promise
     }
   } catch (err) {
     if (fallbackEnabled && provider !== "vision_llm") {
-      console.warn(`[document_extract] provider "${provider}" failed (${(err as Error).message}), falling back to Vision LLM...`)
-      const fallbackResult = await executeVisionLlm(args.source, args.apiKey, { signal: args.signal })
+      console.warn(
+        `[document_extract] provider "${provider}" failed (${(err as Error).message}), falling back to Vision LLM...`,
+      )
+      const fallbackResult = await executeVisionLlm(args.source, args.apiKey, {
+        signal: args.signal,
+      })
       return {
         ...fallbackResult,
         fallback: true,
@@ -393,7 +401,9 @@ export async function executeDocumentExtract(args: ExecuteDocumentArgs): Promise
 
 // ── Tool Spec for Sayabot Agents ────────────────────────────────────────────
 
-export function documentTools(optionsOrOrgId?: { orgId?: string; agentId?: string; roomId?: string } | string): ToolSpec[] {
+export function documentTools(
+  optionsOrOrgId?: { orgId?: string; agentId?: string; roomId?: string } | string,
+): ToolSpec[] {
   const orgId = typeof optionsOrOrgId === "string" ? optionsOrOrgId : optionsOrOrgId?.orgId
   const agentId = typeof optionsOrOrgId === "string" ? undefined : optionsOrOrgId?.agentId
 
@@ -406,7 +416,9 @@ export function documentTools(optionsOrOrgId?: { orgId?: string; agentId?: strin
         source: z
           .string()
           .min(1)
-          .describe("Public URL, internal storage URI, or local container file path to the PDF or image document"),
+          .describe(
+            "Public URL, internal storage URI, or local container file path to the PDF or image document",
+          ),
         extractTables: z
           .boolean()
           .default(true)
@@ -424,10 +436,20 @@ export function documentTools(optionsOrOrgId?: { orgId?: string; agentId?: strin
           .describe("Optional limit on the number of pages to extract"),
       }),
       dangerous: false,
-      execute: async (input: { source: string; extractTables?: boolean; format?: "markdown" | "json" | "tables_csv"; maxPages?: number }, signal?: AbortSignal) => {
+      execute: async (
+        input: {
+          source: string
+          extractTables?: boolean
+          format?: "markdown" | "json" | "tables_csv"
+          maxPages?: number
+        },
+        signal?: AbortSignal,
+      ) => {
         let config: OrgToolConfig | null = null
         if (orgId) {
-          config = await resolveToolCredential({ orgId, agentId, tool: "document_extract" }).catch(() => null)
+          config = await resolveToolCredential({ orgId, agentId, tool: "document_extract" }).catch(
+            () => null,
+          )
         }
 
         const selectedProvider = (config?.provider as DocumentOcrProvider) || "docling"

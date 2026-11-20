@@ -98,6 +98,13 @@ const CONNECTOR_SOURCES = [
     help: "Hugging Face → Settings → Access Tokens.",
   },
   {
+    value: "composio",
+    label: "Composio (Gmail, Calendar, Notion, Linear, HubSpot and 1000+ apps)",
+    tokenLabel: "Composio API key",
+    placeholder: "comp_... or your project API key",
+    help: "app.composio.dev → API keys. Each person then connects their own accounts through the sign-in links agents ask for, so agents act as them without you storing passwords.",
+  },
+  {
     value: "s3_storage",
     label: "Custom S3 / MinIO (Self-hosted)",
     tokenLabel: "Secret Access Key",
@@ -111,7 +118,11 @@ export function ConnectorAddForm({ orgSlug }: { orgSlug: string }) {
   const current = CONNECTOR_SOURCES.find((s) => s.value === source) ?? CONNECTOR_SOURCES[0]!
 
   return (
-    <ActionForm action={saveWorkspaceConnector} submitLabel="Connect Workspace Service" resetOnSuccess>
+    <ActionForm
+      action={saveWorkspaceConnector}
+      submitLabel="Connect Workspace Service"
+      resetOnSuccess
+    >
       <input type="hidden" name="orgSlug" value={orgSlug} />
 
       <div className="grid gap-3 sm:grid-cols-2">
@@ -163,12 +174,13 @@ export function ConnectorAddForm({ orgSlug }: { orgSlug: string }) {
         <HelpText>{current.help}</HelpText>
       </Field>
 
-      {(source === "onepassword" || source === "bitwarden" || source === "protonpass") && source !== "protonpass" && (
-        <label className="flex items-center gap-2 text-[13px] text-text">
-          <input type="checkbox" name="onComputer" />
-          Use the app signed in on a computer, instead of an API
-        </label>
-      )}
+      {(source === "onepassword" || source === "bitwarden" || source === "protonpass") &&
+        source !== "protonpass" && (
+          <label className="flex items-center gap-2 text-[13px] text-text">
+            <input type="checkbox" name="onComputer" />
+            Use the app signed in on a computer, instead of an API
+          </label>
+        )}
       {source === "onepassword" && (
         <Field label="1Password Connect URL" htmlFor="op-connect">
           <Input id="op-connect" name="connectUrl" placeholder="https://connect.example.com" />
@@ -192,7 +204,9 @@ export function ConnectorAddForm({ orgSlug }: { orgSlug: string }) {
             name="driveDomain"
             placeholder="e.g. acme.com or 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
           />
-          <HelpText>Limit searches to a specific Google Workspace domain or root folder ID.</HelpText>
+          <HelpText>
+            Limit searches to a specific Google Workspace domain or root folder ID.
+          </HelpText>
         </Field>
       )}
 
@@ -209,25 +223,38 @@ export function ConnectorAddForm({ orgSlug }: { orgSlug: string }) {
 
       {source === "discord" && (
         <Field label="Discord server ID (Optional)" htmlFor="discord-guild">
-          <Input id="discord-guild" name="guildId" inputMode="numeric" placeholder="e.g. 1180123456789012345" />
-          <HelpText>Right-click your server → Copy Server ID (needs Developer Mode). Lets agents list its channels.</HelpText>
+          <Input
+            id="discord-guild"
+            name="guildId"
+            inputMode="numeric"
+            placeholder="e.g. 1180123456789012345"
+          />
+          <HelpText>
+            Right-click your server → Copy Server ID (needs Developer Mode). Lets agents list its
+            channels.
+          </HelpText>
         </Field>
       )}
 
       {source === "whatsapp" && (
         <Field label="Phone number ID" htmlFor="wa-phone-id">
-          <Input id="wa-phone-id" name="phoneNumberId" inputMode="numeric" placeholder="e.g. 106540352242922" required />
-          <HelpText>Shown under API setup next to your business number. It&apos;s an ID, not the phone number itself.</HelpText>
+          <Input
+            id="wa-phone-id"
+            name="phoneNumberId"
+            inputMode="numeric"
+            placeholder="e.g. 106540352242922"
+            required
+          />
+          <HelpText>
+            Shown under API setup next to your business number. It&apos;s an ID, not the phone
+            number itself.
+          </HelpText>
         </Field>
       )}
 
       {source === "github" && (
         <Field label="Default GitHub Org / Owner (Optional)" htmlFor="github-org">
-          <Input
-            id="github-org"
-            name="defaultOrg"
-            placeholder="e.g. sayalabs or vercel"
-          />
+          <Input id="github-org" name="defaultOrg" placeholder="e.g. sayalabs or vercel" />
           <HelpText>Default organization or user account to search repositories in.</HelpText>
         </Field>
       )}
@@ -243,11 +270,7 @@ export function ConnectorAddForm({ orgSlug }: { orgSlug: string }) {
             />
           </Field>
           <Field label="Bucket Name (Optional)" htmlFor="supa-bucket-name">
-            <Input
-              id="supa-bucket-name"
-              name="bucket"
-              placeholder="sayabot-storage"
-            />
+            <Input id="supa-bucket-name" name="bucket" placeholder="sayabot-storage" />
             <HelpText>Defaults to sayabot-storage.</HelpText>
           </Field>
         </>
@@ -256,20 +279,10 @@ export function ConnectorAddForm({ orgSlug }: { orgSlug: string }) {
       {source === "cloudflare_r2" && (
         <>
           <Field label="Cloudflare Account ID" htmlFor="r2-acc-id">
-            <Input
-              id="r2-acc-id"
-              name="accountId"
-              placeholder="e.g. a1b2c3d4..."
-              required
-            />
+            <Input id="r2-acc-id" name="accountId" placeholder="e.g. a1b2c3d4..." required />
           </Field>
           <Field label="Access Key ID" htmlFor="r2-key-id">
-            <Input
-              id="r2-key-id"
-              name="accessKeyId"
-              placeholder="e.g. 987654321..."
-              required
-            />
+            <Input id="r2-key-id" name="accessKeyId" placeholder="e.g. 987654321..." required />
           </Field>
           <Field label="Bucket Name" htmlFor="r2-bucket-name">
             <Input
@@ -293,12 +306,7 @@ export function ConnectorAddForm({ orgSlug }: { orgSlug: string }) {
             />
           </Field>
           <Field label="Key ID (Access Key)" htmlFor="b2-acc-key">
-            <Input
-              id="b2-acc-key"
-              name="keyId"
-              placeholder="e.g. 0041234..."
-              required
-            />
+            <Input id="b2-acc-key" name="keyId" placeholder="e.g. 0041234..." required />
           </Field>
           <Field label="Bucket Name" htmlFor="b2-bucket-name">
             <Input
@@ -322,6 +330,25 @@ export function ConnectorAddForm({ orgSlug }: { orgSlug: string }) {
         </Field>
       )}
 
+      {source === "composio" && (
+        <>
+          <Field label="API base URL (optional)" htmlFor="composio-base-url">
+            <Input
+              id="composio-base-url"
+              name="composioBaseUrl"
+              placeholder="https://backend.composio.dev/api/v3"
+            />
+          </Field>
+          <Field label="Workspace user id (optional)" htmlFor="composio-user-id">
+            <Input id="composio-user-id" name="composioUserId" placeholder="org:<org id>" />
+          </Field>
+          <HelpText>
+            Connected accounts belong to this user id, so changing it disconnects every app this
+            workspace connected before. Leave both fields blank for Composio's hosted API.
+          </HelpText>
+        </>
+      )}
+
       {source === "s3_storage" && (
         <>
           <Field label="S3 Endpoint URL" htmlFor="s3-endpoint-url">
@@ -333,20 +360,10 @@ export function ConnectorAddForm({ orgSlug }: { orgSlug: string }) {
             />
           </Field>
           <Field label="Access Key ID" htmlFor="s3-acc-key">
-            <Input
-              id="s3-acc-key"
-              name="accessKeyId"
-              placeholder="Access Key ID"
-              required
-            />
+            <Input id="s3-acc-key" name="accessKeyId" placeholder="Access Key ID" required />
           </Field>
           <Field label="Bucket Name" htmlFor="s3-bucket-name">
-            <Input
-              id="s3-bucket-name"
-              name="bucket"
-              placeholder="e.g. sayabot"
-              required
-            />
+            <Input id="s3-bucket-name" name="bucket" placeholder="e.g. sayabot" required />
           </Field>
         </>
       )}

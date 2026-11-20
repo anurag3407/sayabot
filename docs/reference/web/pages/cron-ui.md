@@ -38,17 +38,18 @@ function handleWheel(e: React.WheelEvent) {
 }
 ```
 
-  A bottom-right control cluster shows the percentage, +/− buttons (same 0.5–1.8 clamp), and Reset (`pan { x: 40, y: 40 }`, zoom 1). The dotted grid background (`radial-gradient` at 24px spacing) scales and shifts with the same transform.
+A bottom-right control cluster shows the percentage, +/− buttons (same 0.5–1.8 clamp), and Reset (`pan { x: 40, y: 40 }`, zoom 1). The dotted grid background (`radial-gradient` at 24px spacing) scales and shifts with the same transform.
+
 - **Routine selector bar** — with multiple routines, chips (green/grey status dot + name) select the active routine and pan the canvas to its row: `setPan({ x: 40, y: -(idx * 260) + 60 })` (each workflow chain occupies a 260px vertical band).
 - **Workflow chains** — each routine renders as a vertical stack of three 288px node cards connected left-to-right by SVG cubic bezier paths (`M 288 y C 336 y, 344 y, 392 y` style) with amber→indigo and indigo→emerald gradient strokes. Enabled routines animate a dashed flow (`@keyframes n8nFlow { from { stroke-dashoffset: 24 } to { stroke-dashoffset: 0 } }`, class `n8n-flow-active`); disabled ones dim to 35% opacity and lose the dash animation.
 
-| Node | Accent | Port pins | Contents |
-| :--- | :--- | :--- | :--- |
-| **Trigger Node — "Schedule Trigger"** | amber (`border-amber-500/40`) | output (right) | cron expression + timezone chip, human-readable schedule, "Next Execution" time (or "Paused"), inline **Execute now** (▶) and **Pause/Resume** buttons in the header |
-| **Agent Node — "Autonomous Brain"** | indigo | input (left) + output (right) | agent avatar/@handle/display name, model badge, 3-line clamped prompt |
-| **Action Node — "Room Delivery"** | emerald | input (left) | `#room-name` target channel, `<n> runs` counter, last status (`success` green / `failed` red / other muted) |
+| Node                                  | Accent                        | Port pins                     | Contents                                                                                                                                                             |
+| :------------------------------------ | :---------------------------- | :---------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Trigger Node — "Schedule Trigger"** | amber (`border-amber-500/40`) | output (right)                | cron expression + timezone chip, human-readable schedule, "Next Execution" time (or "Paused"), inline **Execute now** (▶) and **Pause/Resume** buttons in the header |
+| **Agent Node — "Autonomous Brain"**   | indigo                        | input (left) + output (right) | agent avatar/@handle/display name, model badge, 3-line clamped prompt                                                                                                |
+| **Action Node — "Room Delivery"**     | emerald                       | input (left)                  | `#room-name` target channel, `<n> runs` counter, last status (`success` green / `failed` red / other muted)                                                          |
 
-  Each card shows a "Workflow: <name>" + Active/Paused chip header above the chain. Clicking any node selects the routine (accent ring) and opens the inspector on the Parameters tab. Empty canvas: "No routines found. Click 'New Routine' to build an automation workflow."
+Each card shows a "Workflow: <name>" + Active/Paused chip header above the chain. Clicking any node selects the routine (accent ring) and opens the inspector on the Parameters tab. Empty canvas: "No routines found. Click 'New Routine' to build an automation workflow."
 
 ### List view
 
@@ -60,18 +61,18 @@ A right-side slide-out (`fixed inset-y-0 right-0 ... max-w-md`, `slide-in-from-r
 
 - **Parameters & Nodes** — an edit form, deliberately remounted per routine via `key={activeRoutine.id}` ("the fields are uncontrolled (defaultValue), so without this, switching routines kept the previous one's values and saved them over it", `n8n-canvas.tsx:976`). Fields:
 
-| Field | Control | Notes |
-| :--- | :--- | :--- |
-| Workflow Name | `Input` | required |
-| Schedule Expression (Cron or Shorthand) | `Input` | cron or natural language |
-| Quick Schedule Presets | 6 chips | write their expr into the input by id lookup: `*/15 * * * *`, `0 * * * *`, `0 */2 * * *`, `0 9 * * *`, `0 9 * * 1-5`, `0 9 * * 1` (`PRESET_SCHEDULES`, `n8n-canvas.tsx:120`) |
-| Timezone | `Select` | UTC, America/New_York, America/Los_Angeles, Europe/London, Asia/Kolkata, Asia/Tokyo |
-| Assigned Autonomous Agent | `Select` | `@handle - name (model)` |
-| Delivery Room | `Select` | includes "Organization General Room" for the empty value |
-| Also send results to | `ChatTargetField` select | "Only the room" default; hint when no targets: "Turn on a Telegram, Discord or WhatsApp chat in Settings → Connectors and list its chat ID to send results there." |
-| Agent Task Prompt / Instructions | `Textarea` | monospace, required |
+| Field                                   | Control                  | Notes                                                                                                                                                                        |
+| :-------------------------------------- | :----------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Workflow Name                           | `Input`                  | required                                                                                                                                                                     |
+| Schedule Expression (Cron or Shorthand) | `Input`                  | cron or natural language                                                                                                                                                     |
+| Quick Schedule Presets                  | 6 chips                  | write their expr into the input by id lookup: `*/15 * * * *`, `0 * * * *`, `0 */2 * * *`, `0 9 * * *`, `0 9 * * 1-5`, `0 9 * * 1` (`PRESET_SCHEDULES`, `n8n-canvas.tsx:120`) |
+| Timezone                                | `Select`                 | UTC, America/New_York, America/Los_Angeles, Europe/London, Asia/Kolkata, Asia/Tokyo                                                                                          |
+| Assigned Autonomous Agent               | `Select`                 | `@handle - name (model)`                                                                                                                                                     |
+| Delivery Room                           | `Select`                 | includes "Organization General Room" for the empty value                                                                                                                     |
+| Also send results to                    | `ChatTargetField` select | "Only the room" default; hint when no targets: "Turn on a Telegram, Discord or WhatsApp chat in Settings → Connectors and list its chat ID to send results there."           |
+| Agent Task Prompt / Instructions        | `Textarea`               | monospace, required                                                                                                                                                          |
 
-  Submit PATCHes `/api/workspaces/<org>/routines/<id>` including `metadata: { deliverTo: deliverToFromForm(form.get("deliver_to")) }` — `deliverToFromForm` splits the `connectorId|chatId` form value into `{ connectorId, chatId }` or `null`, and `null` clears it ("PATCH merges metadata"). Success merges the returned `routine` into local state and toasts.
+Submit PATCHes `/api/workspaces/<org>/routines/<id>` including `metadata: { deliverTo: deliverToFromForm(form.get("deliver_to")) }` — `deliverToFromForm` splits the `connectorId|chatId` form value into `{ connectorId, chatId }` or `null`, and `null` clears it ("PATCH merges metadata"). Success merges the returned `routine` into local state and toasts.
 
 - **Execution Runs** — fetches `GET /api/workspaces/<org>/routines/<id>` whenever the active routine or tab changes; each `RoutineRun` shows a status chip (success `CheckCircle2` / failed `AlertCircle` / running spinner), start time, output block and red error block. Empty state: "No recorded executions yet. Click 'Execute Now' to test run this workflow."
 
@@ -85,7 +86,7 @@ A centered modal form (`max-w-lg`): Routine Name, Schedule ("Cron expr (`0 9 * *
 
 The screen's mutation flow, end to end:
 
-```mermaid
+````mermaid
 flowchart LR
     A[Toolbar / node buttons] -->|POST /routines| B[Create modal]
     A -->|PATCH /routines/:id| C[Inspector form]
@@ -123,3 +124,4 @@ These route handlers (auth, validation, scheduling semantics, natural-language s
 - ../../architecture/turn-lifecycle.md — what an enqueued routine turn executes
 - ../../architecture/realtime-and-events.md — how results broadcast into rooms
 - The routines REST endpoints are documented under `docs/reference/web/api/`.
+````

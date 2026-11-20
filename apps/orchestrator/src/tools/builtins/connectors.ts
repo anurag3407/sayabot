@@ -73,8 +73,7 @@ export function connectorTools(opts: ConnectorToolsOptions): ToolSpec[] {
 
   const slackSearchTool: ToolSpec = {
     name: "slack_search",
-    description:
-      "Search team messages, updates, and discussions across allowed Slack channels.",
+    description: "Search team messages, updates, and discussions across allowed Slack channels.",
     schema: z.object({
       query: z.string().min(1).describe("Search terms or topic"),
       limit: z.number().int().min(1).max(20).optional().default(10),
@@ -133,8 +132,7 @@ export function connectorTools(opts: ConnectorToolsOptions): ToolSpec[] {
 
   const githubSearchCodeTool: ToolSpec = {
     name: "github_search_code",
-    description:
-      "Search source code and files across this agent's allowed GitHub repositories.",
+    description: "Search source code and files across this agent's allowed GitHub repositories.",
     schema: z.object({
       query: z.string().min(1).describe("Code search query or symbol name"),
       limit: z.number().int().min(1).max(20).optional().default(10),
@@ -243,7 +241,10 @@ export function connectorTools(opts: ConnectorToolsOptions): ToolSpec[] {
     description:
       "List the Discord text channels this agent may use. With no server set up, lists the servers the bot is in.",
     schema: z.object({
-      guild_id: z.string().optional().describe("Discord server ID; defaults to the one set on the connector"),
+      guild_id: z
+        .string()
+        .optional()
+        .describe("Discord server ID; defaults to the one set on the connector"),
     }),
     dangerous: false,
     execute: async (input: { guild_id?: string }) =>
@@ -274,7 +275,11 @@ export function connectorTools(opts: ConnectorToolsOptions): ToolSpec[] {
     description: "Post a message in a Discord channel as the bot. Waits for a person's OK.",
     schema: z.object({
       channel_id: z.string().min(1).describe("Discord channel ID"),
-      content: z.string().min(1).max(2000).describe("Message text (Discord markdown, up to 2000 characters)"),
+      content: z
+        .string()
+        .min(1)
+        .max(2000)
+        .describe("Message text (Discord markdown, up to 2000 characters)"),
     }),
     dangerous: true,
     execute: async (input: { channel_id: string; content: string }) => {
@@ -307,12 +312,20 @@ export function connectorTools(opts: ConnectorToolsOptions): ToolSpec[] {
     description:
       "Send a Telegram message from the bot to a chat that has talked to it (or a channel it admins). Waits for a person's OK.",
     schema: z.object({
-      chat_id: z.string().min(1).describe("Numeric chat ID from telegram_read_messages, or @channelname"),
+      chat_id: z
+        .string()
+        .min(1)
+        .describe("Numeric chat ID from telegram_read_messages, or @channelname"),
       text: z.string().min(1).max(4096),
     }),
     dangerous: true,
     execute: async (input: { chat_id: string; text: string }) => {
-      const sent = await service.sendTelegramMessage({ agentId, orgId, chatId: input.chat_id, text: input.text })
+      const sent = await service.sendTelegramMessage({
+        agentId,
+        orgId,
+        chatId: input.chat_id,
+        text: input.text,
+      })
       return { ok: true, message_id: sent.id }
     },
   }
@@ -327,7 +340,12 @@ export function connectorTools(opts: ConnectorToolsOptions): ToolSpec[] {
     }),
     dangerous: true,
     execute: async (input: { to: string; text: string }) => {
-      const sent = await service.sendWhatsAppText({ agentId, orgId, to: input.to, text: input.text })
+      const sent = await service.sendWhatsAppText({
+        agentId,
+        orgId,
+        to: input.to,
+        text: input.text,
+      })
       return { ok: true, message_id: sent.id }
     },
   }
@@ -338,7 +356,10 @@ export function connectorTools(opts: ConnectorToolsOptions): ToolSpec[] {
       "Send an approved WhatsApp message template (needed to start a conversation). Waits for a person's OK.",
     schema: z.object({
       to: z.string().min(7).describe("Phone number with country code"),
-      template: z.string().min(1).describe("Template name as approved in WhatsApp Manager, e.g. hello_world"),
+      template: z
+        .string()
+        .min(1)
+        .describe("Template name as approved in WhatsApp Manager, e.g. hello_world"),
       language: z.string().min(2).max(10).optional().default("en_US"),
     }),
     dangerous: true,
@@ -356,6 +377,97 @@ export function connectorTools(opts: ConnectorToolsOptions): ToolSpec[] {
 
   const tools: ToolSpec[] = []
   const sources = opts.sources ?? ["google_drive", "slack", "github"]
+  if (sources.includes("composio")) {
+    tools.push(
+      {
+        name: "composio_list_apps",
+        description:
+          "List the connected apps this agent may use (Gmail, Google Calendar, Slack, Notion, Linear, HubSpot, Jira and the rest of the catalog), with whether each one is already connected for this workspace.",
+        schema: z.object({
+          search: z.string().max(100).optional().describe("Filter apps by name, e.g. 'cal'"),
+          limit: z.number().int().min(1).max(100).optional().default(50),
+        }),
+        dangerous: false,
+        execute: async (input: { search?: string; limit?: number }) => {
+          const apps = await service.listComposioApps({
+            agentId,
+            orgId,
+            search: input.search,
+            limit: input.limit,
+          })
+          return { count: apps.length, apps }
+        },
+      },
+      {
+        name: "composio_search_tools",
+        description:
+          "List the tools of one connected app. Each result is a tool slug that composio_execute_tool runs, and says whether it changes anything.",
+        schema: z.object({
+          app: z.string().min(1).describe("App slug from composio_list_apps, e.g. gmail"),
+          query: z.string().max(200).optional().describe("Words to filter tools by"),
+          limit: z.number().int().min(1).max(100).optional().default(25),
+        }),
+        dangerous: false,
+        execute: async (input: { app: string; query?: string; limit?: number }) => {
+          const appTools = await service.searchComposioTools({
+            agentId,
+            orgId,
+            toolkit: input.app,
+            query: input.query,
+            limit: input.limit,
+          })
+          return { app: input.app.toLowerCase(), count: appTools.length, tools: appTools }
+        },
+      },
+      {
+        name: "composio_execute_tool",
+        description:
+          "Run one tool of a connected app as the person's own account, e.g. GMAIL_FETCH_EMAILS or GOOGLECALENDAR_LIST_EVENTS. Find the slug and its arguments with composio_search_tools. Waits for a person's OK.",
+        schema: z.object({
+          tool: z
+            .string()
+            .min(1)
+            .describe("Tool slug from composio_search_tools, e.g. GMAIL_FETCH_EMAILS"),
+          arguments: z
+            .record(z.string(), z.unknown())
+            .optional()
+            .describe("Arguments for the tool, as its schema describes"),
+          connected_account_id: z
+            .string()
+            .optional()
+            .describe("Which connected account to use when the app has several"),
+        }),
+        dangerous: true,
+        execute: async (input: {
+          tool: string
+          arguments?: Record<string, unknown>
+          connected_account_id?: string
+        }) => {
+          const data = await service.executeComposioTool({
+            agentId,
+            orgId,
+            tool: input.tool,
+            arguments: input.arguments,
+            connectedAccountId: input.connected_account_id,
+          })
+          return { ok: true, tool: input.tool, result: data }
+        },
+      },
+      {
+        name: "composio_connect_app",
+        description:
+          "Get a sign-in link for an app that is not connected yet. The person opens it to connect their account. Waits for a person's OK.",
+        schema: z.object({
+          app: z.string().min(1).describe("App slug from composio_list_apps, e.g. gmail"),
+        }),
+        dangerous: true,
+        execute: async (input: { app: string }) => {
+          const link = await service.connectComposioApp({ agentId, orgId, toolkit: input.app })
+          return { ok: true, ...link, next: "Open the link to connect the app, then try again." }
+        },
+      },
+    )
+  }
   if (sources.includes("google_drive")) {
     tools.push(gdriveSearchTool, gdriveReadFileTool)
   }
@@ -367,18 +479,30 @@ export function connectorTools(opts: ConnectorToolsOptions): ToolSpec[] {
   }
   for (const source of ["onepassword", "bitwarden", "protonpass"] as const) {
     if (!sources.includes(source)) continue
-    const label = source === "onepassword" ? "1Password" : source === "bitwarden" ? "Bitwarden" : "Proton Pass"
+    const label =
+      source === "onepassword" ? "1Password" : source === "bitwarden" ? "Bitwarden" : "Proton Pass"
     tools.push(
       {
         name: `${source}_search`,
         description: `Find ${label} items by name. Returns titles and ids only, never the secret.`,
         schema: z.object({
           query: z.string().min(1).max(200),
-          vault: z.string().max(80).optional().describe("Vault name or id, when the agent is limited to some vaults"),
+          vault: z
+            .string()
+            .max(80)
+            .optional()
+            .describe("Vault name or id, when the agent is limited to some vaults"),
         }),
         dangerous: false,
         execute: async (input: { query: string; vault?: string }) =>
-          service.queryPassword({ agentId, orgId, source, action: "search", query: input.query, vault: input.vault }),
+          service.queryPassword({
+            agentId,
+            orgId,
+            source,
+            action: "search",
+            query: input.query,
+            vault: input.vault,
+          }),
       },
       {
         name: `${source}_read`,
@@ -389,7 +513,15 @@ export function connectorTools(opts: ConnectorToolsOptions): ToolSpec[] {
         }),
         dangerous: true,
         execute: async (input: { query: string; vault?: string }, signal?: AbortSignal) =>
-          service.queryPassword({ agentId, orgId, source, action: "read", query: input.query, vault: input.vault, signal }),
+          service.queryPassword({
+            agentId,
+            orgId,
+            source,
+            action: "read",
+            query: input.query,
+            vault: input.vault,
+            signal,
+          }),
       },
     )
   }

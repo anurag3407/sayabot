@@ -21,7 +21,9 @@ describe("mac update install script", () => {
     expect(text).toContain('ditto "$SRC" "$TARGET.new"')
     expect(text).toContain('mv "$TARGET" "$TARGET.old"')
     // The old app is only removed after the new one is in place.
-    expect(text.indexOf('rm -rf "$TARGET.old"\nxattr')).toBeGreaterThan(text.indexOf('mv "$TARGET.new" "$TARGET"'))
+    expect(text.indexOf('rm -rf "$TARGET.old"\nxattr')).toBeGreaterThan(
+      text.indexOf('mv "$TARGET.new" "$TARGET"'),
+    )
     expect(text).not.toContain("rm -rf /Applications/Sayabot.app")
   })
 
@@ -39,14 +41,20 @@ describe("mac update install script", () => {
 
 describe("installTarget", () => {
   it("replaces the copy that is running", () => {
-    expect(installTarget("/Users/me/Applications/Sayabot.app/Contents/MacOS/Sayabot")).toBe("/Users/me/Applications/Sayabot.app")
+    expect(installTarget("/Users/me/Applications/Sayabot.app/Contents/MacOS/Sayabot")).toBe(
+      "/Users/me/Applications/Sayabot.app",
+    )
   })
 
   it("installs to /Applications when running from a disk image or App Translocation", () => {
-    expect(installTarget("/Volumes/Sayabot/Sayabot.app/Contents/MacOS/Sayabot")).toBe("/Applications/Sayabot.app")
-    expect(installTarget("/private/var/folders/x/AppTranslocation/ABC/d/Sayabot.app/Contents/MacOS/Sayabot")).toBe(
+    expect(installTarget("/Volumes/Sayabot/Sayabot.app/Contents/MacOS/Sayabot")).toBe(
       "/Applications/Sayabot.app",
     )
+    expect(
+      installTarget(
+        "/private/var/folders/x/AppTranslocation/ABC/d/Sayabot.app/Contents/MacOS/Sayabot",
+      ),
+    ).toBe("/Applications/Sayabot.app")
     expect(installTarget("/usr/local/bin/electron")).toBe("/Applications/Sayabot.app")
   })
 })

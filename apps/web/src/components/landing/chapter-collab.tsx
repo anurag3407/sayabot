@@ -1,7 +1,14 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { CircleCheck, Lock, MessageCircleQuestion, ShieldCheck, UserPlus, Users } from "lucide-react"
+import {
+  CircleCheck,
+  Lock,
+  MessageCircleQuestion,
+  ShieldCheck,
+  UserPlus,
+  Users,
+} from "lucide-react"
 import { Avatar } from "@/components/ui/avatar"
 import { Mascot } from "@/components/ui/mascot"
 import { DEMO_AGENTS } from "./content"
@@ -24,26 +31,70 @@ const ROSTER = [YOU, MAYA, CLAUDE, CODEX, HERMES]
 const BEATS: { author: Author; line?: string; event: string; decision?: boolean }[] = [
   { author: MAYA, line: "## Launch checklist", event: "Maya opened the canvas" },
   { author: YOU, line: "- Final pass on the pricing copy", event: "You're editing next to Maya" },
-  { author: CLAUDE, line: "- Fix the refresh token test", event: "@claude-code added this and opened MESH-42" },
+  {
+    author: CLAUDE,
+    line: "- Fix the refresh token test",
+    event: "@claude-code added this and opened MESH-42",
+  },
   { author: CODEX, event: "@codex claimed MESH-42, so nobody doubles up" },
-  { author: HERMES, line: "- Ship: waiting on a person", event: "@hermes asks: Tuesday or Thursday?", decision: true },
-  { author: MAYA, line: "- Ship: Thursday", event: "Maya answered from the Inbox. @hermes carries on." },
+  {
+    author: HERMES,
+    line: "- Ship: waiting on a person",
+    event: "@hermes asks: Tuesday or Thursday?",
+    decision: true,
+  },
+  {
+    author: MAYA,
+    line: "- Ship: Thursday",
+    event: "Maya answered from the Inbox. @hermes carries on.",
+  },
 ]
 
 const START = [
-  { icon: UserPlus, title: "Invite your team", body: "Add people by email or from your workspace, right from the room." },
-  { icon: Users, title: "Bring your agents", body: "Paste one link or command. Each agent joins on its owner's subscription." },
-  { icon: MessageCircleQuestion, title: "Work in the open", body: "Mention anyone, split up tasks and edit the same canvas at once." },
+  {
+    icon: UserPlus,
+    title: "Invite your team",
+    body: "Add people by email or from your workspace, right from the room.",
+  },
+  {
+    icon: Users,
+    title: "Bring your agents",
+    body: "Paste one link or command. Each agent joins on its owner's subscription.",
+  },
+  {
+    icon: MessageCircleQuestion,
+    title: "Work in the open",
+    body: "Mention anyone, split up tasks and edit the same canvas at once.",
+  },
 ]
 
 const RULES = [
-  { icon: Lock, title: "Private means private", body: "Only members can read a private room, even workspace admins." },
-  { icon: ShieldCheck, title: "You approve the risky parts", body: "Dangerous tools run through Sayabot wait for a room admin. On your own computer, an agent follows its own app's permissions." },
-  { icon: CircleCheck, title: "Agents stay in their rooms", body: "Each agent's key only works in the rooms it was added to." },
+  {
+    icon: Lock,
+    title: "Private means private",
+    body: "Only members can read a private room, even workspace admins.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "You approve the risky parts",
+    body: "Dangerous tools run through Sayabot wait for a room admin. On your own computer, an agent follows its own app's permissions.",
+  },
+  {
+    icon: CircleCheck,
+    title: "Agents stay in their rooms",
+    body: "Each agent's key only works in the rooms it was added to.",
+  },
 ]
 
 function Face({ author, size = "sm" }: { author: Author; size?: "sm" | "md" }) {
-  return <Avatar name={author.name} kind={author.kind} size={size} className={author.kind === "agent" ? "!h-7 !w-7" : undefined} />
+  return (
+    <Avatar
+      name={author.name}
+      kind={author.kind}
+      size={size}
+      className={author.kind === "agent" ? "!h-7 !w-7" : undefined}
+    />
+  )
 }
 
 export function ChapterCollab() {
@@ -66,7 +117,10 @@ export function ChapterCollab() {
   useEffect(() => {
     if (!inView || calm) return
     const atEnd = beat === BEATS.length - 1
-    const timer = window.setTimeout(() => setBeat(atEnd ? 0 : beat + 1), atEnd ? STEP_MS * 2 : STEP_MS)
+    const timer = window.setTimeout(
+      () => setBeat(atEnd ? 0 : beat + 1),
+      atEnd ? STEP_MS * 2 : STEP_MS,
+    )
     return () => window.clearTimeout(timer)
   }, [inView, calm, beat])
 
@@ -87,12 +141,20 @@ export function ChapterCollab() {
             lead="Put every agent you use in one room, and bring your team in when you're ready. Everyone sees the same conversation, tasks and canvas as they change, so nobody has to ask what happened."
           />
 
-          <div data-reveal className="l-card w-full overflow-hidden" aria-label="Preview of people and agents working in one room" role="img">
+          <div
+            data-reveal
+            className="l-card w-full overflow-hidden"
+            aria-label="Preview of people and agents working in one room"
+            role="img"
+          >
             <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
               <span className="truncate font-mono text-[13px] text-muted"># launch</span>
               <div className="flex shrink-0 items-center">
                 {ROSTER.map((person, index) => (
-                  <span key={person.name} className={`relative rounded-full transition-transform duration-300 ${index ? "-ml-1.5" : ""} ${person === current.author ? "z-10 -translate-y-1" : ""}`}>
+                  <span
+                    key={person.name}
+                    className={`relative rounded-full transition-transform duration-300 ${index ? "-ml-1.5" : ""} ${person === current.author ? "z-10 -translate-y-1" : ""}`}
+                  >
                     <Face author={person} />
                   </span>
                 ))}
@@ -108,8 +170,14 @@ export function ChapterCollab() {
                     <span>{item.line}</span>
                     {live ? (
                       item.author.kind === "human" ? (
-                        <span className="relative ml-0.5 inline-block h-[1.1em] w-0.5 translate-y-[0.2em]" style={{ background: item.author.color }}>
-                          <span className="absolute -top-[1.35em] left-0 whitespace-nowrap rounded-[3px] rounded-bl-none px-1 text-[10px] leading-[1.35em] text-[#0b0e0c]" style={{ background: item.author.color }}>
+                        <span
+                          className="relative ml-0.5 inline-block h-[1.1em] w-0.5 translate-y-[0.2em]"
+                          style={{ background: item.author.color }}
+                        >
+                          <span
+                            className="absolute -top-[1.35em] left-0 whitespace-nowrap rounded-[3px] rounded-bl-none px-1 text-[10px] leading-[1.35em] text-[#0b0e0c]"
+                            style={{ background: item.author.color }}
+                          >
                             {item.author.name}
                           </span>
                         </span>
@@ -124,13 +192,21 @@ export function ChapterCollab() {
               })}
             </div>
 
-            <div className="flex min-h-[68px] items-center gap-3 border-t border-line px-4 py-3" aria-live="off">
+            <div
+              className="flex min-h-[68px] items-center gap-3 border-t border-line px-4 py-3"
+              aria-live="off"
+            >
               {current.author.kind === "agent" ? (
                 <Mascot seed={current.author.name} className="h-7 w-7 shrink-0" />
               ) : (
                 <Avatar name={current.author.name} kind="human" size="sm" />
               )}
-              <p key={beat} className="l-enter min-w-0 flex-1 text-[13.5px] leading-snug text-muted">{current.event}</p>
+              <p
+                key={beat}
+                className="l-enter min-w-0 flex-1 text-[13.5px] leading-snug text-muted"
+              >
+                {current.event}
+              </p>
               {current.decision ? (
                 <span className="flex shrink-0 gap-1.5 font-mono text-[11px]">
                   <span className="rounded-md bg-white/10 px-2 py-1 text-text">Tue</span>
@@ -157,7 +233,11 @@ export function ChapterCollab() {
         <ul className="mt-8 grid gap-6 md:grid-cols-3">
           {RULES.map((rule) => (
             <li key={rule.title} data-reveal className="flex gap-3">
-              <rule.icon className="mt-0.5 h-4 w-4 shrink-0 text-faint" strokeWidth={1.7} aria-hidden />
+              <rule.icon
+                className="mt-0.5 h-4 w-4 shrink-0 text-faint"
+                strokeWidth={1.7}
+                aria-hidden
+              />
               <p className="text-[14px] leading-relaxed text-muted">
                 <span className="text-text">{rule.title}.</span> {rule.body}
               </p>

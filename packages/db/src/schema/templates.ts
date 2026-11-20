@@ -1,12 +1,4 @@
-import {
-  index,
-  jsonb,
-  pgTable,
-  text,
-  timestamp,
-  uniqueIndex,
-  uuid,
-} from "drizzle-orm/pg-core"
+import { index, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core"
 import type { AgentCapabilities } from "@sayabot/core"
 import { DEFAULT_CAPABILITIES } from "@sayabot/core"
 import { providerEnum } from "./enums"
@@ -43,7 +35,10 @@ export const agentTemplates = pgTable(
     defaultProvider: providerEnum("default_provider"),
     defaultModel: text("default_model"),
     params: jsonb("params").$type<Record<string, unknown>>().notNull().default({}),
-    capabilities: jsonb("capabilities").$type<AgentCapabilities>().notNull().default(DEFAULT_CAPABILITIES),
+    capabilities: jsonb("capabilities")
+      .$type<AgentCapabilities>()
+      .notNull()
+      .default(DEFAULT_CAPABILITIES),
     secretSlots: jsonb("secret_slots").$type<SecretSlot[]>().notNull().default([]),
     starterTasks: jsonb("starter_tasks").$type<StarterTask[]>().notNull().default([]),
     createdBy: uuid("created_by").references(() => profiles.id, { onDelete: "set null" }),

@@ -17,7 +17,22 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import * as Clipboard from "expo-clipboard"
 import * as DocumentPicker from "expo-document-picker"
 import * as ImagePicker from "expo-image-picker"
-import { ArrowDown, ArrowUp, Camera, ChevronLeft, Copy, CornerUpLeft, FileText, Hash, ImageIcon, Plus, Settings2, ShieldAlert, SquareTerminal, X } from "lucide-react-native"
+import {
+  ArrowDown,
+  ArrowUp,
+  Camera,
+  ChevronLeft,
+  Copy,
+  CornerUpLeft,
+  FileText,
+  Hash,
+  ImageIcon,
+  Plus,
+  Settings2,
+  ShieldAlert,
+  SquareTerminal,
+  X,
+} from "lucide-react-native"
 import { attachmentMarkdown, uploadToRoom, type Picked } from "../core/api"
 import { ChatModelButton } from "../components/chat/ModelPicker"
 import { TerminalDrawer } from "../components/chat/TerminalDrawer"
@@ -45,7 +60,11 @@ function dayLabel(iso: string): string {
 
 function TypingDots() {
   const theme = useTheme()
-  const dots = [useRef(new Animated.Value(0)).current, useRef(new Animated.Value(0)).current, useRef(new Animated.Value(0)).current]
+  const dots = [
+    useRef(new Animated.Value(0)).current,
+    useRef(new Animated.Value(0)).current,
+    useRef(new Animated.Value(0)).current,
+  ]
   useEffect(() => {
     const anims = dots.map((v, i) =>
       Animated.loop(
@@ -71,7 +90,9 @@ function TypingDots() {
             borderRadius: 4,
             backgroundColor: theme.muted,
             opacity: v.interpolate({ inputRange: [0, 1], outputRange: [0.35, 1] }),
-            transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [0, -3] }) }],
+            transform: [
+              { translateY: v.interpolate({ inputRange: [0, 1], outputRange: [0, -3] }) },
+            ],
           }}
         />
       ))}
@@ -79,7 +100,9 @@ function TypingDots() {
   )
 }
 
-type Item = { kind: "day"; key: string; label: string } | { kind: "msg"; key: string; message: Message; first: boolean; last: boolean }
+type Item =
+  | { kind: "day"; key: string; label: string }
+  | { kind: "msg"; key: string; message: Message; first: boolean; last: boolean }
 
 function MessageRow({
   item,
@@ -119,11 +142,20 @@ function MessageRow({
       },
     }),
   ).current
-  const mine = m.senderType === "human" && (m.senderName === "You" || m.id.startsWith("local-") || !m.metadata?.agentName)
+  const mine =
+    m.senderType === "human" &&
+    (m.senderName === "You" || m.id.startsWith("local-") || !m.metadata?.agentName)
   if (m.senderType === "system") {
     return (
       <View style={{ alignItems: "center", marginVertical: 8, paddingHorizontal: space.xl }}>
-        <View style={{ backgroundColor: theme.raised, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 6 }}>
+        <View
+          style={{
+            backgroundColor: theme.raised,
+            borderRadius: radius.pill,
+            paddingHorizontal: 12,
+            paddingVertical: 6,
+          }}
+        >
           <Text variant="caption" tone="muted" center>
             {m.content}
           </Text>
@@ -137,9 +169,22 @@ function MessageRow({
   return (
     <Animated.View
       {...pan.panHandlers}
-      style={{ flexDirection: "row", justifyContent: mine ? "flex-end" : "flex-start", paddingHorizontal: space.md, marginTop: item.first ? 10 : 2, transform: [{ translateX: dx }] }}
+      style={{
+        flexDirection: "row",
+        justifyContent: mine ? "flex-end" : "flex-start",
+        paddingHorizontal: space.md,
+        marginTop: item.first ? 10 : 2,
+        transform: [{ translateX: dx }],
+      }}
     >
-      <Animated.View style={{ position: "absolute", left: 6, top: "40%", opacity: dx.interpolate({ inputRange: [0, 60], outputRange: [0, 1] }) }}>
+      <Animated.View
+        style={{
+          position: "absolute",
+          left: 6,
+          top: "40%",
+          opacity: dx.interpolate({ inputRange: [0, 60], outputRange: [0, 1] }),
+        }}
+      >
         <CornerUpLeft size={18} color={theme.muted} />
       </Animated.View>
       {!mine ? (
@@ -156,7 +201,12 @@ function MessageRow({
       ) : null}
       <View style={{ maxWidth: "80%" }}>
         {item.first && !mine ? (
-          <Text variant="caption" tone="muted" weight="600" style={{ marginLeft: 12, marginBottom: 3 }}>
+          <Text
+            variant="caption"
+            tone="muted"
+            weight="600"
+            style={{ marginLeft: 12, marginBottom: 3 }}
+          >
             {m.senderName ?? "Agent"}
           </Text>
         ) : null}
@@ -183,20 +233,35 @@ function MessageRow({
           {m.status === "streaming" && !m.content ? (
             <TypingDots />
           ) : (
-            <RichText text={m.content} mine={mine} color={mine ? theme.bubbleMineText : theme.text} />
+            <RichText
+              text={m.content}
+              mine={mine}
+              color={mine ? theme.bubbleMineText : theme.text}
+            />
           )}
         </Pressable>
         {item.last || failed ? (
-          <Text variant="caption" tone={failed ? "danger" : "faint"} style={{ marginTop: 3, alignSelf: mine ? "flex-end" : "flex-start", marginHorizontal: 8 }}>
+          <Text
+            variant="caption"
+            tone={failed ? "danger" : "faint"}
+            style={{
+              marginTop: 3,
+              alignSelf: mine ? "flex-end" : "flex-start",
+              marginHorizontal: 8,
+            }}
+          >
             {failed
               ? "Not sent · long press to copy"
               : sending
                 ? "Sending…"
                 : queued
                   ? "Queued · read after the current reply"
-                : m.status === "error"
-                  ? "Stopped with an error"
-                  : new Date(m.createdAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+                  : m.status === "error"
+                    ? "Stopped with an error"
+                    : new Date(m.createdAt).toLocaleTimeString([], {
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })}
           </Text>
         ) : null}
       </View>
@@ -208,7 +273,17 @@ export function ChatScreen({ route, navigation }: any) {
   const { roomId = "", roomName = "chat", orgSlug = "" } = route?.params ?? {}
   const theme = useTheme()
   const insets = useSafeAreaInsets()
-  const { messages, loading, error, agentStatus, terminalLogs, approval, sendMessage, resolveApproval, clearTerminal } = useRoomRealtime(roomId, orgSlug)
+  const {
+    messages,
+    loading,
+    error,
+    agentStatus,
+    terminalLogs,
+    approval,
+    sendMessage,
+    resolveApproval,
+    clearTerminal,
+  } = useRoomRealtime(roomId, orgSlug)
   // Reload the agent list on return from room settings, where agents are added and removed.
   const [agentsKey, setAgentsKey] = useState(0)
   useEffect(() => navigation.addListener("focus", () => setAgentsKey((k) => k + 1)), [navigation])
@@ -237,20 +312,48 @@ export function ChatScreen({ route, navigation }: any) {
       const m = list[i]!
       const newer = list[i + 1]
       const older = list[i - 1]
-      const sameAsOlder = older && older.senderType === m.senderType && older.senderId === m.senderId && older.senderName === m.senderName && dayLabel(older.createdAt) === dayLabel(m.createdAt)
-      const sameAsNewer = newer && newer.senderType === m.senderType && newer.senderId === m.senderId && newer.senderName === m.senderName && dayLabel(newer.createdAt) === dayLabel(m.createdAt)
+      const sameAsOlder =
+        older &&
+        older.senderType === m.senderType &&
+        older.senderId === m.senderId &&
+        older.senderName === m.senderName &&
+        dayLabel(older.createdAt) === dayLabel(m.createdAt)
+      const sameAsNewer =
+        newer &&
+        newer.senderType === m.senderType &&
+        newer.senderId === m.senderId &&
+        newer.senderName === m.senderName &&
+        dayLabel(newer.createdAt) === dayLabel(m.createdAt)
       out.push({ kind: "msg", key: m.id, message: m, first: !sameAsOlder, last: !sameAsNewer })
-      if (!older || dayLabel(older.createdAt) !== dayLabel(m.createdAt)) out.push({ kind: "day", key: `day-${m.createdAt.slice(0, 10)}`, label: dayLabel(m.createdAt) })
+      if (!older || dayLabel(older.createdAt) !== dayLabel(m.createdAt))
+        out.push({
+          kind: "day",
+          key: `day-${m.createdAt.slice(0, 10)}`,
+          label: dayLabel(m.createdAt),
+        })
     }
     return out
   }, [messages])
 
   const working = messages.some((m) => m.status === "streaming" && m.senderType === "agent")
   // Room settings are the web page, opened signed in: agents, where each runs, lead, tools, people.
-  const openSettings = () => navigation.navigate("WebPage", { path: `/${orgSlug}/r/${roomId}/settings`, title: "Room settings" })
-  const subtitle = agentStatus ?? (working ? "Replying…" : agents.length ? agents.map((a) => a.displayName).join(", ") : "No agents yet")
+  const openSettings = () =>
+    navigation.navigate("WebPage", {
+      path: `/${orgSlug}/r/${roomId}/settings`,
+      title: "Room settings",
+    })
+  const subtitle =
+    agentStatus ??
+    (working
+      ? "Replying…"
+      : agents.length
+        ? agents.map((a) => a.displayName).join(", ")
+        : "No agents yet")
   const mentionQuery = draft.match(/@([a-z0-9-]*)$/i)?.[1]?.toLowerCase()
-  const mentionMatches = mentionQuery !== undefined ? agents.filter((a) => a.handle.toLowerCase().startsWith(mentionQuery)) : []
+  const mentionMatches =
+    mentionQuery !== undefined
+      ? agents.filter((a) => a.handle.toLowerCase().startsWith(mentionQuery))
+      : []
 
   useEffect(() => {
     if (!working) setQueuedIds([])
@@ -266,7 +369,8 @@ export function ChatScreen({ route, navigation }: any) {
       if (attachments.length) {
         setUploading(true)
         const links: string[] = []
-        for (const file of attachments) links.push(attachmentMarkdown(await uploadToRoom(roomId, file)))
+        for (const file of attachments)
+          links.push(attachmentMarkdown(await uploadToRoom(roomId, file)))
         content = [text, ...links].filter(Boolean).join("\n")
         setAttachments([])
         setUploading(false)
@@ -283,23 +387,56 @@ export function ChatScreen({ route, navigation }: any) {
 
   async function pickPhotos(camera: boolean) {
     setAttachOpen(false)
-    const perm = camera ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync()
-    if (!perm.granted) return setSendError(camera ? "Camera access is off for Sayabot in Settings." : "Photo access is off for Sayabot in Settings.")
+    const perm = camera
+      ? await ImagePicker.requestCameraPermissionsAsync()
+      : await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (!perm.granted)
+      return setSendError(
+        camera
+          ? "Camera access is off for Sayabot in Settings."
+          : "Photo access is off for Sayabot in Settings.",
+      )
     const res = camera
       ? await ImagePicker.launchCameraAsync({ quality: 0.8 })
-      : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], allowsMultipleSelection: true, selectionLimit: 4, quality: 0.8 })
+      : await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ["images"],
+          allowsMultipleSelection: true,
+          selectionLimit: 4,
+          quality: 0.8,
+        })
     if (res.canceled) return
     setAttachments((a) =>
-      [...a, ...res.assets.map((x) => ({ uri: x.uri, name: x.fileName ?? `photo-${Date.now()}.jpg`, type: x.mimeType ?? "image/jpeg", size: x.fileSize, isImage: true }))].slice(0, 6),
+      [
+        ...a,
+        ...res.assets.map((x) => ({
+          uri: x.uri,
+          name: x.fileName ?? `photo-${Date.now()}.jpg`,
+          type: x.mimeType ?? "image/jpeg",
+          size: x.fileSize,
+          isImage: true,
+        })),
+      ].slice(0, 6),
     )
   }
 
   async function pickFile() {
     setAttachOpen(false)
-    const res = await DocumentPicker.getDocumentAsync({ multiple: true, copyToCacheDirectory: true })
+    const res = await DocumentPicker.getDocumentAsync({
+      multiple: true,
+      copyToCacheDirectory: true,
+    })
     if (res.canceled) return
     setAttachments((a) =>
-      [...a, ...res.assets.map((x) => ({ uri: x.uri, name: x.name, type: x.mimeType ?? "application/octet-stream", size: x.size, isImage: (x.mimeType ?? "").startsWith("image/") }))].slice(0, 6),
+      [
+        ...a,
+        ...res.assets.map((x) => ({
+          uri: x.uri,
+          name: x.name,
+          type: x.mimeType ?? "application/octet-stream",
+          size: x.size,
+          isImage: (x.mimeType ?? "").startsWith("image/"),
+        })),
+      ].slice(0, 6),
     )
   }
 
@@ -321,12 +458,34 @@ export function ChatScreen({ route, navigation }: any) {
           borderBottomColor: theme.line,
         }}
       >
-        <View style={{ height: 56, flexDirection: "row", alignItems: "center", paddingHorizontal: 6, gap: 6 }}>
-          <IconButton label="Back" tint="transparent" icon={<ChevronLeft size={26} color={theme.text} />} onPress={() => navigation.goBack()} />
+        <View
+          style={{
+            height: 56,
+            flexDirection: "row",
+            alignItems: "center",
+            paddingHorizontal: 6,
+            gap: 6,
+          }}
+        >
+          <IconButton
+            label="Back"
+            tint="transparent"
+            icon={<ChevronLeft size={26} color={theme.text} />}
+            onPress={() => navigation.goBack()}
+          />
           {headAgent ? (
             <Mascot seed={headAgent.handle} size={36} working={working} shadow={true} live={true} />
           ) : (
-            <View style={{ width: 40, height: 40, borderRadius: 14, backgroundColor: theme.raised, alignItems: "center", justifyContent: "center" }}>
+            <View
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 14,
+                backgroundColor: theme.raised,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
               <Hash size={18} color={theme.muted} />
             </View>
           )}
@@ -334,23 +493,46 @@ export function ChatScreen({ route, navigation }: any) {
             <Text variant="headline" numberOfLines={1}>
               {roomName}
             </Text>
-            <Text variant="caption" tone={working || agentStatus ? "accent" : "muted"} numberOfLines={1}>
+            <Text
+              variant="caption"
+              tone={working || agentStatus ? "accent" : "muted"}
+              numberOfLines={1}
+            >
               {subtitle}
             </Text>
           </View>
           {terminalLogs.length ? (
-            <IconButton label="Computer output" icon={<SquareTerminal size={18} color={theme.text} />} onPress={() => setTerminalOpen(true)} />
+            <IconButton
+              label="Computer output"
+              icon={<SquareTerminal size={18} color={theme.text} />}
+              onPress={() => setTerminalOpen(true)}
+            />
           ) : null}
-          <IconButton label="Room settings" tint="transparent" icon={<Settings2 size={20} color={theme.text} />} onPress={openSettings} />
+          <IconButton
+            label="Room settings"
+            tint="transparent"
+            icon={<Settings2 size={20} color={theme.text} />}
+            onPress={openSettings}
+          />
         </View>
         {roomQuestions.length ? (
           <Pressable
             onPress={() => setQuestionsOpen(true)}
             accessibilityRole="button"
-            style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: space.lg, paddingVertical: 10, backgroundColor: theme.warnSoft }}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 8,
+              paddingHorizontal: space.lg,
+              paddingVertical: 10,
+              backgroundColor: theme.warnSoft,
+            }}
           >
             <Text variant="subhead" weight="600" style={{ flex: 1 }}>
-              {roomQuestions[0]!.agentName} {roomQuestions.length > 1 ? `and others need ${roomQuestions.length} answers` : "has a question"}
+              {roomQuestions[0]!.agentName}{" "}
+              {roomQuestions.length > 1
+                ? `and others need ${roomQuestions.length} answers`
+                : "has a question"}
             </Text>
             <Text variant="subhead" tone="warn" weight="700">
               Answer
@@ -359,7 +541,10 @@ export function ChatScreen({ route, navigation }: any) {
         ) : null}
       </View>
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
         {loading && !messages.length ? (
           <ActivityIndicator style={{ marginTop: 40 }} color={theme.accent} />
         ) : (
@@ -375,15 +560,33 @@ export function ChatScreen({ route, navigation }: any) {
             scrollEventThrottle={64}
             ListFooterComponent={
               !messages.length ? (
-                <View style={{ alignItems: "center", padding: space.xxl, gap: 8, transform: [{ scaleY: -1 }] }}>
-                  {headAgent ? <Mascot seed={headAgent.handle} size={64} shadow={true} live={true} /> : null}
+                <View
+                  style={{
+                    alignItems: "center",
+                    padding: space.xxl,
+                    gap: 8,
+                    transform: [{ scaleY: -1 }],
+                  }}
+                >
+                  {headAgent ? (
+                    <Mascot seed={headAgent.handle} size={64} shadow={true} live={true} />
+                  ) : null}
                   <Text variant="headline" center>
                     Say hello
                   </Text>
                   <Text variant="subhead" tone="muted" center>
-                    {agents.length ? `Mention ${agents.map((a) => `@${a.handle}`).join(" or ")} to get them going.` : "Add agents, pick a lead and connect apps in room settings."}
+                    {agents.length
+                      ? `Mention ${agents.map((a) => `@${a.handle}`).join(" or ")} to get them going.`
+                      : "Add agents, pick a lead and connect apps in room settings."}
                   </Text>
-                  {!agents.length ? <Button title="Room settings" variant="secondary" onPress={openSettings} style={{ marginTop: 8 }} /> : null}
+                  {!agents.length ? (
+                    <Button
+                      title="Room settings"
+                      variant="secondary"
+                      onPress={openSettings}
+                      style={{ marginTop: 8 }}
+                    />
+                  ) : null}
                 </View>
               ) : null
             }
@@ -395,7 +598,12 @@ export function ChatScreen({ route, navigation }: any) {
                   </Text>
                 </View>
               ) : (
-                <MessageRow item={item} onLongPress={setActionFor} onReply={replyTo} queued={queuedIds.includes(item.message.id)} />
+                <MessageRow
+                  item={item}
+                  onLongPress={setActionFor}
+                  onReply={replyTo}
+                  queued={queuedIds.includes(item.message.id)}
+                />
               )
             }
           />
@@ -403,12 +611,28 @@ export function ChatScreen({ route, navigation }: any) {
 
         {!atBottom ? (
           <View style={{ position: "absolute", right: space.lg, bottom: 96 }}>
-            <IconButton label="Jump to latest" icon={<ArrowDown size={18} color={theme.text} />} tint={theme.card} onPress={() => listRef.current?.scrollToOffset({ offset: 0, animated: true })} />
+            <IconButton
+              label="Jump to latest"
+              icon={<ArrowDown size={18} color={theme.text} />}
+              tint={theme.card}
+              onPress={() => listRef.current?.scrollToOffset({ offset: 0, animated: true })}
+            />
           </View>
         ) : null}
 
         {approval ? (
-          <View style={{ marginHorizontal: space.md, marginBottom: 8, padding: space.md, borderRadius: radius.lg, backgroundColor: theme.card, borderWidth: 1, borderColor: theme.warn, gap: 8 }}>
+          <View
+            style={{
+              marginHorizontal: space.md,
+              marginBottom: 8,
+              padding: space.md,
+              borderRadius: radius.lg,
+              backgroundColor: theme.card,
+              borderWidth: 1,
+              borderColor: theme.warn,
+              gap: 8,
+            }}
+          >
             <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
               <ShieldAlert size={18} color={theme.warn} />
               <Text variant="subhead" weight="600" style={{ flex: 1 }}>
@@ -425,7 +649,9 @@ export function ChatScreen({ route, navigation }: any) {
                 loading={deciding}
                 onPress={async () => {
                   setDeciding(true)
-                  await resolveApproval(true).catch((e) => setSendError(e instanceof Error ? e.message : "Not saved"))
+                  await resolveApproval(true).catch((e) =>
+                    setSendError(e instanceof Error ? e.message : "Not saved"),
+                  )
                   setDeciding(false)
                   haptic.success()
                 }}
@@ -437,7 +663,9 @@ export function ChatScreen({ route, navigation }: any) {
                 disabled={deciding}
                 onPress={async () => {
                   setDeciding(true)
-                  await resolveApproval(false).catch((e) => setSendError(e instanceof Error ? e.message : "Not saved"))
+                  await resolveApproval(false).catch((e) =>
+                    setSendError(e instanceof Error ? e.message : "Not saved"),
+                  )
                   setDeciding(false)
                 }}
               />
@@ -446,7 +674,15 @@ export function ChatScreen({ route, navigation }: any) {
         ) : null}
 
         {mentionMatches.length ? (
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, paddingHorizontal: space.md, paddingBottom: 6 }}>
+          <View
+            style={{
+              flexDirection: "row",
+              flexWrap: "wrap",
+              gap: 8,
+              paddingHorizontal: space.md,
+              paddingBottom: 6,
+            }}
+          >
             {mentionMatches.map((a) => (
               <Pressable
                 key={a.id}
@@ -454,7 +690,16 @@ export function ChatScreen({ route, navigation }: any) {
                   haptic.select()
                   setDraft((d) => d.replace(/@([a-z0-9-]*)$/i, `@${a.handle} `))
                 }}
-                style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: theme.card, borderRadius: radius.pill, paddingRight: 12, paddingLeft: 2, height: 34 }}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 6,
+                  backgroundColor: theme.card,
+                  borderRadius: radius.pill,
+                  paddingRight: 12,
+                  paddingLeft: 2,
+                  height: 34,
+                }}
               >
                 <Mascot seed={a.handle} size={22} />
                 <Text variant="subhead">@{a.handle}</Text>
@@ -464,20 +709,43 @@ export function ChatScreen({ route, navigation }: any) {
         ) : null}
 
         {sendError ? (
-          <Text variant="caption" tone="danger" style={{ marginHorizontal: space.lg, marginBottom: 4 }}>
+          <Text
+            variant="caption"
+            tone="danger"
+            style={{ marginHorizontal: space.lg, marginBottom: 4 }}
+          >
             {sendError}
           </Text>
         ) : null}
         {error && !messages.length ? (
-          <Text variant="caption" tone="danger" style={{ marginHorizontal: space.lg, marginBottom: 4 }}>
+          <Text
+            variant="caption"
+            tone="danger"
+            style={{ marginHorizontal: space.lg, marginBottom: 4 }}
+          >
             {error}
           </Text>
         ) : null}
 
         {attachments.length ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: space.md, paddingTop: 6 }}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: 8, paddingHorizontal: space.md, paddingTop: 6 }}
+          >
             {attachments.map((a, i) => (
-              <View key={`${a.uri}-${i}`} style={{ width: 72, height: 72, borderRadius: 14, overflow: "hidden", backgroundColor: theme.card, alignItems: "center", justifyContent: "center" }}>
+              <View
+                key={`${a.uri}-${i}`}
+                style={{
+                  width: 72,
+                  height: 72,
+                  borderRadius: 14,
+                  overflow: "hidden",
+                  backgroundColor: theme.card,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
                 {a.isImage ? (
                   <Image source={{ uri: a.uri }} style={{ width: 72, height: 72 }} />
                 ) : (
@@ -491,7 +759,17 @@ export function ChatScreen({ route, navigation }: any) {
                 <Pressable
                   onPress={() => setAttachments((list) => list.filter((_, j) => j !== i))}
                   accessibilityLabel={`Remove ${a.name}`}
-                  style={{ position: "absolute", top: 4, right: 4, width: 22, height: 22, borderRadius: 11, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center" }}
+                  style={{
+                    position: "absolute",
+                    top: 4,
+                    right: 4,
+                    width: 22,
+                    height: 22,
+                    borderRadius: 11,
+                    backgroundColor: "rgba(0,0,0,0.6)",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
                 >
                   <X size={13} color="#fff" />
                 </Pressable>
@@ -501,17 +779,54 @@ export function ChatScreen({ route, navigation }: any) {
         ) : null}
 
         {orgSlug && roomId ? <ChatModelButton orgSlug={orgSlug} roomId={roomId} /> : null}
-        <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8, paddingHorizontal: space.md, paddingTop: 6, paddingBottom: Math.max(insets.bottom, 10), backgroundColor: theme.bg }}>
-          <IconButton label="Attach" size={44} icon={<Plus size={22} color={theme.text} />} onPress={() => setAttachOpen(true)} />
-          <View style={{ flex: 1, minHeight: 44, maxHeight: 140, borderRadius: 22, backgroundColor: theme.card, borderWidth: StyleSheet.hairlineWidth, borderColor: theme.lineStrong, paddingHorizontal: 16, justifyContent: "center" }}>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "flex-end",
+            gap: 8,
+            paddingHorizontal: space.md,
+            paddingTop: 6,
+            paddingBottom: Math.max(insets.bottom, 10),
+            backgroundColor: theme.bg,
+          }}
+        >
+          <IconButton
+            label="Attach"
+            size={44}
+            icon={<Plus size={22} color={theme.text} />}
+            onPress={() => setAttachOpen(true)}
+          />
+          <View
+            style={{
+              flex: 1,
+              minHeight: 44,
+              maxHeight: 140,
+              borderRadius: 22,
+              backgroundColor: theme.card,
+              borderWidth: StyleSheet.hairlineWidth,
+              borderColor: theme.lineStrong,
+              paddingHorizontal: 16,
+              justifyContent: "center",
+            }}
+          >
             <TextInput
               ref={inputRef}
               value={draft}
               onChangeText={setDraft}
-              placeholder={agents.length ? `Message ${agents.length === 1 ? agents[0]!.displayName : "the room"}…` : "Message…"}
+              placeholder={
+                agents.length
+                  ? `Message ${agents.length === 1 ? agents[0]!.displayName : "the room"}…`
+                  : "Message…"
+              }
               placeholderTextColor={theme.faint}
               multiline
-              style={{ color: theme.text, fontSize: 16, lineHeight: 21, paddingVertical: 10, maxHeight: 130 }}
+              style={{
+                color: theme.text,
+                fontSize: 16,
+                lineHeight: 21,
+                paddingVertical: 10,
+                maxHeight: 130,
+              }}
               accessibilityLabel="Message"
             />
           </View>
@@ -530,7 +845,14 @@ export function ChatScreen({ route, navigation }: any) {
               transform: [{ scale: pressed ? 0.94 : 1 }],
             })}
           >
-            {uploading ? <ActivityIndicator color={theme.onAccent} /> : <ArrowUp size={22} color={draft.trim() || attachments.length ? theme.onAccent : theme.faint} />}
+            {uploading ? (
+              <ActivityIndicator color={theme.onAccent} />
+            ) : (
+              <ArrowUp
+                size={22}
+                color={draft.trim() || attachments.length ? theme.onAccent : theme.faint}
+              />
+            )}
           </Pressable>
         </View>
       </KeyboardAvoidingView>
@@ -560,15 +882,39 @@ export function ChatScreen({ route, navigation }: any) {
         ) : null}
       </Sheet>
 
-      <Sheet visible={attachOpen} onClose={() => setAttachOpen(false)} title="Add to message" height={0.4}>
+      <Sheet
+        visible={attachOpen}
+        onClose={() => setAttachOpen(false)}
+        title="Add to message"
+        height={0.4}
+      >
         <Group>
-          <Row icon={<ImageIcon size={16} color={theme.text} />} title="Photos" subtitle="Up to 4 at a time" onPress={() => void pickPhotos(false)} />
-          <Row icon={<Camera size={16} color={theme.text} />} title="Camera" onPress={() => void pickPhotos(true)} />
-          <Row icon={<FileText size={16} color={theme.text} />} title="File" subtitle="PDF, documents, spreadsheets · up to 15 MB" onPress={() => void pickFile()} />
+          <Row
+            icon={<ImageIcon size={16} color={theme.text} />}
+            title="Photos"
+            subtitle="Up to 4 at a time"
+            onPress={() => void pickPhotos(false)}
+          />
+          <Row
+            icon={<Camera size={16} color={theme.text} />}
+            title="Camera"
+            onPress={() => void pickPhotos(true)}
+          />
+          <Row
+            icon={<FileText size={16} color={theme.text} />}
+            title="File"
+            subtitle="PDF, documents, spreadsheets · up to 15 MB"
+            onPress={() => void pickFile()}
+          />
         </Group>
       </Sheet>
 
-      <Sheet visible={questionsOpen} onClose={() => setQuestionsOpen(false)} title="Questions for you" height={0.85}>
+      <Sheet
+        visible={questionsOpen}
+        onClose={() => setQuestionsOpen(false)}
+        title="Questions for you"
+        height={0.85}
+      >
         <View style={{ gap: 12 }}>
           {roomQuestions.map((q) => (
             <QuestionCard key={q.id} question={q} onAnswer={answer} />
@@ -581,7 +927,12 @@ export function ChatScreen({ route, navigation }: any) {
         </View>
       </Sheet>
 
-      <TerminalDrawer visible={terminalOpen} logs={terminalLogs} onClose={() => setTerminalOpen(false)} onClear={clearTerminal} />
+      <TerminalDrawer
+        visible={terminalOpen}
+        logs={terminalLogs}
+        onClose={() => setTerminalOpen(false)}
+        onClear={clearTerminal}
+      />
     </View>
   )
 }

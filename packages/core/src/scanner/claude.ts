@@ -8,9 +8,7 @@ import { computeUsageCacheSavings, computeUsageCost, getModelPrice } from "./pri
 export const CLAUDE_SYNTHETIC_MODEL = "<synthetic>"
 
 function tokenCount(value: unknown): number {
-  return typeof value === "number" && Number.isFinite(value) && value > 0
-    ? Math.trunc(value)
-    : 0
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? Math.trunc(value) : 0
 }
 
 function parseTimestampMs(value: unknown): number | null {
@@ -30,10 +28,7 @@ interface RawClaudeEntry {
 }
 
 /** Parses a single line from a Claude Code session JSONL file */
-export function parseClaudeLine(
-  line: string,
-  fallbackSessionId: string,
-): RawClaudeEntry[] {
+export function parseClaudeLine(line: string, fallbackSessionId: string): RawClaudeEntry[] {
   if (!line.includes('"usage"')) return []
 
   let record: any
@@ -71,13 +66,10 @@ export function parseClaudeLine(
       : `claude:${sessionId}:${timestampMs}`
 
   const reportedCost =
-    typeof record.costUSD === "number" && Number.isFinite(record.costUSD)
-      ? record.costUSD
-      : null
+    typeof record.costUSD === "number" && Number.isFinite(record.costUSD) ? record.costUSD : null
 
   const thinkingTokens =
-    tokenCount(usage.output_tokens_details?.thinking_tokens) ||
-    tokenCount(usage.thinking_tokens)
+    tokenCount(usage.output_tokens_details?.thinking_tokens) || tokenCount(usage.thinking_tokens)
 
   const executorTotals: UsageTokenTotals = {
     uncachedInputTokens: tokenCount(usage.input_tokens),
@@ -173,10 +165,7 @@ export async function scanClaudeFile(
           entry.totals.reasoningTokens,
         )
         if (entry.reportedCostUsd !== null) {
-          existing.reportedCostUsd = Math.max(
-            existing.reportedCostUsd ?? 0,
-            entry.reportedCostUsd,
-          )
+          existing.reportedCostUsd = Math.max(existing.reportedCostUsd ?? 0, entry.reportedCostUsd)
         }
       } else {
         dedupeMap.set(entry.dedupeKey, entry)
@@ -237,9 +226,7 @@ export async function scanClaudeUsage(
   ]
 
   const dirsToSearch =
-    options.directories && options.directories.length > 0
-      ? options.directories
-      : defaultBaseDirs
+    options.directories && options.directories.length > 0 ? options.directories : defaultBaseDirs
 
   const sinceMs = options.sinceMs ?? 0
   const filesToScan: string[] = []

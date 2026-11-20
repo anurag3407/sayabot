@@ -12,7 +12,6 @@ export { usageByAgent, type AgentUsage, type UsageRollupRow } from "@/lib/usage-
  * calls there were); charts use the newest raw events, paged past the API's row cap.
  */
 
-
 export interface RawUsageEvent {
   agent_id: string | null
   room_id: string | null
@@ -32,7 +31,10 @@ const PAGE = 1_000
 export const EVENT_SAMPLE_CAP = 20_000
 
 /** null when the rollup function isn't installed yet (migration 0022 not applied). */
-export async function loadUsageRollup(orgId: string, sinceIso: string): Promise<UsageRollupRow[] | null> {
+export async function loadUsageRollup(
+  orgId: string,
+  sinceIso: string,
+): Promise<UsageRollupRow[] | null> {
   const supabase = await createSupabaseServerClient()
   const { data, error } = await supabase.rpc("usage_rollup", { p_org: orgId, p_since: sinceIso })
   if (error) return null
@@ -86,7 +88,10 @@ export async function loadRecentUsageEvents(
  * Prices the page doesn't have a saved row for, taken from the model catalog (models.dev).
  * A saved row always wins. Free routes (`:free`) stay free even when the paid id has a price.
  */
-export function mergeListPrices(table: readonly PriceRow[], models: readonly { provider: string; model: string }[]): PriceRow[] {
+export function mergeListPrices(
+  table: readonly PriceRow[],
+  models: readonly { provider: string; model: string }[],
+): PriceRow[] {
   const rows = [...table]
   for (const item of models) {
     if (!item.provider || !item.model || isFreeModel(item.model)) continue
@@ -98,9 +103,10 @@ export function mergeListPrices(table: readonly PriceRow[], models: readonly { p
       model: item.model,
       inputPerMtok: list.inputPerMillion,
       outputPerMtok: list.outputPerMillion,
-      ...(list.cachedInputPerMillion !== undefined ? { cacheReadPerMtok: list.cachedInputPerMillion } : {}),
+      ...(list.cachedInputPerMillion !== undefined
+        ? { cacheReadPerMtok: list.cachedInputPerMillion }
+        : {}),
     })
   }
   return rows
 }
-

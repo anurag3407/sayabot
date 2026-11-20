@@ -28,7 +28,9 @@ const cronjobInputSchema = z.object({
   name: z
     .string()
     .optional()
-    .describe("Human-readable title/name of the routine (e.g. 'Daily Standup Summary', 'Hourly Monitor')."),
+    .describe(
+      "Human-readable title/name of the routine (e.g. 'Daily Standup Summary', 'Hourly Monitor').",
+    ),
   schedule: z
     .string()
     .optional()
@@ -43,7 +45,9 @@ const cronjobInputSchema = z.object({
   timezone: z
     .string()
     .optional()
-    .describe("Timezone for scheduling (e.g. 'UTC', 'America/New_York', 'Asia/Kolkata'). Defaults to 'UTC'."),
+    .describe(
+      "Timezone for scheduling (e.g. 'UTC', 'America/New_York', 'Asia/Kolkata'). Defaults to 'UTC'.",
+    ),
   targetRoomId: z
     .string()
     .optional()
@@ -71,7 +75,10 @@ export function cronjobTool(options: CronjobToolOptions): ToolSpec {
             return { error: "Missing required 'name' for creating a routine" }
           }
           if (!args.schedule) {
-            return { error: "Missing required 'schedule' (cron expression or shorthand like 'daily at 9am')" }
+            return {
+              error:
+                "Missing required 'schedule' (cron expression or shorthand like 'daily at 9am')",
+            }
           }
           if (!args.prompt) {
             return { error: "Missing required 'prompt' instructions for the agent" }

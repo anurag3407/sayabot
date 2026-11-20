@@ -77,7 +77,9 @@ function Segmented<T extends string>({
           onClick={() => onChange(option.value)}
           className={cn(
             "h-8 rounded-full px-3.5 text-[13px] transition-colors",
-            value === option.value ? "bg-raised font-medium text-text" : "text-muted hover:text-text",
+            value === option.value
+              ? "bg-raised font-medium text-text"
+              : "text-muted hover:text-text",
           )}
         >
           {option.label}
@@ -194,7 +196,11 @@ export function UsageDashboard({
   const [source, setSource] = useState<Source>("sayabot")
   const [metric, setMetric] = useState<Metric>("tokens")
   const [groupBy, setGroupBy] = useState<GroupBy>("agent")
-  const [local, setLocal] = useState<{ available: boolean; loading: boolean; events: UsageEventRow[] }>({
+  const [local, setLocal] = useState<{
+    available: boolean
+    loading: boolean
+    events: UsageEventRow[]
+  }>({
     available: false,
     loading: true,
     events: [],
@@ -206,7 +212,9 @@ export function UsageDashboard({
     let cancelled = false
     setLocal((state) => ({ ...state, loading: true }))
     const fromServer = () =>
-      fetch(`/api/usage/local?days=${days}`).then((response) => (response.ok ? response.json() : null))
+      fetch(`/api/usage/local?days=${days}`).then((response) =>
+        response.ok ? response.json() : null,
+      )
     readDesktopLocalUsage(days)
       .then((desktop) => (desktop ? { available: true, events: desktop } : fromServer()))
       .then((data: { available?: boolean; events?: UsageEventRow[] } | null) => {
@@ -272,7 +280,8 @@ export function UsageDashboard({
 
   const effectiveGroup: GroupBy = isLocal ? "model" : groupBy
   const keep = useMemo(
-    () => (effectiveGroup === "agent" ? summary.byAgent : summary.byModel).map((bucket) => bucket.key),
+    () =>
+      (effectiveGroup === "agent" ? summary.byAgent : summary.byModel).map((bucket) => bucket.key),
     [effectiveGroup, summary],
   )
   const chart = useMemo(
@@ -287,7 +296,9 @@ export function UsageDashboard({
             ? { id: row.agentId ?? "none", label: names.agent(row.agentId) }
             : {
                 id: `${row.provider}:${row.model}`,
-                label: summary.byModel.find((m) => m.key === `${row.provider}:${row.model}`)?.label ?? row.model,
+                label:
+                  summary.byModel.find((m) => m.key === `${row.provider}:${row.model}`)?.label ??
+                  row.model,
               },
       }),
     [sampleRows, sinceIso, days, metric, keep, effectiveGroup, names, summary.byModel],
@@ -297,10 +308,13 @@ export function UsageDashboard({
   const colorFor = (bucket: Bucket, kind: GroupBy) => {
     if (kind !== effectiveGroup) return "var(--color-line-strong)"
     const index = chart.series.findIndex((item) => item.id === bucket.key)
-    return index === -1 ? seriesColor(99, "other") : seriesColor(index, chart.series[index]?.id ?? "")
+    return index === -1
+      ? seriesColor(99, "other")
+      : seriesColor(index, chart.series[index]?.id ?? "")
   }
 
-  const show = (bucket: Bucket) => (metric === "cost" ? money(bucket.cost) : formatTokens(bucket.tokens))
+  const show = (bucket: Bucket) =>
+    metric === "cost" ? money(bucket.cost) : formatTokens(bucket.tokens)
   const shareOf = (bucket: Bucket) => (metric === "cost" ? bucket.costShare : bucket.share)
   const unpricedModels = summary.byModel.filter((model) => model.price === "unpriced")
   const nothing = summary.tokens === 0
@@ -315,7 +329,10 @@ export function UsageDashboard({
             How much your agents worked and what it cost, over the last {periodLabel}.
           </p>
         </div>
-        <nav aria-label="Time period" className="flex self-start rounded-full bg-panel p-1 sm:self-auto">
+        <nav
+          aria-label="Time period"
+          className="flex self-start rounded-full bg-panel p-1 sm:self-auto"
+        >
           {PERIODS.map((period) => (
             <Link
               key={period.days}
@@ -323,7 +340,9 @@ export function UsageDashboard({
               aria-current={days === period.days ? "page" : undefined}
               className={cn(
                 "flex h-8 items-center rounded-full px-3.5 text-[13px] transition-colors",
-                days === period.days ? "bg-raised font-medium text-text" : "text-muted hover:text-text",
+                days === period.days
+                  ? "bg-raised font-medium text-text"
+                  : "text-muted hover:text-text",
               )}
             >
               {period.label}
@@ -343,7 +362,9 @@ export function UsageDashboard({
             { value: "sayabot", label: "Agents in Sayabot" },
             {
               value: "local",
-              label: local.loading ? "Coding tools on this computer…" : "Coding tools on this computer",
+              label: local.loading
+                ? "Coding tools on this computer…"
+                : "Coding tools on this computer",
             },
           ]}
         />
@@ -382,10 +403,13 @@ export function UsageDashboard({
               {unpricedModels.length === 1
                 ? `${unpricedModels[0]?.label} has no price set,`
                 : `${unpricedModels.length} models have no price set,`}{" "}
-              so {formatTokens(summary.unpricedTokens)} tokens are counted as free and the real spend is
-              higher than shown.{" "}
+              so {formatTokens(summary.unpricedTokens)} tokens are counted as free and the real
+              spend is higher than shown.{" "}
               {canEditPrices ? (
-                <Link href={`/${orgSlug}/settings/pricing`} className="font-medium text-accent underline underline-offset-4">
+                <Link
+                  href={`/${orgSlug}/settings/pricing`}
+                  className="font-medium text-accent underline underline-offset-4"
+                >
                   Set prices
                 </Link>
               ) : (
@@ -484,8 +508,12 @@ export function UsageDashboard({
                       )}
                       <div className="min-w-0 flex-1">
                         <div className="flex items-baseline justify-between gap-3">
-                          <span className="truncate text-[14px] font-medium text-text">{bucket.label}</span>
-                          <span className="shrink-0 text-[14px] text-text tabular-nums">{show(bucket)}</span>
+                          <span className="truncate text-[14px] font-medium text-text">
+                            {bucket.label}
+                          </span>
+                          <span className="shrink-0 text-[14px] text-text tabular-nums">
+                            {show(bucket)}
+                          </span>
                         </div>
                         <p className="text-[12.5px] text-faint">
                           {formatNumber(bucket.calls)} {bucket.calls === 1 ? "call" : "calls"} ·{" "}
@@ -503,13 +531,20 @@ export function UsageDashboard({
               {summary.byModel.slice(0, 8).map((bucket: ModelBucket) => (
                 <li key={bucket.key}>
                   <div className="flex items-baseline justify-between gap-3">
-                    <span className="min-w-0 truncate text-[14px] font-medium text-text" title={bucket.model}>
+                    <span
+                      className="min-w-0 truncate text-[14px] font-medium text-text"
+                      title={bucket.model}
+                    >
                       {bucket.label}
                     </span>
                     <span className="shrink-0 text-[14px] text-text tabular-nums">
                       {metric === "cost" && bucket.price !== "priced" ? (
                         <span className="text-faint">
-                          {bucket.price === "subscription" ? "In your plan" : bucket.price === "free" ? "Free" : "No price"}
+                          {bucket.price === "subscription"
+                            ? "In your plan"
+                            : bucket.price === "free"
+                              ? "Free"
+                              : "No price"}
                         </span>
                       ) : (
                         show(bucket)
@@ -525,13 +560,19 @@ export function UsageDashboard({
                         : `${formatNumber(bucket.calls)} ${bucket.calls === 1 ? "call" : "calls"}`}
                     </span>
                     {bucket.price === "unpriced" && !isLocal ? (
-                      <span className="rounded-full bg-warn/15 px-2 py-px text-[11.5px] text-warn">No price set</span>
+                      <span className="rounded-full bg-warn/15 px-2 py-px text-[11.5px] text-warn">
+                        No price set
+                      </span>
                     ) : null}
                     {bucket.price === "free" ? (
-                      <span className="rounded-full bg-raised px-2 py-px text-[11.5px] text-muted">Free</span>
+                      <span className="rounded-full bg-raised px-2 py-px text-[11.5px] text-muted">
+                        Free
+                      </span>
                     ) : null}
                     {bucket.price === "subscription" ? (
-                      <span className="rounded-full bg-raised px-2 py-px text-[11.5px] text-muted">Your plan</span>
+                      <span className="rounded-full bg-raised px-2 py-px text-[11.5px] text-muted">
+                        Your plan
+                      </span>
                     ) : null}
                   </p>
                   <ShareBar share={shareOf(bucket)} color={colorFor(bucket, "model")} />
@@ -547,8 +588,12 @@ export function UsageDashboard({
                 const inner = (
                   <>
                     <div className="flex items-baseline justify-between gap-3">
-                      <span className="truncate text-[14px] font-medium text-text">{bucket.label}</span>
-                      <span className="shrink-0 text-[14px] text-text tabular-nums">{show(bucket)}</span>
+                      <span className="truncate text-[14px] font-medium text-text">
+                        {bucket.label}
+                      </span>
+                      <span className="shrink-0 text-[14px] text-text tabular-nums">
+                        {show(bucket)}
+                      </span>
                     </div>
                     <p className="text-[12.5px] text-faint">
                       {formatNumber(bucket.calls)} {bucket.calls === 1 ? "call" : "calls"} ·{" "}
@@ -559,7 +604,10 @@ export function UsageDashboard({
                 return (
                   <li key={bucket.key}>
                     {room ? (
-                      <Link href={`/${orgSlug}/r/${room.id}`} className="block rounded-xl hover:opacity-80">
+                      <Link
+                        href={`/${orgSlug}/r/${room.id}`}
+                        className="block rounded-xl hover:opacity-80"
+                      >
                         {inner}
                       </Link>
                     ) : (
@@ -582,21 +630,34 @@ export function UsageDashboard({
               <div>
                 <p className="mb-2 text-[13px] text-muted">Where the tokens went</p>
                 <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
-                  <DetailTile label="Read fresh" value={formatTokens(summary.fresh)} note="Prompt text the model read in full." />
+                  <DetailTile
+                    label="Read fresh"
+                    value={formatTokens(summary.fresh)}
+                    note="Prompt text the model read in full."
+                  />
                   <DetailTile
                     label="Read from cache"
                     value={formatTokens(summary.cached)}
                     note={`${formatPercent(summary.cacheHitRate, 0)} of prompts, at a big discount.`}
                   />
                   {summary.cacheWrite > 0 ? (
-                    <DetailTile label="Saved to cache" value={formatTokens(summary.cacheWrite)} note="Stored so later turns read it cheaply." />
+                    <DetailTile
+                      label="Saved to cache"
+                      value={formatTokens(summary.cacheWrite)}
+                      note="Stored so later turns read it cheaply."
+                    />
                   ) : null}
-                  <DetailTile label="Written" value={formatTokens(summary.output)} note="Replies the model wrote." />
+                  <DetailTile
+                    label="Written"
+                    value={formatTokens(summary.output)}
+                    note="Replies the model wrote."
+                  />
                 </div>
                 {cacheSavings >= 0.01 ? (
                   <p className="mt-2.5 text-[13px] text-muted">
-                    Caching saved about <span className="font-medium text-text">{money(cacheSavings)}</span> compared with
-                    reading every prompt fresh.
+                    Caching saved about{" "}
+                    <span className="font-medium text-text">{money(cacheSavings)}</span> compared
+                    with reading every prompt fresh.
                   </p>
                 ) : null}
               </div>
@@ -608,9 +669,21 @@ export function UsageDashboard({
                   </p>
                   {timing.measured ? (
                     <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3">
-                      <DetailTile label="First words" value={formatMs(timing.medianFirstWordMs)} note="Typical wait before a reply starts." />
-                      <DetailTile label="Whole reply" value={formatMs(timing.medianReplyMs)} note="Typical time to finish, tools included." />
-                      <DetailTile label="Slowest replies" value={formatMs(timing.slowReplyMs)} note="1 in 20 replies took this long or more." />
+                      <DetailTile
+                        label="First words"
+                        value={formatMs(timing.medianFirstWordMs)}
+                        note="Typical wait before a reply starts."
+                      />
+                      <DetailTile
+                        label="Whole reply"
+                        value={formatMs(timing.medianReplyMs)}
+                        note="Typical time to finish, tools included."
+                      />
+                      <DetailTile
+                        label="Slowest replies"
+                        value={formatMs(timing.slowReplyMs)}
+                        note="1 in 20 replies took this long or more."
+                      />
                     </div>
                   ) : (
                     <p className="text-[13px] text-faint">No timing recorded for this period.</p>

@@ -32,7 +32,9 @@ export async function GET(request: Request) {
       .limit(50),
     admin
       .from("org_computer_settings")
-      .select("boat_ciphertext, boat_iv, boat_tag, boat_last4, vps_ssh_alias, vps_start_automatically")
+      .select(
+        "boat_ciphertext, boat_iv, boat_tag, boat_last4, vps_ssh_alias, vps_start_automatically",
+      )
       .eq("org_id", orgId)
       .maybeSingle(),
   ])

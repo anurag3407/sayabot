@@ -26,7 +26,7 @@ export interface ResolvedModel {
 Priority order (`src/runner/llm.ts:155-213`):
 
 1. **CLI runner**: `agentCliRunner(agent)` (Claude Code / Codex / Cursor signed in on the host) → `createCliLanguageModel(cli, agent.handle)`, `provider: cli.app`, `modelName: cli.model ?? cli.app`, no API key.
-2. **Saya AI** (`isSayaModel(agent.model)`): `sayaModelConfig(agent.model)` resolves the alias against the *server's env on every turn* (operators can swap the endpoint/model behind an alias). Missing config → throws `"@<handle> uses Saya AI, but this server has no Saya AI model set up. Ask the server admin to set SAYA_AI_BASE_URL, SAYA_AI_API_KEY and SAYA_AI_MODELS, or pick another model on the Agents page."`
+2. **Saya AI** (`isSayaModel(agent.model)`): `sayaModelConfig(agent.model)` resolves the alias against the _server's env on every turn_ (operators can swap the endpoint/model behind an alias). Missing config → throws `"@<handle> uses Saya AI, but this server has no Saya AI model set up. Ask the server admin to set SAYA_AI_BASE_URL, SAYA_AI_API_KEY and SAYA_AI_MODELS, or pick another model on the Agents page."`
 3. **Provider key** (`agent.providerKeyId`): loads the `provider_keys` row (deleted → `"Provider key for @<handle> was deleted"`; missing model → `"@<handle> has no model configured"`), decrypts via `providerKeyToApiKey(key, getEnv().MESH_KEK)` and builds `createLanguageModel({ provider, apiKey, model: agent.model, baseUrl: key.baseUrl })`. This is the only branch that returns `apiKey` (used to build the per-run scrubber).
 4. **Dev fallback**: `devModelConfig()` (`DEV_OPENAI_COMPAT_*` env) — `agent.model ?? dev.model`.
 5. Otherwise throws `"@<handle> has no model yet. Pick one with \"Switch model\": your Mac's Claude Code or Codex through Sayabot for Mac (no key needed), or an API key."`
@@ -38,15 +38,15 @@ Same ladder with cheaper defaults (`src/runner/llm.ts:81-138`):
 1. CLI runner → `cheapCliModel(cli, customCheap)` (the app's fast model, no key).
 2. Saya AI or **no key at all** → `sayaModelConfig(agent.model, process.env, "fast")`; `customCheap` (`params.cheapModel`) wins over the fast model name.
 3. Provider key → `getCheapModelName(key.provider, customCheap)`:
-   | Provider | Default cheap model |
-   | :--- | :--- |
-   | `anthropic` | `claude-haiku-5-5` |
-   | `openai` | `gpt-4o-mini` |
-   | `google` | `gemini-2.0-flash` |
-   | `deepseek` | `deepseek-chat` |
+   | Provider     | Default cheap model  |
+   | :----------- | :------------------- |
+   | `anthropic`  | `claude-haiku-5-5`   |
+   | `openai`     | `gpt-4o-mini`        |
+   | `google`     | `gemini-2.0-flash`   |
+   | `deepseek`   | `deepseek-chat`      |
    | `openrouter` | `openai/gpt-4o-mini` |
-   | `groq` | `openai/gpt-oss-20b` |
-   | default | `gpt-4o-mini` |
+   | `groq`       | `openai/gpt-oss-20b` |
+   | default      | `gpt-4o-mini`        |
 4. Dev fallback → cheap variant of the dev provider.
 5. Last resort: `resolveAgentModel(agent)`.
 
@@ -75,7 +75,7 @@ export function resolveEffortLevel(params: {
 
 - **`parseRoomModelOverride(value)`** — defensively parses `{ keyId?, model?, effort?, providerKeyId?, agentModel?, runner? }` (all strings optional; `runner` must be a plain object); returns `null` for garbage.
 - **`withModelOverride(agent, override)`** — returns the agent with `providerKeyId`, `model` (`agentModel`), `params.runner` and `params.effort` replaced/cleared.
-- **`stillValid(agent, override)`** — re-checks at *apply* time that the referenced resources still belong to the bot's workspace and owner: the `provider_keys` row must exist with the same `orgId`; any `runner.hostId` must exist in `desktop_hosts`, not be revoked, and belong to `agent.ownerUserId`. Stale overrides are ignored with a `[room-model] ignoring a stale model for @handle in room <id>` warning and the default model answers.
+- **`stillValid(agent, override)`** — re-checks at _apply_ time that the referenced resources still belong to the bot's workspace and owner: the `provider_keys` row must exist with the same `orgId`; any `runner.hostId` must exist in `desktop_hosts`, not be revoked, and belong to `agent.ownerUserId`. Stale overrides are ignored with a `[room-model] ignoring a stale model for @handle in room <id>` warning and the default model answers.
 
 DB tables touched: `room_agents` (read `model_override`), `provider_keys`, `desktop_hosts` (validation).
 
@@ -87,14 +87,14 @@ Shared row types: `RoomRow`, `AgentRow`, `MessageRow`, `CanvasRow` (Drizzle `$in
 
 ### Loaders
 
-| Function | Behaviour |
-| :--- | :--- |
-| `loadRoomAgents(roomId)` | Joins `room_agents`×`agents`, ordered by position then handle. |
-| `loadRoom(roomId)` / `loadMessage(messageId)` | Single-row fetches. |
+| Function                                             | Behaviour                                                                                                                                                                                                                                                                                        |
+| :--------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `loadRoomAgents(roomId)`                             | Joins `room_agents`×`agents`, ordered by position then handle.                                                                                                                                                                                                                                   |
+| `loadRoom(roomId)` / `loadMessage(messageId)`        | Single-row fetches.                                                                                                                                                                                                                                                                              |
 | `loadConversation({ roomId, threadRootId, limit? })` | Default `limit: 40`. Threaded: root + replies ordered ascending (cap 200), trimmed to the most recent `limit` while always keeping the root. Unthreaded: last `limit` top-level messages (no `threadRootId`), oldest-first. Sender names resolved in bulk from `profiles` (humans) and `agents`. |
-| `loadTaskContext(roomId)` | Up to 15 non-done tasks, newest activity first, rendered as `MESH-<number> [<kind>] <title> (<status>, <owner>) id=<id>` where owner is `held by @handle` / `held by a human` / `unclaimed` / `waiting for a human`. |
-| `loadCanvasContext(roomId)` | All room canvases ordered by creation, each wrapped in `<canvas id="…" title="…" kind="…" language="…">` with text sliced to 6,000 chars and a shared 12,000-char budget. |
-| `loadTaskBriefContext(taskId)` | `ACTIVE TASK BRIEF` block: status, description, blocker requirement, parent/sibling subtasks (≤ 8), last 10 task comments, and the completion rule (`call update_task with status="done"` and a valid outcome kind). |
+| `loadTaskContext(roomId)`                            | Up to 15 non-done tasks, newest activity first, rendered as `MESH-<number> [<kind>] <title> (<status>, <owner>) id=<id>` where owner is `held by @handle` / `held by a human` / `unclaimed` / `waiting for a human`.                                                                             |
+| `loadCanvasContext(roomId)`                          | All room canvases ordered by creation, each wrapped in `<canvas id="…" title="…" kind="…" language="…">` with text sliced to 6,000 chars and a shared 12,000-char budget.                                                                                                                        |
+| `loadTaskBriefContext(taskId)`                       | `ACTIVE TASK BRIEF` block: status, description, blocker requirement, parent/sibling subtasks (≤ 8), last 10 task comments, and the completion rule (`call update_task with status="done"` and a valid outcome kind).                                                                             |
 
 ### Renderers
 
@@ -115,7 +115,7 @@ export interface StreamAgentOptions {
   prompt: string
   tools?: ToolSet
   abortSignal?: AbortSignal
-  maxSteps?: number          // default 20
+  maxSteps?: number // default 20
   temperature?: number
   topP?: number
   maxOutputTokens?: number
@@ -171,8 +171,11 @@ export type MacToolEvent =
   | { type: "finished"; key: string; ok: boolean; result?: string }
 
 export interface MacMarker {
-  key: string; jobId: string; hostId: string; hostName: string
-  ownerId: string   // the Mac's owner: the only person who can answer its approvals
+  key: string
+  jobId: string
+  hostId: string
+  hostName: string
+  ownerId: string // the Mac's owner: the only person who can answer its approvals
   agentId: string
 }
 ```
@@ -188,12 +191,12 @@ DB tables touched: `local_runner_jobs`, `tool_calls`, `agents`, `desktop_hosts` 
 
 ## 🧪 Tests
 
-| Test file | Covers |
-| :--- | :--- |
-| `src/runner/stream-agent.test.ts` | `streamAgentText` metrics, abort handling, multi-step usage. |
-| `src/runner/room-model.test.ts` | Override parsing, staleness checks, application. |
-| `src/runner/local-events.test.ts` | Tool card lifecycle, approval timeout/rejection, arg scrubbing. |
-| `src/runner/cli-agent.test.ts`, `src/runner/cli-model.test.ts`, `src/runner/default-mac.test.ts`, `src/runner/mac-plan.test.ts` | The CLI/local resolution branches called by the model ladders. |
+| Test file                                                                                                                       | Covers                                                          |
+| :------------------------------------------------------------------------------------------------------------------------------ | :-------------------------------------------------------------- |
+| `src/runner/stream-agent.test.ts`                                                                                               | `streamAgentText` metrics, abort handling, multi-step usage.    |
+| `src/runner/room-model.test.ts`                                                                                                 | Override parsing, staleness checks, application.                |
+| `src/runner/local-events.test.ts`                                                                                               | Tool card lifecycle, approval timeout/rejection, arg scrubbing. |
+| `src/runner/cli-agent.test.ts`, `src/runner/cli-model.test.ts`, `src/runner/default-mac.test.ts`, `src/runner/mac-plan.test.ts` | The CLI/local resolution branches called by the model ladders.  |
 
 `runner/llm.ts` and `runner/context.ts` have no dedicated test files; they are exercised via `engine/run.test.ts`, `engine/harness.test.ts`, and route-level tests.
 

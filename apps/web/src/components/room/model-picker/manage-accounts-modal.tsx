@@ -458,13 +458,15 @@ function AppPlan({
           >
             <Check className="h-4 w-4 shrink-0" />
             <span className="min-w-0 text-[13.5px]">
-              Ready on {mac.hostName ?? mac.label}: agents set to run there use your {app.plan} plan.
+              Ready on {mac.hostName ?? mac.label}: agents set to run there use your {app.plan}{" "}
+              plan.
             </span>
           </div>
         ) : (
           <div key={mac.keyId} className="space-y-2.5 rounded-xl bg-raised/60 p-4">
             <p className="text-[13.5px] leading-relaxed text-text">
-              Found on {mac.hostName ?? mac.label}: {provider.name.replace(/ plan$/, "")} is signed in there.
+              Found on {mac.hostName ?? mac.label}: {provider.name.replace(/ plan$/, "")} is signed
+              in there.
             </p>
             <p className="text-[12.5px] leading-relaxed text-faint">
               Let agents run on that Mac to use your plan. Their work happens on the Mac, with the

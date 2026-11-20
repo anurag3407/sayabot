@@ -48,10 +48,12 @@ export async function ensureBotDmRoom(args: {
   }
   await admin.from("room_members").insert({ room_id: room.id, user_id: args.userId, role: "admin" })
   await admin.from("room_agents").insert({ room_id: room.id, agent_id: args.agentId, position: 0 })
-  await admin.from("room_reads").upsert(
-    { user_id: args.userId, room_id: room.id, last_read_at: new Date().toISOString() },
-    { onConflict: "user_id,room_id" },
-  )
+  await admin
+    .from("room_reads")
+    .upsert(
+      { user_id: args.userId, room_id: room.id, last_read_at: new Date().toISOString() },
+      { onConflict: "user_id,room_id" },
+    )
   await letScopedKeysReachDm(args.agentId, room.id)
   return room.id
 }
@@ -70,6 +72,9 @@ async function letScopedKeysReachDm(agentId: string, dmRoomId: string): Promise<
     .is("revoked_at", null)
   for (const key of (keys ?? []) as { id: string; room_ids: string[] | null }[]) {
     if (!key.room_ids || key.room_ids.length === 0 || key.room_ids.includes(dmRoomId)) continue
-    await admin.from("agent_api_keys").update({ room_ids: [...key.room_ids, dmRoomId] }).eq("id", key.id)
+    await admin
+      .from("agent_api_keys")
+      .update({ room_ids: [...key.room_ids, dmRoomId] })
+      .eq("id", key.id)
   }
 }

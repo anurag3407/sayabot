@@ -10,16 +10,16 @@ Source files: `packages/db/sql/0002_rls.sql`, `packages/db/sql/0003_realtime.sql
 
 All policies answer one question — "which orgs does the caller belong to?" — through `auth.uid()`, the Supabase JWT-resolved user id. Helpers in `0002_rls.sql:4-70` are `STABLE SECURITY DEFINER` with `set search_path = public`:
 
-| Helper | Returns true when |
-| :--- | :--- |
-| `is_org_member(p_org)` | Caller has any row in `org_members` for the org. |
-| `is_org_admin(p_org)` | Caller's `org_members.role` is `owner` or `admin`. |
-| `is_org_owner(p_org)` | Caller's role is exactly `owner`. |
-| `org_has_members(p_org)` | The org has at least one member (bootstrap check). |
-| `shares_org_with(p_user)` | Caller and `p_user` share any org membership. |
-| `is_room_member(p_room)` | Caller is in `room_members` for the room. |
-| `can_read_room(p_room)` | Caller is a room member **or** the room is `kind = 'public'` and the caller is a member of the room's org. |
-| `is_room_admin(p_room)` | Caller is a room admin, or an org owner/admin of the room's org. |
+| Helper                    | Returns true when                                                                                          |
+| :------------------------ | :--------------------------------------------------------------------------------------------------------- |
+| `is_org_member(p_org)`    | Caller has any row in `org_members` for the org.                                                           |
+| `is_org_admin(p_org)`     | Caller's `org_members.role` is `owner` or `admin`.                                                         |
+| `is_org_owner(p_org)`     | Caller's role is exactly `owner`.                                                                          |
+| `org_has_members(p_org)`  | The org has at least one member (bootstrap check).                                                         |
+| `shares_org_with(p_user)` | Caller and `p_user` share any org membership.                                                              |
+| `is_room_member(p_room)`  | Caller is in `room_members` for the room.                                                                  |
+| `can_read_room(p_room)`   | Caller is a room member **or** the room is `kind = 'public'` and the caller is a member of the room's org. |
+| `is_room_admin(p_room)`   | Caller is a room admin, or an org owner/admin of the room's org.                                           |
 
 The `SECURITY DEFINER` marking matters: the helpers run as the function owner, so reading `org_members` inside a policy does **not** recurse through `org_members`' own RLS policy. That recursion (and its infinite-loop error) is the classic mistake this pattern avoids.
 
@@ -46,18 +46,18 @@ Three tables get RLS enabled with **zero policies**, so even `authenticated` rea
 
 Later migrations repeat this lock-down for every new secret-bearing or server-only table:
 
-| Tables | Locked in | Notes |
-| :--- | :--- | :--- |
-| `agent_reads` | `0007` | Read cursors; orchestrator-only by design. |
-| `vault_secrets`, `agent_secret_grants`, `oauth_clients`, `oauth_codes`, `oauth_tokens` | `0009` | Secret broker and OAuth token stores. |
-| `bot_invites` | `0020` | `poll_token_hash` must never reach a browser. |
-| `device_pairings` | `0021` | Code and device-token hashes. |
-| `workspace_invites` | `0023` | Invite links are grants. |
-| `desktop_hosts`, `remote_sessions`, `local_runner_jobs` | `0024` | Host tokens, SDP, prompts. |
-| `mobile_push_tokens` | `0026` | Expo tokens. |
-| `desktop_secret_jobs`, `desktop_mcp_calls`, `messaging_inbound` | `0030` | Sealed results, webhook dedup. |
-| `account_merge_tickets` | `0031` | Merge tokens (raw token in an httpOnly cookie). |
-| `org_computer_settings`, `cloud_home_copies` | `0034` | Boat key envelope, home snapshots. |
+| Tables                                                                                 | Locked in | Notes                                           |
+| :------------------------------------------------------------------------------------- | :-------- | :---------------------------------------------- |
+| `agent_reads`                                                                          | `0007`    | Read cursors; orchestrator-only by design.      |
+| `vault_secrets`, `agent_secret_grants`, `oauth_clients`, `oauth_codes`, `oauth_tokens` | `0009`    | Secret broker and OAuth token stores.           |
+| `bot_invites`                                                                          | `0020`    | `poll_token_hash` must never reach a browser.   |
+| `device_pairings`                                                                      | `0021`    | Code and device-token hashes.                   |
+| `workspace_invites`                                                                    | `0023`    | Invite links are grants.                        |
+| `desktop_hosts`, `remote_sessions`, `local_runner_jobs`                                | `0024`    | Host tokens, SDP, prompts.                      |
+| `mobile_push_tokens`                                                                   | `0026`    | Expo tokens.                                    |
+| `desktop_secret_jobs`, `desktop_mcp_calls`, `messaging_inbound`                        | `0030`    | Sealed results, webhook dedup.                  |
+| `account_merge_tickets`                                                                | `0031`    | Merge tokens (raw token in an httpOnly cookie). |
+| `org_computer_settings`, `cloud_home_copies`                                           | `0034`    | Boat key envelope, home snapshots.              |
 
 Where clients need read access to a locked table, a **safe view** exposes only non-secret columns: `provider_keys_public`, `org_tool_configs_public` (`0002_rls.sql:217-225`), `vault_secrets_public`, `agent_secret_grants_public` (`0009_bot_platform.sql:118-155`), `vector_providers_public` (`0017`), `workspace_connectors_public` (`0018`).
 
@@ -124,12 +124,12 @@ This is what stops a user from subscribing to a private room's broadcast channel
 
 Later migrations add more RPCs in the same style, each with explicit privilege wiring:
 
-| Function | File | Access |
-| :--- | :--- | :--- |
-| `usage_rollup(p_org, p_since)` | `0022_usage_rollup.sql` | `SECURITY INVOKER`; execute for `authenticated` + `service_role`. |
-| `storage_summary(p_org)` | `0025_storage_summary.sql` | `SECURITY DEFINER` with manual membership check; `authenticated` + `service_role`. |
-| `bump_server_turns(p_org, p_month, p_limit)` | `0033_cloud_plans.sql` | `SECURITY DEFINER`; `service_role` only. |
-| `merge_guest_into_user(p_guest, p_target)` | `0031_guest_account_merge.sql` | `SECURITY DEFINER`; `service_role` only. |
+| Function                                     | File                           | Access                                                                             |
+| :------------------------------------------- | :----------------------------- | :--------------------------------------------------------------------------------- |
+| `usage_rollup(p_org, p_since)`               | `0022_usage_rollup.sql`        | `SECURITY INVOKER`; execute for `authenticated` + `service_role`.                  |
+| `storage_summary(p_org)`                     | `0025_storage_summary.sql`     | `SECURITY DEFINER` with manual membership check; `authenticated` + `service_role`. |
+| `bump_server_turns(p_org, p_month, p_limit)` | `0033_cloud_plans.sql`         | `SECURITY DEFINER`; `service_role` only.                                           |
+| `merge_guest_into_user(p_guest, p_target)`   | `0031_guest_account_merge.sql` | `SECURITY DEFINER`; `service_role` only.                                           |
 
 ---
 

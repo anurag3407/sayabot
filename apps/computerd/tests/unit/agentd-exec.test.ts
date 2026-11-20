@@ -11,7 +11,9 @@ import { spawn } from "node:child_process"
 import { StringDecoder } from "node:string_decoder"
 
 let dir: string
-beforeEach(() => { dir = realpathSync(mkdtempSync(join(realpathSync("/tmp"), "agentd-exec-unit-"))) })
+beforeEach(() => {
+  dir = realpathSync(mkdtempSync(join(realpathSync("/tmp"), "agentd-exec-unit-")))
+})
 afterEach(() => rmSync(dir, { recursive: true, force: true }))
 
 function run(cmd: string, timeoutMs = 5_000): Promise<{ code: number | null; out: string }> {
@@ -19,9 +21,18 @@ function run(cmd: string, timeoutMs = 5_000): Promise<{ code: number | null; out
     const child = spawn("bash", ["-c", cmd], { cwd: dir, detached: true })
     let out = ""
     const dec = new StringDecoder("utf8")
-    child.stdout.on("data", (d) => { out += dec.write(d) })
-    const timer = setTimeout(() => { try { process.kill(-child.pid!, "SIGKILL") } catch {} }, timeoutMs)
-    child.on("close", (code) => { clearTimeout(timer); resolve({ code, out }) })
+    child.stdout.on("data", (d) => {
+      out += dec.write(d)
+    })
+    const timer = setTimeout(() => {
+      try {
+        process.kill(-child.pid!, "SIGKILL")
+      } catch {}
+    }, timeoutMs)
+    child.on("close", (code) => {
+      clearTimeout(timer)
+      resolve({ code, out })
+    })
   })
 }
 
@@ -38,9 +49,14 @@ describe("agentd exec contract (spawn-level, no socket)", () => {
 
   it("detached process groups can be killed as a unit (timeout semantics)", async () => {
     const marker = join(dir, "survived")
-    const child = spawn("bash", ["-c", `(sleep 1 && touch ${marker}) & sleep 5`], { cwd: dir, detached: true })
+    const child = spawn("bash", ["-c", `(sleep 1 && touch ${marker}) & sleep 5`], {
+      cwd: dir,
+      detached: true,
+    })
     await new Promise((r) => setTimeout(r, 200))
-    try { process.kill(-child.pid!, "SIGKILL") } catch {}
+    try {
+      process.kill(-child.pid!, "SIGKILL")
+    } catch {}
     await new Promise((r) => setTimeout(r, 1_200))
     const { existsSync } = await import("node:fs")
     expect(existsSync(marker)).toBe(false)

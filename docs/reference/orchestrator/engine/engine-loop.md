@@ -57,10 +57,10 @@ export interface TurnResult {
   content: string
   error: string | null
   aborted: boolean
-  errorKind?: string          // from classifyEngineError
-  errorLimitTokens?: number   // request_too_large: provider-reported token limit
-  modelKey?: string           // "provider/model" for engine turns
-  leanLimit?: number | null   // lean limit the turn ran under, if any
+  errorKind?: string // from classifyEngineError
+  errorLimitTokens?: number // request_too_large: provider-reported token limit
+  modelKey?: string // "provider/model" for engine turns
+  leanLimit?: number | null // lean limit the turn ran under, if any
 }
 ```
 
@@ -133,12 +133,12 @@ sequenceDiagram
 
 When the agent has the `memory` capability (`parseCapabilities(agent.capabilities).memory`), four sources load concurrently, each isolated by a `settle(load, fallback)` helper so one failure never drops the others (`src/engine/run.ts:374-445`):
 
-| Source | Service call | Injected as |
-| :--- | :--- | :--- |
-| Pinned digest | `getPinnedDigest({ orgId, agentId, roomId })` | `pinnedMemories` → system 2 block (cacheable) |
+| Source          | Service call                                                                                                                                         | Injected as                                                                                          |
+| :-------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------- |
+| Pinned digest   | `getPinnedDigest({ orgId, agentId, roomId })`                                                                                                        | `pinnedMemories` → system 2 block (cacheable)                                                        |
 | Semantic recall | `recall({ query, limit: 8, excludePinned: true, minRelevance: 0.2, reinforce: false })` — query = trigger content + task brief, sliced to 1000 chars | `recalledMemories` → volatile tail `<recalled>` block (agent-scope memories are relabeled `private`) |
-| Open loops | `getActiveLoops({ ..., limit: 5 })` | `"Active Commitments & Open Loops:"` context block |
-| Owner facts | `relevantOwnerFacts({ query, limit: 8, showAllUpTo: 12 })` | `"Known owner facts (already answered; do not ask again):"` block |
+| Open loops      | `getActiveLoops({ ..., limit: 5 })`                                                                                                                  | `"Active Commitments & Open Loops:"` context block                                                   |
+| Owner facts     | `relevantOwnerFacts({ query, limit: 8, showAllUpTo: 12 })`                                                                                           | `"Known owner facts (already answered; do not ask again):"` block                                    |
 
 If the agent also has the `computer` capability, `syncMemoryMirror(...)` mirrors room-independent memory into its computer via `ComputerClient` in the background (`runInBackground("memory.mirror", ...)`).
 
@@ -148,10 +148,10 @@ Returns `EngineContextResult`:
 
 ```typescript
 export interface EngineContextResult {
-  messages: ModelMessage[]   // full array passed to the model
-  prefix: ModelMessage[]     // system blocks + room history + run history (no tail)
+  messages: ModelMessage[] // full array passed to the model
+  prefix: ModelMessage[] // system blocks + room history + run history (no tail)
   tail: UserModelMessage
-  prefixString: string       // JSON.stringify(prefix) for byte-stability assertions
+  prefixString: string // JSON.stringify(prefix) for byte-stability assertions
 }
 ```
 
@@ -205,8 +205,9 @@ aborted = controller.signal.aborted
 if (!aborted && finishReason === "tool-calls" && stepsCompleted >= maxSteps)
   error ??= `Step limit (${maxSteps}) reached before a final response; work is incomplete.`
 if (!aborted && consumeRunInterrupts(run.id).length > 0)
-  error ??= "A new instruction arrived after the execution budget was exhausted. A follow-up turn is required."
-if (verifyMode !== "off" && ["pending","failed"].includes(verification().status) && !alreadyWarned)
+  error ??=
+    "A new instruction arrived after the execution budget was exhausted. A follow-up turn is required."
+if (verifyMode !== "off" && ["pending", "failed"].includes(verification().status) && !alreadyWarned)
   warnings.push(`Work remains unverified: ${verification().reason}`)
 ```
 
@@ -233,12 +234,12 @@ Returns the redacted content as `TurnResult.content`, plus `errorKind`/`errorLim
 
 ### Realtime events emitted
 
-| Event | When |
-| :--- | :--- |
-| `run.status` (`{ runId, status: "thinking" \| "tool" }`) | Pass start, after each step, before critic pass |
-| `run.step` (`{ runId, step, kind, label }`) | Step end, steering, compaction summaries, critic revision |
-| `message.delta` (`{ messageId, seq, delta }`) | Redacted text deltas, ≥40 ms batching |
-| `message.done` (`{ messageId, status }`) | Finalize |
+| Event                                                    | When                                                      |
+| :------------------------------------------------------- | :-------------------------------------------------------- |
+| `run.status` (`{ runId, status: "thinking" \| "tool" }`) | Pass start, after each step, before critic pass           |
+| `run.step` (`{ runId, step, kind, label }`)              | Step end, steering, compaction summaries, critic revision |
+| `message.delta` (`{ messageId, seq, delta }`)            | Redacted text deltas, ≥40 ms batching                     |
+| `message.done` (`{ messageId, status }`)                 | Finalize                                                  |
 
 ---
 
@@ -246,15 +247,15 @@ Returns the redacted content as `TurnResult.content`, plus `errorKind`/`errorLim
 
 Lean turns exist for providers that cap a single request well below the model's context window (e.g. Groq free tier). Once a provider rejects a request as too large, the limit is stored in `agent.params.requestLimits["provider/model"]` and every subsequent turn with that model runs lean:
 
-| Export | Value / Signature | Behaviour |
-| :--- | :--- | :--- |
-| `LEAN_HISTORY` | `8` | Conversation messages loaded instead of the default 40. |
-| `LEAN_TOOLS` | `Set(["find_tools", "remember", "recall", "canvas_read", "canvas_write", "update_plan"])` | Tools a lean turn always offers; the rest stay reachable through `find_tools`. |
-| `modelLimitKey(provider, modelName)` | `"provider/model".slice(0, 200)` | Key into `params.requestLimits`. |
-| `leanLimitTokens(params, key)` | `number \| null` | The stored limit, accepted only when a finite number `>= 1000` (floored). |
-| `nextLeanLimit(reported?, current?)` | `number \| null` | The limit to try next after "request too large": the provider's reported number, else 60% of the last one tried (default start `6000`). Returns `null` (stop retrying) when below `1500` or not smaller than current. |
-| `leanParams(params, limit)` | `Record<string, unknown>` | Input budget under 60% of the limit (`contextBudgetTokens`), answer under 25% (`maxOutputTokens`, min 512); only tightens existing values. |
-| `leanToolNames(base, specs)` | `() => string[] \| undefined` | Filters the active tool list to `LEAN_TOOLS` plus whatever `find_tools` enabled mid-turn (tools not in `ALWAYS_CORE_TOOLS`). When no base filter exists (few tools overall), the lean set is all there is. |
+| Export                               | Value / Signature                                                                         | Behaviour                                                                                                                                                                                                             |
+| :----------------------------------- | :---------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `LEAN_HISTORY`                       | `8`                                                                                       | Conversation messages loaded instead of the default 40.                                                                                                                                                               |
+| `LEAN_TOOLS`                         | `Set(["find_tools", "remember", "recall", "canvas_read", "canvas_write", "update_plan"])` | Tools a lean turn always offers; the rest stay reachable through `find_tools`.                                                                                                                                        |
+| `modelLimitKey(provider, modelName)` | `"provider/model".slice(0, 200)`                                                          | Key into `params.requestLimits`.                                                                                                                                                                                      |
+| `leanLimitTokens(params, key)`       | `number \| null`                                                                          | The stored limit, accepted only when a finite number `>= 1000` (floored).                                                                                                                                             |
+| `nextLeanLimit(reported?, current?)` | `number \| null`                                                                          | The limit to try next after "request too large": the provider's reported number, else 60% of the last one tried (default start `6000`). Returns `null` (stop retrying) when below `1500` or not smaller than current. |
+| `leanParams(params, limit)`          | `Record<string, unknown>`                                                                 | Input budget under 60% of the limit (`contextBudgetTokens`), answer under 25% (`maxOutputTokens`, min 512); only tightens existing values.                                                                            |
+| `leanToolNames(base, specs)`         | `() => string[] \| undefined`                                                             | Filters the active tool list to `LEAN_TOOLS` plus whatever `find_tools` enabled mid-turn (tools not in `ALWAYS_CORE_TOOLS`). When no base filter exists (few tools overall), the lean set is all there is.            |
 
 Lean mode effects in `runEngineTurn`: `LEAN_HISTORY` conversation limit, no canvas context, `leanParams`-shrunk budgets, and the filtered active tool list. The retry driver is `runFittingTheModel` — see [engine-planning.md](./engine-planning.md).
 
@@ -262,7 +263,7 @@ Lean mode effects in `runEngineTurn`: `LEAN_HISTORY` conversation limit, no canv
 
 ## 🧾 Verification Evidence (`src/engine/evidence.ts`)
 
-`RunEvidence` tracks *execution evidence* — proof that the agent's mutations were followed by passing checks — and exposes it through `verification()` (wired by `buildTools`).
+`RunEvidence` tracks _execution evidence_ — proof that the agent's mutations were followed by passing checks — and exposes it through `verification()` (wired by `buildTools`).
 
 ```typescript
 export interface VerificationCheck {
@@ -282,7 +283,7 @@ export interface VerificationEvidence {
 ```
 
 - **Mutation detection**: `MUTATING_TOOLS = { fs_edit, fs_write, computer_write_file }` always count; `computer_shell` counts when `shellMayMutate(command)` returns true. Each mutation bumps an internal `revision` and `activeWrites` (incremented before execution, decremented in `finally`, with a second `revision++` after completion).
-- **`shellMayMutate(command)`** (`src/engine/evidence.ts:26-38`): strips `>/dev/null` style redirections, then returns true if a `WRITE_HINT` regex matches (`>`/`>>`, `tee`, `xargs`, shell invocations, `--fix`/`--write`, `rm|mv|cp|mkdir|touch|chmod|...`, `sed -i`, `perl -i`, `find -delete/-exec`, `$(`, backticks) — otherwise true unless *every* `&&`/`||`/`;`/`|`/newline-separated segment matches `READ_ONLY_SEGMENT` (a large allowlist: `ls`, `cat`, `grep`/`rg`, `git status|diff|log|show|...`, `<lang> --version`, `npm|pnpm|yarn|bun test|run test|lint|typecheck|check|build`, `pytest`, `mypy`, `ruff check`, `cargo test|check|build|clippy`, `go test|vet|build`, `make test|check|lint`, etc.). Anything unrecognized is conservatively treated as a possible write.
+- **`shellMayMutate(command)`** (`src/engine/evidence.ts:26-38`): strips `>/dev/null` style redirections, then returns true if a `WRITE_HINT` regex matches (`>`/`>>`, `tee`, `xargs`, shell invocations, `--fix`/`--write`, `rm|mv|cp|mkdir|touch|chmod|...`, `sed -i`, `perl -i`, `find -delete/-exec`, `$(`, backticks) — otherwise true unless _every_ `&&`/`||`/`;`/`|`/newline-separated segment matches `READ_ONLY_SEGMENT` (a large allowlist: `ls`, `cat`, `grep`/`rg`, `git status|diff|log|show|...`, `<lang> --version`, `npm|pnpm|yarn|bun test|run test|lint|typecheck|check|build`, `pytest`, `mypy`, `ruff check`, `cargo test|check|build|clippy`, `go test|vet|build`, `make test|check|lint`, etc.). Anything unrecognized is conservatively treated as a possible write.
 - **`RunEvidence.wrap(spec)`** wraps a `ToolSpec.execute`: on `verify_workspace` results it records the checks and sets `failed = verification.passed !== true || checks empty || any exitCode !== 0`; a passing verify with no outstanding writes and no mutation during the check marks `verifiedRevision = revision`. A thrown `verify_workspace` error also sets `failed = true`.
 - **`snapshot()`** computes the status: `failed` → `"failed"`; `activeWrites > 0` → `"pending"`; `revision === verifiedRevision` → `"passed"`; `revision === 0` → `"not_required"`; else `"pending"`. Pending/failed snapshots carry a `reason` (`"Run verify_workspace after the latest file edit or shell operation. Prose is not execution evidence."` / `"The latest verification failed or could not finish. Fix the failure and rerun the checks."`) which the pass loop surfaces as warnings or verify reminders.
 
@@ -292,14 +293,14 @@ export interface VerificationEvidence {
 
 ## 🧪 Tests
 
-| Test file | Covers |
-| :--- | :--- |
-| `src/engine/harness.test.ts` | `runEngineTurn` end-to-end with `MockLanguageModelV4`: tool steps, evidence wrapping, persistence and realtime events. |
-| `src/engine/run.test.ts` | Turn-level behaviors of `run.ts`. |
-| `src/engine/context.test.ts` | `buildEngineContext` layout, cache breakpoints, `applyRollingCacheBreakpoint`, prefix stability. |
-| `src/engine/lean.test.ts` | `leanLimitTokens`, `nextLeanLimit`, `leanParams`, `leanToolNames`. |
-| `src/engine/evidence.test.ts` | `RunEvidence` status transitions, `shellMayMutate`. |
-| `src/engine/sdk-contract.test.ts` | Engine ↔ AI SDK message-contract assertions. |
+| Test file                         | Covers                                                                                                                 |
+| :-------------------------------- | :--------------------------------------------------------------------------------------------------------------------- |
+| `src/engine/harness.test.ts`      | `runEngineTurn` end-to-end with `MockLanguageModelV4`: tool steps, evidence wrapping, persistence and realtime events. |
+| `src/engine/run.test.ts`          | Turn-level behaviors of `run.ts`.                                                                                      |
+| `src/engine/context.test.ts`      | `buildEngineContext` layout, cache breakpoints, `applyRollingCacheBreakpoint`, prefix stability.                       |
+| `src/engine/lean.test.ts`         | `leanLimitTokens`, `nextLeanLimit`, `leanParams`, `leanToolNames`.                                                     |
+| `src/engine/evidence.test.ts`     | `RunEvidence` status transitions, `shellMayMutate`.                                                                    |
+| `src/engine/sdk-contract.test.ts` | Engine ↔ AI SDK message-contract assertions.                                                                           |
 
 ---
 

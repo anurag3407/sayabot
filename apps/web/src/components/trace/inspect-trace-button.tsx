@@ -37,8 +37,10 @@ export function InspectTraceButton({
           "inline-flex items-center gap-1 rounded transition-colors font-mono select-none",
           size === "xs" ? "h-6 px-1.5 text-[11px]" : "h-7 px-2 text-[12px]",
           variant === "ghost" && "text-faint hover:text-text hover:bg-panel",
-          variant === "outline" && "border border-line bg-panel text-muted hover:text-text hover:bg-raised",
-          variant === "danger" && "border border-danger/30 bg-danger/10 text-danger hover:bg-danger/20",
+          variant === "outline" &&
+            "border border-line bg-panel text-muted hover:text-text hover:bg-raised",
+          variant === "danger" &&
+            "border border-danger/30 bg-danger/10 text-danger hover:bg-danger/20",
           className,
         )}
         title="Inspect run steps, latency, tokens & subagents"

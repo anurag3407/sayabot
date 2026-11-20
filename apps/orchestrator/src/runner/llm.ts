@@ -1,7 +1,12 @@
 import { createRunScrubber, isSayaModel, redactSecrets, type TurnRole } from "@sayabot/core"
 import { agentRuns, messages, providerKeys, tasks } from "@sayabot/db"
 import { recordUsageEvent, tokensFrom } from "../usage"
-import { createLanguageModel, devModelConfig, providerKeyToApiKey, sayaModelConfig } from "@sayabot/llm"
+import {
+  createLanguageModel,
+  devModelConfig,
+  providerKeyToApiKey,
+  sayaModelConfig,
+} from "@sayabot/llm"
 import { isEffortLevel, type EffortLevel } from "@sayabot/llm/models/effort"
 import type { LanguageModel, LanguageModelUsage, ToolSet } from "ai"
 import { eq, sql } from "drizzle-orm"
@@ -79,7 +84,8 @@ export function getCheapModelName(provider: string, customCheap?: string): strin
 }
 
 export async function resolveAgentCheapModel(agent: AgentRow): Promise<ResolvedModel> {
-  const customCheap = (agent.params as Record<string, unknown> | null)?.cheapModel as string | undefined
+  const customCheap = (agent.params as Record<string, unknown> | null)?.cheapModel as
+    string | undefined
   // Claude Code / Codex / Cursor on this computer: background jobs use its fast model, no key.
   const cli = await agentCliRunner(agent)
   if (cli) {
@@ -345,7 +351,8 @@ export async function runLlmTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
         status: aborted ? "halted" : error ? "error" : "complete",
         finishReason: aborted ? "abort" : error ? "error" : (finishReason ?? "stop"),
         steps,
-        engine: typeof (agent.params as any)?.engine === "string" ? (agent.params as any).engine : "v1",
+        engine:
+          typeof (agent.params as any)?.engine === "string" ? (agent.params as any).engine : "v1",
         inputTokens: usage?.inputTokens ?? null,
         outputTokens: usage?.outputTokens ?? null,
         costUsd: cost,
@@ -480,7 +487,9 @@ export async function serverCanAnswer(agent: AgentRow): Promise<boolean> {
   if (agent.providerKeyId) return true
   if (isSayaModel(agent.model)) return Boolean(sayaModelConfig(agent.model))
   if (devModelConfig()) return true
-  return Boolean(await agentCliRunner({ ...agent, params: withoutRunner(agent.params) }).catch(() => null))
+  return Boolean(
+    await agentCliRunner({ ...agent, params: withoutRunner(agent.params) }).catch(() => null),
+  )
 }
 
 /** The bot's params without its Mac: what it answers with on the server. */

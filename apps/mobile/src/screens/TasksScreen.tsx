@@ -1,7 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react"
 import { FlatList, Pressable, RefreshControl, TextInput, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
-import { CheckCircle2, CircleDashed, CircleDot, Hash, OctagonAlert, Plus } from "lucide-react-native"
+import {
+  CheckCircle2,
+  CircleDashed,
+  CircleDot,
+  Hash,
+  OctagonAlert,
+  Plus,
+} from "lucide-react-native"
 import { postRoomMessage } from "../core/room-message"
 import { supabase } from "../core/supabase"
 import { delegationMessage } from "../core/workspace-draft"
@@ -20,7 +27,8 @@ type Filter = "active" | "stuck" | "done"
 function StatusIcon({ status }: { status: TaskItem["status"] }) {
   const theme = useTheme()
   if (status === "done") return <CheckCircle2 size={20} color={theme.ok} />
-  if (status === "stuck" || status === "blocked") return <OctagonAlert size={20} color={theme.warn} />
+  if (status === "stuck" || status === "blocked")
+    return <OctagonAlert size={20} color={theme.warn} />
   if (status === "in_progress") return <CircleDot size={20} color={theme.accent} />
   return <CircleDashed size={20} color={theme.faint} />
 }
@@ -47,7 +55,10 @@ export function TasksScreen({ navigation, route }: any) {
     if (route?.params?.action === "new-task") setCreating(true)
   }, [route?.params?.at, route?.params?.action])
   const agents = useMemo(() => new Map((data?.agents ?? []).map((a) => [a.id, a])), [data])
-  const rooms = useMemo(() => new Map((data?.chats ?? []).filter((c) => c.kind !== "dm").map((c) => [c.id, c])), [data])
+  const rooms = useMemo(
+    () => new Map((data?.chats ?? []).filter((c) => c.kind !== "dm").map((c) => [c.id, c])),
+    [data],
+  )
 
   const counts = {
     active: tasks.filter((t) => t.status === "open" || t.status === "in_progress").length,
@@ -55,7 +66,11 @@ export function TasksScreen({ navigation, route }: any) {
     done: tasks.filter((t) => t.status === "done").length,
   }
   const shown = tasks.filter((t) =>
-    filter === "active" ? t.status === "open" || t.status === "in_progress" : filter === "stuck" ? t.status === "stuck" || t.status === "blocked" : t.status === "done",
+    filter === "active"
+      ? t.status === "open" || t.status === "in_progress"
+      : filter === "stuck"
+        ? t.status === "stuck" || t.status === "blocked"
+        : t.status === "done",
   )
 
   return (
@@ -63,7 +78,12 @@ export function TasksScreen({ navigation, route }: any) {
       <FlatList
         data={shown}
         keyExtractor={(t) => t.id}
-        contentContainerStyle={{ paddingTop: insets.top + 12, paddingHorizontal: space.lg, paddingBottom: 140, gap: 10 }}
+        contentContainerStyle={{
+          paddingTop: insets.top + 12,
+          paddingHorizontal: space.lg,
+          paddingBottom: 140,
+          gap: 10,
+        }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -81,11 +101,24 @@ export function TasksScreen({ navigation, route }: any) {
               <Text variant="largeTitle" accessibilityRole="header" style={{ flex: 1 }}>
                 Tasks
               </Text>
-              <IconButton label="New task" icon={<Plus size={20} color={theme.onAccent} />} tint={theme.accent} onPress={() => setCreating(true)} />
+              <IconButton
+                label="New task"
+                icon={<Plus size={20} color={theme.onAccent} />}
+                tint={theme.accent}
+                onPress={() => setCreating(true)}
+              />
             </View>
             <View style={{ flexDirection: "row", gap: 8, marginTop: space.md }}>
-              <Chip label={`Active ${counts.active || ""}`.trim()} selected={filter === "active"} onPress={() => setFilter("active")} />
-              <Chip label={`Stuck ${counts.stuck || ""}`.trim()} selected={filter === "stuck"} onPress={() => setFilter("stuck")} />
+              <Chip
+                label={`Active ${counts.active || ""}`.trim()}
+                selected={filter === "active"}
+                onPress={() => setFilter("active")}
+              />
+              <Chip
+                label={`Stuck ${counts.stuck || ""}`.trim()}
+                selected={filter === "stuck"}
+                onPress={() => setFilter("stuck")}
+              />
               <Chip label="Done" selected={filter === "done"} onPress={() => setFilter("done")} />
             </View>
           </View>
@@ -94,9 +127,23 @@ export function TasksScreen({ navigation, route }: any) {
           loading ? null : (
             <EmptyState
               icon={<CheckCircle2 size={40} color={theme.faint} />}
-              title={filter === "active" ? "Nothing in progress" : filter === "stuck" ? "Nothing is stuck" : "Nothing finished yet"}
-              body={filter === "active" ? "Hand an agent something to do, and it shows up here." : undefined}
-              action={filter === "active" ? <Button title="New task" onPress={() => setCreating(true)} /> : undefined}
+              title={
+                filter === "active"
+                  ? "Nothing in progress"
+                  : filter === "stuck"
+                    ? "Nothing is stuck"
+                    : "Nothing finished yet"
+              }
+              body={
+                filter === "active"
+                  ? "Hand an agent something to do, and it shows up here."
+                  : undefined
+              }
+              action={
+                filter === "active" ? (
+                  <Button title="New task" onPress={() => setCreating(true)} />
+                ) : undefined
+              }
             />
           )
         }
@@ -110,7 +157,13 @@ export function TasksScreen({ navigation, route }: any) {
                 setDetail(item)
               }}
               accessibilityRole="button"
-              style={({ pressed }) => ({ backgroundColor: theme.card, borderRadius: radius.lg, padding: space.lg, gap: 8, opacity: pressed ? 0.85 : 1 })}
+              style={({ pressed }) => ({
+                backgroundColor: theme.card,
+                borderRadius: radius.lg,
+                padding: space.lg,
+                gap: 8,
+                opacity: pressed ? 0.85 : 1,
+              })}
             >
               <View style={{ flexDirection: "row", gap: 10, alignItems: "flex-start" }}>
                 <StatusIcon status={item.status} />
@@ -119,9 +172,21 @@ export function TasksScreen({ navigation, route }: any) {
                 </Text>
               </View>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingLeft: 30 }}>
-                {agent ? <Mascot seed={agent.handle} size={22} working={item.status === "in_progress"} shadow={true} /> : null}
+                {agent ? (
+                  <Mascot
+                    seed={agent.handle}
+                    size={22}
+                    working={item.status === "in_progress"}
+                    shadow={true}
+                  />
+                ) : null}
                 <Text variant="caption" tone="muted" numberOfLines={1} style={{ flex: 1 }}>
-                  {[agent ? agent.name : "Any agent", room ? `#${room.name}` : null, STATUS_LABEL[item.status], item.updatedAt ? shortTime(item.updatedAt) : null]
+                  {[
+                    agent ? agent.name : "Any agent",
+                    room ? `#${room.name}` : null,
+                    STATUS_LABEL[item.status],
+                    item.updatedAt ? shortTime(item.updatedAt) : null,
+                  ]
                     .filter(Boolean)
                     .join(" · ")}
                 </Text>
@@ -143,7 +208,11 @@ export function TasksScreen({ navigation, route }: any) {
         rooms={[...rooms.values()].map((r) => ({ id: r.id, name: r.name, agentIds: r.agentIds }))}
         agents={data?.agents ?? []}
         create={async (input) => {
-          const { data: org } = await supabase.from("orgs").select("id").eq("slug", data?.org.slug ?? "").maybeSingle()
+          const { data: org } = await supabase
+            .from("orgs")
+            .select("id")
+            .eq("slug", data?.org.slug ?? "")
+            .maybeSingle()
           if (!org?.id) throw new Error("No workspace")
           await createTask({ orgId: org.id, ...input })
         }}
@@ -153,7 +222,12 @@ export function TasksScreen({ navigation, route }: any) {
         }}
       />
 
-      <Sheet visible={Boolean(detail)} onClose={() => setDetail(null)} title={detail ? STATUS_LABEL[detail.status] : ""} height={0.6}>
+      <Sheet
+        visible={Boolean(detail)}
+        onClose={() => setDetail(null)}
+        title={detail ? STATUS_LABEL[detail.status] : ""}
+        height={0.6}
+      >
         {detail ? (
           <View style={{ gap: space.md }}>
             <Text variant="title">{detail.title}</Text>
@@ -164,7 +238,12 @@ export function TasksScreen({ navigation, route }: any) {
             ) : null}
             {detail.assigneeAgentId && agents.get(detail.assigneeAgentId) ? (
               <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                <Mascot seed={agents.get(detail.assigneeAgentId)!.handle} size={36} shadow={true} live={true} />
+                <Mascot
+                  seed={agents.get(detail.assigneeAgentId)!.handle}
+                  size={36}
+                  shadow={true}
+                  live={true}
+                />
                 <Text variant="callout">{agents.get(detail.assigneeAgentId)!.name} is on it</Text>
               </View>
             ) : (
@@ -180,7 +259,11 @@ export function TasksScreen({ navigation, route }: any) {
                 onPress={() => {
                   const room = rooms.get(detail.roomId!)!
                   setDetail(null)
-                  navigation.navigate("Chat", { roomId: room.id, roomName: room.name, orgSlug: data?.org.slug })
+                  navigation.navigate("Chat", {
+                    roomId: room.id,
+                    roomName: room.name,
+                    orgSlug: data?.org.slug,
+                  })
                 }}
               />
             ) : null}
@@ -205,7 +288,13 @@ function NewTaskSheet({
   orgSlug: string
   rooms: Array<{ id: string; name: string; agentIds: string[] }>
   agents: HomeAgent[]
-  create: (input: { roomId: string; title: string; description?: string; priority?: "low" | "medium" | "high" | "urgent"; assigneeAgentId?: string | null }) => Promise<void>
+  create: (input: {
+    roomId: string
+    title: string
+    description?: string
+    priority?: "low" | "medium" | "high" | "urgent"
+    assigneeAgentId?: string | null
+  }) => Promise<void>
   onDone: () => void
 }) {
   const theme = useTheme()
@@ -219,16 +308,29 @@ function NewTaskSheet({
   useEffect(() => {
     if (!roomId && rooms[0]) setRoomId(rooms[0].id)
   }, [rooms, roomId])
-  const roomAgents = agents.filter((a) => rooms.find((r) => r.id === roomId)?.agentIds.includes(a.id))
+  const roomAgents = agents.filter((a) =>
+    rooms.find((r) => r.id === roomId)?.agentIds.includes(a.id),
+  )
 
   async function submit() {
     if (!roomId) return
     setBusy(true)
     setError(null)
     try {
-      await create({ roomId, title: title.trim(), description: details.trim() || undefined, priority: urgent ? "urgent" : "medium", assigneeAgentId: who })
+      await create({
+        roomId,
+        title: title.trim(),
+        description: details.trim() || undefined,
+        priority: urgent ? "urgent" : "medium",
+        assigneeAgentId: who,
+      })
       const agent = agents.find((a) => a.id === who)
-      if (agent) await postRoomMessage(orgSlug, roomId, delegationMessage(agent.handle, title, details)).catch(() => {})
+      if (agent)
+        await postRoomMessage(
+          orgSlug,
+          roomId,
+          delegationMessage(agent.handle, title, details),
+        ).catch(() => {})
       haptic.success()
       setTitle("")
       setDetails("")
@@ -243,10 +345,23 @@ function NewTaskSheet({
     }
   }
 
-  const field = { borderRadius: radius.md, backgroundColor: theme.raised, paddingHorizontal: 14, color: theme.text, fontSize: 16 } as const
+  const field = {
+    borderRadius: radius.md,
+    backgroundColor: theme.raised,
+    paddingHorizontal: 14,
+    color: theme.text,
+    fontSize: 16,
+  } as const
   return (
     <Sheet visible={visible} onClose={onClose} title="New task" height={0.85}>
-      <TextInput value={title} onChangeText={setTitle} placeholder="What needs doing?" placeholderTextColor={theme.faint} autoFocus style={{ ...field, height: 50 }} />
+      <TextInput
+        value={title}
+        onChangeText={setTitle}
+        placeholder="What needs doing?"
+        placeholderTextColor={theme.faint}
+        autoFocus
+        style={{ ...field, height: 50 }}
+      />
       <TextInput
         value={details}
         onChangeText={setDetails}
@@ -260,7 +375,15 @@ function NewTaskSheet({
       </Text>
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
         {rooms.map((r) => (
-          <Chip key={r.id} label={`#${r.name}`} selected={r.id === roomId} onPress={() => { setRoomId(r.id); setWho(null) }} />
+          <Chip
+            key={r.id}
+            label={`#${r.name}`}
+            selected={r.id === roomId}
+            onPress={() => {
+              setRoomId(r.id)
+              setWho(null)
+            }}
+          />
         ))}
       </View>
       <Text variant="footnote" tone="muted" style={{ marginTop: space.lg, marginBottom: 8 }}>
@@ -269,18 +392,34 @@ function NewTaskSheet({
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
         <Chip label="Any agent" selected={who === null} onPress={() => setWho(null)} />
         {roomAgents.map((a) => (
-          <Chip key={a.id} label={a.name} selected={who === a.id} icon={<Mascot seed={a.handle} size={20} shadow={true} />} onPress={() => setWho(a.id)} />
+          <Chip
+            key={a.id}
+            label={a.name}
+            selected={who === a.id}
+            icon={<Mascot seed={a.handle} size={20} shadow={true} />}
+            onPress={() => setWho(a.id)}
+          />
         ))}
       </View>
       <View style={{ flexDirection: "row", gap: 8, marginTop: space.lg }}>
-        <Chip label={urgent ? "Urgent ✓" : "Mark urgent"} selected={urgent} onPress={() => setUrgent(!urgent)} />
+        <Chip
+          label={urgent ? "Urgent ✓" : "Mark urgent"}
+          selected={urgent}
+          onPress={() => setUrgent(!urgent)}
+        />
       </View>
       {error ? (
         <Text variant="footnote" tone="danger" style={{ marginTop: space.md }}>
           {error}
         </Text>
       ) : null}
-      <Button title={who ? "Hand it over" : "Add task"} onPress={submit} loading={busy} disabled={!title.trim() || !roomId} style={{ marginTop: space.xl }} />
+      <Button
+        title={who ? "Hand it over" : "Add task"}
+        onPress={submit}
+        loading={busy}
+        disabled={!title.trim() || !roomId}
+        style={{ marginTop: space.xl }}
+      />
     </Sheet>
   )
 }

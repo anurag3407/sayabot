@@ -41,7 +41,9 @@ export function useRoomRealtime(roomId: string, orgSlug: string) {
     try {
       const { data, error } = await supabase
         .from("messages")
-        .select("id, room_id, thread_root_id, sender_type, sender_id, content, status, mentions, metadata, created_at")
+        .select(
+          "id, room_id, thread_root_id, sender_type, sender_id, content, status, mentions, metadata, created_at",
+        )
         .eq("room_id", roomId)
         .is("thread_root_id", null)
         .order("created_at", { ascending: true })
@@ -64,7 +66,7 @@ export function useRoomRealtime(roomId: string, orgSlug: string) {
             mentions: m.mentions || [],
             metadata: m.metadata || {},
             createdAt: m.created_at,
-          }))
+          })),
         )
       }
     } catch (err) {
@@ -116,9 +118,7 @@ export function useRoomRealtime(roomId: string, orgSlug: string) {
       .on("broadcast", { event: "message.done" }, ({ payload }) => {
         setAgentStatus(null)
         setMessages((prev) =>
-          prev.map((m) =>
-            m.id === payload.messageId ? { ...m, status: payload.status } : m
-          )
+          prev.map((m) => (m.id === payload.messageId ? { ...m, status: payload.status } : m)),
         )
       })
 
@@ -164,25 +164,42 @@ export function useRoomRealtime(roomId: string, orgSlug: string) {
     // New and edited messages (yours from another device, teammates', finished agent replies).
     const rows = supabase
       .channel(`room-rows:${roomId}:${Math.random().toString(36).slice(2)}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `room_id=eq.${roomId}` }, ({ new: row }) => {
-        if ((row as any).thread_root_id) return
-        const next = mapRow(row)
-        setMessages((prev) => {
-          if (prev.some((m) => m.id === next.id)) return prev
-          // Replace the optimistic copy of a message we just sent.
-          const pending = prev.findIndex((m) => m.id.startsWith("local-") && m.content === next.content && m.senderType === next.senderType)
-          if (pending >= 0) {
-            const copy = [...prev]
-            copy[pending] = next
-            return copy
-          }
-          return [...prev, next]
-        })
-      })
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages", filter: `room_id=eq.${roomId}` }, ({ new: row }) => {
-        const next = mapRow(row)
-        setMessages((prev) => prev.map((m) => (m.id === next.id ? { ...m, ...next, content: next.content || m.content } : m)))
-      })
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "messages", filter: `room_id=eq.${roomId}` },
+        ({ new: row }) => {
+          if ((row as any).thread_root_id) return
+          const next = mapRow(row)
+          setMessages((prev) => {
+            if (prev.some((m) => m.id === next.id)) return prev
+            // Replace the optimistic copy of a message we just sent.
+            const pending = prev.findIndex(
+              (m) =>
+                m.id.startsWith("local-") &&
+                m.content === next.content &&
+                m.senderType === next.senderType,
+            )
+            if (pending >= 0) {
+              const copy = [...prev]
+              copy[pending] = next
+              return copy
+            }
+            return [...prev, next]
+          })
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "messages", filter: `room_id=eq.${roomId}` },
+        ({ new: row }) => {
+          const next = mapRow(row)
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === next.id ? { ...m, ...next, content: next.content || m.content } : m,
+            ),
+          )
+        },
+      )
       .subscribe()
 
     return () => {
@@ -209,7 +226,9 @@ export function useRoomRealtime(roomId: string, orgSlug: string) {
         metadata: { sending: true },
       },
     ])
-    const { data: { session } } = await supabase.auth.getSession()
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
     if (!session) throw new Error("Sign in to send a message.")
 
     const res = await fetch(`${currentWebApiUrl()}/api/messages`, {
@@ -227,7 +246,11 @@ export function useRoomRealtime(roomId: string, orgSlug: string) {
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
-      setMessages((prev) => prev.map((m) => (m.id === localId ? { ...m, status: "error", metadata: { failed: true } } : m)))
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === localId ? { ...m, status: "error", metadata: { failed: true } } : m,
+        ),
+      )
       throw new Error(err.error || `HTTP ${res.status}`)
     }
     const sent = (await res.json()) as { messageId?: string }
@@ -235,7 +258,11 @@ export function useRoomRealtime(roomId: string, orgSlug: string) {
       setMessages((prev) =>
         prev.some((m) => m.id === sent.messageId)
           ? prev.filter((m) => m.id !== localId)
-          : prev.map((m) => (m.id === localId ? { ...m, id: sent.messageId!, status: "complete", metadata: {} } : m)),
+          : prev.map((m) =>
+              m.id === localId
+                ? { ...m, id: sent.messageId!, status: "complete", metadata: {} }
+                : m,
+            ),
       )
     }
     return sent
@@ -244,7 +271,9 @@ export function useRoomRealtime(roomId: string, orgSlug: string) {
   // 4. Resolve Danger Tool Approval
   const resolveApproval = async (approved: boolean) => {
     if (!approval) return
-    const { data: { session } } = await supabase.auth.getSession()
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
     if (!session) throw new Error("Sign in to approve or reject this tool.")
 
     const res = await fetch(`${currentWebApiUrl()}/api/v1/tools/${approval.toolCallId}/approve`, {

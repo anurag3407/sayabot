@@ -55,7 +55,12 @@ internalRoutes.post("/internal/egress/identity", async (c) => {
     const [row] = await db
       .select({ agentId: agentComputers.agentId, orgId: agentComputers.orgId })
       .from(agentComputers)
-      .where(and(eq(agentComputers.containerIp, parsed.data.containerIp), eq(agentComputers.status, "running")))
+      .where(
+        and(
+          eq(agentComputers.containerIp, parsed.data.containerIp),
+          eq(agentComputers.status, "running"),
+        ),
+      )
       .limit(1)
     computer = row
   }
@@ -124,14 +129,8 @@ internalRoutes.post("/internal/egress/resolve", async (c) => {
 
   // Update lastUsedAt asynchronously
   void Promise.all([
-    db
-      .update(agentSecretGrants)
-      .set({ lastUsedAt: now })
-      .where(eq(agentSecretGrants.id, grant.id)),
-    db
-      .update(vaultSecrets)
-      .set({ lastUsedAt: now })
-      .where(eq(vaultSecrets.id, grant.secretId)),
+    db.update(agentSecretGrants).set({ lastUsedAt: now }).where(eq(agentSecretGrants.id, grant.id)),
+    db.update(vaultSecrets).set({ lastUsedAt: now }).where(eq(vaultSecrets.id, grant.secretId)),
   ]).catch(() => {})
 
   const kek = getEnv().MESH_KEK
@@ -342,7 +341,10 @@ const computerStateSchema = z.object({
   containerIp: z.string().nullable().optional(),
   error: z.string().nullable().optional(),
   // SHA-256 of the per-agent egress proxy credential computerd adds for microVM computers.
-  proxySecretHash: z.string().regex(/^[0-9a-f]{64}$/).optional(),
+  proxySecretHash: z
+    .string()
+    .regex(/^[0-9a-f]{64}$/)
+    .optional(),
 })
 
 internalRoutes.post("/internal/computer/state", async (c) => {

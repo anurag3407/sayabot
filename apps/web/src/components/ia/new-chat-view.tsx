@@ -123,8 +123,8 @@ export function NewChatView({
           ) : (
             <div>
               <p className="max-w-[58ch] text-[12px] leading-relaxed text-muted">
-                No @mention needed here: the agent answers every message you send. Risky actions still
-                wait for approval.
+                No @mention needed here: the agent answers every message you send. Risky actions
+                still wait for approval.
               </p>
               <ul className="mt-5 divide-y divide-line border-y border-line">
                 {agents.map((agent) => (

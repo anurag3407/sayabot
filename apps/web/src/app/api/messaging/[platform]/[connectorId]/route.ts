@@ -15,7 +15,10 @@ interface ConnectorRow {
   config: { inbound?: { enabled?: boolean } } | null
 }
 
-async function connector(connectorId: string, platform: string): Promise<{ row: ConnectorRow; inboundSecret: string } | null> {
+async function connector(
+  connectorId: string,
+  platform: string,
+): Promise<{ row: ConnectorRow; inboundSecret: string } | null> {
   const admin = createAdminClient()
   const { data } = await admin
     .from("workspace_connectors")
@@ -23,9 +26,12 @@ async function connector(connectorId: string, platform: string): Promise<{ row: 
     .eq("id", connectorId)
     .maybeSingle()
   const row = data as ConnectorRow | null
-  if (!row || row.source !== platform || row.status !== "active" || !row.config?.inbound?.enabled) return null
+  if (!row || row.source !== platform || row.status !== "active" || !row.config?.inbound?.enabled)
+    return null
   try {
-    const secret = unwrapConnectorSecret(decryptSecret({ ciphertext: row.ciphertext, iv: row.iv, tag: row.tag }, getKek())).inboundSecret
+    const secret = unwrapConnectorSecret(
+      decryptSecret({ ciphertext: row.ciphertext, iv: row.iv, tag: row.tag }, getKek()),
+    ).inboundSecret
     if (!secret) return null
     return { row, inboundSecret: secret }
   } catch {
@@ -63,7 +69,10 @@ export async function POST(
     signal: AbortSignal.timeout(15_000),
   }).catch(() => null)
   if (!response?.ok) return new Response("unavailable", { status: 502 })
-  return new Response(await response.text(), { status: response.status, headers: { "content-type": "application/json" } })
+  return new Response(await response.text(), {
+    status: response.status,
+    headers: { "content-type": "application/json" },
+  })
 }
 
 /** WhatsApp's setup check. The verify token is the chat secret, not the access token. */
@@ -78,7 +87,11 @@ export async function GET(
   const url = new URL(request.url)
   const token = url.searchParams.get("hub.verify_token") ?? ""
   const challenge = url.searchParams.get("hub.challenge")
-  if (url.searchParams.get("hub.mode") !== "subscribe" || !challenge || !same(token, found.inboundSecret)) {
+  if (
+    url.searchParams.get("hub.mode") !== "subscribe" ||
+    !challenge ||
+    !same(token, found.inboundSecret)
+  ) {
     return new Response("forbidden", { status: 403 })
   }
   return new Response(challenge, { status: 200 })

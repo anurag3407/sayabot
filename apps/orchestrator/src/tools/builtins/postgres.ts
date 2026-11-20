@@ -55,7 +55,12 @@ export function postgresInspectorTool(orgId: string, agentId?: string): ToolSpec
           truncated: result.rows.length > MAX_ROWS,
         }
         if (JSON.stringify(payload).length > MAX_RESULT_CHARS) {
-          return { columns, rows: rows.slice(0, 20), truncated: true, note: "Result too large; showing 20 rows." }
+          return {
+            columns,
+            rows: rows.slice(0, 20),
+            truncated: true,
+            note: "Result too large; showing 20 rows.",
+          }
         }
         return payload
       } finally {

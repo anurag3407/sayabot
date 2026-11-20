@@ -53,11 +53,7 @@ export async function revokeStaleCanvasConnections(
 
 export async function loadCanvas(canvasId: string) {
   if (!UUID_RE.test(canvasId)) return null
-  const [canvas] = await getDb()
-    .select()
-    .from(canvases)
-    .where(eq(canvases.id, canvasId))
-    .limit(1)
+  const [canvas] = await getDb().select().from(canvases).where(eq(canvases.id, canvasId)).limit(1)
   return canvas ?? null
 }
 
@@ -111,7 +107,11 @@ export function getHocuspocus(): Hocuspocus<CollabContext> {
   return instance
 }
 
-export async function persistCanvasState(canvasId: string, document: Y.Doc, text?: string): Promise<string> {
+export async function persistCanvasState(
+  canvasId: string,
+  document: Y.Doc,
+  text?: string,
+): Promise<string> {
   const snapshotText = text ?? document.getText("content").toString()
   await getDb()
     .update(canvases)

@@ -4,10 +4,16 @@ import type { ConnectorDoc, ConnectorSearchOptions } from "./types"
 export interface GitHubConfig {
   token: string
   fetchFn?: typeof fetch
+  /** Override the API origin. Tests point this at a local stub server. */
+  baseUrl?: string
 }
 
 export class GitHubConnector {
   constructor(private config: GitHubConfig) {}
+
+  private base(): string {
+    return (this.config.baseUrl ?? "https://api.github.com").replace(/\/+$/, "")
+  }
 
   private get headers(): Record<string, string> {
     return {
@@ -18,15 +24,17 @@ export class GitHubConnector {
   }
 
   /**
-   * Searches code across specified repositories.
+   * Searches code across specified repositories, or one default org when no repos are scoped.
    */
-  async searchCode(options: ConnectorSearchOptions): Promise<ConnectorDoc[]> {
+  async searchCode(options: ConnectorSearchOptions & { org?: string }): Promise<ConnectorDoc[]> {
     const limit = Math.min(20, Math.max(1, options.limit ?? 10))
     let q = options.query
 
     if (options.allowedRepos && options.allowedRepos.length > 0) {
       const repoFilters = options.allowedRepos.map((r) => `repo:${r}`).join(" ")
       q = `${q} ${repoFilters}`
+    } else if (options.org) {
+      q = `${q} org:${options.org.replace(/^@/, "")}`
     }
 
     const params = new URLSearchParams({
@@ -35,7 +43,7 @@ export class GitHubConnector {
     })
 
     const res = await fetchWithRetry(
-      `https://api.github.com/search/code?${params.toString()}`,
+      `${this.base()}/search/code?${params.toString()}`,
       {
         method: "GET",
         headers: this.headers,
@@ -73,9 +81,14 @@ export class GitHubConnector {
   /**
    * Fetches the raw text content of a file in a GitHub repository.
    */
-  async getFileContent(owner: string, repo: string, path: string, ref = "main"): Promise<ConnectorDoc> {
+  async getFileContent(
+    owner: string,
+    repo: string,
+    path: string,
+    ref = "main",
+  ): Promise<ConnectorDoc> {
     const cleanPath = path.replace(/^\/+/, "")
-    const url = `https://api.github.com/repos/${owner}/${repo}/contents/${cleanPath}?ref=${ref}`
+    const url = `${this.base()}/repos/${owner}/${repo}/contents/${cleanPath}?ref=${ref}`
 
     const res = await fetchWithRetry(
       url,
@@ -121,13 +134,25 @@ export class GitHubConnector {
   /**
    * Fetches an issue or pull request with all discussion comments.
    */
-  async getIssueOrPullRequest(owner: string, repo: string, issueNumber: number): Promise<ConnectorDoc> {
-    const issueUrl = `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}`
-    const commentsUrl = `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments`
+  async getIssueOrPullRequest(
+    owner: string,
+    repo: string,
+    issueNumber: number,
+  ): Promise<ConnectorDoc> {
+    const issueUrl = `${this.base()}/repos/${owner}/${repo}/issues/${issueNumber}`
+    const commentsUrl = `${this.base()}/repos/${owner}/${repo}/issues/${issueNumber}/comments`
 
     const [issueRes, commentsRes] = await Promise.all([
-      fetchWithRetry(issueUrl, { method: "GET", headers: this.headers }, { fetchFn: this.config.fetchFn }),
-      fetchWithRetry(commentsUrl, { method: "GET", headers: this.headers }, { fetchFn: this.config.fetchFn }),
+      fetchWithRetry(
+        issueUrl,
+        { method: "GET", headers: this.headers },
+        { fetchFn: this.config.fetchFn },
+      ),
+      fetchWithRetry(
+        commentsUrl,
+        { method: "GET", headers: this.headers },
+        { fetchFn: this.config.fetchFn },
+      ),
     ])
 
     if (!issueRes.ok) {
@@ -150,7 +175,11 @@ export class GitHubConnector {
     const typeLabel = isPR ? "Pull Request" : "Issue"
 
     const comments = commentsRes.ok
-      ? ((await commentsRes.json()) as Array<{ user?: { login?: string }; body?: string; created_at: string }>)
+      ? ((await commentsRes.json()) as Array<{
+          user?: { login?: string }
+          body?: string
+          created_at: string
+        }>)
       : []
 
     const discussionLines = [

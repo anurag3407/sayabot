@@ -14,24 +14,24 @@ Sayabot agents can call MCP servers that only make sense on the owner's computer
 interface McpCall {
   id: string
   serverId: string
-  appId: string          // picks the fixed command below
-  method: string         // "tools/list" | "tools/call" only
+  appId: string // picks the fixed command below
+  method: string // "tools/list" | "tools/call" only
   params: Record<string, unknown>
-  env: Record<string, string>   // filtered allowlist
+  env: Record<string, string> // filtered allowlist
 }
 ```
 
 **Hard allowlists** (`src/local-mcp.ts:21-37`):
 
-| appId | Command |
-| :--- | :--- |
-| `obsidian` | `npx -y obsidian-mcp-server` |
-| `paper` | `paper mcp` — preferring `~/.paper/bin/paper` when it exists |
-| `apple-apps` | `npx -y mcp-icloud` |
+| appId        | Command                                                      |
+| :----------- | :----------------------------------------------------------- |
+| `obsidian`   | `npx -y obsidian-mcp-server`                                 |
+| `paper`      | `paper mcp` — preferring `~/.paper/bin/paper` when it exists |
+| `apple-apps` | `npx -y mcp-icloud`                                          |
 
-| Refusal | Trigger |
-| :--- | :--- |
-| "That call isn't allowed." | `method` is anything but `tools/list` / `tools/call` |
+| Refusal                                    | Trigger                                                            |
+| :----------------------------------------- | :----------------------------------------------------------------- |
+| "That call isn't allowed."                 | `method` is anything but `tools/list` / `tools/call`               |
 | "That app isn't allowed on this computer." | `appId` not in the table above (a job cannot name its own program) |
 
 Anything else is refused with "That app isn't allowed on this computer.", and any method other than `tools/list`/`tools/call` is refused with "That call isn't allowed." A job cannot name its own program. From `call.env`, only `OBSIDIAN_API_KEY`, `OBSIDIAN_HOST`, `OBSIDIAN_PORT` (`ENV_KEYS`) are copied into the child environment; everything else is ignored.
@@ -70,14 +70,14 @@ The runner side (socket server, approval cards, polling) is documented in [runne
 
 Protocol methods handled (`handle`, `src/approve-mcp.ts:91`):
 
-| Method | Reply |
-| :--- | :--- |
-| `initialize` | echoes the client's `protocolVersion` (default `"2025-06-18"`), `capabilities: { tools: {} }`, `serverInfo: { name: "sayabot_mac", version: "1.0.0" }` |
-| `tools/list` | the single `approve` tool with its input schema (`tool_name` and `input` required, `tool_use_id` optional) |
-| `tools/call` | runs `ask()` against the approval socket and wraps the decision as text content |
-| `ping` | empty result (keep-alive) |
-| anything else with an id | JSON-RPC error `-32601` "Unknown method …" |
-| notifications (no id) | no reply |
+| Method                   | Reply                                                                                                                                                  |
+| :----------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `initialize`             | echoes the client's `protocolVersion` (default `"2025-06-18"`), `capabilities: { tools: {} }`, `serverInfo: { name: "sayabot_mac", version: "1.0.0" }` |
+| `tools/list`             | the single `approve` tool with its input schema (`tool_name` and `input` required, `tool_use_id` optional)                                             |
+| `tools/call`             | runs `ask()` against the approval socket and wraps the decision as text content                                                                        |
+| `ping`                   | empty result (keep-alive)                                                                                                                              |
+| anything else with an id | JSON-RPC error `-32601` "Unknown method …"                                                                                                             |
+| notifications (no id)    | no reply                                                                                                                                               |
 
 ---
 
@@ -89,12 +89,12 @@ Protocol methods handled (`handle`, `src/approve-mcp.ts:91`):
 
 `appModels(app, binary, version)` reads each app's models, cached per app id in `listCache` — refreshed after **6 hours** (`LIST_FRESH_MS`) or whenever the app's reported version changes; when a fresh read fails, the last good list for the same version is reused (`src/local-models.ts:252-254`).
 
-| App | Mechanism |
-| :--- | :--- |
+| App           | Mechanism                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| :------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `claude-code` | `fetchClaudeModels` (`src/local-models.ts:101`): spawns `claude -p --input-format stream-json --output-format stream-json --verbose --setting-sources user --strict-mcp-config --mcp-config '{"mcpServers":{}}'` in the temp dir, sends **only** a `control_request` `{ subtype: "initialize" }` (no prompt, so nothing runs or is spent), and parses the `control_response` whose `request_id` matches. `claudeRowsToModels` (`src/local-models.ts:74`) resolves aliases via `resolvedModel`, marks the `"default"` alias's target `isDefault`, and reads `supportsEffort`/`supportedEffortLevels`. 15 s timeout; 4 MB stdout guard. |
-| `codex` | `codexModels` (`src/local-models.ts:172`): reads `models_cache.json` under `$CODEX_HOME` (default `~/.codex`) — the list Codex itself refreshes whenever it runs — skipping `visibility: "hidden"` rows and reading `supported_reasoning_levels`/`default_reasoning_level` for effort. |
-| `pi` | `piModels`: runs `pi --list-models` (15 s timeout) and parses the two-column table into `provider/model` ids via `piRowsToModels`. |
-| ACP apps | `discoverAcpModels(binary, args)` from `acp.ts` starts the app, reads model config options/groups out of `initialize`/`session/new`, and detects how to switch (`config` option vs older `session/set_model`). Runs in `tmpdir()/sayabot-models` with `NO_COLOR=1`. |
+| `codex`       | `codexModels` (`src/local-models.ts:172`): reads `models_cache.json` under `$CODEX_HOME` (default `~/.codex`) — the list Codex itself refreshes whenever it runs — skipping `visibility: "hidden"` rows and reading `supported_reasoning_levels`/`default_reasoning_level` for effort.                                                                                                                                                                                                                                                                                                                                                |
+| `pi`          | `piModels`: runs `pi --list-models` (15 s timeout) and parses the two-column table into `provider/model` ids via `piRowsToModels`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ACP apps      | `discoverAcpModels(binary, args)` from `acp.ts` starts the app, reads model config options/groups out of `initialize`/`session/new`, and detects how to switch (`config` option vs older `session/set_model`). Runs in `tmpdir()/sayabot-models` with `NO_COLOR=1`.                                                                                                                                                                                                                                                                                                                                                                   |
 
 ACP discovery reuses the same launch arguments the runner would use (`spec.run.args`), so what it reports is exactly what a real run would see. Grouped options (`{ name, options: [...] }`) are flattened up to six levels deep, duplicates are dropped, and the app's current model is detected from the session state — the same `AcpModelList { models, current, setter }` machinery `runAcp` later uses for `job.model` switches.
 

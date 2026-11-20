@@ -29,7 +29,9 @@ export function OnboardingWizard({
 }) {
   const router = useRouter()
   const [workspace, setWorkspace] = useState(initialWorkspace)
-  const [workspaceName, setWorkspaceName] = useState(userName ? `${userName}'s workspace` : "My workspace")
+  const [workspaceName, setWorkspaceName] = useState(
+    userName ? `${userName}'s workspace` : "My workspace",
+  )
   const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
 
@@ -43,7 +45,8 @@ export function OnboardingWizard({
         setError(result.error ?? "Could not open the workspace")
         return
       }
-      const path = typeof result.data?.path === "string" ? result.data.path : `/${initialWorkspace.slug}`
+      const path =
+        typeof result.data?.path === "string" ? result.data.path : `/${initialWorkspace.slug}`
       router.push(path)
     })
     return () => {

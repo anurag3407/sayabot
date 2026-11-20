@@ -111,10 +111,14 @@ describe("Engine Dispatcher (E4)", () => {
   })
 
   it("uses v2 for existing bots without an explicit engine and rejects unsupported drivers", async () => {
-    const spy = vi.spyOn(engineRun, "runEngineTurn").mockResolvedValue({ messageId: "m", runId: "r", content: "", error: null, aborted: false })
+    const spy = vi
+      .spyOn(engineRun, "runEngineTurn")
+      .mockResolvedValue({ messageId: "m", runId: "r", content: "", error: null, aborted: false })
     await startAgentTurn({ ...dummyArgs, agent: { ...dummyAgent, params: {} } })
     expect(spy).toHaveBeenCalledTimes(1)
-    await expect(startAgentTurn({ ...dummyArgs, agent: { ...dummyAgent, params: { engine: "cli" } } })).rejects.toThrow("Unsupported agent engine")
+    await expect(
+      startAgentTurn({ ...dummyArgs, agent: { ...dummyAgent, params: { engine: "cli" } } }),
+    ).rejects.toThrow("Unsupported agent engine")
     spy.mockRestore()
   })
 
@@ -143,11 +147,20 @@ describe("Engine Dispatcher (E4)", () => {
   })
 
   it("runs on this computer's Claude Code when the agent picked it", async () => {
-    const result: TurnResult = { messageId: "m-cli", runId: "r-cli", content: "hi", error: null, aborted: false }
+    const result: TurnResult = {
+      messageId: "m-cli",
+      runId: "r-cli",
+      content: "hi",
+      error: null,
+      aborted: false,
+    }
     const spy = vi.spyOn(cliRunner, "runCliTurn").mockResolvedValueOnce(result)
     const args = {
       ...dummyArgs,
-      agent: { ...dummyAgent, params: { runner: { where: "server", app: "claude-code", model: "claude-opus-5-5" } } },
+      agent: {
+        ...dummyAgent,
+        params: { runner: { where: "server", app: "claude-code", model: "claude-opus-5-5" } },
+      },
     }
     expect(await startAgentTurn(args)).toEqual(result)
     expect(spy).toHaveBeenCalledWith(args, { app: "claude-code", model: "claude-opus-5-5" })
@@ -155,7 +168,13 @@ describe("Engine Dispatcher (E4)", () => {
   })
 
   it("falls back to a signed-in app when the agent has no key", async () => {
-    const result: TurnResult = { messageId: "m-fb", runId: "r-fb", content: "hi", error: null, aborted: false }
+    const result: TurnResult = {
+      messageId: "m-fb",
+      runId: "r-fb",
+      content: "hi",
+      error: null,
+      aborted: false,
+    }
     vi.stubEnv("SAYABOT_LOCAL_CLI", "1")
     const binary = vi.spyOn(cliAgent, "findCliBinary").mockResolvedValue("/usr/local/bin/claude")
     const signedIn = vi.spyOn(cliAgent, "cliSignedIn").mockResolvedValue(true)
@@ -170,7 +189,15 @@ describe("Engine Dispatcher (E4)", () => {
   it("keeps using the API key when the agent has one", async () => {
     vi.stubEnv("SAYABOT_LOCAL_CLI", "1")
     const fallback = vi.spyOn(cliAgent, "findCliBinary")
-    const spy = vi.spyOn(llmRunner, "runLlmTurn").mockResolvedValueOnce({ messageId: "m", runId: "r", content: "", error: null, aborted: false })
+    const spy = vi
+      .spyOn(llmRunner, "runLlmTurn")
+      .mockResolvedValueOnce({
+        messageId: "m",
+        runId: "r",
+        content: "",
+        error: null,
+        aborted: false,
+      })
     await startAgentTurn({ ...dummyArgs, agent: { ...dummyAgent, providerKeyId: "key-1" } })
     expect(fallback).not.toHaveBeenCalled()
     expect(spy).toHaveBeenCalledTimes(1)
@@ -179,7 +206,13 @@ describe("Engine Dispatcher (E4)", () => {
   })
 
   it("answers with the model picked for this chat only", async () => {
-    const result: TurnResult = { messageId: "m-mac", runId: "r-mac", content: "hi", error: null, aborted: false }
+    const result: TurnResult = {
+      messageId: "m-mac",
+      runId: "r-mac",
+      content: "hi",
+      error: null,
+      aborted: false,
+    }
     const hostId = "11111111-1111-1111-1111-111111111111"
     vi.spyOn(roomModel, "applyRoomModel").mockImplementation(async (_roomId, agent) => ({
       ...agent,
@@ -189,12 +222,22 @@ describe("Engine Dispatcher (E4)", () => {
     vi.spyOn(localRunner, "macPlan").mockResolvedValueOnce("local")
     const spy = vi.spyOn(localRunner, "runLocalTurn").mockResolvedValueOnce(result)
     expect(await startAgentTurn(dummyArgs)).toEqual(result)
-    expect(spy).toHaveBeenCalledWith(expect.anything(), { hostId, app: "claude-code", model: "claude-opus-5-5" }, { wait: false })
+    expect(spy).toHaveBeenCalledWith(
+      expect.anything(),
+      { hostId, app: "claude-code", model: "claude-opus-5-5" },
+      { wait: false },
+    )
     spy.mockRestore()
   })
 
   it("answers from the server when the bot's Mac is off and the server can", async () => {
-    const result: TurnResult = { messageId: "m-srv", runId: "r-srv", content: "hi", error: null, aborted: false }
+    const result: TurnResult = {
+      messageId: "m-srv",
+      runId: "r-srv",
+      content: "hi",
+      error: null,
+      aborted: false,
+    }
     const hostId = "11111111-1111-1111-1111-111111111111"
     vi.spyOn(roomModel, "applyRoomModel").mockImplementation(async (_roomId, agent) => ({
       ...agent,
@@ -205,7 +248,9 @@ describe("Engine Dispatcher (E4)", () => {
     const engine = vi.spyOn(engineRun, "runEngineTurn").mockResolvedValueOnce(result)
     expect(await startAgentTurn(dummyArgs)).toEqual(result)
     expect(local).not.toHaveBeenCalled()
-    expect((engine.mock.calls[0]?.[0].agent.params as Record<string, unknown>).runner).toBeUndefined()
+    expect(
+      (engine.mock.calls[0]?.[0].agent.params as Record<string, unknown>).runner,
+    ).toBeUndefined()
     engine.mockRestore()
     local.mockRestore()
   })

@@ -98,11 +98,7 @@ export default async function StoragePage({ params }: { params: Promise<{ org: s
   return (
     <div className="space-y-10">
       {/* Cloud Storage Providers Configuration */}
-      <CloudStorageManager
-        orgSlug={orgSlug}
-        connectors={connectors}
-        isAdmin={isAdmin}
-      />
+      <CloudStorageManager orgSlug={orgSlug} connectors={connectors} isAdmin={isAdmin} />
 
       {/* Internal Workspace Storage Usage */}
       <div className="pt-6 border-t border-border">
@@ -133,11 +129,13 @@ export default async function StoragePage({ params }: { params: Promise<{ org: s
               messages: n(r.messages),
               files: n(r.files),
             }))}
-          computers={((hostsRes.data ?? []) as {
-            id: string
-            name: string
-            storage: Record<string, unknown> | null
-          }[]).map((h) => {
+          computers={(
+            (hostsRes.data ?? []) as {
+              id: string
+              name: string
+              storage: Record<string, unknown> | null
+            }[]
+          ).map((h) => {
             const s = (h.storage ?? {}) as {
               measuredAt?: string
               appData?: { bytes?: number }

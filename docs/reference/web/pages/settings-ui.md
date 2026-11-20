@@ -10,22 +10,22 @@ Source files: `apps/web/src/lib/settings-nav.ts`, `apps/web/src/components/setti
 
 `SETTINGS_GROUPS` defines 13 destinations in three groups. Each entry carries `segment`, `label`, `description`, `icon`, `adminOnly`, and optional `cloudOnly`:
 
-| Group | Segment | Label | Access |
-| :--- | :--- | :--- | :--- |
-| Account | `profile` | Profile & alerts | everyone |
-| Account | `phones` | Phones | everyone |
-| Account | `computers` | Computers | everyone |
-| Workspace | `workspace` | General & members | admin |
-| Workspace | `keys` | AI providers | admin |
-| Workspace | `storage` | Storage | everyone |
-| Workspace | `billing` | Plan & billing | admin, **cloud only** |
-| Workspace | `pricing` | Pricing & budgets | admin |
-| Agents & tools | `tools` | Tools & MCP | admin |
-| Agents & tools | `search` | Search providers | admin |
-| Agents & tools | `connectors` | Connectors | admin |
-| Agents & tools | `bots` | External agents | admin |
-| Agents & tools | `vault` | Secret vault | admin |
-| Agents & tools | `vector` | Memory & RAG | admin |
+| Group          | Segment      | Label             | Access                |
+| :------------- | :----------- | :---------------- | :-------------------- |
+| Account        | `profile`    | Profile & alerts  | everyone              |
+| Account        | `phones`     | Phones            | everyone              |
+| Account        | `computers`  | Computers         | everyone              |
+| Workspace      | `workspace`  | General & members | admin                 |
+| Workspace      | `keys`       | AI providers      | admin                 |
+| Workspace      | `storage`    | Storage           | everyone              |
+| Workspace      | `billing`    | Plan & billing    | admin, **cloud only** |
+| Workspace      | `pricing`    | Pricing & budgets | admin                 |
+| Agents & tools | `tools`      | Tools & MCP       | admin                 |
+| Agents & tools | `search`     | Search providers  | admin                 |
+| Agents & tools | `connectors` | Connectors        | admin                 |
+| Agents & tools | `bots`       | External agents   | admin                 |
+| Agents & tools | `vault`      | Secret vault      | admin                 |
+| Agents & tools | `vector`     | Memory & RAG      | admin                 |
 
 `visibleSettingsGroups(isAdmin)` filters by role and by `publicEdition() === "cloud"`. `SettingsNav` renders a sticky vertical sidebar on desktop (`SETTINGS_ICONS` per link, active state from `usePathname`) and a horizontally scrolling chip row on phones. The layout requires org access, shows "org name · role" and gives the body a `max-w-3xl` column.
 
@@ -63,13 +63,13 @@ Lists `listPricing()` rows; each `PricingRow` (`pricing-row.tsx`) is an inline f
 
 Renders `ProvidersView` (`src/components/providers/providers-view.tsx`; model details in the [model system](./model-system.md)). The page loads provider keys, agents (for per-key bot counts), rooms and `loadComputerProviders(orgId)`. The view is one scrolling page with a row of anchor chips and five sections, each a `ProviderSection` of `ProviderCard` rows (`provider-card.tsx`: icon, title, subtitle, status pill, controls, footnote):
 
-| Section (anchor) | Contents |
-| :--- | :--- |
-| Providers (`#providers`) | Agent apps signed in on this computer (`LocalAgents`, from `/api/providers/local`), a **Check again** button that re-runs the lookup, "More providers" install hints, and "Sign in with a plan you pay for" → `ManageAccountsModal` (ChatGPT, Copilot, OpenRouter). |
-| AI providers (`#ai-providers`) | One `ApiKeyRow` per `ACCOUNT_PROVIDERS` entry of kind `key` or `openrouter` (OpenRouter, Anthropic, OpenAI, Gemini, DeepSeek, xAI Grok, Kimi, Qwen, MiniMax, Groq, Cerebras…), ready ones first: "Paste your key", "Get a key ↗", **Save** → `saveProviderKey` with an automatic label (`My <name>`, then `<name> 2`…). Saved keys list above the field with `TestKeyButton` / `DeleteKeyButton`. |
-| Your own model servers (`#model-servers`) | The `custom` providers (Cloudflare, OpenAI-compatible servers such as LM Studio, Ollama, vLLM): an address field plus an optional key. |
-| Computers and browser (`#computers`) | `ComputerProviders`: **Boat API key**, **E2B API key** (Save, Check, Remove; status "Saved · ends <last4>", "Included with this server" when the server env has a key, or "Not set up"), **Self-hosted VPS** (tabs "Address and key" — SSH address plus a private-key textarea — or "SSH config name"; "Bots set to Auto may also start their container here"; Save, Check connection, Remove), and **1Password** → Vault. |
-| Apps and tools (`#apps`) | Links to Connected apps, Tools and MCP servers, and Your own bots. |
+| Section (anchor)                          | Contents                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| :---------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Providers (`#providers`)                  | Agent apps signed in on this computer (`LocalAgents`, from `/api/providers/local`), a **Check again** button that re-runs the lookup, "More providers" install hints, and "Sign in with a plan you pay for" → `ManageAccountsModal` (ChatGPT, Copilot, OpenRouter).                                                                                                                                                        |
+| AI providers (`#ai-providers`)            | One `ApiKeyRow` per `ACCOUNT_PROVIDERS` entry of kind `key` or `openrouter` (OpenRouter, Anthropic, OpenAI, Gemini, DeepSeek, xAI Grok, Kimi, Qwen, MiniMax, Groq, Cerebras…), ready ones first: "Paste your key", "Get a key ↗", **Save** → `saveProviderKey` with an automatic label (`My <name>`, then `<name> 2`…). Saved keys list above the field with `TestKeyButton` / `DeleteKeyButton`.                          |
+| Your own model servers (`#model-servers`) | The `custom` providers (Cloudflare, OpenAI-compatible servers such as LM Studio, Ollama, vLLM): an address field plus an optional key.                                                                                                                                                                                                                                                                                     |
+| Computers and browser (`#computers`)      | `ComputerProviders`: **Boat API key**, **E2B API key** (Save, Check, Remove; status "Saved · ends <last4>", "Included with this server" when the server env has a key, or "Not set up"), **Self-hosted VPS** (tabs "Address and key" — SSH address plus a private-key textarea — or "SSH config name"; "Bots set to Auto may also start their container here"; Save, Check connection, Remove), and **1Password** → Vault. |
+| Apps and tools (`#apps`)                  | Links to Connected apps, Tools and MCP servers, and Your own bots.                                                                                                                                                                                                                                                                                                                                                         |
 
 `TestKeyButton` optionally takes a model id for `openai-compatible` providers; the test calls `testProviderKey` which makes a real provider call.
 
@@ -85,7 +85,7 @@ The largest page. Sections:
 
 - **MCP servers** — lists `listMcpServers()` with transport/URL/scope (workspace-wide or room)/enabled/dangerous-tools lines. Each row has "inspect tools" (`McpInspector`) and "edit" (an `ActionForm` over `updateMcpServer`: url, enabled, comma-separated dangerous tools, and replacement headers JSON — "Header values are sealed before insert and never shown again").
 - **Add an MCP server** — `addMcpServer`: name (tool namespace), transport `http|sse`, URL, optional room scope, dangerous tools, headers JSON.
-- **`McpInspector`** (`mcp-inspector.tsx`) — "list tools" calls `listMcpTools`, then pick a tool, edit JSON args, "invoke" via `invokeMcpTool`, with a copyable result block — a live harness against the server.
+- **`McpInspector`** (`mcp-inspector.tsx`) — "list tools" calls `listMcpTools`, then pick a tool, edit JSON args, "invoke" via `invokeMcpTool`, with a copyable result block — a live harness against the server. Both actions share `lib/mcp-client.ts`; `stdio` rows answer "This program runs when an agent uses it." because a local program only runs inside an agent turn.
 - **Built-in tools** config cards:
   - `web_search` → `WebSearchConfig` (`web-search-config.tsx`): a catalog of providers (DuckDuckGo, TinyFish, Tavily, Brave, SearXNG, Serper, Exa, Firecrawl, Perplexity, Bing…) tagged Free/Keyless vs API, with key/URL fields as required, saved through `saveOrgToolConfig` (`tool: "web_search"`), plus `testWebSearchAction`.
   - `document_extract` → `DocumentOcrConfig` (`document-ocr-config.tsx`): OCR engines (IBM Docling, Marker, Tesseract, Multimodal Vision, Mistral OCR, AWS Textract) with hardware notes, docker snippets, key/URL fields, `testDocumentOcrAction`.
@@ -101,7 +101,7 @@ Tier-1 of the two-tier connector model. The page explains the architecture in a 
 - `TestConnectorButton` / `DeleteConnectorButton` (`connector-actions.tsx`) → `testWorkspaceConnector` / `deleteWorkspaceConnector` (confirm dialog: "Agents using this connector will lose access.").
 - For messaging sources (telegram/discord/whatsapp) with rooms+agents available, `ConnectorChatForm` (`connector-chat-form.tsx`) configures **inbound chat**: enable "Answer messages", target room + agent, and an allowed-chat-id allowlist — "A message sent to this bot starts a turn in the room, as if someone typed @the agent" — saved via `saveConnectorChat`.
 
-`ConnectorAddForm` (`connector-add-form.tsx`) adds a new connector through `saveWorkspaceConnector` (`src/lib/actions/connectors.ts`): per-source token labels/placeholders and setup help (Slack scopes, GitHub PAT scopes, Discord Message Content Intent, WhatsApp Cloud API phone-number ID), plus conditional fields — Google Drive domain/root folder, Slack default channel, Discord guild ID, GitHub default org, WhatsApp phone number ID, 1Password Connect URL, Bitwarden region, and "Use the app signed in on a computer, instead of an API" for the password-manager sources.
+`ConnectorAddForm` (`connector-add-form.tsx`) adds a new connector through `saveWorkspaceConnector` (`src/lib/actions/connectors.ts`): per-source token labels/placeholders and setup help (Slack scopes, GitHub PAT scopes, Discord Message Content Intent, WhatsApp Cloud API phone-number ID), plus conditional fields — Google Drive domain/root folder, Slack default channel, Discord guild ID, GitHub default org, WhatsApp phone number ID, 1Password Connect URL, Bitwarden region, and "Use the app signed in on a computer, instead of an API" for the password-manager sources. `composio` asks only for the API key, with optional API base URL and workspace user id (the help text warns that changing the user id disconnects the apps connected under the old one). Its grant form adds "Apps this agent may use" (`allowedApps`), the per-agent app allow-list.
 
 ## 🧩 External Agents (`bots`, admin)
 
@@ -127,6 +127,7 @@ These are the placeholders agents reference (never plaintext), matching the orch
 ## 🔎 Search Providers (`search`, admin)
 
 A dedicated search engine configuration page (`apps/web/src/app/(workspace)/[org]/settings/search/page.tsx` rendering `WebSearchConfig`):
+
 - **12 Search Providers**: DuckDuckGo (zero-config, keyless), TinyFish, Context.dev, Tavily, Brave Search (2,000 free queries/mo), SearXNG, Whoogle Search (local Docker proxy via `benbusby/whoogle-search`), Serper (Google), Exa, Firecrawl, Perplexity Sonar, and Microsoft Bing.
 - **Credit & Quota Checker**: "Check Available Credits" button calling `fetchSearchProviderCreditsAction` to query real balances from Serper, Firecrawl, Brave rate-limits, Context.dev, etc., or verify reachability of local Whoogle and SearXNG instances.
 - **Live Search Tester**: Test queries with latency measurement, synthesized answers, and formatted result cards.

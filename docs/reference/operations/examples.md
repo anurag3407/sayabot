@@ -20,11 +20,11 @@ The example proves the three-step contract between Sayabot and an out-of-process
 
 ### Environment variables
 
-| Variable | Purpose | Default |
-| :--- | :--- | :--- |
-| `SAYABOT_ORCHESTRATOR_URL` (legacy `MESH_ORCHESTRATOR_URL`) | Where the orchestrator's bot API lives | `http://localhost:4000` |
-| `SAYABOT_AGENT_API_KEY` (legacy `MESH_AGENT_API_KEY`) | Agent API key (`sayabot_ak_...`) for posting replies; **required** (bot.py:26-27) | — |
-| `SAYABOT_WEBHOOK_SECRET` (legacy `MESH_WEBHOOK_SECRET`) | The `whsec_...` secret shown once at external-agent creation; **required** | — |
+| Variable                                                    | Purpose                                                                           | Default                 |
+| :---------------------------------------------------------- | :-------------------------------------------------------------------------------- | :---------------------- |
+| `SAYABOT_ORCHESTRATOR_URL` (legacy `MESH_ORCHESTRATOR_URL`) | Where the orchestrator's bot API lives                                            | `http://localhost:4000` |
+| `SAYABOT_AGENT_API_KEY` (legacy `MESH_AGENT_API_KEY`)       | Agent API key (`sayabot_ak_...`) for posting replies; **required** (bot.py:26-27) | —                       |
+| `SAYABOT_WEBHOOK_SECRET` (legacy `MESH_WEBHOOK_SECRET`)     | The `whsec_...` secret shown once at external-agent creation; **required**        | —                       |
 
 ### Webhook signature verification (`verify_signature`, bot.py:42-68)
 

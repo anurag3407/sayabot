@@ -1,6 +1,6 @@
 # The Ask/Response Protocol (`asks.ts`)
 
-When a bot needs a detail only a human knows — a start date, a visa answer, a CGPA — it raises an **ask**: a structured request carrying items with stable keys. `asks.ts` is the entire lifecycle of that request as pure functions: key normalization and synonym folding, item sanitization, the decision of *what actually needs a person*, merging into open asks, applying answers, and formatting them back for the bot. The module header states the problem it solves (`asks.ts:1-13`): bots used to re-ask the same questions because free-text questions only folded when the wording matched; now every answer is also kept as an **owner fact** and consulted before a human is ever bothered. Everything here is shared verbatim by the orchestrator (collab service, memory service) and the web inbox (`apps/web/src/lib/answer-requests.ts`, `ask-card.tsx`).
+When a bot needs a detail only a human knows — a start date, a visa answer, a CGPA — it raises an **ask**: a structured request carrying items with stable keys. `asks.ts` is the entire lifecycle of that request as pure functions: key normalization and synonym folding, item sanitization, the decision of _what actually needs a person_, merging into open asks, applying answers, and formatting them back for the bot. The module header states the problem it solves (`asks.ts:1-13`): bots used to re-ask the same questions because free-text questions only folded when the wording matched; now every answer is also kept as an **owner fact** and consulted before a human is ever bothered. Everything here is shared verbatim by the orchestrator (collab service, memory service) and the web inbox (`apps/web/src/lib/answer-requests.ts`, `ask-card.tsx`).
 
 Source files: `packages/core/src/asks.ts` (354 lines), `packages/core/src/asks.test.ts` (239 lines)
 
@@ -8,23 +8,23 @@ Source files: `packages/core/src/asks.ts` (354 lines), `packages/core/src/asks.t
 
 ## 📐 Constants & core types
 
-| Constant | Value | Meaning |
-| :--- | :--- | :--- |
-| `MAX_ASK_ITEMS` | `8` | Maximum items per ask (sanitize and merge both enforce it) |
-| `MAX_FACT_VALUE` | `1_000` | Maximum characters of an answer value |
-| `MAX_FACT_KEY` | `48` | Maximum characters of a normalized key |
+| Constant         | Value   | Meaning                                                    |
+| :--------------- | :------ | :--------------------------------------------------------- |
+| `MAX_ASK_ITEMS`  | `8`     | Maximum items per ask (sanitize and merge both enforce it) |
+| `MAX_FACT_VALUE` | `1_000` | Maximum characters of an answer value                      |
+| `MAX_FACT_KEY`   | `48`    | Maximum characters of a normalized key                     |
 
 ```typescript
 export type AskItemSource = "human" | "fact"
 
 export interface AskItem {
-  key: string                 // canonical fact key
-  question: string            // human-facing question text
+  key: string // canonical fact key
+  question: string // human-facing question text
   hint?: string
-  options?: string[]          // up to 6 choices, ≤ 60 chars each
+  options?: string[] // up to 6 choices, ≤ 60 chars each
   answer?: string | null
   answeredAt?: string | null
-  source?: AskItemSource | null  // who answered: a person or a stored fact
+  source?: AskItemSource | null // who answered: a person or a stored fact
 }
 
 export interface KnownFact {
@@ -54,24 +54,24 @@ The heart of de-duplication is that different bots name the same fact differentl
 
 **`canonicalFactKey(raw)`** (`asks.ts:121-124`) normalizes then folds through `FACT_KEY_ALIASES` (`asks.ts:51-97`), a ~45-entry table grouped by target:
 
-| Canonical key | Absorbed aliases (selection) |
-| :--- | :--- |
-| `start_date` | `availability`, `available_from`, `earliest_start`, `joining_date`, `join_date`, `start`, `start_month` |
-| `work_authorization` | `work_authorisation` (British spelling), `work_auth`, `work_permit`, `right_to_work`, `eligible_to_work` |
-| `visa_sponsorship` | `sponsorship`, `needs_sponsorship`, `visa` |
-| `expected_salary` | `expected_ctc`, `expected_lpa`, `expected_pay`, `salary_expectation` |
-| `current_salary` | `current_ctc`, `current_lpa`, `current_pay` |
-| `notice_period` | `notice`, `notice_days` |
-| `location` / `relocation` | `current_city`, `city`, `current_location` / `relocate`, `willing_to_relocate`, `open_to_relocation` |
-| `linkedin_url` / `github_url` | `linkedin`, `linkedin_profile` / `github`, `github_profile`, `github_link` |
-| `graduation_date` / `cgpa` | `graduation`, `graduation_year`, `grad_year`, `expected_graduation` / `gpa`, `grades` |
-| `years_of_experience` | `experience`, `years_experience`, `yoe` |
+| Canonical key                 | Absorbed aliases (selection)                                                                             |
+| :---------------------------- | :------------------------------------------------------------------------------------------------------- |
+| `start_date`                  | `availability`, `available_from`, `earliest_start`, `joining_date`, `join_date`, `start`, `start_month`  |
+| `work_authorization`          | `work_authorisation` (British spelling), `work_auth`, `work_permit`, `right_to_work`, `eligible_to_work` |
+| `visa_sponsorship`            | `sponsorship`, `needs_sponsorship`, `visa`                                                               |
+| `expected_salary`             | `expected_ctc`, `expected_lpa`, `expected_pay`, `salary_expectation`                                     |
+| `current_salary`              | `current_ctc`, `current_lpa`, `current_pay`                                                              |
+| `notice_period`               | `notice`, `notice_days`                                                                                  |
+| `location` / `relocation`     | `current_city`, `city`, `current_location` / `relocate`, `willing_to_relocate`, `open_to_relocation`     |
+| `linkedin_url` / `github_url` | `linkedin`, `linkedin_profile` / `github`, `github_profile`, `github_link`                               |
+| `graduation_date` / `cgpa`    | `graduation`, `graduation_year`, `grad_year`, `expected_graduation` / `gpa`, `grades`                    |
+| `years_of_experience`         | `experience`, `years_experience`, `yoe`                                                                  |
 
 **`humanizeFactKey(key)`** (`asks.ts:127-133`) canonicalizes then renders for display: underscores become spaces with a leading capital (`start_date` → `"Start date"`), except keys in `FACT_LABELS` (`cgpa` → `"CGPA"`, `linkedin_url` → `"LinkedIn URL"`, `github_url` → `"GitHub URL"`, `work_authorization` → `"Work authorisation"`, `visa_sponsorship` → `"Visa sponsorship"`). An empty key renders as `"Detail"`.
 
 ## 📖 Reading facts
 
-**`lookupFact(facts, key, roomId)`** (`asks.ts:136-151`) canonicalizes the key, skips facts with blank values, and applies the scoping rule: a **room-scoped fact wins over a workspace-wide one** for the same key; if only a workspace-wide fact exists it is returned; a fact scoped to *another* room is invisible (`null`). Blank `value` (whitespace-only) makes a fact invisible.
+**`lookupFact(facts, key, roomId)`** (`asks.ts:136-151`) canonicalizes the key, skips facts with blank values, and applies the scoping rule: a **room-scoped fact wins over a workspace-wide one** for the same key; if only a workspace-wide fact exists it is returned; a fact scoped to _another_ room is invisible (`null`). Blank `value` (whitespace-only) makes a fact invisible.
 
 **`factsVisibleInRoom(facts, roomId)`** (`asks.ts:154-164`) filters a fact list down to what a bot in `roomId` may read: drops other-room facts and blanks, keeps one fact per canonical key preferring room-scoped over workspace-wide, and returns them sorted by key. This is what powers the "facts the bot can already see" surfaces in the web app.
 
@@ -81,7 +81,7 @@ The heart of de-duplication is that different bots name the same fact differentl
 
 - Question trimmed and capped at 300 chars; hint at 300.
 - Key = canonical key of the provided `key`, falling back to the canonical key of the **question text itself** — so two bots typing the identical question fold onto one key even with no explicit key.
-- Items with no key *or* no question are dropped; duplicate keys are dropped.
+- Items with no key _or_ no question are dropped; duplicate keys are dropped.
 - `options` are string-filtered, trimmed, 60-char-capped, de-duplicated, limited to 6, and dropped entirely if empty (`cleanOptions`, `asks.ts:166-177`).
 - Fresh items always start with `answer: null`, `answeredAt: null`, `source: null`.
 - Output capped at `MAX_ASK_ITEMS` (8).
@@ -94,28 +94,28 @@ The heart of de-duplication is that different bots name the same fact differentl
 
 ```typescript
 export interface AskPlan {
-  known: Array<{ key, question, label, value }>   // answered from facts right now
-  alreadyAsked: Array<{ key, askId }>             // another open ask already waits on it
-  toAsk: AskItem[]                                // genuinely new items needing a person
-  mergeIntoId: string | null                      // the bot's own open ask new items join
+  known: Array<{ key; question; label; value }> // answered from facts right now
+  alreadyAsked: Array<{ key; askId }> // another open ask already waits on it
+  toAsk: AskItem[] // genuinely new items needing a person
+  mergeIntoId: string | null // the bot's own open ask new items join
 }
 
 export function planAsk(input: {
   items: readonly AskItem[]
   facts: readonly KnownFact[]
   roomId: string | null
-  openAsks: readonly OpenAskRef[]   // room's open asks, newest first
+  openAsks: readonly OpenAskRef[] // room's open asks, newest first
   agentId: string | null
 }): AskPlan
 ```
 
 (`asks.ts:239-286`) Per item, in order:
 
-1. **Fact?** `lookupFact` hits → goes to `known` (with the fact's label, falling back to `humanizeFactKey`), and *no person is asked*.
+1. **Fact?** `lookupFact` hits → goes to `known` (with the fact's label, falling back to `humanizeFactKey`), and _no person is asked_.
 2. **Already waiting?** An entry in `openAsks` has an item with the same key and no answer → goes to `alreadyAsked`; not asked twice.
 3. **Otherwise** it lands in `toAsk`.
 
-Finally, if there is anything to ask and the caller is an agent, `mergeIntoId` is set to that agent's own existing open ask that has items — new items join the existing card instead of creating a second inbox entry (asks whose `items` array is empty are skipped). The "re-ask" case is the flip side of rule 2: an open item that *has* been answered does not block a fresh ask of the same key.
+Finally, if there is anything to ask and the caller is an agent, `mergeIntoId` is set to that agent's own existing open ask that has items — new items join the existing card instead of creating a second inbox entry (asks whose `items` array is empty are skipped). The "re-ask" case is the flip side of rule 2: an open item that _has_ been answered does not block a fresh ask of the same key.
 
 ## ➕ Merging & ✍️ applying answers
 
@@ -167,18 +167,18 @@ sequenceDiagram
     end
 ```
 
-The fact store closes the loop: answered items become `KnownFact` rows, so the *next* bot to ask the same thing is served by `lookupFact` at step one without a card ever reaching a person.
+The fact store closes the loop: answered items become `KnownFact` rows, so the _next_ bot to ask the same thing is served by `lookupFact` at step one without a card ever reaching a person.
 
 ## ✅ What `asks.test.ts` covers
 
-| Suite | Verified behaviour |
-| :--- | :--- |
-| fact keys | snake_case normalization incl. `&` handling and 48-char cap without trailing `_`; alias folding (`availability` → `start_date`, `Work authorisation` → `work_authorization`, `GPA` → `cgpa`, unknown key unchanged); humanized labels with acronyms intact and `"Detail"` fallback |
-| `lookupFact` / `factsVisibleInRoom` | room-scoped fact beats workspace-wide; a fact from another room is invisible; blank values are ignored; `factsVisibleInRoom` returns only the room's own facts, one per key |
-| `sanitizeAskItems` | key-from-question folding, trimming, option cleaning (`["Yes","No","Yes",3,""]` → `["Yes","No"]`), dedupe, all `answer: null`; 20 inputs capped at `MAX_ASK_ITEMS` |
-| `askItemsFromMetadata` | round-trips sanitized items while dropping junk (`null`, empty key, raw strings); a blank answer resets stale `answeredAt`/`source` |
-| `planAsk` | facts answer without asking; a key already waiting in another open ask goes to `alreadyAsked`; an *answered* open item allows a re-ask; `mergeIntoId` points at the bot's own non-empty open ask |
-| `mergeAskItems` | appends only new keys and respects the cap |
-| answers | partial answers fill only matching keys and count `remaining`; answers are never overwritten; `fillItemsFromFacts` fills from facts with `source: "fact"`; `formatItemAnswers` renders label lines and honours the key filter |
+| Suite                               | Verified behaviour                                                                                                                                                                                                                                                                 |
+| :---------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| fact keys                           | snake_case normalization incl. `&` handling and 48-char cap without trailing `_`; alias folding (`availability` → `start_date`, `Work authorisation` → `work_authorization`, `GPA` → `cgpa`, unknown key unchanged); humanized labels with acronyms intact and `"Detail"` fallback |
+| `lookupFact` / `factsVisibleInRoom` | room-scoped fact beats workspace-wide; a fact from another room is invisible; blank values are ignored; `factsVisibleInRoom` returns only the room's own facts, one per key                                                                                                        |
+| `sanitizeAskItems`                  | key-from-question folding, trimming, option cleaning (`["Yes","No","Yes",3,""]` → `["Yes","No"]`), dedupe, all `answer: null`; 20 inputs capped at `MAX_ASK_ITEMS`                                                                                                                 |
+| `askItemsFromMetadata`              | round-trips sanitized items while dropping junk (`null`, empty key, raw strings); a blank answer resets stale `answeredAt`/`source`                                                                                                                                                |
+| `planAsk`                           | facts answer without asking; a key already waiting in another open ask goes to `alreadyAsked`; an _answered_ open item allows a re-ask; `mergeIntoId` points at the bot's own non-empty open ask                                                                                   |
+| `mergeAskItems`                     | appends only new keys and respects the cap                                                                                                                                                                                                                                         |
+| answers                             | partial answers fill only matching keys and count `remaining`; answers are never overwritten; `fillItemsFromFacts` fills from facts with `source: "fact"`; `formatItemAnswers` renders label lines and honours the key filter                                                      |
 
 Related docs: [./turns.md](./turns.md), [./patch-and-fold-key.md](./patch-and-fold-key.md), [./capabilities-and-mentions.md](./capabilities-and-mentions.md), [./platform-utilities.md](./platform-utilities.md), [./overview-and-types.md](./overview-and-types.md)

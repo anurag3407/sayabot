@@ -1,5 +1,10 @@
 import "server-only"
-import { botInviteState, generateSetupInstructions, normalizeClient, type BotInviteState } from "@sayabot/core"
+import {
+  botInviteState,
+  generateSetupInstructions,
+  normalizeClient,
+  type BotInviteState,
+} from "@sayabot/core"
 import { generateAgentApiKey, hashAgentApiKey } from "@sayabot/core/server"
 import { audit } from "@/lib/actions/shared"
 import { getAppUrl } from "@/lib/env"
@@ -49,7 +54,11 @@ export function botInviteUrl(code: string): string {
 
 export async function loadBotInviteByCode(code: string): Promise<BotInviteRow | null> {
   if (!/^bi_[A-Za-z0-9_-]{10,64}$/.test(code)) return null
-  const { data } = await createAdminClient().from("bot_invites").select("*").eq("code", code).maybeSingle()
+  const { data } = await createAdminClient()
+    .from("bot_invites")
+    .select("*")
+    .eq("code", code)
+    .maybeSingle()
   return (data as BotInviteRow | null) ?? null
 }
 
@@ -57,7 +66,9 @@ export function inviteState(row: Pick<BotInviteRow, "status" | "expires_at">): B
   return botInviteState({ status: row.status, expiresAt: row.expires_at })
 }
 
-export async function roomContext(roomId: string): Promise<{ roomName: string; ownerName: string; timezone: string }> {
+export async function roomContext(
+  roomId: string,
+): Promise<{ roomName: string; ownerName: string; timezone: string }> {
   const admin = createAdminClient()
   const { data: room } = await admin
     .from("rooms")
@@ -77,7 +88,10 @@ export async function roomContext(roomId: string): Promise<{ roomName: string; o
 }
 
 /** Constant-time compare of the bearer poll token against the stored hash. */
-export function pollTokenMatches(row: Pick<BotInviteRow, "poll_token_hash">, authorization: string | null): boolean {
+export function pollTokenMatches(
+  row: Pick<BotInviteRow, "poll_token_hash">,
+  authorization: string | null,
+): boolean {
   if (!row.poll_token_hash || !authorization?.startsWith("Bearer ")) return false
   const hash = hashAgentApiKey(authorization.slice(7).trim())
   const stored = row.poll_token_hash
@@ -91,7 +105,9 @@ export function pollTokenMatches(row: Pick<BotInviteRow, "poll_token_hash">, aut
  * Flips an approved invite to joined and mints the bot's key. The status guard in the
  * update makes this single-use even if two polls race: only one update matches.
  */
-export async function collectBotKey(row: BotInviteRow): Promise<
+export async function collectBotKey(
+  row: BotInviteRow,
+): Promise<
   | { ok: true; connectionUrl: string; instructions: string; handle: string }
   | { ok: false; reason: string }
 > {

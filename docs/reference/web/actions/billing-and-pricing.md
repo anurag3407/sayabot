@@ -94,12 +94,12 @@ Callers across the actions: `planGate(orgId, "agents")` before creating agents/b
 
 ## ⚙️ Environment variables
 
-| Variable | Purpose |
-| :--- | :--- |
-| `STRIPE_SECRET_KEY` | Stripe REST auth (`stripe.ts:41`). |
-| `STRIPE_WEBHOOK_SECRET` | Webhook signature verification (`stripe.ts` + the webhook route). |
-| `STRIPE_PRICE_PRO` / `STRIPE_PRICE_TEAM` | Price ids mapping plans (`service.ts:11`). |
-| `SAYABOT_EDITION` / edition env | `edition()` (`lib/env.ts:105`) — billing and limits only apply on `cloud`. |
+| Variable                                 | Purpose                                                                    |
+| :--------------------------------------- | :------------------------------------------------------------------------- |
+| `STRIPE_SECRET_KEY`                      | Stripe REST auth (`stripe.ts:41`).                                         |
+| `STRIPE_WEBHOOK_SECRET`                  | Webhook signature verification (`stripe.ts` + the webhook route).          |
+| `STRIPE_PRICE_PRO` / `STRIPE_PRICE_TEAM` | Price ids mapping plans (`service.ts:11`).                                 |
+| `SAYABOT_EDITION` / edition env          | `edition()` (`lib/env.ts:105`) — billing and limits only apply on `cloud`. |
 
 The webhook endpoint itself is `POST /api/billing/webhook` (plain-text mention: documented in the webhooks & OAuth API reference together with the other inbound endpoints).
 
@@ -109,37 +109,37 @@ The webhook endpoint itself is `POST /api/billing/webhook` (plain-text mention: 
 
 Everything billing reads and writes lives in one row per workspace (upsert keyed on `org_id`), written by `savePlan` (`service.ts:96`) and read by `workspacePlan` (`plan-limits.ts:28`):
 
-| Column | Meaning |
-| :--- | :--- |
-| `plan` | `pro` \| `team` \| `free` — from the price id, then subscription metadata, defaulting to `free`; deletions write `free`. |
-| `status` | Stripe's subscription status verbatim (`active`, `trialing`, `past_due`, `canceled`, …); deletions force `canceled`. |
-| `provider` | Always `"stripe"`. |
-| `customer_id` / `subscription_id` | Stripe ids; `subscription_id` is cleared when ended. |
-| `current_period_end` | Seconds → ISO timestamp, taken from the subscription item first. |
-| `cancel_at_period_end` | Boolean straight from Stripe. |
-| `updated_at` | Touched on every save. |
+| Column                            | Meaning                                                                                                                  |
+| :-------------------------------- | :----------------------------------------------------------------------------------------------------------------------- |
+| `plan`                            | `pro` \| `team` \| `free` — from the price id, then subscription metadata, defaulting to `free`; deletions write `free`. |
+| `status`                          | Stripe's subscription status verbatim (`active`, `trialing`, `past_due`, `canceled`, …); deletions force `canceled`.     |
+| `provider`                        | Always `"stripe"`.                                                                                                       |
+| `customer_id` / `subscription_id` | Stripe ids; `subscription_id` is cleared when ended.                                                                     |
+| `current_period_end`              | Seconds → ISO timestamp, taken from the subscription item first.                                                         |
+| `cancel_at_period_end`            | Boolean straight from Stripe.                                                                                            |
+| `updated_at`                      | Touched on every save.                                                                                                   |
 
 `workspacePlan` passes the pair through `effectivePlan(plan, status)` from `@sayabot/core`, so an unpaid or canceled subscription degrades to the free plan even before the deletion event arrives.
 
 ## 📣 Where gates fire in practice
 
-| Call site | Gate | Effect when denied |
-| :--- | :--- | :--- |
-| `createAgent` / `createBotAction` (`actions/agents.ts`) | `planGate(orgId, "agents")` | Action fails with the plan message. |
-| `createBotAction` computer capability | `planGate(orgId, "computers")` | Bot is still created; `capabilities.computer` dropped and `warning` attached. |
-| `decideJoinRequestAction` (`actions/workspace-invites.ts`) | `planGate(orgId, "members")` | "`<org>` is full on its current plan. Ask an admin to upgrade it in Settings → Plan & billing." The seat is checked when the admin approves, not when the person asks. |
-| `createRoomBotKey` (`actions/invites.ts`) | `planGate(orgId, "agents")` | Room key creation refused. |
+| Call site                                                  | Gate                           | Effect when denied                                                                                                                                                     |
+| :--------------------------------------------------------- | :----------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `createAgent` / `createBotAction` (`actions/agents.ts`)    | `planGate(orgId, "agents")`    | Action fails with the plan message.                                                                                                                                    |
+| `createBotAction` computer capability                      | `planGate(orgId, "computers")` | Bot is still created; `capabilities.computer` dropped and `warning` attached.                                                                                          |
+| `decideJoinRequestAction` (`actions/workspace-invites.ts`) | `planGate(orgId, "members")`   | "`<org>` is full on its current plan. Ask an admin to upgrade it in Settings → Plan & billing." The seat is checked when the admin approves, not when the person asks. |
+| `createRoomBotKey` (`actions/invites.ts`)                  | `planGate(orgId, "agents")`    | Room key creation refused.                                                                                                                                             |
 
 The gate message is composed once in `planGate`: `limitMessage(kind, plan, limit)` (what the plan includes) plus either the upgrade pointer (`upgradeFor` finds the cheapest plan that admits `used + 1`) or "This is the largest plan; contact us for more." — with `data.plan` and `data.upgradeTo` attached for UI affordances.
 
 ## 🧮 Webhook event → effect
 
-| Stripe event | `applyStripeEvent` behavior (`service.ts:122`) |
-| :--- | :--- |
-| `checkout.session.completed` | Org from `metadata.org_id` or `client_reference_id`; subscription fetched via `GET /subscriptions/:id`; `savePlan` writes the paid plan. Missing ids → "ignored: no workspace or subscription". |
-| `customer.subscription.created` / `.updated` | Org from subscription metadata or the customer lookup; `savePlan` upserts status, period end and `cancel_at_period_end`. Unknown customer → "ignored: unknown customer". |
-| `customer.subscription.deleted` | Same path with `ended = true` → plan `free`, status `canceled`, `subscription_id` cleared. |
-| anything else | "ignored: \<type\>" — the route still answers `{ received: true }` so Stripe does not retry. |
+| Stripe event                                 | `applyStripeEvent` behavior (`service.ts:122`)                                                                                                                                                  |
+| :------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `checkout.session.completed`                 | Org from `metadata.org_id` or `client_reference_id`; subscription fetched via `GET /subscriptions/:id`; `savePlan` writes the paid plan. Missing ids → "ignored: no workspace or subscription". |
+| `customer.subscription.created` / `.updated` | Org from subscription metadata or the customer lookup; `savePlan` upserts status, period end and `cancel_at_period_end`. Unknown customer → "ignored: unknown customer".                        |
+| `customer.subscription.deleted`              | Same path with `ended = true` → plan `free`, status `canceled`, `subscription_id` cleared.                                                                                                      |
+| anything else                                | "ignored: \<type\>" — the route still answers `{ received: true }` so Stripe does not retry.                                                                                                    |
 
 A database failure while saving throws, which the route converts into HTTP 500 so Stripe retries later rather than the payment being lost.
 

@@ -12,11 +12,11 @@ Source files: `apps/computerd/agentd/agentd.ts`, `apps/computerd/agentd/agentd-c
 
 The entry block (`agentd.ts:349-356`) matches `agentd.(ts|js|mjs)` in `argv[1]` and starts up to **three listeners**:
 
-| Listener | Enabled when | Mode / port |
-| :--- | :--- | :--- |
-| Main agentd socket | always — `AGENTD_SOCK` (default `/run/agentd.sock`) | `0600` |
-| Control socket for computerd | `AGENTD_CTL_SOCK` set and its directory exists | `0666` |
-| Egress relay | `AGENTD_EGRESS_SOCK` set — `startEgressRelay` listens on `AGENTD_EGRESS_PORT` (default 8080) bound to `127.0.0.1` | TCP |
+| Listener                     | Enabled when                                                                                                      | Mode / port |
+| :--------------------------- | :---------------------------------------------------------------------------------------------------------------- | :---------- |
+| Main agentd socket           | always — `AGENTD_SOCK` (default `/run/agentd.sock`)                                                               | `0600`      |
+| Control socket for computerd | `AGENTD_CTL_SOCK` set and its directory exists                                                                    | `0666`      |
+| Egress relay                 | `AGENTD_EGRESS_SOCK` set — `startEgressRelay` listens on `AGENTD_EGRESS_PORT` (default 8080) bound to `127.0.0.1` | TCP         |
 
 The permission asymmetry is deliberate (`agentd.ts:30-34`): the in-container socket is `0600` for the bot user; the control socket that computerd reaches through the private `saaya-agentd` volume is `0666` because computerd runs as a different uid without `CAP_DAC_OVERRIDE`, and only this one container mounts that directory.
 
@@ -53,12 +53,12 @@ Execution details:
 - Output frames: `{ t: "out" | "err", d: "<text>" }` chunks as they arrive, each stream decoded with its own `StringDecoder` so multibyte characters split across chunks survive. Total output is capped at **1 MB** (`MAX_OUTPUT_BYTES`); further bytes are dropped and the exit frame reports `truncated: true`.
 - Exit frame (`agentd.ts:176-186`): `{ t: "exit", code, durationMs, truncated, timedOut? }` — `code` is `124` on timeout (matching coreutils `timeout`), `128+n` for signal deaths like a shell, else the child's code.
 
-| Exit frame field | Meaning |
-| :--- | :--- |
-| `code` | child exit code; `124` on timeout; `128 + signal` when killed by a signal |
-| `durationMs` | wall time from spawn to close |
-| `truncated` | output exceeded the 1 MB cap and some bytes were dropped |
-| `timedOut` | present (true) only when the timeout path fired |
+| Exit frame field | Meaning                                                                   |
+| :--------------- | :------------------------------------------------------------------------ |
+| `code`           | child exit code; `124` on timeout; `128 + signal` when killed by a signal |
+| `durationMs`     | wall time from spawn to close                                             |
+| `truncated`      | output exceeded the 1 MB cap and some bytes were dropped                  |
+| `timedOut`       | present (true) only when the timeout path fired                           |
 
 ### `read` / `write` / `edit` / `patch` — file operations
 
@@ -127,13 +127,13 @@ The stderr/stdout split is the transport contract: **only stdout carries frames*
 
 ## 🧪 Tests
 
-| File | Covers |
-| :--- | :--- |
-| `apps/computerd/test/agentd-exec.test.ts` | exec timeout, output capping, exit-code semantics |
-| `apps/computerd/tests/unit/agentd-exec.test.ts` | exec frame protocol |
-| `apps/computerd/tests/unit/agentd-cli.test.ts` | argv-chunk joining, `@file` mode, final-frame handling |
-| `apps/computerd/test/agentd-files.test.ts`, `tests/unit/agentd-files.test.ts` | file ops (see [agentd-files.md](agentd-files.md)) |
-| `apps/computerd/test/code-intelligence.test.ts` | code ops (see [agentd-code-intelligence.md](agentd-code-intelligence.md)) |
+| File                                                                          | Covers                                                                    |
+| :---------------------------------------------------------------------------- | :------------------------------------------------------------------------ |
+| `apps/computerd/test/agentd-exec.test.ts`                                     | exec timeout, output capping, exit-code semantics                         |
+| `apps/computerd/tests/unit/agentd-exec.test.ts`                               | exec frame protocol                                                       |
+| `apps/computerd/tests/unit/agentd-cli.test.ts`                                | argv-chunk joining, `@file` mode, final-frame handling                    |
+| `apps/computerd/test/agentd-files.test.ts`, `tests/unit/agentd-files.test.ts` | file ops (see [agentd-files.md](agentd-files.md))                         |
+| `apps/computerd/test/code-intelligence.test.ts`                               | code ops (see [agentd-code-intelligence.md](agentd-code-intelligence.md)) |
 
 The daemon is bundled for containers by `pnpm --filter @sayabot/computerd build:agentd` (esbuild → `dist/agentd/agentd.mjs`, `dist/agentd/agentd-cli.mjs`).
 

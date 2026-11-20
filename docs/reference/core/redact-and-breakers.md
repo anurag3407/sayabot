@@ -14,22 +14,22 @@ Two complementary mechanisms: a **pattern-based** redactor that recognizes well-
 
 Every match is replaced with `[REDACTED:<name>]`:
 
-| Name | Pattern | Matches |
-| :--- | :--- | :--- |
-| `aws_access_key` | `(?:AKIA\|ASIA)[0-9A-Z]{16}` | AWS access key IDs |
-| `anthropic_key` | `sk-ant-[A-Za-z0-9_-]{20,}` | Anthropic API keys |
-| `openai_key` | `sk-(?:proj-\|svcacct-)?[A-Za-z0-9_-]{20,}` | OpenAI keys (incl. project/service-account forms) |
-| `github_token` | `(?:ghp\|gho\|ghu\|ghs\|ghr)_[A-Za-z0-9]{30,}` | Classic GitHub tokens |
-| `github_pat` | `github_pat_[A-Za-z0-9_]{40,}` | Fine-grained GitHub PATs |
-| `slack_token` | `xox[abposr]-[A-Za-z0-9-]{10,}` | Slack bot/user/app/refresh tokens |
-| `google_api_key` | `AIza[0-9A-Za-z_-]{35}` | Google API keys |
-| `groq_key` | `gsk_[A-Za-z0-9]{40,}` | Groq keys |
-| `mesh_agent_key` | `(?:mesh_ak_\|saaya_ak_\|sayabot_ak_)[A-Za-z0-9_-]{20,}` | Sayabot agent HMAC keys (all three brand prefixes) |
-| `oauth_access_token` | `(?:mesh_at_\|sayabot_at_)[A-Za-z0-9_-]{20,}` | Internal OAuth access tokens |
-| `oauth_refresh_token` | `(?:mesh_rt_\|sayabot_rt_)[A-Za-z0-9_-]{20,}` | Internal OAuth refresh tokens |
-| `invite_code` | `sinv_[A-Za-z0-9_-]{20,}` | Space invite codes (`invite.ts`) |
-| `jwt` | `eyJ…\.eyJ…\.…` (three dot-separated base64url segments) | JSON Web Tokens |
-| `private_key` | `-----BEGIN [A-Z ]*PRIVATE KEY----- … -----END …-----` | PEM blocks, matched across newlines |
+| Name                  | Pattern                                                  | Matches                                            |
+| :-------------------- | :------------------------------------------------------- | :------------------------------------------------- |
+| `aws_access_key`      | `(?:AKIA\|ASIA)[0-9A-Z]{16}`                             | AWS access key IDs                                 |
+| `anthropic_key`       | `sk-ant-[A-Za-z0-9_-]{20,}`                              | Anthropic API keys                                 |
+| `openai_key`          | `sk-(?:proj-\|svcacct-)?[A-Za-z0-9_-]{20,}`              | OpenAI keys (incl. project/service-account forms)  |
+| `github_token`        | `(?:ghp\|gho\|ghu\|ghs\|ghr)_[A-Za-z0-9]{30,}`           | Classic GitHub tokens                              |
+| `github_pat`          | `github_pat_[A-Za-z0-9_]{40,}`                           | Fine-grained GitHub PATs                           |
+| `slack_token`         | `xox[abposr]-[A-Za-z0-9-]{10,}`                          | Slack bot/user/app/refresh tokens                  |
+| `google_api_key`      | `AIza[0-9A-Za-z_-]{35}`                                  | Google API keys                                    |
+| `groq_key`            | `gsk_[A-Za-z0-9]{40,}`                                   | Groq keys                                          |
+| `mesh_agent_key`      | `(?:mesh_ak_\|saaya_ak_\|sayabot_ak_)[A-Za-z0-9_-]{20,}` | Sayabot agent HMAC keys (all three brand prefixes) |
+| `oauth_access_token`  | `(?:mesh_at_\|sayabot_at_)[A-Za-z0-9_-]{20,}`            | Internal OAuth access tokens                       |
+| `oauth_refresh_token` | `(?:mesh_rt_\|sayabot_rt_)[A-Za-z0-9_-]{20,}`            | Internal OAuth refresh tokens                      |
+| `invite_code`         | `sinv_[A-Za-z0-9_-]{20,}`                                | Space invite codes (`invite.ts`)                   |
+| `jwt`                 | `eyJ…\.eyJ…\.…` (three dot-separated base64url segments) | JSON Web Tokens                                    |
+| `private_key`         | `-----BEGIN [A-Z ]*PRIVATE KEY----- … -----END …-----`   | PEM blocks, matched across newlines                |
 
 The self-branded tokens (`saaya_ak_`, `mesh_at_`, etc.) are recognized in all legacy and current prefixes, so older deployments stay protected.
 
@@ -38,7 +38,7 @@ The self-branded tokens (`saaya_ak_`, `mesh_at_`, etc.) are recognized in all le
 ```typescript
 export interface RedactionResult {
   text: string
-  redactions: { name: string; count: number }[]  // one entry per pattern with ≥1 hit
+  redactions: { name: string; count: number }[] // one entry per pattern with ≥1 hit
 }
 
 export function redactSecrets(
@@ -55,7 +55,7 @@ Behaviour:
 
 ### `createRunScrubber(values)` (`redact.ts:55`)
 
-Pattern redaction can't catch an *arbitrary* secret the agent was legitimately given (a connector token, a webhook URL). For that, each agent run builds an exact-value scrubber:
+Pattern redaction can't catch an _arbitrary_ secret the agent was legitimately given (a connector token, a webhook URL). For that, each agent run builds an exact-value scrubber:
 
 ```typescript
 export function createRunScrubber(values: string[]): (text: string) => string
@@ -86,7 +86,7 @@ export interface BreakerInput {
   botTurnsUsed: number
   turnCap: number
   rpmUsed: number
-  rpmLimit: number | null      // null = unlimited
+  rpmLimit: number | null // null = unlimited
   spentUsd: number
   dailyBudgetUsd: number | null // null = unlimited
 }
@@ -132,8 +132,8 @@ Multi-agent rooms can degenerate into an echo chamber: bots paraphrase each othe
 True when a message is short, content-free agreement. All three conditions must hold:
 
 1. Normalized length < 240 chars.
-2. Starts with an agreement opener (`AGREEMENT_RE`): *I/we (fully|completely|totally) agree*, *thanks/thank you*, *great point/suggestion*, *sounds good*, *exactly*, *absolutely*, *well said*, *you('re|are) right*.
-3. Contains **no** substantive connective (`SUBSTANTIVE_RE`): *but, however, though, although, yet, because, unless, need(s), should, must*.
+2. Starts with an agreement opener (`AGREEMENT_RE`): _I/we (fully|completely|totally) agree_, _thanks/thank you_, _great point/suggestion_, _sounds good_, _exactly_, _absolutely_, _well said_, _you('re|are) right_.
+3. Contains **no** substantive connective (`SUBSTANTIVE_RE`): _but, however, though, although, yet, because, unless, need(s), should, must_.
 4. ≤ 14 words after normalization.
 
 So `"I agree with Alice."` and `"Great point, Bob!"` are polite noise, while `"I agree, but the migration needs a rollback plan"` is a real reply.
@@ -142,17 +142,17 @@ So `"I agree with Alice."` and `"Great point, Bob!"` are polite noise, while `"I
 
 ```typescript
 export interface RepetitionOptions {
-  levenshteinThreshold?: number  // default 0.85
-  cosineThreshold?: number       // default 0.92
-  window?: number                // default 4 — how many recent bot messages to compare
+  levenshteinThreshold?: number // default 0.85
+  cosineThreshold?: number // default 0.92
+  window?: number // default 4 — how many recent bot messages to compare
 }
 ```
 
 The candidate reply is checked against the last `window` bot messages:
 
 1. **Near-duplicate (edit distance)** — `levenshteinSimilarity(candidate, prev) >= 0.85` returns `{ repeating: true, reason: "near-duplicate reply (levenshtein X.XX)" }`.
-2. **Near-duplicate (bag of words)** — `tokenCosine >= 0.92` *and* the normalized candidate is longer than 40 chars (the length guard stops two short greetings from counting as duplicates). Reason: `"near-duplicate reply (cosine X.XX)"`.
-3. **Agreement loop** — if the last **two** bot messages plus the candidate are *all* `isPoliteAgreement`, it returns `{ repeating: true, reason: "circular agreement loop" }`.
+2. **Near-duplicate (bag of words)** — `tokenCosine >= 0.92` _and_ the normalized candidate is longer than 40 chars (the length guard stops two short greetings from counting as duplicates). Reason: `"near-duplicate reply (cosine X.XX)"`.
+3. **Agreement loop** — if the last **two** bot messages plus the candidate are _all_ `isPoliteAgreement`, it returns `{ repeating: true, reason: "circular agreement loop" }`.
 4. Otherwise `{ repeating: false }`.
 
 The first match wins, and reasons embed the offending score for logs. The orchestrator combines this with `REPETITION_HALT_MESSAGE` to stop the room and hand control back to a human — the behavioural twin of the hard breakers above.

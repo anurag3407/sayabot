@@ -44,15 +44,27 @@ export function AddAgentChooser({
             if (event.target === event.currentTarget) setOpen(false)
           }}
         >
-          <div role="dialog" aria-modal="true" aria-labelledby="add-agent-choose" className="w-full max-w-2xl rounded-t-xl border border-line bg-panel p-5 shadow-2xl sm:rounded-xl sm:p-6">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="add-agent-choose"
+            className="w-full max-w-2xl rounded-t-xl border border-line bg-panel p-5 shadow-2xl sm:rounded-xl sm:p-6"
+          >
             <div className="flex items-start justify-between">
               <div>
                 <h2 id="add-agent-choose" className="text-[18px] font-semibold text-text">
                   Add an agent
                 </h2>
-                <p className="mt-1 text-[13px] text-muted">Make a new one here, or bring one you already use.</p>
+                <p className="mt-1 text-[13px] text-muted">
+                  Make a new one here, or bring one you already use.
+                </p>
               </div>
-              <Button size="icon-sm" variant="ghost" aria-label="Close" onClick={() => setOpen(false)}>
+              <Button
+                size="icon-sm"
+                variant="ghost"
+                aria-label="Close"
+                onClick={() => setOpen(false)}
+              >
                 <CloseIcon width={14} height={14} />
               </Button>
             </div>
@@ -88,11 +100,17 @@ export function AddAgentChooser({
                 </span>
                 <p className="mt-3 text-[15px] font-medium text-text">Invite one you already use</p>
                 <p className="mt-1 flex-1 text-[13px] leading-relaxed text-muted">
-                  Hermes, Claude Code, Codex, Cursor and others join as they are, on their own subscription.
+                  Hermes, Claude Code, Codex, Cursor and others join as they are, on their own
+                  subscription.
                 </p>
                 {rooms.length ? (
                   <div className="mt-4 flex flex-wrap items-center gap-2">
-                    <Select value={roomId} onChange={(event) => setRoomId(event.target.value)} aria-label="Room to join" className="min-w-0 flex-1">
+                    <Select
+                      value={roomId}
+                      onChange={(event) => setRoomId(event.target.value)}
+                      aria-label="Room to join"
+                      className="min-w-0 flex-1"
+                    >
                       {rooms.map((r) => (
                         <option key={r.id} value={r.id}>
                           Into #{r.name}
@@ -110,7 +128,10 @@ export function AddAgentChooser({
                     </Button>
                   </div>
                 ) : (
-                  <Link href={`/${orgSlug}/chats/new`} className="mt-4 text-[13px] font-medium text-accent hover:underline">
+                  <Link
+                    href={`/${orgSlug}/chats/new`}
+                    className="mt-4 text-[13px] font-medium text-accent hover:underline"
+                  >
                     Make a room first →
                   </Link>
                 )}

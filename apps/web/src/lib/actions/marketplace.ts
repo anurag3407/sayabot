@@ -33,41 +33,47 @@ export async function connectMarketplaceAppAction(input: {
   if (app.transport === "stdio") {
     if (app.auth.kind === "token" && app.auth.env) {
       if (!secret) return fail(`Paste your ${app.auth.label.toLowerCase()}`)
-      if (!/^[A-Z][A-Z0-9_]{0,40}$/.test(app.auth.env)) return fail("That app isn't set up to take a key")
+      if (!/^[A-Z][A-Z0-9_]{0,40}$/.test(app.auth.env))
+        return fail("That app isn't set up to take a key")
       sealedEnv = { [app.auth.env]: secret }
     }
   }
 
-  if (app.transport !== "stdio") switch (app.auth.kind) {
-    case "oauth":
-      return fail(`${app.name} connects with a sign-in. Use Sign in instead.`)
-    case "none":
-      break
-    case "token":
-      if (!secret && !app.auth.optional) return fail(`Paste your ${app.auth.label.toLowerCase()}`)
-      if (secret) headers[app.auth.header] = `${app.auth.prefix}${secret}`
-      break
-    case "url-key":
-      if (!secret) return fail(`Paste your ${app.auth.label.toLowerCase()}`)
-      if (/[\s/?#&]/.test(secret)) return fail("That key has characters a key can't have. Copy it again.")
-      url = app.auth.template.replace("{key}", encodeURIComponent(secret))
-      break
-    case "personal-url": {
-      const personal = input.personalUrl?.trim() ?? ""
-      let parsed: URL
-      try {
-        parsed = new URL(personal)
-      } catch {
-        return fail(`Paste your ${app.name} URL`)
+  if (app.transport !== "stdio")
+    switch (app.auth.kind) {
+      case "oauth":
+        return fail(`${app.name} connects with a sign-in. Use Sign in instead.`)
+      case "none":
+        break
+      case "token":
+        if (!secret && !app.auth.optional) return fail(`Paste your ${app.auth.label.toLowerCase()}`)
+        if (secret) headers[app.auth.header] = `${app.auth.prefix}${secret}`
+        break
+      case "url-key":
+        if (!secret) return fail(`Paste your ${app.auth.label.toLowerCase()}`)
+        if (/[\s/?#&]/.test(secret))
+          return fail("That key has characters a key can't have. Copy it again.")
+        url = app.auth.template.replace("{key}", encodeURIComponent(secret))
+        break
+      case "personal-url": {
+        const personal = input.personalUrl?.trim() ?? ""
+        let parsed: URL
+        try {
+          parsed = new URL(personal)
+        } catch {
+          return fail(`Paste your ${app.name} URL`)
+        }
+        const host = app.auth.host
+        if (
+          parsed.protocol !== "https:" ||
+          !(parsed.host === host || parsed.host.endsWith(`.${host}`))
+        ) {
+          return fail(`That doesn't look like a ${app.name} URL (it should be on ${host}).`)
+        }
+        url = parsed.toString()
+        break
       }
-      const host = app.auth.host
-      if (parsed.protocol !== "https:" || !(parsed.host === host || parsed.host.endsWith(`.${host}`))) {
-        return fail(`That doesn't look like a ${app.name} URL (it should be on ${host}).`)
-      }
-      url = parsed.toString()
-      break
     }
-  }
 
   const admin = createAdminClient()
   const { data: server, error } = await admin
@@ -112,26 +118,39 @@ export async function connectMarketplaceAppAction(input: {
   const test = await listMcpTools(input.orgSlug, server.id)
   revalidateOrg(input.orgSlug)
   const tools = Array.isArray((test.data as { tools?: unknown[] } | undefined)?.tools)
-    ? ((test.data as { tools: unknown[] }).tools.length)
+    ? (test.data as { tools: unknown[] }).tools.length
     : null
   if (!test.ok) {
-    return ok(`Saved, but ${app.name} didn't answer yet: ${test.error ?? "unknown error"}. Check the key and try again.`, {
-      serverId: server.id,
-      reachable: false,
-    })
+    return ok(
+      `Saved, but ${app.name} didn't answer yet: ${test.error ?? "unknown error"}. Check the key and try again.`,
+      {
+        serverId: server.id,
+        reachable: false,
+      },
+    )
   }
-  return ok(tools !== null ? `${app.name} connected with ${tools} tools` : `${app.name} connected`, {
-    serverId: server.id,
-    reachable: true,
-    tools,
-  })
+  return ok(
+    tools !== null ? `${app.name} connected with ${tools} tools` : `${app.name} connected`,
+    {
+      serverId: server.id,
+      reachable: true,
+      tools,
+    },
+  )
 }
 
-export async function disconnectMarketplaceServerAction(input: { orgSlug: string; serverId: string }): Promise<ActionResult> {
+export async function disconnectMarketplaceServerAction(input: {
+  orgSlug: string
+  serverId: string
+}): Promise<ActionResult> {
   const check = await adminOrgAccess(input.orgSlug)
   if ("error" in check) return fail(check.error)
   const admin = createAdminClient()
-  const { data: server } = await admin.from("mcp_servers").select("id, org_id, name").eq("id", input.serverId).maybeSingle()
+  const { data: server } = await admin
+    .from("mcp_servers")
+    .select("id, org_id, name")
+    .eq("id", input.serverId)
+    .maybeSingle()
   if (!server || server.org_id !== check.access.org.id) return fail("Connection not found")
   const { error } = await admin.from("mcp_servers").delete().eq("id", server.id)
   if (error) return fail(errorMessage(error))
@@ -175,7 +194,8 @@ export async function startMarketplaceSignInAction(input: {
       .select("id, org_id, url, oauth_enc, auth_kind")
       .eq("id", input.serverId)
       .maybeSingle()
-    if (!data || data.org_id !== orgId || data.auth_kind !== "oauth") return fail("Connection not found")
+    if (!data || data.org_id !== orgId || data.auth_kind !== "oauth")
+      return fail("Connection not found")
     row = data
   } else {
     // A sign-in that was started and abandoned is picked up again rather than duplicated.

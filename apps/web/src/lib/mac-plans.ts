@@ -27,7 +27,11 @@ export function withMacPlans(groups: PickerGroup[], limits: PlanLimits[] | null)
       ...group,
       plan: {
         plan: reading.plan,
-        windows: reading.windows.map((w) => ({ label: w.label, usedPercent: w.usedPercent, resetsAt: w.resetsAt })),
+        windows: reading.windows.map((w) => ({
+          label: w.label,
+          usedPercent: w.usedPercent,
+          resetsAt: w.resetsAt,
+        })),
         ...(reading.error && !reading.windows.length ? { error: reading.error } : {}),
       },
     }

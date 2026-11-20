@@ -16,7 +16,11 @@ export function Avatar({
   className?: string
 }) {
   const dimension =
-    size === "sm" ? "h-6 w-6 text-[11px]" : size === "lg" ? "h-10 w-10 text-[13px]" : "h-7 w-7 text-[11px]"
+    size === "sm"
+      ? "h-6 w-6 text-[11px]"
+      : size === "lg"
+        ? "h-10 w-10 text-[13px]"
+        : "h-7 w-7 text-[11px]"
   if (kind === "system") {
     return (
       <span
@@ -73,10 +77,7 @@ export function AvatarStack({
             name={person.name}
             kind="human"
             size="sm"
-            className={cn(
-              "ring-2 ring-panel",
-              person.typing && "border-accent text-accent",
-            )}
+            className={cn("ring-2 ring-panel", person.typing && "border-accent text-accent")}
           />
         </span>
       ))}

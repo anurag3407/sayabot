@@ -14,23 +14,23 @@ Registered when the agent has the `cron` capability (default `true`, `src/tools/
 cronjobTool({ orgId, agentId, roomId })
 ```
 
-Tool name: `cronjob`. Description: *"Manage autonomous scheduled routines and cron jobs (Hermes-compatible). Actions: create, list, update, pause, resume, run, remove. Allows scheduling agents to execute recurring tasks."*
+Tool name: `cronjob`. Description: _"Manage autonomous scheduled routines and cron jobs (Hermes-compatible). Actions: create, list, update, pause, resume, run, remove. Allows scheduling agents to execute recurring tasks."_
 
 ## 📥 Schema (`cronjob.ts:20-55`)
 
 One flat object; which fields are required depends on `action` (validated at execute time, not by Zod):
 
-| Parameter | Type | Description |
-| :--- | :--- | :--- |
-| `action` | enum `create \| list \| update \| pause \| resume \| run \| remove` | The routine operation to perform |
-| `id` | string, optional | Routine ID; required for `update`, `pause`, `resume`, `run`, `remove` |
-| `name` | string, optional | Human-readable title (e.g. `'Daily Standup Summary'`, `'Hourly Monitor'`); required for `create` |
-| `schedule` | string, optional | Cron expression (`'0 9 * * 1-5'`, `'*/15 * * * *'`) or natural shorthand (`'daily at 9am'`, `'every 2h'`, `'weekdays at 10:00'`); required for `create` |
-| `prompt` | string, optional | Exact task instructions given to the agent when triggered; required for `create` |
-| `description` | string, optional | Purpose of the routine |
-| `timezone` | string, optional | IANA zone (`'UTC'`, `'America/New_York'`, `'Asia/Kolkata'`); defaults to `UTC` |
-| `targetRoomId` | string, optional | Room to post results into; defaults to the current room |
-| `targetAgentId` | string, optional | Agent that executes the routine; defaults to the current agent |
+| Parameter       | Type                                                                | Description                                                                                                                                             |
+| :-------------- | :------------------------------------------------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `action`        | enum `create \| list \| update \| pause \| resume \| run \| remove` | The routine operation to perform                                                                                                                        |
+| `id`            | string, optional                                                    | Routine ID; required for `update`, `pause`, `resume`, `run`, `remove`                                                                                   |
+| `name`          | string, optional                                                    | Human-readable title (e.g. `'Daily Standup Summary'`, `'Hourly Monitor'`); required for `create`                                                        |
+| `schedule`      | string, optional                                                    | Cron expression (`'0 9 * * 1-5'`, `'*/15 * * * *'`) or natural shorthand (`'daily at 9am'`, `'every 2h'`, `'weekdays at 10:00'`); required for `create` |
+| `prompt`        | string, optional                                                    | Exact task instructions given to the agent when triggered; required for `create`                                                                        |
+| `description`   | string, optional                                                    | Purpose of the routine                                                                                                                                  |
+| `timezone`      | string, optional                                                    | IANA zone (`'UTC'`, `'America/New_York'`, `'Asia/Kolkata'`); defaults to `UTC`                                                                          |
+| `targetRoomId`  | string, optional                                                    | Room to post results into; defaults to the current room                                                                                                 |
+| `targetAgentId` | string, optional                                                    | Agent that executes the routine; defaults to the current agent                                                                                          |
 
 ## ⚙️ Actions (`cronjob.ts:64-267`)
 
@@ -59,8 +59,25 @@ All actions are scoped to `options.orgId`; a wrong-org routine id simply returns
 Returns up to 50 most recent routines for the org, ordered by `createdAt` desc, each enriched with `humanSchedule`:
 
 ```typescript
-{ routines: [{ id, name, description, scheduleExpr, timezone, enabled, nextRunAt,
-               lastRunAt, lastStatus, runCount, agentId, roomId, humanSchedule }] }
+{
+  routines: [
+    {
+      id,
+      name,
+      description,
+      scheduleExpr,
+      timezone,
+      enabled,
+      nextRunAt,
+      lastRunAt,
+      lastStatus,
+      runCount,
+      agentId,
+      roomId,
+      humanSchedule,
+    },
+  ]
+}
 ```
 
 ### `update` (`cronjob.ts:156-207`)
@@ -86,8 +103,8 @@ Requires `id`; `DELETE` (org-scoped, returning the row) → `{ success: true, me
 
 ## 🗃️ Tables and downstream effects
 
-| Table | Access |
-| :--- | :--- |
+| Table      | Access                                                                                      |
+| :--------- | :------------------------------------------------------------------------------------------ |
 | `routines` | INSERT (create), SELECT (list/update/resume), UPDATE (update/pause/resume), DELETE (remove) |
 
 The tool never executes the prompt itself; it only schedules. When the scheduler fires, the routine posts into `roomId` and runs like any agent turn (see [../engine/coordinator.md](../engine/coordinator.md)); `notifyRoutineFinished` (`src/push.ts`) alerts the routine's creator or the room approvers when the scheduled turn ends. Realtime events specific to `cronjob` are none beyond the standard audit events.
@@ -109,14 +126,19 @@ const res = await tool.execute({
 // res.routine.humanSchedule → "Daily at 09:00"
 
 // Invalid shorthand rejected (cronjob.test.ts:63-69)
-await tool.execute({ action: "create", name: "Bad Schedule", schedule: "every 500 hours and bananas", prompt: "test" })
+await tool.execute({
+  action: "create",
+  name: "Bad Schedule",
+  schedule: "every 500 hours and bananas",
+  prompt: "test",
+})
 // → { error: "Invalid cron schedule 'every 500 hours and bananas'…" }
 
 // Pause / resume / run / remove by id (cronjob.test.ts:83-123)
-await tool.execute({ action: "pause",  id: "routine-test-123" })  // success, "paused."
-await tool.execute({ action: "resume", id: "routine-test-123" })  // success, "resumed. Next run at …"
-await tool.execute({ action: "run",    id: "routine-test-123" })  // { success: true, runId: "run-abc-123" }
-await tool.execute({ action: "remove", id: "routine-test-123" })  // success, "removed."
+await tool.execute({ action: "pause", id: "routine-test-123" }) // success, "paused."
+await tool.execute({ action: "resume", id: "routine-test-123" }) // success, "resumed. Next run at …"
+await tool.execute({ action: "run", id: "routine-test-123" }) // { success: true, runId: "run-abc-123" }
+await tool.execute({ action: "remove", id: "routine-test-123" }) // success, "removed."
 ```
 
 ## ⚠️ Notes

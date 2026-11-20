@@ -34,7 +34,9 @@ export function useReloadAfterRescan(load: (refresh?: boolean) => Promise<void>)
       await load(refresh)
       if (!refresh) return
       for (const timer of timers.current) window.clearTimeout(timer)
-      timers.current = MAC_RESCAN_RELOADS_MS.map((ms) => window.setTimeout(() => void load(false), ms))
+      timers.current = MAC_RESCAN_RELOADS_MS.map((ms) =>
+        window.setTimeout(() => void load(false), ms),
+      )
     },
     [load],
   )
@@ -53,7 +55,8 @@ export function useModelList(orgSlug: string) {
       try {
         const query = new URLSearchParams({ org: orgSlug, ...(refresh ? { refresh: "1" } : {}) })
         const response = await fetch(`/api/connectors/models?${query}`, { cache: "no-store" })
-        const body = (await response.json().catch(() => null)) as (ModelList & { error?: string }) | null
+        const body = (await response.json().catch(() => null)) as
+          (ModelList & { error?: string }) | null
         if (!response.ok || !body || !Array.isArray(body.groups)) {
           throw new Error(body?.error ?? `HTTP ${response.status}`)
         }

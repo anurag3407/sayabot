@@ -26,7 +26,13 @@ export interface HomeAgent {
   about: string | null
   model: string
   workingRoomId: string | null
-  usage: { tokens: number; runs: number; costUsd: number; lastAt: string | null; topModel: string | null } | null
+  usage: {
+    tokens: number
+    runs: number
+    costUsd: number
+    lastAt: string | null
+    topModel: string | null
+  } | null
   roomIds: string[]
 }
 
@@ -81,9 +87,12 @@ export function refreshHome(): Promise<void> {
         data: { session },
       } = await supabase.auth.getSession()
       if (!session) return
-      const res = await fetch(`${currentWebApiUrl()}/api/mobile/home?orgSlug=${encodeURIComponent(orgSlugNow)}`, {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      })
+      const res = await fetch(
+        `${currentWebApiUrl()}/api/mobile/home?orgSlug=${encodeURIComponent(orgSlugNow)}`,
+        {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        },
+      )
       const json = (await res.json().catch(() => ({}))) as HomeData & { error?: string }
       if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`)
       set({ data: json, error: null, loading: false })
@@ -93,7 +102,10 @@ export function refreshHome(): Promise<void> {
         void applySettings({ orgSlug: json.org.slug })
       }
     } catch (err) {
-      set({ error: err instanceof Error ? err.message : "Could not load your chats", loading: false })
+      set({
+        error: err instanceof Error ? err.message : "Could not load your chats",
+        loading: false,
+      })
     } finally {
       inflight = null
     }
@@ -156,7 +168,8 @@ export function shortTime(iso: string | null | undefined): string {
   const diff = Date.now() - d.getTime()
   if (diff < 60_000) return "now"
   if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m`
-  if (diff < 86_400_000 && new Date().getDate() === d.getDate()) return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+  if (diff < 86_400_000 && new Date().getDate() === d.getDate())
+    return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
   if (diff < 6 * 86_400_000) return d.toLocaleDateString([], { weekday: "short" })
   return d.toLocaleDateString([], { day: "numeric", month: "short" })
 }

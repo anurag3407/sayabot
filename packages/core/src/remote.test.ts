@@ -2,9 +2,23 @@ import { describe, expect, it } from "vitest"
 import { canOpenHost, hostOnline, parseRemoteInput } from "./remote"
 
 describe("canOpenHost", () => {
-  const base = { ownerId: "u1", viewerId: "u2", hostOrgId: "o1", whoCanControl: "members" as const, viewerOrgRole: "member" as const }
+  const base = {
+    ownerId: "u1",
+    viewerId: "u2",
+    hostOrgId: "o1",
+    whoCanControl: "members" as const,
+    viewerOrgRole: "member" as const,
+  }
   it("always lets the owner in", () => {
-    expect(canOpenHost({ ...base, viewerId: "u1", hostOrgId: null, whoCanControl: "only_me", viewerOrgRole: null })).toBe(true)
+    expect(
+      canOpenHost({
+        ...base,
+        viewerId: "u1",
+        hostOrgId: null,
+        whoCanControl: "only_me",
+        viewerOrgRole: null,
+      }),
+    ).toBe(true)
   })
   it("respects who can control", () => {
     expect(canOpenHost(base)).toBe(true)
@@ -30,7 +44,12 @@ describe("hostOnline", () => {
 describe("parseRemoteInput", () => {
   it("clamps coordinates and normalizes buttons", () => {
     expect(parseRemoteInput({ t: "move", x: 1.4, y: -2 })).toEqual({ t: "move", x: 1, y: 0 })
-    expect(parseRemoteInput({ t: "down", x: 0.5, y: 0.5, b: 7 })).toEqual({ t: "down", x: 0.5, y: 0.5, b: 0 })
+    expect(parseRemoteInput({ t: "down", x: 0.5, y: 0.5, b: 7 })).toEqual({
+      t: "down",
+      x: 0.5,
+      y: 0.5,
+      b: 0,
+    })
     expect(parseRemoteInput({ t: "up", x: 0.5, y: 0.5, b: 2 })).toMatchObject({ b: 2 })
   })
   it("drops junk", () => {
@@ -41,6 +60,10 @@ describe("parseRemoteInput", () => {
     expect(parseRemoteInput(null)).toBeNull()
   })
   it("keeps only known modifier keys", () => {
-    expect(parseRemoteInput({ t: "key", key: "c", mods: ["cmd", "sudo", 4] })).toEqual({ t: "key", key: "c", mods: ["cmd"] })
+    expect(parseRemoteInput({ t: "key", key: "c", mods: ["cmd", "sudo", 4] })).toEqual({
+      t: "key",
+      key: "c",
+      mods: ["cmd"],
+    })
   })
 })

@@ -75,7 +75,6 @@ export function formatPercent(share: number, digits = 1): string {
   return `${percent.toFixed(digits)}%`
 }
 
-
 export function formatMs(value: number | null | undefined): string {
   if (value === null || value === undefined) return "-"
   if (value < 1000) return `${value} ms`

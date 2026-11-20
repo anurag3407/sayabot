@@ -19,9 +19,7 @@ export function renderWorkspaceInviteTemplate({
 
   const roleBadge = role === "admin" ? "Workspace Admin" : "Member"
 
-  const actionText = isExistingUser
-    ? "Open Workspace"
-    : "Accept Invitation & Join"
+  const actionText = isExistingUser ? "Open Workspace" : "Accept Invitation & Join"
 
   const description = isExistingUser
     ? `You have been added to <strong>${workspaceName}</strong> as a <strong>${roleBadge}</strong>. Click below to jump straight to the workspace.`

@@ -87,7 +87,8 @@ export function parseCapabilities(input: unknown): AgentCapabilities {
     memory: typeof raw.memory === "boolean" ? raw.memory : DEFAULT_CAPABILITIES.memory,
     subagents: typeof raw.subagents === "boolean" ? raw.subagents : DEFAULT_CAPABILITIES.subagents,
     cron: typeof raw.cron === "boolean" ? raw.cron : DEFAULT_CAPABILITIES.cron,
-    connectors: typeof raw.connectors === "boolean" ? raw.connectors : DEFAULT_CAPABILITIES.connectors,
+    connectors:
+      typeof raw.connectors === "boolean" ? raw.connectors : DEFAULT_CAPABILITIES.connectors,
     storage: typeof raw.storage === "boolean" ? raw.storage : DEFAULT_CAPABILITIES.storage,
     voice: typeof raw.voice === "boolean" ? raw.voice : DEFAULT_CAPABILITIES.voice,
   }

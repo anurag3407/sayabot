@@ -50,7 +50,11 @@ export default async function NewBotPage({
         orgSlug={orgSlug}
         initialTemplate={
           usableTemplate
-            ? { id: usableTemplate.id, name: usableTemplate.name, systemPrompt: usableTemplate.system_prompt ?? "" }
+            ? {
+                id: usableTemplate.id,
+                name: usableTemplate.name,
+                systemPrompt: usableTemplate.system_prompt ?? "",
+              }
             : undefined
         }
         roomId={inRoom?.id}

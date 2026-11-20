@@ -17,7 +17,10 @@ describe("revokeStaleCanvasConnections", () => {
   it("closes only people who lost the room", async () => {
     const kept = connection("kept")
     const removed = connection("removed")
-    const count = await revokeStaleCanvasConnections(server([kept, removed]), async (id) => id === "kept")
+    const count = await revokeStaleCanvasConnections(
+      server([kept, removed]),
+      async (id) => id === "kept",
+    )
     expect(count).toBe(1)
     expect(removed.close).toHaveBeenCalledOnce()
     expect(kept.close).not.toHaveBeenCalled()

@@ -9,7 +9,7 @@ Source files: `apps/web/src/lib/email/client.ts`, `apps/web/src/lib/email/index.
 ## 🚚 Delivery client (`email/client.ts`)
 
 - Provider: the official `resend` SDK, instantiated once when `RESEND_API_KEY` is present (`client.ts:6`); otherwise `resend` is `null`.
-- Sender: `DEFAULT_FROM` = `RESEND_FROM_EMAIL` or the fallback `"Sayalabs <auth@sayalabs.in>"` (`client.ts:4`).
+- Sender: `DEFAULT_FROM` = `RESEND_FROM_EMAIL` or the fallback `"Sayabot <noreply@localhost>"` (`client.ts:4`).
 - `sendEmail(opts)` (`client.ts:23`) — options `{ to: string | string[], subject, html, text?, from?, replyTo? }`:
   - No API key: logs a `[email] RESEND_API_KEY is not set` warning with the subject and recipients, returns `{ ok: false, error: "RESEND_API_KEY not configured" }`.
   - API errors and unexpected throws are logged with the `[email]` prefix and returned as `{ ok: false, error }` — `sendEmail` **never throws**.
@@ -23,13 +23,13 @@ Workspace and room invitations no longer send mail. `inviteMember` and `inviteTo
 
 `index.ts` re-exports `./client`, `./templates/base`, `./templates/auth`, and `./templates/invites`, and adds five one-purpose functions that pick a template and forward to `sendEmail` (`index.ts:20`–113):
 
-| Function | Template | Input |
-| :--- | :--- | :--- |
-| `sendVerificationEmail({ email, code?, link, name? })` | `renderVerificationTemplate` | 6-digit signup code and/or confirm link |
-| `sendMagicLinkEmail({ email, code?, link })` | `renderMagicLinkTemplate` | OTP sign-in code and/or direct link |
-| `sendPasswordResetEmail({ email, link })` | `renderPasswordResetTemplate` | reset link |
-| `sendWorkspaceInviteEmail({ email, inviterName?, workspaceName, role, joinUrl, isExistingUser? })` | `renderWorkspaceInviteTemplate` | workspace invitation |
-| `sendRoomInviteEmail({ email, inviterName?, roomName, joinUrl })` | `renderRoomInviteTemplate` | room invitation |
+| Function                                                                                           | Template                        | Input                                   |
+| :------------------------------------------------------------------------------------------------- | :------------------------------ | :-------------------------------------- |
+| `sendVerificationEmail({ email, code?, link, name? })`                                             | `renderVerificationTemplate`    | 6-digit signup code and/or confirm link |
+| `sendMagicLinkEmail({ email, code?, link })`                                                       | `renderMagicLinkTemplate`       | OTP sign-in code and/or direct link     |
+| `sendPasswordResetEmail({ email, link })`                                                          | `renderPasswordResetTemplate`   | reset link                              |
+| `sendWorkspaceInviteEmail({ email, inviterName?, workspaceName, role, joinUrl, isExistingUser? })` | `renderWorkspaceInviteTemplate` | workspace invitation                    |
+| `sendRoomInviteEmail({ email, inviterName?, roomName, joinUrl })`                                  | `renderRoomInviteTemplate`      | room invitation                         |
 
 Each returns the `SendEmailResult` untouched. Callers include the member-invite actions (above) and `POST /api/auth/send-email` (plain-text mention: documented with the other routes in the proxy/files API reference), which issues verification and magic-link mail for the custom auth flows.
 
@@ -69,10 +69,10 @@ Both include the raw URL as a last-resort link and an "ignore this email" note i
 
 ## ⚙️ Environment variables
 
-| Variable | Role | Default |
-| :--- | :--- | :--- |
-| `RESEND_API_KEY` | Enables sending; without it all email is suppressed with a warning | — |
-| `RESEND_FROM_EMAIL` | Overrides the `From` header | `"Sayalabs <auth@sayalabs.in>"` |
+| Variable            | Role                                                               | Default                         |
+| :------------------ | :----------------------------------------------------------------- | :------------------------------ |
+| `RESEND_API_KEY`    | Enables sending; without it all email is suppressed with a warning | —                               |
+| `RESEND_FROM_EMAIL` | Overrides the `From` header                                        | `"Sayabot <noreply@localhost>"` |
 
 Emails are sent directly from server actions and route handlers (no queue): the custom `/api/auth/send-email` endpoint (verification, magic link, password reset, and a Supabase-emitted auth invite) calls `sendEmail` and relies on the result object instead of exceptions. There is no retry or batching. Product invitations do not send mail.
 
@@ -80,12 +80,12 @@ Emails are sent directly from server actions and route handlers (no queue): the 
 
 ## 📣 How mail gets triggered
 
-| Caller | Dispatch call | Notes |
-| :--- | :--- | :--- |
-| `inviteMember` / `inviteToRoom` (`lib/actions/orgs.ts`) | none | Both refuse. People join from a shared link after an admin approves. |
-| `POST /api/auth/send-email` `invite` | `sendWorkspaceInviteEmail` | Only when Supabase itself emits an auth invite. The product does not call `inviteUserByEmail`. |
-| `POST /api/auth/send-email` (Supabase Auth hook) | all three auth helpers | Maps Supabase's `email_action_type`: `signup`/`email_change` → verification (with the 6-digit `token`), `magiclink`/`login` → sign-in code, `recovery` → reset, `invite` → workspace invite rendered for "Sayalabs" as member. |
-| Mobile pairing / bot joins | none by design | Those flows exchange codes and MCP URLs in-app; no email is sent. |
+| Caller                                                  | Dispatch call              | Notes                                                                                                                                                                                                                          |
+| :------------------------------------------------------ | :------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `inviteMember` / `inviteToRoom` (`lib/actions/orgs.ts`) | none                       | Both refuse. People join from a shared link after an admin approves.                                                                                                                                                           |
+| `POST /api/auth/send-email` `invite`                    | `sendWorkspaceInviteEmail` | Only when Supabase itself emits an auth invite. The product does not call `inviteUserByEmail`.                                                                                                                                 |
+| `POST /api/auth/send-email` (Supabase Auth hook)        | all three auth helpers     | Maps Supabase's `email_action_type`: `signup`/`email_change` → verification (with the 6-digit `token`), `magiclink`/`login` → sign-in code, `recovery` → reset, `invite` → workspace invite rendered for "Sayalabs" as member. |
+| Mobile pairing / bot joins                              | none by design             | Those flows exchange codes and MCP URLs in-app; no email is sent.                                                                                                                                                              |
 
 The send-email hook builds the action link from `email_data.redirect_to`, else `<NEXT_PUBLIC_SITE_URL>/auth/callback?token_hash=…&type=…`, else `/auth/complete` — so every link lands on a route that can consume Supabase's token.
 
@@ -112,32 +112,33 @@ The code boxes render the 6-digit value in 34 px monospace with 8 px letter-spac
 
 `renderEmailShell` is self-contained markup with these fixed values (`templates/base.ts`):
 
-| Element | Value |
-| :--- | :--- |
-| Page background | `#070907`, full-width single-cell table, 40 px vertical padding |
-| Card | max-width 540 px, background `#0d110e`, 1 px `#1f2821` border, 12 px radius, drop shadow |
-| Header | "Saya**labs**" wordmark (accent on "labs") + the "PLATFORM" pill (`#16241b` on `#34d399`), 1 px `#19211b` divider |
-| Body | 36 px padding, 15 px/1.6 `#d4d4d8` text |
-| Footer | `#090d0a` band: "Sayalabs Studio · Autonomous Multi-Agent Workspace" plus the ignore-this-email note |
-| Fonts | System stack (`-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial`); a `<!--[if mso]>` block forces Arial for Outlook |
+| Element         | Value                                                                                                                                      |
+| :-------------- | :----------------------------------------------------------------------------------------------------------------------------------------- |
+| Page background | `#070907`, full-width single-cell table, 40 px vertical padding                                                                            |
+| Card            | max-width 540 px, background `#0d110e`, 1 px `#1f2821` border, 12 px radius, drop shadow                                                   |
+| Header          | "Saya**labs**" wordmark (accent on "labs") + the "PLATFORM" pill (`#16241b` on `#34d399`), 1 px `#19211b` divider                          |
+| Body            | 36 px padding, 15 px/1.6 `#d4d4d8` text                                                                                                    |
+| Footer          | `#090d0a` band: "Sayalabs Studio · Autonomous Multi-Agent Workspace" plus the ignore-this-email note                                       |
+| Fonts           | System stack (`-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial`); a `<!--[if mso]>` block forces Arial for Outlook |
 
 Nothing in the shell fetches remote images or stylesheets, so rendering never depends on a network call. The shell is the single place the brand appears — new emails only compose `title`, `previewText` and `contentHtml`.
 
 ## 🗂️ Template → subject map
 
-| Renderer | Subject | Button |
-| :--- | :--- | :--- |
-| `renderVerificationTemplate` | "Verify your Sayalabs account" | "Verify Email Address" |
-| `renderMagicLinkTemplate` | "Your Sayalabs sign-in code" | "Sign In Directly" |
-| `renderPasswordResetTemplate` | "Reset your Sayalabs password" | "Reset Password" |
+| Renderer                        | Subject                                                     | Button                                                         |
+| :------------------------------ | :---------------------------------------------------------- | :------------------------------------------------------------- |
+| `renderVerificationTemplate`    | "Verify your Sayalabs account"                              | "Verify Email Address"                                         |
+| `renderMagicLinkTemplate`       | "Your Sayalabs sign-in code"                                | "Sign In Directly"                                             |
+| `renderPasswordResetTemplate`   | "Reset your Sayalabs password"                              | "Reset Password"                                               |
 | `renderWorkspaceInviteTemplate` | "`<inviter>` invited you to join `<workspace>` on Sayalabs" | "Accept Invitation & Join" (new) / "Open Workspace" (existing) |
-| `renderRoomInviteTemplate` | "`<inviter>` invited you to #`<room>` on Sayalabs" | "Open #\<room\>" |
+| `renderRoomInviteTemplate`      | "`<inviter>` invited you to #`<room>` on Sayalabs"          | "Open #\<room\>"                                               |
 
 All templates interpolate the action URL into both the button and a plain "Direct link:" fallback line; the invite templates add the workspace/role card, and the room template uses the `#room` convention throughout.
 
 ## 🔒 Handling of secrets and addresses
 
 Recipients and subjects may appear in logs (the suppression warning prints them), but bodies never contain credentials: verification codes are short-lived Supabase tokens, invitation links point at join codes that expire or can be revoked, and password-reset links are single-use. Nothing here handles vault secrets or provider keys — those are brokered by the orchestrator (see the secrets broker reference), so a mailbox compromise cannot leak long-lived credentials.
+
 ### Sending from a route handler
 
 The only HTTP entry point is the auth hook, and its shape is the pattern to copy (`api/auth/send-email/route.ts:13`): parse the payload, resolve the action link, dispatch one helper, and always end with a JSON ack:
@@ -156,7 +157,13 @@ switch (email_data.email_action_type) {
     await sendPasswordResetEmail({ email, link })
     break
   case "invite":
-    await sendWorkspaceInviteEmail({ email, workspaceName: "Sayalabs", role: "member", joinUrl: link, isExistingUser: false })
+    await sendWorkspaceInviteEmail({
+      email,
+      workspaceName: "Sayalabs",
+      role: "member",
+      joinUrl: link,
+      isExistingUser: false,
+    })
     break
   default:
     console.warn(`[auth-email-hook] Unhandled action type: ${email_data.email_action_type}`)

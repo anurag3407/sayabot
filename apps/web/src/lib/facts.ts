@@ -50,7 +50,9 @@ export async function upsertFact(input: {
   }
   const { error } = existing
     ? await admin.from("owner_facts").update(row).eq("id", existing.id)
-    : await admin.from("owner_facts").insert({ ...row, org_id: input.orgId, room_id: input.roomId, key })
+    : await admin
+        .from("owner_facts")
+        .insert({ ...row, org_id: input.orgId, room_id: input.roomId, key })
   return error ? { ok: false, error: error.message } : { ok: true }
 }
 
@@ -61,9 +63,23 @@ export async function factsVisibleTo(orgId: string, roomId: string): Promise<Kno
     .eq("org_id", orgId)
     .or(`room_id.is.null,room_id.eq.${roomId}`)
     .limit(500)
-  return ((data ?? []) as { key: string; label: string; value: string; room_id: string | null; source: string; updated_at: string }[]).map(
-    (r) => ({ key: r.key, label: r.label, value: r.value, roomId: r.room_id, source: r.source, updatedAt: r.updated_at }),
-  )
+  return (
+    (data ?? []) as {
+      key: string
+      label: string
+      value: string
+      room_id: string | null
+      source: string
+      updated_at: string
+    }[]
+  ).map((r) => ({
+    key: r.key,
+    label: r.label,
+    value: r.value,
+    roomId: r.room_id,
+    source: r.source,
+    updatedAt: r.updated_at,
+  }))
 }
 
 /**
@@ -88,13 +104,15 @@ export async function resolveOpenAsksFromFacts(input: {
   if (input.roomIds) query = query.in("room_id", input.roomIds)
   const { data } = await query
   const nowIso = new Date().toISOString()
-  const rows = ((data ?? []) as {
-    id: string
-    room_id: string
-    requested_by_agent_id: string | null
-    metadata: Record<string, unknown>
-    expires_at: string | null
-  }[]).filter(
+  const rows = (
+    (data ?? []) as {
+      id: string
+      room_id: string
+      requested_by_agent_id: string | null
+      metadata: Record<string, unknown>
+      expires_at: string | null
+    }[]
+  ).filter(
     (row) =>
       !input.skipTaskIds?.includes(row.id) &&
       (!row.expires_at || row.expires_at > nowIso) &&
@@ -104,8 +122,13 @@ export async function resolveOpenAsksFromFacts(input: {
   const factsByRoom = new Map<string, KnownFact[]>()
   let resolved = 0
   for (const row of rows) {
-    if (!factsByRoom.has(row.room_id)) factsByRoom.set(row.room_id, await factsVisibleTo(input.orgId, row.room_id))
-    const filled = fillItemsFromFacts(askItemsFromMetadata(row.metadata), factsByRoom.get(row.room_id)!, row.room_id)
+    if (!factsByRoom.has(row.room_id))
+      factsByRoom.set(row.room_id, await factsVisibleTo(input.orgId, row.room_id))
+    const filled = fillItemsFromFacts(
+      askItemsFromMetadata(row.metadata),
+      factsByRoom.get(row.room_id)!,
+      row.room_id,
+    )
     if (!filled.answeredKeys.length) continue
     resolved += 1
     await deliverItemAnswers({
@@ -140,7 +163,11 @@ export async function deliverItemAnswers(input: {
   const admin = createAdminClient()
   let handle: string | null = null
   if (input.agentId) {
-    const { data } = await admin.from("agents").select("handle").eq("id", input.agentId).maybeSingle()
+    const { data } = await admin
+      .from("agents")
+      .select("handle")
+      .eq("id", input.agentId)
+      .maybeSingle()
     handle = data?.handle ?? null
   }
   const lines = formatItemAnswers(input.items, input.answeredKeys)
@@ -148,10 +175,7 @@ export async function deliverItemAnswers(input: {
   const targetRoomId = input.targetRoomId ?? input.roomId
   const inGroup = targetRoomId === input.roomId
   const content = inGroup && handle ? `@${handle} ${body}` : body
-  const tail =
-    input.remaining > 0
-      ? `\n(${input.remaining} still open on this question.)`
-      : ""
+  const tail = input.remaining > 0 ? `\n(${input.remaining} still open on this question.)` : ""
 
   const { data: message, error } = await admin
     .from("messages")

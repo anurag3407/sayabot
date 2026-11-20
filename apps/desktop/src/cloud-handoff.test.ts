@@ -1,6 +1,13 @@
 import { createServer, type Server } from "node:http"
 import { afterEach, describe, expect, it } from "vitest"
-import { computersFromRecord, fetchWorkspaceSnapshot, importWorkspaceSnapshot, leaveCloudHome, snapshotHasRecords, syncCloudHandoff } from "./cloud-handoff"
+import {
+  computersFromRecord,
+  fetchWorkspaceSnapshot,
+  importWorkspaceSnapshot,
+  leaveCloudHome,
+  snapshotHasRecords,
+  syncCloudHandoff,
+} from "./cloud-handoff"
 
 let server: Server | null = null
 afterEach(async () => {
@@ -115,7 +122,13 @@ describe("syncCloudHandoff", () => {
       chats: [],
       routines: [],
       keys: [],
-      computers: { boatCiphertext: "sealed", boatIv: "iv", boatTag: "tag", boatLast4: "wxyz", vpsSshAlias: "lab.example" },
+      computers: {
+        boatCiphertext: "sealed",
+        boatIv: "iv",
+        boatTag: "tag",
+        boatLast4: "wxyz",
+        vpsSshAlias: "lab.example",
+      },
     }
     expect(snapshotHasRecords(computersOnly)).toBe(true)
     let posted = ""
@@ -127,11 +140,14 @@ describe("syncCloudHandoff", () => {
       writeSnapshot: () => {},
       fetch: async (input, init) => {
         if (init?.method === "POST") posted = String(init.body)
-        return new Response(JSON.stringify({ cloudReady: true, planActive: true, copied: false, ok: true }), { status: 200 })
+        return new Response(
+          JSON.stringify({ cloudReady: true, planActive: true, copied: false, ok: true }),
+          { status: 200 },
+        )
       },
     })
     expect(posted).toContain("sealed")
-    expect(posted).toContain("\"boatIv\":\"iv\"")
+    expect(posted).toContain('"boatIv":"iv"')
     expect(posted).not.toContain("boat_")
     expect(
       computersFromRecord({
@@ -150,7 +166,9 @@ describe("syncCloudHandoff", () => {
       vpsSshAlias: "lab.example",
       vpsStartAutomatically: true,
     })
-    expect(computersFromRecord({ boatCiphertext: "sealed", boatToken: "boat_secret_value" })).toBeNull()
+    expect(
+      computersFromRecord({ boatCiphertext: "sealed", boatToken: "boat_secret_value" }),
+    ).toBeNull()
     expect(computersFromRecord({ boatCiphertext: "sealed" })).toBeNull()
   })
 
@@ -186,7 +204,18 @@ describe("syncCloudHandoff", () => {
     })
     expect(back).toBe(true)
     expect(restored).toEqual(snapshot)
-    expect(await leaveCloudHome({ ...{ nextEdition: "cloud", serverUrl: ended, hostId: "host", hostToken: "token", snapshot, writeSnapshot: () => {} } })).toBe(false)
+    expect(
+      await leaveCloudHome({
+        ...{
+          nextEdition: "cloud",
+          serverUrl: ended,
+          hostId: "host",
+          hostToken: "token",
+          snapshot,
+          writeSnapshot: () => {},
+        },
+      }),
+    ).toBe(false)
   })
 
   it("posts the returned copy to the server the Mac is using now", async () => {

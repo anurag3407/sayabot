@@ -92,7 +92,9 @@ export function CloudStorageManager({ orgSlug, connectors, isAdmin }: CloudStora
   const [activeProvider, setActiveProvider] = useState<ProviderKey>("supabase")
   const [isPending, startTransition] = useTransition()
   const [testingId, setTestingId] = useState<string | null>(null)
-  const [testResults, setTestResults] = useState<Record<string, { ok: boolean; message: string }>>({})
+  const [testResults, setTestResults] = useState<Record<string, { ok: boolean; message: string }>>(
+    {},
+  )
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [showManualForm, setShowManualForm] = useState(false)
@@ -131,7 +133,10 @@ export function CloudStorageManager({ orgSlug, connectors, isAdmin }: CloudStora
       const res = await fetch(`/api/connectors/supabase/oauth?org=${encodeURIComponent(orgSlug)}`)
       const data = await res.json()
       if (!res.ok || !data.authUrl) {
-        setError(data.error || "Supabase OAuth app credentials not configured. Use 1-click Default Storage or manual API keys below.")
+        setError(
+          data.error ||
+            "Supabase OAuth app credentials not configured. Use 1-click Default Storage or manual API keys below.",
+        )
         return
       }
       const popup = window.open(data.authUrl, "supabase_oauth", "width=600,height=720")
@@ -215,7 +220,9 @@ export function CloudStorageManager({ orgSlug, connectors, isAdmin }: CloudStora
           ok: res.ok,
           message: res.ok
             ? String((res.data as any)?.detail || res.message || "Connection active")
-            : (typeof res.error === "string" ? res.error : "Connection test failed"),
+            : typeof res.error === "string"
+              ? res.error
+              : "Connection test failed",
         },
       }))
     })
@@ -305,7 +312,11 @@ export function CloudStorageManager({ orgSlug, connectors, isAdmin }: CloudStora
                       <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-foreground">
                         {cfg.bucket || cfg.repoId || "default"}
                       </code>
-                      {cfg.projectUrl && <span className="ml-2 font-mono text-[11px] text-faint">({cfg.projectUrl})</span>}
+                      {cfg.projectUrl && (
+                        <span className="ml-2 font-mono text-[11px] text-faint">
+                          ({cfg.projectUrl})
+                        </span>
+                      )}
                     </p>
                     {testResult && (
                       <p
@@ -359,9 +370,12 @@ export function CloudStorageManager({ orgSlug, connectors, isAdmin }: CloudStora
       ) : (
         <div className="rounded-xl border border-dashed border-border p-6 text-center">
           <HardDrive className="mx-auto h-8 w-8 text-muted-foreground/50" />
-          <h4 className="mt-2 text-sm font-semibold text-foreground">No cloud storage connected yet</h4>
+          <h4 className="mt-2 text-sm font-semibold text-foreground">
+            No cloud storage connected yet
+          </h4>
           <p className="mt-1 text-xs text-muted-foreground">
-            Connect Supabase, Cloudflare R2, or Backblaze below so agents can store and manage files.
+            Connect Supabase, Cloudflare R2, or Backblaze below so agents can store and manage
+            files.
           </p>
         </div>
       )}
@@ -407,7 +421,10 @@ export function CloudStorageManager({ orgSlug, connectors, isAdmin }: CloudStora
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/50 pb-3">
                 <div>
                   <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                    Supabase Storage <span className="text-xs text-emerald-400 font-normal">1 GB Free • No credit card</span>
+                    Supabase Storage{" "}
+                    <span className="text-xs text-emerald-400 font-normal">
+                      1 GB Free • No credit card
+                    </span>
                   </h4>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     Connect via OAuth or 1-click built-in storage — no API keys required!
@@ -448,7 +465,10 @@ export function CloudStorageManager({ orgSlug, connectors, isAdmin }: CloudStora
 
               {/* Manual Supabase Form */}
               {showManualForm && (
-                <form onSubmit={handleSaveManualStorage} className="space-y-3 pt-3 border-t border-border/40">
+                <form
+                  onSubmit={handleSaveManualStorage}
+                  className="space-y-3 pt-3 border-t border-border/40"
+                >
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <Field label="Connector Name" htmlFor="supa-name">
                       <Input
@@ -496,10 +516,16 @@ export function CloudStorageManager({ orgSlug, connectors, isAdmin }: CloudStora
           )}
 
           {activeProvider === "cloudflare_r2" && (
-            <form onSubmit={handleSaveManualStorage} className="space-y-3 rounded-lg border border-border/60 bg-background/50 p-4">
+            <form
+              onSubmit={handleSaveManualStorage}
+              className="space-y-3 rounded-lg border border-border/60 bg-background/50 p-4"
+            >
               <div>
                 <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                  Cloudflare R2 <span className="text-xs text-amber-400 font-normal">10 GB Free • $0 Egress Fees</span>
+                  Cloudflare R2{" "}
+                  <span className="text-xs text-amber-400 font-normal">
+                    10 GB Free • $0 Egress Fees
+                  </span>
                 </h4>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Generate an S3 token in Cloudflare Dashboard → R2 → Manage R2 API Tokens.
@@ -556,10 +582,16 @@ export function CloudStorageManager({ orgSlug, connectors, isAdmin }: CloudStora
           )}
 
           {activeProvider === "backblaze_b2" && (
-            <form onSubmit={handleSaveManualStorage} className="space-y-3 rounded-lg border border-border/60 bg-background/50 p-4">
+            <form
+              onSubmit={handleSaveManualStorage}
+              className="space-y-3 rounded-lg border border-border/60 bg-background/50 p-4"
+            >
               <div>
                 <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                  Backblaze B2 <span className="text-xs text-red-400 font-normal">10 GB Free • No credit card</span>
+                  Backblaze B2{" "}
+                  <span className="text-xs text-red-400 font-normal">
+                    10 GB Free • No credit card
+                  </span>
                 </h4>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Generate an Application Key in Backblaze Dashboard → Application Keys.
@@ -616,10 +648,16 @@ export function CloudStorageManager({ orgSlug, connectors, isAdmin }: CloudStora
           )}
 
           {activeProvider === "huggingface" && (
-            <form onSubmit={handleSaveManualStorage} className="space-y-3 rounded-lg border border-border/60 bg-background/50 p-4">
+            <form
+              onSubmit={handleSaveManualStorage}
+              className="space-y-3 rounded-lg border border-border/60 bg-background/50 p-4"
+            >
               <div>
                 <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                  Hugging Face Hub <span className="text-xs text-yellow-400 font-normal">Up to 50 GB Free • No credit card</span>
+                  Hugging Face Hub{" "}
+                  <span className="text-xs text-yellow-400 font-normal">
+                    Up to 50 GB Free • No credit card
+                  </span>
                 </h4>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Create a User Access Token (Write) in Hugging Face → Settings → Access Tokens.
@@ -655,7 +693,10 @@ export function CloudStorageManager({ orgSlug, connectors, isAdmin }: CloudStora
           )}
 
           {activeProvider === "s3_storage" && (
-            <form onSubmit={handleSaveManualStorage} className="space-y-3 rounded-lg border border-border/60 bg-background/50 p-4">
+            <form
+              onSubmit={handleSaveManualStorage}
+              className="space-y-3 rounded-lg border border-border/60 bg-background/50 p-4"
+            >
               <div>
                 <h4 className="text-sm font-semibold text-foreground">Custom S3 / MinIO Storage</h4>
                 <p className="text-xs text-muted-foreground mt-0.5">

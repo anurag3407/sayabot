@@ -8,10 +8,10 @@ Source files: `apps/orchestrator/src/scheduler/routines.ts`, `apps/orchestrator/
 
 ## 🗄️ Storage (`packages/db/src/schema/routines.ts`)
 
-| Table | Key columns | Purpose |
-| :--- | :--- | :--- |
-| `routines` | `org_id`, `room_id` (nullable), `agent_id`, `name`, `schedule_expr` (cron string), `schedule_kind` (default `"cron"`), `timezone` (default `"UTC"`), `prompt`, `enabled`, `next_run_at`, `last_run_at`, `last_status` (enum, default `"idle"`), `last_error`, `run_count`, `metadata` (jsonb — includes `deliverTo`), `created_by_user_id` / `created_by_agent_id` | Indexed for the scan: `(enabled, next_run_at)` via `routines_next_run_idx`. |
-| `routine_runs` | `routine_id`, `org_id`, `status` (default `"running"`), `started_at`, `finished_at`, `output` (≤20 000 chars), `error` | One row per execution; the audit trail surfaced in the UI. |
+| Table          | Key columns                                                                                                                                                                                                                                                                                                                                                        | Purpose                                                                     |
+| :------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------- |
+| `routines`     | `org_id`, `room_id` (nullable), `agent_id`, `name`, `schedule_expr` (cron string), `schedule_kind` (default `"cron"`), `timezone` (default `"UTC"`), `prompt`, `enabled`, `next_run_at`, `last_run_at`, `last_status` (enum, default `"idle"`), `last_error`, `run_count`, `metadata` (jsonb — includes `deliverTo`), `created_by_user_id` / `created_by_agent_id` | Indexed for the scan: `(enabled, next_run_at)` via `routines_next_run_idx`. |
+| `routine_runs` | `routine_id`, `org_id`, `status` (default `"running"`), `started_at`, `finished_at`, `output` (≤20 000 chars), `error`                                                                                                                                                                                                                                             | One row per execution; the audit trail surfaced in the UI.                  |
 
 ## 🖥️ Scheduler Loop (`src/scheduler/routines.ts`)
 
@@ -26,10 +26,9 @@ async function guardedScan(): Promise<void> {
   const pool = getPool()
   const client = await pool.connect()
   try {
-    const { rows } = await client.query(
-      "select pg_try_advisory_lock(hashtext($1)) as locked",
-      [ROUTINES_LOCK],
-    )
+    const { rows } = await client.query("select pg_try_advisory_lock(hashtext($1)) as locked", [
+      ROUTINES_LOCK,
+    ])
     if (!rows[0]?.locked) return
     try {
       await scanRoutinesOnce()
@@ -44,7 +43,7 @@ async function guardedScan(): Promise<void> {
 
 with `ROUTINES_LOCK = "mesh:routine-scheduler"` (`routines.ts:8`). `pg_try_advisory_lock` (not the blocking variant) means non-leader instances simply skip the tick; the lock is released and the client returned in `finally`. This is the same connection-scoped advisory-lock discipline as `withRoomLock` (see [service-overview.md](../engine/service-overview.md)) — lock, work, unlock, release, never on pooled queries.
 
-Note the two-layer protection: the advisory lock elects one *scanner* per fleet, and the per-routine `UPDATE … WHERE enabled = true … RETURNING` claim then makes the actual execution idempotent even if two instances somehow ran the same tick (e.g. during a lock handover).
+Note the two-layer protection: the advisory lock elects one _scanner_ per fleet, and the per-routine `UPDATE … WHERE enabled = true … RETURNING` claim then makes the actual execution idempotent even if two instances somehow ran the same tick (e.g. during a lock handover).
 
 ### `scanRoutinesOnce()` (`routines.ts:178-232`)
 
@@ -75,14 +74,17 @@ const nextRun = isValidCron(routine.scheduleExpr)
   ? getNextCronRun(routine.scheduleExpr, now, routine.timezone)
   : null
 
-await db.update(routines).set({
-  lastRunAt: now,
-  lastStatus: "success",
-  lastError: null,
-  runCount: routine.runCount + 1,
-  nextRunAt: nextRun,
-  updatedAt: now,
-}).where(eq(routines.id, routine.id))
+await db
+  .update(routines)
+  .set({
+    lastRunAt: now,
+    lastStatus: "success",
+    lastError: null,
+    runCount: routine.runCount + 1,
+    nextRunAt: nextRun,
+    updatedAt: now,
+  })
+  .where(eq(routines.id, routine.id))
 ```
 
 An invalid cron expression yields `nextRunAt: null`, meaning "won't re-fire until fixed" — a broken schedule degrades to a one-shot instead of erroring every tick. The `routine_runs` row is marked `success` with a placeholder output ("Sent to @agent. Waiting for the reply…") — replaced later by `recordRoutineResult`.
@@ -125,7 +127,7 @@ export interface RoutineTrigger {
 `recordRoutineResult({ metadata, roomId, agentId, reply, error })` (`routine-results.ts:33-74`) is called by the reply paths when the triggered turn ends (`src/engine/run.ts:296`, `src/runner/llm.ts:378`); the comment at `routine-results.ts:31` notes "`reply` and `error` must already be redacted" — the callers pass `redactSecrets`-processed text. It:
 
 1. Updates the `routine_runs` row: `status = failed` when there is an error **or no reply** (with `"The agent finished without a reply"` as the implicit error), else `success` with `output = reply.slice(0, MAX_OUTPUT = 20_000)`.
-2. On failure, flips the routine's `lastStatus`/`lastError` too — so the UI reflects reality even though `runRoutineNow` already stamped `success` when *queuing*.
+2. On failure, flips the routine's `lastStatus`/`lastError` too — so the UI reflects reality even though `runRoutineNow` already stamped `success` when _queuing_.
 3. Fires `notifyRoutineFinished({ roomId, agentId, routineName, ownerUserId: routine.createdByUserId, summary, failed })` (from `src/push.ts`) to alert the routine's creator — see [push-usage-plans.md](./push-usage-plans.md).
 
 A message without the routine marker (any normal human or agent message) short-circuits at `readRoutineTrigger` returning `null`, so the result hook is free to run on every turn end.
@@ -136,13 +138,14 @@ Routine metadata is user-editable, so `deliverTo: { connectorId, chatId }` is ho
 
 ## 🧪 Tests
 
-| Test file | Covers |
-| :--- | :--- |
+| Test file                                                  | Covers                                                                                                     |
+| :--------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------- |
 | `apps/orchestrator/src/scheduler/routine-delivery.test.ts` | `resolveRoutineDelivery` acceptance/rejection rules (source, org, active, inbound enabled, allowed chats). |
 
 ---
 
 Related docs:
+
 - [Meeting scheduler](./scheduler-meetings.md) — the sibling interval scheduler on the same boot path
 - [Connector platform](./connector-platform.md) — `deliverInboundReply`, which external delivery rides on
 - [Internal API & jobs](./internal-api-and-jobs.md) — the `POST /internal/routines/:id/run` trigger

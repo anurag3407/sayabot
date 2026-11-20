@@ -23,12 +23,24 @@ export interface AgentUsage {
   lastAt: string | null
   /** The model this agent spent the most tokens on. */
   topModel: string | null
-  byModel: Array<{ provider: string; model: string; requests: number; tokens: number; costUsd: number }>
+  byModel: Array<{
+    provider: string
+    model: string
+    requests: number
+    tokens: number
+    costUsd: number
+  }>
 }
 
 export function usageByAgent(rows: readonly UsageRollupRow[]): Map<string, AgentUsage> {
   const out = new Map<string, AgentUsage>()
-  const models = new Map<string, Map<string, { provider: string; model: string; requests: number; tokens: number; costUsd: number }>>()
+  const models = new Map<
+    string,
+    Map<
+      string,
+      { provider: string; model: string; requests: number; tokens: number; costUsd: number }
+    >
+  >()
   for (const row of rows) {
     if (!row.agent_id) continue
     const u = out.get(row.agent_id) ?? {
@@ -50,7 +62,13 @@ export function usageByAgent(rows: readonly UsageRollupRow[]): Map<string, Agent
     out.set(row.agent_id, u)
     const perAgent = models.get(row.agent_id) ?? new Map()
     const key = `${row.provider}:${row.model}`
-    const m = perAgent.get(key) ?? { provider: row.provider, model: row.model, requests: 0, tokens: 0, costUsd: 0 }
+    const m = perAgent.get(key) ?? {
+      provider: row.provider,
+      model: row.model,
+      requests: 0,
+      tokens: 0,
+      costUsd: 0,
+    }
     m.requests += row.requests
     m.tokens += row.input_tokens + row.output_tokens
     m.costUsd += row.cost_usd

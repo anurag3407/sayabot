@@ -45,7 +45,10 @@ function parseIpv6Words(ip: string): Ipv6Words | null {
   let parts: string[] = []
   if (doubleColon !== -1) {
     const left = clean.slice(0, doubleColon).split(":").filter(Boolean)
-    const right = clean.slice(doubleColon + 2).split(":").filter(Boolean)
+    const right = clean
+      .slice(doubleColon + 2)
+      .split(":")
+      .filter(Boolean)
     const missing = 8 - (left.length + right.length)
     if (missing < 0) return null
     parts = [...left, ...Array<string>(missing).fill("0"), ...right]
@@ -60,7 +63,10 @@ function parseIpv6Words(ip: string): Ipv6Words | null {
 }
 
 export function isPrivateIp(rawIp: string): boolean {
-  const ip = rawIp.replace(/^\[|\]$/g, "").trim().toLowerCase()
+  const ip = rawIp
+    .replace(/^\[|\]$/g, "")
+    .trim()
+    .toLowerCase()
   if (ip === "127.0.0.1" || ip === "::1" || ip === "localhost" || ip === "::") return true
 
   const ipVersion = isIP(ip)
@@ -120,7 +126,15 @@ export function isPrivateIp(rawIp: string): boolean {
     }
 
     // IPv4-compatible IPv6: ::a.b.c.d
-    if (w0 === 0 && w1 === 0 && w2 === 0 && w3 === 0 && w4 === 0 && w5 === 0 && (w6 !== 0 || w7 > 1)) {
+    if (
+      w0 === 0 &&
+      w1 === 0 &&
+      w2 === 0 &&
+      w3 === 0 &&
+      w4 === 0 &&
+      w5 === 0 &&
+      (w6 !== 0 || w7 > 1)
+    ) {
       const embeddedIpv4 = `${w6 >> 8}.${w6 & 0xff}.${w7 >> 8}.${w7 & 0xff}`
       return isPrivateIp(embeddedIpv4)
     }
@@ -156,7 +170,10 @@ export function isPrivateIp(rawIp: string): boolean {
 }
 
 export async function assertSafeEgressHost(hostname: string): Promise<string[]> {
-  const cleanHost = hostname.replace(/^\[|\]$/g, "").trim().toLowerCase()
+  const cleanHost = hostname
+    .replace(/^\[|\]$/g, "")
+    .trim()
+    .toLowerCase()
   if (!cleanHost) throw new Error("SSRF blocked: empty host")
 
   // Proactively block localhost and local/internal suffixes without waiting for DNS

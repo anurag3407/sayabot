@@ -34,7 +34,10 @@ async function tick(): Promise<void> {
 }
 
 async function sync(): Promise<void> {
-  const rows = await getDb().select().from(workspaceConnectors).where(eq(workspaceConnectors.source, "discord"))
+  const rows = await getDb()
+    .select()
+    .from(workspaceConnectors)
+    .where(eq(workspaceConnectors.source, "discord"))
   const wanted = new Set<string>()
   for (const row of rows) {
     const inbound = ((row.config ?? {}) as { inbound?: { enabled?: boolean } }).inbound
@@ -73,18 +76,31 @@ async function connect(connectorId: string, token: string): Promise<void> {
   sockets.set(connectorId, ws)
   let heartbeat: ReturnType<typeof setInterval> | undefined
   ws.on("message", (raw) => {
-    let packet: { op?: number; t?: string; d?: Record<string, unknown> & { heartbeat_interval?: number } }
+    let packet: {
+      op?: number
+      t?: string
+      d?: Record<string, unknown> & { heartbeat_interval?: number }
+    }
     try {
       packet = JSON.parse(raw.toString())
     } catch {
       return
     }
     if (packet.op === 10 && packet.d?.heartbeat_interval) {
-      heartbeat = setInterval(() => ws.send(JSON.stringify({ op: 1, d: null })), packet.d.heartbeat_interval)
-      ws.send(JSON.stringify({
-        op: 2,
-        d: { token, intents: INTENTS, properties: { os: "linux", browser: "sayabot", device: "sayabot" } },
-      }))
+      heartbeat = setInterval(
+        () => ws.send(JSON.stringify({ op: 1, d: null })),
+        packet.d.heartbeat_interval,
+      )
+      ws.send(
+        JSON.stringify({
+          op: 2,
+          d: {
+            token,
+            intents: INTENTS,
+            properties: { os: "linux", browser: "sayabot", device: "sayabot" },
+          },
+        }),
+      )
     }
     if (packet.op === 0 && packet.t === "MESSAGE_CREATE") void onMessage(connectorId, packet.d)
   })
@@ -96,7 +112,10 @@ async function connect(connectorId: string, token: string): Promise<void> {
   ws.on("error", stop)
 }
 
-async function onMessage(connectorId: string, data: Record<string, unknown> | undefined): Promise<void> {
+async function onMessage(
+  connectorId: string,
+  data: Record<string, unknown> | undefined,
+): Promise<void> {
   if (!data) return
   const author = data.author as { bot?: boolean; username?: string } | undefined
   if (author?.bot) return
@@ -112,5 +131,7 @@ async function onMessage(connectorId: string, data: Record<string, unknown> | un
     sender: author?.username ? `@${author.username}` : "Someone",
     text,
     trusted: true,
-  }).catch((error) => console.warn("[discord] inbound failed", error instanceof Error ? error.message : error))
+  }).catch((error) =>
+    console.warn("[discord] inbound failed", error instanceof Error ? error.message : error),
+  )
 }

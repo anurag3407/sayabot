@@ -1,6 +1,14 @@
 "use client"
 
-import { animate, createAnimatable, createScope, onScroll, splitText, stagger, type Scope } from "animejs"
+import {
+  animate,
+  createAnimatable,
+  createScope,
+  onScroll,
+  splitText,
+  stagger,
+  type Scope,
+} from "animejs"
 import { useEffect } from "react"
 import { afterFonts } from "./motion"
 
@@ -28,12 +36,16 @@ export function LandingMotion() {
         autoplay: onScroll({ target: page, enter: "top top", leave: "bottom bottom", sync: true }),
       })
 
-      const onScreen = (element: Element) => element.getBoundingClientRect().top < window.innerHeight * 0.9
+      const onScreen = (element: Element) =>
+        element.getBoundingClientRect().top < window.innerHeight * 0.9
 
       let splits: { element: HTMLElement; split: ReturnType<typeof splitText> }[] = []
       const stopFonts = afterFonts(self, () => {
         splits = Array.from(page.querySelectorAll<HTMLElement>("[data-split]")).map((element) => {
-          const split = splitText(element, { lines: { wrap: "clip" }, words: { class: "l-split-word" } })
+          const split = splitText(element, {
+            lines: { wrap: "clip" },
+            words: { class: "l-split-word" },
+          })
           split.addEffect(({ words }: { words: HTMLElement[] }) => {
             if (element.dataset.played) return
             words.forEach((word) => (word.style.transform = "translateY(112%)"))
@@ -43,7 +55,9 @@ export function LandingMotion() {
         })
       })
 
-      const reveals = Array.from(page.querySelectorAll<HTMLElement>("[data-reveal]")).filter((element) => !onScreen(element))
+      const reveals = Array.from(page.querySelectorAll<HTMLElement>("[data-reveal]")).filter(
+        (element) => !onScreen(element),
+      )
       reveals.forEach((element) => {
         element.style.opacity = "0"
         element.style.transform = "translateY(36px) scale(0.985)"
@@ -51,7 +65,9 @@ export function LandingMotion() {
 
       observer = new IntersectionObserver(
         (entries) => {
-          const entering = entries.filter((entry) => entry.isIntersecting).map((entry) => entry.target as HTMLElement)
+          const entering = entries
+            .filter((entry) => entry.isIntersecting)
+            .map((entry) => entry.target as HTMLElement)
           if (!entering.length) return
           entering.forEach((element) => observer?.unobserve(element))
 
@@ -88,7 +104,12 @@ export function LandingMotion() {
         animate(element, {
           translateY: [0, Number(element.dataset.parallax)],
           ease: "linear",
-          autoplay: onScroll({ target: element, enter: "bottom top", leave: "top bottom", sync: true }),
+          autoplay: onScroll({
+            target: element,
+            enter: "bottom top",
+            leave: "top bottom",
+            sync: true,
+          }),
         })
       })
 
@@ -111,8 +132,11 @@ export function LandingMotion() {
       }
       return tilt
     }
-    const set = (tilt: ReturnType<typeof createAnimatable>, key: "rotateX" | "rotateY", value: number) =>
-      (tilt[key] as unknown as (next: number) => unknown)(value)
+    const set = (
+      tilt: ReturnType<typeof createAnimatable>,
+      key: "rotateX" | "rotateY",
+      value: number,
+    ) => (tilt[key] as unknown as (next: number) => unknown)(value)
 
     const onMove = (event: PointerEvent) => {
       const target = event.target as Element | null

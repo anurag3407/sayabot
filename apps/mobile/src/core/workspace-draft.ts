@@ -10,7 +10,12 @@ export function roomNameSlug(name: string): string {
 }
 
 export function taskPriority(metadata: unknown): TaskPriority {
-  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata) || !("priority" in metadata)) {
+  if (
+    !metadata ||
+    typeof metadata !== "object" ||
+    Array.isArray(metadata) ||
+    !("priority" in metadata)
+  ) {
     return "medium"
   }
   const value = (metadata as { priority?: unknown }).priority
@@ -32,7 +37,9 @@ export function taskInsertRow(input: {
 }) {
   const priority = input.priority ?? "medium"
   const turns =
-    typeof input.budgetTurns === "number" && Number.isFinite(input.budgetTurns) && input.budgetTurns > 0
+    typeof input.budgetTurns === "number" &&
+    Number.isFinite(input.budgetTurns) &&
+    input.budgetTurns > 0
       ? Math.min(60, Math.floor(input.budgetTurns))
       : 12
   return {

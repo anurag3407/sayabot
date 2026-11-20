@@ -44,9 +44,7 @@ export function detectRepeatedToolCalls(
 ): string | null {
   if (steps.length < threshold) return null
   const recent = steps.slice(-threshold)
-  const signatures = recent.map((s) =>
-    (s.toolCalls ?? []).map(callSignature).sort().join("|"),
-  )
+  const signatures = recent.map((s) => (s.toolCalls ?? []).map(callSignature).sort().join("|"))
   const first = signatures[0]
   if (!first) return null
   if (signatures.every((sig) => sig === first)) {
@@ -65,7 +63,10 @@ export function systemReminder(text: string): UserModelMessage {
 }
 
 export function steeringMessage(interrupts: RunInterrupt[]): UserModelMessage {
-  const body = interrupts.map((i) => i.content.trim()).filter(Boolean).join("\n\n")
+  const body = interrupts
+    .map((i) => i.content.trim())
+    .filter(Boolean)
+    .join("\n\n")
   return {
     role: "user",
     content:
@@ -165,7 +166,8 @@ export function decidePrepareStep(input: PrepareStepInput): PrepareStepDecision 
 export const MODEL_OUTPUT_CHAR_LIMIT = 40_000
 const STRING_FIELD_LIMIT = 16_000
 
-const DIAGNOSTIC_LINE = /\b(error|exception|traceback|panic|fatal|failed|assertionerror|expected|received)\b|^\s+at .+[:(]\d+/i
+const DIAGNOSTIC_LINE =
+  /\b(error|exception|traceback|panic|fatal|failed|assertionerror|expected|received)\b|^\s+at .+[:(]\d+/i
 
 export function foldOutput(value: string, limit: number): string {
   if (value.length <= limit) return value
@@ -178,7 +180,10 @@ export function foldOutput(value: string, limit: number): string {
     if (!DIAGNOSTIC_LINE.test(lines[i]!)) continue
     for (let j = Math.max(0, i - 1); j <= Math.min(lines.length - 1, i + 2); j++) {
       if (included.has(j)) continue
-      const line = `${j + 1} | ${lines[j]}`.slice(0, Math.max(0, diagnosticBudget - diagnosticChars))
+      const line = `${j + 1} | ${lines[j]}`.slice(
+        0,
+        Math.max(0, diagnosticBudget - diagnosticChars),
+      )
       if (!line) break
       diagnostics.push(line)
       diagnosticChars += line.length + 1
@@ -190,7 +195,10 @@ export function foldOutput(value: string, limit: number): string {
   const remaining = Math.max(0, limit - excerpt.length - marker.length)
   const head = Math.floor(remaining * 0.65)
   const tail = remaining - head
-  return `${value.slice(0, head)}${excerpt}${marker}${tail ? value.slice(-tail) : ""}`.slice(0, limit)
+  return `${value.slice(0, head)}${excerpt}${marker}${tail ? value.slice(-tail) : ""}`.slice(
+    0,
+    limit,
+  )
 }
 
 function truncateDeep(value: unknown, limit: number, depth = 0): unknown {
@@ -224,7 +232,8 @@ export function capToolOutputForModel(value: unknown, limit = MODEL_OUTPUT_CHAR_
   } catch {
     return { error: "Tool output was not serializable" }
   }
-  if (!Number.isFinite(limit) || limit < 128) throw new Error("Output limit must be at least 128 characters")
+  if (!Number.isFinite(limit) || limit < 128)
+    throw new Error("Output limit must be at least 128 characters")
   if (json.length <= limit) return value
   const truncated = truncateDeep(value, Math.min(STRING_FIELD_LIMIT, Math.floor(limit / 2)))
   const truncatedJson = JSON.stringify(truncated) ?? "null"

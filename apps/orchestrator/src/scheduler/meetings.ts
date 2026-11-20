@@ -75,13 +75,7 @@ async function loadEveningRollup(roomId: string): Promise<string> {
     db
       .select({ count: sql<number>`count(*)::int` })
       .from(tasks)
-      .where(
-        and(
-          eq(tasks.roomId, roomId),
-          eq(tasks.kind, "request"),
-          eq(tasks.status, "open"),
-        ),
-      ),
+      .where(and(eq(tasks.roomId, roomId), eq(tasks.kind, "request"), eq(tasks.status, "open"))),
   ])
 
   const agentCount = agentsRes[0]?.count ?? 0
@@ -147,7 +141,10 @@ async function postMeetingPrompt(args: {
     })
     .returning({ id: messages.id })
   if (!message) throw new Error("could not post the meeting prompt")
-  await db.update(meetings).set({ promptMessageId: message.id }).where(eq(meetings.id, args.meetingId))
+  await db
+    .update(meetings)
+    .set({ promptMessageId: message.id })
+    .where(eq(meetings.id, args.meetingId))
   await enqueueRoomMessage(args.room.id, message.id)
 }
 
@@ -215,9 +212,7 @@ async function recurringAlreadyStarted(
     .where(and(eq(meetings.roomId, roomId), eq(meetings.kind, "meeting")))
     .orderBy(desc(meetings.startsAt))
     .limit(20)
-  return rows.some(
-    (row) => row.metadata.slot === slot && row.metadata.localDate === localDate,
-  )
+  return rows.some((row) => row.metadata.slot === slot && row.metadata.localDate === localDate)
 }
 
 async function scanOnce(): Promise<void> {
@@ -237,11 +232,7 @@ async function scanOnce(): Promise<void> {
     .select()
     .from(meetings)
     .where(
-      and(
-        eq(meetings.status, "scheduled"),
-        lte(meetings.startsAt, now),
-        gt(meetings.endsAt, now),
-      ),
+      and(eq(meetings.status, "scheduled"), lte(meetings.startsAt, now), gt(meetings.endsAt, now)),
     )
     .limit(20)
   for (const meeting of scheduled) {
@@ -319,9 +310,7 @@ async function scanOnce(): Promise<void> {
       isWithinWindow(local, schedule.checkinStartMinutes, schedule.checkinEndMinutes)
     ) {
       if (await activeMeetingExists(room.id)) continue
-      const cutoff = new Date(
-        now.getTime() - schedule.checkinIntervalMinutes * 60_000,
-      )
+      const cutoff = new Date(now.getTime() - schedule.checkinIntervalMinutes * 60_000)
       const [claimed] = await db
         .update(roomSchedules)
         .set({ lastCheckinAt: now, updatedAt: now })
@@ -329,10 +318,7 @@ async function scanOnce(): Promise<void> {
           and(
             eq(roomSchedules.roomId, room.id),
             eq(roomSchedules.checkinsEnabled, true),
-            or(
-              isNull(roomSchedules.lastCheckinAt),
-              lte(roomSchedules.lastCheckinAt, cutoff),
-            ),
+            or(isNull(roomSchedules.lastCheckinAt), lte(roomSchedules.lastCheckinAt, cutoff)),
           ),
         )
         .returning({ roomId: roomSchedules.roomId })
@@ -362,13 +348,7 @@ async function scanOnce(): Promise<void> {
       dueAt: tasks.dueAt,
     })
     .from(tasks)
-    .where(
-      and(
-        eq(tasks.status, "open"),
-        eq(tasks.unblockNeeds, "time"),
-        lte(tasks.dueAt, now),
-      ),
-    )
+    .where(and(eq(tasks.status, "open"), eq(tasks.unblockNeeds, "time"), lte(tasks.dueAt, now)))
     .limit(10)
 
   for (const task of dueTasks) {
@@ -423,10 +403,9 @@ async function scanOnce(): Promise<void> {
 async function guardedScan(): Promise<void> {
   const client = await getPool().connect()
   try {
-    const { rows } = await client.query(
-      "select pg_try_advisory_lock(hashtext($1)) as locked",
-      [SCHEDULER_LOCK],
-    )
+    const { rows } = await client.query("select pg_try_advisory_lock(hashtext($1)) as locked", [
+      SCHEDULER_LOCK,
+    ])
     if (!rows[0]?.locked) return
     try {
       await scanOnce()

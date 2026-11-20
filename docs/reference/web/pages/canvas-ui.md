@@ -52,15 +52,22 @@ The other tabs, for context:
 const doc = new Y.Doc()
 const provider = new HocuspocusProvider({
   url: process.env.NEXT_PUBLIC_COLLAB_URL ?? "ws://localhost:4000/collab",
-  name: canvas.id,          // the provider document name is the canvas id
+  name: canvas.id, // the provider document name is the canvas id
   document: doc,
   token: async () => {
     const { data } = await supabase.auth.getSession()
-    return data.session?.access_token ?? ""   // Supabase JWT, checked server-side
+    return data.session?.access_token ?? "" // Supabase JWT, checked server-side
   },
   onAuthenticationFailed: () => setConnection("denied"),
   onSynced: () => setConnection("synced"),
-  onStatus: ({ status }) => setConnection(status === "connected" ? "connected" : status === "connecting" ? "connecting" : "disconnected"),
+  onStatus: ({ status }) =>
+    setConnection(
+      status === "connected"
+        ? "connected"
+        : status === "connecting"
+          ? "connecting"
+          : "disconnected",
+    ),
   onClose: () => setConnection("disconnected"),
 })
 provider.setAwarenessField("user", { id: userId, name: userName, color: colorForUser(userId) })
@@ -77,11 +84,11 @@ Details that matter:
 
 ### Presence helpers (`lib/canvas-presence.ts`)
 
-| Export | Behaviour |
-| :--- | :--- |
-| `colorForUser(userId)` | Stable color from an 8-color palette (`#ff7a45`, `#7dd3c0`, `#b79cf5`, `#ffd08a`, `#7fb2ff`, `#f08fb0`, `#a6d86f`, `#f5b26b`) via a 31-based hash of the user id. |
-| `peersFromAwareness(states, selfClientId)` | Filters out self and non-integer client ids; treats awareness as **untrusted** — requires a string `user.name`, accepts only `/^#[0-9a-f]{6}$/i` colors, truncates names to 60 chars, falls back to `"someone"`. |
-| `remoteCursorCss(peers)` | "y-monaco only adds per-client class names; the colours and labels have to come from us" (`canvas-presence.ts:42`): generates per-peer rules for `yRemoteSelection-<id>` (background `${color}40`), `yRemoteSelectionHead-<id>` (2px caret border) and its `::after` name label (colored chip, `#0b0e0c` text). Names are sanitized to `\p{L}\p{M}\p{N} ._'-` (max 32 chars) and quoted into CSS `content`, making the injection safe. |
+| Export                                     | Behaviour                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| :----------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `colorForUser(userId)`                     | Stable color from an 8-color palette (`#ff7a45`, `#7dd3c0`, `#b79cf5`, `#ffd08a`, `#7fb2ff`, `#f08fb0`, `#a6d86f`, `#f5b26b`) via a 31-based hash of the user id.                                                                                                                                                                                                                                                                      |
+| `peersFromAwareness(states, selfClientId)` | Filters out self and non-integer client ids; treats awareness as **untrusted** — requires a string `user.name`, accepts only `/^#[0-9a-f]{6}$/i` colors, truncates names to 60 chars, falls back to `"someone"`.                                                                                                                                                                                                                       |
+| `remoteCursorCss(peers)`                   | "y-monaco only adds per-client class names; the colours and labels have to come from us" (`canvas-presence.ts:42`): generates per-peer rules for `yRemoteSelection-<id>` (background `${color}40`), `yRemoteSelectionHead-<id>` (2px caret border) and its `::after` name label (colored chip, `#0b0e0c` text). Names are sanitized to `\p{L}\p{M}\p{N} ._'-` (max 32 chars) and quoted into CSS `content`, making the injection safe. |
 
 ## 🕘 Version History (`canvas-versions.tsx`)
 
@@ -93,11 +100,11 @@ A `useActionState` form over the `createCanvas` server action: title (1–60 cha
 
 ## ⚙️ Canvas Server Actions (`lib/actions/canvas.ts`)
 
-| Action | Auth | Behaviour |
-| :--- | :--- | :--- |
-| `createCanvas(prev, formData)` | session user + `getRoomAccess` | Inserts into `canvases` (`kind` zod-enum `markdown|code|svg|html`, `language` only persisted for `code`, `snapshot_text: ""`, `created_by`), audits `canvas.created` with `{ roomId, title, kind }`, `revalidateOrg`. Returns `{ canvasId }`. |
+| Action                                                 | Auth                           | Behaviour                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| :----------------------------------------------------- | :----------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `createCanvas(prev, formData)`                         | session user + `getRoomAccess` | Inserts into `canvases` (`kind` zod-enum `markdown                                                                                                                                                                                                                                                                                                                                                                                                                                 | code | svg | html`, `language`only persisted for`code`, `snapshot_text: ""`, `created_by`), audits `canvas.created`with`{ roomId, title, kind }`, `revalidateOrg`. Returns `{ canvasId }`. |
 | `restoreCanvasVersion({ orgSlug, roomId, versionId })` | session user + `getRoomAccess` | Reads the `canvas_versions` row with the browser-level client (so RLS applies), verifies the canvas belongs to the room, then calls `restoreCanvasInOrchestrator(canvasId, userId, version.snapshot_text)` (`src/lib/orchestrator.ts`) — restoration goes **through the orchestrator** so the new text is applied to the live Yjs doc and recorded as a version; failure returns "The orchestrator could not restore the canvas. Is it running?" Audits `canvas.version_restored`. |
-| `deleteCanvasAction({ orgSlug, roomId, canvasId })` | `adminRoomAccess` (admin-only) | Verifies the canvas belongs to the room, deletes the row (version history cascades per schema), audits `canvas.deleted` with `{ roomId, title }`, revalidates. |
+| `deleteCanvasAction({ orgSlug, roomId, canvasId })`    | `adminRoomAccess` (admin-only) | Verifies the canvas belongs to the room, deletes the row (version history cascades per schema), audits `canvas.deleted` with `{ roomId, title }`, revalidates.                                                                                                                                                                                                                                                                                                                     |
 
 All three audit through the `audit()` helper from `src/lib/actions/shared.ts`, keeping a complete `canvas.created` / `canvas.version_restored` / `canvas.deleted` trail in the database. The realtime hook in the room also subscribes to `postgres_changes` on `canvases` (see the room chat page) — canvas list changes trigger a debounced `router.refresh()` while content edits flow through the collab socket instead.
 

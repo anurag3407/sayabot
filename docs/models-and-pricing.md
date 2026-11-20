@@ -6,15 +6,15 @@ OpenMausBot (which follows OpenCode and T3 Code). Code: [`packages/llm/src/model
 
 ## Where each piece comes from
 
-| What | Source | Refresh | Code |
-| :-- | :-- | :-- | :-- |
-| Prices, context windows, per-model effort levels for every provider | `https://models.dev/api.json` | daily, with an ETag; falls back to our cache, then OpenCode's `~/.cache/opencode/models.json`, then the bundled snapshot | `models-dev.ts` |
-| Claude Code / Codex / Cursor model lists, CLI version floors, price overrides | [`model-manifest.json`](../packages/llm/src/models/model-manifest.json), fetched from GitHub `main` | hourly; 5 minutes after someone opens the picker | `manifest.ts` |
-| Codex models for the signed-in account (with each model's effort levels and default) | `codex app-server`, JSON-RPC `model/list` | kept 6 hours on disk; then `~/.codex/models_cache.json`; then the manifest | `engine-models.ts` |
-| Claude models the organization blocks | `modelAccessCache` in `~/.claude.json` | every picker open | `engine-models.ts` |
-| A saved API key's models | `GET {base}/models` (HTTPS only, no redirects) | 10 minutes per key; models.dev list when the provider can't be read | `provider-models.ts` |
-| OpenRouter prices and free models | OpenRouter `/models` pricing; `/key` → `is_free_tier` | with the key's list | `provider-models.ts` |
-| Plan name and 5-hour / weekly / monthly usage | `api.anthropic.com/api/oauth/usage`, `chatgpt.com/backend-api/wham/usage`, with the token the CLI saved (`~/.claude/.credentials.json` or the Keychain, `~/.codex/auth.json`) | 45 seconds | `plan-usage.ts` |
+| What                                                                                 | Source                                                                                                                                                                        | Refresh                                                                                                                  | Code                 |
+| :----------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------- | :------------------- |
+| Prices, context windows, per-model effort levels for every provider                  | `https://models.dev/api.json`                                                                                                                                                 | daily, with an ETag; falls back to our cache, then OpenCode's `~/.cache/opencode/models.json`, then the bundled snapshot | `models-dev.ts`      |
+| Claude Code / Codex / Cursor model lists, CLI version floors, price overrides        | [`model-manifest.json`](../packages/llm/src/models/model-manifest.json), fetched from GitHub `main`                                                                           | hourly; 5 minutes after someone opens the picker                                                                         | `manifest.ts`        |
+| Codex models for the signed-in account (with each model's effort levels and default) | `codex app-server`, JSON-RPC `model/list`                                                                                                                                     | kept 6 hours on disk; then `~/.codex/models_cache.json`; then the manifest                                               | `engine-models.ts`   |
+| Claude models the organization blocks                                                | `modelAccessCache` in `~/.claude.json`                                                                                                                                        | every picker open                                                                                                        | `engine-models.ts`   |
+| A saved API key's models                                                             | `GET {base}/models` (HTTPS only, no redirects)                                                                                                                                | 10 minutes per key; models.dev list when the provider can't be read                                                      | `provider-models.ts` |
+| OpenRouter prices and free models                                                    | OpenRouter `/models` pricing; `/key` → `is_free_tier`                                                                                                                         | with the key's list                                                                                                      | `provider-models.ts` |
+| Plan name and 5-hour / weekly / monthly usage                                        | `api.anthropic.com/api/oauth/usage`, `chatgpt.com/backend-api/wham/usage`, with the token the CLI saved (`~/.claude/.credentials.json` or the Keychain, `~/.codex/auth.json`) | 45 seconds                                                                                                               | `plan-usage.ts`      |
 
 The usage endpoints are the ones Claude Code's `/usage` and Codex's `/status` call. They are not
 public APIs: when one changes shape, the picker shows "returned an unexpected usage response"
@@ -54,10 +54,10 @@ keeps its old price. `pnpm --filter @sayabot/llm test` checks the file.
 
 **Environment:**
 
-| Variable | Effect |
-| :-- | :-- |
-| `SAYABOT_DATA_DIR` | Where caches live (default `~/.sayabot`; caches under `providers/`) |
-| `SAYABOT_MODEL_MANIFEST_URL` | Read the manifest from somewhere else (a fork) |
-| `SAYABOT_DISABLE_MODEL_MANIFEST_FETCH=1` | Use only the bundled manifest |
-| `SAYABOT_DISABLE_MODEL_CATALOG_FETCH=1` | Never call models.dev |
-| `SAYABOT_CLAUDE_PATH`, `SAYABOT_CODEX_PATH`, `SAYABOT_CURSOR_PATH` | CLI locations |
+| Variable                                                           | Effect                                                              |
+| :----------------------------------------------------------------- | :------------------------------------------------------------------ |
+| `SAYABOT_DATA_DIR`                                                 | Where caches live (default `~/.sayabot`; caches under `providers/`) |
+| `SAYABOT_MODEL_MANIFEST_URL`                                       | Read the manifest from somewhere else (a fork)                      |
+| `SAYABOT_DISABLE_MODEL_MANIFEST_FETCH=1`                           | Use only the bundled manifest                                       |
+| `SAYABOT_DISABLE_MODEL_CATALOG_FETCH=1`                            | Never call models.dev                                               |
+| `SAYABOT_CLAUDE_PATH`, `SAYABOT_CODEX_PATH`, `SAYABOT_CURSOR_PATH` | CLI locations                                                       |

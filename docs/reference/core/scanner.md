@@ -78,7 +78,7 @@ The parser carries rolling state across lines: `currentSessionId`, `currentModel
 - `thread_settings_applied` — updates `service_tier` (`priority`/`fast` → `fast`, `ultrafast` → `ultrafast`, else `standard`) and model.
 - **Fork burst suppression** — events within 1000 ms of the fork anchor are skipped (they are copied parent history, not new usage); the flag clears after that window.
 - `token_usage_record` — the modern path: builds `UsageTokenTotals` where `uncachedInputTokens = max(0, input - cached_input - cache_write_input)`, costing and pushing immediately. Dedupe key / record id: `codex:<sessionId>:<turnId|lineIndex>:<timestampMs>`.
-- `token_count` — collected as a **fallback** list; used only when the file contained *zero* `token_usage_record` entries (older Codex builds), producing identical records. This makes the scanner robust across Codex versions without double-counting either format.
+- `token_count` — collected as a **fallback** list; used only when the file contained _zero_ `token_usage_record` entries (older Codex builds), producing identical records. This makes the scanner robust across Codex versions without double-counting either format.
 
 ---
 
@@ -90,7 +90,7 @@ The most involved scanner: Antigravity stores conversations as **SQLite database
 
 - Default directories: `~/.gemini/antigravity/conversations`, `~/.gemini/antigravity-cli/conversations`, `~/.gemini/antigravity-ide/conversations`, `~/.config/antigravity/conversations`, plus a comma-separated `ANTIGRAVITY_DATA_DIR` env override (each entry getting `/conversations` appended unless it already ends with it).
 - Each `*.db` file is one conversation (session id = basename). The DB is opened with **`readOnly: true`** via `node:sqlite`, and closed in a `finally`.
-- **`node:sqlite` availability guard** (`loadSqlite`, `antigravity.ts:12`): the module is looked up via `process.getBuiltinModule` at call time because it only exists on Node 22.5+; Electron 34 (the Mac app) runs Node 20, so there Antigravity history is *skipped* instead of crashing every scan.
+- **`node:sqlite` availability guard** (`loadSqlite`, `antigravity.ts:12`): the module is looked up via `process.getBuiltinModule` at call time because it only exists on Node 22.5+; Electron 34 (the Mac app) runs Node 20, so there Antigravity history is _skipped_ instead of crashing every scan.
 
 ### Protobuf decoding (`parseProtobufFields`)
 
@@ -132,13 +132,13 @@ Steps, generations, and retries frequently describe the **same call**. Candidate
 
 `estimateLocalLimits(records)` (`scanner/limits.ts:22`) produces the dashboard gauges **estimated purely from scanned history** — these are Sayabot's own approximations, distinct from the provider-reported values in `plan-limits.ts`. A provider group is only emitted when that provider has records in the window.
 
-| Group | Windows | Caps | Reset rule |
-| :--- | :--- | :--- | :--- |
-| Antigravity ("Google CloudCode Pro") | 5-hour session + weekly | 250k tokens / 5 h, 5M / week | 5 h: oldest record in window + 5 h; weekly: next Sunday 00:00 UTC |
-| Claude Code ("Anthropic Max Tier") | 5-hour sliding + weekly pool | 300k / 5 h, 6M / week | same rules |
-| Codex ("OpenAI Codex Subscription") | weekly only | 10M / week | next Sunday 00:00 UTC |
+| Group                                | Windows                      | Caps                         | Reset rule                                                        |
+| :----------------------------------- | :--------------------------- | :--------------------------- | :---------------------------------------------------------------- |
+| Antigravity ("Google CloudCode Pro") | 5-hour session + weekly      | 250k tokens / 5 h, 5M / week | 5 h: oldest record in window + 5 h; weekly: next Sunday 00:00 UTC |
+| Claude Code ("Anthropic Max Tier")   | 5-hour sliding + weekly pool | 300k / 5 h, 6M / week        | same rules                                                        |
+| Codex ("OpenAI Codex Subscription")  | weekly only                  | 10M / week                   | next Sunday 00:00 UTC                                             |
 
-Token sums count `uncached + cached + output` (cache-creation excluded). `usedPercent` is capped at 100. The 5-hour `pace` is derived by comparing usage against the *elapsed fraction* of the window (±15pp tolerance → `ahead`/`on`/`under`); weekly windows use fixed thresholds (`>50%` → `ahead`); Codex is always reported `pace: "under"`. `resetsInText` renders as `"Resets in 2d 3h"` / `"3h 10m"` / `"12m"` / `"Resetting now"` via `formatDurationRemaining`. Display metadata is fixed per provider (`color: "#6366f1"` / `"#d97706"` / `"#10a37f"`), with `accountName` strings like `"Personal (Gemini 3.8 & Claude 4.5)"`.
+Token sums count `uncached + cached + output` (cache-creation excluded). `usedPercent` is capped at 100. The 5-hour `pace` is derived by comparing usage against the _elapsed fraction_ of the window (±15pp tolerance → `ahead`/`on`/`under`); weekly windows use fixed thresholds (`>50%` → `ahead`); Codex is always reported `pace: "under"`. `resetsInText` renders as `"Resets in 2d 3h"` / `"3h 10m"` / `"12m"` / `"Resetting now"` via `formatDurationRemaining`. Display metadata is fixed per provider (`color: "#6366f1"` / `"#d97706"` / `"#10a37f"`), with `accountName` strings like `"Personal (Gemini 3.8 & Claude 4.5)"`.
 
 ---
 
@@ -163,16 +163,16 @@ Shared types: `PlanWindow { label, usedPercent, resetsAt, windowMinutes }` and `
 
 **Read-only disk access, nothing written.** The scanner opens these user-owned paths on the user's Mac:
 
-| Provider | Paths read | Format |
-| :--- | :--- | :--- |
-| Claude Code | `~/.claude/projects/**`, `~/.config/claude/projects/**` (depth ≤ 3) | session `.jsonl` transcripts (assistant lines only) |
-| Codex | `~/.codex/sessions/**` (depth ≤ 5) | session `.jsonl` event logs |
+| Provider    | Paths read                                                                                                                  | Format                                                                          |
+| :---------- | :-------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------ |
+| Claude Code | `~/.claude/projects/**`, `~/.config/claude/projects/**` (depth ≤ 3)                                                         | session `.jsonl` transcripts (assistant lines only)                             |
+| Codex       | `~/.codex/sessions/**` (depth ≤ 5)                                                                                          | session `.jsonl` event logs                                                     |
 | Antigravity | `~/.gemini/antigravity{,-cli,-ide}/conversations/*.db`, `~/.config/antigravity/conversations/*.db`, `$ANTIGRAVITY_DATA_DIR` | SQLite (`gen_metadata`, `steps`, `trajectory_metadata_blob`), opened `readOnly` |
 
 Safety properties, all visible in the code:
 
 - **No writes**: SQLite is opened `readOnly: true` (`antigravity.ts:400`); JSONL is streamed, never modified. Every parse/stat/read error is swallowed into an empty result for that file or directory — a scan can never corrupt the source agents' data.
-- **No token harvesting**: only usage counters, model names, session ids, and timestamps are extracted. Provider *sign-in tokens never enter this package* — `plan-limits.ts` is parsers-only by design, with the Keychain/network side kept in the Mac app so credentials never leave it.
+- **No token harvesting**: only usage counters, model names, session ids, and timestamps are extracted. Provider _sign-in tokens never enter this package_ — `plan-limits.ts` is parsers-only by design, with the Keychain/network side kept in the Mac app so credentials never leave it.
 - **Transcript content is not returned**: no prompts, replies, or file contents from the scanned sessions appear in `ScannedUsageResult`.
 - **Graceful degradation**: `Promise.allSettled` per provider, per-file try/catch, the `node:sqlite` capability guard, and mtime-based pre-filtering keep a partially-installed or actively-being-written environment from failing the scan.
 - **Determinism**: dedupe keys and max-merge semantics make repeated scans of the same stores converge to the same records (ids like `claude:<messageId>:<requestId>` and `codex:<session>:<turn>:<ts>` are stable), so the dashboard can re-scan without double counting.

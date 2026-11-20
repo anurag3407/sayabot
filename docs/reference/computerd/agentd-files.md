@@ -54,11 +54,11 @@ One handler serves both text and binary reads, selected by `encoding`:
 
 **Text mode** (`utf8`, default):
 
-| Parameter | Default / Range | Notes |
-| :--- | :--- | :--- |
-| `startLine` | 1 | 1-based |
-| `endLine` | unbounded | ≥ `startLine` |
-| `maxBytes` | 256 KB, max 2 MB | page budget |
+| Parameter   | Default / Range  | Notes         |
+| :---------- | :--------------- | :------------ |
+| `startLine` | 1                | 1-based       |
+| `endLine`   | unbounded        | ≥ `startLine` |
+| `maxBytes`  | 256 KB, max 2 MB | page budget   |
 
 - Streams the file in 64 KB chunks, feeding every byte into a SHA-256 hash of the **full file** (returned as `hash`; the guard token for `fs_edit`).
 - Page assembly caps at **2000 lines** or the byte budget; a single line longer than the budget errors with `"Requested line exceeds maxBytes; increase maxBytes or use a base64 byte page"` rather than returning a silent truncation.
@@ -152,10 +152,10 @@ Parsed results are typed as `ParsedPatch` — `{ type: "add", path, contents }`,
 
 ## 🧪 Tests
 
-| File | Covers |
-| :--- | :--- |
-| `apps/computerd/test/agentd-files.test.ts` | traversal/symlink rejection, page reads, hash-guarded edits, patch grammar |
-| `apps/computerd/tests/unit/agentd-files.test.ts` | unit-level coverage of the same handlers |
+| File                                             | Covers                                                                     |
+| :----------------------------------------------- | :------------------------------------------------------------------------- |
+| `apps/computerd/test/agentd-files.test.ts`       | traversal/symlink rejection, page reads, hash-guarded edits, patch grammar |
+| `apps/computerd/tests/unit/agentd-files.test.ts` | unit-level coverage of the same handlers                                   |
 
 ---
 

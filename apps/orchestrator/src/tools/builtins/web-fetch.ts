@@ -27,7 +27,7 @@ export async function fetchSafeWebPage(
     const isHttps = parsed.protocol === "https:"
     const isIpv6 = pinnedIp.includes(":")
     const requester = isHttps ? httpsRequest : httpRequest
-    const port = parsed.port ? Number(parsed.port) : (isHttps ? 443 : 80)
+    const port = parsed.port ? Number(parsed.port) : isHttps ? 443 : 80
 
     const response: {
       status: number
@@ -135,7 +135,9 @@ export async function fetchSafeWebPage(
     }
 
     if (response.status < 200 || response.status >= 400) {
-      throw new Error(`Failed to fetch web page (${response.status} ${response.statusText}): ${currentUrl}`)
+      throw new Error(
+        `Failed to fetch web page (${response.status} ${response.statusText}): ${currentUrl}`,
+      )
     }
 
     const contentType = response.headers["content-type"] || ""
@@ -171,7 +173,9 @@ function decodeEntities(text: string): string {
 export function cleanHtmlToMarkdown(html: string): { title: string; content: string } {
   const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)
   const rawTitle = titleMatch?.[1]
-  const title = rawTitle ? decodeEntities(rawTitle.replace(/<[^>]+>/g, "").trim()) : "Untitled Web Page"
+  const title = rawTitle
+    ? decodeEntities(rawTitle.replace(/<[^>]+>/g, "").trim())
+    : "Untitled Web Page"
 
   // 1. Remove non-content tags
   let clean = html
@@ -191,10 +195,13 @@ export function cleanHtmlToMarkdown(html: string): { title: string; content: str
   })
 
   // 3. Links
-  clean = clean.replace(/<a\s+[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi, (_, href, text) => {
-    const t = text.replace(/<[^>]+>/g, "").trim()
-    return t ? `[${t}](${href})` : ""
-  })
+  clean = clean.replace(
+    /<a\s+[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi,
+    (_, href, text) => {
+      const t = text.replace(/<[^>]+>/g, "").trim()
+      return t ? `[${t}](${href})` : ""
+    },
+  )
 
   // 4. List items
   clean = clean.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, (_, text) => {
@@ -248,10 +255,15 @@ export function webFetchTool(
       maxChars: z.number().int().min(500).max(100_000).optional().default(40_000),
     }),
     dangerous: false,
-    execute: async (input: { url: string; format?: "markdown" | "text" | "html"; maxChars?: number }, signal?: AbortSignal) => {
+    execute: async (
+      input: { url: string; format?: "markdown" | "text" | "html"; maxChars?: number },
+      signal?: AbortSignal,
+    ) => {
       let config: OrgToolConfig | null = null
       if (orgId) {
-        config = await resolveToolCredential({ orgId, agentId, tool: "web_search" }).catch(() => null)
+        config = await resolveToolCredential({ orgId, agentId, tool: "web_search" }).catch(
+          () => null,
+        )
       }
 
       // If TinyFish is configured with API key, use TinyFish Fetch for browser-rendered multi-page extraction
@@ -304,7 +316,10 @@ export function webFetchTool(
       }
 
       const { title, content: extracted } = cleanHtmlToMarkdown(rawText)
-      const raw = extracted.length > max ? `${extracted.slice(0, max)}\n\n[... content truncated ...]` : extracted
+      const raw =
+        extracted.length > max
+          ? `${extracted.slice(0, max)}\n\n[... content truncated ...]`
+          : extracted
       const content = formatUntrustedWebContent(finalUrl, title, raw)
 
       return {

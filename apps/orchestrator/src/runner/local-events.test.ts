@@ -33,7 +33,8 @@ const notifyHumansNeeded = vi.fn()
 vi.mock("../push", () => ({ notifyHumansNeeded }))
 vi.mock("../tools/approvals", () => ({ waitForApproval: () => new Promise(() => {}) }))
 
-const { cleanToolName, recordMacToolEvents, requestMacApproval, storedArgs } = await import("./local-events")
+const { cleanToolName, recordMacToolEvents, requestMacApproval, storedArgs } =
+  await import("./local-events")
 
 const HOST = "11111111-1111-1111-1111-111111111111"
 const job = {

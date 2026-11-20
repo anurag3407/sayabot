@@ -26,13 +26,38 @@ export function WebPageScreen({ route, navigation }: any) {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.bg }}>
-      <View style={{ paddingTop: insets.top, backgroundColor: theme.surface, borderBottomWidth: 0.5, borderBottomColor: theme.line }}>
-        <View style={{ height: 52, flexDirection: "row", alignItems: "center", paddingHorizontal: 6, gap: 6 }}>
-          <IconButton label="Back" tint="transparent" icon={<ChevronLeft size={26} color={theme.text} />} onPress={() => navigation.goBack()} />
+      <View
+        style={{
+          paddingTop: insets.top,
+          backgroundColor: theme.surface,
+          borderBottomWidth: 0.5,
+          borderBottomColor: theme.line,
+        }}
+      >
+        <View
+          style={{
+            height: 52,
+            flexDirection: "row",
+            alignItems: "center",
+            paddingHorizontal: 6,
+            gap: 6,
+          }}
+        >
+          <IconButton
+            label="Back"
+            tint="transparent"
+            icon={<ChevronLeft size={26} color={theme.text} />}
+            onPress={() => navigation.goBack()}
+          />
           <Text variant="headline" numberOfLines={1} style={{ flex: 1 }}>
             {title}
           </Text>
-          <IconButton label="Reload" tint="transparent" icon={<RotateCw size={18} color={theme.text} />} onPress={() => ref.current?.reload()} />
+          <IconButton
+            label="Reload"
+            tint="transparent"
+            icon={<RotateCw size={18} color={theme.text} />}
+            onPress={() => ref.current?.reload()}
+          />
         </View>
       </View>
       {url ? (
@@ -51,7 +76,18 @@ export function WebPageScreen({ route, navigation }: any) {
         />
       ) : null}
       {loading ? (
-        <View style={{ position: "absolute", top: insets.top + 52, left: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center" }} pointerEvents="none">
+        <View
+          style={{
+            position: "absolute",
+            top: insets.top + 52,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+          pointerEvents="none"
+        >
           <ActivityIndicator color={theme.accent} />
         </View>
       ) : null}

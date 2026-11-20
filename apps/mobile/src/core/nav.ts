@@ -6,7 +6,8 @@ export const navigationRef = createNavigationContainerRef()
 const pending: Array<() => void> = []
 
 export function navigateWhenReady(name: string, params?: object) {
-  const go = () => (navigationRef.navigate as unknown as (n: string, p?: object) => void)(name, params)
+  const go = () =>
+    (navigationRef.navigate as unknown as (n: string, p?: object) => void)(name, params)
   if (navigationRef.isReady()) go()
   else pending.push(go)
 }

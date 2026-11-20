@@ -28,7 +28,10 @@ export async function POST(request: Request) {
     alsoPost: body.alsoPost === true,
     itemAnswers,
   })
-  return NextResponse.json(result.ok ? { ok: true, message: result.message } : { ok: false, error: result.error }, {
-    status: result.ok ? 200 : 400,
-  })
+  return NextResponse.json(
+    result.ok ? { ok: true, message: result.message } : { ok: false, error: result.error },
+    {
+      status: result.ok ? 200 : 400,
+    },
+  )
 }

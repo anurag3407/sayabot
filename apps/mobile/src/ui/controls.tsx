@@ -1,5 +1,12 @@
 import React, { type ReactNode } from "react"
-import { ActivityIndicator, Pressable, StyleSheet, Switch, View, type ViewStyle } from "react-native"
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Switch,
+  View,
+  type ViewStyle,
+} from "react-native"
 import { ChevronRight } from "lucide-react-native"
 import { haptic } from "./haptics"
 import { Text } from "./Text"
@@ -30,8 +37,21 @@ export function Button({
 }) {
   const theme = useTheme()
   const bg =
-    variant === "primary" ? theme.accent : variant === "secondary" ? theme.raised : variant === "danger" ? theme.dangerSoft : "transparent"
-  const fg = variant === "primary" ? theme.onAccent : variant === "danger" ? theme.danger : variant === "ghost" ? theme.accent : theme.text
+    variant === "primary"
+      ? theme.accent
+      : variant === "secondary"
+        ? theme.raised
+        : variant === "danger"
+          ? theme.dangerSoft
+          : "transparent"
+  const fg =
+    variant === "primary"
+      ? theme.onAccent
+      : variant === "danger"
+        ? theme.danger
+        : variant === "ghost"
+          ? theme.accent
+          : theme.text
   const height = size === "sm" ? 36 : size === "lg" ? 54 : 46
   return (
     <Pressable
@@ -109,7 +129,15 @@ export function IconButton({
 }
 
 /** iOS-style grouped list: soft corners, inset hairlines, an optional caption above. */
-export function Group({ title, footer, children }: { title?: string; footer?: string; children: ReactNode }) {
+export function Group({
+  title,
+  footer,
+  children,
+}: {
+  title?: string
+  footer?: string
+  children: ReactNode
+}) {
   const theme = useTheme()
   const items = React.Children.toArray(children).filter(Boolean)
   return (
@@ -124,7 +152,13 @@ export function Group({ title, footer, children }: { title?: string; footer?: st
           <View key={i}>
             {child}
             {i < items.length - 1 ? (
-              <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: theme.line, marginLeft: 56 }} />
+              <View
+                style={{
+                  height: StyleSheet.hairlineWidth,
+                  backgroundColor: theme.line,
+                  marginLeft: 56,
+                }}
+              />
             ) : null}
           </View>
         ))}
@@ -252,13 +286,29 @@ export function ToggleRow({
   )
 }
 
-export function Badge({ count, tone = "accent" }: { count: number; tone?: "accent" | "warn" | "muted" }) {
+export function Badge({
+  count,
+  tone = "accent",
+}: {
+  count: number
+  tone?: "accent" | "warn" | "muted"
+}) {
   const theme = useTheme()
   if (!count) return null
   const bg = tone === "accent" ? theme.accent : tone === "warn" ? theme.warn : theme.raised
   const fg = tone === "muted" ? theme.muted : theme.onAccent
   return (
-    <View style={{ minWidth: 20, height: 20, paddingHorizontal: 6, borderRadius: 10, backgroundColor: bg, alignItems: "center", justifyContent: "center" }}>
+    <View
+      style={{
+        minWidth: 20,
+        height: 20,
+        paddingHorizontal: 6,
+        borderRadius: 10,
+        backgroundColor: bg,
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
       <Text variant="caption" weight="700" style={{ color: fg }}>
         {count > 99 ? "99+" : count}
       </Text>
@@ -266,7 +316,17 @@ export function Badge({ count, tone = "accent" }: { count: number; tone?: "accen
   )
 }
 
-export function Chip({ label, selected, onPress, icon }: { label: string; selected?: boolean; onPress?: () => void; icon?: ReactNode }) {
+export function Chip({
+  label,
+  selected,
+  onPress,
+  icon,
+}: {
+  label: string
+  selected?: boolean
+  onPress?: () => void
+  icon?: ReactNode
+}) {
   const theme = useTheme()
   return (
     <Pressable
@@ -288,14 +348,28 @@ export function Chip({ label, selected, onPress, icon }: { label: string; select
       })}
     >
       {icon}
-      <Text variant="subhead" weight="600" style={{ color: selected ? theme.onAccent : theme.text }}>
+      <Text
+        variant="subhead"
+        weight="600"
+        style={{ color: selected ? theme.onAccent : theme.text }}
+      >
         {label}
       </Text>
     </Pressable>
   )
 }
 
-export function EmptyState({ icon, title, body, action }: { icon?: ReactNode; title: string; body?: string; action?: ReactNode }) {
+export function EmptyState({
+  icon,
+  title,
+  body,
+  action,
+}: {
+  icon?: ReactNode
+  title: string
+  body?: string
+  action?: ReactNode
+}) {
   return (
     <View style={{ alignItems: "center", paddingHorizontal: 32, paddingVertical: 48, gap: 10 }}>
       {icon}

@@ -16,19 +16,20 @@ export interface OrgToolConfig {
 
 export async function loadOrgToolConfig<T extends OrgToolConfig>(
   orgId: string,
-  tool: "web_search" | "github_bridge" | "postgres_inspector" | "document_extract" | "terminal_sandbox",
+  tool:
+    "web_search" | "github_bridge" | "postgres_inspector" | "document_extract" | "terminal_sandbox",
 ): Promise<T | null> {
   const [row] = await getDb()
-  .select()
-  .from(orgToolConfigs)
-  .where(
-    and(
-      eq(orgToolConfigs.orgId, orgId),
-      eq(orgToolConfigs.tool, tool),
-      eq(orgToolConfigs.enabled, true),
-    ),
-  )
-  .limit(1)
+    .select()
+    .from(orgToolConfigs)
+    .where(
+      and(
+        eq(orgToolConfigs.orgId, orgId),
+        eq(orgToolConfigs.tool, tool),
+        eq(orgToolConfigs.enabled, true),
+      ),
+    )
+    .limit(1)
   if (!row) return null
   return JSON.parse(openSecret(row.configEnc, getEnv().MESH_KEK)) as T
 }
@@ -36,7 +37,8 @@ export async function loadOrgToolConfig<T extends OrgToolConfig>(
 export async function resolveToolCredential(args: {
   agentId?: string
   orgId: string
-  tool: "github_bridge" | "postgres_inspector" | "web_search" | "document_extract" | "terminal_sandbox"
+  tool:
+    "github_bridge" | "postgres_inspector" | "web_search" | "document_extract" | "terminal_sandbox"
 }): Promise<OrgToolConfig | null> {
   const db = getDb()
   const kek = getEnv().MESH_KEK
@@ -114,13 +116,20 @@ export async function resolveToolCredential(args: {
       if (agentProvider && agentProvider !== "default") {
         const keysMap = (baseConfig as any)?.keys as Record<string, string> | undefined
         const baseUrlsMap = (baseConfig as any)?.baseUrls as Record<string, string> | undefined
-        const customKey = keysMap?.[agentProvider] || (baseConfig?.provider === agentProvider ? baseConfig?.apiKey : undefined)
-        const customBaseUrl = baseUrlsMap?.[agentProvider] || (baseConfig?.provider === agentProvider ? baseConfig?.baseUrl : undefined)
+        const customKey =
+          keysMap?.[agentProvider] ||
+          (baseConfig?.provider === agentProvider ? baseConfig?.apiKey : undefined)
+        const customBaseUrl =
+          baseUrlsMap?.[agentProvider] ||
+          (baseConfig?.provider === agentProvider ? baseConfig?.baseUrl : undefined)
         return {
           ...baseConfig,
           provider: agentProvider,
-          apiKey: customKey || (baseConfig?.provider === agentProvider ? baseConfig?.apiKey : undefined),
-          baseUrl: customBaseUrl || (baseConfig?.provider === agentProvider ? baseConfig?.baseUrl : undefined),
+          apiKey:
+            customKey || (baseConfig?.provider === agentProvider ? baseConfig?.apiKey : undefined),
+          baseUrl:
+            customBaseUrl ||
+            (baseConfig?.provider === agentProvider ? baseConfig?.baseUrl : undefined),
         }
       }
     } catch {

@@ -300,9 +300,15 @@ describe("cliFailureHint", () => {
 
 describe("cli effort", () => {
   it("reads the agent's effort, dropping levels the app does not take", () => {
-    expect(cliRunnerConfig({ runner: { where: "server", app: "codex" }, effort: "xhigh" })?.effort).toBe("xhigh")
-    expect(cliRunnerConfig({ runner: { where: "server", app: "claude-code" }, effort: "none" })?.effort).toBeUndefined()
-    expect(cliRunnerConfig({ runner: { where: "server", app: "cursor" }, effort: "high" })?.effort).toBeUndefined()
+    expect(
+      cliRunnerConfig({ runner: { where: "server", app: "codex" }, effort: "xhigh" })?.effort,
+    ).toBe("xhigh")
+    expect(
+      cliRunnerConfig({ runner: { where: "server", app: "claude-code" }, effort: "none" })?.effort,
+    ).toBeUndefined()
+    expect(
+      cliRunnerConfig({ runner: { where: "server", app: "cursor" }, effort: "high" })?.effort,
+    ).toBeUndefined()
   })
 
   it("passes --effort to Claude Code and model_reasoning_effort to Codex", () => {
@@ -312,7 +318,9 @@ describe("cli effort", () => {
     const codex = cliCommand({ app: "codex", model: null, effort: "high" }, "S", "p").args
     expect(codex).toEqual(expect.arrayContaining(["-c", 'model_reasoning_effort="high"']))
     expect(codex.at(-1)).toBe("-")
-    expect(cliCommand({ app: "codex", model: null }, "S", "p").args.join(" ")).not.toContain("model_reasoning_effort")
+    expect(cliCommand({ app: "codex", model: null }, "S", "p").args.join(" ")).not.toContain(
+      "model_reasoning_effort",
+    )
   })
 
   it("runs background jobs at the app's default effort", () => {

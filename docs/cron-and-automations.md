@@ -22,20 +22,21 @@ The Sayabot cron engine (`packages/core/src/cron.ts`) parses both standard cron 
 
 ### 1. Natural Language Shorthand
 
-| Shorthand Example | Equivalent 5-Field Cron | Meaning |
-| :--- | :--- | :--- |
-| `hourly` | `0 * * * *` | At minute 0 of every hour |
-| `daily` / `daily at 9am` | `0 9 * * *` | Every day at 09:00 UTC |
-| `daily at 18:30` | `30 18 * * *` | Every day at 18:30 UTC |
-| `weekly on monday` | `0 9 * * 1` | Every Monday at 09:00 UTC |
-| `monthly` | `0 0 1 * *` | On day 1 of every month at 00:00 UTC |
-| `every 15m` / `every 15 min` | `*/15 * * * *` | Every 15 minutes |
-| `every 2h` / `every 2 hours` | `0 */2 * * *` | Every 2 hours |
-| `in 30m` / `in 2 hours` | *One-shot ISO timestamp* | Runs once after the specified duration |
+| Shorthand Example            | Equivalent 5-Field Cron  | Meaning                                |
+| :--------------------------- | :----------------------- | :------------------------------------- |
+| `hourly`                     | `0 * * * *`              | At minute 0 of every hour              |
+| `daily` / `daily at 9am`     | `0 9 * * *`              | Every day at 09:00 UTC                 |
+| `daily at 18:30`             | `30 18 * * *`            | Every day at 18:30 UTC                 |
+| `weekly on monday`           | `0 9 * * 1`              | Every Monday at 09:00 UTC              |
+| `monthly`                    | `0 0 1 * *`              | On day 1 of every month at 00:00 UTC   |
+| `every 15m` / `every 15 min` | `*/15 * * * *`           | Every 15 minutes                       |
+| `every 2h` / `every 2 hours` | `0 */2 * * *`            | Every 2 hours                          |
+| `in 30m` / `in 2 hours`      | _One-shot ISO timestamp_ | Runs once after the specified duration |
 
 ### 2. Standard 5-Field Cron Expressions
 
 Standard 5-field syntax is fully supported:
+
 ```
 ┌───────────── Minute (0 - 59)
 │ ┌─────────── Hour (0 - 23)
@@ -47,12 +48,14 @@ Standard 5-field syntax is fully supported:
 ```
 
 #### Common Patterns:
+
 - `0 9 * * 1-5`: Monday through Friday at 09:00 UTC.
 - `*/10 * * * *`: Every 10 minutes.
 - `0 0 * * 0`: Every Sunday at midnight.
 - `15 14 1 * *`: First day of each month at 14:15 UTC.
 
 Sayabot provides pure helper functions in `@sayabot/core`:
+
 ```typescript
 import { parseCronExpression, getNextCronRun, humanizeSchedule } from "@sayabot/core"
 
@@ -89,7 +92,9 @@ Navigate to `/[org]/cron` in your Sayabot web dashboard to access the visual wor
 ```
 
 ### 1. Canvas Node Architecture
+
 Every routine on the canvas is composed of three interconnected nodes:
+
 1. **Trigger Node**: Defines when the routine runs. Configurable as:
    - **Schedule**: Cron expression or natural language schedule.
    - **Interval**: Fixed timer (e.g. every 30 minutes).
@@ -105,10 +110,13 @@ Every routine on the canvas is composed of three interconnected nodes:
    - **Connected Platforms**: Integrates with Slack, Discord, or Telegram gateways.
 
 ### 2. Animated Flow Signals
+
 When viewing active routines, SVG connection curves display animated glowing pulses indicating the active pipeline state.
 
 ### 3. Parameter Inspector & Instant Test Run
+
 Clicking any node opens the slide-out **Parameter Inspector**:
+
 - Update schedules, agent prompts, and delivery channels without writing code.
 - Hit **Run Test** to trigger an immediate out-of-band execution.
 - View real-time status output and execution duration directly in the inspector.
@@ -121,23 +129,24 @@ Sayabot gives agents native capability to self-schedule background routines duri
 
 ### Supported Actions
 
-| Action | Description | Required Parameters |
-| :--- | :--- | :--- |
-| `create` | Creates a new routine | `name`, `schedule`, `prompt` |
-| `list` | Lists all active routines for the current room/org | *(None)* |
-| `update` | Modifies an existing routine's schedule or prompt | `routineId` |
-| `pause` | Temporarily halts a routine | `routineId` |
-| `resume` | Unpauses a suspended routine | `routineId` |
-| `run` | Triggers an immediate execution of a routine | `routineId` |
-| `remove` | Permanently deletes a routine | `routineId` |
+| Action   | Description                                        | Required Parameters          |
+| :------- | :------------------------------------------------- | :--------------------------- |
+| `create` | Creates a new routine                              | `name`, `schedule`, `prompt` |
+| `list`   | Lists all active routines for the current room/org | _(None)_                     |
+| `update` | Modifies an existing routine's schedule or prompt  | `routineId`                  |
+| `pause`  | Temporarily halts a routine                        | `routineId`                  |
+| `resume` | Unpauses a suspended routine                       | `routineId`                  |
+| `run`    | Triggers an immediate execution of a routine       | `routineId`                  |
+| `remove` | Permanently deletes a routine                      | `routineId`                  |
 
 ### Conversation Example
 
-> **User**: *"@saya, check our production API health endpoint every 2 hours and let us know if the latency is over 500ms."*
+> **User**: _"@saya, check our production API health endpoint every 2 hours and let us know if the latency is over 500ms."_
 >
 > **Agent Thought**: The user wants a recurring background health check. I should create a routine with the `cronjob` tool.
 >
 > **Tool Call**:
+>
 > ```json
 > {
 >   "action": "create",
@@ -147,9 +156,10 @@ Sayabot gives agents native capability to self-schedule background routines duri
 > }
 > ```
 >
-> **Agent Response**: *"I've created the routine 'Production API Health Check' scheduled for `every 2h`. You can review or edit it anytime on the [Visual Cron Canvas](/[org]/cron)."*
+> **Agent Response**: _"I've created the routine 'Production API Health Check' scheduled for `every 2h`. You can review or edit it anytime on the [Visual Cron Canvas](/[org]/cron)."_
 
 ### Infinite Recursion Safeguards
+
 To prevent recursive agent explosion, routines running in the background execute with `cron.allow_agent_scheduling: false` by default. Scheduled agent runs cannot spawn additional cron jobs unless explicitly permitted in org policy.
 
 ---
@@ -176,16 +186,21 @@ Team members can quickly manage routines directly from the room chat input:
 Sayabot's cron engine is built for production environments where multiple orchestrator instances run in parallel.
 
 ### 1. Database Schema
+
 Routines and execution histories are tracked in PostgreSQL:
 
 - **`routines`**: Stores routine metadata (`name`, `schedule`, `prompt`, `agent_id`, `room_id`, `org_id`, `status`, `next_run_at`, `failure_count`).
 - **`routine_runs`**: Stores individual execution records (`routine_id`, `status`, `started_at`, `completed_at`, `duration_ms`, `error`, `output`).
 
 ### 2. Distributed Advisory Locking
+
 The background scheduler loop in `apps/orchestrator/src/scheduler/routines.ts` ticks every 60 seconds:
+
 ```typescript
 // Acquire distributed scheduler lock
-const [lock] = await db.execute(sql`SELECT pg_try_advisory_lock(hashtext('sayabot_routines_scheduler')) as locked`)
+const [lock] = await db.execute(
+  sql`SELECT pg_try_advisory_lock(hashtext('sayabot_routines_scheduler')) as locked`,
+)
 if (!lock.locked) {
   // Another orchestrator worker is currently handling this tick
   return
@@ -202,5 +217,6 @@ try {
 ```
 
 ### 3. Fail-Safe Windows & Nudge Thresholds
+
 - **Catch-up Window**: If an orchestrator was offline during a routine's scheduled slot, it checks if the missed run was within the last 15 minutes and executes it.
 - **Failure Nudge Threshold**: If a routine encounters errors 3 consecutive times, Sayabot automatically flags the routine as `stuck` and posts an urgent blocker notification into the origin room for human intervention.

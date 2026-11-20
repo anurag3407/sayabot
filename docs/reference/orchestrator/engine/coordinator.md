@@ -10,12 +10,12 @@ Source files: `apps/orchestrator/src/coordinator/index.ts`, `apps/orchestrator/s
 
 Room messages enter the coordinator through a pg-boss queue backed by the same PostgreSQL database:
 
-| Queue | Constant | Options | Worker |
-| :--- | :--- | :--- | :--- |
-| `room.message` | `ROOM_MESSAGE_QUEUE` | `retryLimit: 0`, `expireInSeconds: 1800`, `deleteAfterSeconds: 86400` | `processRoomMessage(roomId, messageId, { enqueueWebhook })` |
-| `webhook.deliver` | `WEBHOOK_QUEUE` | `retryLimit: 5`, `retryDelay: 10`, `retryBackoff: true`, `expireInSeconds: 120` | `deliverWebhook(data, retryCount + 1)` |
-| `task.wake` | `TASK_WAKE_QUEUE` | `retryLimit: 2`, `expireInSeconds: 60` | `handleTaskWake(data)` (`src/collab/task-wake.ts`) |
-| `run.resume` | `RUN_RESUME_QUEUE` | `retryLimit: 3`, `retryDelay: 5`, `expireInSeconds: 300` | dynamically imports `resumeRun` from `../engine/resume` |
+| Queue             | Constant             | Options                                                                         | Worker                                                      |
+| :---------------- | :------------------- | :------------------------------------------------------------------------------ | :---------------------------------------------------------- |
+| `room.message`    | `ROOM_MESSAGE_QUEUE` | `retryLimit: 0`, `expireInSeconds: 1800`, `deleteAfterSeconds: 86400`           | `processRoomMessage(roomId, messageId, { enqueueWebhook })` |
+| `webhook.deliver` | `WEBHOOK_QUEUE`      | `retryLimit: 5`, `retryDelay: 10`, `retryBackoff: true`, `expireInSeconds: 120` | `deliverWebhook(data, retryCount + 1)`                      |
+| `task.wake`       | `TASK_WAKE_QUEUE`    | `retryLimit: 2`, `expireInSeconds: 60`                                          | `handleTaskWake(data)` (`src/collab/task-wake.ts`)          |
+| `run.resume`      | `RUN_RESUME_QUEUE`   | `retryLimit: 3`, `retryDelay: 5`, `expireInSeconds: 300`                        | dynamically imports `resumeRun` from `../engine/resume`     |
 
 Worker configuration: all four use `batchSize: 1`, `localConcurrency: 4`, polling every 1–2 seconds. The pg-boss client is created with `application_name: "sayabot-orchestrator"` and a pool cap of `min(DATABASE_POOL_MAX ?? 3, 3)`.
 
@@ -61,7 +61,7 @@ export async function processRoomMessage(
 ```
 
 - `CoordinatorDeps` is `{ enqueueWebhook: (data: WebhookJobData) => Promise<void> }` — the only dependency injected by the caller (`src/coordinator/index.ts:50-52`).
-- **Human messages interrupt first**: if the incoming message's `senderType` is `"human"`, `interruptRoom(roomId, incoming)` runs *before* the lock is acquired (`src/coordinator/index.ts:342-343`). A bot waking a teammate does not interrupt — it queues behind the running session.
+- **Human messages interrupt first**: if the incoming message's `senderType` is `"human"`, `interruptRoom(roomId, incoming)` runs _before_ the lock is acquired (`src/coordinator/index.ts:342-343`). A bot waking a teammate does not interrupt — it queues behind the running session.
 - Everything else runs inside `withRoomLock(roomId, ...)` (`src/db.ts`), so only one coordinator loop per room executes across all orchestrator instances.
 
 ### Trigger classification (inside the lock)
@@ -78,14 +78,14 @@ export async function processRoomMessage(
 
 Priority order (`src/coordinator/index.ts:394-418`):
 
-| Condition | Planner | Result |
-| :--- | :--- | :--- |
-| Task wake | filter `taskWakeMeta.agentIds` to room members | turns with `role: "responder"` |
-| Agent-triggered | `planMentionsTurn({ text, roomAgents, excludeAgentIds: [senderId] })` | mentioned teammates |
-| DM room with `room.agentDmAgentId` | single turn for the DM agent | `role: "responder"` |
-| `room.turnMode === "mentions"` | `planMentionsTurn({ text, roomAgents })` | mentioned agents |
-| `room.turnMode === "debate"` | `planDebateTurns({ roomAgents, debateOrder: room.debateOrder, text })` | full debate order |
-| otherwise (moderated default) | `planModeratedMentions({ text, roomAgents })` | explicit mentions only |
+| Condition                          | Planner                                                                | Result                         |
+| :--------------------------------- | :--------------------------------------------------------------------- | :----------------------------- |
+| Task wake                          | filter `taskWakeMeta.agentIds` to room members                         | turns with `role: "responder"` |
+| Agent-triggered                    | `planMentionsTurn({ text, roomAgents, excludeAgentIds: [senderId] })`  | mentioned teammates            |
+| DM room with `room.agentDmAgentId` | single turn for the DM agent                                           | `role: "responder"`            |
+| `room.turnMode === "mentions"`     | `planMentionsTurn({ text, roomAgents })`                               | mentioned agents               |
+| `room.turnMode === "debate"`       | `planDebateTurns({ roomAgents, debateOrder: room.debateOrder, text })` | full debate order              |
+| otherwise (moderated default)      | `planModeratedMentions({ text, roomAgents })`                          | explicit mentions only         |
 
 `explicitModeratedMentions` is true when agent-triggered or when moderated planning produced a non-empty queue; this suppresses the LLM moderator while explicit mentions remain.
 
@@ -133,16 +133,16 @@ The UI calls a moderated room's moderator its **lead agent** ([room settings](..
 
 ### Helper surface
 
-| Function | Purpose |
-| :--- | :--- |
-| `setSession(sessionId, values)` | Update `turn_sessions` (`botTurnsUsed`, `queue`, `state`) with `updatedAt`. |
-| `getSessionState(sessionId)` | Read current `turn_sessions.state`. |
-| `broadcastTurn(sessionId, roomId, threadRootId, activeAgentId, queue)` | Broadcast `{ type: "turn.state", sessionId, activeAgentId, queue: [...agentIds], threadRootId }`. |
-| `postSystemMessage({ roomId, threadRootId, content, reason })` | Insert a `senderType: "system"` message (redacted, `status: "halted"`), broadcast `message.done` with `status: "halted"`. |
-| `halt(sessionId, roomId, threadRootId, message, reason, queue)` | Mark session `halted`, post the system message, broadcast final turn state. |
-| `postQuietBotNotice(...)` | The "didn't answer within 60 seconds" notice (status `complete`, metadata reason `agent_quiet`). |
-| `recentBotReplies(roomId, threadRootId, excludeMessageId)` | Last 4 complete agent messages in the thread scope (thread-rooted or top-level). |
-| `buildWebhookPayload({ room, trigger, threadRootId })` | Builds the `WebhookPayload` (`event: "message.created"`, sender info, `mentions` via `extractHandles`, `context_snapshot` via `toWebhookContext` over 30 messages). |
+| Function                                                               | Purpose                                                                                                                                                             |
+| :--------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `setSession(sessionId, values)`                                        | Update `turn_sessions` (`botTurnsUsed`, `queue`, `state`) with `updatedAt`.                                                                                         |
+| `getSessionState(sessionId)`                                           | Read current `turn_sessions.state`.                                                                                                                                 |
+| `broadcastTurn(sessionId, roomId, threadRootId, activeAgentId, queue)` | Broadcast `{ type: "turn.state", sessionId, activeAgentId, queue: [...agentIds], threadRootId }`.                                                                   |
+| `postSystemMessage({ roomId, threadRootId, content, reason })`         | Insert a `senderType: "system"` message (redacted, `status: "halted"`), broadcast `message.done` with `status: "halted"`.                                           |
+| `halt(sessionId, roomId, threadRootId, message, reason, queue)`        | Mark session `halted`, post the system message, broadcast final turn state.                                                                                         |
+| `postQuietBotNotice(...)`                                              | The "didn't answer within 60 seconds" notice (status `complete`, metadata reason `agent_quiet`).                                                                    |
+| `recentBotReplies(roomId, threadRootId, excludeMessageId)`             | Last 4 complete agent messages in the thread scope (thread-rooted or top-level).                                                                                    |
+| `buildWebhookPayload({ room, trigger, threadRootId })`                 | Builds the `WebhookPayload` (`event: "message.created"`, sender info, `mentions` via `extractHandles`, `context_snapshot` via `toWebhookContext` over 30 messages). |
 
 ### DB tables touched
 
@@ -165,7 +165,7 @@ export async function interruptRoom(roomId: string, incoming?: MessageInterruptC
 
 Two-phase behavior:
 
-1. **Engine-v2 steering** (`src/coordinator/interrupt.ts:15-22`): if `incoming` is a human message, `handleMidRunInterrupt(roomId, incoming)` (from `src/engine/interrupts.ts`) checks whether the message @-mentions an agent with an *active engine-v2 run* (`findActiveRunForAgent` on the in-memory run registry). If so, the message content is queued onto that run as a mid-run steering interrupt (`addRunInterrupt`) and the function returns without superseding anything. Any *other* runs in the room are aborted (`abortRoomRuns(roomId, steeredRunId)`).
+1. **Engine-v2 steering** (`src/coordinator/interrupt.ts:15-22`): if `incoming` is a human message, `handleMidRunInterrupt(roomId, incoming)` (from `src/engine/interrupts.ts`) checks whether the message @-mentions an agent with an _active engine-v2 run_ (`findActiveRunForAgent` on the in-memory run registry). If so, the message content is queued onto that run as a mid-run steering interrupt (`addRunInterrupt`) and the function returns without superseding anything. Any _other_ runs in the room are aborted (`abortRoomRuns(roomId, steeredRunId)`).
 2. **Standard supersede**: otherwise all `turn_sessions` rows for the room with `state: "active"` are marked `superseded`, all in-memory runs for the room are aborted via `abortRoomRuns(roomId)` (each `AbortController.abort()`), and `notify("mesh_room_interrupt", { roomId })` tells every orchestrator instance to do the same locally (handled by the control connection in `src/index.ts:30-43`).
 
 `MessageInterruptCheck` is `{ id: string; content: string; senderType: string; mentions?: string[] }`.
@@ -193,16 +193,16 @@ export interface ActiveRun {
 }
 ```
 
-| Function | Behaviour |
-| :--- | :--- |
-| `registerRun(runId, roomId, meta?)` | Creates an `AbortController`, stores the run, returns the controller. `meta` sets `agentId`/`engine` (engine `"v2"` is required for steering). |
-| `unregisterRun(runId)` | Removes the run from the map. |
-| `abortRun(runId)` | Aborts with `new Error("stopped by request")`; returns false if unknown (e.g. the run lives on another instance). |
-| `abortRoomRuns(roomId, exceptRunId?)` | Aborts every room run except `exceptRunId` with `new Error("superseded by a new human message")`; returns the count. |
-| `addRunInterrupt(runId, interrupt)` | Queues a `RunInterrupt` for delivery at the run's next step boundary; false if unknown run. |
-| `consumeRunInterrupts(runId)` | Drains and returns pending interrupts (used by the engine loop). |
-| `findActiveRunForAgent(roomId, agentId)` | Finds the active run for a specific agent (used by steering). |
-| `activeRunIds()` | All run ids in this instance (surfaced by `GET /health`). |
+| Function                                 | Behaviour                                                                                                                                      |
+| :--------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------- |
+| `registerRun(runId, roomId, meta?)`      | Creates an `AbortController`, stores the run, returns the controller. `meta` sets `agentId`/`engine` (engine `"v2"` is required for steering). |
+| `unregisterRun(runId)`                   | Removes the run from the map.                                                                                                                  |
+| `abortRun(runId)`                        | Aborts with `new Error("stopped by request")`; returns false if unknown (e.g. the run lives on another instance).                              |
+| `abortRoomRuns(roomId, exceptRunId?)`    | Aborts every room run except `exceptRunId` with `new Error("superseded by a new human message")`; returns the count.                           |
+| `addRunInterrupt(runId, interrupt)`      | Queues a `RunInterrupt` for delivery at the run's next step boundary; false if unknown run.                                                    |
+| `consumeRunInterrupts(runId)`            | Drains and returns pending interrupts (used by the engine loop).                                                                               |
+| `findActiveRunForAgent(roomId, agentId)` | Finds the active run for a specific agent (used by steering).                                                                                  |
+| `activeRunIds()`                         | All run ids in this instance (surfaced by `GET /health`).                                                                                      |
 
 Because this registry is per-process, the `mesh_room_interrupt` / `mesh_stop_run` LISTEN channels are what make cross-instance aborts work: the HTTP stop route and `interruptRoom` both `notify()` so every instance aborts its own local runs.
 

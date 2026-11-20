@@ -9,16 +9,21 @@ let app: ReturnType<typeof createApp>
 const realFetch = globalThis.fetch
 
 beforeAll(() => {
+  // Hermetic: this shell may export PORT=0, which would fail the schema's positive().
+  delete process.env.PORT
   process.env.DATABASE_URL = "postgres://u:p@h/db"
   process.env.MESH_KEK = "k"
   process.env.SUPABASE_URL = "https://x.supabase.co"
   process.env.SUPABASE_SERVICE_ROLE_KEY = "svc"
   process.env.ORCHESTRATOR_INTERNAL_SECRET = SECRET
-  globalThis.fetch = (async () => new Response(JSON.stringify({ ok: true }), { status: 200 })) as typeof fetch
+  globalThis.fetch = (async () =>
+    new Response(JSON.stringify({ ok: true }), { status: 200 })) as typeof fetch
   app = createApp()
 })
 
-afterEach(() => { globalThis.fetch = realFetch })
+afterEach(() => {
+  globalThis.fetch = realFetch
+})
 
 const internal = { "x-internal-secret": SECRET, "content-type": "application/json" }
 const post = (path: string, headers: Record<string, string>, body: unknown) =>
@@ -46,14 +51,26 @@ describe("orchestrator HTTP app (in-process)", () => {
   })
 
   it("internal routes accept Bearer secrets too", async () => {
-    const res = await post("/internal/room-message", { authorization: "Bearer " + SECRET, "content-type": "application/json" }, { roomId: "x" })
+    const res = await post(
+      "/internal/room-message",
+      { authorization: "Bearer " + SECRET, "content-type": "application/json" },
+      { roomId: "x" },
+    )
     expect(res.status).toBe(400) // passes auth, fails body validation
   })
 
   it("internal routes validate bodies with 400", async () => {
-    expect((await post("/internal/room-message", internal, { roomId: "not-a-uuid" })).status).toBe(400)
+    expect((await post("/internal/room-message", internal, { roomId: "not-a-uuid" })).status).toBe(
+      400,
+    )
     expect((await post("/internal/tasks/mutate", internal, { taskId: "x" })).status).toBe(400)
-    expect((await post("/internal/agents/11111111-1111-4111-8111-111111111111/test", internal, { orgId: "nope" })).status).toBe(400)
+    expect(
+      (
+        await post("/internal/agents/11111111-1111-4111-8111-111111111111/test", internal, {
+          orgId: "nope",
+        })
+      ).status,
+    ).toBe(400)
   })
 
   it("POST /internal/runs/:runId/stop aborts a registered run", async () => {
@@ -69,9 +86,17 @@ describe("orchestrator HTTP app (in-process)", () => {
 
   it("bot routes require a valid agent key (401 before any DB use)", async () => {
     const room = "11111111-1111-4111-8111-111111111111"
-    const res = await post("/v1/rooms/" + room + "/messages", { "content-type": "application/json" }, { content: "hi" })
+    const res = await post(
+      "/v1/rooms/" + room + "/messages",
+      { "content-type": "application/json" },
+      { content: "hi" },
+    )
     expect(res.status).toBe(401)
-    const badToken = await post("/v1/rooms/" + room + "/messages", { "content-type": "application/json", authorization: "Bearer sayabot_ak_short" }, { content: "hi" })
+    const badToken = await post(
+      "/v1/rooms/" + room + "/messages",
+      { "content-type": "application/json", authorization: "Bearer sayabot_ak_short" },
+      { content: "hi" },
+    )
     expect([401, 500]).toContain(badToken.status) // 500 only if the key lookup needs a DB in this env
     expect(badToken.status).not.toBe(200)
   })
@@ -88,13 +113,21 @@ describe("orchestrator HTTP app (in-process)", () => {
   })
 
   it("tool approval of an unknown tool call never returns 200", async () => {
-    const res = await post("/v1/tools/11111111-1111-4111-8111-111111111111/approve", { "content-type": "application/json" }, { approved: true })
+    const res = await post(
+      "/v1/tools/11111111-1111-4111-8111-111111111111/approve",
+      { "content-type": "application/json" },
+      { approved: true },
+    )
     expect(res.status).not.toBe(200)
     expect([401, 404, 500]).toContain(res.status)
   })
 
   it("rejects unauthenticated tool approvals with 401", async () => {
-    const res = await post("/v1/tools/11111111-1111-4111-8111-111111111111/approve", { "content-type": "application/json" }, { approved: true })
+    const res = await post(
+      "/v1/tools/11111111-1111-4111-8111-111111111111/approve",
+      { "content-type": "application/json" },
+      { approved: true },
+    )
     expect(res.status).toBe(401)
     const body = await res.json()
     expect(body).toEqual({ error: "unauthorized" })

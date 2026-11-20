@@ -1,33 +1,69 @@
 import { describe, expect, it } from "vitest"
 import { z } from "zod"
-import { CacheMetrics, estimateMessageTokens, estimateToolTokens, resolveContextBudget } from "./budget"
+import {
+  CacheMetrics,
+  estimateMessageTokens,
+  estimateToolTokens,
+  resolveContextBudget,
+} from "./budget"
 
 describe("context budgeting", () => {
   it("reserves output, safety and tool tokens for smaller models", () => {
     const budget = resolveContextBudget("groq", {}, 6000)
     expect(budget.contextWindow).toBe(32000)
-    expect(budget.messageTokens + budget.toolTokens + budget.outputTokens + budget.safetyTokens).toBe(budget.contextWindow)
+    expect(
+      budget.messageTokens + budget.toolTokens + budget.outputTokens + budget.safetyTokens,
+    ).toBe(budget.contextWindow)
     expect(budget.messageTokens).toBeLessThan(24000)
   })
 
   it("honors explicit model windows but never lets requested input overflow", () => {
-    const budget = resolveContextBudget("openai-compatible", { contextWindowTokens: 8192, contextBudgetTokens: 120000, maxOutputTokens: 1000 })
+    const budget = resolveContextBudget("openai-compatible", {
+      contextWindowTokens: 8192,
+      contextBudgetTokens: 120000,
+      maxOutputTokens: 1000,
+    })
     expect(budget.inputTokens + budget.outputTokens + budget.safetyTokens).toBe(8192)
     expect(() => resolveContextBudget("groq", {}, 31000)).toThrow("insufficient context")
   })
 
   it("includes schemas and Unicode bytes in estimates", () => {
-    expect(estimateMessageTokens([{ role: "user", content: "漢".repeat(100) }])).toBeGreaterThanOrEqual(100)
-    expect(estimateToolTokens([{ name: "test", description: "test", schema: z.object({ text: z.string().describe("important input") }), dangerous: false, execute: async () => null }])).toBeGreaterThan(40)
+    expect(
+      estimateMessageTokens([{ role: "user", content: "漢".repeat(100) }]),
+    ).toBeGreaterThanOrEqual(100)
+    expect(
+      estimateToolTokens([
+        {
+          name: "test",
+          description: "test",
+          schema: z.object({ text: z.string().describe("important input") }),
+          dangerous: false,
+          execute: async () => null,
+        },
+      ]),
+    ).toBeGreaterThan(40)
   })
 })
 
 describe("cache metrics", () => {
   it("reports provider-measured ratios rather than prefix similarity estimates", () => {
     const metrics = new CacheMetrics()
-    metrics.record({ inputTokens: 1000, outputTokens: 50, inputTokenDetails: { cacheReadTokens: 800 } } as any)
-    metrics.record({ inputTokens: 1000, outputTokens: 50, inputTokenDetails: { cacheReadTokens: 900 } } as any)
-    expect(metrics.snapshot()).toMatchObject({ calls: 2, inputTokens: 2000, cacheReadRatio: 0.85, completeReporting: true })
+    metrics.record({
+      inputTokens: 1000,
+      outputTokens: 50,
+      inputTokenDetails: { cacheReadTokens: 800 },
+    } as any)
+    metrics.record({
+      inputTokens: 1000,
+      outputTokens: 50,
+      inputTokenDetails: { cacheReadTokens: 900 },
+    } as any)
+    expect(metrics.snapshot()).toMatchObject({
+      calls: 2,
+      inputTokens: 2000,
+      cacheReadRatio: 0.85,
+      completeReporting: true,
+    })
   })
 
   it("does not misrepresent missing usage as a measured zero cache hit rate", () => {

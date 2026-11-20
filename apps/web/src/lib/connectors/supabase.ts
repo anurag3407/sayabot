@@ -68,7 +68,9 @@ export async function exchangeSupabaseOAuthCode(
 
   if (!res.ok) {
     const errorText = await res.text()
-    throw new Error(`Supabase OAuth token exchange failed (${res.status}): ${errorText.slice(0, 150)}`)
+    throw new Error(
+      `Supabase OAuth token exchange failed (${res.status}): ${errorText.slice(0, 150)}`,
+    )
   }
 
   return (await res.json()) as SupabaseOAuthTokens
@@ -103,7 +105,9 @@ export async function getSupabaseProjectApiKeys(
 
   if (!res.ok) {
     const errorText = await res.text()
-    throw new Error(`Failed to retrieve Supabase API keys (${res.status}): ${errorText.slice(0, 150)}`)
+    throw new Error(
+      `Failed to retrieve Supabase API keys (${res.status}): ${errorText.slice(0, 150)}`,
+    )
   }
 
   return (await res.json()) as SupabaseApiKey[]
@@ -147,7 +151,9 @@ export async function ensureSupabaseBucket(
 
   if (!createRes.ok && createRes.status !== 409) {
     const text = await createRes.text()
-    throw new Error(`Failed to create bucket "${bucketName}" (${createRes.status}): ${text.slice(0, 120)}`)
+    throw new Error(
+      `Failed to create bucket "${bucketName}" (${createRes.status}): ${text.slice(0, 120)}`,
+    )
   }
 
   return { ok: true, name: bucketName }

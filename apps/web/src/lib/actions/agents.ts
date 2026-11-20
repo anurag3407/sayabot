@@ -955,7 +955,11 @@ export async function setAgentSearchProviderAction(input: {
     metadata: { searchProvider: input.searchProvider },
   })
   revalidateOrg(input.orgSlug)
-  return ok(input.searchProvider === "default" ? "Using workspace default search" : `Using ${input.searchProvider} search`)
+  return ok(
+    input.searchProvider === "default"
+      ? "Using workspace default search"
+      : `Using ${input.searchProvider} search`,
+  )
 }
 
 /** The bot sidebar: pick which cloud storage provider this agent uses. */
@@ -992,5 +996,9 @@ export async function setAgentStorageProviderAction(input: {
     metadata: { storageProvider: input.storageProvider },
   })
   revalidateOrg(input.orgSlug)
-  return ok(input.storageProvider === "default" ? "Using workspace default storage" : "Assigned cloud storage provider")
+  return ok(
+    input.storageProvider === "default"
+      ? "Using workspace default storage"
+      : "Assigned cloud storage provider",
+  )
 }

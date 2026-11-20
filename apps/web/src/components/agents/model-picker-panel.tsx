@@ -2,7 +2,16 @@
 
 import Link from "next/link"
 import { useMemo, useState, type ReactNode } from "react"
-import { Check, ChevronDown, ChevronRight, Cpu, Monitor, Plus, RefreshCw, Search } from "lucide-react"
+import {
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Cpu,
+  Monitor,
+  Plus,
+  RefreshCw,
+  Search,
+} from "lucide-react"
 import { EFFORT_LABELS, type EffortLevel } from "@sayabot/llm/models/effort"
 import { ProviderIcon } from "@/components/room/model-picker/provider-icons"
 import { SayabotMark } from "@/components/landing/sayabot-mark"
@@ -34,7 +43,9 @@ const SECTION_TITLE: Record<PickerSection, string> = {
 }
 const SECTION_ORDER: PickerSection[] = ["server", "subscription", "mac", "key", "local", "computer"]
 
-const SOURCE_BADGE: Partial<Record<NonNullable<PickerGroup["source"]>, { text: string; live: boolean }>> = {
+const SOURCE_BADGE: Partial<
+  Record<NonNullable<PickerGroup["source"]>, { text: string; live: boolean }>
+> = {
   live: { text: "Live models", live: true },
   cache: { text: "Saved list", live: false },
   manifest: { text: "Sayabot list", live: false },
@@ -83,15 +94,26 @@ function resetLabel(iso: string | null): string {
 }
 
 /** The levels a model takes in its group; [] means only Default. */
-export function effortOptions(group: PickerGroup | undefined, model: PickerModel | undefined): EffortLevel[] {
+export function effortOptions(
+  group: PickerGroup | undefined,
+  model: PickerModel | undefined,
+): EffortLevel[] {
   if (!group) return []
   return model?.effort ?? group.effortLevels
 }
 
 /** A level the new model does not take falls back to Default instead of failing its first turn. */
-export function fitEffort(groups: PickerGroup[], keyId: string | null, model: string | null, effort: string | null): string | null {
+export function fitEffort(
+  groups: PickerGroup[],
+  keyId: string | null,
+  model: string | null,
+  effort: string | null,
+): string | null {
   const group = groups.find((g) => g.keyId === keyId)
-  const levels = effortOptions(group, group?.models.find((m) => m.id === model)) as string[]
+  const levels = effortOptions(
+    group,
+    group?.models.find((m) => m.id === model),
+  ) as string[]
   return effort && levels.includes(effort) ? effort : null
 }
 
@@ -101,7 +123,9 @@ export function choiceLabel(groups: PickerGroup[], value: ModelValue): string {
   if (!group) return value.model && value.model !== "default" ? value.model : "Choose a model"
   if (group.keyId === null) {
     if (!group.models.length) return "Sayabot default"
-    return group.models.find((m) => m.id === (value.model ?? ""))?.label ?? `${group.label} · Automatic`
+    return (
+      group.models.find((m) => m.id === (value.model ?? ""))?.label ?? `${group.label} · Automatic`
+    )
   }
   const picked = group.models.find((m) => m.id === value.model)
   return `${picked?.label ?? value.model ?? "Default"} · ${group.label}`
@@ -126,7 +150,10 @@ function PlanPanel({ group }: { group: PickerGroup }) {
           </div>
           <div className="mt-0.5 h-1 overflow-hidden rounded-full bg-line">
             <div
-              className={cn("h-full rounded-full", w.usedPercent >= 90 ? "bg-danger" : w.usedPercent >= 70 ? "bg-warn" : "bg-ok")}
+              className={cn(
+                "h-full rounded-full",
+                w.usedPercent >= 90 ? "bg-danger" : w.usedPercent >= 70 ? "bg-warn" : "bg-ok",
+              )}
               style={{ width: `${Math.min(100, Math.max(2, w.usedPercent))}%` }}
             />
           </div>
@@ -138,7 +165,12 @@ function PlanPanel({ group }: { group: PickerGroup }) {
 
 function Radio({ on }: { on: boolean }) {
   return (
-    <span className={cn("grid h-5 w-5 shrink-0 place-items-center rounded-full border", on ? "border-text bg-text text-void" : "border-line-strong")}>
+    <span
+      className={cn(
+        "grid h-5 w-5 shrink-0 place-items-center rounded-full border",
+        on ? "border-text bg-text text-void" : "border-line-strong",
+      )}
+    >
       {on ? <Check className="h-3 w-3" /> : null}
     </span>
   )
@@ -172,7 +204,8 @@ export function ModelPickerPanel({
   // In the Mac app, this computer's Claude / Codex plan limits show on their groups.
   const { limits } = usePlanLimits()
   const groups = useMemo(() => withMacPlans(serverGroups, limits), [serverGroups, limits])
-  const firstKey = value && groups.some((g) => g.keyId === value.keyId) ? value.keyId : (groups[0]?.keyId ?? null)
+  const firstKey =
+    value && groups.some((g) => g.keyId === value.keyId) ? value.keyId : (groups[0]?.keyId ?? null)
   const [railKey, setRailKey] = useState<string | null>(firstKey)
   const [query, setQuery] = useState("")
   const [custom, setCustom] = useState("")
@@ -182,15 +215,20 @@ export function ModelPickerPanel({
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase()
     const list = active?.models ?? []
-    return q ? list.filter((m) => m.id.toLowerCase().includes(q) || m.label.toLowerCase().includes(q)) : list
+    return q
+      ? list.filter((m) => m.id.toLowerCase().includes(q) || m.label.toLowerCase().includes(q))
+      : list
   }, [active, query])
   // Search and the picked model always show; otherwise the first few lead and the rest fold away.
-  const pickedIndex = visible.findIndex((m) => value?.keyId === active?.keyId && value?.model === m.id)
+  const pickedIndex = visible.findIndex(
+    (m) => value?.keyId === active?.keyId && value?.model === m.id,
+  )
   const folded = !query && !showAll && visible.length > SUGGESTED + 2 && pickedIndex < SUGGESTED
   const shown = folded ? visible.slice(0, SUGGESTED) : visible
-  const railSections = SECTION_ORDER.map((section) => ({ section, list: groups.filter((g) => g.section === section) })).filter(
-    (s) => s.list.length,
-  )
+  const railSections = SECTION_ORDER.map((section) => ({
+    section,
+    list: groups.filter((g) => g.section === section),
+  })).filter((s) => s.list.length)
   const firstLocal = groups.find((g) => g.section === "local")
   const currentGroup = value ? groups.find((g) => g.keyId === value.keyId) : undefined
   const currentPicked = currentGroup?.models.find((m) => m.id === value?.model)
@@ -213,10 +251,15 @@ export function ModelPickerPanel({
     <div className={cn("flex min-h-0 flex-col", className)}>
       {header}
       <div className="flex min-h-0 flex-1">
-        <nav aria-label="Providers" className="flex w-16 shrink-0 flex-col items-center gap-1.5 overflow-y-auto border-r border-line bg-ink py-3">
+        <nav
+          aria-label="Providers"
+          className="flex w-16 shrink-0 flex-col items-center gap-1.5 overflow-y-auto border-r border-line bg-ink py-3"
+        >
           {railSections.map(({ section, list }) => (
             <div key={section} className="flex flex-col items-center gap-1.5">
-              <p className="px-1 pt-1 text-center text-[10px] leading-tight text-faint">{SECTION_TITLE[section]}</p>
+              <p className="px-1 pt-1 text-center text-[10px] leading-tight text-faint">
+                {SECTION_TITLE[section]}
+              </p>
               {list.map((group) => (
                 <button
                   key={group.keyId ?? "default"}
@@ -227,14 +270,22 @@ export function ModelPickerPanel({
                   onClick={() => openRail(group.keyId)}
                   className={cn(
                     "relative grid h-10 w-10 place-items-center rounded-xl transition-colors",
-                    railKey === group.keyId ? "bg-raised ring-2 ring-line-strong" : "hover:bg-raised",
+                    railKey === group.keyId
+                      ? "bg-raised ring-2 ring-line-strong"
+                      : "hover:bg-raised",
                   )}
                 >
                   <RailIcon group={group} />
                   {group.plan?.windows.some((w) => w.usedPercent >= 80) ? (
-                    <span className="absolute bottom-1 right-1 h-2 w-2 rounded-full bg-warn" aria-label="Near its limit" />
+                    <span
+                      className="absolute bottom-1 right-1 h-2 w-2 rounded-full bg-warn"
+                      aria-label="Near its limit"
+                    />
                   ) : value?.keyId === group.keyId ? (
-                    <span className="absolute bottom-1 right-1 h-2 w-2 rounded-full bg-ok" aria-label="In use" />
+                    <span
+                      className="absolute bottom-1 right-1 h-2 w-2 rounded-full bg-ok"
+                      aria-label="In use"
+                    />
                   ) : null}
                 </button>
               ))}
@@ -271,8 +322,12 @@ export function ModelPickerPanel({
               <div className="flex items-start justify-between gap-2 px-4 pb-2 pt-3">
                 <div className="min-w-0">
                   <p className="truncate text-[15px] font-semibold text-text">{active.label}</p>
-                  <p className="truncate text-[12px] text-faint">{active.account ?? active.detail}</p>
-                  {active.account ? <p className="truncate text-[11px] text-faint">{active.detail}</p> : null}
+                  <p className="truncate text-[12px] text-faint">
+                    {active.account ?? active.detail}
+                  </p>
+                  {active.account ? (
+                    <p className="truncate text-[11px] text-faint">{active.detail}</p>
+                  ) : null}
                 </div>
                 <div className="flex shrink-0 items-center gap-1.5">
                   {onRefresh &&
@@ -300,13 +355,19 @@ export function ModelPickerPanel({
                       {APP_NAME[active.provider] ? ` (${APP_NAME[active.provider]})` : ""}
                     </span>
                   ) : badge ? (
-                    <span className={cn("rounded-full px-2 py-0.5 text-[11px]", badge.live ? "bg-ok/15 text-ok" : "bg-raised text-muted")}>
+                    <span
+                      className={cn(
+                        "rounded-full px-2 py-0.5 text-[11px]",
+                        badge.live ? "bg-ok/15 text-ok" : "bg-raised text-muted",
+                      )}
+                    >
                       {badge.text}
                     </span>
                   ) : null}
                 </div>
               </div>
-              {active.runnerEnabled === false && (active.section === "mac" || active.section === "local") ? (
+              {active.runnerEnabled === false &&
+              (active.section === "mac" || active.section === "local") ? (
                 <p className="mx-4 mb-1 rounded-lg bg-warn/10 px-3 py-2 text-[12px] text-warn">
                   Turn on “Run agents on this computer” in{" "}
                   <Link href={`/${orgSlug}/settings/computers`} className="underline">
@@ -316,11 +377,16 @@ export function ModelPickerPanel({
                 </p>
               ) : null}
               <PlanPanel group={active} />
-              {active.notice ? <p className="px-4 pb-1 text-[11px] text-faint">{active.notice}</p> : null}
+              {active.notice ? (
+                <p className="px-4 pb-1 text-[11px] text-faint">{active.notice}</p>
+              ) : null}
 
               {active.keyId === null ? (
                 <div className="min-h-0 flex-1 overflow-y-auto px-2 py-2">
-                  {(active.models.length ? active.models : [{ id: "", label: "Use the server's default model" }]).map((m) => {
+                  {(active.models.length
+                    ? active.models
+                    : [{ id: "", label: "Use the server's default model" }]
+                  ).map((m) => {
                     // "" is Automatic: the bot follows whatever default the server sets.
                     const selected = value?.keyId === null && (value.model ?? "") === m.id
                     return (
@@ -332,7 +398,9 @@ export function ModelPickerPanel({
                         className="flex w-full items-center gap-3 rounded-lg px-2 py-2.5 text-left hover:bg-raised disabled:opacity-60"
                       >
                         <Radio on={selected} />
-                        <span className="min-w-0 flex-1 truncate text-[14px] text-text">{m.label}</span>
+                        <span className="min-w-0 flex-1 truncate text-[14px] text-text">
+                          {m.label}
+                        </span>
                       </button>
                     )
                   })}
@@ -362,7 +430,11 @@ export function ModelPickerPanel({
                     </p>
                   ) : null}
                   <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
-                    {shown.length && !query ? <p className="px-2 pb-1 pt-1 text-[12px] text-faint">{folded ? "Suggested" : "Models"}</p> : null}
+                    {shown.length && !query ? (
+                      <p className="px-2 pb-1 pt-1 text-[12px] text-faint">
+                        {folded ? "Suggested" : "Models"}
+                      </p>
+                    ) : null}
                     {shown.map((m) => {
                       const selected = value?.keyId === active.keyId && value?.model === m.id
                       const unusable = m.orgBlocked || Boolean(m.needsCliUpdate)
@@ -383,7 +455,9 @@ export function ModelPickerPanel({
                           className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-raised disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           <Radio on={selected} />
-                          <span className="min-w-0 flex-1 truncate text-[14px] text-text">{m.label}</span>
+                          <span className="min-w-0 flex-1 truncate text-[14px] text-text">
+                            {m.label}
+                          </span>
                           {m.orgBlocked ? (
                             <span className="shrink-0 text-[11px] text-faint">Blocked by org</span>
                           ) : m.needsCliUpdate ? (
@@ -394,10 +468,13 @@ export function ModelPickerPanel({
                             <span className="flex shrink-0 items-center gap-2 text-[11px] tabular-nums text-faint">
                               {ctx ? <span>{ctx}</span> : null}
                               {m.free ? (
-                                <span className="rounded-full bg-raised px-2 py-0.5 text-muted">Free</span>
+                                <span className="rounded-full bg-raised px-2 py-0.5 text-muted">
+                                  Free
+                                </span>
                               ) : m.price ? (
                                 <span title="US dollars per million tokens: input / output">
-                                  ${money(m.price.inputPerMillion)} / ${money(m.price.outputPerMillion)}
+                                  ${money(m.price.inputPerMillion)} / $
+                                  {money(m.price.outputPerMillion)}
                                 </span>
                               ) : null}
                             </span>
@@ -415,7 +492,11 @@ export function ModelPickerPanel({
                         <ChevronDown className="h-4 w-4" />
                       </button>
                     ) : null}
-                    {query && !visible.length ? <p className="px-2 py-6 text-center text-[13px] text-faint">No model matches.</p> : null}
+                    {query && !visible.length ? (
+                      <p className="px-2 py-6 text-center text-[13px] text-faint">
+                        No model matches.
+                      </p>
+                    ) : null}
                     {active.section === "key" || active.section === "subscription" ? (
                       <form
                         className="mt-2 flex gap-2 px-2"
@@ -432,7 +513,11 @@ export function ModelPickerPanel({
                           aria-label="Other model id"
                           className="h-8 min-w-0 flex-1 rounded-lg bg-raised px-2.5 text-[12px] text-text outline-none placeholder:text-faint"
                         />
-                        <button type="submit" disabled={locked} className="rounded-lg px-2 text-[12px] text-muted hover:text-text">
+                        <button
+                          type="submit"
+                          disabled={locked}
+                          className="rounded-lg px-2 text-[12px] text-muted hover:text-text"
+                        >
                           Use
                         </button>
                       </form>
@@ -444,7 +529,10 @@ export function ModelPickerPanel({
           ) : (
             <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center">
               <p className="text-[14px] text-text">No AI provider connected yet</p>
-              <Link href={`/${orgSlug}/settings/keys`} className="text-[13px] font-medium text-accent hover:underline">
+              <Link
+                href={`/${orgSlug}/settings/keys`}
+                className="text-[13px] font-medium text-accent hover:underline"
+              >
                 Connect one →
               </Link>
             </div>
@@ -455,13 +543,20 @@ export function ModelPickerPanel({
             <select
               value={value?.effort ?? ""}
               disabled={locked || !currentGroup || !offered.length}
-              onChange={(event) => value && pick(value.keyId, value.model, event.target.value || null)}
+              onChange={(event) =>
+                value && pick(value.keyId, value.model, event.target.value || null)
+              }
               className="h-9 rounded-lg border border-line bg-raised px-3 text-[13px] text-text disabled:opacity-60"
               aria-label="Thinking effort"
-              title={!offered.length && currentGroup ? "This model has no effort setting" : undefined}
+              title={
+                !offered.length && currentGroup ? "This model has no effort setting" : undefined
+              }
             >
               <option value="">
-                Default{currentPicked?.defaultEffort ? ` (${EFFORT_LABELS[currentPicked.defaultEffort]})` : ""}
+                Default
+                {currentPicked?.defaultEffort
+                  ? ` (${EFFORT_LABELS[currentPicked.defaultEffort]})`
+                  : ""}
               </option>
               {offered.map((level) => (
                 <option key={level} value={level}>

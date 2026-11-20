@@ -10,10 +10,10 @@ export function renderVerificationTemplate({
   name?: string
 }): { subject: string; html: string; text: string } {
   const greeting = name ? `Hello ${name},` : "Hello,"
-  const subject = "Verify your Sayalabs account"
+  const subject = "Verify your Sayabot account"
   const previewText = code
     ? `Your verification code is ${code}`
-    : "Confirm your email address for Sayalabs"
+    : "Confirm your email address for Sayabot"
 
   const codeSection = code
     ? `
@@ -40,7 +40,7 @@ export function renderVerificationTemplate({
       Confirm your email address
     </h1>
     <p style="margin: 0 0 24px 0; color: #a1a1aa;">
-      ${greeting} Welcome to Sayalabs. Confirm your email address to get started.
+      ${greeting} Welcome to Sayabot. Confirm your email address to get started.
     </p>
 
     ${codeSection}
@@ -57,7 +57,7 @@ export function renderVerificationTemplate({
     </p>
   `
 
-  const text = `${greeting}\n\nWelcome to Sayalabs.${
+  const text = `${greeting}\n\nWelcome to Sayabot.${
     code ? `\nYour 6-digit verification code is: ${code}\n` : ""
   }\nVerify your email: ${link}\n\nIf you did not request this, please ignore this email.`
 
@@ -68,17 +68,13 @@ export function renderVerificationTemplate({
   }
 }
 
-export function renderMagicLinkTemplate({
-  code,
-  link,
-}: {
-  code?: string
-  link: string
-}): { subject: string; html: string; text: string } {
-  const subject = "Your Sayalabs sign-in code"
-  const previewText = code
-    ? `Your sign-in code is ${code}`
-    : "Sign in to your Sayalabs account"
+export function renderMagicLinkTemplate({ code, link }: { code?: string; link: string }): {
+  subject: string
+  html: string
+  text: string
+} {
+  const subject = "Your Sayabot sign-in code"
+  const previewText = code ? `Your sign-in code is ${code}` : "Sign in to your Sayabot account"
 
   const codeSection = code
     ? `
@@ -96,16 +92,16 @@ export function renderMagicLinkTemplate({
     `
     : `
       <p style="margin: 0 0 24px 0; color: #d4d4d8;">
-        Click the button below to sign in to your Sayalabs account:
+        Click the button below to sign in to your Sayabot account:
       </p>
     `
 
   const contentHtml = `
     <h1 style="margin: 0 0 16px 0; font-size: 22px; font-weight: 600; color: #ffffff; letter-spacing: -0.3px;">
-      Sign in to Sayalabs
+      Sign in to Sayabot
     </h1>
     <p style="margin: 0 0 24px 0; color: #a1a1aa;">
-      We received a request to access your Sayalabs workspace.
+      We received a request to access your Sayabot workspace.
     </p>
 
     ${codeSection}
@@ -121,7 +117,7 @@ export function renderMagicLinkTemplate({
     </p>
   `
 
-  const text = `Sign in to Sayalabs.${
+  const text = `Sign in to Sayabot.${
     code ? `\nYour 6-digit code is: ${code}\n` : ""
   }\nSign in link: ${link}\n\nIf you did not request this, please ignore this email.`
 
@@ -132,20 +128,20 @@ export function renderMagicLinkTemplate({
   }
 }
 
-export function renderPasswordResetTemplate({
-  link,
-}: {
-  link: string
-}): { subject: string; html: string; text: string } {
-  const subject = "Reset your Sayalabs password"
-  const previewText = "Reset your Sayalabs account password"
+export function renderPasswordResetTemplate({ link }: { link: string }): {
+  subject: string
+  html: string
+  text: string
+} {
+  const subject = "Reset your Sayabot password"
+  const previewText = "Reset your Sayabot account password"
 
   const contentHtml = `
     <h1 style="margin: 0 0 16px 0; font-size: 22px; font-weight: 600; color: #ffffff; letter-spacing: -0.3px;">
       Reset your password
     </h1>
     <p style="margin: 0 0 24px 0; color: #a1a1aa;">
-      We received a request to reset the password for your Sayalabs account. Click the button below to choose a new password:
+      We received a request to reset the password for your Sayabot account. Click the button below to choose a new password:
     </p>
 
     <div style="text-align: center; margin: 28px 0 32px 0;">
@@ -163,7 +159,7 @@ export function renderPasswordResetTemplate({
     </p>
   `
 
-  const text = `Reset your Sayalabs password:\n\n${link}\n\nIf you did not request this, please ignore this email.`
+  const text = `Reset your Sayabot password:\n\n${link}\n\nIf you did not request this, please ignore this email.`
 
   return {
     subject,

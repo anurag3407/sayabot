@@ -2,7 +2,18 @@ import { expect, test } from "@playwright/test"
 
 // Unauthenticated navigation matrix: public pages load, protected pages
 // redirect to /login (proxy.ts), unknown routes 404.
-const PUBLIC = ["/", "/login", "/signup", "/forgot-password", "/reset-password", "/terms", "/privacy", "/security", "/help", "/offline"]
+const PUBLIC = [
+  "/",
+  "/login",
+  "/signup",
+  "/forgot-password",
+  "/reset-password",
+  "/terms",
+  "/privacy",
+  "/security",
+  "/help",
+  "/offline",
+]
 const PROTECTED = ["/onboarding", "/new-workspace"]
 
 test.describe("public pages", () => {

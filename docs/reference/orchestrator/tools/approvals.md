@@ -36,20 +36,23 @@ sequenceDiagram
 
 A `tool_calls` row moves through `tool_call_status`:
 
-| Status | Set by | Meaning |
-| :--- | :--- | :--- |
-| `pending_approval` | audit wrapper at insert (`audited.ts:103`) | dangerous call waiting for a human |
-| `approved` | web proxy route / internal route | human allowed the call; execution proceeds |
-| `rejected` | web proxy route, internal route, timeout, orchestrator restart, run abort | call will not execute |
-| `running` | audit wrapper at insert for safe calls (`audited.ts:103`) | non-dangerous call in flight |
-| `done` / `error` | audit wrapper after execution (`audited.ts:191-217`) | terminal states with `result` / `error` |
+| Status             | Set by                                                                    | Meaning                                    |
+| :----------------- | :------------------------------------------------------------------------ | :----------------------------------------- |
+| `pending_approval` | audit wrapper at insert (`audited.ts:103`)                                | dangerous call waiting for a human         |
+| `approved`         | web proxy route / internal route                                          | human allowed the call; execution proceeds |
+| `rejected`         | web proxy route, internal route, timeout, orchestrator restart, run abort | call will not execute                      |
+| `running`          | audit wrapper at insert for safe calls (`audited.ts:103`)                 | non-dangerous call in flight               |
+| `done` / `error`   | audit wrapper after execution (`audited.ts:191-217`)                      | terminal states with `result` / `error`    |
 
 Note `approved` is transient bookkeeping: the wrapper races `waitForApproval` and proceeds immediately when it resolves `approved`; the row is then overwritten with `done` or `error`.
 
 ## ⏳ `waitForApproval` (`src/tools/approvals.ts:74-105`)
 
 ```typescript
-export async function waitForApproval(toolCallId: string, timeoutMs = APPROVAL_TIMEOUT_MS): Promise<ApprovalStatus>
+export async function waitForApproval(
+  toolCallId: string,
+  timeoutMs = APPROVAL_TIMEOUT_MS,
+): Promise<ApprovalStatus>
 ```
 
 - **Immediate re-check first**: reads the row and returns `approved`/`rejected` if the decision already landed (`approvals.ts:78-79`).
@@ -69,12 +72,12 @@ export async function waitForApproval(toolCallId: string, timeoutMs = APPROVAL_T
 
 `notifyHumansNeeded({ roomId, agentId, kind: "approval", detail: toolName, refId: toolCallId })` (`push.ts:152-186`) fans out to **room approvers** — room members with role `admin` plus org members with role `owner`/`admin` (`push.ts:26-44`):
 
-| Channel | Details |
-| :--- | :--- |
-| Mobile push (APNs) | Title `"${agent} needs your approval"`, body `"Wants to use ${tool with underscores → spaces}. It expires in 5 minutes."`, category `approval`, thread = room (`push.ts:168-176`) |
-| Web push (VAPID) | Payload carries `kind: "approval"` and `toolCallId`, `tag: mesh-approval-<toolCallId>`, URL `/<org-slug>/inbox`, TTL 300 s (`push.ts:177-186`, `push.ts:7`) |
-| Notification buttons | The service worker renders **Allow / Don't allow** action buttons on approval pushes (`apps/web/src/sw.ts:79-83`) |
-| Inbound chat echo | If the triggering message came from Telegram/Discord/WhatsApp (`runtime.triggerMetadata`), the original chat is told approval is waiting and expires in 5 minutes (`audited.ts:132-142`, `deliverInboundReply` in `src/connectors/inbound.ts:178`) |
+| Channel              | Details                                                                                                                                                                                                                                            |
+| :------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Mobile push (APNs)   | Title `"${agent} needs your approval"`, body `"Wants to use ${tool with underscores → spaces}. It expires in 5 minutes."`, category `approval`, thread = room (`push.ts:168-176`)                                                                  |
+| Web push (VAPID)     | Payload carries `kind: "approval"` and `toolCallId`, `tag: mesh-approval-<toolCallId>`, URL `/<org-slug>/inbox`, TTL 300 s (`push.ts:177-186`, `push.ts:7`)                                                                                        |
+| Notification buttons | The service worker renders **Allow / Don't allow** action buttons on approval pushes (`apps/web/src/sw.ts:79-83`)                                                                                                                                  |
+| Inbound chat echo    | If the triggering message came from Telegram/Discord/WhatsApp (`runtime.triggerMetadata`), the original chat is told approval is waiting and expires in 5 minutes (`audited.ts:132-142`, `deliverInboundReply` in `src/connectors/inbound.ts:178`) |
 
 Delivery is best effort — push failures are logged and never hold up the run; the Inbox item remains the source of truth (`push.ts:150-152`).
 
@@ -98,16 +101,16 @@ The push-notification "Allow" button posts to the same endpoint with the signed-
 
 ### 3. Implicit rejections
 
-| Trigger | Behavior |
-| :--- | :--- |
-| 5-minute timeout | `waitForApproval` resolves `rejected`; row gets error `"Approval expired or was rejected"` (`audited.ts:157-165`) |
+| Trigger                                | Behavior                                                                                                                                                          |
+| :------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 5-minute timeout                       | `waitForApproval` resolves `rejected`; row gets error `"Approval expired or was rejected"` (`audited.ts:157-165`)                                                 |
 | Run stopped (user abort) while waiting | Race resolves `rejected`; error `"Run stopped while awaiting approval"`; model sees `"The run was stopped before approval."` (`audited.ts:146-150, 163, 175-177`) |
-| Orchestrator restart | Stale `pending_approval` rows expired on boot (see above) |
+| Orchestrator restart                   | Stale `pending_approval` rows expired on boot (see above)                                                                                                         |
 
 ## 🔁 After the decision (`src/tools/audited.ts:151-180`)
 
 ```typescript
-resolveApprovalWaiter(row.id, "rejected")          // clean up any stray waiter
+resolveApprovalWaiter(row.id, "rejected") // clean up any stray waiter
 await broadcast(roomId, { type: "tool.approval_resolved", toolCallId, status: decision })
 if (decision === "rejected") {
   // UPDATE tool_calls SET status='rejected', resolvedAt, error

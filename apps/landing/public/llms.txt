@@ -17,7 +17,7 @@
 - [Sayabot for Windows (x64)](https://github.com/anurag3407/sayabot/releases/latest/download/Sayabot-Setup-x64.exe): Windows installer for x64 workstations.
 - [Sayabot for Windows (ARM64)](https://github.com/anurag3407/sayabot/releases/latest/download/Sayabot-Setup-arm64.exe): Windows installer for Snapdragon and ARM64 machines.
 - [Sayabot for Android](https://github.com/anurag3407/sayabot/releases/latest/download/Sayabot.apk): Mobile companion APK for on-the-go notifications and danger approvals.
-- [Sayabot Web Application](https://sayabot.sayalabs.in/login): Hosted browser console for room chat, Monaco canvas, and agent settings.
+- [Sayabot Web Application](https://github.com/anurag3407/sayabot#web-console): Browser console for room chat, Monaco canvas, and agent settings on your server.
 
 ## Security & Sandbox Verification
 

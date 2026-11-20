@@ -10,12 +10,12 @@ Source files: `packages/llm/src/langfuse.ts` (141 lines), `packages/llm/src/lang
 
 ## ⚙️ Configuration and client lifecycle
 
-| Export | Behaviour |
-| :-- | :-- |
-| `LangfuseConfig` | `{ publicKey?, secretKey?, baseUrl? }` — explicit override used by tests |
+| Export                          | Behaviour                                                                                                     |
+| :------------------------------ | :------------------------------------------------------------------------------------------------------------ |
+| `LangfuseConfig`                | `{ publicKey?, secretKey?, baseUrl? }` — explicit override used by tests                                      |
 | `isLangfuseConfigured(config?)` | `true` when both a public and a secret key exist (config, else `LANGFUSE_PUBLIC_KEY` + `LANGFUSE_SECRET_KEY`) |
-| `getLangfuseClient(config?)` | The singleton `Langfuse` client, or `null` when unconfigured |
-| `flushLangfuse()` | Best-effort `client.flushAsync()`; never throws |
+| `getLangfuseClient(config?)`    | The singleton `Langfuse` client, or `null` when unconfigured                                                  |
+| `flushLangfuse()`               | Best-effort `client.flushAsync()`; never throws                                                               |
 
 `getLangfuseClient` (`packages/llm/src/langfuse.ts:17-38`) resolves the base URL from `config?.baseUrl` → `LANGFUSE_BASEURL` → `LANGFUSE_HOST` → default **`https://cloud.langfuse.com`**, and constructs the client with `flushAt: 1` (send every event immediately rather than batching). The module-level singleton is only reused when no explicit `config` is passed — passing a `config` always builds a fresh instance, which is how the tests isolate themselves.
 
@@ -27,7 +27,7 @@ Source files: `packages/llm/src/langfuse.ts` (141 lines), `packages/llm/src/lang
 
 ```typescript
 export interface TraceArgs {
-  id: string                       // the trace id (the orchestrator uses the agent_runs row id)
+  id: string // the trace id (the orchestrator uses the agent_runs row id)
   name: string
   sessionId?: string
   userId?: string
@@ -44,7 +44,7 @@ export interface TraceArgs {
 export interface StepRecordArgs {
   traceId: string
   stepIdx: number
-  kind: string                     // "model", "tool", "verify", …
+  kind: string // "model", "tool", "verify", …
   name?: string
   input?: unknown
   output?: unknown
@@ -60,17 +60,31 @@ export interface StepRecordArgs {
 const isModel = args.kind === "model"
 const spanName = args.name || `${args.kind}:${args.stepIdx}`
 if (isModel) {
-  lf.generation({ traceId, name: spanName, startTime, endTime, input, output,
+  lf.generation({
+    traceId,
+    name: spanName,
+    startTime,
+    endTime,
+    input,
+    output,
     usage: { promptTokens, completionTokens, totalTokens },
-    metadata: { stepIdx, kind } })
+    metadata: { stepIdx, kind },
+  })
 } else {
-  lf.span({ traceId, name: spanName, startTime, endTime, input, output,
-    metadata: { stepIdx, kind } })
+  lf.span({
+    traceId,
+    name: spanName,
+    startTime,
+    endTime,
+    input,
+    output,
+    metadata: { stepIdx, kind },
+  })
 }
 ```
 
-- **`kind: "model"` steps become Langfuse *generations*** with token usage mapped to `promptTokens` / `completionTokens` / `totalTokens`.
-- **Everything else becomes a *span*** — tool steps and the critic's verification step alike.
+- **`kind: "model"` steps become Langfuse _generations_** with token usage mapped to `promptTokens` / `completionTokens` / `totalTokens`.
+- **Everything else becomes a _span_** — tool steps and the critic's verification step alike.
 - `name` falls back to `"<kind>:<stepIdx>"`. In practice the orchestrator names model steps after the resolved model and tool steps after the primary tool (`name: primaryTool?.toolName ?? (kind === "model" ? resolved.modelName : kind)`, `run.ts:673`), and records a `kind: "verify"`, `name: "critic_verification"` span with `output: { pass, feedback, reasons }` after each critic cycle (`run.ts:839-849`).
 - Inputs/outputs are the **scrubbed** step payloads — `run.ts` runs them through the secret redactor (`runScrubber`) before recording, consistent with Golden Rule 1 (never log secrets).
 - The whole call is wrapped in `try { … } catch {}` — "Non-blocking telemetry".
@@ -79,7 +93,10 @@ if (isModel) {
 
 ```typescript
 export async function recordScoreToLangfuse(args: {
-  traceId: string; name: string; value: number; comment?: string
+  traceId: string
+  name: string
+  value: number
+  comment?: string
 }): Promise<void>
 ```
 
@@ -109,12 +126,12 @@ sequenceDiagram
 
 The suite clears `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` from `process.env` around each case:
 
-| Test | Pins |
-| :-- | :-- |
-| `reports unconfigured when environment keys are missing` | `isLangfuseConfigured()` → `false`; `getLangfuseClient()` → `null` |
-| `reports configured when keys are present` | With `pk-lf-test` / `sk-lf-test`, `isLangfuseConfigured()` → `true` and a non-null client is returned |
-| `handles step records safely when unconfigured` | `recordStepToLangfuse({ traceId: "test-trace", stepIdx: 1, kind: "tool", input: { cmd: "ls" }, output: { stdout: "files" } })` resolves `undefined` |
-| `handles score records safely when unconfigured` | `recordScoreToLangfuse({ traceId, name: "human_approval", value: 1 })` resolves `undefined` |
+| Test                                                     | Pins                                                                                                                                                |
+| :------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `reports unconfigured when environment keys are missing` | `isLangfuseConfigured()` → `false`; `getLangfuseClient()` → `null`                                                                                  |
+| `reports configured when keys are present`               | With `pk-lf-test` / `sk-lf-test`, `isLangfuseConfigured()` → `true` and a non-null client is returned                                               |
+| `handles step records safely when unconfigured`          | `recordStepToLangfuse({ traceId: "test-trace", stepIdx: 1, kind: "tool", input: { cmd: "ls" }, output: { stdout: "files" } })` resolves `undefined` |
+| `handles score records safely when unconfigured`         | `recordScoreToLangfuse({ traceId, name: "human_approval", value: 1 })` resolves `undefined`                                                         |
 
 (The safe-no-op behaviour is the key contract: the orchestrator can call these unconditionally.)
 
@@ -122,13 +139,13 @@ The suite clears `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` from `process.env
 
 ## 🔧 Environment variables
 
-| Variable | Effect |
-| :-- | :-- |
-| `LANGFUSE_PUBLIC_KEY` | Public key (pk-lf-…); required, else everything is a no-op |
-| `LANGFUSE_SECRET_KEY` | Secret key (sk-lf-…); required |
-| `LANGFUSE_BASEURL` | Self-hosted endpoint; takes precedence over `LANGFUSE_HOST` |
-| `LANGFUSE_HOST` | Older alias for the endpoint |
-| *(none)* | Defaults to `https://cloud.langfuse.com` |
+| Variable              | Effect                                                      |
+| :-------------------- | :---------------------------------------------------------- |
+| `LANGFUSE_PUBLIC_KEY` | Public key (pk-lf-…); required, else everything is a no-op  |
+| `LANGFUSE_SECRET_KEY` | Secret key (sk-lf-…); required                              |
+| `LANGFUSE_BASEURL`    | Self-hosted endpoint; takes precedence over `LANGFUSE_HOST` |
+| `LANGFUSE_HOST`       | Older alias for the endpoint                                |
+| _(none)_              | Defaults to `https://cloud.langfuse.com`                    |
 
 ---
 

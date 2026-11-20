@@ -21,7 +21,9 @@ describe("Auth Callback Route (GET /auth/callback)", () => {
   })
 
   it("redirects to /login if error query parameter is present", async () => {
-    const req = new Request("https://sayabot.sayalabs.in/auth/callback?error=access_denied&error_description=User%20declined")
+    const req = new Request(
+      "https://sayabot.example.com/auth/callback?error=access_denied&error_description=User%20declined",
+    )
     const res = await GET(req)
     expect(res.status).toBe(307)
     expect(res.headers.get("location")).toContain("/login?error=User%20declined")
@@ -52,10 +54,10 @@ describe("Auth Callback Route (GET /auth/callback)", () => {
     vi.mocked(createSupabaseServerClient).mockResolvedValue(mockSupabase as any)
     vi.mocked(createAdminClient).mockReturnValue(mockAdmin as any)
 
-    const req = new Request("https://sayabot.sayalabs.in/auth/callback?code=valid-auth-code")
+    const req = new Request("https://sayabot.example.com/auth/callback?code=valid-auth-code")
     const res = await GET(req)
     expect(res.status).toBe(307)
-    expect(res.headers.get("location")).toBe("https://sayabot.sayalabs.in/my-workspace")
+    expect(res.headers.get("location")).toBe("https://sayabot.example.com/my-workspace")
   })
 
   it("formats user-friendly error when code exchange fails with PKCE missing verifier and cannot recover", async () => {
@@ -70,12 +72,14 @@ describe("Auth Callback Route (GET /auth/callback)", () => {
 
     vi.mocked(createSupabaseServerClient).mockResolvedValue(mockSupabase as any)
 
-    const req = new Request("https://sayabot.sayalabs.in/auth/callback?code=invalid-code")
+    const req = new Request("https://sayabot.example.com/auth/callback?code=invalid-code")
     const res = await GET(req)
     expect(res.status).toBe(307)
     const location = res.headers.get("location")!
     expect(location).toContain("/login?error=")
-    expect(decodeURIComponent(location)).toContain("Your email is verified! Please sign in with your email and password below.")
+    expect(decodeURIComponent(location)).toContain(
+      "Your email is verified! Please sign in with your email and password below.",
+    )
   })
 
   it("handles token_hash and type directly for SSR email verification", async () => {
@@ -91,7 +95,9 @@ describe("Auth Callback Route (GET /auth/callback)", () => {
       from: vi.fn().mockReturnValue({
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
-            maybeSingle: vi.fn().mockResolvedValue({ data: { id: "user-456", display_name: "member" } }),
+            maybeSingle: vi
+              .fn()
+              .mockResolvedValue({ data: { id: "user-456", display_name: "member" } }),
           }),
         }),
         update: vi.fn().mockReturnValue({
@@ -103,9 +109,11 @@ describe("Auth Callback Route (GET /auth/callback)", () => {
     vi.mocked(createSupabaseServerClient).mockResolvedValue(mockSupabase as any)
     vi.mocked(createAdminClient).mockReturnValue(mockAdmin as any)
 
-    const req = new Request("https://sayabot.sayalabs.in/auth/callback?token_hash=abc123hash&type=signup")
+    const req = new Request(
+      "https://sayabot.example.com/auth/callback?token_hash=abc123hash&type=signup",
+    )
     const res = await GET(req)
     expect(res.status).toBe(307)
-    expect(res.headers.get("location")).toBe("https://sayabot.sayalabs.in/my-workspace")
+    expect(res.headers.get("location")).toBe("https://sayabot.example.com/my-workspace")
   })
 })

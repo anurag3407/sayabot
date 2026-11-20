@@ -122,19 +122,45 @@ describe("toAuditedTools", () => {
   })
 
   it("redacts secrets in results and errors before sending them to the model", async () => {
-    const runtime = { orgId: "org", roomId: "room", agentId: "agent", scrub: (s: string) => s.replaceAll("private-value", "[REDACTED]") }
+    const runtime = {
+      orgId: "org",
+      roomId: "room",
+      agentId: "agent",
+      scrub: (s: string) => s.replaceAll("private-value", "[REDACTED]"),
+    }
     const specs: ToolSpec[] = [
-      { name: "success", description: "", schema: z.object({}), dangerous: false, execute: async () => ({ value: "private-value" }) },
-      { name: "failure", description: "", schema: z.object({}), dangerous: false, execute: async () => { throw new Error("private-value") } },
+      {
+        name: "success",
+        description: "",
+        schema: z.object({}),
+        dangerous: false,
+        execute: async () => ({ value: "private-value" }),
+      },
+      {
+        name: "failure",
+        description: "",
+        schema: z.object({}),
+        dangerous: false,
+        execute: async () => {
+          throw new Error("private-value")
+        },
+      },
     ]
     const tools = toAuditedTools(specs, runtime)
-    expect(JSON.stringify(await (tools.success as any).execute({}, {}))).not.toContain("private-value")
-    expect(JSON.stringify(await (tools.failure as any).execute({}, {}))).not.toContain("private-value")
+    expect(JSON.stringify(await (tools.success as any).execute({}, {}))).not.toContain(
+      "private-value",
+    )
+    expect(JSON.stringify(await (tools.failure as any).execute({}, {}))).not.toContain(
+      "private-value",
+    )
   })
 
   it("does not execute a cancelled non-dangerous call", async () => {
     const execute = vi.fn()
-    const tools = toAuditedTools([{ name: "write", description: "", schema: z.object({}), dangerous: false, execute }], { orgId: "o", roomId: "r", agentId: "a" })
+    const tools = toAuditedTools(
+      [{ name: "write", description: "", schema: z.object({}), dangerous: false, execute }],
+      { orgId: "o", roomId: "r", agentId: "a" },
+    )
     await (tools.write as any).execute({}, { abortSignal: AbortSignal.abort() })
     expect(execute).not.toHaveBeenCalled()
   })

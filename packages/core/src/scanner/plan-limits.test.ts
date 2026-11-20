@@ -16,8 +16,18 @@ describe("parseClaudeUsage", () => {
       extra_usage: { is_enabled: false },
     })
     expect(windows).toEqual([
-      { label: "5-hour", usedPercent: 38, resetsAt: "2026-11-14T03:00:00.000Z", windowMinutes: 300 },
-      { label: "Weekly", usedPercent: 19.5, resetsAt: "2026-11-18T00:00:00.000Z", windowMinutes: 10080 },
+      {
+        label: "5-hour",
+        usedPercent: 38,
+        resetsAt: "2026-11-14T03:00:00.000Z",
+        windowMinutes: 300,
+      },
+      {
+        label: "Weekly",
+        usedPercent: 19.5,
+        resetsAt: "2026-11-18T00:00:00.000Z",
+        windowMinutes: 10080,
+      },
     ])
   })
 
@@ -58,8 +68,14 @@ describe("parseCodexRateLimits", () => {
 describe("lastCodexRateLimits", () => {
   it("finds the newest reading and skips broken lines", () => {
     const log = [
-      JSON.stringify({ timestamp: "2026-11-12T01:00:00Z", payload: { type: "token_count", rate_limits: { primary: { used_percent: 1 } } } }),
-      JSON.stringify({ timestamp: "2026-11-12T02:00:00Z", payload: { type: "token_count", rate_limits: { primary: { used_percent: 5 } } } }),
+      JSON.stringify({
+        timestamp: "2026-11-12T01:00:00Z",
+        payload: { type: "token_count", rate_limits: { primary: { used_percent: 1 } } },
+      }),
+      JSON.stringify({
+        timestamp: "2026-11-12T02:00:00Z",
+        payload: { type: "token_count", rate_limits: { primary: { used_percent: 5 } } },
+      }),
       '{"timestamp":"2026-11-12T03:00:00Z","payload":{"rate_limits":{"prim',
     ].join("\n")
     const found = lastCodexRateLimits(log)
@@ -86,7 +102,12 @@ describe("parseAntigravityQuota", () => {
       ],
     })
     expect(windows).toEqual([
-      { label: "Gemini Pro · 5-hour", usedPercent: 24, resetsAt: "2026-11-14T05:30:00.000Z", windowMinutes: 300 },
+      {
+        label: "Gemini Pro · 5-hour",
+        usedPercent: 24,
+        resetsAt: "2026-11-14T05:30:00.000Z",
+        windowMinutes: 300,
+      },
       { label: "Gemini Pro · Weekly", usedPercent: 50, resetsAt: null, windowMinutes: 10080 },
     ])
   })

@@ -10,7 +10,11 @@ export const dynamic = "force-dynamic"
 
 async function homeState(userId: string, orgId: string | null) {
   const admin = createAdminClient()
-  const { data } = await admin.from("cloud_home_copies").select("restored_at").eq("user_id", userId).maybeSingle()
+  const { data } = await admin
+    .from("cloud_home_copies")
+    .select("restored_at")
+    .eq("user_id", userId)
+    .maybeSingle()
   const copied = Boolean(data) && !data?.restored_at
   const cloudReady = edition() === "cloud" && Boolean(orgId)
   let planActive = false
@@ -61,7 +65,14 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "Nothing to copy back" }, { status: 409 })
   }
   const admin = createAdminClient()
-  const { data } = await admin.from("cloud_home_copies").select("snapshot").eq("user_id", host.user_id).maybeSingle()
-  await admin.from("cloud_home_copies").update({ restored_at: new Date().toISOString() }).eq("user_id", host.user_id)
+  const { data } = await admin
+    .from("cloud_home_copies")
+    .select("snapshot")
+    .eq("user_id", host.user_id)
+    .maybeSingle()
+  await admin
+    .from("cloud_home_copies")
+    .update({ restored_at: new Date().toISOString() })
+    .eq("user_id", host.user_id)
   return NextResponse.json({ snapshot: parseWorkspaceCopy(data?.snapshot) })
 }

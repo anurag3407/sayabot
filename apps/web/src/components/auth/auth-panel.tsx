@@ -50,7 +50,13 @@ function SignUpForm({
       <form action={action} className="space-y-3">
         <input type="hidden" name="next" value={next} />
         <Field label="your name" htmlFor="signup-name">
-          <Input id="signup-name" name="name" required autoComplete="name" placeholder="Sam Rivera" />
+          <Input
+            id="signup-name"
+            name="name"
+            required
+            autoComplete="name"
+            placeholder="Sam Rivera"
+          />
         </Field>
         <Field label="email" htmlFor="signup-email">
           <Input
@@ -197,7 +203,11 @@ function SignInForm({
       <OAuthButtons next={next} googleEnabled={googleEnabled} githubEnabled={githubEnabled} />
       <p className="text-center text-[12px] text-muted">
         New to Sayabot?{" "}
-        <button type="button" onClick={onSwitch} className="text-text underline underline-offset-4 cursor-pointer">
+        <button
+          type="button"
+          onClick={onSwitch}
+          className="text-text underline underline-offset-4 cursor-pointer"
+        >
           Create an account
         </button>
       </p>
@@ -208,15 +218,7 @@ function SignInForm({
   )
 }
 
-function VerifyForm({
-  email,
-  next,
-  onBack,
-}: {
-  email: string
-  next: string
-  onBack: () => void
-}) {
+function VerifyForm({ email, next, onBack }: { email: string; next: string; onBack: () => void }) {
   const [state, action, pending] = useActionState<ActionResult | null, FormData>(
     verifyEmailAction,
     null,
@@ -253,12 +255,20 @@ function VerifyForm({
         >
           {resendPending ? "sending…" : "send a new code"}
         </button>
-        <button type="button" onClick={onBack} className="font-mono text-[12px] text-faint hover:text-text">
+        <button
+          type="button"
+          onClick={onBack}
+          className="font-mono text-[12px] text-faint hover:text-text"
+        >
           use a different email
         </button>
       </form>
-      {resendState?.message ? <InlineAlert tone="success">{resendState.message}</InlineAlert> : null}
-      {resendState && !resendState.ok ? <InlineAlert tone="danger">{resendState.error}</InlineAlert> : null}
+      {resendState?.message ? (
+        <InlineAlert tone="success">{resendState.message}</InlineAlert>
+      ) : null}
+      {resendState && !resendState.ok ? (
+        <InlineAlert tone="danger">{resendState.error}</InlineAlert>
+      ) : null}
       <p className="font-mono text-[11px] leading-relaxed text-faint">
         The email link works too. If no code arrives, check spam, then resend.
       </p>

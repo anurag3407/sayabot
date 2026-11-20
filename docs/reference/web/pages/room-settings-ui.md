@@ -34,7 +34,7 @@ An `ActionForm` over `updateRoomBasics` with **name** and, for group rooms, **wh
 
 ### How agents reply
 
-An `ActionForm` over `updateRoomSettings`. The lead may hand one message to up to three agents in order. Fields: **agents reply** (`TURN_MODE_LABELS`: *Reply when @mentioned*, *Debate*, *Lead agent: one agent sends each message to the right agent*), **lead agent** (only `kind: "llm"` room agents are listed), replies per message (1–10), runs per minute, daily budget, room instructions, and debate order. The help text explains lead routing: messages without an @mention go to the lead, which hands each one to the best-fitting agent and says so in the room. An @mention always goes straight to that agent. Invited apps can be handed work but cannot lead. Orchestrator behavior: [coordinator](../../orchestrator/engine/coordinator.md).
+An `ActionForm` over `updateRoomSettings`. The lead may hand one message to up to three agents in order. Fields: **agents reply** (`TURN_MODE_LABELS`: _Reply when @mentioned_, _Debate_, _Lead agent: one agent sends each message to the right agent_), **lead agent** (only `kind: "llm"` room agents are listed), replies per message (1–10), runs per minute, daily budget, room instructions, and debate order. The help text explains lead routing: messages without an @mention go to the lead, which hands each one to the best-fitting agent and says so in the room. An @mention always goes straight to that agent. Invited apps can be handed work but cannot lead. Orchestrator behavior: [coordinator](../../orchestrator/engine/coordinator.md).
 
 ### Tools in this room (`RoomTools`)
 

@@ -1,7 +1,17 @@
 "use client"
 
 import { useEffect, useRef, useState, useCallback } from "react"
-import { PhoneOff, Mic, MicOff, Volume2, VolumeX, ShieldAlert, Check, X, Sparkles } from "lucide-react"
+import {
+  PhoneOff,
+  Mic,
+  MicOff,
+  Volume2,
+  VolumeX,
+  ShieldAlert,
+  Check,
+  X,
+  Sparkles,
+} from "lucide-react"
 import { startRecording, type RecordingSession } from "@/lib/tts/vad"
 import { speaker, useSpeech } from "@/lib/tts"
 import { sendMessage } from "@/lib/actions/messages"
@@ -22,12 +32,7 @@ export interface CallModalProps {
 }
 
 type CallPhase =
-  | "connecting"
-  | "listening"
-  | "transcribing"
-  | "thinking"
-  | "speaking"
-  | "approval_needed"
+  "connecting" | "listening" | "transcribing" | "thinking" | "speaking" | "approval_needed"
 
 export function CallModal({
   isOpen,
@@ -230,7 +235,9 @@ export function CallModal({
   // Detect latest agent message and speak it aloud
   useEffect(() => {
     if (!isOpen) return
-    const agentMessages = messages.filter((m) => m.senderType === "agent" && m.status !== "streaming")
+    const agentMessages = messages.filter(
+      (m) => m.senderType === "agent" && m.status !== "streaming",
+    )
     const latest = agentMessages[agentMessages.length - 1]
 
     if (latest && latest.id !== lastSpokenMessageIdRef.current && latest.content?.trim()) {
@@ -350,7 +357,8 @@ export function CallModal({
                 <span>Approval Required: {spokenApprovalCall.toolName}</span>
               </div>
               <p className="text-[12px] text-muted text-center">
-                Say <strong className="text-text">&quot;yes&quot;</strong> to approve, or click below:
+                Say <strong className="text-text">&quot;yes&quot;</strong> to approve, or click
+                below:
               </p>
               <div className="flex gap-2 mt-1">
                 <button

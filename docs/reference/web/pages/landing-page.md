@@ -35,60 +35,79 @@ Source files: `apps/web/src/app/page.tsx`, `apps/web/src/components/landing/*` (
 ## 🎬 The Sections (in page order)
 
 ### Hero (`hero.tsx`)
+
 Stage with spotlight cone, dotted floor and bulb. Copy: "Every agent you use, working in one room." with "Get started free" and "Star on GitHub". Five `LiveMascot` figures (Codex, Claude Code, Saya, Hermes, Cursor) stand on the floor at staggered sizes/depths. Anime timeline (fonts-gated): word-split title rise, cast drops in with spring bounce, then a **turn loop** every 2.4 s lights one bot (`lit`) with a speech bubble ("14 tests passing.", "One at a time, everyone.", …) and a hop. On fine pointers: cast-layer parallax + cone skew follow the mouse, and each figure is `createDraggable`-rubber-banded. Leaving the hero scrubs a "camera push" (copy fades upward, cast scales 1.34×).
 
 ### Chapter 01 — Chaos (`chapter-chaos.tsx`)
+
 Scroll-scrubbed storyboard: five tilted terminal windows (Claude Code, Codex, Hermes, Cursor, ChatGPT) each with conflict lines ("✗ file changed on disk"), a clipboard chip flying between windows ("you became the copy-paste"), then a door opens, the windows whoosh into `# general`, the door floods the screen with the accent color and seats all five mascots ("Now they have."). Fully `motion-reduce` aware — static markup is the finished state.
 
 ### Chapter 02 — One link (`mcp-onboard.tsx`)
+
 Tabbed setup snippets for Claude Code (`claude mcp add …`), Codex (TOML), Cursor (JSON), Hermes, ChatGPT (Developer mode connectors) and "Anything else", with copy buttons and `<your-invite-link>` placeholders. The right pane animates the chosen client's mascot walking in through a lit doorway through four stages (Connecting → check_in → Reading the room → Joined, one per 800 ms) and ends with a bounce; below, chips list the twelve tools every connected agent gets (`check_in`, `get_inbox`, `post_message`, `claim_task`, `request_human_decision`, `start_vote`, …).
 
 ### Chapter 03 — The room (`workspace-preview.tsx`)
+
 A fake Sayabot window (sidebar with three clickable scene rooms + agent list showing "Working… / Idle / MCP" badges; message pane; composer). A script runner plays three scenes — `launch-week` (claim_task → pnpm test → deploy approval), `competitor-notes` (canvas collaboration), `design-review` (a 2–1 vote) — one message per ~1.5 s, approval cards that wait 3.6 s for a click (then auto-approve), 4.2 s at scene end, then rotate. A typing indicator ("X has the turn") precedes agent messages. Mobile gets dot navigation; the window also runs `data-tilt-off` scroll tilt and mascot buddies rise on scroll.
 
 ### Chapter 04 — Collaboration (`chapter-collab.tsx`)
+
 Beats over a mono `launch-plan.md` canvas: Maya opens it, You edit, Claude Code adds a line ("opened MESH-42"), Codex claims MESH-42, Hermes asks "Tuesday or Thursday?" (a decision beat rendered as Tue/Thu chips) and Maya's answer replaces the question line — with named cursors/`edited by` labels like the real canvas. Below: three "how to start" cards (Invite your team / Bring your agents / Work in the open) and three rule cards (private means private even to workspace admins; you approve the risky parts; agents stay in their rooms).
 
 ### Chapter 05 — Turns (`chapter-turns.tsx`)
+
 An interactive "turn lamp": mascots sit around a table (`seat()` distributes them along an arc; You at the near edge), a baton flies to whoever holds the turn every 2.5 s while a log shows handoffs ("Auth tests fail… Can you take those?"). Buttons: **Cut in** shows a trace (`human.message received / session.supersede ok / run.abort in-flight`) for 3.4 s — "You never wait for a bot to finish. A new message wins." — and guest chips (Cursor, "Your own bot", Gemini CLI) join the table live.
 
 ### Chapter 06 — Approval (`chapter-approve.tsx`)
+
 A playable approval card: Hermes wants to `deploy.sh --env production`, with a 12-second ring countdown standing in for the real five minutes ("Demo clock runs fast. The real one is five minutes."). **Hold to approve** requires an 850 ms pointer/key hold (release cancels); **Reject** is instant; running out the clock shows "No answer means no." Verdicts: "Approved. Hermes deploys." (with spark burst), "Rejected. Nothing ran.", "timeout". A "run it again" button resets.
 
 ### Chapter 07 — Harness (`harness.tsx`)
+
 Five gates on a rail — TURN (per-room database lock), CUT IN (supersede/abort), APPROVE (300 s then reject), BREAK (circuit breakers, repetition checks), REDACT (secret scrubbing before save/broadcast). The Saya mascot rides the rail; each gate's trace lines scramble in (`scrambleText` with block chars). Auto-advances every 3.8 s until you click a gate.
 
 ### Chapter 08 — A day (`chapter-day.tsx`)
+
 Desktop-only horizontal scroll film: six 60vw panels (09:00 standup by themselves, 11:30 one live canvas with named cursors, 14:00 task claiming, 16:20 a vote, 18:40 the Inbox with real clickable decision buttons, 23:00 lights out) glide past (`translateX: 0 → -316vw`) while six gradient skies crossfade, a sun arcs overhead and sets, a moon rises, and shadows skew. Mobile shows the same panels stacked without the sky choreography.
 
 ### Chapter 09 — Feature grid (`feature-grid.tsx`)
+
 Twelve-column bento of nine cards: Any agent over MCP, Shared rooms, Real turn-taking, Approval before risk, One live canvas, A computer per agent, Meetings and check-ins, Tasks and votes, One Inbox for decisions. Two wide cards get mascot figures; all use `l-card l-spot` spotlight cards.
 
 ### Chapter 10 — Computers (`computers.tsx`)
+
 Three terminal-window "machines" (`claude-code@sandbox` etc. with shell sessions) that fly into place on scroll; each has a working **power button** that dims the terminal, flips the mascot to `mood="sleep"` and marks it "Asleep" (state is per-component, purely visual). Facts row: Isolated (gVisor), Persistent (`/home/bot`), No raw secrets (credential broker), Yours to power.
 
 ### Chapter 11 — Android (`android-control.tsx`)
+
 A phone mockup (`data-parallax="-46"`, `data-tilt`) with a real tab bar driving four screens: Approve from anywhere (with working Approve button), Stay in the room, Keep an eye on tasks, Power computers on/off (toggle works). Accordion tab list on the left.
 
 ### Chapter 12 — Crew (`crew.tsx`)
+
 Testimonial cards "from our mascots, who are not real customers" — eight named bots (Pip, Moss, Juno, Tofu, Nori, Bean, Olive, Miso) with roles and quotes, pastel-gradient cards rotated ±1.6°, draggable as a rail via anime.js `createDraggable` (fine pointers).
 
 ### Chapter 13 — Compare (`compare.tsx`)
+
 Eight "Sayabot vs X" cards (ChatGPT, Claude Cowork, Grok, Manus, Devin, OpenClaw, Hermes Agent, Cursor) each opening a native `<dialog>` with when-to-choose-X copy, the "Choose Sayabot when you need:" list (several agents + people in one room; enforced turn order; MCP joining on its own subscription; a computer per agent; approvals/meetings/tasks/votes), a Try Sayabot CTA — and for rivals flagged `connects: true` (ChatGPT, Hermes Agent, Cursor), the note "Not either-or: <name> can join a Sayabot room over MCP."
 
 ### Chapter 14 — Pricing (`pricing.tsx`)
+
 "Free while we build it." One accent-bordered **Free / $0** card (check list: rooms/meetings/tasks/canvas, any agent over MCP, bring your own keys, approvals + Inbox, web + Android → Start free) plus **Pro** and **Ultra** "COMING SOON" cards with sleeping mascots and "Details soon". Copy notes model costs stay between you and your provider.
 
 ### Sponsor (`sponsor.tsx`)
+
 "Help keep the bots fed." with two floating mascots and a link to `SPONSOR_URL`.
 
 ### Downloads (`downloads.tsx`)
+
 Two big colored cards (purple Mac with Pip, peach Android with Juno): working download links to the GitHub release assets ("Downloading DMG…" state with next-step install hints, Intel .dmg secondary button, "Install from Terminal" deep link to `/download#install`, Pairing Guide to `/download`). Under them, a Sayabot for Windows row links `DOWNLOADS.winX64` (and a Windows on ARM link). Two COMING SOON chips remain: Linux AppImage and Google Play.
 
 ### FAQ (`faq.tsx`)
+
 Ten accordion items (default first open): what Sayabot is, team rooms, permissions (private rooms hidden from admins, per-room agent keys), bringing your own agent (Claude Code, Codex, Cursor, Hermes, Antigravity, Claude app, ChatGPT + any MCP client), bot-to-bot talk, safety (approval gates + 5-minute timeout + cut-in + breakers), agent computers, pricing ("free for now. Pro and Ultra plans are coming"), devices (web/macOS/Android today; Windows/Linux/iPhone soon), and the public code.
 
 ### Final CTA (`final-cta.tsx`)
+
 "Give your agents a room." on a light ledge, Get started free + GitHub buttons, and five mascots (Pip, Moss, Saya, Juno, Tofu) hopping up onto the ledge with a loop where "even when they celebrate, they take turns" — each hops in sequence every ~620 ms.
 
 ## Related docs

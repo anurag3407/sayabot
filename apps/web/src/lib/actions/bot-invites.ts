@@ -37,7 +37,11 @@ async function viewOf(row: BotInviteRow): Promise<BotInviteView> {
   const url = botInviteUrl(row.code)
   let agentHandle: string | null = null
   if (row.agent_id) {
-    const { data } = await createAdminClient().from("agents").select("handle").eq("id", row.agent_id).maybeSingle()
+    const { data } = await createAdminClient()
+      .from("agents")
+      .select("handle")
+      .eq("id", row.agent_id)
+      .maybeSingle()
     agentHandle = data?.handle ?? null
   }
   return {
@@ -61,7 +65,11 @@ async function viewOf(row: BotInviteRow): Promise<BotInviteView> {
 
 async function loadRow(inviteId: string): Promise<BotInviteRow | null> {
   if (!/^[0-9a-f-]{36}$/i.test(inviteId)) return null
-  const { data } = await createAdminClient().from("bot_invites").select("*").eq("id", inviteId).maybeSingle()
+  const { data } = await createAdminClient()
+    .from("bot_invites")
+    .select("*")
+    .eq("id", inviteId)
+    .maybeSingle()
   return (data as BotInviteRow | null) ?? null
 }
 
@@ -104,7 +112,10 @@ export async function createBotInviteAction(input: {
 }
 
 /** Polled by the add-agent dialog so it flips to "asked to join" without a reload. */
-export async function botInviteStatusAction(input: { orgSlug: string; inviteId: string }): Promise<ActionResult> {
+export async function botInviteStatusAction(input: {
+  orgSlug: string
+  inviteId: string
+}): Promise<ActionResult> {
   const row = await loadRow(input.inviteId)
   if (!row) return fail("Link not found")
   const check = await adminRoomAccess(input.orgSlug, row.room_id)
@@ -117,7 +128,12 @@ async function uniqueHandle(orgId: string, base: string): Promise<string> {
   const root = handleFromName(base)
   for (let i = 0; i < 30; i++) {
     const candidate = i === 0 ? root : `${root}-${i + 1}`
-    const { data } = await admin.from("agents").select("id").eq("org_id", orgId).eq("handle", candidate).maybeSingle()
+    const { data } = await admin
+      .from("agents")
+      .select("id")
+      .eq("org_id", orgId)
+      .eq("handle", candidate)
+      .maybeSingle()
     if (!data) return candidate
   }
   return `${root}-${Date.now().toString(36).slice(-4)}`
@@ -157,10 +173,10 @@ export async function decideBotInviteAction(input: {
 
   const agentGate = await planGate(row.org_id, "agents")
   if (!agentGate.ok) return fail(agentGate.message)
-  const isGenericPlaceholder =
-    Boolean(row.name &&
-      (row.name === "Something else" ||
-        row.name === normalizeClient(row.app ?? "generic").label))
+  const isGenericPlaceholder = Boolean(
+    row.name &&
+    (row.name === "Something else" || row.name === normalizeClient(row.app ?? "generic").label),
+  )
   const displayName = (!isGenericPlaceholder && row.name) || row.request_name || row.name || "Bot"
   const handle = await uniqueHandle(row.org_id, displayName)
   const { data: agent, error: agentError } = await admin
@@ -178,7 +194,9 @@ export async function decideBotInviteAction(input: {
     .single()
   if (agentError || !agent) return fail(errorMessage(agentError) || "Could not add the bot")
 
-  const { error: memberError } = await admin.from("room_agents").insert({ room_id: row.room_id, agent_id: agent.id })
+  const { error: memberError } = await admin
+    .from("room_agents")
+    .insert({ room_id: row.room_id, agent_id: agent.id })
   if (memberError) {
     await admin.from("agents").delete().eq("id", agent.id)
     return fail(errorMessage(memberError))
@@ -186,7 +204,12 @@ export async function decideBotInviteAction(input: {
 
   const { data: updated } = await admin
     .from("bot_invites")
-    .update({ status: "approved", agent_id: agent.id, decided_by: check.access.user.id, decided_at: now })
+    .update({
+      status: "approved",
+      agent_id: agent.id,
+      decided_by: check.access.user.id,
+      decided_at: now,
+    })
     .eq("id", row.id)
     .eq("status", "pending")
     .select("id")
@@ -207,12 +230,16 @@ export async function decideBotInviteAction(input: {
   return ok(`Approved @${agent.handle}. It connects on its next check.`, { handle: agent.handle })
 }
 
-export async function revokeBotInviteAction(input: { orgSlug: string; inviteId: string }): Promise<ActionResult> {
+export async function revokeBotInviteAction(input: {
+  orgSlug: string
+  inviteId: string
+}): Promise<ActionResult> {
   const row = await loadRow(input.inviteId)
   if (!row) return fail("Link not found")
   const check = await adminRoomAccess(input.orgSlug, row.room_id)
   if ("error" in check) return fail(check.error)
-  if (!["waiting", "pending"].includes(row.status)) return fail("This link can no longer be cancelled")
+  if (!["waiting", "pending"].includes(row.status))
+    return fail("This link can no longer be cancelled")
   await createAdminClient().from("bot_invites").update({ status: "revoked" }).eq("id", row.id)
   revalidateOrg(input.orgSlug)
   return ok("Link cancelled")

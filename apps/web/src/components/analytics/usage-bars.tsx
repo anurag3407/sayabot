@@ -48,7 +48,10 @@ export function UsageBars({
       event.preventDefault()
       const step = event.key === "ArrowRight" ? 1 : -1
       setActive((current) =>
-        Math.min(points.length - 1, Math.max(0, (current ?? (step > 0 ? -1 : points.length)) + step)),
+        Math.min(
+          points.length - 1,
+          Math.max(0, (current ?? (step > 0 ? -1 : points.length)) + step),
+        ),
       )
     } else if (event.key === "Escape") {
       setActive(null)
@@ -94,7 +97,10 @@ export function UsageBars({
               </span>
             </div>
           ))}
-          <div aria-hidden="true" className="absolute inset-x-0 bottom-0 border-t border-line-strong" />
+          <div
+            aria-hidden="true"
+            className="absolute inset-x-0 bottom-0 border-t border-line-strong"
+          />
 
           <div className="absolute inset-0 flex items-end gap-[2px] pr-12">
             {points.map((point, index) => (

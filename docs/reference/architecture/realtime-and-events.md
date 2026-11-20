@@ -42,23 +42,23 @@ Failures to broadcast are logged, never thrown — a Realtime outage degrades UI
 
 `roomEventSchema` (`packages/core/src/types.ts:67-162`) is a `z.discriminatedUnion("type")`. Every payload that crosses the wire conforms to it:
 
-| Event | Emitted by | Payload (essentials) | Web handler does |
-| :--- | :--- | :--- | :--- |
-| `message.delta` | engine v2 flush loop, streaming bot route | `messageId`, `seq: int`, `delta` | appends text to the streaming bubble, ordered by `seq` (`deltaSeq` map) |
-| `message.done` | coordinator, engine finalize, plan-limit turn | `messageId`, `status: streaming\|complete\|error\|halted` | finalizes the bubble; `halted` renders the halt banner |
-| `message.removed` | retry reconciliation | `messageId` | drops a replaced reply from view |
-| `turn.state` | coordinator after each transition | `sessionId`, `activeAgentId (nullable)`, `queue: string[]` (agent ids), `threadRootId?` | shows whose turn it is and the pending queue |
-| `tool.started` | audited tool wrapper | `toolCallId`, `agentId`, `toolName`, redacted `args` | renders the tool card |
-| `tool.approval_requested` | audited tool wrapper (dangerous only) | same shape | renders the approval card (Allow / Don't allow) |
-| `tool.approval_resolved` | audited wrapper / approve endpoint | `toolCallId`, `status: approved\|rejected` | closes the card with the outcome |
-| `tool.finished` | audited wrapper | `toolCallId`, `status: done\|error\|rejected`, `durationMs` | shows result state + duration |
-| `tool.output` | streaming tools (shell, browser) | `toolCallId`, `seq`, `chunk` | streams stdout/stderr into the card |
-| `agent.connected` | local Mac agents | `agentId`, `handle`, `client?` | marks the agent online |
-| `computer.state` | computerd bridging | `agentId`, `status` | updates the computer pill |
-| `room.notice` | system notices | `level: info\|warn\|error`, `message` | inline notice |
-| `run.step` | engine v2 step loop | `runId`, `step`, `kind: model\|tool\|compaction\|recall\|plan\|subagent\|verify`, `label` | live "doing X" label under the agent reply |
-| `run.status` | engine/park/resume | `runId`, `status: thinking\|tool\|waiting:approval\|waiting:answer\|compacting` | spinner state |
-| `run.plan` | `update_plan` tool | `runId`, `items: { id, title, status: pending\|in_progress\|done\|blocked, note? }[]` | renders the live plan checklist |
+| Event                     | Emitted by                                    | Payload (essentials)                                                                      | Web handler does                                                        |
+| :------------------------ | :-------------------------------------------- | :---------------------------------------------------------------------------------------- | :---------------------------------------------------------------------- |
+| `message.delta`           | engine v2 flush loop, streaming bot route     | `messageId`, `seq: int`, `delta`                                                          | appends text to the streaming bubble, ordered by `seq` (`deltaSeq` map) |
+| `message.done`            | coordinator, engine finalize, plan-limit turn | `messageId`, `status: streaming\|complete\|error\|halted`                                 | finalizes the bubble; `halted` renders the halt banner                  |
+| `message.removed`         | retry reconciliation                          | `messageId`                                                                               | drops a replaced reply from view                                        |
+| `turn.state`              | coordinator after each transition             | `sessionId`, `activeAgentId (nullable)`, `queue: string[]` (agent ids), `threadRootId?`   | shows whose turn it is and the pending queue                            |
+| `tool.started`            | audited tool wrapper                          | `toolCallId`, `agentId`, `toolName`, redacted `args`                                      | renders the tool card                                                   |
+| `tool.approval_requested` | audited tool wrapper (dangerous only)         | same shape                                                                                | renders the approval card (Allow / Don't allow)                         |
+| `tool.approval_resolved`  | audited wrapper / approve endpoint            | `toolCallId`, `status: approved\|rejected`                                                | closes the card with the outcome                                        |
+| `tool.finished`           | audited wrapper                               | `toolCallId`, `status: done\|error\|rejected`, `durationMs`                               | shows result state + duration                                           |
+| `tool.output`             | streaming tools (shell, browser)              | `toolCallId`, `seq`, `chunk`                                                              | streams stdout/stderr into the card                                     |
+| `agent.connected`         | local Mac agents                              | `agentId`, `handle`, `client?`                                                            | marks the agent online                                                  |
+| `computer.state`          | computerd bridging                            | `agentId`, `status`                                                                       | updates the computer pill                                               |
+| `room.notice`             | system notices                                | `level: info\|warn\|error`, `message`                                                     | inline notice                                                           |
+| `run.step`                | engine v2 step loop                           | `runId`, `step`, `kind: model\|tool\|compaction\|recall\|plan\|subagent\|verify`, `label` | live "doing X" label under the agent reply                              |
+| `run.status`              | engine/park/resume                            | `runId`, `status: thinking\|tool\|waiting:approval\|waiting:answer\|compacting`           | spinner state                                                           |
+| `run.plan`                | `update_plan` tool                            | `runId`, `items: { id, title, status: pending\|in_progress\|done\|blocked, note? }[]`     | renders the live plan checklist                                         |
 
 Emission is serialized per turn: the engine chains `send()` through a promise (`chain = chain.then(...)`) so `message.delta` sequence numbers and step events arrive in order even when awaits race (`apps/orchestrator/src/engine/run.ts:184-192`).
 
@@ -74,16 +74,16 @@ A second hook, `apps/web/src/components/use-workspace-activity.ts`, subscribes o
 
 For grepping purposes, the emission sites:
 
-| Event | Emission site |
-| :--- | :--- |
-| `message.delta`, `message.done` (engine path) | `apps/orchestrator/src/engine/run.ts` (`send`/`flush` and `finalize`) |
-| `message.delta`, `message.done` (external bot stream) | `apps/orchestrator/src/bot/routes.ts:141-219` |
-| `message.done` (system/quiet-bot/halt messages) | `apps/orchestrator/src/coordinator/index.ts:91-139` |
-| `turn.state` | `apps/orchestrator/src/coordinator/index.ts:75-89` (`broadcastTurn`) |
-| `tool.*` (all five) | `apps/orchestrator/src/tools/audited.ts:109-217` |
-| `run.step`, `run.status`, `run.plan` | `apps/orchestrator/src/engine/run.ts` step loop; `parkRun`/`resumeRun` in `apps/orchestrator/src/engine/resume.ts` |
-| `message.done` (plan limit) | `apps/orchestrator/src/plans.ts:101-103` |
-| `computer.state`, `agent.connected` | computerd/bridge events surfaced through orchestrator |
+| Event                                                 | Emission site                                                                                                      |
+| :---------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------- |
+| `message.delta`, `message.done` (engine path)         | `apps/orchestrator/src/engine/run.ts` (`send`/`flush` and `finalize`)                                              |
+| `message.delta`, `message.done` (external bot stream) | `apps/orchestrator/src/bot/routes.ts:141-219`                                                                      |
+| `message.done` (system/quiet-bot/halt messages)       | `apps/orchestrator/src/coordinator/index.ts:91-139`                                                                |
+| `turn.state`                                          | `apps/orchestrator/src/coordinator/index.ts:75-89` (`broadcastTurn`)                                               |
+| `tool.*` (all five)                                   | `apps/orchestrator/src/tools/audited.ts:109-217`                                                                   |
+| `run.step`, `run.status`, `run.plan`                  | `apps/orchestrator/src/engine/run.ts` step loop; `parkRun`/`resumeRun` in `apps/orchestrator/src/engine/resume.ts` |
+| `message.done` (plan limit)                           | `apps/orchestrator/src/plans.ts:101-103`                                                                           |
+| `computer.state`, `agent.connected`                   | computerd/bridge events surfaced through orchestrator                                                              |
 
 All of them funnel through the single `broadcast()` function; nothing else posts to the Realtime API.
 
@@ -101,12 +101,12 @@ Because Supabase broadcast is fire-and-forget, the client treats the database as
 
 ### When delivery fails
 
-| Problem | Behaviour |
-| :--- | :--- |
-| Broadcast POST fails | Logged (`[realtime] broadcast … failed`), never thrown; the turn continues (`realtime.ts:30-38`) |
-| Channel drops | Supabase JS auto-reconnects and re-subscribes; the hook tracks `connection: connecting \| connected \| error \| offline` for the room banner |
-| Long stream, tab hidden | Deltas accumulate in DB; on refocus the client refetches instead of replaying events |
-| Two orchestrators broadcast concurrently | Only one coordinates a room at a time (advisory lock), so interleaving is bounded to system messages and run events from parked runs |
+| Problem                                  | Behaviour                                                                                                                                    |
+| :--------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------- |
+| Broadcast POST fails                     | Logged (`[realtime] broadcast … failed`), never thrown; the turn continues (`realtime.ts:30-38`)                                             |
+| Channel drops                            | Supabase JS auto-reconnects and re-subscribes; the hook tracks `connection: connecting \| connected \| error \| offline` for the room banner |
+| Long stream, tab hidden                  | Deltas accumulate in DB; on refocus the client refetches instead of replaying events                                                         |
+| Two orchestrators broadcast concurrently | Only one coordinates a room at a time (advisory lock), so interleaving is bounded to system messages and run events from parked runs         |
 
 ---
 
@@ -127,11 +127,11 @@ The Hocuspocus server runs **inside the orchestrator process**, not as a separat
 
 `createHocuspocus()` (`apps/orchestrator/src/canvas/server.ts:64-107`) configures:
 
-| Hook | Behaviour |
-| :--- | :--- |
-| `onAuthenticate` | The client must pass a Supabase access token; `supabase.auth.getUser(token)` validates it, the canvas row must exist, and `canUserReadRoom(userId, canvas.roomId)` must pass. Returns `CollabContext { userId, canvasId, roomId }`. |
-| `onLoadDocument` | Hydrates the Y.Doc from `canvases.ydocState` (binary `Y.applyUpdate`), falling back to `snapshotText` inserted at `getText("content")`. |
-| `onStoreDocument` | Persists both representations: `ydocState = Y.encodeStateAsUpdate(doc)` and `snapshotText = doc.getText("content").toString()` (debounced 2 s, max 10 s). |
+| Hook              | Behaviour                                                                                                                                                                                                                           |
+| :---------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `onAuthenticate`  | The client must pass a Supabase access token; `supabase.auth.getUser(token)` validates it, the canvas row must exist, and `canUserReadRoom(userId, canvas.roomId)` must pass. Returns `CollabContext { userId, canvasId, roomId }`. |
+| `onLoadDocument`  | Hydrates the Y.Doc from `canvases.ydocState` (binary `Y.applyUpdate`), falling back to `snapshotText` inserted at `getText("content")`.                                                                                             |
+| `onStoreDocument` | Persists both representations: `ydocState = Y.encodeStateAsUpdate(doc)` and `snapshotText = doc.getText("content").toString()` (debounced 2 s, max 10 s).                                                                           |
 
 Access revocation is proactive: because auth checks run only at socket authentication, a 30-second sweep (`revokeStaleCanvasConnections`, `ACCESS_SWEEP_MS = 30_000`) re-runs `canUserReadRoom` for every live connection and closes lost ones with `4403 Forbidden`. A failed lookup **keeps** the connection so a database blip never throws everyone off the canvas (`canvas/server.ts:25-52`).
 
@@ -143,17 +143,17 @@ Web clients connect to `NEXT_PUBLIC_COLLAB_URL` (prod: `wss://<domain>/collab`, 
 
 The reverse direction is also streamed: an external bot can POST to `POST /v1/rooms/:roomId/messages/stream` with `application/x-ndjson` or `text/event-stream` and write its reply incrementally. `BotStreamParser` (`apps/orchestrator/src/bot/stream-parser.ts`) buffers partial lines, parses `data:` prefixed lines for SSE (`[DONE]` ends the stream), and treats each NDJSON line as a delta. The route inserts the `messages` row as `streaming` up front, broadcasts redacted `message.delta` events as chunks arrive, persists the growing content to the database about once a second, then finalizes with `message.done` and calls `notifyBotReply()` so a coordinator waiting on this agent wakes immediately (`apps/orchestrator/src/bot/routes.ts:106-229`).
 
-The orchestrator's only *outbound* SSE endpoint is `/internal/egress/stream` (`apps/orchestrator/src/internal/routes.ts:299-341`): an internal-secret-authenticated stream that fans out PostgreSQL `vault_changed` notifications via an in-memory `vaultEmitter` (`vault-events.ts`) fed by the central control connection, forwarding cache invalidations to every connected egress instance without consuming dedicated database pool connections, with 15-second heartbeats.
+The orchestrator's only _outbound_ SSE endpoint is `/internal/egress/stream` (`apps/orchestrator/src/internal/routes.ts:299-341`): an internal-secret-authenticated stream that fans out PostgreSQL `vault_changed` notifications via an in-memory `vaultEmitter` (`vault-events.ts`) fed by the central control connection, forwarding cache invalidations to every connected egress instance without consuming dedicated database pool connections, with 15-second heartbeats.
 
 ## 🔔 Beyond the room: LISTEN/NOTIFY control channels
 
 Not everything is user-facing. Three PostgreSQL channels coordinate orchestrator internals (see [Turn Lifecycle](./turn-lifecycle.md)):
 
-| Channel | Producer | Consumer | Effect |
-| :--- | :--- | :--- | :--- |
-| `mesh_room_interrupt` | `interruptRoom()` via `notify()` | control connection in `apps/orchestrator/src/index.ts` | `abortRoomRuns(roomId)` across instances |
-| `mesh_stop_run` | `POST /internal/runs/:runId/stop` | same | `abortRun(runId)` |
-| `tool_call_resolved` | web approve endpoint / `notify_tool_resolution()` RPC | approvals listener | wakes `waitForApproval()` promise instantly |
+| Channel               | Producer                                              | Consumer                                               | Effect                                      |
+| :-------------------- | :---------------------------------------------------- | :----------------------------------------------------- | :------------------------------------------ |
+| `mesh_room_interrupt` | `interruptRoom()` via `notify()`                      | control connection in `apps/orchestrator/src/index.ts` | `abortRoomRuns(roomId)` across instances    |
+| `mesh_stop_run`       | `POST /internal/runs/:runId/stop`                     | same                                                   | `abortRun(runId)`                           |
+| `tool_call_resolved`  | web approve endpoint / `notify_tool_resolution()` RPC | approvals listener                                     | wakes `waitForApproval()` promise instantly |
 
 Each has a polling or DB-recovery fallback (2 s poll for approvals, stale-run rescue on boot), so a dropped listener connection never wedges a run. The `notify()` helper JSON-encodes payloads and uses `pg_notify` on the shared pool (`apps/orchestrator/src/db.ts:44-46`); note that this is fine for control events precisely because they are advisory — the authoritative state change (session row, tool_calls row) is written first, and the notification only accelerates noticing it.
 

@@ -36,15 +36,10 @@ export function sendVoiceNoteTool(opts: VoiceNoteOptions): ToolSpec {
       const voiceId = opts.voiceId || config.defaultVoice
 
       try {
-        const audio = await synthesizeSpeech(
-          provider,
-          text,
-          config.creds,
-          {
-            voiceId,
-            signal,
-          },
-        )
+        const audio = await synthesizeSpeech(provider, text, config.creds, {
+          voiceId,
+          signal,
+        })
 
         // Generate base64 data URI so the client audio player can play it immediately
         const base64 = Buffer.from(audio.bytes).toString("base64")

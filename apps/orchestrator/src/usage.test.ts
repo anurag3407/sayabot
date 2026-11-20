@@ -6,7 +6,12 @@ vi.mock("./db", () => ({
   getDb: () => ({
     select: () => ({
       from: async () => [
-        { provider: "anthropic", model: "claude-sonnet-4-5", inputPerMtok: "3", outputPerMtok: "15" },
+        {
+          provider: "anthropic",
+          model: "claude-sonnet-4-5",
+          inputPerMtok: "3",
+          outputPerMtok: "15",
+        },
       ],
     }),
     insert: () => ({
@@ -19,7 +24,12 @@ vi.mock("./db", () => ({
 
 const { recordUsageEvent, resetPriceCache } = await import("./usage")
 
-const tokens = { inputTokens: 1_000_000, outputTokens: 0, cachedInputTokens: 0, cacheWriteTokens: 0 }
+const tokens = {
+  inputTokens: 1_000_000,
+  outputTokens: 0,
+  cachedInputTokens: 0,
+  cacheWriteTokens: 0,
+}
 
 describe("recordUsageEvent", () => {
   beforeEach(() => {

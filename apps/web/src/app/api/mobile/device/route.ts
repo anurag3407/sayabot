@@ -9,7 +9,8 @@ import { createAdminClient } from "@/lib/supabase/admin"
 export async function GET(req: Request) {
   const deviceId = req.headers.get("x-device-id") ?? ""
   const token = req.headers.get("x-device-token") ?? ""
-  if (!/^[0-9a-f-]{36}$/i.test(deviceId) || !token) return NextResponse.json({ status: "unknown" }, { status: 400 })
+  if (!/^[0-9a-f-]{36}$/i.test(deviceId) || !token)
+    return NextResponse.json({ status: "unknown" }, { status: 400 })
   const admin = createAdminClient()
   const { data } = await admin
     .from("device_pairings")
@@ -17,9 +18,16 @@ export async function GET(req: Request) {
     .eq("id", deviceId)
     .maybeSingle()
   if (!data) return NextResponse.json({ status: "revoked" })
-  if (data.status !== "paired" || !data.device_token_hash || data.device_token_hash !== hashAgentApiKey(token)) {
+  if (
+    data.status !== "paired" ||
+    !data.device_token_hash ||
+    data.device_token_hash !== hashAgentApiKey(token)
+  ) {
     return NextResponse.json({ status: "revoked" })
   }
-  await admin.from("device_pairings").update({ last_seen_at: new Date().toISOString() }).eq("id", data.id)
+  await admin
+    .from("device_pairings")
+    .update({ last_seen_at: new Date().toISOString() })
+    .eq("id", data.id)
   return NextResponse.json({ status: "active" }, { headers: { "cache-control": "no-store" } })
 }

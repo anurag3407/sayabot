@@ -142,7 +142,8 @@ const SECTIONS: { id: SectionId; label: string; icon: LucideIcon; keywords: stri
     id: "soul",
     label: "System Prompt",
     icon: Sparkles,
-    keywords: "system prompt standing instructions rules personality reply style conversational soul runtime",
+    keywords:
+      "system prompt standing instructions rules personality reply style conversational soul runtime",
   },
   {
     id: "skills",
@@ -337,7 +338,9 @@ export function AgentConfigPanel({
   const [alertMode, setAlertMode] = useState<AlertMode>(alerts)
   const [soundOn, setSoundOn] = useState(sound)
   const [storageProvider, setStorageProvider] = useState<string>(
-    () => ((agent?.params as Record<string, unknown> | undefined)?.storageProvider as string) || "default",
+    () =>
+      ((agent?.params as Record<string, unknown> | undefined)?.storageProvider as string) ||
+      "default",
   )
   const [savingStorageProvider, startStorageProvider] = useTransition()
   const [commandName, setCommandName] = useState("")
@@ -383,7 +386,10 @@ export function AgentConfigPanel({
     setPlace(readWorksOn(agent.params))
     setEffort(readEffort(agent.params))
     setReplyStyle(replyStyleFromParams(agent.params))
-    setStorageProvider(((agent.params as Record<string, unknown> | undefined)?.storageProvider as string) || "default")
+    setStorageProvider(
+      ((agent.params as Record<string, unknown> | undefined)?.storageProvider as string) ||
+        "default",
+    )
     setIssuedKey(null)
     setError(null)
   }, [agent])
@@ -533,7 +539,10 @@ export function AgentConfigPanel({
       }
       bot.systemPrompt = trimmed
       setPrompt(trimmed)
-      showToast({ tone: "success", message: `System prompt updated for @${bot.handle} · Active on next turn` })
+      showToast({
+        tone: "success",
+        message: `System prompt updated for @${bot.handle} · Active on next turn`,
+      })
       router.refresh()
     })
   }
@@ -623,7 +632,10 @@ export function AgentConfigPanel({
       } else {
         showToast({
           tone: "success",
-          message: nextProvider === "default" ? "Using workspace default storage" : "Assigned cloud storage provider",
+          message:
+            nextProvider === "default"
+              ? "Using workspace default storage"
+              : "Assigned cloud storage provider",
         })
       }
     })
@@ -908,7 +920,11 @@ export function AgentConfigPanel({
       label: "Give it a name and a look",
       done: name.trim().length > 0 && Boolean(look.shape || look.tone),
     },
-    { id: "soul", label: "Set system prompt (standing instructions)", done: prompt.trim().length > 40 },
+    {
+      id: "soul",
+      label: "Set system prompt (standing instructions)",
+      done: prompt.trim().length > 40,
+    },
     {
       id: "computer",
       label: "Choose where it works",
@@ -1187,7 +1203,8 @@ export function AgentConfigPanel({
       const isDirty = prompt.trim() !== (bot.systemPrompt ?? "").trim()
       const wordCount = prompt.trim() ? prompt.trim().split(/\s+/).filter(Boolean).length : 0
       const charCount = prompt.length
-      const templateMatch = getCuratedBotTemplate(bot.handle) || getCuratedBotTemplate(bot.displayName)
+      const templateMatch =
+        getCuratedBotTemplate(bot.handle) || getCuratedBotTemplate(bot.displayName)
 
       return (
         <div className="space-y-4">
@@ -1208,7 +1225,8 @@ export function AgentConfigPanel({
                 )}
               </div>
               <p className="mt-0.5 text-[12.5px] leading-relaxed text-muted">
-                Standing instructions that shape @{bot.handle}&apos;s identity, goals, and rules. Updating this takes effect immediately on its next turn.
+                Standing instructions that shape @{bot.handle}&apos;s identity, goals, and rules.
+                Updating this takes effect immediately on its next turn.
               </p>
             </div>
           </div>
@@ -1264,7 +1282,8 @@ export function AgentConfigPanel({
             />
             <div className="flex items-center justify-between px-1 text-[11.5px] text-faint">
               <span>
-                {wordCount} {wordCount === 1 ? "word" : "words"} · {charCount.toLocaleString()} / 20,000 chars
+                {wordCount} {wordCount === 1 ? "word" : "words"} · {charCount.toLocaleString()} /
+                20,000 chars
               </span>
               {isDirty ? (
                 <span className="text-warn font-medium">Remember to apply changes below</span>
@@ -1276,7 +1295,9 @@ export function AgentConfigPanel({
 
           {/* Quick Rule Appender */}
           <div className="space-y-2 rounded-xl border border-line/60 bg-panel/30 p-3">
-            <p className="text-[12px] font-medium text-muted">Append a runtime rule or constraint</p>
+            <p className="text-[12px] font-medium text-muted">
+              Append a runtime rule or constraint
+            </p>
             <div className="flex gap-2">
               <input
                 type="text"
@@ -1339,7 +1360,9 @@ export function AgentConfigPanel({
                 Discard changes
               </button>
             ) : (
-              <span className="text-[12px] text-faint">Changes apply instantly to the next message</span>
+              <span className="text-[12px] text-faint">
+                Changes apply instantly to the next message
+              </span>
             )}
 
             <button
@@ -1547,9 +1570,13 @@ export function AgentConfigPanel({
                 </select>
                 <p className="mt-1.5 text-[11px] text-muted">
                   Connect new storage providers or configure buckets in{" "}
-                  <Link href={`/${orgSlug}/settings/storage`} className="text-accent hover:underline font-medium">
+                  <Link
+                    href={`/${orgSlug}/settings/storage`}
+                    className="text-accent hover:underline font-medium"
+                  >
                     Settings → Storage
-                  </Link>.
+                  </Link>
+                  .
                 </p>
               </div>
             </Card>

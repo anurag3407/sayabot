@@ -131,12 +131,18 @@ export const botInvites = pgTable(
     decidedBy: uuid("decided_by").references(() => profiles.id, { onDelete: "set null" }),
     decidedAt: timestamp("decided_at", { withTimezone: true }),
     joinedAt: timestamp("joined_at", { withTimezone: true }),
-    rejectedAttempts: jsonb("rejected_attempts").$type<Array<{ at: string; app?: string; userAgent?: string }>>().notNull().default([]),
+    rejectedAttempts: jsonb("rejected_attempts")
+      .$type<Array<{ at: string; app?: string; userAgent?: string }>>()
+      .notNull()
+      .default([]),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("bot_invites_room_idx").on(t.roomId, t.status), index("bot_invites_org_idx").on(t.orgId, t.status)],
+  (t) => [
+    index("bot_invites_room_idx").on(t.roomId, t.status),
+    index("bot_invites_org_idx").on(t.orgId, t.status),
+  ],
 )
 
 export type WorkspaceInviteKind = "email" | "link" | "permanent"

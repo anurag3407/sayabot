@@ -1,4 +1,9 @@
-import { abortRoomRuns, addRunInterrupt, findActiveRunForAgent, type RunInterrupt } from "../active-runs"
+import {
+  abortRoomRuns,
+  addRunInterrupt,
+  findActiveRunForAgent,
+  type RunInterrupt,
+} from "../active-runs"
 
 export interface MessageInterruptCheck {
   id: string

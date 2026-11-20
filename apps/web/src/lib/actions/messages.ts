@@ -38,7 +38,9 @@ export async function sendMessage(input: {
   return {
     ok: true,
     data: { messageId: inserted.id },
-    warning: queued.ok ? undefined : "Message saved, but agents could not be reached, so they will not reply to it.",
+    warning: queued.ok
+      ? undefined
+      : "Message saved, but agents could not be reached, so they will not reply to it.",
   }
 }
 

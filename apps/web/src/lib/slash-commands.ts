@@ -15,7 +15,11 @@ export interface SlashCommand {
 }
 
 export const SLASH_COMMANDS: SlashCommand[] = [
-  { name: "goal", args: "what to achieve", description: "Keep working, round after round, until it's done" },
+  {
+    name: "goal",
+    args: "what to achieve",
+    description: "Keep working, round after round, until it's done",
+  },
   { name: "btw", args: "note", description: "Tell the bots something without interrupting them" },
   { name: "stop", description: "Stop what the bots are doing" },
   { name: "model", description: "Pick the model for this chat" },

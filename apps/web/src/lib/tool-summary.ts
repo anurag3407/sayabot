@@ -10,12 +10,25 @@ const KNOWN_TOOLS: Record<string, string> = {
   canvas_patch: "edit a canvas",
 }
 
-const DETAIL_KEYS = ["title", "query", "name", "path", "repo", "url", "action", "status", "language"]
+const DETAIL_KEYS = [
+  "title",
+  "query",
+  "name",
+  "path",
+  "repo",
+  "url",
+  "action",
+  "status",
+  "language",
+]
 
 function toolAction(toolName: string): string {
   const known = KNOWN_TOOLS[toolName]
   if (known) return known
-  const readable = toolName.replace(/^mcp[_:-]/, "").replace(/[_:-]+/g, " ").trim()
+  const readable = toolName
+    .replace(/^mcp[_:-]/, "")
+    .replace(/[_:-]+/g, " ")
+    .trim()
   return `use ${readable || "a tool"}`
 }
 
@@ -46,7 +59,11 @@ export const APPROVAL_WINDOW_MS = 5 * 60_000
  */
 export const MAC_APPROVAL_WINDOW_MS = 30 * 60_000
 
-export function approvalMsLeft(createdAt: string, now: number, windowMs = APPROVAL_WINDOW_MS): number {
+export function approvalMsLeft(
+  createdAt: string,
+  now: number,
+  windowMs = APPROVAL_WINDOW_MS,
+): number {
   return new Date(createdAt).getTime() + windowMs - now
 }
 

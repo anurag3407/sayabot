@@ -34,7 +34,7 @@ test("an unconfigured build's Supabase URL counts as missing", () => {
   assert.equal(isPlaceholderSupabaseUrl("https://your-project.supabase.co"), true)
   assert.equal(isPlaceholderSupabaseUrl(""), true)
   assert.equal(isPlaceholderSupabaseUrl(undefined), true)
-  assert.equal(isPlaceholderSupabaseUrl("https://ltmabtgpuafqodgqphen.supabase.co"), false)
+  assert.equal(isPlaceholderSupabaseUrl("https://my-real-project.supabase.co"), false)
 })
 
 if (failures) process.exit(1)

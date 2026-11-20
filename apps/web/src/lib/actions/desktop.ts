@@ -15,7 +15,8 @@ async function ownHost(orgSlug: string, hostId: string) {
     .select("id, user_id, settings, name, local_agents")
     .eq("id", hostId)
     .maybeSingle()
-  if (!host || host.user_id !== access.user.id) return { error: "Only the person who set up this computer can change it" as const }
+  if (!host || host.user_id !== access.user.id)
+    return { error: "Only the person who set up this computer can change it" as const }
   return { access, host }
 }
 
@@ -32,19 +33,25 @@ export async function updateHostSettingsAction(input: {
   const check = await ownHost(input.orgSlug, input.hostId)
   if ("error" in check) return fail(check.error ?? "Not allowed")
   const settings = { ...((check.host.settings as Record<string, unknown>) ?? {}) }
-  if (input.whoCanControl && ["only_me", "admins", "members"].includes(input.whoCanControl)) settings.whoCanControl = input.whoCanControl
+  if (input.whoCanControl && ["only_me", "admins", "members"].includes(input.whoCanControl))
+    settings.whoCanControl = input.whoCanControl
   if (typeof input.askOnComputer === "boolean") settings.askOnComputer = input.askOnComputer
   if (typeof input.runnerEnabled === "boolean") settings.runnerEnabled = input.runnerEnabled
   if (input.localDefault === false) settings.localDefault = false
   if (input.localDefault === true) {
     const app = pickDefaultApp((check.host.local_agents as Array<Record<string, unknown>>) ?? [])
-    if (!app) return fail("Sign in to Claude Code, Codex, Gemini CLI or OpenCode on this computer first")
+    if (!app)
+      return fail("Sign in to Claude Code, Codex, Gemini CLI or OpenCode on this computer first")
     settings.localDefault = { app }
     settings.runnerEnabled = true
   }
   // Sharing beyond "only me" (and running workspace agents) ties the computer to this workspace.
-  const orgId = settings.whoCanControl !== "only_me" || settings.runnerEnabled ? check.access.org.id : null
-  await createAdminClient().from("desktop_hosts").update({ settings, org_id: orgId }).eq("id", check.host.id)
+  const orgId =
+    settings.whoCanControl !== "only_me" || settings.runnerEnabled ? check.access.org.id : null
+  await createAdminClient()
+    .from("desktop_hosts")
+    .update({ settings, org_id: orgId })
+    .eq("id", check.host.id)
   await audit({
     orgId: check.access.org.id,
     actorId: check.access.user.id,
@@ -56,10 +63,16 @@ export async function updateHostSettingsAction(input: {
   return ok("Saved")
 }
 
-export async function removeHostAction(input: { orgSlug: string; hostId: string }): Promise<ActionResult> {
+export async function removeHostAction(input: {
+  orgSlug: string
+  hostId: string
+}): Promise<ActionResult> {
   const check = await ownHost(input.orgSlug, input.hostId)
   if ("error" in check) return fail(check.error ?? "Not allowed")
-  await createAdminClient().from("desktop_hosts").update({ revoked_at: new Date().toISOString() }).eq("id", check.host.id)
+  await createAdminClient()
+    .from("desktop_hosts")
+    .update({ revoked_at: new Date().toISOString() })
+    .eq("id", check.host.id)
   revalidatePath(`/${input.orgSlug}/settings/computers`)
   return ok(`${check.host.name} removed`)
 }

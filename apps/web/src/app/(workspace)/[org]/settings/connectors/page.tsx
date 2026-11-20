@@ -81,6 +81,13 @@ const SOURCE_INFO: Record<
     description: "Looks up items through the Proton Pass app on a computer with Sayabot open.",
     color: "border-violet-500/20 bg-violet-500/5 text-violet-400",
   },
+  composio: {
+    label: "Composio",
+    icon: "🧩",
+    description:
+      "Gmail, Google Calendar, Notion, Linear, HubSpot, Jira and the rest of the catalog, through each person's own sign-in. Every tool call waits for approval.",
+    color: "border-fuchsia-500/20 bg-fuchsia-500/5 text-fuchsia-400",
+  },
 }
 
 export default async function ConnectorsSettingsPage({

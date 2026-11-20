@@ -221,18 +221,16 @@ function parseMetadata(bytes: Uint8Array, step: boolean): MetadataResult {
     }
   }
 
-  const candidateNames = [
-    textAt(modelNode, step ? 12 : 19),
-    textAt(modelNode, step ? 8 : 21),
-  ].map(normalizeAntigravityModel)
+  const candidateNames = [textAt(modelNode, step ? 12 : 19), textAt(modelNode, step ? 8 : 21)].map(
+    normalizeAntigravityModel,
+  )
 
   const concrete = candidateNames.find(isConcreteModel)
   const named = candidateNames.find((n) => n && !/^model[_-]/.test(n))
   const model = concrete ?? named ?? ""
 
   const modelId =
-    numberAt(modelNode, step ? 1 : 3) ||
-    (usages.length > 0 ? numberAt(usages[0]!, 1) : 0)
+    numberAt(modelNode, step ? 1 : 3) || (usages.length > 0 ? numberAt(usages[0]!, 1) : 0)
 
   const timestampMs = step
     ? (timestampFromFields(nested(data, 8)) ?? timestampFromFields(nested(data, 1)))
@@ -335,7 +333,10 @@ function deduplicateCandidates(
       maxOutput = Math.max(maxOutput, t.outputTokens)
       maxReasoning = Math.max(maxReasoning, t.reasoningTokens)
 
-      if (item.modelQuality > bestModelQuality || (item.modelQuality === bestModelQuality && item.record.model)) {
+      if (
+        item.modelQuality > bestModelQuality ||
+        (item.modelQuality === bestModelQuality && item.record.model)
+      ) {
         bestModelQuality = item.modelQuality
         bestModel = item.record.model
       }
@@ -382,10 +383,7 @@ function deduplicateCandidates(
 }
 
 /** Scans a single Antigravity SQLite database file */
-export function scanAntigravityDatabase(
-  dbPath: string,
-  sinceMs: number = 0,
-): ScannedUsageRecord[] {
+export function scanAntigravityDatabase(dbPath: string, sinceMs: number = 0): ScannedUsageRecord[] {
   let db: DatabaseSync | null = null
   try {
     const stat = fs.statSync(dbPath)
@@ -529,8 +527,7 @@ export function scanAntigravityDatabase(
           const compositeKey = `antigravity:${sessionId}:${idx}:${uIdx}`
           const keys = idKeys.length > 0 ? [...idKeys, compositeKey] : [compositeKey]
 
-          const timestampMs =
-            metadata.timestampMs ?? trajectoryTimestamp ?? fallbackTimestamp
+          const timestampMs = metadata.timestampMs ?? trajectoryTimestamp ?? fallbackTimestamp
 
           candidates.push({
             record: {
@@ -622,9 +619,8 @@ export function scanAntigravityUsage(
     path.join(home, ".config", "antigravity", "conversations"),
   ]
 
-  const dirsToSearch = options.directories && options.directories.length > 0
-    ? options.directories
-    : defaultDirs
+  const dirsToSearch =
+    options.directories && options.directories.length > 0 ? options.directories : defaultDirs
 
   const sinceMs = options.sinceMs ?? 0
   const allRecords: ScannedUsageRecord[] = []

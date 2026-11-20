@@ -8,10 +8,10 @@ Source files: `apps/orchestrator/src/scheduler/meetings.ts`
 
 ## 🗄️ Storage (`packages/db/src/schema/meetings.ts`)
 
-| Table | Key columns | Purpose |
-| :--- | :--- | :--- |
-| `room_schedules` | `room_id` (PK, cascade), `timezone` (default `"UTC"`), `morning_start/end_minutes` (default 540–570 = 09:00–09:30), `evening_start/end_minutes` (default 1020–1050 = 17:00–17:30), `checkins_enabled` (default false), `checkin_interval_minutes` (default 60), `checkin_start/end_minutes` (540–1050 = 09:00–17:30), `checkin_duration_minutes` (default 10), `checkin_mode` (`"stream"` \| `"digest"`, default `"stream"` — consumed by check-in classification, see [collab-tasks.md](./collab-tasks.md)), `digest_at`, `last_checkin_at` | One per-room daily rhythm, all times as minutes-since-midnight in the room's timezone. |
-| `meetings` | `org_id`, `room_id`, `kind` (`meeting_kind_enum`, default `"meeting"`), `title`, `agenda`, `starts_at`, `ends_at`, `status` (`meeting_status_enum`, default `"scheduled"`), `created_by`, `prompt_message_id`, `summary`, `metadata` (jsonb — carries `slot`, `localDate`, `automated`) | One row per meeting instance; indexed on `(room_id, starts_at)`, `(org_id, starts_at)`, `(status, starts_at)`. |
+| Table            | Key columns                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | Purpose                                                                                                        |
+| :--------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------- |
+| `room_schedules` | `room_id` (PK, cascade), `timezone` (default `"UTC"`), `morning_start/end_minutes` (default 540–570 = 09:00–09:30), `evening_start/end_minutes` (default 1020–1050 = 17:00–17:30), `checkins_enabled` (default false), `checkin_interval_minutes` (default 60), `checkin_start/end_minutes` (540–1050 = 09:00–17:30), `checkin_duration_minutes` (default 10), `checkin_mode` (`"stream"` \| `"digest"`, default `"stream"` — consumed by check-in classification, see [collab-tasks.md](./collab-tasks.md)), `digest_at`, `last_checkin_at` | One per-room daily rhythm, all times as minutes-since-midnight in the room's timezone.                         |
+| `meetings`       | `org_id`, `room_id`, `kind` (`meeting_kind_enum`, default `"meeting"`), `title`, `agenda`, `starts_at`, `ends_at`, `status` (`meeting_status_enum`, default `"scheduled"`), `created_by`, `prompt_message_id`, `summary`, `metadata` (jsonb — carries `slot`, `localDate`, `automated`)                                                                                                                                                                                                                                                      | One row per meeting instance; indexed on `(room_id, starts_at)`, `(org_id, starts_at)`, `(status, starts_at)`. |
 
 Meeting `status` lifecycle: `scheduled` → `active` (when `postMeetingPrompt` runs) → `ended`; a `scheduled` row whose window expires before starting is reaped to `canceled`. Recurring meetings are **not** pre-materialized as `scheduled` rows — they are derived from `room_schedules` windows at scan time and inserted directly as `active` instances by `startMeetingInstance`.
 
@@ -21,12 +21,12 @@ Meeting `status` lifecycle: `scheduled` → `active` (when `postMeetingPrompt` r
 
 ## 🔁 `scanOnce()` — the four duties
 
-| # | Duty | Tables touched | Claim mechanism |
-| :--- | :--- | :--- | :--- |
-| 1 | Reap expired meetings | `meetings` | Bulk status `UPDATE` (no claim needed) |
-| 2 | Start explicitly scheduled meetings | `meetings`, `messages` | `UPDATE … WHERE status = "scheduled" RETURNING` |
-| 3 | Recurring windows + check-ins | `meetings`, `room_schedules`, `messages` | `UPDATE room_schedules SET lastCheckinAt` (check-ins); slot idempotency via `metadata.slot` + `metadata.localDate` lookup |
-| 4 | Due "wait for time" follow-ups | `tasks`, `messages` | `UPDATE tasks … WHERE status = "open" AND unblockNeeds = "time" RETURNING` |
+| #   | Duty                                | Tables touched                           | Claim mechanism                                                                                                           |
+| :-- | :---------------------------------- | :--------------------------------------- | :------------------------------------------------------------------------------------------------------------------------ |
+| 1   | Reap expired meetings               | `meetings`                               | Bulk status `UPDATE` (no claim needed)                                                                                    |
+| 2   | Start explicitly scheduled meetings | `meetings`, `messages`                   | `UPDATE … WHERE status = "scheduled" RETURNING`                                                                           |
+| 3   | Recurring windows + check-ins       | `meetings`, `room_schedules`, `messages` | `UPDATE room_schedules SET lastCheckinAt` (check-ins); slot idempotency via `metadata.slot` + `metadata.localDate` lookup |
+| 4   | Due "wait for time" follow-ups      | `tasks`, `messages`                      | `UPDATE tasks … WHERE status = "open" AND unblockNeeds = "time" RETURNING`                                                |
 
 ### 1. Reap expired meetings (`meetings.ts:227-234`)
 
@@ -44,7 +44,10 @@ All `room_schedules` joined to their rooms are evaluated (`room.kind === "dm"` s
 ```typescript
 function localDateKey(date: Date, timeZone: string): string {
   const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone, year: "numeric", month: "2-digit", day: "2-digit",
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
   }).formatToParts(date)
   const value = (type: string) => parts.find((part) => part.type === type)?.value ?? "00"
   return `${value("year")}-${value("month")}-${value("day")}`
@@ -55,8 +58,18 @@ The slot table driving the loop (`meetings.ts:286-299`) maps schedule columns to
 
 ```typescript
 const slots = [
-  { slot: "morning", title: "Morning meeting", start: schedule.morningStartMinutes, end: schedule.morningEndMinutes },
-  { slot: "evening", title: "Evening meeting", start: schedule.eveningStartMinutes, end: schedule.eveningEndMinutes },
+  {
+    slot: "morning",
+    title: "Morning meeting",
+    start: schedule.morningStartMinutes,
+    end: schedule.morningEndMinutes,
+  },
+  {
+    slot: "evening",
+    title: "Evening meeting",
+    start: schedule.eveningStartMinutes,
+    end: schedule.eveningEndMinutes,
+  },
 ]
 ```
 
@@ -68,7 +81,7 @@ const slots = [
 
 The instance ends when the window ends: `endsAt = now + max(1, slot.end - local) minutes` (15-minute fallback). Metadata: `{ slot, localDate, automated: true }`.
 
-**Check-ins**: when `checkinsEnabled` and `isWithinWindow(local, checkinStartMinutes, checkinEndMinutes)`, a check-in is started at the configured cadence by *claiming the schedule row itself* — `UPDATE room_schedules SET lastCheckinAt = now WHERE roomId = … AND checkinsEnabled = true AND (lastCheckinAt IS NULL OR lastCheckinAt <= now - checkinIntervalMinutes)` — which both throttles and makes concurrent instances race-safe. The meeting runs for `checkinDurationMinutes` with title "Check-in" and agenda "What moved since the last check-in? What is blocked?".
+**Check-ins**: when `checkinsEnabled` and `isWithinWindow(local, checkinStartMinutes, checkinEndMinutes)`, a check-in is started at the configured cadence by _claiming the schedule row itself_ — `UPDATE room_schedules SET lastCheckinAt = now WHERE roomId = … AND checkinsEnabled = true AND (lastCheckinAt IS NULL OR lastCheckinAt <= now - checkinIntervalMinutes)` — which both throttles and makes concurrent instances race-safe. The meeting runs for `checkinDurationMinutes` with title "Check-in" and agenda "What moved since the last check-in? What is blocked?".
 
 The check-in mode (`room_schedules.checkinMode`) set here is what the collab layer later consults when agents `report_checkin` (see [collab-tasks.md](./collab-tasks.md)): `digest` suppresses no-change room posts entirely, `stream` posts them collapsed. The scheduler itself only reads `lastCheckinAt`; `digestAt` is reserved for digest delivery timing.
 
@@ -77,12 +90,17 @@ The check-in mode (`room_schedules.checkinMode`) set here is what the collab lay
 Tasks with `status = "open"`, `unblockNeeds = "time"`, and `dueAt <= now` (≤10) are claimed by an atomic conditional update:
 
 ```typescript
-const [claimed] = await db.update(tasks).set({
-  status: "in_progress", unblockNeeds: null, unblockDetail: null,
-  statusChangedAt: now, updatedAt: now,
-}).where(and(
-  eq(tasks.id, task.id), eq(tasks.status, "open"), eq(tasks.unblockNeeds, "time"),
-)).returning({ id: tasks.id })
+const [claimed] = await db
+  .update(tasks)
+  .set({
+    status: "in_progress",
+    unblockNeeds: null,
+    unblockDetail: null,
+    statusChangedAt: now,
+    updatedAt: now,
+  })
+  .where(and(eq(tasks.id, task.id), eq(tasks.status, "open"), eq(tasks.unblockNeeds, "time")))
+  .returning({ id: tasks.id })
 if (!claimed) continue
 ```
 
@@ -147,11 +165,12 @@ sequenceDiagram
 
 ## 🧪 Tests
 
-There is no dedicated `meetings.test.ts`; the time-window helpers the scheduler relies on (`isWithinWindow`, `minutesInTimeZone`) are covered by `packages/core` unit tests, and the check-in *content* path this scheduler feeds is covered by `apps/orchestrator/src/collab/classify-checkin.test.ts`.
+There is no dedicated `meetings.test.ts`; the time-window helpers the scheduler relies on (`isWithinWindow`, `minutesInTimeZone`) are covered by `packages/core` unit tests, and the check-in _content_ path this scheduler feeds is covered by `apps/orchestrator/src/collab/classify-checkin.test.ts`.
 
 ---
 
 Related docs:
+
 - [Scheduler: Routines](./scheduler-routines.md) — the sibling cron scheduler sharing the same lock discipline
 - [Collab & task board](./collab-tasks.md) — check-in modes (`stream`/`digest`) and task state machine
 - [Coordinator](../engine/coordinator.md) — the turn pipeline `enqueueRoomMessage` feeds

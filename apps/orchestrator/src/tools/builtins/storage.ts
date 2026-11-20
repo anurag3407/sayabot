@@ -15,52 +15,39 @@ export async function storageTools(opts: StorageToolsOptions): Promise<ToolSpec[
   const service = getConnectorService()
   const { orgId, agentId, preferredProvider } = opts
 
-  // Resolve storage connector: preferredProvider or first active storage connector
-  let activeSource: ConnectorSource | null = null
-  if (preferredProvider && preferredProvider !== "default") {
-    if (STORAGE_CONNECTOR_SOURCES.includes(preferredProvider as ConnectorSource)) {
-      activeSource = preferredProvider as ConnectorSource
-    }
-  }
+  // The agent's granted storage connector wins; otherwise the workspace's first active one.
+  const preferred =
+    preferredProvider &&
+    preferredProvider !== "default" &&
+    STORAGE_CONNECTOR_SOURCES.includes(preferredProvider as ConnectorSource)
+      ? preferredProvider
+      : undefined
 
-  // If no preferred source or not found, search among STORAGE_CONNECTOR_SOURCES
-  let decrypted: { connector: any; token: string } | null = null
-  if (activeSource) {
-    try {
-      decrypted = await service.getDecryptedConnector(orgId, activeSource)
-    } catch {
-      // Fallback
-    }
-  }
-
-  if (!decrypted) {
-    for (const source of STORAGE_CONNECTOR_SOURCES) {
-      try {
-        decrypted = await service.getDecryptedConnector(orgId, source)
-        activeSource = source
-        break
-      } catch {
-        // Continue searching
-      }
-    }
-  }
-
-  if (!decrypted || !activeSource) {
+  const target = await service.getStorageTarget({ orgId, agentId, preferredProvider: preferred })
+  if (!target) {
     return []
   }
+  const activeSource = target.connector.source as ConnectorSource
 
   const client = new CloudStorageClient({
     source: activeSource,
-    token: decrypted.token,
-    config: (decrypted.connector.config ?? {}) as Record<string, unknown>,
+    token: target.token,
+    config: (target.connector.config ?? {}) as Record<string, unknown>,
+    baseUrl:
+      typeof service.endpointFor === "function" ? service.endpointFor(activeSource) : undefined,
   })
 
-  // Check agent scope
+  // Scope is read from the grant of the connector actually in use.
   let scopeConfig: { allowedPrefixes?: string[]; readOnly?: boolean } = {}
-  try {
-    scopeConfig = (await service.getAgentScope(agentId, decrypted.connector.id)) as any
-  } catch {
-    // If no explicit grant, default to workspace access
+  if (target.granted) {
+    try {
+      scopeConfig = (await service.getAgentScope(agentId, target.connector.id)) as {
+        allowedPrefixes?: string[]
+        readOnly?: boolean
+      }
+    } catch {
+      // The grant vanished between lookup and read: fall back to unscoped workspace access.
+    }
   }
 
   function validatePathPrefix(filePath: string) {
@@ -108,7 +95,10 @@ export async function storageTools(opts: StorageToolsOptions): Promise<ToolSpec[
     name: "storage_read_file",
     description: `Read text content and metadata of a file stored in ${activeSource} cloud storage.`,
     schema: z.object({
-      path: z.string().min(1).describe("Path or key of the file in cloud storage, e.g. 'reports/summary.md'"),
+      path: z
+        .string()
+        .min(1)
+        .describe("Path or key of the file in cloud storage, e.g. 'reports/summary.md'"),
     }),
     dangerous: false,
     execute: async (input: { path: string }) => {
@@ -127,7 +117,10 @@ export async function storageTools(opts: StorageToolsOptions): Promise<ToolSpec[
     name: "storage_upload_file",
     description: `Upload text, code, JSON, or report files to ${activeSource} cloud storage.`,
     schema: z.object({
-      path: z.string().min(1).describe("Destination path/key in cloud storage, e.g. 'reports/analysis.json'"),
+      path: z
+        .string()
+        .min(1)
+        .describe("Destination path/key in cloud storage, e.g. 'reports/analysis.json'"),
       content: z.string().describe("The file text or content to save"),
       contentType: z
         .string()
@@ -135,7 +128,8 @@ export async function storageTools(opts: StorageToolsOptions): Promise<ToolSpec[
         .default("text/plain")
         .describe("MIME type, e.g. 'application/json' or 'text/markdown'"),
     }),
-    dangerous: false,
+    // A write the whole workspace (and anything reading the bucket) can see, same as delete.
+    dangerous: true,
     execute: async (input: { path: string; content: string; contentType?: string }) => {
       if (scopeConfig.readOnly) {
         throw new Error("Access denied: this agent has read-only storage permissions")

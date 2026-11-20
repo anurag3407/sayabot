@@ -12,19 +12,19 @@ Source files: `packages/db/src/schema/agents.ts`, `packages/db/src/schema/templa
 
 Defined at `packages/db/src/schema/agents.ts:17`. Org-scoped LLM API keys that agents reference through `agents.provider_key_id`. The raw key never leaves the encryption layer: the table stores the AES-256-GCM envelope (`ciphertext`, `iv`, `tag`) produced by `encryptSecret` from `@sayabot/llm`, plus `last4` for UI display.
 
-| Column | SQL type | Constraints / Default | Description |
-| :--- | :--- | :--- | :--- |
-| `id` | `uuid` | PK, default `gen_random_uuid()` | Key id. |
-| `org_id` | `uuid` | NOT NULL, FK → `orgs.id`, `ON DELETE CASCADE` | Owning workspace. |
-| `owner_user_id` | `uuid` | nullable, FK → `profiles.id`, `ON DELETE SET NULL` | User who added the key (for BYO-key attribution). |
-| `provider` | `provider` enum | NOT NULL | One of `openai`, `anthropic`, `google`, `groq`, `cerebras`, `openai-compatible` (`packages/db/src/schema/enums.ts:8-15`). |
-| `base_url` | `text` | nullable | Custom endpoint (used for `openai-compatible` providers and proxies). |
-| `label` | `text` | NOT NULL | Display name in settings. |
-| `ciphertext` | `text` | NOT NULL | Base64 ciphertext of the API key (envelope crypto). |
-| `iv` | `text` | NOT NULL | Base64 12-byte nonce. |
-| `tag` | `text` | NOT NULL | Base64 16-byte GCM auth tag. |
-| `last4` | `text` | NOT NULL | Last four characters for "key ending in …" UI. |
-| `created_at` | `timestamptz` | NOT NULL, default `now()` | Creation time. |
+| Column          | SQL type        | Constraints / Default                              | Description                                                                                                               |
+| :-------------- | :-------------- | :------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------ |
+| `id`            | `uuid`          | PK, default `gen_random_uuid()`                    | Key id.                                                                                                                   |
+| `org_id`        | `uuid`          | NOT NULL, FK → `orgs.id`, `ON DELETE CASCADE`      | Owning workspace.                                                                                                         |
+| `owner_user_id` | `uuid`          | nullable, FK → `profiles.id`, `ON DELETE SET NULL` | User who added the key (for BYO-key attribution).                                                                         |
+| `provider`      | `provider` enum | NOT NULL                                           | One of `openai`, `anthropic`, `google`, `groq`, `cerebras`, `openai-compatible` (`packages/db/src/schema/enums.ts:8-15`). |
+| `base_url`      | `text`          | nullable                                           | Custom endpoint (used for `openai-compatible` providers and proxies).                                                     |
+| `label`         | `text`          | NOT NULL                                           | Display name in settings.                                                                                                 |
+| `ciphertext`    | `text`          | NOT NULL                                           | Base64 ciphertext of the API key (envelope crypto).                                                                       |
+| `iv`            | `text`          | NOT NULL                                           | Base64 12-byte nonce.                                                                                                     |
+| `tag`           | `text`          | NOT NULL                                           | Base64 16-byte GCM auth tag.                                                                                              |
+| `last4`         | `text`          | NOT NULL                                           | Last four characters for "key ending in …" UI.                                                                            |
+| `created_at`    | `timestamptz`   | NOT NULL, default `now()`                          | Creation time.                                                                                                            |
 
 Indexes: `provider_keys_org_idx` on `(org_id)` (`agents.ts:34`).
 
@@ -38,28 +38,28 @@ Indexes: `provider_keys_org_idx` on `(org_id)` (`agents.ts:34`).
 
 Defined at `packages/db/src/schema/agents.ts:37`. The central row per bot: identity, default model wiring, prompt, and capabilities. Base columns come from the Drizzle snapshot (`migrations/0000_conscious_natasha_romanoff.sql`); the bot-platform migration added `template_id`, `owner_user_id`, `visibility`, `avatar`, and `bio` (`packages/db/sql/0009_bot_platform.sql:63-68`). A database trigger keeps `updated_at` fresh (`packages/db/sql/0001_functions.sql:13-25`).
 
-| Column | SQL type | Constraints / Default | Description |
-| :--- | :--- | :--- | :--- |
-| `id` | `uuid` | PK, default `gen_random_uuid()` | Agent id; also names its computer container (`saaya-bot-${agentId}`). |
-| `org_id` | `uuid` | NOT NULL, FK → `orgs.id`, `ON DELETE CASCADE` | Owning workspace. |
-| `handle` | `text` | NOT NULL | `@`-mention handle; unique per org (see indexes). |
-| `display_name` | `text` | NOT NULL | Chat-visible name. |
-| `kind` | `agent_kind` enum | NOT NULL, default `"llm"` | `llm` (orchestrator runs the loop) or `external` (webhook-driven bot) (`enums.ts:7`). |
-| `provider_key_id` | `uuid` | nullable, FK → `provider_keys.id`, `ON DELETE SET NULL` | Which org key this agent uses. |
-| `model` | `text` | nullable | Default model identifier; null lets the runner pick the provider default. |
-| `system_prompt` | `text` | NOT NULL, default `""` | Agent persona/instructions. |
-| `params` | `jsonb` | NOT NULL, default `{}` | Free-form model params (temperature, max tokens, …). |
-| `tool_ids` | `uuid[]` | NOT NULL, default `[]` | References into the tools registry rows this agent has enabled. |
-| `webhook_url` | `text` | nullable | Outbound webhook target for `external` agents. |
-| `webhook_secret_enc` | `text` | nullable | Sealed webhook signing secret (`sealSecret` envelope; plaintext never stored). |
-| `template_id` | `uuid` | nullable, FK → `agent_templates.id`, `ON DELETE SET NULL` | Template the agent was created from (`0009_bot_platform.sql:64`). |
-| `owner_user_id` | `uuid` | nullable, FK → `profiles.id`, `ON DELETE SET NULL` | Private-agent owner (`0009_bot_platform.sql:65`). |
-| `visibility` | `agent_visibility` enum | NOT NULL, default `"org"` | `org` (all members can add it) or `private` (owner-only) (`enums.ts:103`). |
-| `avatar` | `text` | nullable | Avatar URL/emoji. |
-| `bio` | `text` | nullable | Short description shown in the agents list. A room's lead agent also reads it (else the system prompt) to route work. |
-| `last_seen_at` | `timestamptz` | nullable | When an invited agent's own app last called Sayabot with its key or sign-in token; stamped at most every 30 s by `markAgentSeen` (`0038_agent_last_seen.sql`). |
-| `capabilities` | `jsonb` | NOT NULL, default `DEFAULT_CAPABILITIES` | Typed `AgentCapabilities` (`agents.ts:61`) — see below. |
-| `created_at` / `updated_at` | `timestamptz` | NOT NULL, default `now()` | Timestamps (`updated_at` maintained by trigger). |
+| Column                      | SQL type                | Constraints / Default                                     | Description                                                                                                                                                    |
+| :-------------------------- | :---------------------- | :-------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`                        | `uuid`                  | PK, default `gen_random_uuid()`                           | Agent id; also names its computer container (`saaya-bot-${agentId}`).                                                                                          |
+| `org_id`                    | `uuid`                  | NOT NULL, FK → `orgs.id`, `ON DELETE CASCADE`             | Owning workspace.                                                                                                                                              |
+| `handle`                    | `text`                  | NOT NULL                                                  | `@`-mention handle; unique per org (see indexes).                                                                                                              |
+| `display_name`              | `text`                  | NOT NULL                                                  | Chat-visible name.                                                                                                                                             |
+| `kind`                      | `agent_kind` enum       | NOT NULL, default `"llm"`                                 | `llm` (orchestrator runs the loop) or `external` (webhook-driven bot) (`enums.ts:7`).                                                                          |
+| `provider_key_id`           | `uuid`                  | nullable, FK → `provider_keys.id`, `ON DELETE SET NULL`   | Which org key this agent uses.                                                                                                                                 |
+| `model`                     | `text`                  | nullable                                                  | Default model identifier; null lets the runner pick the provider default.                                                                                      |
+| `system_prompt`             | `text`                  | NOT NULL, default `""`                                    | Agent persona/instructions.                                                                                                                                    |
+| `params`                    | `jsonb`                 | NOT NULL, default `{}`                                    | Free-form model params (temperature, max tokens, …).                                                                                                           |
+| `tool_ids`                  | `uuid[]`                | NOT NULL, default `[]`                                    | References into the tools registry rows this agent has enabled.                                                                                                |
+| `webhook_url`               | `text`                  | nullable                                                  | Outbound webhook target for `external` agents.                                                                                                                 |
+| `webhook_secret_enc`        | `text`                  | nullable                                                  | Sealed webhook signing secret (`sealSecret` envelope; plaintext never stored).                                                                                 |
+| `template_id`               | `uuid`                  | nullable, FK → `agent_templates.id`, `ON DELETE SET NULL` | Template the agent was created from (`0009_bot_platform.sql:64`).                                                                                              |
+| `owner_user_id`             | `uuid`                  | nullable, FK → `profiles.id`, `ON DELETE SET NULL`        | Private-agent owner (`0009_bot_platform.sql:65`).                                                                                                              |
+| `visibility`                | `agent_visibility` enum | NOT NULL, default `"org"`                                 | `org` (all members can add it) or `private` (owner-only) (`enums.ts:103`).                                                                                     |
+| `avatar`                    | `text`                  | nullable                                                  | Avatar URL/emoji.                                                                                                                                              |
+| `bio`                       | `text`                  | nullable                                                  | Short description shown in the agents list. A room's lead agent also reads it (else the system prompt) to route work.                                          |
+| `last_seen_at`              | `timestamptz`           | nullable                                                  | When an invited agent's own app last called Sayabot with its key or sign-in token; stamped at most every 30 s by `markAgentSeen` (`0038_agent_last_seen.sql`). |
+| `capabilities`              | `jsonb`                 | NOT NULL, default `DEFAULT_CAPABILITIES`                  | Typed `AgentCapabilities` (`agents.ts:61`) — see below.                                                                                                        |
+| `created_at` / `updated_at` | `timestamptz`           | NOT NULL, default `now()`                                 | Timestamps (`updated_at` maintained by trigger).                                                                                                               |
 
 Indexes: unique `agents_org_handle_idx` on `(org_id, handle)` and `agents_org_idx` on `(org_id)` (`agents.ts:65-68`).
 
@@ -67,9 +67,20 @@ Indexes: unique `agents_org_handle_idx` on `(org_id, handle)` and `agents_org_id
 
 ```typescript
 export const DEFAULT_CAPABILITIES: AgentCapabilities = {
-  canvas: true, tasks: true, sandbox: true, webSearch: true, document: true,
-  github: true, postgres: true, mcp: true, computer: false, secrets: false,
-  memory: true, subagents: true, cron: true, connectors: true,
+  canvas: true,
+  tasks: true,
+  sandbox: true,
+  webSearch: true,
+  document: true,
+  github: true,
+  postgres: true,
+  mcp: true,
+  computer: false,
+  secrets: false,
+  memory: true,
+  subagents: true,
+  cron: true,
+  connectors: true,
 }
 ```
 
@@ -85,20 +96,20 @@ The orchestrator's `buildTools()` gates tool availability on these flags, so `co
 
 Defined at `packages/db/src/schema/agents.ts:71`. Long-lived programmatic keys a bot uses to call the orchestrator API as itself. Only the SHA-style `key_hash` is stored; the full key is shown once at creation. `prefix` is both a display aid and a fast lookup handle.
 
-| Column | SQL type | Constraints / Default | Description |
-| :--- | :--- | :--- | :--- |
-| `id` | `uuid` | PK, default `gen_random_uuid()` | Key id. |
-| `agent_id` | `uuid` | NOT NULL, FK → `agents.id`, `ON DELETE CASCADE` | The bot this key authenticates. |
-| `prefix` | `text` | NOT NULL, UNIQUE | Visible key prefix (also used to find the row before hashing the presented key). |
-| `key_hash` | `text` | NOT NULL | Hash of the full secret; the raw key is never persisted. |
-| `scopes` | `text[]` | NOT NULL, default `["messages:write"]` | What the key may do (`agents.ts:80`). |
-| `label` | `text` | NOT NULL, default `"default"` | UI label. |
-| `room_ids` | `uuid[]` | nullable | Optional room restriction; null = all rooms the agent belongs to. |
-| `oauth_client_id` | `uuid` | nullable | Links a key to an OAuth client row when minted through that flow. |
-| `expires_at` | `timestamptz` | nullable | Expiry; null = non-expiring. |
-| `revoked_at` | `timestamptz` | nullable | Set on revocation. |
-| `last_used_at` | `timestamptz` | nullable | Updated on each authenticated call. |
-| `created_at` | `timestamptz` | NOT NULL, default `now()` | Creation time. |
+| Column            | SQL type      | Constraints / Default                           | Description                                                                      |
+| :---------------- | :------------ | :---------------------------------------------- | :------------------------------------------------------------------------------- |
+| `id`              | `uuid`        | PK, default `gen_random_uuid()`                 | Key id.                                                                          |
+| `agent_id`        | `uuid`        | NOT NULL, FK → `agents.id`, `ON DELETE CASCADE` | The bot this key authenticates.                                                  |
+| `prefix`          | `text`        | NOT NULL, UNIQUE                                | Visible key prefix (also used to find the row before hashing the presented key). |
+| `key_hash`        | `text`        | NOT NULL                                        | Hash of the full secret; the raw key is never persisted.                         |
+| `scopes`          | `text[]`      | NOT NULL, default `["messages:write"]`          | What the key may do (`agents.ts:80`).                                            |
+| `label`           | `text`        | NOT NULL, default `"default"`                   | UI label.                                                                        |
+| `room_ids`        | `uuid[]`      | nullable                                        | Optional room restriction; null = all rooms the agent belongs to.                |
+| `oauth_client_id` | `uuid`        | nullable                                        | Links a key to an OAuth client row when minted through that flow.                |
+| `expires_at`      | `timestamptz` | nullable                                        | Expiry; null = non-expiring.                                                     |
+| `revoked_at`      | `timestamptz` | nullable                                        | Set on revocation.                                                               |
+| `last_used_at`    | `timestamptz` | nullable                                        | Updated on each authenticated call.                                              |
+| `created_at`      | `timestamptz` | NOT NULL, default `now()`                       | Creation time.                                                                   |
 
 Indexes: `agent_api_keys_agent_idx` on `(agent_id)` (`agents.ts:89`).
 
@@ -112,15 +123,15 @@ Indexes: `agent_api_keys_agent_idx` on `(agent_id)` (`agents.ts:89`).
 
 Defined at `packages/db/src/schema/agents.ts:92`. Workspace-level configuration for individual tools (e.g. search provider keys, GitHub app settings). One row per `(org, tool)`; the config blob is sealed with the KEK.
 
-| Column | SQL type | Constraints / Default | Description |
-| :--- | :--- | :--- | :--- |
-| `id` | `uuid` | PK, default `gen_random_uuid()` | Row id. |
-| `org_id` | `uuid` | NOT NULL, FK → `orgs.id`, `ON DELETE CASCADE` | Owning workspace. |
-| `tool` | `text` | NOT NULL | Tool identifier (e.g. `web_search`, `github_bridge`). |
-| `config_enc` | `text` | NOT NULL | Sealed config (envelope-encrypted JSON). |
-| `enabled` | `boolean` | NOT NULL, default `true` | Kill-switch for the tool org-wide. |
-| `updated_by` | `uuid` | nullable, FK → `profiles.id`, `ON DELETE SET NULL` | Last editor. |
-| `created_at` / `updated_at` | `timestamptz` | NOT NULL, default `now()` | Timestamps (`updated_at` maintained by trigger). |
+| Column                      | SQL type      | Constraints / Default                              | Description                                           |
+| :-------------------------- | :------------ | :------------------------------------------------- | :---------------------------------------------------- |
+| `id`                        | `uuid`        | PK, default `gen_random_uuid()`                    | Row id.                                               |
+| `org_id`                    | `uuid`        | NOT NULL, FK → `orgs.id`, `ON DELETE CASCADE`      | Owning workspace.                                     |
+| `tool`                      | `text`        | NOT NULL                                           | Tool identifier (e.g. `web_search`, `github_bridge`). |
+| `config_enc`                | `text`        | NOT NULL                                           | Sealed config (envelope-encrypted JSON).              |
+| `enabled`                   | `boolean`     | NOT NULL, default `true`                           | Kill-switch for the tool org-wide.                    |
+| `updated_by`                | `uuid`        | nullable, FK → `profiles.id`, `ON DELETE SET NULL` | Last editor.                                          |
+| `created_at` / `updated_at` | `timestamptz` | NOT NULL, default `now()`                          | Timestamps (`updated_at` maintained by trigger).      |
 
 Indexes: unique `org_tool_configs_org_tool_idx` on `(org_id, tool)` (`agents.ts:106`).
 
@@ -134,24 +145,24 @@ Indexes: unique `org_tool_configs_org_tool_idx` on `(org_id, tool)` (`agents.ts:
 
 Defined at `packages/db/src/schema/templates.ts:32` (created `packages/db/sql/0009_bot_platform.sql:24-52`). Marketplace presets: a template carries the prompt, default model, capabilities, required secret slots, and starter tasks; creating an agent from one copies these values into the new `agents` row (`agents.template_id` records the origin). `org_id` is **nullable** — null rows are global templates shipped with the product; non-null rows are workspace-private templates.
 
-| Column | SQL type | Constraints / Default | Description |
-| :--- | :--- | :--- | :--- |
-| `id` | `uuid` | PK, default `gen_random_uuid()` | Template id. |
-| `org_id` | `uuid` | nullable, FK → `orgs.id`, `ON DELETE CASCADE` | Owning workspace; **null = global template**. |
-| `slug` | `text` | NOT NULL | URL/slug identifier; unique per org including the null-org case (see indexes). |
-| `name` | `text` | NOT NULL | Display name. |
-| `description` | `text` | NOT NULL, default `""` | Marketplace blurb. |
-| `icon` | `text` | nullable | Icon identifier/emoji. |
-| `category` | `text` | NOT NULL, default `"general"` | Marketplace category. |
-| `system_prompt` | `text` | NOT NULL, default `""` | Copied into `agents.system_prompt` on instantiation. |
-| `default_provider` | `provider` enum | nullable | Suggested provider; null = runner default. |
-| `default_model` | `text` | nullable | Suggested model identifier. |
-| `params` | `jsonb` | NOT NULL, default `{}` | Suggested model params. |
-| `capabilities` | `jsonb` | NOT NULL, default `DEFAULT_CAPABILITIES` | Typed `AgentCapabilities` copied into new agents (`templates.ts:46`). |
-| `secret_slots` | `jsonb` | NOT NULL, default `[]` | Typed `SecretSlot[]` (`templates.ts:47`) — see below. |
-| `starter_tasks` | `jsonb` | NOT NULL, default `[]` | Typed `StarterTask[]` (`templates.ts:48`). |
-| `created_by` | `uuid` | nullable, FK → `profiles.id`, `ON DELETE SET NULL` | Author (workspace templates). |
-| `created_at` / `updated_at` | `timestamptz` | NOT NULL, default `now()` | Timestamps. |
+| Column                      | SQL type        | Constraints / Default                              | Description                                                                    |
+| :-------------------------- | :-------------- | :------------------------------------------------- | :----------------------------------------------------------------------------- |
+| `id`                        | `uuid`          | PK, default `gen_random_uuid()`                    | Template id.                                                                   |
+| `org_id`                    | `uuid`          | nullable, FK → `orgs.id`, `ON DELETE CASCADE`      | Owning workspace; **null = global template**.                                  |
+| `slug`                      | `text`          | NOT NULL                                           | URL/slug identifier; unique per org including the null-org case (see indexes). |
+| `name`                      | `text`          | NOT NULL                                           | Display name.                                                                  |
+| `description`               | `text`          | NOT NULL, default `""`                             | Marketplace blurb.                                                             |
+| `icon`                      | `text`          | nullable                                           | Icon identifier/emoji.                                                         |
+| `category`                  | `text`          | NOT NULL, default `"general"`                      | Marketplace category.                                                          |
+| `system_prompt`             | `text`          | NOT NULL, default `""`                             | Copied into `agents.system_prompt` on instantiation.                           |
+| `default_provider`          | `provider` enum | nullable                                           | Suggested provider; null = runner default.                                     |
+| `default_model`             | `text`          | nullable                                           | Suggested model identifier.                                                    |
+| `params`                    | `jsonb`         | NOT NULL, default `{}`                             | Suggested model params.                                                        |
+| `capabilities`              | `jsonb`         | NOT NULL, default `DEFAULT_CAPABILITIES`           | Typed `AgentCapabilities` copied into new agents (`templates.ts:46`).          |
+| `secret_slots`              | `jsonb`         | NOT NULL, default `[]`                             | Typed `SecretSlot[]` (`templates.ts:47`) — see below.                          |
+| `starter_tasks`             | `jsonb`         | NOT NULL, default `[]`                             | Typed `StarterTask[]` (`templates.ts:48`).                                     |
+| `created_by`                | `uuid`          | nullable, FK → `profiles.id`, `ON DELETE SET NULL` | Author (workspace templates).                                                  |
+| `created_at` / `updated_at` | `timestamptz`   | NOT NULL, default `now()`                          | Timestamps.                                                                    |
 
 Indexes: unique `agent_templates_org_slug_idx` on `(org_id, slug)` **with `nulls not distinct`** and `agent_templates_org_idx` on `(org_id)` (`templates.ts:53-56`). The `nulls not distinct` semantics were fixed in `packages/db/sql/0015_agent_templates_unique.sql:3-4`, which drops and recreates the index so `ON CONFLICT (org_id, slug)` works for both NULL and non-NULL `org_id` — without it, Postgres treats NULL org slugs as always-distinct and upserts of global templates would insert duplicates.
 

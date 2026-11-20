@@ -27,17 +27,41 @@ export function OnboardingScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.bg, paddingTop: insets.top + 24, paddingBottom: insets.bottom + 16, paddingHorizontal: space.xl }}>
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: theme.bg,
+        paddingTop: insets.top + 24,
+        paddingBottom: insets.bottom + 16,
+        paddingHorizontal: space.xl,
+      }}
+    >
       <View style={{ flexDirection: "row", gap: 6, justifyContent: "center" }}>
         {STEPS.map((s, i) => (
-          <View key={s} style={{ width: i === step ? 22 : 7, height: 7, borderRadius: 4, backgroundColor: i <= step ? theme.accent : theme.lineStrong }} />
+          <View
+            key={s}
+            style={{
+              width: i === step ? 22 : 7,
+              height: 7,
+              borderRadius: 4,
+              backgroundColor: i <= step ? theme.accent : theme.lineStrong,
+            }}
+          />
         ))}
       </View>
 
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center", gap: 14 }}>
         {current === "hello" ? (
           <>
-            <View style={{ flexDirection: "row", marginBottom: 12, gap: 8, alignItems: "center", justifyContent: "center" }}>
+            <View
+              style={{
+                flexDirection: "row",
+                marginBottom: 12,
+                gap: 8,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
               <Mascot seed="Hermes" size={76} shadow={true} live={true} />
               <Mascot seed="Claude Code" size={76} working={true} shadow={true} live={true} />
               <Mascot seed="Codex" size={76} shadow={true} live={true} />
@@ -46,7 +70,8 @@ export function OnboardingScreen() {
               Your AI team, in your pocket
             </Text>
             <Text variant="body" tone="muted" center>
-              Your agents work in chats, like teammates. They ask when they need you, and you answer from here.
+              Your agents work in chats, like teammates. They ask when they need you, and you answer
+              from here.
             </Text>
           </>
         ) : null}
@@ -56,11 +81,29 @@ export function OnboardingScreen() {
               Three things you'll do most
             </Text>
             {[
-              ["Answer", "When an agent needs a fact or a yes/no, it shows in your Inbox. Answer once; it remembers."],
-              ["Hand out work", "New task → pick who should do it. They start right away, even on your own computer."],
-              ["Check in", "Open a chat to see what's happening. A pulsing ring means an agent is working."],
+              [
+                "Answer",
+                "When an agent needs a fact or a yes/no, it shows in your Inbox. Answer once; it remembers.",
+              ],
+              [
+                "Hand out work",
+                "New task → pick who should do it. They start right away, even on your own computer.",
+              ],
+              [
+                "Check in",
+                "Open a chat to see what's happening. A pulsing ring means an agent is working.",
+              ],
             ].map(([title, body]) => (
-              <View key={title} style={{ alignSelf: "stretch", backgroundColor: theme.card, borderRadius: 18, padding: space.lg, gap: 4 }}>
+              <View
+                key={title}
+                style={{
+                  alignSelf: "stretch",
+                  backgroundColor: theme.card,
+                  borderRadius: 18,
+                  padding: space.lg,
+                  gap: 4,
+                }}
+              >
                 <Text variant="headline">{title}</Text>
                 <Text variant="subhead" tone="muted">
                   {body}
@@ -77,13 +120,30 @@ export function OnboardingScreen() {
             <Text variant="subhead" tone="muted" center>
               You can change these any time in More.
             </Text>
-            <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", justifyContent: "center", marginTop: 8 }}>
+            <View
+              style={{
+                flexDirection: "row",
+                gap: 8,
+                flexWrap: "wrap",
+                justifyContent: "center",
+                marginTop: 8,
+              }}
+            >
               {(["system", "light", "dark"] as const).map((mode) => (
-                <Chip key={mode} label={mode === "system" ? "Automatic" : mode[0]!.toUpperCase() + mode.slice(1)} selected={settings.themeMode === mode} onPress={() => void updateSettings({ themeMode: mode })} />
+                <Chip
+                  key={mode}
+                  label={mode === "system" ? "Automatic" : mode[0]!.toUpperCase() + mode.slice(1)}
+                  selected={settings.themeMode === mode}
+                  onPress={() => void updateSettings({ themeMode: mode })}
+                />
               ))}
             </View>
             <Chip
-              label={settings.pushNotifications && alertsOn ? "Alerts on" : "Get alerts when an agent needs you"}
+              label={
+                settings.pushNotifications && alertsOn
+                  ? "Alerts on"
+                  : "Get alerts when an agent needs you"
+              }
               selected={alertsOn}
               onPress={async () => {
                 const ok = await enablePush(true).catch(() => false)
@@ -96,9 +156,13 @@ export function OnboardingScreen() {
               selected={settings.appLock}
               onPress={async () => {
                 if (settings.appLock) return void updateSettings({ appLock: false })
-                const ok = (await LocalAuthentication.hasHardwareAsync()) && (await LocalAuthentication.isEnrolledAsync())
+                const ok =
+                  (await LocalAuthentication.hasHardwareAsync()) &&
+                  (await LocalAuthentication.isEnrolledAsync())
                 if (!ok) return
-                const res = await LocalAuthentication.authenticateAsync({ promptMessage: "Turn on app lock" })
+                const res = await LocalAuthentication.authenticateAsync({
+                  promptMessage: "Turn on app lock",
+                })
                 if (res.success) void updateSettings({ appLock: true })
               }}
             />
@@ -106,8 +170,19 @@ export function OnboardingScreen() {
         ) : null}
       </View>
 
-      <Button title={step < STEPS.length - 1 ? "Continue" : "Get started"} size="lg" onPress={() => (step < STEPS.length - 1 ? setStep(step + 1) : void finish())} />
-      {step < STEPS.length - 1 ? <Button title="Skip" variant="ghost" onPress={() => void finish()} style={{ marginTop: 6 }} /> : null}
+      <Button
+        title={step < STEPS.length - 1 ? "Continue" : "Get started"}
+        size="lg"
+        onPress={() => (step < STEPS.length - 1 ? setStep(step + 1) : void finish())}
+      />
+      {step < STEPS.length - 1 ? (
+        <Button
+          title="Skip"
+          variant="ghost"
+          onPress={() => void finish()}
+          style={{ marginTop: 6 }}
+        />
+      ) : null}
     </View>
   )
 }

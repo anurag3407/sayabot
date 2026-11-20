@@ -28,7 +28,11 @@ async function askMacsToRescan(userId: string): Promise<void> {
  * `refresh=1` on the model list: every caller asks their own Macs to rescan. Only an org admin
  * also drops the server's model caches (models.dev, the manifest, Codex/Claude CLI lists).
  */
-export async function refreshModelSources(input: { userId: string; host: string | null; forceCatalog: boolean }): Promise<void> {
+export async function refreshModelSources(input: {
+  userId: string
+  host: string | null
+  forceCatalog: boolean
+}): Promise<void> {
   await askMacsToRescan(input.userId).catch((error: unknown) => {
     console.warn("[models] could not ask the Macs to rescan", error)
   })
@@ -39,7 +43,10 @@ export async function refreshModelSources(input: { userId: string; host: string 
     models.modelCatalog().refresh({ force: true }),
     models.modelManifest().refresh({ force: true }),
     ...(localDetectionAllowed(input.host)
-      ? [models.codexModelCatalog({ force: true }).catch(() => null), models.claudeModelCatalog({ force: true }).catch(() => null)]
+      ? [
+          models.codexModelCatalog({ force: true }).catch(() => null),
+          models.claudeModelCatalog({ force: true }).catch(() => null),
+        ]
       : []),
   ])
 }

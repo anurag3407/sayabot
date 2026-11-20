@@ -49,10 +49,7 @@ export async function GET(request: Request) {
   try {
     const origin = getPublicOrigin(request)
     const state = Math.random().toString(36).substring(2) + Date.now().toString(36)
-    const { authUrl } = buildSupabaseOAuthUrl(
-      `${origin}/oauth/callback/supabase`,
-      state,
-    )
+    const { authUrl } = buildSupabaseOAuthUrl(`${origin}/oauth/callback/supabase`, state)
     const response = NextResponse.json({ authUrl })
     const cookie = {
       httpOnly: true,
@@ -68,9 +65,7 @@ export async function GET(request: Request) {
     return NextResponse.json(
       {
         error:
-          error instanceof Error
-            ? error.message
-            : "Failed to generate Supabase authorization URL",
+          error instanceof Error ? error.message : "Failed to generate Supabase authorization URL",
       },
       { status: 500 },
     )
@@ -130,8 +125,7 @@ export async function POST(request: Request) {
       )
     }
     const keys = await getSupabaseProjectApiKeys(defaultProject.id, tokens.access_token)
-    const serviceKey =
-      keys.find((k) => k.name === "service_role")?.api_key || keys[0]?.api_key
+    const serviceKey = keys.find((k) => k.name === "service_role")?.api_key || keys[0]?.api_key
     if (!serviceKey) {
       return NextResponse.json(
         { error: "Could not find API key for the selected project" },

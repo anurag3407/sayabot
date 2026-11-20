@@ -150,14 +150,14 @@ Finally, `resolveOpenAsksFromFacts` sweeps each touched room so one answered fac
 
 ## 🧾 The rows behind a chat
 
-| Table | Key columns | Who writes it |
-| :--- | :--- | :--- |
-| `rooms` | `kind` ∈ `public \| private \| dm`, `turn_mode` ∈ `mentions \| debate \| moderated`, `turn_cap`, `rpm_limit`, `daily_budget_usd`, `moderator_agent_id`, `debate_order`, `timezone`, `agent_dm_user_id`/`agent_dm_agent_id` (the DM markers), `created_by` | `createRoom`, `updateRoomSettings`, `ensureBotDmRoom`, `setupWorkspaceAction` |
-| `room_members` | `role` ∈ `admin \| member` | `createRoom`, `addRoomMember`, `removeRoomMember`, invites |
-| `room_agents` | `position` (append-order), `model_override` (per-chat model pick) | `addAgentToRoom`, `removeAgentFromRoom`, `setRoomAgentModelAction` |
-| `room_reads` | `last_read_at`, `pinned`, `muted_until`, `archived` (unique per `user_id,room_id`) | `markRoomReadAction`, `setChatPreferenceAction` |
-| `room_schedules` | morning/evening minutes, check-in window/interval/duration, `checkin_mode` | room creation, `saveRoomScheduleAction` |
-| `messages` | `sender_type` ∈ `human \| agent \| system`, `status` ∈ `streaming \| complete \| error \| halted`, `mentions` (handles extracted from content), `thread_root_id`, `run_id`, `metadata` (e.g. `clientId`, `taskId`, `requestAnswer`, `botJoined`) | `insertHumanMessage`, `collectBotKey`, `deliverItemAnswers`, the orchestrator |
+| Table            | Key columns                                                                                                                                                                                                                                               | Who writes it                                                                 |
+| :--------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------- |
+| `rooms`          | `kind` ∈ `public \| private \| dm`, `turn_mode` ∈ `mentions \| debate \| moderated`, `turn_cap`, `rpm_limit`, `daily_budget_usd`, `moderator_agent_id`, `debate_order`, `timezone`, `agent_dm_user_id`/`agent_dm_agent_id` (the DM markers), `created_by` | `createRoom`, `updateRoomSettings`, `ensureBotDmRoom`, `setupWorkspaceAction` |
+| `room_members`   | `role` ∈ `admin \| member`                                                                                                                                                                                                                                | `createRoom`, `addRoomMember`, `removeRoomMember`, invites                    |
+| `room_agents`    | `position` (append-order), `model_override` (per-chat model pick)                                                                                                                                                                                         | `addAgentToRoom`, `removeAgentFromRoom`, `setRoomAgentModelAction`            |
+| `room_reads`     | `last_read_at`, `pinned`, `muted_until`, `archived` (unique per `user_id,room_id`)                                                                                                                                                                        | `markRoomReadAction`, `setChatPreferenceAction`                               |
+| `room_schedules` | morning/evening minutes, check-in window/interval/duration, `checkin_mode`                                                                                                                                                                                | room creation, `saveRoomScheduleAction`                                       |
+| `messages`       | `sender_type` ∈ `human \| agent \| system`, `status` ∈ `streaming \| complete \| error \| halted`, `mentions` (handles extracted from content), `thread_root_id`, `run_id`, `metadata` (e.g. `clientId`, `taskId`, `requestAnswer`, `botJoined`)          | `insertHumanMessage`, `collectBotKey`, `deliverItemAnswers`, the orchestrator |
 
 ## 📬 Shapes at a glance
 

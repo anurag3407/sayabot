@@ -5,11 +5,7 @@ import { BotStoreView, type BotTemplateItem } from "@/components/bot-store/bot-s
 
 export const metadata: Metadata = { title: "Bot Store" }
 
-export default async function BotStorePage({
-  params,
-}: {
-  params: Promise<{ org: string }>
-}) {
+export default async function BotStorePage({ params }: { params: Promise<{ org: string }> }) {
   const { org: orgSlug } = await params
   const access = await requireOrgAccess(orgSlug)
   const admin = createAdminClient()

@@ -128,7 +128,12 @@ export class ToolIndex {
 }
 
 export const findToolsSchema = z.object({
-  query: z.string().min(1).describe("Search keywords for tool capabilities or operations (e.g. 'stripe payments', 'linear issues')"),
+  query: z
+    .string()
+    .min(1)
+    .describe(
+      "Search keywords for tool capabilities or operations (e.g. 'stripe payments', 'linear issues')",
+    ),
 })
 
 export function buildFindToolsSpec(args: {
@@ -174,9 +179,7 @@ export function buildFindToolsSpec(args: {
  * activated so far). When no partitioning happens, `activeToolNames()`
  * returns undefined, meaning every tool is active.
  */
-export function partitionToolsForSearch(
-  specs: ToolSpec[],
-): {
+export function partitionToolsForSearch(specs: ToolSpec[]): {
   exposed: ToolSpec[]
   all: ToolSpec[]
   searchTool?: ToolSpec

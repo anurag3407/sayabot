@@ -10,17 +10,17 @@ Source files: `package.json`, `turbo.json`, `pnpm-workspace.yaml`, `tsconfig.bas
 
 `pnpm-workspace.yaml` globs `apps/*` and `packages/*`. Members:
 
-| Path | Package name | Kind | Depends on |
-| :--- | :--- | :--- | :--- |
-| `apps/web` | `@sayabot/web` | Next.js 16 (App Router), React 19 | `@sayabot/core`, `@sayabot/db`, `@sayabot/llm` |
-| `apps/orchestrator` | `@sayabot/orchestrator` | Hono + pg-boss + Hocuspocus Node server | `@sayabot/core`, `@sayabot/db`, `@sayabot/llm` |
-| `apps/computerd` | `@sayabot/computerd` | sandbox daemon (smolvm / Docker / e2b) | `@sayabot/core` |
-| `apps/egress` | `@sayabot/egress` | SSRF proxy + secret broker | `@sayabot/core` |
-| `apps/mobile` | `@sayabot/mobile` | Expo / React Native | `@sayabot/core` |
-| `apps/desktop` | `@sayabot/desktop` | Electron companion (bundles `@sayabot/core` as a devDependency at build time) | `@sayabot/core` (dev) |
-| `packages/core` | `@sayabot/core` | zero-dependency domain logic | — |
-| `packages/db` | `@sayabot/db` | Drizzle schema, migrations, seed | `@sayabot/core` |
-| `packages/llm` | `@sayabot/llm` | provider registry, crypto, MCP | `@sayabot/core`, `@sayabot/db` |
+| Path                | Package name            | Kind                                                                          | Depends on                                     |
+| :------------------ | :---------------------- | :---------------------------------------------------------------------------- | :--------------------------------------------- |
+| `apps/web`          | `@sayabot/web`          | Next.js 16 (App Router), React 19                                             | `@sayabot/core`, `@sayabot/db`, `@sayabot/llm` |
+| `apps/orchestrator` | `@sayabot/orchestrator` | Hono + pg-boss + Hocuspocus Node server                                       | `@sayabot/core`, `@sayabot/db`, `@sayabot/llm` |
+| `apps/computerd`    | `@sayabot/computerd`    | sandbox daemon (smolvm / Docker / e2b)                                        | `@sayabot/core`                                |
+| `apps/egress`       | `@sayabot/egress`       | SSRF proxy + secret broker                                                    | `@sayabot/core`                                |
+| `apps/mobile`       | `@sayabot/mobile`       | Expo / React Native                                                           | `@sayabot/core`                                |
+| `apps/desktop`      | `@sayabot/desktop`      | Electron companion (bundles `@sayabot/core` as a devDependency at build time) | `@sayabot/core` (dev)                          |
+| `packages/core`     | `@sayabot/core`         | zero-dependency domain logic                                                  | —                                              |
+| `packages/db`       | `@sayabot/db`           | Drizzle schema, migrations, seed                                              | `@sayabot/core`                                |
+| `packages/llm`      | `@sayabot/llm`          | provider registry, crypto, MCP                                                | `@sayabot/core`, `@sayabot/db`                 |
 
 Toolchain pins: `packageManager: pnpm@10.33.0`, Node 24 (CI uses `node-version: 24`), TypeScript `^5.9.0`, turbo `^2.11.10` (`package.json`). The repo root `package.json` carries `license: AGPL-3.0-only`; the `ee/` folders are separately licensed (see [Editions & Licensing](./editions-and-licensing.md)).
 
@@ -92,23 +92,23 @@ flowchart LR
 
 From `package.json`:
 
-| Script | What it runs |
-| :--- | :--- |
-| `pnpm dev` | `turbo run dev` (persistent, uncached; all apps concurrently) |
-| `pnpm build` | `turbo run build` |
-| `pnpm typecheck` | `turbo run typecheck` |
-| `pnpm lint` | `turbo run lint` |
-| `pnpm test` | `turbo run test` (vitest per workspace) |
-| `pnpm db:generate` / `db:migrate` / `db:seed` | delegated to `pnpm --filter @sayabot/db generate|migrate|seed` |
-| `pnpm format` | `prettier --write .` |
-| `pnpm mobile:dev` / `mobile:typecheck` / `mobile:update` / `mobile:build:apk` | mobile helpers |
+| Script                                                                                                                                         | What it runs                                                                                                                 |
+| :--------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm dev`                                                                                                                                     | `turbo run dev` (persistent, uncached; all apps concurrently)                                                                |
+| `pnpm build`                                                                                                                                   | `turbo run build`                                                                                                            |
+| `pnpm typecheck`                                                                                                                               | `turbo run typecheck`                                                                                                        |
+| `pnpm lint`                                                                                                                                    | `turbo run lint`                                                                                                             |
+| `pnpm test`                                                                                                                                    | `turbo run test` (vitest per workspace)                                                                                      |
+| `pnpm db:generate` / `db:migrate` / `db:seed`                                                                                                  | delegated to `pnpm --filter @sayabot/db generate                                                                             | migrate | seed` |
+| `pnpm format`                                                                                                                                  | `prettier --write .`                                                                                                         |
+| `pnpm mobile:dev` / `mobile:typecheck` / `mobile:update` / `mobile:build:apk`                                                                  | mobile helpers                                                                                                               |
 | `pnpm desktop:build` / `desktop:dev` / `desktop:package:dmg` / `desktop:package:win` / `desktop:package:win:x64` / `desktop:package:win:arm64` | desktop helpers. Windows packaging (`nsis` + `zip`) runs on Windows; `deploy/desktop/package-windows.ps1` is the same build. |
-| `pnpm e2e` | `playwright test` (config in `playwright.config.ts`) |
-| `pnpm typecheck:e2e` | `tsc -p tsconfig.e2e.json` |
-| `pnpm test:unit` | `turbo run test` filtered to core, llm, orchestrator, web, egress, computerd, mobile |
-| `pnpm test:integration` | `node tests/integration/run.mjs` (needs live services) |
-| `pnpm test:e2e:api` | smoke lane: `E2E_SMOKE=1 playwright test api navigation.spec.ts api-guard.spec.ts` |
-| `pnpm test:coverage` | `turbo run test:coverage` |
+| `pnpm e2e`                                                                                                                                     | `playwright test` (config in `playwright.config.ts`)                                                                         |
+| `pnpm typecheck:e2e`                                                                                                                           | `tsc -p tsconfig.e2e.json`                                                                                                   |
+| `pnpm test:unit`                                                                                                                               | `turbo run test` filtered to core, llm, orchestrator, web, egress, computerd, mobile                                         |
+| `pnpm test:integration`                                                                                                                        | `node tests/integration/run.mjs` (needs live services)                                                                       |
+| `pnpm test:e2e:api`                                                                                                                            | smoke lane: `E2E_SMOKE=1 playwright test api navigation.spec.ts api-guard.spec.ts`                                           |
+| `pnpm test:coverage`                                                                                                                           | `turbo run test:coverage`                                                                                                    |
 
 Convention notes for agents working in this repo: tests live adjacent to sources as `*.test.ts` (vitest), Prettier uses `semi: false`, double quotes, print width 100 (`.prettierrc`), and unused params must be underscore-prefixed.
 
@@ -154,12 +154,12 @@ Key traits:
 
 ## 🤖 CI (`/.github/workflows`)
 
-| Workflow | Trigger | What it does |
-| :--- | :--- | :--- |
-| `test.yml` | push to `main`, all PRs | **unit-integration** job: pnpm 10.33 / Node 24, `pnpm install --frozen-lockfile`, then `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm test:integration`, `pnpm typecheck:e2e`. **e2e-smoke** job (push only): builds web, starts it, waits for `/api/health`, runs the Playwright smoke lane with dummy env (`ci-test-kek`, `ci-test-internal-secret-0123456789`, …) |
-| `deploy.yml` | release tags | builds/pushes images and deploys per the repo's configured host |
-| `desktop-release.yml` | desktop paths on `main`, or manual dispatch | macOS DMG packaging (signing/notarization per `docs/macos-signing-and-notarization.md`), then a Windows job that attaches `Sayabot-Setup-<arch>.exe` and `Sayabot-win-<arch>.zip` to the same release |
-| `mobile-updates.yml` | mobile release | Expo OTA update publishing; builds and attaches `Sayabot-<version>.apk` to the latest GitHub release when `app.json` version has no APK yet |
+| Workflow              | Trigger                                     | What it does                                                                                                                                                                                                                                                                                                                                                            |
+| :-------------------- | :------------------------------------------ | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `test.yml`            | push to `main`, all PRs                     | **unit-integration** job: pnpm 10.33 / Node 24, `pnpm install --frozen-lockfile`, then `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm test:integration`, `pnpm typecheck:e2e`. **e2e-smoke** job (push only): builds web, starts it, waits for `/api/health`, runs the Playwright smoke lane with dummy env (`ci-test-kek`, `ci-test-internal-secret-0123456789`, …) |
+| `deploy.yml`          | release tags                                | builds/pushes images and deploys per the repo's configured host                                                                                                                                                                                                                                                                                                         |
+| `desktop-release.yml` | desktop paths on `main`, or manual dispatch | macOS DMG packaging (signing/notarization per `docs/macos-signing-and-notarization.md`), then a Windows job that attaches `Sayabot-Setup-<arch>.exe` and `Sayabot-win-<arch>.zip` to the same release                                                                                                                                                                   |
+| `mobile-updates.yml`  | mobile release                              | Expo OTA update publishing; builds and attaches `Sayabot-<version>.apk` to the latest GitHub release when `app.json` version has no APK yet                                                                                                                                                                                                                             |
 
 The smoke CI env is worth copying when debugging: it shows the minimal env set the orchestrator's Zod schema demands (`DATABASE_URL`, `SAYABOT_KEK`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ORCHESTRATOR_INTERNAL_SECRET` ≥ 16 chars).
 

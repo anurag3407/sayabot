@@ -12,7 +12,10 @@ const PATTERNS: { name: string; re: RegExp }[] = [
   { name: "oauth_refresh_token", re: /\b(?:mesh_rt_|sayabot_rt_)[A-Za-z0-9_-]{20,}\b/g },
   { name: "invite_code", re: /\bsinv_[A-Za-z0-9_-]{20,}\b/g },
   { name: "jwt", re: /\beyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g },
-  { name: "private_key", re: /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g },
+  {
+    name: "private_key",
+    re: /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g,
+  },
 ]
 
 export const PLACEHOLDER_PATTERN = /\bsaaya_ph_[A-Za-z0-9_-]{24,}\b/g
@@ -23,7 +26,10 @@ export interface RedactionResult {
 }
 
 /** Replaces secret-looking substrings with `[REDACTED:<kind>]`. */
-export function redactSecrets(input: string, options?: { redactPlaceholders?: boolean }): RedactionResult {
+export function redactSecrets(
+  input: string,
+  options?: { redactPlaceholders?: boolean },
+): RedactionResult {
   let text = input
   const redactions: RedactionResult["redactions"] = []
 

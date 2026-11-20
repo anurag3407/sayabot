@@ -9,8 +9,12 @@ import { onSupabaseClient, supabase } from "./supabase"
 
 let cachedToken: string | null = null
 onSupabaseClient(() => {
-  void supabase.auth.getSession().then(({ data }) => (cachedToken = data.session?.access_token ?? null))
-  supabase.auth.onAuthStateChange((_event, session) => (cachedToken = session?.access_token ?? null))
+  void supabase.auth
+    .getSession()
+    .then(({ data }) => (cachedToken = data.session?.access_token ?? null))
+  supabase.auth.onAuthStateChange(
+    (_event, session) => (cachedToken = session?.access_token ?? null),
+  )
 })
 
 export function accessTokenNow(): string | null {
@@ -26,10 +30,16 @@ export async function authHeaders(): Promise<Record<string, string>> {
   return { Authorization: `Bearer ${session.access_token}` }
 }
 
-export async function api<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
+export async function api<T>(
+  path: string,
+  init: { method?: string; body?: unknown } = {},
+): Promise<T> {
   const res = await fetch(`${currentWebApiUrl()}${path}`, {
     method: init.method ?? (init.body ? "POST" : "GET"),
-    headers: { ...(await authHeaders()), ...(init.body ? { "Content-Type": "application/json" } : {}) },
+    headers: {
+      ...(await authHeaders()),
+      ...(init.body ? { "Content-Type": "application/json" } : {}),
+    },
     body: init.body ? JSON.stringify(init.body) : undefined,
   })
   const json = (await res.json().catch(() => ({}))) as T & { error?: string }
@@ -54,20 +64,40 @@ export interface Picked {
 export async function prepareForUpload(file: Picked): Promise<Picked> {
   if (!file.isImage || file.type === "image/gif") return file
   try {
-    const out = await manipulateAsync(file.uri, [{ resize: { width: 1600 } }], { compress: 0.72, format: SaveFormat.JPEG })
-    return { ...file, uri: out.uri, type: "image/jpeg", name: file.name.replace(/\.(heic|heif|png|webp|jpe?g)$/i, "") + ".jpg" }
+    const out = await manipulateAsync(file.uri, [{ resize: { width: 1600 } }], {
+      compress: 0.72,
+      format: SaveFormat.JPEG,
+    })
+    return {
+      ...file,
+      uri: out.uri,
+      type: "image/jpeg",
+      name: file.name.replace(/\.(heic|heif|png|webp|jpe?g)$/i, "") + ".jpg",
+    }
   } catch {
     return file
   }
 }
 
-export async function uploadToRoom(roomId: string, file: Picked): Promise<{ url: string; name: string; type: string }> {
+export async function uploadToRoom(
+  roomId: string,
+  file: Picked,
+): Promise<{ url: string; name: string; type: string }> {
   const ready = await prepareForUpload(file)
   const form = new FormData()
   form.append("roomId", roomId)
   form.append("file", { uri: ready.uri, name: ready.name, type: ready.type } as unknown as Blob)
-  const res = await fetch(`${currentWebApiUrl()}/api/mobile/upload`, { method: "POST", headers: await authHeaders(), body: form })
-  const json = (await res.json().catch(() => ({}))) as { url?: string; name?: string; type?: string; error?: string }
+  const res = await fetch(`${currentWebApiUrl()}/api/mobile/upload`, {
+    method: "POST",
+    headers: await authHeaders(),
+    body: form,
+  })
+  const json = (await res.json().catch(() => ({}))) as {
+    url?: string
+    name?: string
+    type?: string
+    error?: string
+  }
   if (!res.ok || !json.url) throw new Error(json.error || `Upload failed (HTTP ${res.status})`)
   return { url: json.url, name: json.name ?? ready.name, type: json.type ?? ready.type }
 }

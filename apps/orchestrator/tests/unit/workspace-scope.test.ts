@@ -18,8 +18,15 @@ describe("workspaceScopeSchema", () => {
   })
 
   it("rejects worktrees outside the generated root and bad SHAs", () => {
-    expect(workspaceScopeSchema.safeParse({ ...valid, worktree: "/home/bot/other" }).success).toBe(false)
-    expect(workspaceScopeSchema.safeParse({ ...valid, worktree: "/home/bot/.saaya/worktrees/not-a-uuid" }).success).toBe(false)
+    expect(workspaceScopeSchema.safeParse({ ...valid, worktree: "/home/bot/other" }).success).toBe(
+      false,
+    )
+    expect(
+      workspaceScopeSchema.safeParse({
+        ...valid,
+        worktree: "/home/bot/.saaya/worktrees/not-a-uuid",
+      }).success,
+    ).toBe(false)
     expect(workspaceScopeSchema.safeParse({ ...valid, baseSha: "zz" }).success).toBe(false)
   })
 })

@@ -1,6 +1,6 @@
 # Bring-Your-Own-Bot Platform
 
-The bot platform lets an *external* agent — your own bot process, a webhook-driven model, or a bot connected over MCP — participate in Sayabot rooms as a first-class agent. It posts with an agent API key or OAuth access token, can stream its reply as NDJSON or SSE while Sayabot relays deltas to the room in real time, and the reverse direction works too: when a room turn mentions the external agent, the runner dispatches a webhook and parks on `waitForBotReply` until the bot answers. Auth is hash-verified against the database; every persisted byte passes through `redactSecrets` before it touches Postgres or the realtime channel.
+The bot platform lets an _external_ agent — your own bot process, a webhook-driven model, or a bot connected over MCP — participate in Sayabot rooms as a first-class agent. It posts with an agent API key or OAuth access token, can stream its reply as NDJSON or SSE while Sayabot relays deltas to the room in real time, and the reverse direction works too: when a room turn mentions the external agent, the runner dispatches a webhook and parks on `waitForBotReply` until the bot answers. Auth is hash-verified against the database; every persisted byte passes through `redactSecrets` before it touches Postgres or the realtime channel.
 
 Source files: `apps/orchestrator/src/bot/auth.ts`, `apps/orchestrator/src/bot/routes.ts`, `apps/orchestrator/src/bot/stream-parser.ts`, `apps/orchestrator/src/bot-reply.ts`
 
@@ -23,10 +23,10 @@ export interface BotIdentity {
 
 Two token families are accepted, distinguished by prefix:
 
-| Prefix | Storage | Validation |
-| :--- | :--- | :--- |
-| `mesh_at_` / `sayabot_at_` | `oauth_tokens` (kind `"access"`) | Hash lookup (`hashAgentApiKey` from `@sayabot/core/server`), not revoked, `expiresAt > now`; carries `scopes` and `roomIds`. |
-| `mesh_ak_` / `saaya_ak_` / `sayabot_ak_` | `agent_api_keys` | Lookup by `prefix` (`agentKeyPrefix`) + `revokedAt IS NULL`; key expiry checked; then a **constant-time** hex comparison `safeEqualHex(hashAgentApiKey(token), keyHash)` (`auth.ts:15-20`). |
+| Prefix                                   | Storage                          | Validation                                                                                                                                                                                  |
+| :--------------------------------------- | :------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `mesh_at_` / `sayabot_at_`               | `oauth_tokens` (kind `"access"`) | Hash lookup (`hashAgentApiKey` from `@sayabot/core/server`), not revoked, `expiresAt > now`; carries `scopes` and `roomIds`.                                                                |
+| `mesh_ak_` / `saaya_ak_` / `sayabot_ak_` | `agent_api_keys`                 | Lookup by `prefix` (`agentKeyPrefix`) + `revokedAt IS NULL`; key expiry checked; then a **constant-time** hex comparison `safeEqualHex(hashAgentApiKey(token), keyHash)` (`auth.ts:15-20`). |
 
 The constant-time comparison is hand-rolled (`auth.ts:15-20`) so it works on plain hex strings without leaking length or prefix differences through timing:
 
@@ -39,7 +39,7 @@ function safeEqualHex(a: string, b: string): boolean {
 }
 ```
 
-Any other prefix, missing bearer, failed lookup, or hash mismatch returns `null` → HTTP 401. A successful API-key hit fire-and-forget updates `lastUsedAt` (errors swallowed). Every successful hit, API key or OAuth access token, also calls `markAgentSeen(agentId)` (`auth.ts:29`). This fire-and-forget conditional `UPDATE agents SET last_seen_at = now()` is a no-op within 30 seconds of the last stamp. Room settings' "open now" badge and the coordinator's "app isn't open" notice read it. There is no HMAC signature scheme on bot *requests* — possession of the (hash-stored) key is the proof; webhook *deliveries out to* bots are HMAC-signed with a per-agent secret via the egress/webhook path in [internal-api-and-jobs.md](./internal-api-and-jobs.md).
+Any other prefix, missing bearer, failed lookup, or hash mismatch returns `null` → HTTP 401. A successful API-key hit fire-and-forget updates `lastUsedAt` (errors swallowed). Every successful hit, API key or OAuth access token, also calls `markAgentSeen(agentId)` (`auth.ts:29`). This fire-and-forget conditional `UPDATE agents SET last_seen_at = now()` is a no-op within 30 seconds of the last stamp. Room settings' "open now" badge and the coordinator's "app isn't open" notice read it. There is no HMAC signature scheme on bot _requests_ — possession of the (hash-stored) key is the proof; webhook _deliveries out to_ bots are HMAC-signed with a per-agent secret via the egress/webhook path in [internal-api-and-jobs.md](./internal-api-and-jobs.md).
 
 The `scopes` and `roomIds` carried on the identity are enforced downstream: `roomIds` confines an MCP/API token to specific rooms (checked in `resolveAgentRoomId`, see [collab-tasks.md](./collab-tasks.md)), and `scopes` gate scoped MCP tools in `callTool` (see [mcp-server.md](./mcp-server.md)).
 
@@ -143,13 +143,14 @@ The external runner consumes this: `src/runner/external.ts:71` creates an `agent
 
 ## 🧪 Tests
 
-| Test file | Covers |
-| :--- | :--- |
+| Test file                                         | Covers                                                                                          |
+| :------------------------------------------------ | :---------------------------------------------------------------------------------------------- |
 | `apps/orchestrator/src/bot/stream-parser.test.ts` | NDJSON and SSE parsing, partial-line buffering, `[DONE]`/`{ done: true }`, invalid-line throws. |
 
 ---
 
 Related docs:
+
 - [External & local runners](../engine/runner-external-and-local.md) — the webhook dispatch that pairs with `waitForBotReply`
 - [Collab & task board](./collab-tasks.md) — `postAgentMessage` and room message flow
 - [SSRF & realtime](./ssrf-and-realtime.md) — the `broadcast()` channel used for `message.delta`/`message.done`

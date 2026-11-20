@@ -1,5 +1,17 @@
 import { describe, expect, it, vi } from "vitest"
-import { cn, formatMs, formatNumber, formatPercent, formatTokens, formatUsd, initials, pretty, relativeTime, statusTone, truncate } from "../../src/lib/format"
+import {
+  cn,
+  formatMs,
+  formatNumber,
+  formatPercent,
+  formatTokens,
+  formatUsd,
+  initials,
+  pretty,
+  relativeTime,
+  statusTone,
+  truncate,
+} from "../../src/lib/format"
 
 describe("cn / initials", () => {
   it("merges and dedupes class strings", () => {

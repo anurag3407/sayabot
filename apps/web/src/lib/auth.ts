@@ -43,17 +43,21 @@ function displayNameOf(user: User): string {
   )
 }
 
-export async function getProfile(user: User, client?: SupabaseClient<any>): Promise<OrgAccess["user"]> {
+export async function getProfile(
+  user: User,
+  client?: SupabaseClient<any>,
+): Promise<OrgAccess["user"]> {
   const supabase = client ?? (await createSupabaseServerClient())
   const { data } = await supabase
     .from("profiles")
     .select("display_name, avatar_url, preferences")
     .eq("id", user.id)
     .maybeSingle()
-  const preferences = (data?.preferences as {
-    notifications?: "all" | "mentions" | "off"
-    sound?: boolean
-  } | null) ?? {}
+  const preferences =
+    (data?.preferences as {
+      notifications?: "all" | "mentions" | "off"
+      sound?: boolean
+    } | null) ?? {}
   return {
     id: user.id,
     email: user.email ?? null,
@@ -173,7 +177,12 @@ export async function getRoomAccess(
   if (!room) return null
   // The execution mode is read on its own so a server ahead of its migration still opens rooms.
   const [{ data: membership }, { data: mode }] = await Promise.all([
-    supabase.from("room_members").select("role").eq("room_id", roomId).eq("user_id", org.user.id).maybeSingle(),
+    supabase
+      .from("room_members")
+      .select("role")
+      .eq("room_id", roomId)
+      .eq("user_id", org.user.id)
+      .maybeSingle(),
     supabase.from("rooms").select("execution_mode").eq("id", roomId).maybeSingle(),
   ])
   const roomRole = (membership?.role as RoomRole | undefined) ?? null

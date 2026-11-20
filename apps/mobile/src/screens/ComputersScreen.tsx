@@ -38,7 +38,9 @@ export function ComputersScreen({ navigation }: any) {
 
   const load = useCallback(async () => {
     try {
-      const data = await api<{ macs: Mac[]; cloud: CloudComputer[] }>(`/api/mobile/computers?orgSlug=${encodeURIComponent(settings.orgSlug)}`)
+      const data = await api<{ macs: Mac[]; cloud: CloudComputer[] }>(
+        `/api/mobile/computers?orgSlug=${encodeURIComponent(settings.orgSlug)}`,
+      )
       setMacs(data.macs)
       setCloud(data.cloud)
       setError(null)
@@ -59,7 +61,17 @@ export function ComputersScreen({ navigation }: any) {
     <ScrollView
       style={{ flex: 1, backgroundColor: theme.bg }}
       contentContainerStyle={{ padding: space.lg, paddingBottom: 60 }}
-      refreshControl={<RefreshControl refreshing={refreshing} tintColor={theme.accent} onRefresh={async () => { setRefreshing(true); await load(); setRefreshing(false) }} />}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          tintColor={theme.accent}
+          onRefresh={async () => {
+            setRefreshing(true)
+            await load()
+            setRefreshing(false)
+          }}
+        />
+      }
     >
       {error ? (
         <Text variant="footnote" tone="danger" style={{ marginBottom: space.md }}>
@@ -67,12 +79,30 @@ export function ComputersScreen({ navigation }: any) {
         </Text>
       ) : null}
 
-      <Group title="Your Macs" footer="Open Sayabot for Mac on a computer and sign in. It shows up here.">
-        {macs.length === 0 && loaded ? <Row title="No computers yet" subtitle="Install Sayabot for Mac to see and control it from here." chevron={false} /> : null}
+      <Group
+        title="Your Macs"
+        footer="Open Sayabot for Mac on a computer and sign in. It shows up here."
+      >
+        {macs.length === 0 && loaded ? (
+          <Row
+            title="No computers yet"
+            subtitle="Install Sayabot for Mac to see and control it from here."
+            chevron={false}
+          />
+        ) : null}
         {macs.map((mac) => (
           <View key={mac.id} style={{ padding: space.lg, gap: 10 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-              <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: theme.raised, alignItems: "center", justifyContent: "center" }}>
+              <View
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 12,
+                  backgroundColor: theme.raised,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
                 <Laptop size={20} color={theme.text} />
               </View>
               <View style={{ flex: 1 }}>
@@ -86,12 +116,19 @@ export function ComputersScreen({ navigation }: any) {
             </View>
             {mac.localAgents.length ? (
               <Text variant="caption" tone="muted">
-                Signed in here: {mac.localAgents.filter((a) => a.status === "ready").map((a) => a.name).join(", ") || "none yet"}
+                Signed in here:{" "}
+                {mac.localAgents
+                  .filter((a) => a.status === "ready")
+                  .map((a) => a.name)
+                  .join(", ") || "none yet"}
               </Text>
             ) : null}
-            {mac.mine && (mac.permissions.screen !== "granted" || mac.permissions.accessibility !== "granted") ? (
+            {mac.mine &&
+            (mac.permissions.screen !== "granted" ||
+              mac.permissions.accessibility !== "granted") ? (
               <Text variant="caption" tone="warn">
-                On the Mac, allow Screen Recording and Accessibility for Sayabot to see and control it.
+                On the Mac, allow Screen Recording and Accessibility for Sayabot to see and control
+                it.
               </Text>
             ) : null}
             <Button
@@ -99,14 +136,25 @@ export function ComputersScreen({ navigation }: any) {
               size="sm"
               disabled={!mac.online}
               icon={<MonitorPlay size={16} color={theme.onAccent} />}
-              onPress={() => navigation.navigate("WebPage", { path: `/${settings.orgSlug}/remote/${mac.id}`, title: mac.name })}
+              onPress={() =>
+                navigation.navigate("WebPage", {
+                  path: `/${settings.orgSlug}/remote/${mac.id}`,
+                  title: mac.name,
+                })
+              }
             />
           </View>
         ))}
       </Group>
 
       <Group title="Agents' cloud computers">
-        {cloud.length === 0 && loaded ? <Row title="None running" subtitle="Agents with a computer get one when they first need it." chevron={false} /> : null}
+        {cloud.length === 0 && loaded ? (
+          <Row
+            title="None running"
+            subtitle="Agents with a computer get one when they first need it."
+            chevron={false}
+          />
+        ) : null}
         {cloud.map((c) => (
           <Row
             key={c.agentId}

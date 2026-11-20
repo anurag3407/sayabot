@@ -20,7 +20,11 @@ function scriptedModel(seenTools: string[][]) {
       const chunks: any[] = [{ type: "stream-start", warnings: [] }]
       if (call === 1) {
         chunks.push({ type: "tool-call", toolCallId: "t1", toolName: "find_tools", input: "{}" })
-        chunks.push({ type: "finish", finishReason: { unified: "tool-calls", raw: "tool_use" }, usage })
+        chunks.push({
+          type: "finish",
+          finishReason: { unified: "tool-calls", raw: "tool_use" },
+          usage,
+        })
       } else {
         chunks.push(
           { type: "text-start", id: "1" },
@@ -64,7 +68,9 @@ describe("AI SDK contract used by the engine loop", () => {
       stopWhen: stepCountIs(5),
       prepareStep: ({ messages, stepNumber }) => {
         const next: ModelMessage[] =
-          stepNumber === 1 ? [...messages, { role: "user", content: "<steering>x</steering>" }] : messages
+          stepNumber === 1
+            ? [...messages, { role: "user", content: "<steering>x</steering>" }]
+            : messages
         lastPrepared = next
         return { messages: next, activeTools: active }
       },

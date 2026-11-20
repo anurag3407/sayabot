@@ -441,7 +441,9 @@ export function DocumentOcrConfig({
               <Field
                 label="API Key (BYOK)"
                 htmlFor="doc-api-key"
-                hint={hasSavedKey ? `Saved: •••• ${savedConfig?.last4}` : "Encrypted with AES-256-GCM"}
+                hint={
+                  hasSavedKey ? `Saved: •••• ${savedConfig?.last4}` : "Encrypted with AES-256-GCM"
+                }
               >
                 <Input
                   id="doc-api-key"
@@ -475,12 +477,15 @@ export function DocumentOcrConfig({
               onChange={(e) => setFallbackToVision(e.target.checked)}
               className="mt-0.5 rounded border-line bg-raised text-accent focus:ring-accent"
             />
-            <label htmlFor="fallback-vision" className="text-[12px] text-text cursor-pointer select-none">
+            <label
+              htmlFor="fallback-vision"
+              className="text-[12px] text-text cursor-pointer select-none"
+            >
               <span className="font-medium">Auto-Fallback to Multimodal AI Vision</span>
               <p className="text-faint text-[11px]">
                 If your local {activeProvider.name} container restarts, experiences high load, or is
-                offline, Sayabot will automatically fall back to Cloud AI Vision so agent tasks are never
-                blocked.
+                offline, Sayabot will automatically fall back to Cloud AI Vision so agent tasks are
+                never blocked.
               </p>
             </label>
           </div>
@@ -492,7 +497,9 @@ export function DocumentOcrConfig({
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-accent" />
-            <span className="text-[13px] font-semibold text-text">Test Document Extraction Engine</span>
+            <span className="text-[13px] font-semibold text-text">
+              Test Document Extraction Engine
+            </span>
           </div>
           <span className="font-mono text-[11px] text-faint">
             Testing against: <b className="text-text">{activeProvider.name}</b>
@@ -545,7 +552,9 @@ export function DocumentOcrConfig({
 
                 {testResult.preview && (
                   <div className="mt-2 pt-2 border-t border-emerald-500/20">
-                    <span className="font-mono text-[10px] text-muted uppercase">Extracted Markdown Preview:</span>
+                    <span className="font-mono text-[10px] text-muted uppercase">
+                      Extracted Markdown Preview:
+                    </span>
                     <pre className="mt-1 font-mono text-[11px] text-text bg-void/60 p-2 rounded max-h-32 overflow-y-auto whitespace-pre-wrap">
                       {testResult.preview}
                     </pre>

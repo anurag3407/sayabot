@@ -4,11 +4,7 @@ export interface BaseEmailShellProps {
   contentHtml: string
 }
 
-export function renderEmailShell({
-  title,
-  previewText,
-  contentHtml,
-}: BaseEmailShellProps): string {
+export function renderEmailShell({ title, previewText, contentHtml }: BaseEmailShellProps): string {
   const preview = previewText
     ? `<div style="display:none;font-size:1px;color:#333;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">${previewText}</div>`
     : ""

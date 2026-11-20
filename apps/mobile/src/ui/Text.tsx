@@ -2,7 +2,8 @@ import React from "react"
 import { Text as RNText, type TextProps, type TextStyle } from "react-native"
 import { useTheme, type Theme } from "./theme"
 
-export type TextVariant = "largeTitle" | "title" | "headline" | "body" | "callout" | "subhead" | "footnote" | "caption"
+export type TextVariant =
+  "largeTitle" | "title" | "headline" | "body" | "callout" | "subhead" | "footnote" | "caption"
 export type TextTone = "text" | "muted" | "faint" | "accent" | "danger" | "ok" | "warn" | "onAccent"
 
 const VARIANTS: Record<TextVariant, TextStyle> = {
@@ -45,12 +46,23 @@ export function Text({
   center,
   style,
   ...rest
-}: TextProps & { variant?: TextVariant; tone?: TextTone; weight?: TextStyle["fontWeight"]; center?: boolean }) {
+}: TextProps & {
+  variant?: TextVariant
+  tone?: TextTone
+  weight?: TextStyle["fontWeight"]
+  center?: boolean
+}) {
   const theme = useTheme()
   return (
     <RNText
       {...rest}
-      style={[VARIANTS[variant], { color: toneColor(theme, tone) }, weight ? { fontWeight: weight } : null, center ? { textAlign: "center" } : null, style]}
+      style={[
+        VARIANTS[variant],
+        { color: toneColor(theme, tone) },
+        weight ? { fontWeight: weight } : null,
+        center ? { textAlign: "center" } : null,
+        style,
+      ]}
     />
   )
 }

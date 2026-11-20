@@ -5,13 +5,17 @@ const web = process.env.E2E_BASE_URL ?? "http://localhost:3000"
 
 test.describe("web API guards", () => {
   test("POST /api/messages without a session is 401", async ({ request }) => {
-    const res = await request.post(web + "/api/messages", { data: { orgSlug: "x", roomId: "r", content: "hi" } })
+    const res = await request.post(web + "/api/messages", {
+      data: { orgSlug: "x", roomId: "r", content: "hi" },
+    })
     expect([401, 400]).toContain(res.status()) // 401 expected; 400 if the session layer is stubbed
     expect(res.status()).not.toBe(200)
   })
 
   test("POST /api/push without a session is 401", async ({ request }) => {
-    const res = await request.post(web + "/api/push", { data: { endpoint: "https://example.com/x", keys: { p256dh: "a", auth: "b" } } })
+    const res = await request.post(web + "/api/push", {
+      data: { endpoint: "https://example.com/x", keys: { p256dh: "a", auth: "b" } },
+    })
     expect(res.status()).toBe(401)
   })
 

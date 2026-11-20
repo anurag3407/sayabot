@@ -8,10 +8,10 @@ Source files: `apps/orchestrator/src/tools/builtins/web-search.ts`, `apps/orches
 
 ## 🔎 `web_search` (`web-search.ts:740-779`)
 
-| Parameter | Type | Default | Description |
- | :--- | :--- | :--- | :--- |
-| `query` | string (1–400) | — | Search query |
-| `count` | int 1–10 | `5` | Number of results |
+| Parameter | Type           | Default | Description       |
+| :-------- | :------------- | :------ | :---------------- |
+| `query`   | string (1–400) | —       | Search query      |
+| `count`   | int 1–10       | `5`     | Number of results |
 
 Provider selection (`web-search.ts`):
 
@@ -20,26 +20,27 @@ Provider selection (`web-search.ts`):
 
 ### Providers (`SEARCH_PROVIDERS`, `web-search.ts:48-150`)
 
-| Provider | Key required | Endpoint | Notes |
-| :--- | :--- | :--- | :--- |
-| `duckduckgo` | no | `html.duckduckgo.com/html/?q=` | HTML scraping; default fallback |
-| `tinyfish` | yes (`X-API-Key`) | `api.search.tinyfish.ai/?q=` | Browser-rendered search |
-| `context` | yes (`Authorization: Bearer` / `X-API-Key`) | `api.context.dev/v1/search` | Live agent web search with synthesized answers |
-| `tavily` | yes (`api_key` in body) | `api.tavily.com/search` | `search_depth: "basic"`, `include_answer: true` — returns an `answer` field |
-| `brave` | yes (`x-subscription-token`) | `api.search.brave.com/res/v1/web/search` | Falls back to env `BRAVE_SEARCH_API_KEY` (2,000 free queries/mo) |
-| `searxng` | no (optional bearer) | `<baseUrl>/search?format=json` (default `https://searx.be`) | `baseUrl` validated by `assertSafeWebhookUrl(base, false)` |
-| `whoogle` | no (optional auth) | `<baseUrl>/search?q=` (default `http://localhost:5000`) | Self-hosted private Google proxy via Docker |
-| `serper` | yes (`X-API-KEY`) | `google.serper.dev/search` | Google organic results |
-| `exa` | yes (`x-api-key`) | `api.exa.ai/search` | `use_autoprompt: true`, 1,000 chars text |
-| `firecrawl` | yes (bearer) | `api.firecrawl.dev/v1/search` | Description falls back to `markdown` excerpt |
-| `perplexity` | yes (bearer) | `api.perplexity.ai/chat/completions` (`model: "sonar"`) | Returns synthesized `answer` + citations as results |
-| `bing` | yes (`Ocp-Apim-Subscription-Key`) | `api.bing.microsoft.com/v7.0/search` | Azure Cognitive Services |
+| Provider     | Key required                                | Endpoint                                                    | Notes                                                                       |
+| :----------- | :------------------------------------------ | :---------------------------------------------------------- | :-------------------------------------------------------------------------- |
+| `duckduckgo` | no                                          | `html.duckduckgo.com/html/?q=`                              | HTML scraping; default fallback                                             |
+| `tinyfish`   | yes (`X-API-Key`)                           | `api.search.tinyfish.ai/?q=`                                | Browser-rendered search                                                     |
+| `context`    | yes (`Authorization: Bearer` / `X-API-Key`) | `api.context.dev/v1/search`                                 | Live agent web search with synthesized answers                              |
+| `tavily`     | yes (`api_key` in body)                     | `api.tavily.com/search`                                     | `search_depth: "basic"`, `include_answer: true` — returns an `answer` field |
+| `brave`      | yes (`x-subscription-token`)                | `api.search.brave.com/res/v1/web/search`                    | Falls back to env `BRAVE_SEARCH_API_KEY` (2,000 free queries/mo)            |
+| `searxng`    | no (optional bearer)                        | `<baseUrl>/search?format=json` (default `https://searx.be`) | `baseUrl` validated by `assertSafeWebhookUrl(base, false)`                  |
+| `whoogle`    | no (optional auth)                          | `<baseUrl>/search?q=` (default `http://localhost:5000`)     | Self-hosted private Google proxy via Docker                                 |
+| `serper`     | yes (`X-API-KEY`)                           | `google.serper.dev/search`                                  | Google organic results                                                      |
+| `exa`        | yes (`x-api-key`)                           | `api.exa.ai/search`                                         | `use_autoprompt: true`, 1,000 chars text                                    |
+| `firecrawl`  | yes (bearer)                                | `api.firecrawl.dev/v1/search`                               | Description falls back to `markdown` excerpt                                |
+| `perplexity` | yes (bearer)                                | `api.perplexity.ai/chat/completions` (`model: "sonar"`)     | Returns synthesized `answer` + citations as results                         |
+| `bing`       | yes (`Ocp-Apim-Subscription-Key`)           | `api.bing.microsoft.com/v7.0/search`                        | Azure Cognitive Services                                                    |
 
 Missing keys fail with `"<Provider> API key is missing. Configure it in Settings → Search."`.
 
 ### Credit & Balance Checking (`fetchProviderCredits`)
 
 Admins can check active balances and remaining quotas across providers via `POST /internal/tools/search-provider-credits`:
+
 - Queries actual remaining balance for Serper (`/account`), Firecrawl (`/team/credit-usage`), Brave (`x-ratelimit-remaining`), Context.dev (`/usage`), TinyFish, etc.
 - Confirms local instance reachability for Docker/self-hosted engines (Whoogle, SearXNG) and zero-credential status for DuckDuckGo.
 
@@ -68,11 +69,11 @@ DuckDuckGo specifics: detects rate-limit/captcha pages (`anomaly-modal`, `challe
 
 ## 📄 `web_fetch` (`web-fetch.ts:234-318`)
 
-| Parameter | Type | Default | Description |
- | :--- | :--- | :--- | :--- |
-| `url` | string (url) | — | Public web page to read |
-| `format` | enum `markdown \| text \| html` | `"markdown"` | Output format (html selects TinyFish html mode; the built-in pipeline always converts) |
-| `maxChars` | int 500–100,000 | `40,000` | Content cap |
+| Parameter  | Type                            | Default      | Description                                                                            |
+| :--------- | :------------------------------ | :----------- | :------------------------------------------------------------------------------------- |
+| `url`      | string (url)                    | —            | Public web page to read                                                                |
+| `format`   | enum `markdown \| text \| html` | `"markdown"` | Output format (html selects TinyFish html mode; the built-in pipeline always converts) |
+| `maxChars` | int 500–100,000                 | `40,000`     | Content cap                                                                            |
 
 ### Optional TinyFish path (`web-fetch.ts:257-289`)
 
@@ -110,12 +111,12 @@ Returns `{ url: <finalUrl>, title, content, length }`.
 
 ## 🗃️ Tables, env, events
 
-| Concern | Details |
-| :--- | :--- |
-| DB tables | `org_tool_configs` (read-only, `web_search` tool key); audit layer writes `tool_calls` |
-| Env vars | `BRAVE_SEARCH_API_KEY` (optional provider fallback); no other env keys — Tavily/Exa/Serper/etc. come from org config |
-| Realtime events | standard audit events only |
-| Egress | direct `fetch`; SSRF guards are in-process (the separate `apps/egress` proxy is used by sandbox egress, not these tools) |
+| Concern         | Details                                                                                                                  |
+| :-------------- | :----------------------------------------------------------------------------------------------------------------------- |
+| DB tables       | `org_tool_configs` (read-only, `web_search` tool key); audit layer writes `tool_calls`                                   |
+| Env vars        | `BRAVE_SEARCH_API_KEY` (optional provider fallback); no other env keys — Tavily/Exa/Serper/etc. come from org config     |
+| Realtime events | standard audit events only                                                                                               |
+| Egress          | direct `fetch`; SSRF guards are in-process (the separate `apps/egress` proxy is used by sandbox egress, not these tools) |
 
 ## 🧪 Example calls
 
@@ -136,14 +137,14 @@ Returns `{ url: <finalUrl>, title, content, length }`.
 
 ## ⚠️ Error modes
 
-| Condition | Model-visible result |
-| :--- | :--- |
-| Missing provider API key | `{ ok: false, error: "<Provider> API key is missing. Configure it in Settings → Tools." }` |
-| DuckDuckGo bot-check | `{ ok: false, error: "DuckDuckGo rate-limited or blocked this request" }` (then fallback logic for configured providers) |
-| Private/loopback target, bad scheme, credentials-in-URL | `{ ok: false, error: "webhook URL …" / "SSRF blocked: …" }` from the SSRF guards |
-| HTTP error status | `{ ok: false, error: "Failed to fetch web page (<status> <statusText>): <url>" }` |
-| Redirect loop > 5 | `{ ok: false, error: "Exceeded maximum redirect limit of 5 hops" }` |
-| Body > 5 MB | fetch destroyed after 5 MB; content simply ends at the cap |
+| Condition                                               | Model-visible result                                                                                                     |
+| :------------------------------------------------------ | :----------------------------------------------------------------------------------------------------------------------- |
+| Missing provider API key                                | `{ ok: false, error: "<Provider> API key is missing. Configure it in Settings → Tools." }`                               |
+| DuckDuckGo bot-check                                    | `{ ok: false, error: "DuckDuckGo rate-limited or blocked this request" }` (then fallback logic for configured providers) |
+| Private/loopback target, bad scheme, credentials-in-URL | `{ ok: false, error: "webhook URL …" / "SSRF blocked: …" }` from the SSRF guards                                         |
+| HTTP error status                                       | `{ ok: false, error: "Failed to fetch web page (<status> <statusText>): <url>" }`                                        |
+| Redirect loop > 5                                       | `{ ok: false, error: "Exceeded maximum redirect limit of 5 hops" }`                                                      |
+| Body > 5 MB                                             | fetch destroyed after 5 MB; content simply ends at the cap                                                               |
 
 ## ⚠️ Notes
 

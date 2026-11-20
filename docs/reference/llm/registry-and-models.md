@@ -23,21 +23,21 @@ export interface LanguageModelConfig {
 
 (`packages/llm/src/registry.ts:18-23`.) The factory is a thin switch — the doc comment says every adapter stays thin so a provider breaking change is contained to the switch:
 
-| Provider | Adapter | Default base URL / notes |
-| :-- | :-- | :-- |
-| `openai`, `anthropic`, `google`, `groq`, `cerebras` | Native AI SDK factory (`registry.ts:35-44`) | Optional `baseUrl` override |
-| `openrouter` | `createOpenAICompatible` | `https://openrouter.ai/api/v1`; sends `HTTP-Referer: https://saaya.ai` and `X-Title: Saaya Bot` |
-| `copilot` | `createOpenAICompatible` | `COPILOT_API_BASE`; custom `fetch: copilotFetch(apiKey)` swaps the stored GitHub token for a short-lived Copilot token per call |
-| `opencode` | `createOpenAICompatible` | `https://api.opencode.ai/v1` |
-| `command-code` | `createOpenAICompatible` | `https://api.cohere.com/v2` |
-| `deepseek` | `createOpenAICompatible` | `https://api.deepseek.com/v1` |
-| `minimax` | `createOpenAICompatible` | `https://api.minimaxi.chat/v1` |
-| `grok` | `createOpenAICompatible` | `https://api.x.ai/v1` |
-| `kimi` | `createOpenAICompatible` | `https://api.moonshot.cn/v1` |
-| `qwen` | `createOpenAICompatible` | `https://dashscope.aliyuncs.com/compatible-mode/v1` |
-| `cursor` | `createOpenAICompatible` | `https://api.cursor.com/v1` |
-| `cloudflare` | `createOpenAICompatible` | `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_AI_GATEWAY_ID` env vars build a gateway URL; account-only falls back to `…/accounts/{id}/ai/v1`; otherwise the public `…/client/v4/ai/v1` (`registry.ts:111-125`) |
-| `openai-compatible` | `createOpenAICompatible` | **Requires** `baseUrl` or throws `MissingModelConfigError`. If the base URL points at `githubcopilot.com`, it transparently becomes a Copilot client with `copilotFetch` (`registry.ts:126-139`) |
+| Provider                                            | Adapter                                     | Default base URL / notes                                                                                                                                                                                |
+| :-------------------------------------------------- | :------------------------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `openai`, `anthropic`, `google`, `groq`, `cerebras` | Native AI SDK factory (`registry.ts:35-44`) | Optional `baseUrl` override                                                                                                                                                                             |
+| `openrouter`                                        | `createOpenAICompatible`                    | `https://openrouter.ai/api/v1`; sends `HTTP-Referer: https://saaya.ai` and `X-Title: Saaya Bot`                                                                                                         |
+| `copilot`                                           | `createOpenAICompatible`                    | `COPILOT_API_BASE`; custom `fetch: copilotFetch(apiKey)` swaps the stored GitHub token for a short-lived Copilot token per call                                                                         |
+| `opencode`                                          | `createOpenAICompatible`                    | `https://api.opencode.ai/v1`                                                                                                                                                                            |
+| `command-code`                                      | `createOpenAICompatible`                    | `https://api.cohere.com/v2`                                                                                                                                                                             |
+| `deepseek`                                          | `createOpenAICompatible`                    | `https://api.deepseek.com/v1`                                                                                                                                                                           |
+| `minimax`                                           | `createOpenAICompatible`                    | `https://api.minimaxi.chat/v1`                                                                                                                                                                          |
+| `grok`                                              | `createOpenAICompatible`                    | `https://api.x.ai/v1`                                                                                                                                                                                   |
+| `kimi`                                              | `createOpenAICompatible`                    | `https://api.moonshot.cn/v1`                                                                                                                                                                            |
+| `qwen`                                              | `createOpenAICompatible`                    | `https://dashscope.aliyuncs.com/compatible-mode/v1`                                                                                                                                                     |
+| `cursor`                                            | `createOpenAICompatible`                    | `https://api.cursor.com/v1`                                                                                                                                                                             |
+| `cloudflare`                                        | `createOpenAICompatible`                    | `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_AI_GATEWAY_ID` env vars build a gateway URL; account-only falls back to `…/accounts/{id}/ai/v1`; otherwise the public `…/client/v4/ai/v1` (`registry.ts:111-125`) |
+| `openai-compatible`                                 | `createOpenAICompatible`                    | **Requires** `baseUrl` or throws `MissingModelConfigError`. If the base URL points at `githubcopilot.com`, it transparently becomes a Copilot client with `copilotFetch` (`registry.ts:126-139`)        |
 
 Any other provider string throws `MissingModelConfigError` (`registry.ts:140-141`). `MissingModelConfigError extends Error` is exported for callers to catch.
 
@@ -55,14 +55,14 @@ Saya AI env vars (parsed in `packages/core/src/saya-ai.ts`): `SAYA_AI_BASE_URL`,
 
 `getProviderCapabilities(provider)` returns a `ProviderCapabilities` row (`registry.ts:189-198, 375-388`): `supportsPromptCache`, `supportsServerCompaction`, `supportsContextEditing`, `supportsEffort`, `supportsMidConversationSystem`, `supportsParallelTools`, `supportsComputerUse`, `defaultContextWindow`. Highlights from the table (`registry.ts:202-373`):
 
-| Provider | Prompt cache | Context editing | Effort | Computer use | Default context |
-| :-- | :-: | :-: | :-: | :-: | --: |
-| `anthropic` | ✓ | ✓ | ✓ | ✓ | 200,000 |
-| `openai` | ✓ | — | ✓ | — | 128,000 |
-| `google` | ✓ | — | ✓ | — | 1,000,000 |
-| `copilot` / `opencode` | ✓ | — / ✓ | ✓ | — / ✓ | 128,000 / 200,000 |
-| `cursor` | ✓ | ✓ | ✓ | ✓ | 200,000 |
-| `groq`, `cerebras`, `minimax`, `cloudflare`, `openai-compatible` | — | — | — | — | 32,000–1,000,000 |
+| Provider                                                         | Prompt cache | Context editing | Effort | Computer use |   Default context |
+| :--------------------------------------------------------------- | :----------: | :-------------: | :----: | :----------: | ----------------: |
+| `anthropic`                                                      |      ✓       |        ✓        |   ✓    |      ✓       |           200,000 |
+| `openai`                                                         |      ✓       |        —        |   ✓    |      —       |           128,000 |
+| `google`                                                         |      ✓       |        —        |   ✓    |      —       |         1,000,000 |
+| `copilot` / `opencode`                                           |      ✓       |      — / ✓      |   ✓    |    — / ✓     | 128,000 / 200,000 |
+| `cursor`                                                         |      ✓       |        ✓        |   ✓    |      ✓       |           200,000 |
+| `groq`, `cerebras`, `minimax`, `cloudflare`, `openai-compatible` |      —       |        —        |   —    |      —       |  32,000–1,000,000 |
 
 Unknown providers get the conservative fallback at `registry.ts:377-387` (no cache/effort, 32k context).
 
@@ -87,7 +87,7 @@ const budgetMap = { low: 1024, medium: 2048, high: 4096, xhigh: 6144, max: 8192 
 export const EFFORT_LEVELS = ["none", "low", "medium", "high", "xhigh", "max"] as const
 ```
 
-(`packages/llm/src/models/effort.ts:6`.) This is the union of what any engine accepts; "Default" in the picker is the *absence* of a level. Key exports:
+(`packages/llm/src/models/effort.ts:6`.) This is the union of what any engine accepts; "Default" in the picker is the _absence_ of a level. Key exports:
 
 - `EFFORT_LABELS` — display names ("Extra high" for `xhigh`).
 - `normalizeEffortLevels(values)` — sorts onto the ladder and drops anything outside it (`"minimal"`, `"ultra"`, `"default"`); de-duplicates (`effort.ts:24-27`).
@@ -165,7 +165,7 @@ Sayabot's own hand-maintained list for the subscription engines — `MANIFEST_EN
 
 ## 🖥️ Engine catalogs (`src/models/engine-models.ts`)
 
-The models each subscription engine offers the *signed-in account on this computer* (the "OpenMausBot" approach). `EngineCatalog { default, options, source: "live"|"cache"|"manifest", checkedAt, effortLevels, cliVersion? }` (`engine-models.ts:54-63`); `EngineModel` rows carry `custom?`, `contextWindow?`, `effort?`, `defaultEffort?`, `orgBlocked?`, `needsCliUpdate?`, `price?`.
+The models each subscription engine offers the _signed-in account on this computer_ (the "OpenMausBot" approach). `EngineCatalog { default, options, source: "live"|"cache"|"manifest", checkedAt, effortLevels, cliVersion? }` (`engine-models.ts:54-63`); `EngineModel` rows carry `custom?`, `contextWindow?`, `effort?`, `defaultEffort?`, `orgBlocked?`, `needsCliUpdate?`, `price?`.
 
 ### Binary discovery
 
@@ -224,14 +224,14 @@ For a saved API key, Sayabot reads `GET {base}/models` live from the provider an
 
 `src/models/models.test.ts` (with `SAYABOT_DATA_DIR` pointed at a temp dir and manifest fetch disabled):
 
-| Suite | Pins |
-| :-- | :-- |
-| `effort` | `normalizeEffortLevels` drops `"minimal"`/`"ultra"` and de-dupes; `clampEffort("xhigh", ["low","high"])` → `undefined`, `clampEffort("bogus", undefined)` → `undefined` |
+| Suite                | Pins                                                                                                                                                                                                                                                                                                                                                    |
+| :------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `effort`             | `normalizeEffortLevels` drops `"minimal"`/`"ultra"` and de-dupes; `clampEffort("xhigh", ["low","high"])` → `undefined`, `clampEffort("bogus", undefined)` → `undefined`                                                                                                                                                                                 |
 | `models.dev catalog` | Trimming drops the `bad{model}` and the non-record provider (2 drops) and is idempotent; `findCatalogModel` resolves by provider, by dated id with a release suffix, and via `openrouter` + `anthropic/claude-sonnet-5-5`; download → ETag'd `304` re-refresh (`if-none-match: "v1"`, `redirect: "error"`); on network failure the snapshot origin wins |
-| `model manifest` | The bundled manifest is valid and prices its models; a non-current `default` or future `updatedAt` is rejected; dated price `changes` apply by day; `versionAtLeast` semantics |
-| `engine catalogs` | Codex rows: `isDefault`, per-model effort (`ultra` dropped), `custom` last; Claude rows: alias collapse, `default` resolution, `[1m]` variant, bad ids (`rm -rf /`, `42`) dropped, `needsCliUpdate` for old CLIs, `null` for a list with no usable model; `parseOrgBlockedModels` fail-open |
-| `plan usage` | See [plan-usage.md](./plan-usage.md) |
-| `provider models` | `providerModelsUrl` per provider (`openai-compatible` → `null`); OpenRouter free rows priced 0 and labelled "(free)", paid `"0.000003"` → `$3/M`; live list then 401 → catalog fallback with "The provider refused this key"; plain-HTTP base URL → fetch never called |
+| `model manifest`     | The bundled manifest is valid and prices its models; a non-current `default` or future `updatedAt` is rejected; dated price `changes` apply by day; `versionAtLeast` semantics                                                                                                                                                                          |
+| `engine catalogs`    | Codex rows: `isDefault`, per-model effort (`ultra` dropped), `custom` last; Claude rows: alias collapse, `default` resolution, `[1m]` variant, bad ids (`rm -rf /`, `42`) dropped, `needsCliUpdate` for old CLIs, `null` for a list with no usable model; `parseOrgBlockedModels` fail-open                                                             |
+| `plan usage`         | See [plan-usage.md](./plan-usage.md)                                                                                                                                                                                                                                                                                                                    |
+| `provider models`    | `providerModelsUrl` per provider (`openai-compatible` → `null`); OpenRouter free rows priced 0 and labelled "(free)", paid `"0.000003"` → `$3/M`; live list then 401 → catalog fallback with "The provider refused this key"; plain-HTTP base URL → fetch never called                                                                                  |
 
 `src/models/listing.test.ts` pins short-list behaviour, folding, `inUse` protection, undated-newer-version leading, the fair-share split for gateway services, and that `release_date`/`family` survive trimming only when well-formed.
 
@@ -241,14 +241,14 @@ For a saved API key, Sayabot reads `GET {base}/models` live from the provider an
 
 ## ⚙️ Environment & maintenance summary
 
-| Variable | Effect |
-| :-- | :-- |
-| `SAYABOT_DATA_DIR` | Cache root (default `~/.sayabot`); catalogs under `providers/` |
-| `SAYABOT_DISABLE_MODEL_CATALOG_FETCH=1` / `SAYABOT_DISABLE_MODEL_MANIFEST_FETCH=1` | Disable network refresh of each store |
-| `SAYABOT_MODEL_MANIFEST_URL` | Manifest source (defaults to GitHub `main`) |
-| `SAYABOT_CLAUDE_PATH` / `SAYABOT_CODEX_PATH` / `SAYABOT_CURSOR_PATH` | Explicit CLI binary paths |
-| `CLAUDE_CONFIG_DIR` / `CODEX_HOME` | Where Claude/Codex credentials and caches are read from |
-| `CLOUDFLARE_ACCOUNT_ID` / `CLOUDFLARE_AI_GATEWAY_ID` | Build the Cloudflare Workers AI base URL |
+| Variable                                                                           | Effect                                                         |
+| :--------------------------------------------------------------------------------- | :------------------------------------------------------------- |
+| `SAYABOT_DATA_DIR`                                                                 | Cache root (default `~/.sayabot`); catalogs under `providers/` |
+| `SAYABOT_DISABLE_MODEL_CATALOG_FETCH=1` / `SAYABOT_DISABLE_MODEL_MANIFEST_FETCH=1` | Disable network refresh of each store                          |
+| `SAYABOT_MODEL_MANIFEST_URL`                                                       | Manifest source (defaults to GitHub `main`)                    |
+| `SAYABOT_CLAUDE_PATH` / `SAYABOT_CODEX_PATH` / `SAYABOT_CURSOR_PATH`               | Explicit CLI binary paths                                      |
+| `CLAUDE_CONFIG_DIR` / `CODEX_HOME`                                                 | Where Claude/Codex credentials and caches are read from        |
+| `CLOUDFLARE_ACCOUNT_ID` / `CLOUDFLARE_AI_GATEWAY_ID`                               | Build the Cloudflare Workers AI base URL                       |
 
 Maintenance commands: `pnpm --filter @sayabot/llm catalog:snapshot` (rewrite the bundled snapshot); edit `src/models/model-manifest.json`, bump `updatedAt`, merge to `main` for a new Claude/Codex/Cursor model or price change (running servers pick it up within an hour).
 

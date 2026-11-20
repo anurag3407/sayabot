@@ -40,7 +40,9 @@ export default async function AgentProfilePage({
   // 2. Fetch grants
   const { data: grants } = await admin
     .from("agent_secret_grants")
-    .select("id, env_name, placeholder, allowed_hosts, inject, requires_approval, vault_secrets(label, last4)")
+    .select(
+      "id, env_name, placeholder, allowed_hosts, inject, requires_approval, vault_secrets(label, last4)",
+    )
     .eq("agent_id", agent.id)
     .is("revoked_at", null)
 
@@ -97,17 +99,29 @@ export default async function AgentProfilePage({
                 @{agent.handle.slice(0, 1).toUpperCase()}
               </div>
               <div>
-                <h1 className="text-2xl font-semibold tracking-tight text-foreground">{agent.display_name}</h1>
-                <p className="font-mono text-xs text-muted-foreground">@{agent.handle} · {agent.kind}</p>
+                <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+                  {agent.display_name}
+                </h1>
+                <p className="font-mono text-xs text-muted-foreground">
+                  @{agent.handle} · {agent.kind}
+                </p>
               </div>
             </div>
 
             {canEdit && (
-              <ActionForm action={saveAgentAsTemplate} submitLabel="Save as Template" submitVariant="outline">
+              <ActionForm
+                action={saveAgentAsTemplate}
+                submitLabel="Save as Template"
+                submitVariant="outline"
+              >
                 <input type="hidden" name="orgSlug" value={orgSlug} />
                 <input type="hidden" name="agentId" value={agent.id} />
                 <input type="hidden" name="name" value={`${agent.display_name} Template`} />
-                <input type="hidden" name="description" value={agent.bio || `Template derived from @${agent.handle}`} />
+                <input
+                  type="hidden"
+                  name="description"
+                  value={agent.bio || `Template derived from @${agent.handle}`}
+                />
               </ActionForm>
             )}
           </div>
@@ -124,7 +138,9 @@ export default async function AgentProfilePage({
         {/* Model & Config */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="p-4 rounded-xl border border-border bg-card space-y-2">
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Model & Runtime</h3>
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Model & Runtime
+            </h3>
             <div className="flex items-center justify-between text-sm font-medium">
               <span>{runsOnLabel(agent)}</span>
               <span className="font-mono text-xs text-muted-foreground">
@@ -136,36 +152,56 @@ export default async function AgentProfilePage({
               <span>Temp: {(agent.params as any)?.temperature ?? "default"}</span>
             </div>
             <div className="flex items-center justify-between text-xs font-mono text-muted-foreground">
-              <span>Search: {String((agent.params as any)?.searchProvider || "Workspace Default")}</span>
-              <Link href={`/${orgSlug}/settings/search`} className="text-primary hover:underline font-sans">
+              <span>
+                Search: {String((agent.params as any)?.searchProvider || "Workspace Default")}
+              </span>
+              <Link
+                href={`/${orgSlug}/settings/search`}
+                className="text-primary hover:underline font-sans"
+              >
                 Search settings →
               </Link>
             </div>
             <WorksOnForm
               orgSlug={orgSlug}
               agentId={agent.id}
-              worksOn={typeof (agent.params as { worksOn?: unknown } | null)?.worksOn === "string" ? ((agent.params as { worksOn: string }).worksOn) : "auto"}
-              thisComputer={(agent.params as { computer?: { thisComputer?: boolean } } | null)?.computer?.thisComputer === true}
+              worksOn={
+                typeof (agent.params as { worksOn?: unknown } | null)?.worksOn === "string"
+                  ? (agent.params as { worksOn: string }).worksOn
+                  : "auto"
+              }
+              thisComputer={
+                (agent.params as { computer?: { thisComputer?: boolean } } | null)?.computer
+                  ?.thisComputer === true
+              }
               canEdit={canEdit}
             />
             {(agent.params as { runner?: { hostId?: unknown } } | null)?.runner?.hostId ? (
               <MacOffForm
                 orgSlug={orgSlug}
                 agentId={agent.id}
-                value={typeof (agent.params as { whenMacOff?: unknown }).whenMacOff === "string" ? (agent.params as { whenMacOff: string }).whenMacOff : "auto"}
+                value={
+                  typeof (agent.params as { whenMacOff?: unknown }).whenMacOff === "string"
+                    ? (agent.params as { whenMacOff: string }).whenMacOff
+                    : "auto"
+                }
                 canEdit={canEdit}
               />
             ) : null}
           </div>
 
           <div className="p-4 rounded-xl border border-border bg-card space-y-2">
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Capabilities</h3>
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Capabilities
+            </h3>
             <div className="flex flex-wrap gap-1.5 pt-1">
               {Object.entries(capabilities).map(([k, v]) => (
                 <span
                   key={k}
                   className={`text-xs px-2 py-0.5 rounded-md font-mono ${
-                    v ? "bg-primary/10 text-primary font-medium" : "bg-muted text-faint line-through"
+                    v
+                      ? "bg-primary/10 text-primary font-medium"
+                      : "bg-muted text-faint line-through"
                   }`}
                 >
                   {k}
@@ -237,7 +273,9 @@ export default async function AgentProfilePage({
         <div className="rounded-xl border border-border bg-card p-4 space-y-3">
           <h3 className="text-sm font-semibold text-foreground">Assigned Tasks</h3>
           {(tasks ?? []).length === 0 ? (
-            <p className="text-xs text-muted-foreground">No tasks currently assigned to this bot.</p>
+            <p className="text-xs text-muted-foreground">
+              No tasks currently assigned to this bot.
+            </p>
           ) : (
             <div className="divide-y divide-border">
               {(tasks ?? []).map((t: any) => (

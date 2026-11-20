@@ -2,21 +2,10 @@
   "brand": "Sayabot",
   "tagline": "AI Multi-Agent Collaborative Workspace",
   "brief": "Design a charming, distinctive bot mascot logo with lovable personality (inspired by Grokbot and friendly robot companions) for Sayabot — the AI agent workspace where humans and bots build together.",
-  "adjectives": [
-    "cute",
-    "charming",
-    "intelligent",
-    "friendly",
-    "high-tech"
-  ],
+  "adjectives": ["cute", "charming", "intelligent", "friendly", "high-tech"],
   "criteria": "Cute and instantly recognizable, works at 16px favicon scale, scales across dark and light UI, clean geometric SVG construction.",
   "industry": "software",
-  "nav": [
-    "Workspace",
-    "Agents",
-    "Integrations",
-    "Docs"
-  ],
+  "nav": ["Workspace", "Agents", "Integrations", "Docs"],
   "brand_color": "#ff7a45",
   "greyscale": false,
   "final": true,

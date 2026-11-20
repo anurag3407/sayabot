@@ -12,7 +12,10 @@ export const INTERRUPT_CHANNEL = "mesh_room_interrupt"
  * directly to the agent's run without superseding or aborting it.
  * Otherwise, mark active sessions superseded and abort any in-flight run.
  */
-export async function interruptRoom(roomId: string, incoming?: MessageInterruptCheck): Promise<void> {
+export async function interruptRoom(
+  roomId: string,
+  incoming?: MessageInterruptCheck,
+): Promise<void> {
   if (incoming && incoming.senderType === "human") {
     const result = handleMidRunInterrupt(roomId, incoming)
     if (result.steered) {
@@ -37,7 +40,11 @@ export async function interruptRoom(roomId: string, incoming?: MessageInterruptC
 export function deliverSideNote(roomId: string, note: MessageInterruptCheck): number {
   let delivered = 0
   for (const run of roomRuns(roomId)) {
-    if (run.engine === "v2" && addRunInterrupt(run.runId, { messageId: note.id, content: note.content })) delivered++
+    if (
+      run.engine === "v2" &&
+      addRunInterrupt(run.runId, { messageId: note.id, content: note.content })
+    )
+      delivered++
   }
   return delivered
 }

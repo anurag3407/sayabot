@@ -201,7 +201,9 @@ export function ToolCallCard({ call }: { call: ToolCallView }) {
             {describeMacStep(call.toolName, call.args)}
           </span>
         ) : (
-          <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-text">{call.toolName}</span>
+          <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-text">
+            {call.toolName}
+          </span>
         )}
         <StatusBadge status={call.status} />
         <span className="ml-auto font-mono text-[11px] text-faint">

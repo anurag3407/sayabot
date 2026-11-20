@@ -35,7 +35,11 @@ export const LOCAL_APPS: readonly LocalApp[] = [
     where: "server",
     command: "npx",
     args: ["-y", "airtable-mcp-server"],
-    env: { name: "AIRTABLE_API_KEY", label: "Personal access token", help: "Airtable → Builder hub → Personal access tokens. Include the bases this workspace may use." },
+    env: {
+      name: "AIRTABLE_API_KEY",
+      label: "Personal access token",
+      help: "Airtable → Builder hub → Personal access tokens. Include the bases this workspace may use.",
+    },
     dangerousTools: ["@writes"],
   },
   {
@@ -61,7 +65,11 @@ export const LOCAL_APPS: readonly LocalApp[] = [
     where: "server",
     command: "npx",
     args: ["-y", "resend-mcp"],
-    env: { name: "RESEND_API_KEY", label: "API key", help: "resend.com → API keys. Sending waits for approval." },
+    env: {
+      name: "RESEND_API_KEY",
+      label: "API key",
+      help: "resend.com → API keys. Sending waits for approval.",
+    },
     dangerousTools: ["@writes"],
   },
   {
@@ -74,7 +82,11 @@ export const LOCAL_APPS: readonly LocalApp[] = [
     where: "server",
     command: "npx",
     args: ["-y", "firecrawl-mcp"],
-    env: { name: "FIRECRAWL_API_KEY", label: "API key", help: "firecrawl.dev → API keys. The hosted Firecrawl app is listed separately." },
+    env: {
+      name: "FIRECRAWL_API_KEY",
+      label: "API key",
+      help: "firecrawl.dev → API keys. The hosted Firecrawl app is listed separately.",
+    },
     dangerousTools: ["@writes"],
   },
   {
@@ -87,7 +99,11 @@ export const LOCAL_APPS: readonly LocalApp[] = [
     where: "desktop",
     command: "npx",
     args: ["-y", "obsidian-mcp-server"],
-    env: { name: "OBSIDIAN_API_KEY", label: "Local REST API key", help: "In Obsidian, install the Local REST API plugin and copy its API key. Leave the Sayabot app open on that computer." },
+    env: {
+      name: "OBSIDIAN_API_KEY",
+      label: "Local REST API key",
+      help: "In Obsidian, install the Local REST API plugin and copy its API key. Leave the Sayabot app open on that computer.",
+    },
     dangerousTools: ["@writes"],
   },
   {

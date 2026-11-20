@@ -5,7 +5,8 @@ import { userFromRequest } from "@/lib/route-bearer"
 import { createAdminClient } from "@/lib/supabase/admin"
 
 const MAX_BYTES = 15 * 1024 * 1024
-const ALLOWED = /^(image\/(jpeg|png|webp|gif|heic|heif)|application\/pdf|text\/(plain|csv|markdown)|application\/(json|vnd\.openxmlformats-officedocument\.[a-z.]+|msword|vnd\.ms-excel))$/
+const ALLOWED =
+  /^(image\/(jpeg|png|webp|gif|heic|heif)|application\/pdf|text\/(plain|csv|markdown)|application\/(json|vnd\.openxmlformats-officedocument\.[a-z.]+|msword|vnd\.ms-excel))$/
 
 /**
  * A file from the phone for one chat. Stored privately under the room; the returned link goes
@@ -17,10 +18,13 @@ export async function POST(request: Request) {
   const form = await request.formData().catch(() => null)
   const file = form?.get("file")
   const roomId = String(form?.get("roomId") ?? "")
-  if (!(file instanceof File) || !/^[0-9a-f-]{36}$/i.test(roomId)) return NextResponse.json({ error: "file and roomId are required" }, { status: 400 })
-  if (file.size > MAX_BYTES) return NextResponse.json({ error: "Files can be up to 15 MB." }, { status: 413 })
+  if (!(file instanceof File) || !/^[0-9a-f-]{36}$/i.test(roomId))
+    return NextResponse.json({ error: "file and roomId are required" }, { status: 400 })
+  if (file.size > MAX_BYTES)
+    return NextResponse.json({ error: "Files can be up to 15 MB." }, { status: 413 })
   const type = file.type || "application/octet-stream"
-  if (!ALLOWED.test(type)) return NextResponse.json({ error: "That kind of file can't be sent yet." }, { status: 415 })
+  if (!ALLOWED.test(type))
+    return NextResponse.json({ error: "That kind of file can't be sent yet." }, { status: 415 })
 
   // RLS on rooms: the person must be able to read the room they're sending to.
   const { data: room } = await who.client.from("rooms").select("id").eq("id", roomId).maybeSingle()

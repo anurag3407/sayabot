@@ -297,7 +297,12 @@ const storedKeys: Array<{ provider: string; secret: string; label?: string; orgS
 
 vi.mock("@/lib/provider-key-store", () => ({
   storeProviderKey: vi.fn(
-    async (input: { access: { org: { slug: string } }; provider: string; secret: string; label?: string }) => {
+    async (input: {
+      access: { org: { slug: string } }
+      provider: string
+      secret: string
+      label?: string
+    }) => {
       storedKeys.push({
         provider: input.provider,
         secret: input.secret,
@@ -488,7 +493,9 @@ describe("Web Connectors API & Server Actions Integration Suite", () => {
       expect(firstGroup).toHaveProperty("provider")
       expect(Array.isArray(firstGroup.models)).toBe(true)
       expect(vi.mocked(modelCatalog.loadWorkspaceModels)).toHaveBeenCalledWith(
-        expect.objectContaining({ access: expect.objectContaining({ org: expect.objectContaining({ slug: "test-org" }) }) }),
+        expect.objectContaining({
+          access: expect.objectContaining({ org: expect.objectContaining({ slug: "test-org" }) }),
+        }),
       )
 
       // Ensure secret tokens/keys are never leaked in client payloads
@@ -502,7 +509,9 @@ describe("Web Connectors API & Server Actions Integration Suite", () => {
     it("asks which workspace when the org is missing, and hides other workspaces", async () => {
       const missing = await getModels(new Request("http://localhost/api/connectors/models"))
       expect(missing.status).toBe(400)
-      const other = await getModels(new Request("http://localhost/api/connectors/models?org=other-org"))
+      const other = await getModels(
+        new Request("http://localhost/api/connectors/models?org=other-org"),
+      )
       expect(other.status).toBe(404)
     })
 
@@ -1055,10 +1064,9 @@ describe("Web Connectors API & Server Actions Integration Suite", () => {
       globalThis.fetch = (async (url: string | URL | Request, _init?: RequestInit) => {
         const u = String(url)
         if (u.includes("slack.com/api/auth.test")) {
-          return new Response(
-            JSON.stringify({ ok: true, team: "Sayalabs HQ", user: "sayabot" }),
-            { status: 200 },
-          )
+          return new Response(JSON.stringify({ ok: true, team: "Sayalabs HQ", user: "sayabot" }), {
+            status: 200,
+          })
         }
         return new Response("Not found", { status: 404 })
       }) as typeof fetch
@@ -1089,10 +1097,7 @@ describe("Web Connectors API & Server Actions Integration Suite", () => {
       globalThis.fetch = (async (url: string | URL | Request, _init?: RequestInit) => {
         const u = String(url)
         if (u.includes("slack.com/api/auth.test")) {
-          return new Response(
-            JSON.stringify({ ok: false, error: "invalid_auth" }),
-            { status: 200 },
-          )
+          return new Response(JSON.stringify({ ok: false, error: "invalid_auth" }), { status: 200 })
         }
         return new Response("Not found", { status: 404 })
       }) as typeof fetch

@@ -19,17 +19,17 @@ Source files: `src/screens/InboxScreen.tsx`, `src/screens/TasksScreen.tsx`, `src
 
 ## 🧮 Data shapes at a glance
 
-| Field | Meaning in the mobile client |
-| :-- | :-- |
-| `InboxQuestion.options` | Top-level quick answers; rendered as one-tap chips only when the question has no `items` (`InboxScreen.tsx:131-139`) |
-| `InboxQuestion.items[]` | Per-item sub-questions; each answered item collapses to a `CheckCircle2` row showing the recorded `answer` |
-| `InboxQuestion.askedCount` | How many times the agent re-asked; shown as "· asked N times" past 1 |
-| `InboxQuestion.roomId / roomName` | Lets ChatScreen filter questions to the room it is showing and label cards with the source room |
-| `TaskItem.status` | Five database states collapsed to three UI filters: `blocked` displays identically to `stuck` (`STATUS_LABEL`, `TasksScreen.tsx:28-34`) |
-| `TaskItem.budgetTurns / turnsUsed` | Agent turn budget (defaults to 12 when null) — not shown in the list, carried in the type for the detail sheet |
-| `TaskItem.unblockNeeds` | What a stuck agent is blocked on; surfaced only when status is `stuck`/`blocked` |
-| `UsageData.cachedTokens` | Returned by the server in `totals` but not rendered on the phone |
-| `UsageData.series[].day` | Date strings bucketed server-side using the phone's `tzOffset`; the chart labels use `slice(5)` (MM-DD) |
+| Field                              | Meaning in the mobile client                                                                                                            |
+| :--------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------- |
+| `InboxQuestion.options`            | Top-level quick answers; rendered as one-tap chips only when the question has no `items` (`InboxScreen.tsx:131-139`)                    |
+| `InboxQuestion.items[]`            | Per-item sub-questions; each answered item collapses to a `CheckCircle2` row showing the recorded `answer`                              |
+| `InboxQuestion.askedCount`         | How many times the agent re-asked; shown as "· asked N times" past 1                                                                    |
+| `InboxQuestion.roomId / roomName`  | Lets ChatScreen filter questions to the room it is showing and label cards with the source room                                         |
+| `TaskItem.status`                  | Five database states collapsed to three UI filters: `blocked` displays identically to `stuck` (`STATUS_LABEL`, `TasksScreen.tsx:28-34`) |
+| `TaskItem.budgetTurns / turnsUsed` | Agent turn budget (defaults to 12 when null) — not shown in the list, carried in the type for the detail sheet                          |
+| `TaskItem.unblockNeeds`            | What a stuck agent is blocked on; surfaced only when status is `stuck`/`blocked`                                                        |
+| `UsageData.cachedTokens`           | Returned by the server in `totals` but not rendered on the phone                                                                        |
+| `UsageData.series[].day`           | Date strings bucketed server-side using the phone's `tzOffset`; the chart labels use `slice(5)` (MM-DD)                                 |
 
 ---
 

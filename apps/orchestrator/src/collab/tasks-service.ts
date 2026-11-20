@@ -56,11 +56,7 @@ export async function applyTaskMutation(input: TaskMutationInput, dbOverride?: D
   const db = dbOverride || getDb()
 
   const result = await db.transaction(async (tx) => {
-    const [task] = await tx
-      .select()
-      .from(tasks)
-      .where(eq(tasks.id, input.taskId))
-      .limit(1)
+    const [task] = await tx.select().from(tasks).where(eq(tasks.id, input.taskId)).limit(1)
 
     if (!task) {
       throw new CollabError("task not found")
@@ -73,7 +69,7 @@ export async function applyTaskMutation(input: TaskMutationInput, dbOverride?: D
 
     // Validate blockedBy array if provided
     const nextBlockedBy =
-      input.blockedBy !== undefined ? (input.blockedBy ?? []) : (task.blockedBy || [])
+      input.blockedBy !== undefined ? (input.blockedBy ?? []) : task.blockedBy || []
 
     if (input.blockedBy !== undefined && input.blockedBy && input.blockedBy.length > 0) {
       if (input.blockedBy.includes(task.id)) {
@@ -243,11 +239,7 @@ export async function applyTaskMutation(input: TaskMutationInput, dbOverride?: D
         })
         .from(tasks)
         .where(
-          and(
-            eq(tasks.roomId, task.roomId),
-            eq(tasks.kind, "request"),
-            eq(tasks.status, "open"),
-          ),
+          and(eq(tasks.roomId, task.roomId), eq(tasks.kind, "request"), eq(tasks.status, "open")),
         )
 
       for (const req of openRequests) {
@@ -293,7 +285,8 @@ export async function applyTaskMutation(input: TaskMutationInput, dbOverride?: D
     }> = []
 
     // 1. If assigned to an agent now and status is open or in_progress, wake them
-    const assigneeChanged = input.assigneeAgentId !== undefined && input.assigneeAgentId !== task.assigneeAgentId
+    const assigneeChanged =
+      input.assigneeAgentId !== undefined && input.assigneeAgentId !== task.assigneeAgentId
     if (updatedTask.assigneeAgentId && (assigneeChanged || isStatusChanging)) {
       if (updatedTask.status === "open" || updatedTask.status === "in_progress") {
         wakesToEnqueue.push({
@@ -532,7 +525,8 @@ export async function applyTaskCreate(input: TaskCreateInput, dbOverride?: Db) {
       }
     }
 
-    const initialStatus = input.status || (input.assigneeAgentId || input.assigneeUserId ? "in_progress" : "open")
+    const initialStatus =
+      input.status || (input.assigneeAgentId || input.assigneeUserId ? "in_progress" : "open")
 
     const [created] = await tx
       .insert(tasks)
@@ -591,7 +585,9 @@ export async function applyTaskCreate(input: TaskCreateInput, dbOverride?: Db) {
   return result
 }
 
-export function hasDependencyCycle(subtasks: Array<{ key: string; blockedBy?: string[] }>): boolean {
+export function hasDependencyCycle(
+  subtasks: Array<{ key: string; blockedBy?: string[] }>,
+): boolean {
   const graph = new Map<string, string[]>()
   for (const s of subtasks) {
     graph.set(s.key, s.blockedBy?.filter((b) => subtasks.some((t) => t.key === b)) || [])
@@ -666,7 +662,12 @@ export async function applyTaskPlan(input: TaskPlanInput, dbOverride?: Db) {
 
     const keyToTaskId = new Map<string, string>()
     const keyToAssigneeAgentId = new Map<string, string | null>()
-    const createdList: Array<{ key: string; taskId: string; number: number; assigneeAgentId: string | null }> = []
+    const createdList: Array<{
+      key: string
+      taskId: string
+      number: number
+      assigneeAgentId: string | null
+    }> = []
 
     // 1. Create subtasks
     for (const s of input.subtasks) {
@@ -774,4 +775,3 @@ export async function applyTaskPlan(input: TaskPlanInput, dbOverride?: Db) {
 
   return { created: result.created }
 }
-

@@ -23,11 +23,11 @@ The orchestrator's worker pulls the trigger message off the `room.message` pg-bo
 
 `processRoomMessage(roomId, messageId)` opens with the supersede logic, then decides eligibility (`apps/orchestrator/src/coordinator/index.ts:335-361`):
 
-| Trigger | Condition | Effect |
-| :--- | :--- | :--- |
-| Human message | `senderType === "human"` | First calls `interruptRoom()` — see [Interruption](#-interruption-steering-vs-abort) |
+| Trigger             | Condition                                                                              | Effect                                                                                           |
+| :------------------ | :------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------- |
+| Human message       | `senderType === "human"`                                                               | First calls `interruptRoom()` — see [Interruption](#-interruption-steering-vs-abort)             |
 | Agent-to-agent wake | `senderType === "agent"` **and** `metadata.agentTrigger === true` and room is not a DM | `collab/postAgentMessage` sets this flag so MCP/webhook bots posting later can pull teammates in |
-| Task wake | `senderType === "system"` and `metadata.taskWake` present | Queue is restricted to the task's `agentIds`, filtered to agents actually in the room |
+| Task wake           | `senderType === "system"` and `metadata.taskWake` present                              | Queue is restricted to the task's `agentIds`, filtered to agents actually in the room            |
 
 Any other agent/system message returns silently — an agent cannot start a session just by talking; it must mention a teammate outside its own turn.
 
@@ -39,14 +39,14 @@ The entire remaining coordination runs inside `withRoomLock(roomId, …)`, a ses
 
 A `turnSessions` row is created (`botTurnsUsed: 0, state: "active", queue: []`), and the room's agents are loaded. If there are none, the session completes immediately. Queue planning depends on the room (`room.turnMode` is one of `"mentions" | "debate" | "moderated"`, `packages/core/src/types.ts:3-4`):
 
-| Situation | Planner | Result |
-| :--- | :--- | :--- |
-| Task wake | inline filter | `responder` turns for allowed agents |
-| Agent-triggered | `planMentionsTurn` with `excludeAgentIds: [senderId]` | mentioned teammates, minus the sender |
-| DM room | inline | single turn for `agentDmAgentId` |
-| `turnMode: "mentions"` | `planMentionsTurn` | every tagged agent in mention order; `@all_bots` expands to the whole room |
-| `turnMode: "debate"` | `planDebateTurns` | producer → critics → summarizer, ordered by `debateOrder` |
-| `turnMode: "moderated"` | `planModeratedMentions` | explicit mentions win; otherwise the moderator LLM picks (below) |
+| Situation               | Planner                                               | Result                                                                     |
+| :---------------------- | :---------------------------------------------------- | :------------------------------------------------------------------------- |
+| Task wake               | inline filter                                         | `responder` turns for allowed agents                                       |
+| Agent-triggered         | `planMentionsTurn` with `excludeAgentIds: [senderId]` | mentioned teammates, minus the sender                                      |
+| DM room                 | inline                                                | single turn for `agentDmAgentId`                                           |
+| `turnMode: "mentions"`  | `planMentionsTurn`                                    | every tagged agent in mention order; `@all_bots` expands to the whole room |
+| `turnMode: "debate"`    | `planDebateTurns`                                     | producer → critics → summarizer, ordered by `debateOrder`                  |
+| `turnMode: "moderated"` | `planModeratedMentions`                               | explicit mentions win; otherwise the moderator LLM picks (below)           |
 
 All planners live in `packages/core/src/turns.ts`:
 
@@ -101,11 +101,11 @@ Finally the session is persisted with its terminal state and an empty queue, and
 
 `turnSessions.state` ∈ `active | complete | halted | superseded`:
 
-| State | Set by |
-| :--- | :--- |
-| `active` | session creation and after each turn |
-| `complete` | queue drained, moderator chose human, no room agents |
-| `halted` | breaker trip, agent error, stop, repetition, moderator failure |
+| State        | Set by                                                                          |
+| :----------- | :------------------------------------------------------------------------------ |
+| `active`     | session creation and after each turn                                            |
+| `complete`   | queue drained, moderator chose human, no room agents                            |
+| `halted`     | breaker trip, agent error, stop, repetition, moderator failure                  |
 | `superseded` | a newer human message (`interruptRoom` flips all `active` sessions of the room) |
 
 ---
@@ -114,7 +114,7 @@ Finally the session is persisted with its terminal state and an empty queue, and
 
 `interruptRoom(roomId, incoming)` (`apps/orchestrator/src/coordinator/interrupt.ts:15`) implements two behaviours:
 
-1. **Steer (Engine v2 only).** If the incoming human message mentions an agent that has an active run with `engine === "v2"`, the message is queued as a `RunInterrupt` on that run (`addRunInterrupt`) and delivered at the next step boundary; the session is **not** superseded. All *other* runs in the room are aborted (`apps/orchestrator/src/engine/interrupts.ts:23-60`).
+1. **Steer (Engine v2 only).** If the incoming human message mentions an agent that has an active run with `engine === "v2"`, the message is queued as a `RunInterrupt` on that run (`addRunInterrupt`) and delivered at the next step boundary; the session is **not** superseded. All _other_ runs in the room are aborted (`apps/orchestrator/src/engine/interrupts.ts:23-60`).
 2. **Abort otherwise.** All `active` sessions in the room become `superseded`, in-process `AbortController`s fire (`abortRoomRuns`, `apps/orchestrator/src/active-runs.ts:46-55`), and `pg_notify('mesh_room_interrupt', { roomId })` tells other orchestrator instances to do the same (`apps/orchestrator/src/db.ts:44-46`, consumed at `apps/orchestrator/src/index.ts:30-46`). A `/internal/runs/:runId/stop` endpoint and `mesh_stop_run` channel implement single-run stops.
 3. **Side notes (`/btw`).** A human message with `metadata.command === "btw"` never interrupts: `processRoomMessage` calls `deliverSideNote` (`coordinator/interrupt.ts`), which queues it as a `RunInterrupt` on every active `v2` run in the room (`roomRuns`, `active-runs.ts`) and returns without starting a session. Agents that can't take notes mid-run read it in the transcript on their next turn, so a running `/goal` keeps going.
 
@@ -174,18 +174,18 @@ Crashes and restarts are handled by `apps/orchestrator/src/engine/resume.ts`:
 
 ## 🧪 Test coverage
 
-| Behaviour | Test file |
-| :--- | :--- |
-| Mention-order queues, `@all_bots`, empty queue without mentions | `packages/core/src/turns.test.ts` (`planMentionsTurn`) |
-| Follow-ups never include the sender | `packages/core/src/turns.test.ts` (`planBotFollowUps`) |
-| Debate roles follow `debateOrder`; mentions narrow the cast; single-agent debate is one `producer` | `packages/core/src/turns.test.ts` (`planDebateTurns`) |
-| Unknown debate-order ids go last, room order preserved | `packages/core/src/turns.test.ts` (`orderDebateAgents`) |
-| Moderated mentions; moderator choice validation → `"human"` on hallucination; role instructions | `packages/core/src/turns.test.ts` (moderated mode block) |
-| Breaker priority, messages, nullable limits | `packages/core/src/breakers.test.ts` |
-| Mention extraction, code-fence skipping, `@all_bots` | `packages/core/src/mentions.test.ts` |
-| Steering into v2 runs vs aborting others | `apps/orchestrator/src/engine/interrupts.test.ts` |
-| Stale-run rescue + resume | `apps/orchestrator/src/engine/resume.test.ts` |
-| Approval flow end to end (UI) | `e2e/approval.spec.ts`; turn queue UI in `e2e/turns.spec.ts` |
+| Behaviour                                                                                          | Test file                                                    |
+| :------------------------------------------------------------------------------------------------- | :----------------------------------------------------------- |
+| Mention-order queues, `@all_bots`, empty queue without mentions                                    | `packages/core/src/turns.test.ts` (`planMentionsTurn`)       |
+| Follow-ups never include the sender                                                                | `packages/core/src/turns.test.ts` (`planBotFollowUps`)       |
+| Debate roles follow `debateOrder`; mentions narrow the cast; single-agent debate is one `producer` | `packages/core/src/turns.test.ts` (`planDebateTurns`)        |
+| Unknown debate-order ids go last, room order preserved                                             | `packages/core/src/turns.test.ts` (`orderDebateAgents`)      |
+| Moderated mentions; moderator choice validation → `"human"` on hallucination; role instructions    | `packages/core/src/turns.test.ts` (moderated mode block)     |
+| Breaker priority, messages, nullable limits                                                        | `packages/core/src/breakers.test.ts`                         |
+| Mention extraction, code-fence skipping, `@all_bots`                                               | `packages/core/src/mentions.test.ts`                         |
+| Steering into v2 runs vs aborting others                                                           | `apps/orchestrator/src/engine/interrupts.test.ts`            |
+| Stale-run rescue + resume                                                                          | `apps/orchestrator/src/engine/resume.test.ts`                |
+| Approval flow end to end (UI)                                                                      | `e2e/approval.spec.ts`; turn queue UI in `e2e/turns.spec.ts` |
 
 ---
 

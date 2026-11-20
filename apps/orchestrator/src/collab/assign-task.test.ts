@@ -34,32 +34,42 @@ function loadTask(...rest: unknown[][]) {
 describe("assignTask", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    applyTaskMutation.mockResolvedValue({ task: { id: taskId, number: 7, title: "t", status: "in_progress" } })
+    applyTaskMutation.mockResolvedValue({
+      task: { id: taskId, number: 7, title: "t", status: "in_progress" },
+    })
   })
 
   it("refuses a person who shares the name but can't read the room", async () => {
     loadTask([{ id: "stranger" }])
     authz.canUserReadRoom.mockResolvedValue(false)
-    await expect(assignTask(agent, { taskId, assignee: "human:Sam" })).rejects.toThrow("not in this room")
+    await expect(assignTask(agent, { taskId, assignee: "human:Sam" })).rejects.toThrow(
+      "not in this room",
+    )
     expect(applyTaskMutation).not.toHaveBeenCalled()
   })
 
   it("asks rather than guesses between two people with the same name", async () => {
     loadTask([{ id: "sam-1" }, { id: "sam-2" }])
     authz.canUserReadRoom.mockResolvedValue(true)
-    await expect(assignTask(agent, { taskId, assignee: "human:Sam" })).rejects.toThrow("more than one person")
+    await expect(assignTask(agent, { taskId, assignee: "human:Sam" })).rejects.toThrow(
+      "more than one person",
+    )
   })
 
   it("assigns the one person in the room with that name", async () => {
     loadTask([{ id: "outsider" }, { id: "teammate" }])
     authz.canUserReadRoom.mockImplementation(async (id: string) => id === "teammate")
     await assignTask(agent, { taskId, assignee: "human:Sam" })
-    expect(applyTaskMutation).toHaveBeenCalledWith(expect.objectContaining({ assigneeUserId: "teammate" }))
+    expect(applyTaskMutation).toHaveBeenCalledWith(
+      expect.objectContaining({ assigneeUserId: "teammate" }),
+    )
   })
 
   it("refuses an agent that isn't in the room", async () => {
     loadTask([{ id: "agent-2", handle: "hermes" }])
     authz.isAgentInRoom.mockResolvedValue(false)
-    await expect(assignTask(agent, { taskId, assignee: "@hermes" })).rejects.toThrow("not in this room")
+    await expect(assignTask(agent, { taskId, assignee: "@hermes" })).rejects.toThrow(
+      "not in this room",
+    )
   })
 })

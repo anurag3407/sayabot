@@ -10,12 +10,12 @@ Source files: `apps/orchestrator/src/memory/scheduler.ts`, `apps/orchestrator/sr
 
 The "dream cycle" timer. Constants (`scheduler.ts:13-16`):
 
-| Constant | Value | Meaning |
-| :--- | :--- | :--- |
-| `SCAN_MS` | `6 * 60 * 60 * 1000` | Run every 6 hours |
-| `FIRST_RUN_DELAY_MS` | `5 * 60 * 1000` | First run 5 minutes after boot |
-| `LOCK_KEY` | `"mesh:memory:consolidate"` | Advisory-lock key so only one orchestrator instance works at a time |
-| `MAX_ORGS_PER_RUN` | `1000` | Upper bound on orgs scanned per pass |
+| Constant             | Value                       | Meaning                                                             |
+| :------------------- | :-------------------------- | :------------------------------------------------------------------ |
+| `SCAN_MS`            | `6 * 60 * 60 * 1000`        | Run every 6 hours                                                   |
+| `FIRST_RUN_DELAY_MS` | `5 * 60 * 1000`             | First run 5 minutes after boot                                      |
+| `LOCK_KEY`           | `"mesh:memory:consolidate"` | Advisory-lock key so only one orchestrator instance works at a time |
+| `MAX_ORGS_PER_RUN`   | `1000`                      | Upper bound on orgs scanned per pass                                |
 
 ### Lifecycle
 
@@ -65,7 +65,7 @@ The scheduler is designed so that nothing memory-related can take the orchestrat
 Each agent's persistent computer (the local VM managed by computerd — see [../computers/vps-and-client.md](../computers/vps-and-client.md)) carries a read-only Markdown mirror of the agent's room-independent memory under a single root:
 
 ```typescript
-const ROOT = "/home/bot/.saaya/memory"   // mirror.ts:5
+const ROOT = "/home/bot/.saaya/memory" // mirror.ts:5
 ```
 
 The rationale comes from `MemoryService.generateMemoryMirror` (`service.ts:1115-1172`): the computer is shared by every room the agent works in, so the mirror holds only what is visible from every room — the agent's agent-wide memories (scope `agent` with `roomId` null), org-wide memories, and open loops not tied to a room. Room-bound memories reach the agent through the `recall` tool instead, and the mirror text says so explicitly in its header.
@@ -74,18 +74,18 @@ The rationale comes from `MemoryService.generateMemoryMirror` (`service.ts:1115-
 
 `generateMemoryMirror` selects up to 200 active (non-withdrawn/superseded) memories via `buildScopeConditions({ orgId, agentId, roomId: null })`, excluding `kind = "episode"`, ordered by `pinned DESC, updatedAt DESC` (`service.ts:1119-1131`). From those rows it renders three artifacts:
 
-| Artifact | Contents |
-| :--- | :--- |
-| `memoryMd` | `# Agent Memory` header explaining the mirror, then `## Pinned` (or `_None._`) and `## Beliefs & Decisions` (first 50 unpinned rows). Each line: `- **Title** (private\|workspace, kind, epistemicStatus): body` (`service.ts:1132-1151`). |
-| `topics` | A tag index: for each memory the first 6 tags become topic keys, capped at 40 topics; each topic file is `# Topic: <tag>` followed by `- **Title**: body` lines (`service.ts:1153-1159`). |
-| `openLoopsMd` | `OpenLoopsManager.formatOpenLoopsMarkdown` over `getActiveLoops({ roomless: true })` — only loops with `roomId IS NULL` (`service.ts:1161-1169`, `modules/open-loops.ts:140-159`). |
+| Artifact      | Contents                                                                                                                                                                                                                                   |
+| :------------ | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `memoryMd`    | `# Agent Memory` header explaining the mirror, then `## Pinned` (or `_None._`) and `## Beliefs & Decisions` (first 50 unpinned rows). Each line: `- **Title** (private\|workspace, kind, epistemicStatus): body` (`service.ts:1132-1151`). |
+| `topics`      | A tag index: for each memory the first 6 tags become topic keys, capped at 40 topics; each topic file is `# Topic: <tag>` followed by `- **Title**: body` lines (`service.ts:1153-1159`).                                                  |
+| `openLoopsMd` | `OpenLoopsManager.formatOpenLoopsMarkdown` over `getActiveLoops({ roomless: true })` — only loops with `roomId IS NULL` (`service.ts:1161-1169`, `modules/open-loops.ts:140-159`).                                                         |
 
 ### File layout (`mirrorFiles`, `mirror.ts:12-27`)
 
-| Path | Content |
-| :--- | :--- |
-| `/home/bot/.saaya/memory/MEMORY.md` | `memoryMd` |
-| `/home/bot/.saaya/memory/OPEN_LOOPS.md` | `openLoopsMd` |
+| Path                                      | Content                                                                                                                                                                                               |
+| :---------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/home/bot/.saaya/memory/MEMORY.md`       | `memoryMd`                                                                                                                                                                                            |
+| `/home/bot/.saaya/memory/OPEN_LOOPS.md`   | `openLoopsMd`                                                                                                                                                                                         |
 | `/home/bot/.saaya/memory/topics/<tag>.md` | One file per tag; tags are sanitized to `[a-zA-Z0-9_-]`, truncated to 64 chars, with `""`/unsafe tags falling back to `untagged`, and multiple memories with the same tag concatenate with a newline. |
 
 The rendered files look like this, directly from the format strings in `service.ts:1132-1151` and `modules/open-loops.ts:140-159`:
@@ -141,14 +141,14 @@ so a slow or sleeping computer never delays the turn; the bounded background que
 
 For quick orientation, every periodic or deferred memory job in the orchestrator and where it starts:
 
-| Job | Trigger | Guard | Failure mode |
-| :--- | :--- | :--- | :--- |
-| `memory.extract` | Turn finished ok, `caps.memory` | background queue (2 concurrent / 200 backlog) | dropped under pressure; error → 0 insights |
-| `memory.reinforce` | Turn finished with `[#id]` citations | background queue | dropped; citations re-read next turn |
-| `memory.mirror` | Pre-turn loads ok, `caps.memory && caps.computer` | background queue + content hash | skipped when unchanged; retried next turn |
-| `memory.embed` | Write path (`scheduleEmbedding`) | background queue | backfilled by the 6-hour cycle |
-| dream consolidation | `startMemoryScheduler` timer, 6 h | `pg_try_advisory_lock("mesh:memory:consolidate")` | per-org try/catch, logged |
-| Boat sleep scan | routine-scheduler scan pass | scheduler advisory lock + `boatShouldSleep` | logged `"boat sleep scan skipped"`, never throws |
+| Job                 | Trigger                                           | Guard                                             | Failure mode                                     |
+| :------------------ | :------------------------------------------------ | :------------------------------------------------ | :----------------------------------------------- |
+| `memory.extract`    | Turn finished ok, `caps.memory`                   | background queue (2 concurrent / 200 backlog)     | dropped under pressure; error → 0 insights       |
+| `memory.reinforce`  | Turn finished with `[#id]` citations              | background queue                                  | dropped; citations re-read next turn             |
+| `memory.mirror`     | Pre-turn loads ok, `caps.memory && caps.computer` | background queue + content hash                   | skipped when unchanged; retried next turn        |
+| `memory.embed`      | Write path (`scheduleEmbedding`)                  | background queue                                  | backfilled by the 6-hour cycle                   |
+| dream consolidation | `startMemoryScheduler` timer, 6 h                 | `pg_try_advisory_lock("mesh:memory:consolidate")` | per-org try/catch, logged                        |
+| Boat sleep scan     | routine-scheduler scan pass                       | scheduler advisory lock + `boatShouldSleep`       | logged `"boat sleep scan skipped"`, never throws |
 
 Log lines to watch: `[memory] maintenance: …` (scheduler output), `[memory] <label> failed:` (background job failures, redacted), `[memory] background queue full, dropping <label>` (backlog pressure), `[memory] maintenance scheduler online` (boot), and `[computers] boat sleep scan skipped` (sleep pass failure).
 

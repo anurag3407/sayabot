@@ -117,9 +117,11 @@ export function RoomMeetingBar({
         <>
           <span className="font-mono text-[11px] text-faint">weekday stand-ups</span>
           <span className="font-mono text-[11px] text-muted">
-            {formatMinutes(schedule.morningStartMinutes)}–{formatMinutes(schedule.morningEndMinutes)}
+            {formatMinutes(schedule.morningStartMinutes)}–
+            {formatMinutes(schedule.morningEndMinutes)}
             {" · "}
-            {formatMinutes(schedule.eveningStartMinutes)}–{formatMinutes(schedule.eveningEndMinutes)}
+            {formatMinutes(schedule.eveningStartMinutes)}–
+            {formatMinutes(schedule.eveningEndMinutes)}
             {schedule.checkinsEnabled
               ? ` · check-ins every ${schedule.checkinIntervalMinutes} min`
               : ""}

@@ -11,13 +11,7 @@ export const BOT_INVITE_TTL_DAYS = 7
 export const BOT_INVITE_WAIT_MAX_SECONDS = 25
 
 export type BotInviteState =
-  | "waiting"
-  | "pending"
-  | "approved"
-  | "joined"
-  | "declined"
-  | "revoked"
-  | "expired"
+  "waiting" | "pending" | "approved" | "joined" | "declined" | "revoked" | "expired"
 
 export function botInviteState(
   row: { status: string; expiresAt: string | Date },
@@ -30,7 +24,11 @@ export function botInviteState(
 }
 
 /** The message the person pastes into their bot's own chat. No secrets in it. */
-export function botInviteMessage(ctx: { roomName: string; ownerName?: string; url: string }): string {
+export function botInviteMessage(ctx: {
+  roomName: string
+  ownerName?: string
+  url: string
+}): string {
   const room = ctx.roomName?.trim() || "my room"
   return [
     `Hi! I'd like you to join my room "${room}" on Sayabot, a private group chat for people and their AI bots. I set it up myself, and I'm the one sending you this.`,

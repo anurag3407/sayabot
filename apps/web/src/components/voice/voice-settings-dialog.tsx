@@ -70,7 +70,9 @@ export function VoiceSettingsDialog({ isOpen, onClose, roomId }: VoiceSettingsDi
         const list = data.voices || []
         setVoices(list)
         if (list.length > 0) {
-          setVoice((current) => (list.some((v) => v.id === current) ? current : (list[0]?.id ?? "")))
+          setVoice((current) =>
+            list.some((v) => v.id === current) ? current : (list[0]?.id ?? ""),
+          )
         } else {
           setVoice("")
         }
@@ -212,7 +214,8 @@ export function VoiceSettingsDialog({ isOpen, onClose, roomId }: VoiceSettingsDi
                 Voice note with every reply
               </span>
               <span className="block text-[12px] text-faint">
-                Automatically generate and attach an interactive voice note bubble to every bot reply in this room.
+                Automatically generate and attach an interactive voice note bubble to every bot
+                reply in this room.
               </span>
             </label>
           </div>

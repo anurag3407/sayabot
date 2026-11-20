@@ -47,7 +47,10 @@ function millis(value: unknown): number | null {
 export async function sleepIdleBoats(now = Date.now()): Promise<number> {
   const db = getDb()
   const [bots, upcoming, settings] = await Promise.all([
-    db.select({ id: agents.id, orgId: agents.orgId, params: agents.params }).from(agents).limit(200),
+    db
+      .select({ id: agents.id, orgId: agents.orgId, params: agents.params })
+      .from(agents)
+      .limit(200),
     db
       .select({ agentId: routines.agentId, nextRunAt: routines.nextRunAt })
       .from(routines)
@@ -95,7 +98,8 @@ export async function sleepIdleBoats(now = Date.now()): Promise<number> {
       bot.params?.computer && typeof bot.params.computer === "object"
         ? (bot.params.computer as Record<string, unknown>)
         : null
-    if (!computer || computer.boatState !== "running" || typeof computer.boatId !== "string") continue
+    if (!computer || computer.boatState !== "running" || typeof computer.boatId !== "string")
+      continue
     const nextRoutineAt = nextByAgent.get(bot.id) ?? null
     const due = idleBoatIds(now, [
       {

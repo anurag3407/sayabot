@@ -13,11 +13,26 @@ interface UsageData {
   days: number
   totals: { tokens: number; costUsd: number; runs: number; cachedTokens: number }
   series: Array<{ day: string; tokens: number; cost: number; runs: number }>
-  agents: Array<{ id: string; handle: string; name: string; tokens: number; runs: number; costUsd: number }>
+  agents: Array<{
+    id: string
+    handle: string
+    name: string
+    tokens: number
+    runs: number
+    costUsd: number
+  }>
   models: Array<{ model: string; provider: string; tokens: number; costUsd: number }>
 }
 
-function Bars({ values, color, height = 120 }: { values: number[]; color: string; height?: number }) {
+function Bars({
+  values,
+  color,
+  height = 120,
+}: {
+  values: number[]
+  color: string
+  height?: number
+}) {
   const theme = useTheme()
   const max = Math.max(1, ...values)
   const w = 100 / Math.max(1, values.length)
@@ -25,7 +40,17 @@ function Bars({ values, color, height = 120 }: { values: number[]; color: string
     <Svg width="100%" height={height} viewBox={`0 0 100 ${height}`} preserveAspectRatio="none">
       {values.map((v, i) => {
         const h = v ? Math.max(2, (v / max) * (height - 4)) : 1
-        return <Rect key={i} x={i * w + w * 0.15} y={height - h} width={w * 0.7} height={h} rx={Math.min(1.5, w * 0.3)} fill={v ? color : theme.line} />
+        return (
+          <Rect
+            key={i}
+            x={i * w + w * 0.15}
+            y={height - h}
+            width={w * 0.7}
+            height={h}
+            rx={Math.min(1.5, w * 0.3)}
+            fill={v ? color : theme.line}
+          />
+        )
       })}
     </Svg>
   )
@@ -43,7 +68,11 @@ export function UsageScreen() {
 
   const load = useCallback(async () => {
     try {
-      setData(await api<UsageData>(`/api/mobile/usage?orgSlug=${encodeURIComponent(settings.orgSlug)}&days=${days}&tzOffset=${new Date().getTimezoneOffset()}`))
+      setData(
+        await api<UsageData>(
+          `/api/mobile/usage?orgSlug=${encodeURIComponent(settings.orgSlug)}&days=${days}&tzOffset=${new Date().getTimezoneOffset()}`,
+        ),
+      )
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't load usage")
@@ -60,7 +89,17 @@ export function UsageScreen() {
     <ScrollView
       style={{ flex: 1, backgroundColor: theme.bg }}
       contentContainerStyle={{ padding: space.lg, paddingBottom: 60 }}
-      refreshControl={<RefreshControl refreshing={refreshing} tintColor={theme.accent} onRefresh={async () => { setRefreshing(true); await load(); setRefreshing(false) }} />}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          tintColor={theme.accent}
+          onRefresh={async () => {
+            setRefreshing(true)
+            await load()
+            setRefreshing(false)
+          }}
+        />
+      }
     >
       <View style={{ flexDirection: "row", gap: 8, marginBottom: space.lg }}>
         {[7, 30, 90].map((d) => (
@@ -78,7 +117,15 @@ export function UsageScreen() {
           ["Spend", `$${(data?.totals.costUsd ?? 0).toFixed(2)}`],
           ["Runs", compactNumber(data?.totals.runs ?? 0)],
         ].map(([label, value]) => (
-          <View key={label} style={{ flex: 1, backgroundColor: theme.card, borderRadius: radius.lg, padding: space.md }}>
+          <View
+            key={label}
+            style={{
+              flex: 1,
+              backgroundColor: theme.card,
+              borderRadius: radius.lg,
+              padding: space.md,
+            }}
+          >
             <Text variant="caption" tone="muted">
               {label}
             </Text>
@@ -87,7 +134,14 @@ export function UsageScreen() {
         ))}
       </View>
 
-      <View style={{ backgroundColor: theme.card, borderRadius: radius.lg, padding: space.lg, marginBottom: space.xl }}>
+      <View
+        style={{
+          backgroundColor: theme.card,
+          borderRadius: radius.lg,
+          padding: space.lg,
+          marginBottom: space.xl,
+        }}
+      >
         <View style={{ flexDirection: "row", alignItems: "center", marginBottom: space.md }}>
           <Text variant="headline" style={{ flex: 1 }}>
             Per day
@@ -109,12 +163,34 @@ export function UsageScreen() {
 
       <Group title="By agent">
         {(data?.agents ?? []).map((a) => (
-          <View key={a.id} style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: space.lg, paddingVertical: 10 }}>
+          <View
+            key={a.id}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 10,
+              paddingHorizontal: space.lg,
+              paddingVertical: 10,
+            }}
+          >
             <Mascot seed={a.handle} size={30} shadow={true} />
             <View style={{ flex: 1, gap: 4 }}>
               <Text variant="callout">{a.name}</Text>
-              <View style={{ height: 5, borderRadius: 3, backgroundColor: theme.raised, overflow: "hidden" }}>
-                <View style={{ height: 5, width: `${Math.max(2, (a.tokens / maxAgent) * 100)}%`, backgroundColor: theme.accent }} />
+              <View
+                style={{
+                  height: 5,
+                  borderRadius: 3,
+                  backgroundColor: theme.raised,
+                  overflow: "hidden",
+                }}
+              >
+                <View
+                  style={{
+                    height: 5,
+                    width: `${Math.max(2, (a.tokens / maxAgent) * 100)}%`,
+                    backgroundColor: theme.accent,
+                  }}
+                />
               </View>
             </View>
             <Text variant="footnote" tone="muted">
@@ -127,7 +203,13 @@ export function UsageScreen() {
 
       <Group title="Top models">
         {(data?.models ?? []).map((m) => (
-          <Row key={`${m.provider}:${m.model}`} title={m.model} subtitle={m.provider} value={`${compactNumber(m.tokens)} · $${m.costUsd.toFixed(2)}`} chevron={false} />
+          <Row
+            key={`${m.provider}:${m.model}`}
+            title={m.model}
+            subtitle={m.provider}
+            value={`${compactNumber(m.tokens)} · $${m.costUsd.toFixed(2)}`}
+            chevron={false}
+          />
         ))}
       </Group>
     </ScrollView>

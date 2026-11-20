@@ -44,7 +44,11 @@ describe("select_computer", () => {
       params,
       apply: async (decision) => ({ ok: true, e2bId: `sbx-${decision.action}` }),
     })
-    const opened = (await tool.execute({ surface: "e2b" })) as { ok: boolean; e2bId: string; action: string }
+    const opened = (await tool.execute({ surface: "e2b" })) as {
+      ok: boolean
+      e2bId: string
+      action: string
+    }
     expect(opened).toMatchObject({ ok: true, action: "provision", e2bId: "sbx-provision" })
     expect(available.e2bReady).toBe(true)
     expect((params.computer as { e2bId: string }).e2bId).toBe("sbx-provision")

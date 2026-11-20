@@ -8,33 +8,33 @@ Source files: `apps/orchestrator/src/tools/builtins/use-secret.ts`, `apps/orches
 
 ## 🗄️ Data model (`packages/db/src/schema/vault.ts`)
 
-| Table | Purpose |
-| :--- | :--- |
-| `vault_secrets` (`vault.ts:22-39`) | One sealed credential per row: `sealed` (sealed envelope text), `kind` (enum), `last4`, `lastUsedAt`, `rotatedAt`. Sealed/unsealed with `sealSecret`/`openSecret` from `@sayabot/llm`. |
-| `agent_secret_grants` (`vault.ts:41-72`) | Per-agent authorization to use one secret: `agentId`, `secretId`, `envName` (unique per agent), `placeholder` (unique text token), `allowedHosts` (host pattern array, required), `inject` (`GrantInjectSpec`), `methods` (optional allowlist), `requiresApproval`, `expiresAt`, `revokedAt`, `lastUsedAt`. |
-| `org_tool_configs` (`packages/db/src/schema/agents.ts:92-112`) | Org-wide per-tool credentials: `tool` (e.g. `web_search`, `github_bridge`, `postgres_inspector`, `document_extract`, `terminal_sandbox`), `configEnc` (sealed JSON), unique per `(orgId, tool)`. |
+| Table                                                          | Purpose                                                                                                                                                                                                                                                                                                     |
+| :------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `vault_secrets` (`vault.ts:22-39`)                             | One sealed credential per row: `sealed` (sealed envelope text), `kind` (enum), `last4`, `lastUsedAt`, `rotatedAt`. Sealed/unsealed with `sealSecret`/`openSecret` from `@sayabot/llm`.                                                                                                                      |
+| `agent_secret_grants` (`vault.ts:41-72`)                       | Per-agent authorization to use one secret: `agentId`, `secretId`, `envName` (unique per agent), `placeholder` (unique text token), `allowedHosts` (host pattern array, required), `inject` (`GrantInjectSpec`), `methods` (optional allowlist), `requiresApproval`, `expiresAt`, `revokedAt`, `lastUsedAt`. |
+| `org_tool_configs` (`packages/db/src/schema/agents.ts:92-112`) | Org-wide per-tool credentials: `tool` (e.g. `web_search`, `github_bridge`, `postgres_inspector`, `document_extract`, `terminal_sandbox`), `configEnc` (sealed JSON), unique per `(orgId, tool)`.                                                                                                            |
 
 `GrantInjectSpec` (`vault.ts:16-20`) controls where the secret lands in the outbound request:
 
 ```typescript
 export interface GrantInjectSpec {
   mode: "header" | "basic" | "query" | "body"
-  template?: string   // header mode: "Authorization: Bearer {secret}"
-  param?: string      // query mode: parameter name (default "api_key")
+  template?: string // header mode: "Authorization: Bearer {secret}"
+  param?: string // query mode: parameter name (default "api_key")
 }
 ```
 
 ### Grant lifecycle columns (`vault.ts:41-72`)
 
-| Column | Effect |
-| :--- | :--- |
-| `envName` (unique per agent) | The reference the agent passes to `use_secret`; also the canonical lookup key (`GITHUB_TOKEN`, `DATABASE_URL`) for tool credentials |
-| `placeholder` (globally unique) | The stored token form of the reference; lookup index `agent_secret_grants_placeholder_idx` |
-| `allowedHosts` (required array) | Host patterns the grant may reach; empty means the grant can never be used |
-| `methods` (optional array) | HTTP-method allowlist; `null`/empty allows all methods |
+| Column                               | Effect                                                                                                                                                  |
+| :----------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `envName` (unique per agent)         | The reference the agent passes to `use_secret`; also the canonical lookup key (`GITHUB_TOKEN`, `DATABASE_URL`) for tool credentials                     |
+| `placeholder` (globally unique)      | The stored token form of the reference; lookup index `agent_secret_grants_placeholder_idx`                                                              |
+| `allowedHosts` (required array)      | Host patterns the grant may reach; empty means the grant can never be used                                                                              |
+| `methods` (optional array)           | HTTP-method allowlist; `null`/empty allows all methods                                                                                                  |
 | `requiresApproval` (default `false`) | Per-grant flag; `use_secret` itself is already `dangerous: true`, so every call waits regardless — this column records admin intent for stricter grants |
-| `expiresAt` / `revokedAt` | Checked on every resolution; either hit makes the grant invisible to the agent |
-| `lastUsedAt` (grant + secret) | Stamped by `use_secret` after each successful request (`use-secret.ts:161-169`) |
+| `expiresAt` / `revokedAt`            | Checked on every resolution; either hit makes the grant invisible to the agent                                                                          |
+| `lastUsedAt` (grant + secret)        | Stamped by `use_secret` after each successful request (`use-secret.ts:161-169`)                                                                         |
 
 Uniqueness is enforced with `agent_secret_grants_agent_env_idx` on `(agentId, envName)` (`vault.ts:67`).
 
@@ -44,15 +44,15 @@ Registered only when the agent has the `secrets` capability (`src/tools/index.ts
 
 ### Schema
 
-| Parameter | Type | Constraints | Description |
-| :--- | :--- | :--- | :--- |
-| `envName` | string | 1–64 chars | Grant name to use (e.g. `GITHUB_TOKEN`) |
-| `request.method` | enum | `GET, POST, PUT, PATCH, DELETE` | HTTP method |
-| `request.url` | string (url) | — | Target HTTPS URL |
-| `request.headers` | record<string,string> | optional | Extra headers for the request |
-| `request.body` | string \| record | optional | Body; `{secret}` placeholder inside it is replaced by the credential |
+| Parameter         | Type                  | Constraints                     | Description                                                          |
+| :---------------- | :-------------------- | :------------------------------ | :------------------------------------------------------------------- |
+| `envName`         | string                | 1–64 chars                      | Grant name to use (e.g. `GITHUB_TOKEN`)                              |
+| `request.method`  | enum                  | `GET, POST, PUT, PATCH, DELETE` | HTTP method                                                          |
+| `request.url`     | string (url)          | —                               | Target HTTPS URL                                                     |
+| `request.headers` | record<string,string> | optional                        | Extra headers for the request                                        |
+| `request.body`    | string \| record      | optional                        | Body; `{secret}` placeholder inside it is replaced by the credential |
 
-Tool description (verbatim, `use-secret.ts:26-28`): *"Execute an authenticated HTTPS request using an approved Secret Broker grant. The real credential is injected safely on your behalf and never visible to the model."*
+Tool description (verbatim, `use-secret.ts:26-28`): _"Execute an authenticated HTTPS request using an approved Secret Broker grant. The real credential is injected safely on your behalf and never visible to the model."_
 
 ### Execution pipeline
 
@@ -107,7 +107,7 @@ export interface OrgToolConfig {
 
 Consumers per tool: `github_bridge` (`builtins/github.ts:59`), `postgres_inspector` (`builtins/postgres.ts:19`), `web_search` and `web_fetch` (`builtins/web-search.ts:606`, `builtins/web-fetch.ts:254`), `document_extract` (`builtins/document.ts:430`), `terminal_sandbox` (`builtins/sandbox.ts:381`, `builtins/sandbox.ts:430`).
 
-## 🔐 Where credentials are *not* needed
+## 🔐 Where credentials are _not_ needed
 
 Other secret-bearing paths stay inside the orchestrator by design:
 
@@ -117,13 +117,13 @@ Other secret-bearing paths stay inside the orchestrator by design:
 
 ## ⚠️ Guarantees and limits
 
-| Guarantee | Mechanism |
-| :--- | :--- |
+| Guarantee                                       | Mechanism                                                                                                |
+| :---------------------------------------------- | :------------------------------------------------------------------------------------------------------- |
 | Plaintext never enters a prompt or `tool_calls` | injection happens inside `use_secret`'s `execute`; audit layer redacts args/results (`audited.ts:40-65`) |
-| Responses cannot leak the secret back | `createRunScrubber([secretString])` over body + headers (`use-secret.ts:172-190`) |
-| No arbitrary egress | HTTPS-only + `assertSafeEgressHost` + `allowedHosts` pattern match (`use-secret.ts:60-76`) |
-| Least privilege per agent | per-agent grant with host, method, and inject-mode constraints; revocation/expiry checked on every call |
-| Human oversight | `use_secret` is `dangerous: true` → `pending_approval` flow (5-minute window) |
+| Responses cannot leak the secret back           | `createRunScrubber([secretString])` over body + headers (`use-secret.ts:172-190`)                        |
+| No arbitrary egress                             | HTTPS-only + `assertSafeEgressHost` + `allowedHosts` pattern match (`use-secret.ts:60-76`)               |
+| Least privilege per agent                       | per-agent grant with host, method, and inject-mode constraints; revocation/expiry checked on every call  |
+| Human oversight                                 | `use_secret` is `dangerous: true` → `pending_approval` flow (5-minute window)                            |
 
 ## 🔄 In-flight placeholder swap (sandbox → egress → internet)
 
@@ -148,18 +148,18 @@ sequenceDiagram
     S-->>E: response (secret scrubbed back to placeholder)
 ```
 
-| Step | Where | Detail |
-| :--- | :--- | :--- |
-| Token minting | `apps/web/src/lib/actions/vault.ts:201` | `` placeholder = `saaya_ph_${randomBytes(16).toString("hex")}` `` stored in `agent_secret_grants.placeholder` (unique) |
-| Env injection | `GET /internal/computer/:agentId/grants-env` (`apps/orchestrator/src/internal/routes.ts:393-416`) | Returns `{ [envName]: placeholder }` for unrevoked, unexpired grants; computerd writes them into the sandbox environment |
-| Agent usage | prompt guidance (`apps/orchestrator/src/runner/context.ts:345`) | *"Granted secrets appear in your environment as placeholders (e.g. `$GITHUB_TOKEN="saaya_ph_..."`). You can use them directly in commands (curl, git, SDKs); the Secret Broker automatically swaps real credentials in flight for allowlisted hosts."* |
-| Detection | `apps/egress/src/index.ts:17` | `PLACEHOLDER_RE = /saaya_ph_[A-Za-z0-9_-]{32,}/g` scanned over request headers and body; the same pattern family exists for redaction in `packages/core/src/redact.ts:18` |
-| Resolution | `POST /internal/egress/resolve` (`internal/routes.ts:75-146`) | Matches the placeholder string or the grant id (`placeholder.replace(/^saaya_ph_/, "")`); returns the **decrypted** `secretPlaintext`, `hostAllowlist`, `inject`, `methods`, `requiresApproval` to egress only (internal-secret authenticated) |
-| Host enforcement | `apps/egress/src/index.ts:198-203` | `isHostAllowed` via `matchesHostPattern`; violations reported to `POST /internal/egress/violation` and answered with `403 "saaya: secret is not allowed for <host>"` |
+| Step                 | Where                                                                                                | Detail                                                                                                                                                                                                                                                                                                              |
+| :------------------- | :--------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Token minting        | `apps/web/src/lib/actions/vault.ts:201`                                                              | `` placeholder = `saaya_ph_${randomBytes(16).toString("hex")}` `` stored in `agent_secret_grants.placeholder` (unique)                                                                                                                                                                                              |
+| Env injection        | `GET /internal/computer/:agentId/grants-env` (`apps/orchestrator/src/internal/routes.ts:393-416`)    | Returns `{ [envName]: placeholder }` for unrevoked, unexpired grants; computerd writes them into the sandbox environment                                                                                                                                                                                            |
+| Agent usage          | prompt guidance (`apps/orchestrator/src/runner/context.ts:345`)                                      | _"Granted secrets appear in your environment as placeholders (e.g. `$GITHUB_TOKEN="saaya_ph_..."`). You can use them directly in commands (curl, git, SDKs); the Secret Broker automatically swaps real credentials in flight for allowlisted hosts."_                                                              |
+| Detection            | `apps/egress/src/index.ts:17`                                                                        | `PLACEHOLDER_RE = /saaya_ph_[A-Za-z0-9_-]{32,}/g` scanned over request headers and body; the same pattern family exists for redaction in `packages/core/src/redact.ts:18`                                                                                                                                           |
+| Resolution           | `POST /internal/egress/resolve` (`internal/routes.ts:75-146`)                                        | Matches the placeholder string or the grant id (`placeholder.replace(/^saaya_ph_/, "")`); returns the **decrypted** `secretPlaintext`, `hostAllowlist`, `inject`, `methods`, `requiresApproval` to egress only (internal-secret authenticated)                                                                      |
+| Host enforcement     | `apps/egress/src/index.ts:198-203`                                                                   | `isHostAllowed` via `matchesHostPattern`; violations reported to `POST /internal/egress/violation` and answered with `403 "saaya: secret is not allowed for <host>"`                                                                                                                                                |
 | Per-request approval | `apps/egress/src/index.ts:205-212` + `POST /internal/egress/approval` (`internal/routes.ts:160-232`) | Grants with `requiresApproval: true` create a `tool_calls` row (`toolName: "use_secret"`, `pending_approval`) in one of the agent's rooms, broadcast `tool.approval_requested`, and block on `waitForApproval(toolCallId, timeoutMs ?? 60_000)`; non-approval → `403 "saaya: human approval rejected or timed out"` |
-| Swap + forward | `apps/egress/src/index.ts:215-240` | `replaceAll(placeholder → secretPlaintext)` in headers and body, then the request is forwarded over https/http |
-| Response scrubbing | `apps/egress/src/index.ts:197, 245+` | `secretsToPlaceholder` maps each secret back to its placeholder, so upstream echoes are scrubbed before reaching the sandbox |
-| Cache invalidation | `apps/egress/src/index.ts:65-90` + `swapper.ts:19-28` | 30 s grant cache, 60 s identity cache; `vault_changed` SSE stream, `POST /flush`, and `POST /identity/forget` (computerd calls it whenever a computer starts/stops so a reused container IP is never attributed to its previous owner) |
+| Swap + forward       | `apps/egress/src/index.ts:215-240`                                                                   | `replaceAll(placeholder → secretPlaintext)` in headers and body, then the request is forwarded over https/http                                                                                                                                                                                                      |
+| Response scrubbing   | `apps/egress/src/index.ts:197, 245+`                                                                 | `secretsToPlaceholder` maps each secret back to its placeholder, so upstream echoes are scrubbed before reaching the sandbox                                                                                                                                                                                        |
+| Cache invalidation   | `apps/egress/src/index.ts:65-90` + `swapper.ts:19-28`                                                | 30 s grant cache, 60 s identity cache; `vault_changed` SSE stream, `POST /flush`, and `POST /identity/forget` (computerd calls it whenever a computer starts/stops so a reused container IP is never attributed to its previous owner)                                                                              |
 
 Identity for the swap comes from either the container IP (`resolveAgentIdentity`) or the per-agent proxy credential in `Proxy-Authorization` (`proxySecretFrom`, `swapper.ts:30-38`) — the credential is added by computerd on the host side of a smolvm egress socket and never enters the VM, so it cannot be forged by the sandbox (`swapper.ts:40-44`).
 

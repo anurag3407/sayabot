@@ -38,11 +38,7 @@ export function TestConnectorButton({
         {pending ? "Testing…" : "Test Connection"}
       </Button>
       {status ? (
-        <span
-          className={`font-mono text-[11px] ${
-            status.ok ? "text-ok" : "text-danger"
-          }`}
-        >
+        <span className={`font-mono text-[11px] ${status.ok ? "text-ok" : "text-danger"}`}>
           {status.msg}
         </span>
       ) : null}
@@ -63,7 +59,11 @@ export function DeleteConnectorButton({
   const [error, setError] = useState<string | null>(null)
 
   function handleDelete() {
-    if (!confirm(`Are you sure you want to disconnect ${name}? Agents using this connector will lose access.`)) {
+    if (
+      !confirm(
+        `Are you sure you want to disconnect ${name}? Agents using this connector will lose access.`,
+      )
+    ) {
       return
     }
     setError(null)

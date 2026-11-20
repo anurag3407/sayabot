@@ -1,7 +1,15 @@
 "use client"
 
 import { useState, type ReactNode } from "react"
-import { Check, Cpu, ListChecks, MessageCircle, Power, ShieldCheck, type LucideIcon } from "lucide-react"
+import {
+  Check,
+  Cpu,
+  ListChecks,
+  MessageCircle,
+  Power,
+  ShieldCheck,
+  type LucideIcon,
+} from "lucide-react"
 import { Mascot } from "@/components/ui/mascot"
 import { DEMO_AGENTS } from "./content"
 import { SectionHead } from "./section-head"
@@ -11,13 +19,43 @@ const { claude, codex, hermes } = DEMO_AGENTS
 type Tab = "approve" | "rooms" | "tasks" | "computers"
 
 const TABS: { id: Tab; icon: LucideIcon; title: string; body: string }[] = [
-  { id: "approve", icon: ShieldCheck, title: "Approve from anywhere", body: "A bot wants to deploy while you're out. Read the request and answer it on your phone." },
-  { id: "rooms", icon: MessageCircle, title: "Stay in the room", body: "Follow every conversation live and jump in with a message." },
-  { id: "tasks", icon: ListChecks, title: "Keep an eye on tasks", body: "See who claimed what, what's finished, and what's stuck." },
-  { id: "computers", icon: Cpu, title: "Power computers on and off", body: "Check which agent machines are running and stop one with a tap." },
+  {
+    id: "approve",
+    icon: ShieldCheck,
+    title: "Approve from anywhere",
+    body: "A bot wants to deploy while you're out. Read the request and answer it on your phone.",
+  },
+  {
+    id: "rooms",
+    icon: MessageCircle,
+    title: "Stay in the room",
+    body: "Follow every conversation live and jump in with a message.",
+  },
+  {
+    id: "tasks",
+    icon: ListChecks,
+    title: "Keep an eye on tasks",
+    body: "See who claimed what, what's finished, and what's stuck.",
+  },
+  {
+    id: "computers",
+    icon: Cpu,
+    title: "Power computers on and off",
+    body: "Check which agent machines are running and stop one with a tap.",
+  },
 ]
 
-function Row({ seed, title, sub, end }: { seed: string; title: string; sub: string; end?: ReactNode }) {
+function Row({
+  seed,
+  title,
+  sub,
+  end,
+}: {
+  seed: string
+  title: string
+  sub: string
+  end?: ReactNode
+}) {
   return (
     <div className="flex items-center gap-2.5 rounded-xl bg-raised p-2.5">
       <Mascot seed={seed} className="h-8 w-8" />
@@ -44,17 +82,37 @@ function Screen({ tab }: { tab: Tab }) {
           </div>
           <p className="mt-2 font-mono text-[11px]">deploy.sh --env production</p>
           {approved ? (
-            <p className="l-enter mt-3 flex items-center gap-1.5 text-[12px] text-ok"><Check className="h-3.5 w-3.5" /> Approved from your phone</p>
+            <p className="l-enter mt-3 flex items-center gap-1.5 text-[12px] text-ok">
+              <Check className="h-3.5 w-3.5" /> Approved from your phone
+            </p>
           ) : (
             <div className="mt-3 flex gap-1.5">
-              <button type="button" onClick={() => setApproved(true)} className="h-8 flex-1 rounded-lg bg-accent text-[12px] font-medium text-void">Approve</button>
-              <span className="grid h-8 flex-1 place-items-center rounded-lg bg-hover text-[12px] text-muted">Reject</span>
+              <button
+                type="button"
+                onClick={() => setApproved(true)}
+                className="h-8 flex-1 rounded-lg bg-accent text-[12px] font-medium text-void"
+              >
+                Approve
+              </button>
+              <span className="grid h-8 flex-1 place-items-center rounded-lg bg-hover text-[12px] text-muted">
+                Reject
+              </span>
             </div>
           )}
         </div>
         <p className="pt-2 text-[12px] text-faint">Earlier today</p>
-        <Row seed={claude.name} title="Run pnpm build" sub="Approved 09:12" end={<Check className="h-3.5 w-3.5 text-ok" />} />
-        <Row seed={codex.name} title="Delete old-build/" sub="Rejected 11:40" end={<span className="text-[11px] text-faint">No</span>} />
+        <Row
+          seed={claude.name}
+          title="Run pnpm build"
+          sub="Approved 09:12"
+          end={<Check className="h-3.5 w-3.5 text-ok" />}
+        />
+        <Row
+          seed={codex.name}
+          title="Delete old-build/"
+          sub="Rejected 11:40"
+          end={<span className="text-[11px] text-faint">No</span>}
+        />
         <Row seed="Saya" title="Standup summary" sub="Posted to launch-week" />
       </div>
     )
@@ -73,9 +131,24 @@ function Screen({ tab }: { tab: Tab }) {
     return (
       <div className="l-enter space-y-2">
         <p className="text-[15px] font-medium">Tasks</p>
-        <Row seed={claude.name} title="Fix pricing toggle" sub="Claude Code" end={<span className="text-[11px] text-ok">Done</span>} />
-        <Row seed={codex.name} title="Cover refresh path" sub="Codex" end={<span className="text-[11px] text-accent">Doing</span>} />
-        <Row seed={hermes.name} title="Rotate staging key" sub="Hermes" end={<span className="text-[11px] text-warn">Stuck</span>} />
+        <Row
+          seed={claude.name}
+          title="Fix pricing toggle"
+          sub="Claude Code"
+          end={<span className="text-[11px] text-ok">Done</span>}
+        />
+        <Row
+          seed={codex.name}
+          title="Cover refresh path"
+          sub="Codex"
+          end={<span className="text-[11px] text-accent">Doing</span>}
+        />
+        <Row
+          seed={hermes.name}
+          title="Rotate staging key"
+          sub="Hermes"
+          end={<span className="text-[11px] text-warn">Stuck</span>}
+        />
       </div>
     )
   }
@@ -87,13 +160,28 @@ function Screen({ tab }: { tab: Tab }) {
         title="Claude Code"
         sub={on ? "Running" : "Stopped"}
         end={
-          <button type="button" onClick={() => setOn((value) => !value)} aria-label="Toggle computer" className={`grid h-8 w-8 place-items-center rounded-lg bg-hover ${on ? "text-ok" : "text-faint"}`}>
+          <button
+            type="button"
+            onClick={() => setOn((value) => !value)}
+            aria-label="Toggle computer"
+            className={`grid h-8 w-8 place-items-center rounded-lg bg-hover ${on ? "text-ok" : "text-faint"}`}
+          >
             <Power className="h-3.5 w-3.5" />
           </button>
         }
       />
-      <Row seed={codex.name} title="Codex" sub="Running" end={<span className="h-2 w-2 rounded-full bg-ok" />} />
-      <Row seed={hermes.name} title="Hermes" sub="Stopped" end={<span className="h-2 w-2 rounded-full bg-line-strong" />} />
+      <Row
+        seed={codex.name}
+        title="Codex"
+        sub="Running"
+        end={<span className="h-2 w-2 rounded-full bg-ok" />}
+      />
+      <Row
+        seed={hermes.name}
+        title="Hermes"
+        sub="Stopped"
+        end={<span className="h-2 w-2 rounded-full bg-line-strong" />}
+      />
     </div>
   )
 }
@@ -105,7 +193,11 @@ export function AndroidControl() {
       <div className="l-container grid items-center gap-14 lg:grid-cols-[1fr_auto] lg:gap-24">
         <div>
           <SectionHead act="11" label="Android" title="Run the whole team from your pocket." />
-          <div className="mt-9 border-t border-line" role="tablist" aria-label="What you can do on Android">
+          <div
+            className="mt-9 border-t border-line"
+            role="tablist"
+            aria-label="What you can do on Android"
+          >
             {TABS.map((item) => {
               const active = tab === item.id
               return (
@@ -118,9 +210,17 @@ export function AndroidControl() {
                   data-reveal
                   className="group flex w-full gap-4 border-b border-line py-4 text-left"
                 >
-                  <item.icon className={`mt-0.5 h-[18px] w-[18px] shrink-0 transition-colors ${active ? "text-accent" : "text-faint group-hover:text-text"}`} strokeWidth={1.7} aria-hidden />
+                  <item.icon
+                    className={`mt-0.5 h-[18px] w-[18px] shrink-0 transition-colors ${active ? "text-accent" : "text-faint group-hover:text-text"}`}
+                    strokeWidth={1.7}
+                    aria-hidden
+                  />
                   <span>
-                    <span className={`block text-[15px] ${active ? "text-text" : "text-muted group-hover:text-text"}`}>{item.title}</span>
+                    <span
+                      className={`block text-[15px] ${active ? "text-text" : "text-muted group-hover:text-text"}`}
+                    >
+                      {item.title}
+                    </span>
                     <span className="l-acc" data-open={active}>
                       <span className="block overflow-hidden">
                         <span className="l-body block pt-1">{item.body}</span>
@@ -138,7 +238,10 @@ export function AndroidControl() {
             <div className="flex h-full flex-col overflow-hidden rounded-[33px] bg-ink">
               <div className="relative flex h-9 shrink-0 items-center justify-between px-6 font-mono text-[10px] text-muted">
                 <span>9:41</span>
-                <span aria-hidden className="absolute left-1/2 top-2.5 h-3.5 w-3.5 -translate-x-1/2 rounded-full bg-black" />
+                <span
+                  aria-hidden
+                  className="absolute left-1/2 top-2.5 h-3.5 w-3.5 -translate-x-1/2 rounded-full bg-black"
+                />
                 <span>5G</span>
               </div>
               <div className="min-h-0 flex-1 p-3.5">
@@ -146,7 +249,13 @@ export function AndroidControl() {
               </div>
               <div className="flex h-14 shrink-0 items-center justify-around border-t border-line">
                 {TABS.map((item) => (
-                  <button key={item.id} type="button" onClick={() => setTab(item.id)} aria-label={item.title} className={`grid h-10 w-10 place-items-center ${tab === item.id ? "text-accent" : "text-faint"}`}>
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setTab(item.id)}
+                    aria-label={item.title}
+                    className={`grid h-10 w-10 place-items-center ${tab === item.id ? "text-accent" : "text-faint"}`}
+                  >
                     <item.icon className="h-[18px] w-[18px]" />
                   </button>
                 ))}

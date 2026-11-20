@@ -102,7 +102,8 @@ reinforcement = 1 + log2(1 + useCount) · 0.15
 score         = decay · reinforcement
 ```
 
-  Recalling a memory bumps `lastUsedAt`/`useCount`, so each genuine use multiplies remaining retention by ~1.15×log₂(1+n) — the spaced-repetition effect. Default half-life is 30 days; daily episodes use 14 (`service.ts:1078`).
+Recalling a memory bumps `lastUsedAt`/`useCount`, so each genuine use multiplies remaining retention by ~1.15×log₂(1+n) — the spaced-repetition effect. Default half-life is 30 days; daily episodes use 14 (`service.ts:1078`).
+
 - `compositeMemoryScore(params)` (`salience.ts:55-94`) — withdrawn memories get a hard zero; otherwise `baseScore = relevance·0.4 + retention·0.2 + emotionalSalience·0.2 + confidence·0.2`, plus a `0.35` pinned boost, all multiplied by the epistemic weight (verified 1.2, belief 1.0, hypothesis 0.8, superseded 0.2). Result clamped at 0 and rounded to 4 decimals. `keywordMatchRatio` is a deprecated alias for `relevance`.
 
 ## 🛂 `sources.ts` — scope visibility and access control
@@ -158,7 +159,7 @@ The epistemic lifecycle: `hypothesis → belief → verified → superseded | wi
 - `assertBelief` (`beliefs.ts:64-104`) — inserts a belief with defaults: `kind "decision"`, `confidence` derived from status (`verified 1.0`, `hypothesis 0.6`, else `0.85`), `pinned false`, `decayHalfLifeDays 30`; title/body redacted and clamped (200/4096). When `supersedesMemoryId` is given it chains `supersedeBelief` after the insert.
 - `withdrawBelief` (`beliefs.ts:110-122`) — sets `epistemicStatus "withdrawn"` with a redacted ≤500-char `withdrawalReason`; the row stays as an audit trail and scores as zero.
 - `supersedeBelief` (`beliefs.ts:127-154`) — marks the old row `superseded` with `supersededBy = newMemoryId` and inserts a `memory_links` edge `newMemory → supersedes → oldMemory` (weight 1.0). Same-id input returns false.
-- `detectContradictions` (`beliefs.ts:160-214`) — heuristic, not semantic: over the 100 most recent *visible* active memories, a candidate contradicts when ≥ `min(2, titleTokens.length)` title keywords (len > 3) appear in its title+body, or a shared tag plus ≥ 1 keyword. Max 10 candidates with explanatory `reason` strings.
+- `detectContradictions` (`beliefs.ts:160-214`) — heuristic, not semantic: over the 100 most recent _visible_ active memories, a candidate contradicts when ≥ `min(2, titleTokens.length)` title keywords (len > 3) appear in its title+body, or a shared tag plus ≥ 1 keyword. Max 10 candidates with explanatory `reason` strings.
 - `getBeliefLineage` (`beliefs.ts:220-266`) — walks `supersedes` edges backward up to 10 hops with a `seen` cycle guard, stopping at the first unreadable memory.
 
 ## 💭 `dream.ts` — `DreamEngine` (the "sleep cycle")
@@ -194,17 +195,17 @@ Run by the scheduler every 6 hours (see [./scheduler-and-mirror.md](./scheduler-
 
 There are no per-module test files under `modules/`; the whole pipeline is covered from `apps/orchestrator/src/memory/memory.test.ts`, whose describe blocks map onto the modules:
 
-| Module | Coverage in `memory.test.ts` |
-| :--- | :--- |
-| `salience.ts` | `describe("retention & composite score")` — half-life decay, use reinforcement, epistemic weighting, withdrawn zero (`:141-185`) |
-| `sources.ts` | `describe("access control")` — scope isolation, room-bound private memories, org write ownership, empty-match for scope-without-id (`:186-244`) |
-| `retrieval.ts` | `describe("retrieval helpers")` — tokenization, title containment, vector floors, blend bonus, near-duplicates, citations (`:245-308`) |
-| `dream.ts` | `describe("extraction parsing")` — fenced JSON, verified→belief downgrade, cap enforcement, unknown loop ids (`:309-346`) |
-| `beliefs.ts` | `describe("belief engine")` — redaction + supersedes link, visible-only contradictions, lineage stopping at unreadable rows (`:347-392`) |
-| `open-loops.ts` | `describe("open loops")` — owner-scoped updates, markdown formatting, roomless listing (`:393-429`) |
-| `graph.ts` | `describe("knowledge graph")` — wikilink slugification, supersedes preserved on rewrite, invisible root, level-wide BFS (`:430-493`) |
-| `service.ts` recall/`applyInsights` | ranking + reinforcement split, exclusion defaults, private-vs-shared insight placement, restatement merging, loop dedup/resolution (`:581-753`) |
-| `embeddings.ts` | `describe("embedding providers")` — OpenAI index ordering, Gemini header auth, Voyage `input_type`, redacted HTTP errors, unknown provider → null (`:754-803`) |
-| `background.ts` | `describe("background queue")` — runs tasks and survives failures (`:804-818`) |
+| Module                              | Coverage in `memory.test.ts`                                                                                                                                   |
+| :---------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `salience.ts`                       | `describe("retention & composite score")` — half-life decay, use reinforcement, epistemic weighting, withdrawn zero (`:141-185`)                               |
+| `sources.ts`                        | `describe("access control")` — scope isolation, room-bound private memories, org write ownership, empty-match for scope-without-id (`:186-244`)                |
+| `retrieval.ts`                      | `describe("retrieval helpers")` — tokenization, title containment, vector floors, blend bonus, near-duplicates, citations (`:245-308`)                         |
+| `dream.ts`                          | `describe("extraction parsing")` — fenced JSON, verified→belief downgrade, cap enforcement, unknown loop ids (`:309-346`)                                      |
+| `beliefs.ts`                        | `describe("belief engine")` — redaction + supersedes link, visible-only contradictions, lineage stopping at unreadable rows (`:347-392`)                       |
+| `open-loops.ts`                     | `describe("open loops")` — owner-scoped updates, markdown formatting, roomless listing (`:393-429`)                                                            |
+| `graph.ts`                          | `describe("knowledge graph")` — wikilink slugification, supersedes preserved on rewrite, invisible root, level-wide BFS (`:430-493`)                           |
+| `service.ts` recall/`applyInsights` | ranking + reinforcement split, exclusion defaults, private-vs-shared insight placement, restatement merging, loop dedup/resolution (`:581-753`)                |
+| `embeddings.ts`                     | `describe("embedding providers")` — OpenAI index ordering, Gemini header auth, Voyage `input_type`, redacted HTTP errors, unknown provider → null (`:754-803`) |
+| `background.ts`                     | `describe("background queue")` — runs tasks and survives failures (`:804-818`)                                                                                 |
 
 Related docs: [./overview.md](./overview.md) · [./tools.md](./tools.md) · [./scheduler-and-mirror.md](./scheduler-and-mirror.md) · [../../database/schema-memory.md](../../database/schema-memory.md) · [../../core/redact-and-breakers.md](../../core/redact-and-breakers.md)

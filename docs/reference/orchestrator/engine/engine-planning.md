@@ -39,10 +39,10 @@ The tool is registered unconditionally for engine v2 runs in `buildTools` (`src/
 
 Two pure helpers support nudging and completion checks:
 
-| Function | Behaviour |
-| :--- | :--- |
+| Function                                    | Behaviour                                                                                                                                                                     |
+| :------------------------------------------ | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `shouldNudgePlan(stepsCount, currentPlan?)` | `stepsCount > 8 && (!currentPlan \|\| currentPlan.length === 0)` — the "make a plan" nudge after 8 planless steps (loop-control implements the same rule live via `hasPlan`). |
-| `isPlanFinished(plan?)` | True only for a non-empty plan where every item is `status: "done"`. |
+| `isPlanFinished(plan?)`                     | True only for a non-empty plan where every item is `status: "done"`.                                                                                                          |
 
 DB tables touched: `run_transcripts` (read + update `plan`). Realtime events: `run.plan`.
 
@@ -50,11 +50,11 @@ DB tables touched: `run_transcripts` (read + update `plan`). Realtime events: `r
 
 Three separate consumers key off plan state, all in the engine loop:
 
-| Consumer | Rule | Effect |
-| :--- | :--- | :--- |
-| `onStepEnd` (run.ts) | A step containing `update_plan` is classified `kind: "plan"` (after `subagent`, before `recall`/`tool`) | `run_steps.kind` and the `run.step` label show plan work |
-| `decidePrepareStep` (loop-control) | `planToolAvailable && stepNumber > 8 && !hasPlan(steps)` and `"plan"` not yet in `sentReminders` | One-time `systemReminder`: "This task is taking many steps. Call update_plan with a short checklist of the remaining work so progress stays visible to the room." |
-| `shouldNudgePlan(stepsCount, plan)` (here) | `stepsCount > 8` with an empty/absent plan | Pure predicate; available to callers that check plan state outside `prepareStep` |
+| Consumer                                   | Rule                                                                                                    | Effect                                                                                                                                                            |
+| :----------------------------------------- | :------------------------------------------------------------------------------------------------------ | :---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `onStepEnd` (run.ts)                       | A step containing `update_plan` is classified `kind: "plan"` (after `subagent`, before `recall`/`tool`) | `run_steps.kind` and the `run.step` label show plan work                                                                                                          |
+| `decidePrepareStep` (loop-control)         | `planToolAvailable && stepNumber > 8 && !hasPlan(steps)` and `"plan"` not yet in `sentReminders`        | One-time `systemReminder`: "This task is taking many steps. Call update_plan with a short checklist of the remaining work so progress stays visible to the room." |
+| `shouldNudgePlan(stepsCount, plan)` (here) | `stepsCount > 8` with an empty/absent plan                                                              | Pure predicate; available to callers that check plan state outside `prepareStep`                                                                                  |
 
 `isPlanFinished(plan)` complements this for callers that want to gate completion on the checklist (false for empty/null plans, true only when every item is `"done"`).
 
@@ -76,13 +76,16 @@ This is the wrapper `startAgentTurn` uses for engine v2 (`src/engine/index.ts:37
 1. Run the turn normally (`run(args)` — i.e. `runEngineTurn`).
 2. If the result is not `{ errorKind: "request_too_large", modelKey }`, return it as-is.
 3. Compute the next attempt's limit with `nextLeanLimit(first.errorLimitTokens, first.leanLimit ?? null)` (from `lean.ts`): the provider's reported limit, else 60% of the last tried. `null` (limit below 1500 tokens, or not shrinking) → give up and return the first result; the friendly `request_too_large` error is shown.
-4. **Persist the learned limit** on the agent row so *all future turns with that model run lean*:
+4. **Persist the learned limit** on the agent row so _all future turns with that model run lean_:
 
 ```typescript
-await db.update(agents).set({
-  params: sql`jsonb_set(coalesce(${agents.params}, '{}'::jsonb), '{requestLimits}',
+await db
+  .update(agents)
+  .set({
+    params: sql`jsonb_set(coalesce(${agents.params}, '{}'::jsonb), '{requestLimits}',
     coalesce(${agents.params} -> 'requestLimits', '{}'::jsonb) || jsonb_build_object(${key}::text, ${next}::int))`,
-}).where(eq(agents.id, args.agent.id))
+  })
+  .where(eq(agents.id, args.agent.id))
 ```
 
 Failure to persist is logged (`[fit-model] could not remember the limit`) but does not stop the retry.
@@ -94,7 +97,7 @@ One retry per turn; a second refusal surfaces in plain words via `userFacingErro
 
 DB tables touched: `agents` (params update), `messages` (delete failed attempt). Realtime events: `message.removed`.
 
-Note: this is model *fitting* (context-size adaptation), not model *selection* — per-room/per-agent model choice lives in `applyRoomModel` / `resolveAgentModel` (see [runner-llm.md](./runner-llm.md)).
+Note: this is model _fitting_ (context-size adaptation), not model _selection_ — per-room/per-agent model choice lives in `applyRoomModel` / `resolveAgentModel` (see [runner-llm.md](./runner-llm.md)).
 
 ```mermaid
 flowchart TD
@@ -113,7 +116,7 @@ flowchart TD
 
 The learned limit interacts with the rest of the engine as follows:
 
-- `runEngineTurn` reads it at the start (`leanLimitTokens(agent.params, limitKey)`) — so the *lean* flag applies to the retried turn and to **every later turn** with that model, not just the retry.
+- `runEngineTurn` reads it at the start (`leanLimitTokens(agent.params, limitKey)`) — so the _lean_ flag applies to the retried turn and to **every later turn** with that model, not just the retry.
 - The returned `TurnResult` from the retry carries `modelKey` and `leanLimit`, which the harness metadata and usage views use to show which limit the reply ran under.
 - `leanParams` then shrinks `contextBudgetTokens` to 60% and `maxOutputTokens` to 25% of the stored limit, and `LEAN_HISTORY = 8` replaces the default 40-message conversation load; canvas context loading is skipped entirely.
 
@@ -127,13 +130,13 @@ Skills are reusable procedure documents stored in the `skills` table. Content is
 
 Five built-in skills, ids formatted `builtin:<slug>` (version 1, source `builtin`):
 
-| Slug | Purpose |
-| :--- | :--- |
-| `write-and-run-tests` | Write focused tests, execute them, ensure all pass before concluding. |
-| `open-pr` | `git_status`/`git_diff` inspection, clean Conventional-Commits commit. |
-| `research-citations` | Multi-source research with cross-referenced citations. |
-| `summarise-thread` | Thread → Goal & Context / Key Decisions / Status & Blockers / Action Items. |
-| `canvas-landing-page` | Read canvas, plan layout, `canvas_patch`/`canvas_write`, review rendering. |
+| Slug                  | Purpose                                                                     |
+| :-------------------- | :-------------------------------------------------------------------------- |
+| `write-and-run-tests` | Write focused tests, execute them, ensure all pass before concluding.       |
+| `open-pr`             | `git_status`/`git_diff` inspection, clean Conventional-Commits commit.      |
+| `research-citations`  | Multi-source research with cross-referenced citations.                      |
+| `summarise-thread`    | Thread → Goal & Context / Key Decisions / Status & Blockers / Action Items. |
+| `canvas-landing-page` | Read canvas, plan layout, `canvas_patch`/`canvas_write`, review rendering.  |
 
 ### Visibility & scoping
 
@@ -143,7 +146,7 @@ Five built-in skills, ids formatted `builtin:<slug>` (version 1, source `builtin
 
 ### Index for the system prompt
 
-`getAvailableSkills(orgId): Promise<Array<{ slug, description }>>` merges approved local skills with the seed skills (seeds override collisions), sorted by slug, descriptions sliced to 200 chars. `runEngineTurn` calls it before building context (failures swallowed → empty index), and `buildEngineContext` renders it as the `Available Skills (use load_skill({ slug }) to inspect full procedure):` block in system 2 — inside the *slow-changing* system message so the cacheable prefix stays stable while the org's skill set evolves. `formatSkillsDigest(skillsList)` renders the same list standalone (used by other callers).
+`getAvailableSkills(orgId): Promise<Array<{ slug, description }>>` merges approved local skills with the seed skills (seeds override collisions), sorted by slug, descriptions sliced to 200 chars. `runEngineTurn` calls it before building context (failures swallowed → empty index), and `buildEngineContext` renders it as the `Available Skills (use load_skill({ slug }) to inspect full procedure):` block in system 2 — inside the _slow-changing_ system message so the cacheable prefix stays stable while the org's skill set evolves. `formatSkillsDigest(skillsList)` renders the same list standalone (used by other callers).
 
 ### Content safety invariants
 
@@ -170,14 +173,14 @@ export interface SkillSummary {
 
 Six `ToolSpec`s; `dangerous: false` for read/propose, `dangerous: true` for the two human-approval-gated mutations:
 
-| Tool | Dangerous | Behaviour |
-| :--- | :--- | :--- |
-| `load_skill` | no | By slug (`^[a-z0-9]+(?:-[a-z0-9]+)*$`, ≤ 80 chars). Seeds return inline; otherwise the row must be approved-local. Returns `{ id, slug, title, description, version, source, visibility, instructions, files, guidance }`. Public marketplace skills must be installed first. |
-| `search_skills` | no | ILIKE search over slug/title/description across discoverable skills (query escaped, ≤ 200 chars, `limit` default 20 / max 50). Seeds are matched by substring and merged with DB rows; ordering: slug (C collation), org-own first, then id. Returns `{ skills: SkillSummary[], hasMore, guidance }`. |
-| `inspect_skill` | no | By id (`uuid` or `builtin:<slug>`), including exact version and inert content; works for public skills without installing. |
-| `install_skill` | **yes** | Copies an inspected **public** skill at `expectedVersion` into the org inside a transaction with `SELECT … FOR SHARE` (source version/visibility held stable), validates content, inserts with `visibility: "org"` and `onConflictDoNothing` on `(orgId, slug)`. Slug collision → error. Returns `{ status: "installed", …, pinnedFrom: { id, version }, autoUpdate: false }` — never follows upstream updates. |
-| `propose_skill` | no | Creates a skill at `version: 1`, `visibility: "proposed"` with `body ≤ 32,000` chars and up to 16 files (each ≤ 16,000 chars; total ≤ 64,000; only `.md|.txt|.json|.csv|.yaml|.yml` paths without dot-segments or `__proto__`/`prototype`/`constructor` parts). Not loadable until `publish_skill` is human-approved. |
-| `publish_skill` | **yes** | Approves the org's proposed skill at the exact `expectedVersion`: transaction with `SELECT … FOR UPDATE` on `{ id, orgId, visibility: "proposed", version }`, re-validates content, sets `visibility: "org"`. Organization-only — never shared publicly. Stale proposals error ("Proposed skill changed; request approval again"). |
+| Tool            | Dangerous | Behaviour                                                                                                                                                                                                                                                                                                                                                                                                       |
+| :-------------- | :-------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `load_skill`    | no        | By slug (`^[a-z0-9]+(?:-[a-z0-9]+)*$`, ≤ 80 chars). Seeds return inline; otherwise the row must be approved-local. Returns `{ id, slug, title, description, version, source, visibility, instructions, files, guidance }`. Public marketplace skills must be installed first.                                                                                                                                   |
+| `search_skills` | no        | ILIKE search over slug/title/description across discoverable skills (query escaped, ≤ 200 chars, `limit` default 20 / max 50). Seeds are matched by substring and merged with DB rows; ordering: slug (C collation), org-own first, then id. Returns `{ skills: SkillSummary[], hasMore, guidance }`.                                                                                                           |
+| `inspect_skill` | no        | By id (`uuid` or `builtin:<slug>`), including exact version and inert content; works for public skills without installing.                                                                                                                                                                                                                                                                                      |
+| `install_skill` | **yes**   | Copies an inspected **public** skill at `expectedVersion` into the org inside a transaction with `SELECT … FOR SHARE` (source version/visibility held stable), validates content, inserts with `visibility: "org"` and `onConflictDoNothing` on `(orgId, slug)`. Slug collision → error. Returns `{ status: "installed", …, pinnedFrom: { id, version }, autoUpdate: false }` — never follows upstream updates. |
+| `propose_skill` | no        | Creates a skill at `version: 1`, `visibility: "proposed"` with `body ≤ 32,000` chars and up to 16 files (each ≤ 16,000 chars; total ≤ 64,000; only `.md                                                                                                                                                                                                                                                         | .txt | .json | .csv | .yaml | .yml`paths without dot-segments or`**proto**`/`prototype`/`constructor`parts). Not loadable until`publish_skill` is human-approved. |
+| `publish_skill` | **yes**   | Approves the org's proposed skill at the exact `expectedVersion`: transaction with `SELECT … FOR UPDATE` on `{ id, orgId, visibility: "proposed", version }`, re-validates content, sets `visibility: "org"`. Organization-only — never shared publicly. Stale proposals error ("Proposed skill changed; request approval again").                                                                              |
 
 All schemas are `.strict()`; both approval-gated tools call `signal?.throwIfAborted()` before and inside their transactions so aborting the run cancels cleanly.
 
@@ -187,12 +190,12 @@ DB tables touched: `skills` only.
 
 ## 🧪 Tests
 
-| Test file | Covers |
-| :--- | :--- |
+| Test file                      | Covers                                                                          |
+| :----------------------------- | :------------------------------------------------------------------------------ |
 | `src/engine/plan-tool.test.ts` | `shouldNudgePlan` boundaries (8 vs 9 steps, empty/null plan), `isPlanFinished`. |
-| `src/engine/fit-model.test.ts` | Retry-once semantics, limit learning, failure removal. |
-| `src/engine/skills.test.ts` | Seed merging, slug safety, tool execute paths (262 lines). |
-| (via `packages/core`) | `reducePlan` / `updatePlanSchema` in core's own suite. |
+| `src/engine/fit-model.test.ts` | Retry-once semantics, limit learning, failure removal.                          |
+| `src/engine/skills.test.ts`    | Seed merging, slug safety, tool execute paths (262 lines).                      |
+| (via `packages/core`)          | `reducePlan` / `updatePlanSchema` in core's own suite.                          |
 
 ---
 

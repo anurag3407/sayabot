@@ -1,6 +1,6 @@
 # Turn Planning & Modes (`turns.ts`)
 
-When a message lands in a room, something has to decide *which agent speaks next, in what role, and in what order*. `turns.ts` is that decision logic as pure functions: given the trigger text and the room's agent roster it returns a `PlannedTurn[]` queue. It knows nothing about PostgreSQL, advisory locks, or LLM calls — the orchestrator's coordinator owns the session loop and simply asks this module to plan, then re-plans after every agent reply.
+When a message lands in a room, something has to decide _which agent speaks next, in what role, and in what order_. `turns.ts` is that decision logic as pure functions: given the trigger text and the room's agent roster it returns a `PlannedTurn[]` queue. It knows nothing about PostgreSQL, advisory locks, or LLM calls — the orchestrator's coordinator owns the session loop and simply asks this module to plan, then re-plans after every agent reply.
 
 Source files: `packages/core/src/turns.ts` (113 lines), `packages/core/src/turns.test.ts` (113 lines)
 
@@ -32,11 +32,11 @@ export function planMentionsTurn(input: MentionsPlanInput): PlannedTurn[]
 
 Resolves the `@handle` mentions in the trigger text (via `resolveMentions` from `mentions.ts`, see [./capabilities-and-mentions.md](./capabilities-and-mentions.md)) and queues each tagged agent as a `responder`, **in mention order**. `excludeAgentIds` filters agents out — the coordinator passes the triggering agent's own id when an agent (rather than a human) fired the trigger, so a bot never gets queued by its own message.
 
-The doc comment states the design intent clearly (`turns.ts:18-21`): *the hard turn cap is enforced by the pre-turn breaker, so an over-full queue produces a visible halt instead of silence*. Planning is therefore deliberately uncapped — `@all_bots` in a 20-agent room yields 20 queued turns — and [./redact-and-breakers.md](./redact-and-breakers.md) describes the breaker that halts runaway sessions.
+The doc comment states the design intent clearly (`turns.ts:18-21`): _the hard turn cap is enforced by the pre-turn breaker, so an over-full queue produces a visible halt instead of silence_. Planning is therefore deliberately uncapped — `@all_bots` in a 20-agent room yields 20 queued turns — and [./redact-and-breakers.md](./redact-and-breakers.md) describes the breaker that halts runaway sessions.
 
 ## 🤖 Bot follow-ups — `planBotFollowUps`
 
-After a *bot* replies in mentions mode, any peer the bot tagged in its reply is appended to the running queue:
+After a _bot_ replies in mentions mode, any peer the bot tagged in its reply is appended to the running queue:
 
 ```typescript
 /** Bots mentioned by another bot are appended to the queue, never the sender itself. */
@@ -73,7 +73,7 @@ The `reason?: string` field exists on `PlannedTurn`, but the planners in this mo
 
 Moderated rooms are model-driven: an LLM moderator turn picks who speaks next. Core provides two pieces of that flow:
 
-- **`planModeratedMentions(input)`** (`turns.ts:80-84`) — identical to `planMentionsTurn` without exclusions: *explicit mentions win in moderated rooms*, i.e. if the human `@`-tagged an agent, that agent is queued directly and the moderator is bypassed for this trigger.
+- **`planModeratedMentions(input)`** (`turns.ts:80-84`) — identical to `planMentionsTurn` without exclusions: _explicit mentions win in moderated rooms_, i.e. if the human `@`-tagged an agent, that agent is queued directly and the moderator is bypassed for this trigger.
 - **`validateModeratorChoice(choice, roomAgents)`** (`turns.ts:92-100`) — guards the moderator model's free-text choice:
 
 ```typescript
@@ -85,7 +85,7 @@ export function validateModeratorChoice(
 ): { next: string; valid: boolean }
 ```
 
-Returns `{ next: choice, valid: true }` when the choice names a real room agent, `{ next: "human", valid: true }` when the moderator explicitly hands the floor to a human, and `{ next: "human", valid: false }` otherwise. The `valid: false` case is the important one: *a hallucinated agent id can never wedge the room* — the turn falls back to the human instead of stalling.
+Returns `{ next: choice, valid: true }` when the choice names a real room agent, `{ next: "human", valid: true }` when the moderator explicitly hands the floor to a human, and `{ next: "human", valid: false }` otherwise. The `valid: false` case is the important one: _a hallucinated agent id can never wedge the room_ — the turn falls back to the human instead of stalling.
 
 - **`validateLeadPlan(next, also, roomAgents)`** checks the lead agent's whole plan. The lead picks `next` and may add more agents for the same message in `also`, in order. Unknown and repeated ids are dropped, and the list is capped at **`LEAD_MAX_AGENTS = 3`**. `next === "human"`, or no usable id at all, returns `{ agentIds: [], human: true }`; otherwise it returns `{ agentIds, human: false }`. A hallucinated first pick doesn't discard valid `also` picks.
 
@@ -95,10 +95,10 @@ The coordinator's lead step (`decideModerator` in `apps/orchestrator/src/coordin
 
 `debateRoleInstruction(role)` (`turns.ts:102-113`) maps debate roles to prompt text (and returns `null` for non-debate roles such as `responder`):
 
-| Role | Instruction (abridged) |
-| :--- | :--- |
-| `producer` | "Put forward the strongest concrete proposal or answer. Be specific and brief." |
-| `critic` | "Identify concrete flaws, omissions or risks in what previous participants said. Do not simply agree." |
+| Role         | Instruction (abridged)                                                                                           |
+| :----------- | :--------------------------------------------------------------------------------------------------------------- |
+| `producer`   | "Put forward the strongest concrete proposal or answer. Be specific and brief."                                  |
+| `critic`     | "Identify concrete flaws, omissions or risks in what previous participants said. Do not simply agree."           |
 | `summarizer` | "Reconcile the discussion into a decision with open questions and next actions. Do not introduce new arguments." |
 
 ## 🔄 How the coordinator drives a session
@@ -143,12 +143,12 @@ Key behaviours of the surrounding loop that consume these plans:
 
 ## ✅ What `turns.test.ts` covers
 
-| Suite | Verified behaviour |
-| :--- | :--- |
-| `planMentionsTurn` | Queues tagged agents in mention order (`"@carol @alice @bob"` → `["c","a","b"]`); `@all_bots` expands to the full roster in room order; no mentions → empty queue; cap intentionally left to the breaker |
-| `planBotFollowUps` | Appends mentioned peers but never the sender (`"@bob … @alice"` from agent `a` → `["b"]`); no peers → nothing |
-| `planDebateTurns` | Producer/critic/summarizer assignment follows `debateOrder`; explicit mentions narrow the cast (two mentions → producer + summarizer, no critic); a one-agent debate is a single `producer` |
-| `orderDebateAgents` | Unknown order ids land last, remaining agents preserve room order (`["c","missing"]` over `[a,b,c]` → `[c,a,b]`) |
-| moderated mode | Explicit mentions are honoured; `validateModeratorChoice` accepts a real agent id and the literal `"human"`, and returns `{ next: "human", valid: false }` for a ghost id; `debateRoleInstruction` returns text for the three debate roles and `null` for `responder` |
+| Suite               | Verified behaviour                                                                                                                                                                                                                                                    |
+| :------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `planMentionsTurn`  | Queues tagged agents in mention order (`"@carol @alice @bob"` → `["c","a","b"]`); `@all_bots` expands to the full roster in room order; no mentions → empty queue; cap intentionally left to the breaker                                                              |
+| `planBotFollowUps`  | Appends mentioned peers but never the sender (`"@bob … @alice"` from agent `a` → `["b"]`); no peers → nothing                                                                                                                                                         |
+| `planDebateTurns`   | Producer/critic/summarizer assignment follows `debateOrder`; explicit mentions narrow the cast (two mentions → producer + summarizer, no critic); a one-agent debate is a single `producer`                                                                           |
+| `orderDebateAgents` | Unknown order ids land last, remaining agents preserve room order (`["c","missing"]` over `[a,b,c]` → `[c,a,b]`)                                                                                                                                                      |
+| moderated mode      | Explicit mentions are honoured; `validateModeratorChoice` accepts a real agent id and the literal `"human"`, and returns `{ next: "human", valid: false }` for a ghost id; `debateRoleInstruction` returns text for the three debate roles and `null` for `responder` |
 
 Related docs: [./overview-and-types.md](./overview-and-types.md), [./capabilities-and-mentions.md](./capabilities-and-mentions.md), [./redact-and-breakers.md](./redact-and-breakers.md), [./engine-and-computers.md](./engine-and-computers.md), [./asks.md](./asks.md)

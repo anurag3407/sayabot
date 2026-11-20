@@ -102,7 +102,8 @@ export function MessageItem({
   const streaming = message.status === "streaming"
 
   const mine = !isAgent && selfId !== null && message.senderId === selfId
-  const quietTime = "text-[11px] text-faint md:opacity-0 md:transition-opacity md:group-hover:opacity-100"
+  const quietTime =
+    "text-[11px] text-faint md:opacity-0 md:transition-opacity md:group-hover:opacity-100"
   const folded = isAgent ? splitThinking(message.content) : null
   const answer = folded ? folded.answer : message.content
   const showThinking = Boolean(folded && (folded.thinking || folded.open))
@@ -124,7 +125,13 @@ export function MessageItem({
       {mine ? null : (
         <div>
           {continued ? null : (
-            <Avatar name={message.senderName} kind={message.senderType} size="md" src={avatarUrl} className="h-8 w-8" />
+            <Avatar
+              name={message.senderName}
+              kind={message.senderType}
+              size="md"
+              src={avatarUrl}
+              className="h-8 w-8"
+            />
           )}
         </div>
       )}
@@ -136,7 +143,9 @@ export function MessageItem({
             continued && "md:absolute md:right-4 md:top-0 md:z-[1]",
           )}
         >
-          {mine || continued ? null : <span className="text-[13px] font-medium text-text">{message.senderName}</span>}
+          {mine || continued ? null : (
+            <span className="text-[13px] font-medium text-text">{message.senderName}</span>
+          )}
           {typeof message.metadata.dmToHandle === "string" ? (
             <span
               className="text-[12px] text-accent"
@@ -146,7 +155,11 @@ export function MessageItem({
             </span>
           ) : null}
           {inThread ? <span className="text-[12px] text-faint">in thread</span> : null}
-          <time dateTime={message.createdAt} title={fullTime(message.createdAt)} className={quietTime}>
+          <time
+            dateTime={message.createdAt}
+            title={fullTime(message.createdAt)}
+            className={quietTime}
+          >
             {clockTime(message.createdAt)}
           </time>
           {streaming ? (
@@ -156,7 +169,12 @@ export function MessageItem({
           ) : message.status === "error" ? (
             <span className="text-[12px] text-danger">Error</span>
           ) : null}
-          <span className={cn("flex items-center gap-3 transition-opacity md:opacity-0 md:focus-within:opacity-100 md:group-hover:opacity-100", !mine && "ml-auto")}>
+          <span
+            className={cn(
+              "flex items-center gap-3 transition-opacity md:opacity-0 md:focus-within:opacity-100 md:group-hover:opacity-100",
+              !mine && "ml-auto",
+            )}
+          >
             {isAgent ? (
               <InspectTraceButton
                 orgSlug={orgSlug}
@@ -192,7 +210,8 @@ export function MessageItem({
               mine && "ml-auto rounded-tl-[22px] rounded-tr-md",
             )}
           >
-            {!isAgent && (message.metadata.command === "goal" || message.metadata.command === "btw") ? (
+            {!isAgent &&
+            (message.metadata.command === "goal" || message.metadata.command === "btw") ? (
               <span className="mb-1 block text-[11px] font-medium uppercase tracking-[0.06em] text-accent">
                 {message.metadata.command === "goal" ? "Goal" : "Side note"}
               </span>
@@ -204,7 +223,10 @@ export function MessageItem({
         {isAgent && !streaming && answer && replySourceLabel(message.metadata) ? (
           <p className="mt-1 pl-1 text-[11px] text-faint">{replySourceLabel(message.metadata)}</p>
         ) : streaming && !answer && !showThinking ? (
-          <p className="mt-1 inline-flex items-center gap-1.5 rounded-[22px] rounded-tl-md bg-panel px-4 py-3 text-[14px] text-faint" aria-label="Thinking">
+          <p
+            className="mt-1 inline-flex items-center gap-1.5 rounded-[22px] rounded-tl-md bg-panel px-4 py-3 text-[14px] text-faint"
+            aria-label="Thinking"
+          >
             <span className="thinking-dot" />
             <span className="thinking-dot [animation-delay:150ms]" />
             <span className="thinking-dot [animation-delay:300ms]" />
@@ -213,11 +235,29 @@ export function MessageItem({
 
         {message.metadata.voiceNote && typeof message.metadata.voiceNote === "object" ? (
           <VoiceNoteBubble
-            audioUrl={String((message.metadata.voiceNote as Record<string, unknown>).audioUrl || "")}
-            durationMs={typeof (message.metadata.voiceNote as Record<string, unknown>).durationMs === "number" ? ((message.metadata.voiceNote as Record<string, unknown>).durationMs as number) : undefined}
-            text={typeof (message.metadata.voiceNote as Record<string, unknown>).text === "string" ? ((message.metadata.voiceNote as Record<string, unknown>).text as string) : undefined}
-            provider={typeof (message.metadata.voiceNote as Record<string, unknown>).provider === "string" ? ((message.metadata.voiceNote as Record<string, unknown>).provider as string) : undefined}
-            voice={typeof (message.metadata.voiceNote as Record<string, unknown>).voice === "string" ? ((message.metadata.voiceNote as Record<string, unknown>).voice as string) : undefined}
+            audioUrl={String(
+              (message.metadata.voiceNote as Record<string, unknown>).audioUrl || "",
+            )}
+            durationMs={
+              typeof (message.metadata.voiceNote as Record<string, unknown>).durationMs === "number"
+                ? ((message.metadata.voiceNote as Record<string, unknown>).durationMs as number)
+                : undefined
+            }
+            text={
+              typeof (message.metadata.voiceNote as Record<string, unknown>).text === "string"
+                ? ((message.metadata.voiceNote as Record<string, unknown>).text as string)
+                : undefined
+            }
+            provider={
+              typeof (message.metadata.voiceNote as Record<string, unknown>).provider === "string"
+                ? ((message.metadata.voiceNote as Record<string, unknown>).provider as string)
+                : undefined
+            }
+            voice={
+              typeof (message.metadata.voiceNote as Record<string, unknown>).voice === "string"
+                ? ((message.metadata.voiceNote as Record<string, unknown>).voice as string)
+                : undefined
+            }
           />
         ) : null}
 
@@ -235,7 +275,9 @@ export function MessageItem({
               reason={null}
               canAdmin={canAdmin}
               showRetry={showRetry}
-              kind={typeof message.metadata.errorKind === "string" ? message.metadata.errorKind : null}
+              kind={
+                typeof message.metadata.errorKind === "string" ? message.metadata.errorKind : null
+              }
             />
           </div>
         ) : null}

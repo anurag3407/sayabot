@@ -6,7 +6,10 @@ import type { ToolSpec } from "../tools/audited"
 function spec(name: string, execute: ToolSpec["execute"] = async () => ({ ok: true })): ToolSpec {
   return { name, execute, description: "", schema: z.object({}), dangerous: false }
 }
-const proof = { passed: true, checks: [{ kind: "test", command: "pnpm test", cwd: "/repo", exitCode: 0, durationMs: 100 }] }
+const proof = {
+  passed: true,
+  checks: [{ kind: "test", command: "pnpm test", cwd: "/repo", exitCode: 0, durationMs: 100 }],
+}
 
 describe("RunEvidence", () => {
   it("does not require code tests for ordinary read-only tasks", async () => {
@@ -30,7 +33,15 @@ describe("RunEvidence", () => {
   it("cannot accept checks that overlap a concurrent edit", async () => {
     const evidence = new RunEvidence()
     let finish!: () => void
-    const write = evidence.wrap(spec("fs_write", () => new Promise<void>((resolve) => { finish = resolve })))
+    const write = evidence.wrap(
+      spec(
+        "fs_write",
+        () =>
+          new Promise<void>((resolve) => {
+            finish = resolve
+          }),
+      ),
+    )
     const pending = write.execute({})
     await evidence.wrap(spec("verify_workspace", async () => proof)).execute({})
     finish()
@@ -41,10 +52,16 @@ describe("RunEvidence", () => {
   it("does not preserve a pass after a failed check or partial mutation", async () => {
     const evidence = new RunEvidence()
     await evidence.wrap(spec("verify_workspace", async () => proof)).execute({})
-    const mutation = evidence.wrap(spec("fs_edit", async () => { throw new Error("partial write") }))
+    const mutation = evidence.wrap(
+      spec("fs_edit", async () => {
+        throw new Error("partial write")
+      }),
+    )
     await expect(mutation.execute({})).rejects.toThrow("partial write")
     expect(evidence.snapshot().status).toBe("pending")
-    await evidence.wrap(spec("verify_workspace", async () => ({ ...proof, passed: false }))).execute({})
+    await evidence
+      .wrap(spec("verify_workspace", async () => ({ ...proof, passed: false })))
+      .execute({})
     expect(evidence.snapshot().status).toBe("failed")
   })
 

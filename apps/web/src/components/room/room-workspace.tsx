@@ -563,11 +563,7 @@ export function RoomWorkspace({
                 <FileText className="h-4 w-4 text-faint" />
                 Open canvas
               </button>
-              <button
-                type="button"
-                className={menuItem}
-                onClick={() => setVoiceSettingsOpen(true)}
-              >
+              <button type="button" className={menuItem} onClick={() => setVoiceSettingsOpen(true)}>
                 <Volume2 className="h-4 w-4 text-faint" />
                 Voice settings
               </button>
@@ -674,7 +670,7 @@ export function RoomWorkspace({
         orgSlug={data.org.slug}
         roomId={data.room.id}
         roomName={data.room.name}
-        agent={dmAgent ?? (data.roomAgents[0]?.agent ?? null)}
+        agent={dmAgent ?? data.roomAgents[0]?.agent ?? null}
         messages={realtime.messages}
         toolCalls={realtime.toolCalls}
         turnState={realtime.turnState}

@@ -4,14 +4,7 @@ import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { queueRoomMessage } from "@/lib/orchestrator"
-import {
-  adminRoomAccess,
-  audit,
-  errorMessage,
-  fail,
-  field,
-  ok,
-} from "@/lib/actions/shared"
+import { adminRoomAccess, audit, errorMessage, fail, field, ok } from "@/lib/actions/shared"
 import type { ActionResult } from "@/lib/types"
 
 function meetingPrompt(args: {
@@ -40,7 +33,10 @@ async function postMeetingPrompt(args: {
   userId: string
 }): Promise<{ messageId: string | null; queued: boolean }> {
   const admin = createAdminClient()
-  const { data: agents } = await admin.from("room_agents").select("agent_id").eq("room_id", args.roomId)
+  const { data: agents } = await admin
+    .from("room_agents")
+    .select("agent_id")
+    .eq("room_id", args.roomId)
   if (!agents?.length) {
     await admin.from("messages").insert({
       room_id: args.roomId,
@@ -52,7 +48,12 @@ async function postMeetingPrompt(args: {
     })
     return { messageId: null, queued: false }
   }
-  const content = meetingPrompt({ kind: args.kind, title: args.title, agenda: args.agenda, wake: args.wake })
+  const content = meetingPrompt({
+    kind: args.kind,
+    title: args.title,
+    agenda: args.agenda,
+    wake: args.wake,
+  })
   const { data: message, error } = await admin
     .from("messages")
     .insert({
@@ -85,7 +86,12 @@ export async function startMeetingNowAction(
   if ("error" in check) return fail(check.error)
   const title = field(formData, "title") || "Meeting"
   const agenda = field(formData, "agenda")
-  const duration = z.coerce.number().int().min(5).max(240).safeParse(field(formData, "durationMinutes") || "15")
+  const duration = z.coerce
+    .number()
+    .int()
+    .min(5)
+    .max(240)
+    .safeParse(field(formData, "durationMinutes") || "15")
   if (title.length > 80) return fail("Keep the meeting title under 80 characters")
   if (agenda.length > 4_000) return fail("Keep the agenda under 4,000 characters")
   if (!duration.success) return fail("Choose a meeting length between 5 and 240 minutes")
@@ -120,7 +126,10 @@ export async function startMeetingNowAction(
       userId: check.access.user.id,
     })
     if (prompt.messageId) {
-      await admin.from("meetings").update({ prompt_message_id: prompt.messageId }).eq("id", meeting.id)
+      await admin
+        .from("meetings")
+        .update({ prompt_message_id: prompt.messageId })
+        .eq("id", meeting.id)
     }
   } catch (error) {
     await admin.from("meetings").update({ status: "ended" }).eq("id", meeting.id)
@@ -142,7 +151,11 @@ export async function startScheduledMeetingAction(
   meetingId: string,
 ): Promise<ActionResult> {
   const admin = createAdminClient()
-  const { data: meeting } = await admin.from("meetings").select("*").eq("id", meetingId).maybeSingle()
+  const { data: meeting } = await admin
+    .from("meetings")
+    .select("*")
+    .eq("id", meetingId)
+    .maybeSingle()
   if (!meeting) return fail("Meeting not found")
   const check = await adminRoomAccess(orgSlug, meeting.room_id)
   if ("error" in check) return fail(check.error)
@@ -168,7 +181,10 @@ export async function startScheduledMeetingAction(
       userId: check.access.user.id,
     })
     if (prompt.messageId) {
-      await admin.from("meetings").update({ prompt_message_id: prompt.messageId }).eq("id", meetingId)
+      await admin
+        .from("meetings")
+        .update({ prompt_message_id: prompt.messageId })
+        .eq("id", meetingId)
     }
   } catch (error) {
     await admin.from("meetings").update({ status: "scheduled" }).eq("id", meetingId)
@@ -180,7 +196,11 @@ export async function startScheduledMeetingAction(
 
 export async function endMeetingAction(orgSlug: string, meetingId: string): Promise<ActionResult> {
   const admin = createAdminClient()
-  const { data: meeting } = await admin.from("meetings").select("*").eq("id", meetingId).maybeSingle()
+  const { data: meeting } = await admin
+    .from("meetings")
+    .select("*")
+    .eq("id", meetingId)
+    .maybeSingle()
   if (!meeting) return fail("Meeting not found")
   const check = await adminRoomAccess(orgSlug, meeting.room_id)
   if ("error" in check) return fail(check.error)
@@ -214,7 +234,11 @@ export async function endMeetingAction(orgSlug: string, meetingId: string): Prom
 
 export async function wakeBotsAction(orgSlug: string, meetingId: string): Promise<ActionResult> {
   const admin = createAdminClient()
-  const { data: meeting } = await admin.from("meetings").select("*").eq("id", meetingId).maybeSingle()
+  const { data: meeting } = await admin
+    .from("meetings")
+    .select("*")
+    .eq("id", meetingId)
+    .maybeSingle()
   if (!meeting) return fail("Meeting not found")
   const check = await adminRoomAccess(orgSlug, meeting.room_id)
   if ("error" in check) return fail(check.error)
@@ -248,7 +272,12 @@ export async function scheduleMeetingAction(
   const title = field(formData, "title")
   const agenda = field(formData, "agenda")
   const when = field(formData, "startsAt")
-  const duration = z.coerce.number().int().min(5).max(240).safeParse(field(formData, "durationMinutes") || "15")
+  const duration = z.coerce
+    .number()
+    .int()
+    .min(5)
+    .max(240)
+    .safeParse(field(formData, "durationMinutes") || "15")
   if (title.length < 2 || title.length > 80) return fail("Give the meeting a short title")
   if (agenda.length > 4_000) return fail("Keep the agenda under 4,000 characters")
   if (!duration.success) return fail("Choose a meeting length between 5 and 240 minutes")

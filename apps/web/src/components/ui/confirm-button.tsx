@@ -56,7 +56,9 @@ export function ConfirmButton({
 
   return (
     <span className="inline-flex flex-wrap items-center gap-2" role="group" aria-label={label}>
-      {warning ? <span className="max-w-xs text-[12px] leading-snug text-warn">{warning}</span> : null}
+      {warning ? (
+        <span className="max-w-xs text-[12px] leading-snug text-warn">{warning}</span>
+      ) : null}
       <Button
         size={size}
         variant="danger"

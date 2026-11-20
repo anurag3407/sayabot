@@ -17,25 +17,40 @@ import type { ActionResult } from "@/lib/types"
 export async function answerRequestsAs(
   who: { user: User; client?: SupabaseClient<any> },
   input: {
-  orgSlug: string
-  taskId?: string
-  packetId?: string
-  answer?: string
-  alsoPost?: boolean
-  /** Keyed answers for a structured question: { start_date: "June 2027" }. */
-  itemAnswers?: Record<string, string>
-  answers?: Array<{ taskId: string; answer: string; alsoPost?: boolean; itemAnswers?: Record<string, string> }>
+    orgSlug: string
+    taskId?: string
+    packetId?: string
+    answer?: string
+    alsoPost?: boolean
+    /** Keyed answers for a structured question: { start_date: "June 2027" }. */
+    itemAnswers?: Record<string, string>
+    answers?: Array<{
+      taskId: string
+      answer: string
+      alsoPost?: boolean
+      itemAnswers?: Record<string, string>
+    }>
   },
 ): Promise<ActionResult> {
   const user = who.user
-  const items: Array<{ taskId: string; answer: string; alsoPost?: boolean; itemAnswers?: Record<string, string> }> = []
+  const items: Array<{
+    taskId: string
+    answer: string
+    alsoPost?: boolean
+    itemAnswers?: Record<string, string>
+  }> = []
   const hasItemAnswers = (value?: Record<string, string>) =>
     Boolean(value && Object.values(value).some((v) => typeof v === "string" && v.trim()))
   if (input.answers && input.answers.length > 0) {
     for (const a of input.answers) {
       const trimmed = a.answer?.trim() ?? ""
       if (trimmed || hasItemAnswers(a.itemAnswers)) {
-        items.push({ taskId: a.taskId, answer: trimmed, alsoPost: a.alsoPost, itemAnswers: a.itemAnswers })
+        items.push({
+          taskId: a.taskId,
+          answer: trimmed,
+          alsoPost: a.alsoPost,
+          itemAnswers: a.itemAnswers,
+        })
       }
     }
   } else if (input.taskId && (input.answer?.trim() || hasItemAnswers(input.itemAnswers))) {
@@ -55,16 +70,16 @@ export async function answerRequestsAs(
 
   for (const item of items) {
     if (item.answer.length > 4_000) return fail("Keep answers under 4,000 characters")
-    const { data: task } = await admin
-      .from("tasks")
-      .select("*")
-      .eq("id", item.taskId)
-      .maybeSingle()
+    const { data: task } = await admin.from("tasks").select("*").eq("id", item.taskId).maybeSingle()
     if (!task) continue
     if (task.kind !== "request") continue
     if (task.status === "done") continue
 
-    const access = await getRoomAccess(input.orgSlug, task.room_id, who.client ? { client: who.client, user } : undefined)
+    const access = await getRoomAccess(
+      input.orgSlug,
+      task.room_id,
+      who.client ? { client: who.client, user } : undefined,
+    )
     if (!access) continue
     if (
       task.requested_from_user_id &&
@@ -113,7 +128,8 @@ export async function answerRequestsAs(
         })
       }
       // A free-text note with no items left to fill closes the question too.
-      const remaining = item.answer && applied.remaining > 0 && !applied.answeredKeys.length ? 0 : applied.remaining
+      const remaining =
+        item.answer && applied.remaining > 0 && !applied.answeredKeys.length ? 0 : applied.remaining
       const delivered = await deliverItemAnswers({
         taskId: task.id,
         roomId: task.room_id,
@@ -190,7 +206,12 @@ export async function answerRequestsAs(
 
   // One answer fills every other open question in the room that was waiting on the same key.
   for (const [roomId, orgId] of touchedRooms) {
-    await resolveOpenAsksFromFacts({ orgId, roomIds: [roomId], userId: user.id, skipTaskIds: answeredTaskIds })
+    await resolveOpenAsksFromFacts({
+      orgId,
+      roomIds: [roomId],
+      userId: user.id,
+      skipTaskIds: answeredTaskIds,
+    })
   }
 
   return ok(items.length > 1 ? `${items.length} answers submitted` : "Answer sent")

@@ -60,11 +60,11 @@ interface LocalWorkspaceSnapshot {
 
 Mirrors `planCloudHandoff` in `@sayabot/core`:
 
-| cloudReady | planActive | copied | Step |
-| :--- | :--- | :--- | :--- |
-| ✓ | ✓ | ✗ | `copy_to_cloud` |
-| — | ✗ | ✓ | `copy_back` |
-| anything else | | | `none` |
+| cloudReady    | planActive | copied | Step            |
+| :------------ | :--------- | :----- | :-------------- |
+| ✓             | ✓          | ✗      | `copy_to_cloud` |
+| —             | ✗          | ✓      | `copy_back`     |
+| anything else |            |        | `none`          |
 
 ### The sync (`syncCloudHandoff`, `src/cloud-handoff.ts:106`)
 
@@ -86,11 +86,11 @@ A second call while the plan is active does nothing (`none`). Errors thrown by t
 
 Where the desktop state lives on disk (`app.getPath("userData")`):
 
-| File | Writer | Purpose |
-| :--- | :--- | :--- |
-| `cloud-home.json` | `useServer` / `syncCloudHandoff`'s `writeSnapshot` | This Mac's last known snapshot (bots/chats/routines/keys/computers) |
-| `cloud-home-return.json` | `onCopiedBack` / `useServer` | Flag `{ cloudUrl }` meaning "the Cloud copy came back down; import it into the next non-Cloud server" |
-| `sayabot-host.json` | host registration | `hostId`/`hostToken` used to authenticate all handoff calls |
+| File                     | Writer                                             | Purpose                                                                                               |
+| :----------------------- | :------------------------------------------------- | :---------------------------------------------------------------------------------------------------- |
+| `cloud-home.json`        | `useServer` / `syncCloudHandoff`'s `writeSnapshot` | This Mac's last known snapshot (bots/chats/routines/keys/computers)                                   |
+| `cloud-home-return.json` | `onCopiedBack` / `useServer`                       | Flag `{ cloudUrl }` meaning "the Cloud copy came back down; import it into the next non-Cloud server" |
+| `sayabot-host.json`      | host registration                                  | `hostId`/`hostToken` used to authenticate all handoff calls                                           |
 
 On first launch — no snapshot file yet — `readCloudSnapshot` (`src/host.ts:132`) substitutes the bots found on this computer by `detectLocalAgents` as a minimal `{ bots, chats: [], routines: [], keys: [] }`, so a brand-new Mac still has something to copy up when a plan activates.
 

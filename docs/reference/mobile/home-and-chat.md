@@ -71,16 +71,16 @@ It is also opened by the "New chat" home-screen quick action, which lands via `r
 
 A **private** Supabase channel `room:<roomId>` carries the live events (`useRoomRealtime.ts:84-162`):
 
-| Event | Effect |
-| :-- | :-- |
-| `message.delta` | Appends `payload.delta` to the message with `payload.messageId`, or creates a new streaming agent message (`useRoomRealtime.ts:91-113`) |
-| `message.done` | Clears `agentStatus`, sets the message's `status` from `payload.status` (`116-123`) |
-| `turn.state` | Records `payload.activeAgentId` (`126-128`) |
-| `tool.output` | Appends `payload.chunk` to `terminalLogs`, capped at the last 150 chunks (`131-133`) |
-| `run.step` | Sets `agentStatus` to `payload.label` (`136-138`) |
-| `run.status` | Maps `thinking` / `tool` / `compacting` to fixed status strings ("Agent is thinking...", "Running computer command...", "Compacting memory..."); any other non-`waiting*` status clears it (`141-146`) |
-| `tool.approval_requested` | Populates the `PendingApproval` `{ toolCallId, toolName, agentId, args }` card (`149-156`) |
-| `tool.approval_resolved` | Clears the approval card (`159-161`) |
+| Event                     | Effect                                                                                                                                                                                                 |
+| :------------------------ | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `message.delta`           | Appends `payload.delta` to the message with `payload.messageId`, or creates a new streaming agent message (`useRoomRealtime.ts:91-113`)                                                                |
+| `message.done`            | Clears `agentStatus`, sets the message's `status` from `payload.status` (`116-123`)                                                                                                                    |
+| `turn.state`              | Records `payload.activeAgentId` (`126-128`)                                                                                                                                                            |
+| `tool.output`             | Appends `payload.chunk` to `terminalLogs`, capped at the last 150 chunks (`131-133`)                                                                                                                   |
+| `run.step`                | Sets `agentStatus` to `payload.label` (`136-138`)                                                                                                                                                      |
+| `run.status`              | Maps `thinking` / `tool` / `compacting` to fixed status strings ("Agent is thinking...", "Running computer command...", "Compacting memory..."); any other non-`waiting*` status clears it (`141-146`) |
+| `tool.approval_requested` | Populates the `PendingApproval` `{ toolCallId, toolName, agentId, args }` card (`149-156`)                                                                                                             |
+| `tool.approval_resolved`  | Clears the approval card (`159-161`)                                                                                                                                                                   |
 
 The event names mirror the orchestrator's realtime broadcast topics (see [Realtime & events](../architecture/realtime-and-events.md)).
 
@@ -145,15 +145,15 @@ When `approval` is set, a warn-bordered card renders above the composer: `approv
 
 A pure line-based splitter (unit-tested in `tests/unit/markdown.test.ts`) producing a `Block[]` (`markdown.ts:3-67`):
 
-| Block | Trigger |
-| :-- | :-- |
-| `code` | Fenced ``` ``` ``` blocks (everything between, joined) |
-| `img` | Whole-line `![alt](url)` |
-| `file` | Whole-line `[📎 name](url)` (the upload attachment shape) |
-| `li` | `- * •` bullets or `1.` / `1)` numbers (mark preserved) |
-| `h` | `#`–`####` headings (rendered bold at 17px, no real hierarchy) |
-| `quote` | `> ` prefix |
-| `p` | Anything else, paragraph-joined |
+| Block   | Trigger                                                        |
+| :------ | :------------------------------------------------------------- |
+| `code`  | Fenced ` ` ``` blocks (everything between, joined)             |
+| `img`   | Whole-line `![alt](url)`                                       |
+| `file`  | Whole-line `[📎 name](url)` (the upload attachment shape)      |
+| `li`    | `- * •` bullets or `1.` / `1)` numbers (mark preserved)        |
+| `h`     | `#`–`####` headings (rendered bold at 17px, no real hierarchy) |
+| `quote` | `> ` prefix                                                    |
+| `p`     | Anything else, paragraph-joined                                |
 
 ### `RichText` renderer
 

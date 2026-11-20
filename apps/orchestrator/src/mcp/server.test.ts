@@ -41,7 +41,8 @@ describe("mesh MCP server", () => {
     const post = MCP_TOOLS.find((t) => t.name === "post_message")!
     expect(post.schema.safeParse({ content: "" }).success).toBe(false)
     expect(
-      post.schema.safeParse({ room_id: "7d6f2f0e-8f1c-4c55-9a0f-2f4b8f7b9b11", content: "hi" }).success,
+      post.schema.safeParse({ room_id: "7d6f2f0e-8f1c-4c55-9a0f-2f4b8f7b9b11", content: "hi" })
+        .success,
     ).toBe(true)
     expect(post.schema.safeParse({ text: "hello via text alias" }).success).toBe(true)
   })
@@ -99,9 +100,11 @@ describe("mesh MCP server", () => {
       connectionUrl: "http://localhost:3000/mcp/tr_test",
     })
 
-    expect(msg).toContain("Hi! This is my own room for \"AnuragMishra's room\" on Saaya.")
+    expect(msg).toContain('Hi! This is my own room for "AnuragMishra\'s room" on Saaya.')
     expect(msg).toContain("• connect with the link below")
-    expect(msg).toContain("• check in with the other bots every hour on the hour, 9:00 AM to 5:00 PM Asia/Calcutta time")
+    expect(msg).toContain(
+      "• check in with the other bots every hour on the hour, 9:00 AM to 5:00 PM Asia/Calcutta time",
+    )
     expect(msg).toContain("This message is for codex.")
     expect(msg).toContain("http://localhost:3000/mcp/tr_test")
   })

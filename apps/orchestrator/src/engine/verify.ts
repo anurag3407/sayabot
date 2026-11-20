@@ -58,22 +58,26 @@ export async function runCriticVerification(args: CriticReviewArgs): Promise<Cri
   if (args.cycle >= 2) {
     return {
       pass: false,
-      reasons: ["Verification remains unresolved after the revision limit (2). Human review is required."],
+      reasons: [
+        "Verification remains unresolved after the revision limit (2). Human review is required.",
+      ],
     }
   }
 
   try {
-  const resolved = await resolveAgentCheapModel(args.agent)
-  const allowedSpecs = (args.availableToolSpecs ?? []).filter((s) => READ_ONLY_TOOL_NAMES.has(s.name))
+    const resolved = await resolveAgentCheapModel(args.agent)
+    const allowedSpecs = (args.availableToolSpecs ?? []).filter((s) =>
+      READ_ONLY_TOOL_NAMES.has(s.name),
+    )
 
-  const criticTools: ToolSet = toAuditedTools(allowedSpecs, {
-    orgId: args.orgId,
-    roomId: args.roomId,
-    agentId: args.agent.id,
-    runId: null,
-    messageId: null,
-    scrub: args.scrub,
-  })
+    const criticTools: ToolSet = toAuditedTools(allowedSpecs, {
+      orgId: args.orgId,
+      roomId: args.roomId,
+      agentId: args.agent.id,
+      runId: null,
+      messageId: null,
+      scrub: args.scrub,
+    })
 
     const result = await generateText({
       model: resolved.model,
@@ -82,7 +86,7 @@ export async function runCriticVerification(args: CriticReviewArgs): Promise<Cri
         "Your job is to verify whether the work actually satisfies what was asked.",
         "You have read-only tools to inspect files, git status, and canvas if necessary.",
         "Be constructive: if rejecting, clearly explain what is missing or incorrect.",
-        "Format your answer as JSON with: { \"pass\": boolean, \"reasons\": string[], \"feedback\": string }",
+        'Format your answer as JSON with: { "pass": boolean, "reasons": string[], "feedback": string }',
       ].join("\n"),
       prompt: [
         `Task Requirements:`,
@@ -106,7 +110,10 @@ export async function runCriticVerification(args: CriticReviewArgs): Promise<Cri
       tokens: tokensFrom(result.totalUsage),
       kind: "verify",
     })
-    const cleaned = result.text.trim().replace(/^```json\s*/, "").replace(/\s*```$/, "")
+    const cleaned = result.text
+      .trim()
+      .replace(/^```json\s*/, "")
+      .replace(/\s*```$/, "")
     const parsed = JSON.parse(cleaned)
     const validated = criticResponseSchema.parse(parsed)
     return {
@@ -117,7 +124,9 @@ export async function runCriticVerification(args: CriticReviewArgs): Promise<Cri
   } catch (err) {
     return {
       pass: false,
-      reasons: [`Critic could not verify the work: ${err instanceof Error ? err.message : String(err)}`],
+      reasons: [
+        `Critic could not verify the work: ${err instanceof Error ? err.message : String(err)}`,
+      ],
     }
   }
 }

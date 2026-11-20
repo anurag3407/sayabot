@@ -39,18 +39,18 @@ Client components feed this into `useActionState`, which is why the canonical fo
 
 ## 🧰 Shared helpers (`shared.ts`)
 
-| Helper | Location | Purpose |
-| :--- | :--- | :--- |
-| `field(form, name)` | `shared.ts:16` | Reads a form field as a trimmed string, non-strings become `""`. |
-| `optionalField(form, name)` | `shared.ts:21` | Same, but empty string becomes `null`. |
-| `parseJsonObject(text)` | `shared.ts:26` | Parses a JSON-object text field (agent `params`, connector config) and rejects arrays/non-objects. |
-| `errorMessage(error)` | `shared.ts:39` | Normalizes anything thrown by Supabase into a string. |
-| `slugify(value)` | `shared.ts:47` | Lowercase, non-alphanumerics to `-`, trimmed, max 48 chars. |
-| `uniqueOrgSlug(base)` | `shared.ts:62` | Slug generator for new workspaces: tries `root`, `root-2`, … `root-51`, skipping the `RESERVED_SLUGS` set (`api`, `auth`, `login`, `onboarding`, `privacy`, `terms`, …, `shared.ts:57`), falling back to a base36 timestamp suffix. |
-| `adminOrgAccess(slug)` | `shared.ts:74` | Loads `OrgAccess` and requires the caller to be an org admin (`owner` or `admin`, see `isOrgAdmin` at `apps/web/src/lib/auth.ts:111`). Returns `{ access }` or `{ error }`. |
-| `adminRoomAccess(slug, roomId)` | `shared.ts:83` | Loads `RoomAccess` and requires `access.canAdmin` — a room-level `admin` role or an org admin (`apps/web/src/lib/auth.ts:172`). |
-| `audit(args)` | `shared.ts:93` | Inserts a row into `audit_logs` with `org_id`, `actor_type` (default `"user"`), `actor_id`, `action`, `target`, `metadata`. Failure is logged, never thrown — audit must not break the mutation. |
-| `revalidateOrg(orgSlug)` | `shared.ts:116` | Calls `revalidatePath("/" + orgSlug, "layout")` so every server-rendered page in the workspace refreshes. The action's response already carries the re-rendered page, so client callers must **not** follow it with `router.refresh()` (that renders the whole workspace a second time). |
+| Helper                          | Location        | Purpose                                                                                                                                                                                                                                                                                  |
+| :------------------------------ | :-------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `field(form, name)`             | `shared.ts:16`  | Reads a form field as a trimmed string, non-strings become `""`.                                                                                                                                                                                                                         |
+| `optionalField(form, name)`     | `shared.ts:21`  | Same, but empty string becomes `null`.                                                                                                                                                                                                                                                   |
+| `parseJsonObject(text)`         | `shared.ts:26`  | Parses a JSON-object text field (agent `params`, connector config) and rejects arrays/non-objects.                                                                                                                                                                                       |
+| `errorMessage(error)`           | `shared.ts:39`  | Normalizes anything thrown by Supabase into a string.                                                                                                                                                                                                                                    |
+| `slugify(value)`                | `shared.ts:47`  | Lowercase, non-alphanumerics to `-`, trimmed, max 48 chars.                                                                                                                                                                                                                              |
+| `uniqueOrgSlug(base)`           | `shared.ts:62`  | Slug generator for new workspaces: tries `root`, `root-2`, … `root-51`, skipping the `RESERVED_SLUGS` set (`api`, `auth`, `login`, `onboarding`, `privacy`, `terms`, …, `shared.ts:57`), falling back to a base36 timestamp suffix.                                                      |
+| `adminOrgAccess(slug)`          | `shared.ts:74`  | Loads `OrgAccess` and requires the caller to be an org admin (`owner` or `admin`, see `isOrgAdmin` at `apps/web/src/lib/auth.ts:111`). Returns `{ access }` or `{ error }`.                                                                                                              |
+| `adminRoomAccess(slug, roomId)` | `shared.ts:83`  | Loads `RoomAccess` and requires `access.canAdmin` — a room-level `admin` role or an org admin (`apps/web/src/lib/auth.ts:172`).                                                                                                                                                          |
+| `audit(args)`                   | `shared.ts:93`  | Inserts a row into `audit_logs` with `org_id`, `actor_type` (default `"user"`), `actor_id`, `action`, `target`, `metadata`. Failure is logged, never thrown — audit must not break the mutation.                                                                                         |
+| `revalidateOrg(orgSlug)`        | `shared.ts:116` | Calls `revalidatePath("/" + orgSlug, "layout")` so every server-rendered page in the workspace refreshes. The action's response already carries the re-rendered page, so client callers must **not** follow it with `router.refresh()` (that renders the whole workspace a second time). |
 
 ---
 
@@ -102,18 +102,18 @@ Two wrappers exist:
 
 ### Endpoints invoked from the web app
 
-| Web helper | Orchestrator endpoint | Used for |
-| :--- | :--- | :--- |
-| `queueRoomMessage(roomId, messageId)` (`orchestrator.ts:34`) | `POST /internal/room-message` | Kicks the turn coordinator after a message row is committed. |
-| `stopRunInOrchestrator(runId)` (`orchestrator.ts:38`) | `POST /internal/runs/:runId/stop` | Halt buttons in traces and rooms. |
-| `runRoutineInOrchestrator(routineId)` (`orchestrator.ts:42`) | `POST /internal/routines/:routineId/run` | Run-now buttons on routines. |
-| `testWebSearchInOrchestrator(payload)` (`orchestrator.ts:46`) | `POST /internal/tools/test-web-search` (20 s) | Search-provider settings test. |
-| `testDocumentOcrInOrchestrator(payload)` (`orchestrator.ts:74`) | `POST /internal/tools/test-document-ocr` (25 s) | Document-tool settings test. |
-| `testAgentInOrchestrator(agentId, orgId)` (`orchestrator.ts:112`) | `POST /internal/agents/:agentId/test` (30 s) | "Test agent" button; returns reply text, model, latency. |
-| `restoreCanvasInOrchestrator(canvasId, userId, snapshot)` (`orchestrator.ts:147`) | `POST /internal/canvases/:canvasId/restore` (30 s) | Canvas version rollback. |
-| `mutateTaskInOrchestrator(input)` (`orchestrator.ts:155`) | `POST /internal/tasks/mutate` | Task board writes (status, assignment, comments) that must flow through the orchestrator's event pipeline. |
-| `recordMacToolEvents(jobId, hostId, events)` (`orchestrator.ts:220`) | `POST /internal/local-jobs/:jobId/events` | Tool cards from agents running on a user's Mac. |
-| `requestMacApproval(jobId, hostId, input)` (`orchestrator.ts:228`) | `POST /internal/local-jobs/:jobId/approval` | Approval requests raised by Mac-side jobs. |
+| Web helper                                                                        | Orchestrator endpoint                              | Used for                                                                                                   |
+| :-------------------------------------------------------------------------------- | :------------------------------------------------- | :--------------------------------------------------------------------------------------------------------- |
+| `queueRoomMessage(roomId, messageId)` (`orchestrator.ts:34`)                      | `POST /internal/room-message`                      | Kicks the turn coordinator after a message row is committed.                                               |
+| `stopRunInOrchestrator(runId)` (`orchestrator.ts:38`)                             | `POST /internal/runs/:runId/stop`                  | Halt buttons in traces and rooms.                                                                          |
+| `runRoutineInOrchestrator(routineId)` (`orchestrator.ts:42`)                      | `POST /internal/routines/:routineId/run`           | Run-now buttons on routines.                                                                               |
+| `testWebSearchInOrchestrator(payload)` (`orchestrator.ts:46`)                     | `POST /internal/tools/test-web-search` (20 s)      | Search-provider settings test.                                                                             |
+| `testDocumentOcrInOrchestrator(payload)` (`orchestrator.ts:74`)                   | `POST /internal/tools/test-document-ocr` (25 s)    | Document-tool settings test.                                                                               |
+| `testAgentInOrchestrator(agentId, orgId)` (`orchestrator.ts:112`)                 | `POST /internal/agents/:agentId/test` (30 s)       | "Test agent" button; returns reply text, model, latency.                                                   |
+| `restoreCanvasInOrchestrator(canvasId, userId, snapshot)` (`orchestrator.ts:147`) | `POST /internal/canvases/:canvasId/restore` (30 s) | Canvas version rollback.                                                                                   |
+| `mutateTaskInOrchestrator(input)` (`orchestrator.ts:155`)                         | `POST /internal/tasks/mutate`                      | Task board writes (status, assignment, comments) that must flow through the orchestrator's event pipeline. |
+| `recordMacToolEvents(jobId, hostId, events)` (`orchestrator.ts:220`)              | `POST /internal/local-jobs/:jobId/events`          | Tool cards from agents running on a user's Mac.                                                            |
+| `requestMacApproval(jobId, hostId, input)` (`orchestrator.ts:228`)                | `POST /internal/local-jobs/:jobId/approval`        | Approval requests raised by Mac-side jobs.                                                                 |
 
 Callers treat orchestrator errors as user-facing `ActionResult` failures (for example `testAgent` maps a failed test to `fail("Agent test failed: …")` with the error scrubbed through `redactSecrets` — `apps/web/src/lib/actions/agents.ts:269`).
 
@@ -138,14 +138,14 @@ Secrets never appear in action results in plaintext unless they were just genera
 
 ## 🗂️ Action file map
 
-| File | Domain |
-| :--- | :--- |
-| `agents.ts`, `bots.ts`, `bot-invites.ts`, `templates.ts` | Agent/bot CRUD, invites, templates |
-| `rooms.ts`, `room-state.ts`, `messages.ts` | Rooms, memberships, message sending |
-| `connectors.ts`, `keys.ts`, `vault.ts`, `vector-keys.ts`, `mcp.ts` | Connectors, provider keys, vault, MCP |
-| `orgs.ts`, `invites.ts`, `workspace-invites.ts`, `profile.ts`, `facts.ts`, `memory.ts`, `computers.ts`, `onboarding.ts`, `guest-merge.ts`, `phones.ts` | Workspace lifecycle and personal data |
-| `tasks.ts`, `canvas.ts`, `trace.ts`, `meetings.ts`, `marketplace.ts`, `desktop.ts`, `auth.ts` | Task board, canvas, traces, meetings, marketplace, desktop pairing, auth |
-| `pricing.ts` | Model pricing table (billing reference) |
+| File                                                                                                                                                   | Domain                                                                   |
+| :----------------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------- |
+| `agents.ts`, `bots.ts`, `bot-invites.ts`, `templates.ts`                                                                                               | Agent/bot CRUD, invites, templates                                       |
+| `rooms.ts`, `room-state.ts`, `messages.ts`                                                                                                             | Rooms, memberships, message sending                                      |
+| `connectors.ts`, `keys.ts`, `vault.ts`, `vector-keys.ts`, `mcp.ts`                                                                                     | Connectors, provider keys, vault, MCP                                    |
+| `orgs.ts`, `invites.ts`, `workspace-invites.ts`, `profile.ts`, `facts.ts`, `memory.ts`, `computers.ts`, `onboarding.ts`, `guest-merge.ts`, `phones.ts` | Workspace lifecycle and personal data                                    |
+| `tasks.ts`, `canvas.ts`, `trace.ts`, `meetings.ts`, `marketplace.ts`, `desktop.ts`, `auth.ts`                                                          | Task board, canvas, traces, meetings, marketplace, desktop pairing, auth |
+| `pricing.ts`                                                                                                                                           | Model pricing table (billing reference)                                  |
 
 Each domain file is documented in the sibling pages of this section.
 

@@ -38,13 +38,15 @@ async function resolveThread(
   if (root) {
     if (!UUID_RE.test(root)) return { ok: false, error: "invalid thread_id" }
     const message = await loadMessage(root)
-    if (!message || message.roomId !== roomId) return { ok: false, error: "thread not found in room" }
+    if (!message || message.roomId !== roomId)
+      return { ok: false, error: "thread not found in room" }
     if (message.threadRootId) root = message.threadRootId
   }
   if (replyTo) {
     if (!UUID_RE.test(replyTo)) return { ok: false, error: "invalid reply_to" }
     const target = await loadMessage(replyTo)
-    if (!target || target.roomId !== roomId) return { ok: false, error: "reply_to not found in room" }
+    if (!target || target.roomId !== roomId)
+      return { ok: false, error: "reply_to not found in room" }
     root = target.threadRootId ?? target.id
   }
   return { ok: true, threadRootId: root }
@@ -111,8 +113,14 @@ botRoutes.post("/v1/rooms/:roomId/messages/stream", async (c) => {
 
   const thread = await resolveThread(
     room.roomId,
-    c.req.query("thread_id") ?? c.req.header("x-sayabot-thread-id") ?? c.req.header("x-mesh-thread-id") ?? null,
-    c.req.query("reply_to") ?? c.req.header("x-sayabot-reply-to") ?? c.req.header("x-mesh-reply-to") ?? null,
+    c.req.query("thread_id") ??
+      c.req.header("x-sayabot-thread-id") ??
+      c.req.header("x-mesh-thread-id") ??
+      null,
+    c.req.query("reply_to") ??
+      c.req.header("x-sayabot-reply-to") ??
+      c.req.header("x-mesh-reply-to") ??
+      null,
   )
   if (!thread.ok) return c.json({ error: thread.error }, 400)
 
@@ -220,9 +228,7 @@ botRoutes.post("/v1/rooms/:roomId/messages/stream", async (c) => {
     })
     .where(eq(messages.id, row.id))
   chain = chain
-    .then(() =>
-      broadcast(room.roomId, { type: "message.done", messageId: row.id, status }),
-    )
+    .then(() => broadcast(room.roomId, { type: "message.done", messageId: row.id, status }))
     .catch(() => {})
   await chain
   await notifyBotReply({

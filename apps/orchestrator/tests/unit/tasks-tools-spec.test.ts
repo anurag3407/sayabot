@@ -2,11 +2,24 @@ import { describe, expect, it } from "vitest"
 import { taskTools } from "../../src/tools/builtins/tasks"
 
 describe("taskTools spec surface", () => {
-  const tools = taskTools({ roomId: "11111111-1111-4111-8111-111111111111", orgId: "22222222-2222-4222-8222-222222222222", agentId: "33333333-3333-4333-8333-333333333333", handle: "ada" })
+  const tools = taskTools({
+    roomId: "11111111-1111-4111-8111-111111111111",
+    orgId: "22222222-2222-4222-8222-222222222222",
+    agentId: "33333333-3333-4333-8333-333333333333",
+    handle: "ada",
+  })
 
   it("exposes the collab tool set with unique names", () => {
     const names = tools.map((t) => t.name)
-    expect(names).toEqual(expect.arrayContaining(["list_tasks", "create_task", "claim_task", "update_task", "report_checkin"]))
+    expect(names).toEqual(
+      expect.arrayContaining([
+        "list_tasks",
+        "create_task",
+        "claim_task",
+        "update_task",
+        "report_checkin",
+      ]),
+    )
     expect(new Set(names).size).toBe(names.length)
   })
 
@@ -23,10 +36,18 @@ describe("taskTools spec surface", () => {
     expect(create.schema.safeParse({ title: "Ship it" }).success).toBe(true)
     const claim = tools.find((t) => t.name === "claim_task")!
     expect(claim.schema.safeParse({ task_id: "not-a-uuid" }).success).toBe(false)
-    expect(claim.schema.safeParse({ task_id: "11111111-1111-4111-8111-111111111111" }).success).toBe(true)
+    expect(
+      claim.schema.safeParse({ task_id: "11111111-1111-4111-8111-111111111111" }).success,
+    ).toBe(true)
     const followup = tools.find((t) => t.name === "schedule_followup")!
     expect(followup.schema.safeParse({ in_minutes: 0, title: "x", note: "y" }).success).toBe(false)
-    expect(followup.schema.safeParse({ in_minutes: 15, title: "Check metrics", note: "Verify error rates" }).success).toBe(true)
+    expect(
+      followup.schema.safeParse({
+        in_minutes: 15,
+        title: "Check metrics",
+        note: "Verify error rates",
+      }).success,
+    ).toBe(true)
   })
 
   it("none of the board tools are marked dangerous (human gate lives elsewhere)", () => {

@@ -10,21 +10,21 @@ Source files: `apps/orchestrator/src/computers/vps.ts`, `apps/orchestrator/src/c
 
 A "VPS" is the person's own Linux server with Docker. Settings → AI providers → Computers and browser saves it one of two ways in `org_computer_settings`:
 
-| Way | Columns | How Sayabot connects |
-| :--- | :--- | :--- |
+| Way             | Columns                                                | How Sayabot connects                                                                                                                                                      |
+| :-------------- | :----------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Address and key | `vps_host`, `vps_user`, `vps_port`, sealed `vps_key_*` | `ssh -i <0600 temp file> -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=<SAYABOT_SSH_DIR or ~/.sayabot>/known_hosts -p <port> user@host` |
-| SSH config name | `vps_ssh_alias` | `ssh <alias>`, using the orchestrator machine's own `~/.ssh/config` and agent; no key stored |
+| SSH config name | `vps_ssh_alias`                                        | `ssh <alias>`, using the orchestrator machine's own `~/.ssh/config` and agent; no key stored                                                                              |
 
-`vpsTargetFromSettings(row, kek)` (`open-vps.ts`) turns the row into a `VpsTarget` — `{ kind: "host", host, user, port, privateKey }` (host wins; user defaults to `root`, port to 22; a key that will not decrypt becomes `null`) or `{ kind: "alias", alias }` — and `vpsTargetForOrg(orgId)` reads it for one workspace. Every ssh call starts with `-o BatchMode=yes -o ConnectTimeout=15 -o LogLevel=ERROR`, so key-based auth is mandatory and no prompt can hang a turn. `validateVpsTarget` refuses aliases outside `/^[A-Za-z0-9_.:@-]+$/` (*"Use the SSH config name of your server"*), hosts or aliases starting with `-`, bad user names and ports outside 1–65535. For a host target the private key is written to a fresh `mkdtemp` directory with mode 0600 for that one call and removed in `finally`; the server's host key is pinned on first use, so a changed host key is refused later.
+`vpsTargetFromSettings(row, kek)` (`open-vps.ts`) turns the row into a `VpsTarget` — `{ kind: "host", host, user, port, privateKey }` (host wins; user defaults to `root`, port to 22; a key that will not decrypt becomes `null`) or `{ kind: "alias", alias }` — and `vpsTargetForOrg(orgId)` reads it for one workspace. Every ssh call starts with `-o BatchMode=yes -o ConnectTimeout=15 -o LogLevel=ERROR`, so key-based auth is mandatory and no prompt can hang a turn. `validateVpsTarget` refuses aliases outside `/^[A-Za-z0-9_.:@-]+$/` (_"Use the SSH config name of your server"_), hosts or aliases starting with `-`, bad user names and ports outside 1–65535. For a host target the private key is written to a fresh `mkdtemp` directory with mode 0600 for that one call and removed in `finally`; the server's host key is pinned on first use, so a changed host key is refused later.
 
 For orientation, the three surfaces these files serve differ sharply in transport and ownership:
 
-| Surface | Transport | Home | Who sleeps it |
-| :--- | :--- | :--- | :--- |
-| `local_vm` | `ComputerClient` HTTP → computerd → agentd | `/home/bot` | computerd idle scan (10 min) |
-| `boat` | `BoatClient` REST → boat.dev | `/home/user` + `/tmp` | `sleepIdleBoats` scan (10 min idle, routine-aware) |
-| `vps` | `ssh` + `docker exec` | `/home/bot` | Nobody — Sayabot never stops the server |
-| `e2b` | E2B SDK → e2b.dev ([./e2b.md](./e2b.md)) | `/home/user` | E2B itself pauses it after 10 idle minutes |
+| Surface    | Transport                                  | Home                  | Who sleeps it                                      |
+| :--------- | :----------------------------------------- | :-------------------- | :------------------------------------------------- |
+| `local_vm` | `ComputerClient` HTTP → computerd → agentd | `/home/bot`           | computerd idle scan (10 min)                       |
+| `boat`     | `BoatClient` REST → boat.dev               | `/home/user` + `/tmp` | `sleepIdleBoats` scan (10 min idle, routine-aware) |
+| `vps`      | `ssh` + `docker exec`                      | `/home/bot`           | Nobody — Sayabot never stops the server            |
+| `e2b`      | E2B SDK → e2b.dev ([./e2b.md](./e2b.md))   | `/home/user`          | E2B itself pauses it after 10 idle minutes         |
 
 ### One container per bot
 
@@ -32,12 +32,12 @@ For orientation, the three surfaces these files serve differ sharply in transpor
 
 ### Lifecycle command: `vpsDesktopRemote(agentId, decision)`
 
-| `decision.action` | Remote command |
-| :--- | :--- |
+| `decision.action`    | Remote command                                                                                                                                          |
+| :------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `provision` / `wake` | `docker start <name> >/dev/null 2>&1 \|\| docker run -d --name <name> --restart unless-stopped -v <name>:/home/bot -w /home/bot <image> sleep infinity` |
-| `use` | `docker inspect -f '{{.State.Running}}' <name>` |
+| `use`                | `docker inspect -f '{{.State.Running}}' <name>`                                                                                                         |
 
-`<image>` is `SAYABOT_VPS_IMAGE` or `ubuntu:24.04`; `docker run` pulls it when the server does not have it, so `runVpsDesktop(target, agentId, decision)` allows 300 s. The remote string is refused if it contains `shutdown`, `poweroff`, `reboot` or `halt` (*"Sayabot does not turn that server off"*). `--restart unless-stopped` brings containers back after a server reboot. After a successful provision the select_computer apply callback stores `params.computer.vpsReady = true` on the bot.
+`<image>` is `SAYABOT_VPS_IMAGE` or `ubuntu:24.04`; `docker run` pulls it when the server does not have it, so `runVpsDesktop(target, agentId, decision)` allows 300 s. The remote string is refused if it contains `shutdown`, `poweroff`, `reboot` or `halt` (_"Sayabot does not turn that server off"_). `--restart unless-stopped` brings containers back after a server reboot. After a successful provision the select_computer apply callback stores `params.computer.vpsReady = true` on the bot.
 
 Placement: a bot **pinned** to `vps` (Works on → Cloud desktop → Self-hosted VPS) may start its container when it calls `select_computer`; a bot on Auto may do so only when `vps_start_automatically` is on (see [../../core/engine-and-computers.md](../../core/engine-and-computers.md)).
 
@@ -60,11 +60,11 @@ Placement: a bot **pinned** to `vps` (Works on → Cloud desktop → Self-hosted
 
 ### Inputs gathered in one `Promise.all` (`sleep.ts:49-64`)
 
-| Query | Purpose |
-| :--- | :--- |
-| `agents` (id, orgId, params), limit 200 | The bots whose `params.computer` may hold a running Boat |
+| Query                                                             | Purpose                                                                |
+| :---------------------------------------------------------------- | :--------------------------------------------------------------------- |
+| `agents` (id, orgId, params), limit 200                           | The bots whose `params.computer` may hold a running Boat               |
 | `routines` where `enabled = true` (agentId, nextRunAt), limit 200 | Earliest upcoming routine per agent — a desktop must stay awake for it |
-| `orgComputerSettings` (all rows) | Per-org Boat key (sealed) for the stop calls |
+| `orgComputerSettings` (all rows)                                  | Per-org Boat key (sealed) for the stop calls                           |
 
 The routine rows fold into a `nextByAgent` map of the smallest `nextRunAt` per agent (`sleep.ts:65-71`). Org keys are decrypted with `MESH_KEK` and passed through `boatCredential(own, process.env.SAYABOT_BOAT_TOKEN)` into a `orgId → token` map; orgs without their own key fall back to the Cloud relay token via `boatCredential(null, SAYABOT_BOAT_TOKEN)` (`sleep.ts:72-91`). A missing `MESH_KEK` is tolerated (`kek = ""`), as are per-row decryption failures.
 
@@ -78,12 +78,12 @@ boatShouldSleep({ now, lastUsedAt, nextRoutineAt, backgroundStartedAt, watching 
 
 `boatShouldSleep` keeps the desktop awake when any of these hold:
 
-| Condition | Effect |
-| :--- | :--- |
-| `watching === true` | Someone is watching the screen or holding the desktop — never sleep |
-| `now - backgroundStartedAt < BOAT_BACKGROUND_MAX_MS` (2 h) | A background command is inside its keep-awake window |
-| `nextRoutineAt` within ±30 min of `now` (`BOAT_ROUTINE_LOOKAHEAD_MS`) | A routine is about to run or just started — the desktop must be there |
-| `lastUsedAt === null` | `boatShouldSleep` alone would return true, but `idleBoatIds` pre-filters `row.lastUsedAt !== null`, so a Boat whose use was never recorded is **left alone** (`sleep.ts:21-25`: "A missing last-used time is left alone") |
+| Condition                                                             | Effect                                                                                                                                                                                                                    |
+| :-------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `watching === true`                                                   | Someone is watching the screen or holding the desktop — never sleep                                                                                                                                                       |
+| `now - backgroundStartedAt < BOAT_BACKGROUND_MAX_MS` (2 h)            | A background command is inside its keep-awake window                                                                                                                                                                      |
+| `nextRoutineAt` within ±30 min of `now` (`BOAT_ROUTINE_LOOKAHEAD_MS`) | A routine is about to run or just started — the desktop must be there                                                                                                                                                     |
+| `lastUsedAt === null`                                                 | `boatShouldSleep` alone would return true, but `idleBoatIds` pre-filters `row.lastUsedAt !== null`, so a Boat whose use was never recorded is **left alone** (`sleep.ts:21-25`: "A missing last-used time is left alone") |
 
 Otherwise it sleeps when `now - lastUsedAt >= BOAT_IDLE_MS` (10 minutes).
 
@@ -111,19 +111,19 @@ The orchestrator-side HTTP client for **computerd**, the daemon that manages loc
 
 ### Endpoints
 
-| Method | Path | Signature | Notes |
-| :--- | :--- | :--- | :--- |
-| `ensure` | `POST /v1/computers/:agentId/ensure` | `(agentId, orgId, profile: "standard" \| "browser")` → `{ status, ip? }` | Wakes/creates the agent's computer; `profile` matches `computerProfileEnum` |
-| `exec` | `POST /v1/computers/:agentId/exec` | `(agentId, { cmd, cwd?, env?, timeoutMs?, stdin?, runId?, onChunk? }, signal?)` → `ExecResult` | Streaming NDJSON, see below |
-| `readFile` | `POST .../files/read` | `ReadFileArgs` → `FilePage` | Paging reads |
-| `writeFile` | `POST .../files/write` | `{ path, content, encoding?, mode?, allowOverwriteLarge? }` → `{ bytes }` | `allowOverwriteLarge: true` is what the memory mirror passes |
-| `editFile` | `POST .../files/edit` | `{ path, oldString, newString, expectedHash?, replaceAll?, whitespace? }` → `{ ok, path, bytes, hash, previousHash, replacements, matchMode }` | Hash-guarded exact edit |
-| `applyPatch` | `POST .../files/patch` | `{ patchText }` → `{ ok, summary, files: PatchFileResult[] }` | Multi-file add/delete/update/move |
-| `codeIntelligence` | `POST .../code` | `{ action: "outline" \| "definition" \| "references" \| "diagnostics" \| "rename_preview", path, projectRoot?, line?, column?, newName?, maxResults? }` → `Record<string, unknown>` | TypeScript intelligence in the VM |
-| `listFiles` | `POST .../files/list` | `{ path?, depth? }` → `{ entries: FileEntry[] }` | `FileEntry = { path, type: "file"\|"directory"\|"other", size, mtime }` |
-| `browser` | `POST .../browser` | `(agentId, action, params)` → `unknown` | CDP-driven browser actions (`browser` profile) |
-| `stop` | `POST .../stop` | `(agentId)` → `{ ok }` | Sleep the computer |
-| `stats` | `GET .../stats` | `(agentId)` → `Record<string, unknown>` | Capacity/idle info |
+| Method             | Path                                 | Signature                                                                                                                                                                           | Notes                                                                       |
+| :----------------- | :----------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------- |
+| `ensure`           | `POST /v1/computers/:agentId/ensure` | `(agentId, orgId, profile: "standard" \| "browser")` → `{ status, ip? }`                                                                                                            | Wakes/creates the agent's computer; `profile` matches `computerProfileEnum` |
+| `exec`             | `POST /v1/computers/:agentId/exec`   | `(agentId, { cmd, cwd?, env?, timeoutMs?, stdin?, runId?, onChunk? }, signal?)` → `ExecResult`                                                                                      | Streaming NDJSON, see below                                                 |
+| `readFile`         | `POST .../files/read`                | `ReadFileArgs` → `FilePage`                                                                                                                                                         | Paging reads                                                                |
+| `writeFile`        | `POST .../files/write`               | `{ path, content, encoding?, mode?, allowOverwriteLarge? }` → `{ bytes }`                                                                                                           | `allowOverwriteLarge: true` is what the memory mirror passes                |
+| `editFile`         | `POST .../files/edit`                | `{ path, oldString, newString, expectedHash?, replaceAll?, whitespace? }` → `{ ok, path, bytes, hash, previousHash, replacements, matchMode }`                                      | Hash-guarded exact edit                                                     |
+| `applyPatch`       | `POST .../files/patch`               | `{ patchText }` → `{ ok, summary, files: PatchFileResult[] }`                                                                                                                       | Multi-file add/delete/update/move                                           |
+| `codeIntelligence` | `POST .../code`                      | `{ action: "outline" \| "definition" \| "references" \| "diagnostics" \| "rename_preview", path, projectRoot?, line?, column?, newName?, maxResults? }` → `Record<string, unknown>` | TypeScript intelligence in the VM                                           |
+| `listFiles`        | `POST .../files/list`                | `{ path?, depth? }` → `{ entries: FileEntry[] }`                                                                                                                                    | `FileEntry = { path, type: "file"\|"directory"\|"other", size, mtime }`     |
+| `browser`          | `POST .../browser`                   | `(agentId, action, params)` → `unknown`                                                                                                                                             | CDP-driven browser actions (`browser` profile)                              |
+| `stop`             | `POST .../stop`                      | `(agentId)` → `{ ok }`                                                                                                                                                              | Sleep the computer                                                          |
+| `stats`            | `GET .../stats`                      | `(agentId)` → `Record<string, unknown>`                                                                                                                                             | Capacity/idle info                                                          |
 
 `getComputerClient()` (`client.ts:274-280`) memoises one client for the process.
 

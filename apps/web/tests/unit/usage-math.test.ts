@@ -22,7 +22,15 @@ describe("usageByAgent", () => {
   it("sums every row for an agent across rooms, kinds and models", () => {
     const usage = usageByAgent([
       row({}),
-      row({ room_id: "r2", kind: "subagent", model: "claude-haiku", input_tokens: 1000, output_tokens: 50, cost_usd: 0.002, last_at: "2026-11-11T00:00:00Z" }),
+      row({
+        room_id: "r2",
+        kind: "subagent",
+        model: "claude-haiku",
+        input_tokens: 1000,
+        output_tokens: 50,
+        cost_usd: 0.002,
+        last_at: "2026-11-11T00:00:00Z",
+      }),
       row({ agent_id: "a2", requests: 5 }),
       row({ agent_id: null, requests: 9 }),
     ])

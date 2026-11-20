@@ -20,25 +20,25 @@ Every `/internal/*` request must present `ORCHESTRATOR_INTERNAL_SECRET`, either 
 
 These four endpoints are what make `$SECRET{...}` placeholders work **without the model ever seeing a secret** (Rule 1; the agent-facing side is [secrets-broker.md](../tools/secrets-broker.md)):
 
-| Endpoint | Purpose |
-| :--- | :--- |
-| `POST /internal/egress/identity` | Maps an egress request to an agent. Body: `{ proxySecret }` (hashed with `hashAgentApiKey` and matched against `agent_computers.proxy_secret_hash` — the microVM credential computerd derives) or `{ containerIp }` (matched against a `running` agent_computers row — the Docker path). Returns `{ ok, agentId, orgId }`; 401 `"invalid computer identity"` otherwise. |
-| `POST /internal/egress/resolve` | The placeholder broker. Body: `{ agentId, placeholder }`. Finds the agent's `agent_secret_grants` row (by `placeholder` string or grant id after stripping a `saaya_ph_` prefix) that is **not revoked and not expired**, joined to `vault_secrets`. Touches `lastUsedAt` on both rows asynchronously, then opens the sealed secret — `openSecret(grant.sealed, MESH_KEK)` — and returns `{ grantId, secretPlaintext, hostAllowlist, inject, methods, requiresApproval }`. 404 when no valid grant exists. |
-| `POST /internal/egress/approval` | Human gate for egress requests whose grant sets `requiresApproval`. Body: `{ agentId, grantId, url, method?, headers?, bodyPreview?, timeoutMs? (1 s–300 s) }`. Picks the agent's first room, inserts a `tool_calls` row (`toolName: "use_secret"`, `status: "pending_approval"`), broadcasts `tool.approval_requested` to the room, and **blocks** on `waitForApproval(toolCall.id, timeoutMs ?? 60_000)` (see [approvals.md](../tools/approvals.md)). Responds `{ status: "approved" | "rejected" | …, toolCallId }`; no room → `{ status: "rejected", reason: "no active room for agent" }`. |
-| `POST /internal/egress/violation` | Egress rejected a request (bad host, blocked IP…). Records an `audit_logs` row (`action: "egress.violation"`, target = host, metadata with reason/details) and broadcasts a `room.notice` (level `warn`) to every room the agent is in. |
-| `POST /internal/egress/usage` | Accepts `{ agentId, bytesTransferred, swapsCount }` and currently returns `{ ok: true }` — usage accounting from the proxy is validated but not persisted here yet. |
-| `GET /internal/egress/stream` | SSE channel for credential invalidation. Subscribes in-process to `vaultEmitter` (`vault-events.ts`) fed by the orchestrator's central control listener (`LISTEN vault_changed`) without allocating dedicated database pool connections, and forwards each notification as an SSE `vault_changed` event so egress can drop cached plaintext; heartbeats `ping` every 15 s after an initial `connected`. |
+| Endpoint                          | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| :-------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /internal/egress/identity`  | Maps an egress request to an agent. Body: `{ proxySecret }` (hashed with `hashAgentApiKey` and matched against `agent_computers.proxy_secret_hash` — the microVM credential computerd derives) or `{ containerIp }` (matched against a `running` agent_computers row — the Docker path). Returns `{ ok, agentId, orgId }`; 401 `"invalid computer identity"` otherwise.                                                                                                                                    |
+| `POST /internal/egress/resolve`   | The placeholder broker. Body: `{ agentId, placeholder }`. Finds the agent's `agent_secret_grants` row (by `placeholder` string or grant id after stripping a `saaya_ph_` prefix) that is **not revoked and not expired**, joined to `vault_secrets`. Touches `lastUsedAt` on both rows asynchronously, then opens the sealed secret — `openSecret(grant.sealed, MESH_KEK)` — and returns `{ grantId, secretPlaintext, hostAllowlist, inject, methods, requiresApproval }`. 404 when no valid grant exists. |
+| `POST /internal/egress/approval`  | Human gate for egress requests whose grant sets `requiresApproval`. Body: `{ agentId, grantId, url, method?, headers?, bodyPreview?, timeoutMs? (1 s–300 s) }`. Picks the agent's first room, inserts a `tool_calls` row (`toolName: "use_secret"`, `status: "pending_approval"`), broadcasts `tool.approval_requested` to the room, and **blocks** on `waitForApproval(toolCall.id, timeoutMs ?? 60_000)` (see [approvals.md](../tools/approvals.md)). Responds `{ status: "approved"                     | "rejected" | …, toolCallId }`; no room → `{ status: "rejected", reason: "no active room for agent" }`. |
+| `POST /internal/egress/violation` | Egress rejected a request (bad host, blocked IP…). Records an `audit_logs` row (`action: "egress.violation"`, target = host, metadata with reason/details) and broadcasts a `room.notice` (level `warn`) to every room the agent is in.                                                                                                                                                                                                                                                                    |
+| `POST /internal/egress/usage`     | Accepts `{ agentId, bytesTransferred, swapsCount }` and currently returns `{ ok: true }` — usage accounting from the proxy is validated but not persisted here yet.                                                                                                                                                                                                                                                                                                                                        |
+| `GET /internal/egress/stream`     | SSE channel for credential invalidation. Subscribes in-process to `vaultEmitter` (`vault-events.ts`) fed by the orchestrator's central control listener (`LISTEN vault_changed`) without allocating dedicated database pool connections, and forwards each notification as an SSE `vault_changed` event so egress can drop cached plaintext; heartbeats `ping` every 15 s after an initial `connected`.                                                                                                    |
 
 The resolve response is the exact contract egress needs to complete the agent's request (`routes.ts:137-144`):
 
 ```jsonc
 {
   "grantId": "9af1…",
-  "secretPlaintext": "sk-live-…",       // only ever inside the egress ⇄ orchestrator hop
+  "secretPlaintext": "sk-live-…", // only ever inside the egress ⇄ orchestrator hop
   "hostAllowlist": ["api.stripe.com"],
-  "inject": "header",                    // where the secret goes on the proxied request
-  "methods": ["GET", "POST"],            // HTTP methods the grant permits
-  "requiresApproval": false
+  "inject": "header", // where the secret goes on the proxied request
+  "methods": ["GET", "POST"], // HTTP methods the grant permits
+  "requiresApproval": false,
 }
 ```
 
@@ -48,9 +48,9 @@ The approval gateway is the one place egress traffic passes a **human** before i
 
 ### Computer grants (`/internal/computer/*`)
 
-| Endpoint | Purpose |
-| :--- | :--- |
-| `POST /internal/computer/state` | computerd reports lifecycle: `{ agentId, status: "none"|"starting"|"running"|"stopped"|"error", containerId?, containerIp?, error?, proxySecretHash? (SHA-256 hex) }`. Updates `agent_computers` (including `lastActiveAt`) and broadcasts `computer.state` to every room the agent is in. |
+| Endpoint                                     | Purpose                                                                                                                                                                                                                                               |
+| :------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /internal/computer/state`              | computerd reports lifecycle: `{ agentId, status: "none"                                                                                                                                                                                               | "starting" | "running" | "stopped" | "error", containerId?, containerIp?, error?, proxySecretHash? (SHA-256 hex) }`. Updates `agent_computers`(including`lastActiveAt`) and broadcasts `computer.state` to every room the agent is in. |
 | `GET /internal/computer/:agentId/grants-env` | Returns the non-revoked, non-expired secret grants as an env map: `{ env: { ENV_NAME: placeholder } }`. computerd writes these placeholder variables into the sandbox environment; the real values are only ever resolvable through the egress proxy. |
 
 ### Task wake trigger
@@ -61,10 +61,10 @@ The approval gateway is the one place egress traffic passes a **human** before i
 
 `localJobRoutes` handles two callbacks from the Sayabot desktop app while it hosts a **local agent run** (an agent running on that Mac — see [runner-external-and-local.md](../engine/runner-external-and-local.md) and the `local_runner_jobs` table). Both take `:jobId` from the path and a `hostId` UUID in the body; `runner/local-events.ts` re-checks the host token, so these routes trust the `/internal/*` gate plus that check. The module docstring states the trust chain directly (`local-jobs.ts:10-13`): "Sayabot for Mac → web (host token checked there) → here: tool activity and approval requests for an agent running on that Mac. Behind the /internal/* secret check in http.ts."
 
-| Route | Body | Behavior |
-| :--- | :--- | :--- |
-| `POST /internal/local-jobs/:jobId/events` | `{ hostId, events: [{ type: "started", key, toolName, args } \| { type: "finished", key, ok, result? ≤ 20 000 }] (max 50) }` | `recordMacToolEvents` persists the Mac's tool activity as tool cards on the run; returns `{ ids }`. |
-| `POST /internal/local-jobs/:jobId/approval` | `{ hostId, key, toolName, args }` | `requestMacApproval` creates the human approval request for a dangerous local tool; responds with the request record. |
+| Route                                       | Body                                                                                                                         | Behavior                                                                                                              |
+| :------------------------------------------ | :--------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------- |
+| `POST /internal/local-jobs/:jobId/events`   | `{ hostId, events: [{ type: "started", key, toolName, args } \| { type: "finished", key, ok, result? ≤ 20 000 }] (max 50) }` | `recordMacToolEvents` persists the Mac's tool activity as tool cards on the run; returns `{ ids }`.                   |
+| `POST /internal/local-jobs/:jobId/approval` | `{ hostId, key, toolName, args }`                                                                                            | `requestMacApproval` creates the human approval request for a dangerous local tool; responds with the request record. |
 
 The event discriminated union (`local-jobs.ts:17-25`) mirrors how the server-side engine reports tool lifecycle, so the web UI can render a Mac-hosted run identically to a server run. Errors surface as `LocalJobError` (message + status) or a generic 500.
 
@@ -72,19 +72,23 @@ The event discriminated union (`local-jobs.ts:17-25`) mirrors how the server-sid
 
 pg-boss is instantiated against `DATABASE_URL` with `application_name: "sayabot-orchestrator"` and a pool cap of `min(DATABASE_POOL_MAX or 3, 3)` — deliberately small so queue polling doesn't starve request handling. `startJobs()` (called at boot, `src/index.ts`) creates four queues and one worker each (batch size 1, `localConcurrency: 4`):
 
-| Queue | Payload | Worker | Queue options |
-| :--- | :--- | :--- | :--- |
-| `room.message` | `{ roomId, messageId }` | `processRoomMessage(roomId, messageId, { enqueueWebhook })` — the turn coordinator entry (see [coordinator.md](../engine/coordinator.md)) | `retryLimit: 0`, expire 1 800 s, delete after 1 day |
-| `webhook.deliver` | `WebhookJobData` | `deliverWebhook(data, retryCount + 1)` (below) | `retryLimit: 5`, `retryDelay: 10`, `retryBackoff: true`, expire 120 s, delete after 7 days |
-| `task.wake` | `TaskWakeData` | `handleTaskWake(data)` (see [collab-tasks.md](./collab-tasks.md)) | `retryLimit: 2`, expire 60 s, delete after 1 day |
-| `run.resume` | `{ runId, reason? }` | dynamic-imports `resumeRun` from `src/engine/resume.ts` | `retryLimit: 3`, `retryDelay: 5`, expire 300 s |
+| Queue             | Payload                 | Worker                                                                                                                                    | Queue options                                                                              |
+| :---------------- | :---------------------- | :---------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------- |
+| `room.message`    | `{ roomId, messageId }` | `processRoomMessage(roomId, messageId, { enqueueWebhook })` — the turn coordinator entry (see [coordinator.md](../engine/coordinator.md)) | `retryLimit: 0`, expire 1 800 s, delete after 1 day                                        |
+| `webhook.deliver` | `WebhookJobData`        | `deliverWebhook(data, retryCount + 1)` (below)                                                                                            | `retryLimit: 5`, `retryDelay: 10`, `retryBackoff: true`, expire 120 s, delete after 7 days |
+| `task.wake`       | `TaskWakeData`          | `handleTaskWake(data)` (see [collab-tasks.md](./collab-tasks.md))                                                                         | `retryLimit: 2`, expire 60 s, delete after 1 day                                           |
+| `run.resume`      | `{ runId, reason? }`    | dynamic-imports `resumeRun` from `src/engine/resume.ts`                                                                                   | `retryLimit: 3`, `retryDelay: 5`, expire 300 s                                             |
 
 Enqueue helpers throw `"job queue is not started"` before `startJobs()` completes. `enqueueTaskWake` has a **fallback**: with no queue running it invokes `handleTaskWake` directly (logged on failure) — which is why task wakes survive even in degraded boots:
 
 ```typescript
 export async function enqueueTaskWake(data: TaskWakeData): Promise<void> {
   if (!boss) {
-    try { await handleTaskWake(data) } catch (e) { console.error("[task.wake] direct invoke error", e) }
+    try {
+      await handleTaskWake(data)
+    } catch (e) {
+      console.error("[task.wake] direct invoke error", e)
+    }
     return
   }
   await boss.send(TASK_WAKE_QUEUE, data, {
@@ -153,6 +157,7 @@ There is no `.test.ts` under `src/jobs/` or `src/internal/`; the signature primi
 ---
 
 Related docs:
+
 - [Secrets broker](../tools/secrets-broker.md) — the agent-facing placeholder model these routes resolve
 - [Approvals](../tools/approvals.md) — `waitForApproval` and the approval lifecycle
 - [SSRF & realtime](./ssrf-and-realtime.md) — `assertSafeWebhookUrl` internals

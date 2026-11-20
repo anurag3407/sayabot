@@ -57,7 +57,9 @@ describe("proxy credential identity (microVM computers)", () => {
       return Response.json({ agentId: "agent-vm", orgId: "o1" })
     })
     try {
-      await expect(resolveAgentIdentityBySecret("s3cret")).resolves.toMatchObject({ agentId: "agent-vm" })
+      await expect(resolveAgentIdentityBySecret("s3cret")).resolves.toMatchObject({
+        agentId: "agent-vm",
+      })
       await resolveAgentIdentityBySecret("s3cret")
       expect(bodies).toEqual([{ proxySecret: "s3cret" }])
       vi.stubGlobal("fetch", async () => new Response("no", { status: 401 }))

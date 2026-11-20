@@ -61,7 +61,9 @@ export async function synthesize(
       response_format: { type: "audio" },
       generation_config: { speech_config: [{ voice: voiceId || "Puck" }] },
     }),
-    signal: signal ? AbortSignal.any([AbortSignal.timeout(60_000), signal]) : AbortSignal.timeout(60_000),
+    signal: signal
+      ? AbortSignal.any([AbortSignal.timeout(60_000), signal])
+      : AbortSignal.timeout(60_000),
   })
 
   if (!res.ok) {

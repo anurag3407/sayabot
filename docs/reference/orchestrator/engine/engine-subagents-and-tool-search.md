@@ -10,25 +10,30 @@ Source files: `apps/orchestrator/src/engine/subagents.ts`, `apps/orchestrator/sr
 
 ### Limits and constants
 
-| Constant | Value | Meaning |
-| :--- | :--- | :--- |
-| `MAX_CONCURRENT_SUBAGENTS` | `4` | Active (`running`/`waiting`) children per parent run. |
-| `MAX_TOTAL_SUBAGENTS` | `12` | Total children (any status) per parent run. |
-| `SUBAGENT_HEARTBEAT_MS` | `10_000` | Child `agent_runs.heartbeat_at` update interval (timer `unref`'d; a heartbeat failure aborts the child). |
+| Constant                   | Value    | Meaning                                                                                                  |
+| :------------------------- | :------- | :------------------------------------------------------------------------------------------------------- |
+| `MAX_CONCURRENT_SUBAGENTS` | `4`      | Active (`running`/`waiting`) children per parent run.                                                    |
+| `MAX_TOTAL_SUBAGENTS`      | `12`     | Total children (any status) per parent run.                                                              |
+| `SUBAGENT_HEARTBEAT_MS`    | `10_000` | Child `agent_runs.heartbeat_at` update interval (timer `unref`'d; a heartbeat failure aborts the child). |
 
 ### Input schema
 
 ```typescript
-export const spawnSubagentSchema = z.object({
-  task: z.string().min(1).max(30_000),          // self-contained task description
-  role: z.enum(["researcher", "planner", "worker", "critic"]).default("researcher"),
-  tools: z.enum(["read_only", "same"]).default("read_only"),
-  model: z.enum(["cheap", "same"]).default("cheap"),
-  maxSteps: z.number().int().min(1).max(30).default(10),
-  workspace: workspaceScopeSchema.optional(),   // worker-only worktree scope
-  runInBackground: z.boolean().default(false),
-}).strict().refine((input) => !input.workspace || input.role === "worker",
-  { message: "Only workers may be assigned a worktree scope", path: ["workspace"] })
+export const spawnSubagentSchema = z
+  .object({
+    task: z.string().min(1).max(30_000), // self-contained task description
+    role: z.enum(["researcher", "planner", "worker", "critic"]).default("researcher"),
+    tools: z.enum(["read_only", "same"]).default("read_only"),
+    model: z.enum(["cheap", "same"]).default("cheap"),
+    maxSteps: z.number().int().min(1).max(30).default(10),
+    workspace: workspaceScopeSchema.optional(), // worker-only worktree scope
+    runInBackground: z.boolean().default(false),
+  })
+  .strict()
+  .refine((input) => !input.workspace || input.role === "worker", {
+    message: "Only workers may be assigned a worktree scope",
+    path: ["workspace"],
+  })
 ```
 
 ### Tool registration
@@ -42,7 +47,7 @@ export interface SpawnSubagentToolArgs {
   orgId: string
   agent: AgentRow
   availableToolSpecs?: ToolSpec[]
-  getAvailableToolSpecs?: () => ToolSpec[]  // resolved at call time, sees later-registered tools
+  getAvailableToolSpecs?: () => ToolSpec[] // resolved at call time, sees later-registered tools
   scrub?: (s: string) => string
 }
 ```
@@ -80,9 +85,20 @@ sequenceDiagram
 
 ```typescript
 export const READ_ONLY_TOOL_NAMES = new Set([
-  "fs_read", "fs_glob", "fs_grep", "git_status", "git_diff", "web_search",
-  "canvas_read", "recall", "code_outline", "code_definition", "code_references",
-  "code_diagnostics", "code_rename_preview", "workspace_inspect",
+  "fs_read",
+  "fs_glob",
+  "fs_grep",
+  "git_status",
+  "git_diff",
+  "web_search",
+  "canvas_read",
+  "recall",
+  "code_outline",
+  "code_definition",
+  "code_references",
+  "code_diagnostics",
+  "code_rename_preview",
+  "workspace_inspect",
 ])
 ```
 
@@ -103,16 +119,16 @@ export const READ_ONLY_TOOL_NAMES = new Set([
 
 ### Terminal-status mapping
 
-| Condition | `status` | `finishReason` |
-| :--- | :--- | :--- |
-| `stop` finish with non-empty summary | `complete` | `stop` |
-| Steps exhausted while the last step still had tool calls | `halted` | `tool_step_limit` |
-| `error` finish from the model | `error` | `error` (`"Subagent model reported an error"`) |
-| `tool-calls` finish below the step cap | `halted` | `incomplete_tool_calls` |
-| `length` finish | `halted` | `output_token_limit` |
-| `stop` finish but empty summary | `halted` | `no_output` |
-| Parent aborted (foreground) | `halted` | `abort` |
-| Heartbeat write failure | `error` | `error` (the DB error text, redacted) |
+| Condition                                                | `status`   | `finishReason`                                 |
+| :------------------------------------------------------- | :--------- | :--------------------------------------------- |
+| `stop` finish with non-empty summary                     | `complete` | `stop`                                         |
+| Steps exhausted while the last step still had tool calls | `halted`   | `tool_step_limit`                              |
+| `error` finish from the model                            | `error`    | `error` (`"Subagent model reported an error"`) |
+| `tool-calls` finish below the step cap                   | `halted`   | `incomplete_tool_calls`                        |
+| `length` finish                                          | `halted`   | `output_token_limit`                           |
+| `stop` finish but empty summary                          | `halted`   | `no_output`                                    |
+| Parent aborted (foreground)                              | `halted`   | `abort`                                        |
+| Heartbeat write failure                                  | `error`    | `error` (the DB error text, redacted)          |
 
 ### Child system prompt composition
 
@@ -138,7 +154,7 @@ The child's system prompt is assembled in this order (`src/engine/subagents.ts:2
 
 ```typescript
 export class ToolIndex {
-  constructor(tools: ToolSpec[])            // indexes "name description" text
+  constructor(tools: ToolSpec[]) // indexes "name description" text
   search(query: string, limit = 8): ToolSpec[]
 }
 ```
@@ -153,8 +169,8 @@ Builds the `find_tools` tool: schema `{ query: string (min 1) }`, `dangerous: fa
 
 ```typescript
 export function partitionToolsForSearch(specs: ToolSpec[]): {
-  exposed: ToolSpec[]                        // core + find_tools
-  all: ToolSpec[]                            // everything, registered with the model call
+  exposed: ToolSpec[] // core + find_tools
+  all: ToolSpec[] // everything, registered with the model call
   searchTool?: ToolSpec
   activeToolNames: () => string[] | undefined
 }
@@ -191,11 +207,11 @@ Activation is one-way within a run (the `activated` set never shrinks), resets o
 
 ## 🧪 Tests
 
-| Test file | Covers |
-| :--- | :--- |
-| `src/engine/subagents.test.ts` | 425 lines: reservation limits, role filtering, read-only enforcement, worktree confinement, terminal statuses, background mode. |
-| `src/engine/tool-search.test.ts` | `ToolIndex` BM25 scoring/ranking, `partitionToolsForSearch` threshold and activation dynamics. |
-| `src/tools/index.test.ts` | Wiring of `find_tools` / `spawn_subagent` into `buildTools`. |
+| Test file                        | Covers                                                                                                                          |
+| :------------------------------- | :------------------------------------------------------------------------------------------------------------------------------ |
+| `src/engine/subagents.test.ts`   | 425 lines: reservation limits, role filtering, read-only enforcement, worktree confinement, terminal statuses, background mode. |
+| `src/engine/tool-search.test.ts` | `ToolIndex` BM25 scoring/ranking, `partitionToolsForSearch` threshold and activation dynamics.                                  |
+| `src/tools/index.test.ts`        | Wiring of `find_tools` / `spawn_subagent` into `buildTools`.                                                                    |
 
 ---
 

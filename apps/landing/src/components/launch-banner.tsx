@@ -2,14 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { DOWNLOADS, LINKS } from "@/lib/links"
-import {
-  AppleIcon,
-  ServerIcon,
-  GitHubIcon,
-  ChevronDown,
-  SparkIcon,
-  ArrowUpRight,
-} from "./icons"
+import { AppleIcon, ServerIcon, GitHubIcon, ChevronDown, SparkIcon, ArrowUpRight } from "./icons"
 
 export function LaunchBanner() {
   const [open, setOpen] = useState(false)
@@ -29,7 +22,11 @@ export function LaunchBanner() {
   if (dismissed) return null
 
   return (
-    <div className={`launch-banner-root ${open ? "is-open" : ""}`} role="region" aria-label="Announcement banner">
+    <div
+      className={`launch-banner-root ${open ? "is-open" : ""}`}
+      role="region"
+      aria-label="Announcement banner"
+    >
       <div className="launch-bar">
         <div className="wrap launch-bar-inner">
           <div className="launch-badge">
@@ -39,7 +36,10 @@ export function LaunchBanner() {
 
           <p className="launch-tagline">
             <span className="launch-tagline-main">Open-source remote AI agent workspace.</span>
-            <span className="launch-tagline-sub"> Persistent Linux sandboxes, multi-agent turns &amp; sealed secrets.</span>
+            <span className="launch-tagline-sub">
+              {" "}
+              Persistent Linux sandboxes, multi-agent turns &amp; sealed secrets.
+            </span>
           </p>
 
           <div className="launch-actions">
@@ -82,7 +82,11 @@ export function LaunchBanner() {
       </div>
 
       {open && (
-        <div id="launch-hub-panel" className="launch-hub-drawer" aria-label="Launch resources matrix">
+        <div
+          id="launch-hub-panel"
+          className="launch-hub-drawer"
+          aria-label="Launch resources matrix"
+        >
           <div className="wrap launch-hub-content">
             <div className="launch-hub-header">
               <div>
@@ -149,16 +153,20 @@ export function LaunchBanner() {
                 </div>
                 <ul className="launch-feature-list">
                   <li>
-                    <strong>Persistent Sandboxes:</strong> Isolated Linux Docker compute daemon (`computerd`) bounded strictly to `/home/bot`.
+                    <strong>Persistent Sandboxes:</strong> Isolated Linux Docker compute daemon
+                    (`computerd`) bounded strictly to `/home/bot`.
                   </li>
                   <li>
-                    <strong>Postgres Advisory Locks:</strong> Deterministic turn serialization per room with zero state clobbering.
+                    <strong>Postgres Advisory Locks:</strong> Deterministic turn serialization per
+                    room with zero state clobbering.
                   </li>
                   <li>
-                    <strong>Envelope Encryption:</strong> AES-256-GCM zero-plaintext secrets vault (`MESH_KEK`).
+                    <strong>Envelope Encryption:</strong> AES-256-GCM zero-plaintext secrets vault
+                    (`MESH_KEK`).
                   </li>
                   <li>
-                    <strong>Human Danger Gates:</strong> Dangerous mutations wait for explicit operator yes.
+                    <strong>Human Danger Gates:</strong> Dangerous mutations wait for explicit
+                    operator yes.
                   </li>
                 </ul>
               </div>
@@ -183,7 +191,11 @@ export function LaunchBanner() {
                     </a>
                   </li>
                   <li>
-                    <a href={`${LINKS.github}/blob/main/AGENTS.md`} target="_blank" rel="noreferrer">
+                    <a
+                      href={`${LINKS.github}/blob/main/AGENTS.md`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
                       <span className="launch-link-name">AGENTS.md Operational Spec</span>
                       <ArrowUpRight className="launch-ext-icon" />
                     </a>

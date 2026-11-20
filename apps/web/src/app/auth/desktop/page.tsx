@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
+import { getPublicOrigin } from "@/lib/public-origin"
 import { DesktopHandoffClient, type SessionPayload } from "./desktop-handoff-client"
 
 export const metadata: Metadata = { title: "Connecting to Sayabot Mac · Sayabot" }
@@ -32,7 +33,7 @@ export default async function DesktopAuthPage() {
     console.error("[DesktopAuthPage] Error reading server session:", err)
   }
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://sayabot.sayalabs.in"
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || getPublicOrigin()
 
   return <DesktopHandoffClient serverSession={serverSession} siteUrl={siteUrl} />
 }

@@ -1,12 +1,4 @@
-import {
-  boolean,
-  index,
-  jsonb,
-  pgTable,
-  text,
-  timestamp,
-  uuid,
-} from "drizzle-orm/pg-core"
+import { boolean, index, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core"
 import { toolCallStatusEnum, mcpTransportEnum } from "./enums"
 import { desktopHosts } from "./desktop"
 import { orgs, profiles } from "./identity"
@@ -36,7 +28,10 @@ export const mcpServers = pgTable(
     /** Computer that runs a desktop-only local app (Obsidian, Paper, Apple apps). */
     hostId: uuid("host_id").references(() => desktopHosts.id, { onDelete: "set null" }),
     /** Last tools/list from a desktop app, so a turn doesn't wait on the computer to start. */
-    toolCache: jsonb("tool_cache").$type<{ at: string; tools: Array<{ name: string; description?: string }> } | null>(),
+    toolCache: jsonb("tool_cache").$type<{
+      at: string
+      tools: Array<{ name: string; description?: string }>
+    } | null>(),
     dangerousTools: text("dangerous_tools").array().notNull().default([]),
     enabled: boolean("enabled").notNull().default(true),
     createdBy: uuid("created_by").references(() => profiles.id, { onDelete: "set null" }),

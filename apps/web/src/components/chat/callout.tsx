@@ -1,13 +1,7 @@
 "use client"
 
 import React from "react"
-import {
-  AlertTriangle,
-  Info,
-  Lightbulb,
-  ShieldAlert,
-  Sparkles,
-} from "lucide-react"
+import { AlertTriangle, Info, Lightbulb, ShieldAlert, Sparkles } from "lucide-react"
 import { cn } from "@/lib/format"
 
 export type AlertType = "NOTE" | "TIP" | "IMPORTANT" | "WARNING" | "CAUTION"
@@ -91,7 +85,11 @@ export function parseAlert(children: React.ReactNode): {
         firstText = p.children
       }
     }
-  } else if (React.isValidElement(children) && children.props && typeof children.props === "object") {
+  } else if (
+    React.isValidElement(children) &&
+    children.props &&
+    typeof children.props === "object"
+  ) {
     const p = children.props as { children?: React.ReactNode }
     if (typeof p.children === "string") {
       firstText = p.children

@@ -50,7 +50,10 @@ function pct(part: number, total: number): string {
 function Bar({ value, max }: { value: number; max: number }) {
   return (
     <div className="h-1.5 w-28 overflow-hidden rounded-full bg-raised" aria-hidden>
-      <div className="h-full rounded-full bg-text/70" style={{ width: `${max ? Math.max(2, (value / max) * 100) : 0}%` }} />
+      <div
+        className="h-full rounded-full bg-text/70"
+        style={{ width: `${max ? Math.max(2, (value / max) * 100) : 0}%` }}
+      />
     </div>
   )
 }
@@ -82,13 +85,18 @@ export function StorageView({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-[13px] text-muted">This workspace on Sayabot</p>
-          <p className="mt-1 text-[34px] font-semibold leading-none tracking-[-0.02em] text-text">{formatBytes(total)}</p>
+          <p className="mt-1 text-[34px] font-semibold leading-none tracking-[-0.02em] text-text">
+            {formatBytes(total)}
+          </p>
           <p className="mt-2 text-[13px] text-faint">
-            {measuredAt ? `Measured ${new Date(measuredAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` : "Not measured yet"}
+            {measuredAt
+              ? `Measured ${new Date(measuredAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`
+              : "Not measured yet"}
           </p>
         </div>
         <Button variant="secondary" disabled={pending} onClick={measure}>
-          <RefreshCw className={pending ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} /> Measure again
+          <RefreshCw className={pending ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} /> Measure
+          again
         </Button>
       </div>
 
@@ -98,15 +106,31 @@ export function StorageView({
         </p>
       ) : (
         <div>
-          <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-raised" role="img" aria-label="Storage by type">
+          <div
+            className="flex h-2.5 w-full overflow-hidden rounded-full bg-raised"
+            role="img"
+            aria-label="Storage by type"
+          >
             {categories.map((c) =>
-              c.bytes ? <div key={c.id} style={{ width: `${(c.bytes / (total || 1)) * 100}%`, background: c.color, minWidth: 3 }} /> : null,
+              c.bytes ? (
+                <div
+                  key={c.id}
+                  style={{
+                    width: `${(c.bytes / (total || 1)) * 100}%`,
+                    background: c.color,
+                    minWidth: 3,
+                  }}
+                />
+              ) : null,
             )}
           </div>
           <ul className="mt-4 grid gap-x-6 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
             {categories.map((c) => (
               <li key={c.id} className="flex items-baseline gap-2 text-[13px]">
-                <span className="h-2.5 w-2.5 shrink-0 translate-y-0.5 rounded-full" style={{ background: c.color }} />
+                <span
+                  className="h-2.5 w-2.5 shrink-0 translate-y-0.5 rounded-full"
+                  style={{ background: c.color }}
+                />
                 <span className="text-muted">{c.label}</span>
                 <span className="ml-auto font-medium text-text">{formatBytes(c.bytes)}</span>
                 <span className="w-12 text-right text-faint">{pct(c.bytes, total)}</span>
@@ -130,8 +154,8 @@ export function StorageView({
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[14px] font-medium text-text">{a.name}</p>
                   <p className="text-[12px] text-faint">
-                    {a.messages.toLocaleString()} {a.messages === 1 ? "message" : "messages"} · {a.memories.toLocaleString()}{" "}
-                    {a.memories === 1 ? "memory" : "memories"}
+                    {a.messages.toLocaleString()} {a.messages === 1 ? "message" : "messages"} ·{" "}
+                    {a.memories.toLocaleString()} {a.memories === 1 ? "memory" : "memories"}
                   </p>
                 </div>
                 <Bar value={a.bytes} max={maxAgent} />
@@ -158,7 +182,8 @@ export function StorageView({
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[14px] text-text">{r.name}</p>
                   <p className="text-[12px] text-faint">
-                    {r.messages.toLocaleString()} messages · {r.files} {r.files === 1 ? "file" : "files"}
+                    {r.messages.toLocaleString()} messages · {r.files}{" "}
+                    {r.files === 1 ? "file" : "files"}
                   </p>
                 </div>
                 <p className="text-[13px] text-text">{formatBytes(r.bytes)}</p>
@@ -180,11 +205,15 @@ export function StorageView({
                 <li key={c.id} className="rounded-xl border border-line bg-panel p-4">
                   <div className="flex items-baseline justify-between gap-3">
                     <p className="text-[14px] font-medium text-text">Sayabot on {c.name}</p>
-                    <p className="text-[14px] font-semibold text-text">{formatBytes(c.appBytes + agentTotal)}</p>
+                    <p className="text-[14px] font-semibold text-text">
+                      {formatBytes(c.appBytes + agentTotal)}
+                    </p>
                   </div>
                   <p className="text-[12px] text-faint">
-                    {c.measuredAt ? `Measured ${new Date(c.measuredAt).toLocaleString()}` : "Open the Sayabot app on it to measure"} · app
-                    data {formatBytes(c.appBytes)} · agent folders {formatBytes(agentTotal)}
+                    {c.measuredAt
+                      ? `Measured ${new Date(c.measuredAt).toLocaleString()}`
+                      : "Open the Sayabot app on it to measure"}{" "}
+                    · app data {formatBytes(c.appBytes)} · agent folders {formatBytes(agentTotal)}
                   </p>
                   {c.agents.length ? (
                     <ul className="mt-2 space-y-1">

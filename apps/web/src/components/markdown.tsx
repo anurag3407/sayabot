@@ -124,17 +124,14 @@ function isMediaUrl(url: string | null | undefined): { isVideo: boolean; isAudio
   const clean = (url.split("?")[0] ?? "").split("#")[0]?.toLowerCase() ?? ""
   const isVideo = clean.endsWith(".mp4") || clean.endsWith(".webm") || clean.endsWith(".mov")
   const isAudio =
-    clean.endsWith(".mp3") || clean.endsWith(".wav") || clean.endsWith(".ogg") || clean.endsWith(".m4a")
+    clean.endsWith(".mp3") ||
+    clean.endsWith(".wav") ||
+    clean.endsWith(".ogg") ||
+    clean.endsWith(".m4a")
   return { isVideo, isAudio }
 }
 
-export function Markdown({
-  content,
-  streaming = false,
-}: {
-  content: string
-  streaming?: boolean
-}) {
+export function Markdown({ content, streaming = false }: { content: string; streaming?: boolean }) {
   const { resolvedTheme } = useTheme()
   const plugins = useMemo(
     () => ({
@@ -166,9 +163,7 @@ export function Markdown({
           )
         }
         if (media.isAudio && href) {
-          return (
-            <audio src={href} controls className="my-2 w-full max-w-md rounded-lg" />
-          )
+          return <audio src={href} controls className="my-2 w-full max-w-md rounded-lg" />
         }
 
         // External links handling

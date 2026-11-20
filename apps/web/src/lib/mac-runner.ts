@@ -77,6 +77,7 @@ export function macPermissions(
   hostOwnerId: string | null | undefined,
 ): MacPermissions {
   if (mode === "review_all") return "review"
-  if ((mode === "auto" || mode === "turbo") && setBy && hostOwnerId && setBy === hostOwnerId) return mode
+  if ((mode === "auto" || mode === "turbo") && setBy && hostOwnerId && setBy === hostOwnerId)
+    return mode
   return "ask"
 }

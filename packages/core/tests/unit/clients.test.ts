@@ -34,7 +34,9 @@ describe("CLIENT_CAPABILITIES registry", () => {
   })
 
   it("only oauth-capable clients advertise oauthMcp", () => {
-    const oauth = Object.values(CLIENT_CAPABILITIES).filter((c) => c.oauthMcp).map((c) => c.id)
+    const oauth = Object.values(CLIENT_CAPABILITIES)
+      .filter((c) => c.oauthMcp)
+      .map((c) => c.id)
     expect(oauth).toEqual(expect.arrayContaining(["claude-code", "claude", "chatgpt"]))
     expect(CLIENT_CAPABILITIES.generic.oauthMcp).toBe(false)
   })

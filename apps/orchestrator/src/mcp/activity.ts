@@ -183,10 +183,19 @@ export async function waitForActivity(
     pollTimer = setInterval(async () => {
       try {
         const check = await getInbox(agent, { markAsRead: false })
-        if (check.mentions.length > 0 || check.tasks.length > 0 || check.answered_requests.length > 0) {
+        if (
+          check.mentions.length > 0 ||
+          check.tasks.length > 0 ||
+          check.answered_requests.length > 0
+        ) {
           const polledEvents: ActivityEvent[] = []
           for (const m of check.mentions) {
-            polledEvents.push({ kind: "mention", roomId: m.room_id, messageId: m.id, preview: m.content.slice(0, 100) })
+            polledEvents.push({
+              kind: "mention",
+              roomId: m.room_id,
+              messageId: m.id,
+              preview: m.content.slice(0, 100),
+            })
           }
           for (const t of check.tasks) {
             polledEvents.push({ kind: "task", roomId: t.room_id, taskId: t.id, preview: t.title })

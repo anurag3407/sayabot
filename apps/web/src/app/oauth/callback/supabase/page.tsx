@@ -41,7 +41,9 @@ function SupabaseCallbackContent() {
         }
 
         setStatus("success")
-        setDetail(`Connected to "${data.projectName ?? "Supabase"}" (${data.bucket ?? "sayabot-storage"})`)
+        setDetail(
+          `Connected to "${data.projectName ?? "Supabase"}" (${data.bucket ?? "sayabot-storage"})`,
+        )
 
         if (window.opener) {
           window.opener.postMessage(

@@ -13,15 +13,22 @@ export async function GET(request: Request) {
   const access = await getOrgAccess(orgSlug, { client: who.client, user: who.user })
   if (!access) return NextResponse.json({ error: "workspace not found" }, { status: 404 })
 
-  const { data: rooms } = await who.client.from("rooms").select("id, name").eq("org_id", access.org.id)
-  const roomNames = new Map(((rooms ?? []) as { id: string; name: string }[]).map((r) => [r.id, r.name]))
+  const { data: rooms } = await who.client
+    .from("rooms")
+    .select("id, name")
+    .eq("org_id", access.org.id)
+  const roomNames = new Map(
+    ((rooms ?? []) as { id: string; name: string }[]).map((r) => [r.id, r.name]),
+  )
   if (!roomNames.size) return NextResponse.json({ questions: [], approvals: 0 })
 
   const nowIso = new Date().toISOString()
   const [tasksRes, approvalsRes] = await Promise.all([
     who.client
       .from("tasks")
-      .select("id, number, room_id, title, description, asked_count, updated_at, expires_at, requested_by_agent_id, metadata")
+      .select(
+        "id, number, room_id, title, description, asked_count, updated_at, expires_at, requested_by_agent_id, metadata",
+      )
       .in("room_id", [...roomNames.keys()])
       .eq("kind", "request")
       .eq("status", "open")
@@ -33,24 +40,33 @@ export async function GET(request: Request) {
       .in("room_id", [...roomNames.keys()])
       .eq("status", "pending_approval"),
   ])
-  const rows = ((tasksRes.data ?? []) as {
-    id: string
-    number: number
-    room_id: string
-    title: string
-    description: string
-    asked_count: number | null
-    updated_at: string
-    expires_at: string | null
-    requested_by_agent_id: string | null
-    metadata: Record<string, unknown>
-  }[]).filter((t) => !t.expires_at || t.expires_at > nowIso)
+  const rows = (
+    (tasksRes.data ?? []) as {
+      id: string
+      number: number
+      room_id: string
+      title: string
+      description: string
+      asked_count: number | null
+      updated_at: string
+      expires_at: string | null
+      requested_by_agent_id: string | null
+      metadata: Record<string, unknown>
+    }[]
+  ).filter((t) => !t.expires_at || t.expires_at > nowIso)
 
-  const agentIds = [...new Set(rows.map((r) => r.requested_by_agent_id).filter((id): id is string => Boolean(id)))]
+  const agentIds = [
+    ...new Set(rows.map((r) => r.requested_by_agent_id).filter((id): id is string => Boolean(id))),
+  ]
   const { data: agents } = agentIds.length
     ? await who.client.from("agents").select("id, handle, display_name").in("id", agentIds)
     : { data: [] }
-  const agentById = new Map(((agents ?? []) as { id: string; handle: string; display_name: string }[]).map((a) => [a.id, a]))
+  const agentById = new Map(
+    ((agents ?? []) as { id: string; handle: string; display_name: string }[]).map((a) => [
+      a.id,
+      a,
+    ]),
+  )
 
   return NextResponse.json(
     {

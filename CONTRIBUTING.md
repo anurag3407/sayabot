@@ -263,6 +263,7 @@ Every feature has a dedicated reference document under `docs/reference/`, writte
 ## 🧪 Testing Standards
 
 Sayabot maintains high test coverage across all packages using **Vitest** and **Playwright**:
+
 ### Running Tests
 
 ```bash

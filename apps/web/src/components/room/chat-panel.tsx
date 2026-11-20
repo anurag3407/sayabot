@@ -233,10 +233,7 @@ export function ChatPanel({
   const hasMessages = mainMessages.length > 0
 
   return (
-    <section
-      className="relative flex h-full min-h-0 flex-col"
-      aria-label={`Chat in ${roomName}`}
-    >
+    <section className="relative flex h-full min-h-0 flex-col" aria-label={`Chat in ${roomName}`}>
       {connection === "error" ? (
         <div className="border-b border-line px-4 py-2">
           <InlineAlert tone="warning">
@@ -286,7 +283,13 @@ export function ChatPanel({
             {roomAgents.length ? (
               <div className="mb-2 flex justify-center -space-x-3" aria-hidden="true">
                 {roomAgents.slice(0, 4).map(({ agent }) => (
-                  <Mascot key={agent.id} seed={agent.displayName} figure blink className="h-[84px] w-auto" />
+                  <Mascot
+                    key={agent.id}
+                    seed={agent.displayName}
+                    figure
+                    blink
+                    className="h-[84px] w-auto"
+                  />
                 ))}
               </div>
             ) : null}
@@ -329,11 +332,15 @@ export function ChatPanel({
             ) : null}
             {mainMessages.map((message, index) => {
               const previous = mainMessages[index - 1]
-              const showDay = !previous || dayLabel(previous.createdAt) !== dayLabel(message.createdAt)
+              const showDay =
+                !previous || dayLabel(previous.createdAt) !== dayLabel(message.createdAt)
               return (
                 <div key={message.id} data-message-id={message.id}>
                   {showDay ? (
-                    <p className="px-4 pb-2 pt-6 text-center text-[13px] capitalize text-faint" aria-hidden="true">
+                    <p
+                      className="px-4 pb-2 pt-6 text-center text-[13px] capitalize text-faint"
+                      aria-hidden="true"
+                    >
                       {dayLabel(message.createdAt)}
                     </p>
                   ) : null}
@@ -359,7 +366,9 @@ export function ChatPanel({
                       previous?.senderName === message.senderName &&
                       previous?.senderType !== "system" &&
                       message.id !== firstUnreadId &&
-                      new Date(message.createdAt).getTime() - new Date(previous.createdAt).getTime() < 300_000
+                      new Date(message.createdAt).getTime() -
+                        new Date(previous.createdAt).getTime() <
+                        300_000
                     }
                     showRetry={index === mainMessages.length - 1 && canRetry(message)}
                   />
@@ -378,7 +387,9 @@ export function ChatPanel({
               onClick={scrollToBottom}
               className="pointer-events-auto rounded-full border border-line-strong bg-raised px-3.5 py-2 text-[13px] text-text shadow-[0_8px_24px_rgba(0,0,0,0.45)] hover:bg-hover md:py-1.5"
             >
-              {newCount > 0 ? `↓ ${newCount} new ${newCount === 1 ? "message" : "messages"}` : "↓ Latest"}
+              {newCount > 0
+                ? `↓ ${newCount} new ${newCount === 1 ? "message" : "messages"}`
+                : "↓ Latest"}
             </button>
           </div>
         </div>

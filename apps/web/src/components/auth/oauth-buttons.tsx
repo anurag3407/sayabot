@@ -136,7 +136,9 @@ export function OAuthButtons({
     <div className="space-y-3">
       <div className="flex items-center gap-3" aria-hidden="true">
         <span className="h-px flex-1 bg-line" />
-        <span className="font-mono text-[11px] uppercase tracking-wider text-faint">or continue with</span>
+        <span className="font-mono text-[11px] uppercase tracking-wider text-faint">
+          or continue with
+        </span>
         <span className="h-px flex-1 bg-line" />
       </div>
 
@@ -188,9 +190,7 @@ export function OAuthButtons({
 
       {openedInBrowser ? (
         <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-center">
-          <p className="text-[12px] font-medium text-emerald-400">
-            Opened sign-in in your browser
-          </p>
+          <p className="text-[12px] font-medium text-emerald-400">Opened sign-in in your browser</p>
           <p className="mt-1 text-[11px] text-muted">
             Complete sign-in in your browser window. Sayabot Desktop will connect automatically.
           </p>
@@ -198,7 +198,10 @@ export function OAuthButtons({
       ) : null}
 
       {error ? (
-        <p role="alert" className="text-[12px] leading-relaxed text-danger bg-danger/10 border border-danger/20 rounded p-2">
+        <p
+          role="alert"
+          className="text-[12px] leading-relaxed text-danger bg-danger/10 border border-danger/20 rounded p-2"
+        >
           {error}
         </p>
       ) : null}

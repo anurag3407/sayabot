@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { getPublicOrigin, needsServerAddress } from "../../src/lib/public-origin"
 
 describe("getPublicOrigin", () => {
@@ -18,11 +18,11 @@ describe("getPublicOrigin", () => {
     const req = new Request("http://0.0.0.0:3000/api/oauth", {
       headers: {
         host: "0.0.0.0:3000",
-        "x-forwarded-host": "sayabot.sayalabs.in",
+        "x-forwarded-host": "sayabot.example.com",
         "x-forwarded-proto": "https",
       },
     })
-    expect(getPublicOrigin(req)).toBe("https://sayabot.sayalabs.in")
+    expect(getPublicOrigin(req)).toBe("https://sayabot.example.com")
   })
 
   it("preserves development ports", () => {
@@ -34,12 +34,17 @@ describe("getPublicOrigin", () => {
 })
 
 describe("needsServerAddress", () => {
-  it("is false on the server the apps use by default", () => {
-    expect(needsServerAddress("https://sayabot.sayalabs.in")).toBe(false)
+  afterEach(() => {
+    vi.unstubAllEnvs()
   })
 
-  it("is true for a self-hosted server", () => {
+  it("is true for self-hosted servers when no default host is configured", () => {
     expect(needsServerAddress("https://sayabot.acme.com")).toBe(true)
     expect(needsServerAddress("http://localhost:3000")).toBe(true)
+  })
+
+  it("is false when origin matches configured DEFAULT_APP_SERVER_HOST", () => {
+    vi.stubEnv("DEFAULT_APP_SERVER_HOST", "sayabot.example.com")
+    expect(needsServerAddress("https://sayabot.example.com")).toBe(false)
   })
 })

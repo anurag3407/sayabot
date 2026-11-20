@@ -11,11 +11,7 @@ interface ThemeToggleProps {
   showLabel?: boolean
 }
 
-export function ThemeToggle({
-  variant = "icon",
-  className,
-  showLabel = false,
-}: ThemeToggleProps) {
+export function ThemeToggle({ variant = "icon", className, showLabel = false }: ThemeToggleProps) {
   const { theme, resolvedTheme, setTheme, toggleTheme } = useTheme()
 
   if (variant === "segmented") {
@@ -46,9 +42,7 @@ export function ThemeToggle({
               onClick={() => setTheme(opt.value)}
               className={cn(
                 "flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-medium transition-all",
-                active
-                  ? "bg-panel text-text shadow-sm"
-                  : "text-muted hover:text-text",
+                active ? "bg-panel text-text shadow-sm" : "text-muted hover:text-text",
               )}
             >
               <Icon className="h-3.5 w-3.5" />
@@ -62,7 +56,12 @@ export function ThemeToggle({
 
   if (variant === "menu-item") {
     return (
-      <div className={cn("flex items-center justify-between px-2.5 py-1.5 text-xs text-muted", className)}>
+      <div
+        className={cn(
+          "flex items-center justify-between px-2.5 py-1.5 text-xs text-muted",
+          className,
+        )}
+      >
         <span className="flex items-center gap-2">
           {resolvedTheme === "dark" ? (
             <Moon className="h-4 w-4 text-faint" />
@@ -118,11 +117,7 @@ export function ThemeToggle({
     <button
       type="button"
       onClick={toggleTheme}
-      title={
-        resolvedTheme === "dark"
-          ? "Switch to light mode"
-          : "Switch to dark mode"
-      }
+      title={resolvedTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
       aria-label="Toggle theme"
       className={cn(
         "inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-panel p-2 text-muted transition-colors hover:bg-raised hover:text-text",

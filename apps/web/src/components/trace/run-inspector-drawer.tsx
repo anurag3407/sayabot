@@ -98,9 +98,7 @@ export function RunInspectorDrawer({
       role="dialog"
       aria-label="Run Trace Inspector"
     >
-      <div
-        className="relative flex h-full w-full max-w-2xl flex-col border-l border-line bg-base text-text shadow-2xl animate-in slide-in-from-right duration-200"
-      >
+      <div className="relative flex h-full w-full max-w-2xl flex-col border-l border-line bg-base text-text shadow-2xl animate-in slide-in-from-right duration-200">
         {/* Header */}
         <header className="flex items-center justify-between border-b border-line px-5 py-4">
           <div className="flex items-center gap-3">
@@ -128,7 +126,11 @@ export function RunInspectorDrawer({
                 className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line bg-panel px-2.5 text-[12px] text-muted hover:bg-raised hover:text-text"
                 title="Copy trace JSON"
               >
-                {copied ? <CheckIcon width={13} height={13} /> : <CopyIcon width={13} height={13} />}
+                {copied ? (
+                  <CheckIcon width={13} height={13} />
+                ) : (
+                  <CopyIcon width={13} height={13} />
+                )}
                 <span>{copied ? "Copied" : "Copy JSON"}</span>
               </button>
             ) : null}
@@ -176,7 +178,8 @@ export function RunInspectorDrawer({
               <div className="flex flex-col">
                 <span className="text-[11px] font-medium text-faint uppercase">Steps</span>
                 <span className="font-mono text-[13px] font-semibold text-text">
-                  {trace.steps.length} {trace.subagentRuns?.length ? `(+${trace.subagentRuns.length} sub)` : ""}
+                  {trace.steps.length}{" "}
+                  {trace.subagentRuns?.length ? `(+${trace.subagentRuns.length} sub)` : ""}
                 </span>
               </div>
               <div className="flex flex-col">
@@ -254,7 +257,9 @@ export function RunInspectorDrawer({
                     onClick={() => setFilter("compaction")}
                     className={cn(
                       "rounded-md px-2 py-1 font-mono transition-colors",
-                      filter === "compaction" ? "bg-accent text-white" : "text-muted hover:text-text",
+                      filter === "compaction"
+                        ? "bg-accent text-white"
+                        : "text-muted hover:text-text",
                     )}
                   >
                     Compaction ({compactionCount})
@@ -268,7 +273,9 @@ export function RunInspectorDrawer({
                   onClick={() => setViewTab("timeline")}
                   className={cn(
                     "rounded px-2 py-1",
-                    viewTab === "timeline" ? "bg-panel text-text font-medium" : "text-faint hover:text-text",
+                    viewTab === "timeline"
+                      ? "bg-panel text-text font-medium"
+                      : "text-faint hover:text-text",
                   )}
                 >
                   Timeline
@@ -278,7 +285,9 @@ export function RunInspectorDrawer({
                   onClick={() => setViewTab("raw")}
                   className={cn(
                     "rounded px-2 py-1",
-                    viewTab === "raw" ? "bg-panel text-text font-medium" : "text-faint hover:text-text",
+                    viewTab === "raw"
+                      ? "bg-panel text-text font-medium"
+                      : "text-faint hover:text-text",
                   )}
                 >
                   Raw JSON
@@ -324,13 +333,7 @@ export function RunInspectorDrawer({
   )
 }
 
-function StepCard({
-  step,
-  subagentRun,
-}: {
-  step: RunStepView
-  subagentRun?: RunTraceView
-}) {
+function StepCard({ step, subagentRun }: { step: RunStepView; subagentRun?: RunTraceView }) {
   const [expanded, setExpanded] = useState(false)
   const [copiedPayload, setCopiedPayload] = useState(false)
 
@@ -380,9 +383,7 @@ function StepCard({
             {step.inputRef || kindMeta.label}
           </p>
           {textOutput && !expanded ? (
-            <p className="truncate font-mono text-[11px] text-faint">
-              {textOutput.slice(0, 100)}
-            </p>
+            <p className="truncate font-mono text-[11px] text-faint">{textOutput.slice(0, 100)}</p>
           ) : null}
         </div>
 
@@ -411,7 +412,8 @@ function StepCard({
           {subagentRun && subagentRun.steps.length > 0 ? (
             <div className="rounded-lg border border-purple-500/20 bg-purple-950/10 p-3 space-y-2">
               <p className="text-[12px] font-semibold text-purple-300">
-                Subagent Run: @{subagentRun.agentHandle || "worker"} ({subagentRun.steps.length} child steps)
+                Subagent Run: @{subagentRun.agentHandle || "worker"} ({subagentRun.steps.length}{" "}
+                child steps)
               </p>
               <div className="space-y-1.5">
                 {subagentRun.steps.map((childStep) => (

@@ -46,7 +46,9 @@ export function ComputerPanel({ orgSlug, computers }: Props) {
     return (
       <div className="h-full flex flex-col items-center justify-center p-6 text-center text-muted-foreground">
         <p className="text-sm">No bot in this room has a persistent computer enabled.</p>
-        <p className="text-xs mt-1">Enable Persistent Computer under agent capabilities to watch your bot work.</p>
+        <p className="text-xs mt-1">
+          Enable Persistent Computer under agent capabilities to watch your bot work.
+        </p>
       </div>
     )
   }
@@ -110,7 +112,9 @@ export function ComputerPanel({ orgSlug, computers }: Props) {
           type="button"
           onClick={() => setActiveTab("logs")}
           className={`pb-2 px-2 border-b-2 transition-colors ${
-            activeTab === "logs" ? "border-primary text-foreground" : "border-transparent hover:text-foreground"
+            activeTab === "logs"
+              ? "border-primary text-foreground"
+              : "border-transparent hover:text-foreground"
           }`}
         >
           Shell & Logs
@@ -119,7 +123,9 @@ export function ComputerPanel({ orgSlug, computers }: Props) {
           type="button"
           onClick={() => setActiveTab("files")}
           className={`pb-2 px-2 border-b-2 transition-colors ${
-            activeTab === "files" ? "border-primary text-foreground" : "border-transparent hover:text-foreground"
+            activeTab === "files"
+              ? "border-primary text-foreground"
+              : "border-transparent hover:text-foreground"
           }`}
         >
           Files (/home/bot)
@@ -129,7 +135,9 @@ export function ComputerPanel({ orgSlug, computers }: Props) {
             type="button"
             onClick={() => setActiveTab("browser")}
             className={`pb-2 px-2 border-b-2 transition-colors ${
-              activeTab === "browser" ? "border-primary text-foreground" : "border-transparent hover:text-foreground"
+              activeTab === "browser"
+                ? "border-primary text-foreground"
+                : "border-transparent hover:text-foreground"
             }`}
           >
             Browser Screencast
@@ -147,14 +155,18 @@ export function ComputerPanel({ orgSlug, computers }: Props) {
             {current?.status === "running" ? (
               <div className="text-emerald-500">$ agentd ready on /run/agentd.sock</div>
             ) : (
-              <div className="text-muted-foreground">Computer is stopped. Start it to run shell commands or view real-time logs.</div>
+              <div className="text-muted-foreground">
+                Computer is stopped. Start it to run shell commands or view real-time logs.
+              </div>
             )}
           </div>
         )}
 
         {activeTab === "files" && (
           <div className="space-y-2">
-            <div className="text-xs text-muted-foreground">Persistent files mounted at /home/bot</div>
+            <div className="text-xs text-muted-foreground">
+              Persistent files mounted at /home/bot
+            </div>
             <div className="p-3 bg-card border border-border rounded-xl text-xs space-y-1">
               <div className="flex items-center justify-between py-1 border-b border-border">
                 <span className="font-mono">.saaya/env</span>
@@ -175,7 +187,8 @@ export function ComputerPanel({ orgSlug, computers }: Props) {
             </div>
             <h4 className="text-sm font-medium text-foreground">Playwright Chromium Automation</h4>
             <p className="text-xs text-muted-foreground mt-1 max-w-sm">
-              When @{current?.handle} executes browser tools, page snapshots and screenshots will stream here live.
+              When @{current?.handle} executes browser tools, page snapshots and screenshots will
+              stream here live.
             </p>
           </div>
         )}

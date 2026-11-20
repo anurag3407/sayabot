@@ -10,7 +10,7 @@ Source file: `packages/core/src/speech-text.ts` (tests: `speech-text.test.ts`).
 
 `speakable(text: string): string` strips markdown formatting and replaces visual artifacts with natural prose:
 
-- **Fenced code blocks**: Replaced with natural conversational summaries (e.g. ````python ... ```` becomes `". (a code block) "`).
+- **Fenced code blocks**: Replaced with natural conversational summaries (e.g. `python ... ` becomes `". (a code block) "`).
 - **Inline code**: Backticks are stripped so keywords sound natural in prose.
 - **Tables**: Markdown rows and separator borders are normalized into comma-separated, readable clauses.
 - **Links**: Markdown links `[label](url)` keep only the readable label. Raw URLs have protocol and trailing paths trimmed (e.g. `https://github.com/org/repo` -> `github dot com repo`).

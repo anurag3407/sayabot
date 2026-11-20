@@ -12,14 +12,14 @@ Source files: `apps/orchestrator/src/memory/index.ts`, `apps/orchestrator/src/me
 
 `memory/types.ts` derives every memory enum type from the Drizzle pg enums in `packages/db/src/schema/enums.ts:105-144` rather than redefining them:
 
-| Type | Values |
-| :--- | :--- |
-| `MemoryScope` | `agent` \| `room` \| `org` |
-| `MemoryKind` | `fact` \| `preference` \| `decision` \| `procedure` \| `episode` |
-| `MemorySource` | `agent` \| `human` \| `compaction` \| `consolidation` \| `import` |
-| `EpistemicStatus` | `hypothesis` \| `belief` \| `verified` \| `withdrawn` \| `superseded` |
-| `OpenLoopStatus` | `open` \| `in_progress` \| `blocked` \| `resolved` \| `dropped` |
-| `MemoryLinkType` | `relates_to` \| `depends_on` \| `caused_by` \| `contradicts` \| `supersedes` \| `supports` |
+| Type              | Values                                                                                     |
+| :---------------- | :----------------------------------------------------------------------------------------- |
+| `MemoryScope`     | `agent` \| `room` \| `org`                                                                 |
+| `MemoryKind`      | `fact` \| `preference` \| `decision` \| `procedure` \| `episode`                           |
+| `MemorySource`    | `agent` \| `human` \| `compaction` \| `consolidation` \| `import`                          |
+| `EpistemicStatus` | `hypothesis` \| `belief` \| `verified` \| `withdrawn` \| `superseded`                      |
+| `OpenLoopStatus`  | `open` \| `in_progress` \| `blocked` \| `resolved` \| `dropped`                            |
+| `MemoryLinkType`  | `relates_to` \| `depends_on` \| `caused_by` \| `contradicts` \| `supersedes` \| `supports` |
 
 It also defines the write/recall contracts used across the layer:
 
@@ -31,13 +31,13 @@ It also defines the write/recall contracts used across the layer:
 
 Five tables back the layer (schema in `packages/db/src/schema/memory.ts`; full column reference in [../../database/schema-memory.md](../../database/schema-memory.md)):
 
-| Table | Role |
-| :--- | :--- |
-| `memories` | One row per memory: scope/agent/room binding, kind, title, body, tags, source, confidence, pinned, epistemic status, `supersededBy`, `withdrawalReason`, `decayHalfLifeDays`, `lastUsedAt`, `useCount`, `perspective`, `emotionalSalience`, `evidenceRefs`, and the embedding triple (`embedding real[]`, `embeddingModel`, `embeddedAt`). A generated `tsv` tsvector column (`packages/db/sql/0011_memory.sql:39`) powers full-text recall. |
-| `memory_links` | Knowledge-graph edges: `sourceMemoryId` → `targetMemoryId` or `targetSlug`, with `relationship` and `weight`. |
-| `open_loops` | Commitments/promises per agent (optionally per room) with `status`, `dueAt`, `blockerReason`, `resolution`. |
-| `memory_sources` | Registered source ids of the form `"agent:uuid" / "room:uuid" / "org:uuid"` with `federated` and `config` flags. |
-| `vector_providers` | Per-org embedding/vector-DB provider config; the API key is sealed with the KEK (`ciphertext`/`iv`/`tag`). |
+| Table              | Role                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| :----------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `memories`         | One row per memory: scope/agent/room binding, kind, title, body, tags, source, confidence, pinned, epistemic status, `supersededBy`, `withdrawalReason`, `decayHalfLifeDays`, `lastUsedAt`, `useCount`, `perspective`, `emotionalSalience`, `evidenceRefs`, and the embedding triple (`embedding real[]`, `embeddingModel`, `embeddedAt`). A generated `tsv` tsvector column (`packages/db/sql/0011_memory.sql:39`) powers full-text recall. |
+| `memory_links`     | Knowledge-graph edges: `sourceMemoryId` → `targetMemoryId` or `targetSlug`, with `relationship` and `weight`.                                                                                                                                                                                                                                                                                                                                |
+| `open_loops`       | Commitments/promises per agent (optionally per room) with `status`, `dueAt`, `blockerReason`, `resolution`.                                                                                                                                                                                                                                                                                                                                  |
+| `memory_sources`   | Registered source ids of the form `"agent:uuid" / "room:uuid" / "org:uuid"` with `federated` and `config` flags.                                                                                                                                                                                                                                                                                                                             |
+| `vector_providers` | Per-org embedding/vector-DB provider config; the API key is sealed with the KEK (`ciphertext`/`iv`/`tag`).                                                                                                                                                                                                                                                                                                                                   |
 
 Embeddings are stored as plain `real[]` so the column works without the pgvector extension; recall casts to `::vector` only when `pg_extension` reports `vector` installed (`modules/embeddings.ts:191-203`). The `embeddingModel` column stores `${provider}:${model}` so switching providers never mixes vector generations.
 
@@ -45,11 +45,11 @@ Embeddings are stored as plain `real[]` so the column works without the pgvector
 
 Three scopes exist, and visibility is enforced twice: once in SQL via `buildScopeConditions` and once in JS via `canReadMemory` / `canWriteMemory` (`modules/sources.ts:95-169`):
 
-| Scope | Stored on | Visible to |
-| :--- | :--- | :--- |
-| `agent` | `agent_id` (+ optional `room_id`) | Only that agent. A row with `room_id` set is bound to that room ("what the agent learned there") and never surfaces in another room; `room_id` null is agent-wide. |
-| `room` | `room_id` | Every agent in that room, and nobody else. |
-| `org` | neither | The whole workspace. Writable only by the agent that created it (`canWriteMemory`, `modules/sources.ts:163-169`) — one bot cannot retract the workspace's shared knowledge, and `MemoryService.write` never lets an agent overwrite an org memory written by a human (`service.ts:256-262`). |
+| Scope   | Stored on                         | Visible to                                                                                                                                                                                                                                                                                   |
+| :------ | :-------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `agent` | `agent_id` (+ optional `room_id`) | Only that agent. A row with `room_id` set is bound to that room ("what the agent learned there") and never surfaces in another room; `room_id` null is agent-wide.                                                                                                                           |
+| `room`  | `room_id`                         | Every agent in that room, and nobody else.                                                                                                                                                                                                                                                   |
+| `org`   | neither                           | The whole workspace. Writable only by the agent that created it (`canWriteMemory`, `modules/sources.ts:163-169`) — one bot cannot retract the workspace's shared knowledge, and `MemoryService.write` never lets an agent overwrite an org memory written by a human (`service.ts:256-262`). |
 
 An explicit scope without its matching id matches nothing rather than every room/agent (`modules/sources.ts:114-124`).
 
@@ -84,29 +84,43 @@ Each recalled item comes back as a `RecalledMemoryItem` (`service.ts:80-95`) —
 
 ```json
 {
-  "id": "3f1c…", "scope": "agent", "kind": "decision",
-  "title": "Deploy target", "body": "…",
-  "pinned": false, "confidence": 0.85,
-  "score": 0.6112, "relevance": 0.7354,
-  "retention": 0.9283, "emotionalSalience": 0.5,
-  "epistemicStatus": "belief", "perspective": "first_person",
-  "links": [{ "id": "…", "targetMemoryId": "…", "targetSlug": null,
-              "relationship": "relates_to", "weight": 1 }]
+  "id": "3f1c…",
+  "scope": "agent",
+  "kind": "decision",
+  "title": "Deploy target",
+  "body": "…",
+  "pinned": false,
+  "confidence": 0.85,
+  "score": 0.6112,
+  "relevance": 0.7354,
+  "retention": 0.9283,
+  "emotionalSalience": 0.5,
+  "epistemicStatus": "belief",
+  "perspective": "first_person",
+  "links": [
+    {
+      "id": "…",
+      "targetMemoryId": "…",
+      "targetSlug": null,
+      "relationship": "relates_to",
+      "weight": 1
+    }
+  ]
 }
 ```
 
 The layer's operative defaults and constants in one place:
 
-| Constant / default | Value | Where |
-| :--- | :--- | :--- |
-| Recall `limit` | 8 (tools cap at 20) | `service.ts:359`, `tools.ts:134` |
-| Candidate pool | `max(30, limit * 4)` per pass; recent pass 100 during in-process cosine | `service.ts:386`, `service.ts:457` |
-| Active statuses | `["verified", "belief", "hypothesis"]` | `service.ts:56-57` |
-| Title / body caps | 200 / 4096 chars, redacted | `service.ts:224-225` |
-| Insert defaults | `source "agent"`, `confidence 1.0`, `pinned false`, `perspective "first_person"`, `emotionalSalience 0.5`, `epistemicStatus "belief"`, `decayHalfLifeDays 30` | `service.ts:302-326` |
-| Duplicate-loop threshold | Jaccard ≥ 0.6 | `service.ts:975` |
-| Transcript minimum | 50 chars before extraction | `service.ts:857` |
-| Diary half-life | `decayHalfLifeDays 14` on daily episodes | `service.ts:1078` |
+| Constant / default       | Value                                                                                                                                                         | Where                              |
+| :----------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------ | :--------------------------------- |
+| Recall `limit`           | 8 (tools cap at 20)                                                                                                                                           | `service.ts:359`, `tools.ts:134`   |
+| Candidate pool           | `max(30, limit * 4)` per pass; recent pass 100 during in-process cosine                                                                                       | `service.ts:386`, `service.ts:457` |
+| Active statuses          | `["verified", "belief", "hypothesis"]`                                                                                                                        | `service.ts:56-57`                 |
+| Title / body caps        | 200 / 4096 chars, redacted                                                                                                                                    | `service.ts:224-225`               |
+| Insert defaults          | `source "agent"`, `confidence 1.0`, `pinned false`, `perspective "first_person"`, `emotionalSalience 0.5`, `epistemicStatus "belief"`, `decayHalfLifeDays 30` | `service.ts:302-326`               |
+| Duplicate-loop threshold | Jaccard ≥ 0.6                                                                                                                                                 | `service.ts:975`                   |
+| Transcript minimum       | 50 chars before extraction                                                                                                                                    | `service.ts:857`                   |
+| Diary half-life          | `decayHalfLifeDays 14` on daily episodes                                                                                                                      | `service.ts:1078`                  |
 
 ## ⚙️ How memory work is triggered
 

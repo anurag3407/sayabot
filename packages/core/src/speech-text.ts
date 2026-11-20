@@ -4,7 +4,11 @@
 const ENDS_SENTENCE = /[.!?:;]\s*$/
 
 function describeCodeBlock(fence: string): string {
-  const lang = fence.trim().split(/\s+/)[0]?.replace(/[^a-z0-9+#]/gi, "") ?? ""
+  const lang =
+    fence
+      .trim()
+      .split(/\s+/)[0]
+      ?.replace(/[^a-z0-9+#]/gi, "") ?? ""
   const spoken: Record<string, string> = {
     ts: "TypeScript",
     tsx: "TypeScript",
@@ -57,8 +61,12 @@ export function speakable(input: string): string {
   let text = input
 
   // Fenced code blocks first
-  text = text.replace(/```([^\n]*)\n[\s\S]*?(?:```|$)/g, (_m, fence: string) => describeCodeBlock(fence))
-  text = text.replace(/~~~([^\n]*)\n[\s\S]*?(?:~~~|$)/g, (_m, fence: string) => describeCodeBlock(fence))
+  text = text.replace(/```([^\n]*)\n[\s\S]*?(?:```|$)/g, (_m, fence: string) =>
+    describeCodeBlock(fence),
+  )
+  text = text.replace(/~~~([^\n]*)\n[\s\S]*?(?:~~~|$)/g, (_m, fence: string) =>
+    describeCodeBlock(fence),
+  )
 
   text = stripEmphasis(text)
 
@@ -84,7 +92,9 @@ export function speakable(input: string): string {
   )
 
   // Inline code: short snippets (<= 40 chars) stay; long snippets become "that snippet"
-  text = text.replace(/`([^`\n]+)`/g, (_m, code: string) => (code.length <= 40 ? code : " that snippet "))
+  text = text.replace(/`([^`\n]+)`/g, (_m, code: string) =>
+    code.length <= 40 ? code : " that snippet ",
+  )
 
   // Headings
   text = text.replace(/^\s{0,3}#{1,6}\s+(.*)$/gm, (_m, head: string) =>
@@ -147,7 +157,11 @@ export function toUtterances(input: string, options: UtteranceOptions = {}): str
   const text = speakable(input)
   if (!text) return []
 
-  const { minChars = 12, maxChars = 320, firstBlockMaxChars = VOICE_FIRST_BLOCK_MAX_CHARS } = options
+  const {
+    minChars = 12,
+    maxChars = 320,
+    firstBlockMaxChars = VOICE_FIRST_BLOCK_MAX_CHARS,
+  } = options
 
   const MARK = "\u0000"
   const sentences = text

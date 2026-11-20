@@ -1,6 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { executeWebSearch, fetchProviderCredits, SEARCH_PROVIDERS } from "../../src/tools/builtins/web-search"
-import { cleanHtmlToMarkdown, fetchSafeWebPage, formatUntrustedWebContent } from "../../src/tools/builtins/web-fetch"
+import {
+  executeWebSearch,
+  fetchProviderCredits,
+  SEARCH_PROVIDERS,
+} from "../../src/tools/builtins/web-search"
+import {
+  cleanHtmlToMarkdown,
+  fetchSafeWebPage,
+  formatUntrustedWebContent,
+} from "../../src/tools/builtins/web-fetch"
 
 describe("Multi-provider web search engine", () => {
   const originalFetch = globalThis.fetch
@@ -284,8 +292,12 @@ describe("cleanHtmlToMarkdown extraction and safe fetch", () => {
   })
 
   it("blocks SSRF in fetchSafeWebPage for link-local and loopback IPs", async () => {
-    await expect(fetchSafeWebPage("http://127.0.0.1:8080/secret")).rejects.toThrow(/private address|private host/)
-    await expect(fetchSafeWebPage("http://169.254.169.254/latest/meta-data")).rejects.toThrow(/private address|private host/)
+    await expect(fetchSafeWebPage("http://127.0.0.1:8080/secret")).rejects.toThrow(
+      /private address|private host/,
+    )
+    await expect(fetchSafeWebPage("http://169.254.169.254/latest/meta-data")).rejects.toThrow(
+      /private address|private host/,
+    )
   })
 
   it("converts rich HTML to clean Markdown with entity decoding and link preservation", () => {

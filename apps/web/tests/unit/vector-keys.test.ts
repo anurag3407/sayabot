@@ -125,7 +125,13 @@ describe("Vector & RAG Providers Actions", () => {
       select: vi.fn().mockReturnValue({
         eq: vi.fn().mockReturnValue({
           maybeSingle: vi.fn().mockResolvedValue({
-            data: { id: "vec-to-del", org_id: "org-1", label: "Old DB", is_active: false, kind: "vector_db" },
+            data: {
+              id: "vec-to-del",
+              org_id: "org-1",
+              label: "Old DB",
+              is_active: false,
+              kind: "vector_db",
+            },
           }),
         }),
       }),

@@ -22,7 +22,8 @@ describe("speakable", () => {
   })
 
   it("replaces links and URLs", () => {
-    const input = "Visit [Sayabot Docs](https://sayabot.in/docs) or https://github.com/sayabot directly."
+    const input =
+      "Visit [Sayabot Docs](https://sayabot.in/docs) or https://github.com/sayabot directly."
     const output = speakable(input)
     expect(output).toBe("Visit Sayabot Docs or a link directly.")
   })

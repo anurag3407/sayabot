@@ -10,13 +10,13 @@ Source files: `packages/llm/src/crypto.ts`, `packages/core/src/redact.ts`, `apps
 
 Every credential (provider API keys, connector OAuth tokens, webhook secrets, MCP headers) is envelope-encrypted with a 32-byte KEK before it reaches PostgreSQL. `packages/llm/src/crypto.ts` is the whole implementation:
 
-| Function | Purpose |
-| :--- | :--- |
-| `parseKek(kek)` | decodes base64 → exactly 32 bytes; anything else throws with the `openssl rand -base64 32` hint (`crypto.ts:10-16`) |
-| `encryptSecret(plaintext, kek)` | AES-256-GCM, fresh 12-byte IV → `{ ciphertext, iv, tag }` (all base64) |
-| `decryptSecret(secret, kek)` | verifies the auth tag; a wrong KEK or tampered tag fails the GCM check |
-| `sealSecret` / `openSecret` | base64(JSON envelope) for single-text-column storage (e.g. `mcp_servers.headers_enc`) |
-| `last4(value)` | display helper for key fingerprints |
+| Function                        | Purpose                                                                                                             |
+| :------------------------------ | :------------------------------------------------------------------------------------------------------------------ |
+| `parseKek(kek)`                 | decodes base64 → exactly 32 bytes; anything else throws with the `openssl rand -base64 32` hint (`crypto.ts:10-16`) |
+| `encryptSecret(plaintext, kek)` | AES-256-GCM, fresh 12-byte IV → `{ ciphertext, iv, tag }` (all base64)                                              |
+| `decryptSecret(secret, kek)`    | verifies the auth tag; a wrong KEK or tampered tag fails the GCM check                                              |
+| `sealSecret` / `openSecret`     | base64(JSON envelope) for single-text-column storage (e.g. `mcp_servers.headers_enc`)                               |
+| `last4(value)`                  | display helper for key fingerprints                                                                                 |
 
 Key resolution order is `SAYABOT_KEK` then legacy `MESH_KEK` — both the orchestrator env schema (`apps/orchestrator/src/env.ts:46-47`) and the web `getKek()` (`apps/web/src/lib/env.ts:29-33`) accept either, and both env files document the alias. The KEK is never logged and cannot be recovered: the deploy docs warn that losing it makes every stored credential unrecoverable (`deploy/.env.production.example:3-4`).
 
@@ -68,11 +68,13 @@ Inside a turn, the `use_secret` tool resolves a placeholder's metadata (not the 
 Two independent implementations guard two different traffic classes:
 
 **Outbound computer/proxy traffic** — `assertSafeEgressHost()` in `packages/core/src/server/ssrf.ts:158-195`:
+
 - Host-suffix blocks without DNS: `localhost`, `.localhost`, `.local`, `.internal`, `.onion`.
 - Literal IPs go through `isPrivateIp()`; hostnames resolve via `dns.lookup({ all: true })` and **every** returned address must be public.
 - `isPrivateIp()` (`ssrf.ts:62-156`) blocks: loopback, RFC1918 (10/8, 172.16/12, 192.168/16), link-local + cloud metadata (169.254/16), CGNAT 100.64/10, 0/8, benchmarking 198.18/15, TEST-NET ranges, multicast/reserved ≥224, broadcast, and on IPv6: multicast, `::1`, IPv4-mapped/compatible/NAT64/6to4 embedded addresses (recursively re-checked), link-local `fe80::/10`, ULAs `fc00::/7`, discard `100::/64`, documentation `2001:db8::/32`. Unparseable IPv6 is treated as unsafe. `packages/core/src/server/ssrf.test.ts` pins these lists.
 
 **Webhook delivery** — `assertSafeWebhookUrl()` in `apps/orchestrator/src/ssrf.ts:11-42`:
+
 - Scheme must be http/https, no embedded `user:pass`.
 - `.local`/`.internal`/`localhost` hostnames rejected; DNS re-checked on **every** delivery attempt.
 - The `SAYABOT_ALLOW_PRIVATE_WEBHOOKS` (legacy `MESH_ALLOW_PRIVATE_WEBHOOKS`) flag skips private-IP checks — documented as a local-bot-development escape hatch only (`env.ts:20-27`, docker-compose comment "dev-only escape hatch").
@@ -109,18 +111,18 @@ Key details:
 
 `redactSecrets()` (`packages/core/src/redact.ts:26-49`) runs on essentially every string that is stored or sent:
 
-| Pattern | Matches |
-| :--- | :--- |
-| `aws_access_key` | `AKIA`/`ASIA` + 16 chars |
-| `anthropic_key` / `openai_key` | `sk-ant-…`, `sk-…` incl. `sk-proj-` |
-| `github_token` / `github_pat` | `ghp|gho|ghu|ghs|ghr_…`, `github_pat_…` |
-| `slack_token` | `xox[abposr]-…` |
-| `google_api_key` | `AIza…` |
-| `groq_key` | `gsk_…` |
-| agent keys & OAuth tokens | `mesh_ak_`/`saaya_ak_`/`sayabot_ak_`, `mesh_at_`/`sayabot_at_`, refresh `…_rt_` |
-| `invite_code` | `sinv_…` |
-| `jwt` | three-segment `eyJ…` tokens |
-| `private_key` | PEM blocks |
+| Pattern                        | Matches                                                                         |
+| :----------------------------- | :------------------------------------------------------------------------------ |
+| `aws_access_key`               | `AKIA`/`ASIA` + 16 chars                                                        |
+| `anthropic_key` / `openai_key` | `sk-ant-…`, `sk-…` incl. `sk-proj-`                                             |
+| `github_token` / `github_pat`  | `ghp                                                                            | gho | ghu | ghs | ghr_…`, `github_pat_…` |
+| `slack_token`                  | `xox[abposr]-…`                                                                 |
+| `google_api_key`               | `AIza…`                                                                         |
+| `groq_key`                     | `gsk_…`                                                                         |
+| agent keys & OAuth tokens      | `mesh_ak_`/`saaya_ak_`/`sayabot_ak_`, `mesh_at_`/`sayabot_at_`, refresh `…_rt_` |
+| `invite_code`                  | `sinv_…`                                                                        |
+| `jwt`                          | three-segment `eyJ…` tokens                                                     |
+| `private_key`                  | PEM blocks                                                                      |
 
 Replacements are `[REDACTED:<kind>]`, and the report of counts is returned for observability. Two higher-level scrubbers build on it:
 
@@ -142,14 +144,14 @@ Where it is applied: agent messages and metadata, tool call args and results, to
 
 ## 🧪 What the tests cover
 
-| Behaviour | Test file |
-| :--- | :--- |
-| Private-IP lists (IPv4 ranges, embedded IPv6, ULAs, NAT64, 6to4, link-local) | `packages/core/src/server/ssrf.test.ts` |
-| Webhook signature verify (tolerance, multiple signatures, missing headers) | `packages/core/src/server/webhook.test.ts` |
-| Envelope crypto round-trip, wrong KEK failure | `packages/llm/src/crypto.test.ts` |
-| Redaction patterns, run scrubber variants | `packages/core/src/redact.test.ts` |
+| Behaviour                                                                       | Test file                                                                           |
+| :------------------------------------------------------------------------------ | :---------------------------------------------------------------------------------- |
+| Private-IP lists (IPv4 ranges, embedded IPv6, ULAs, NAT64, 6to4, link-local)    | `packages/core/src/server/ssrf.test.ts`                                             |
+| Webhook signature verify (tolerance, multiple signatures, missing headers)      | `packages/core/src/server/webhook.test.ts`                                          |
+| Envelope crypto round-trip, wrong KEK failure                                   | `packages/llm/src/crypto.test.ts`                                                   |
+| Redaction patterns, run scrubber variants                                       | `packages/core/src/redact.test.ts`                                                  |
 | Proxy head rewriting (credential injection, guest header drop, 431 on oversize) | covered by computerd bridge tests; end-to-end approval UX in `e2e/approval.spec.ts` |
-| Approval expiry / waiter resolution | exercised in orchestrator tools tests and `e2e/approval.spec.ts` |
+| Approval expiry / waiter resolution                                             | exercised in orchestrator tools tests and `e2e/approval.spec.ts`                    |
 
 ---
 

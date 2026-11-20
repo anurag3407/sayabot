@@ -40,7 +40,10 @@ export function AgentCreateForm({
   const formRef = useRef<HTMLFormElement>(null)
 
   const provider = keys.find((key) => key.id === keyId)?.provider ?? null
-  const suggestions = useMemo(() => (provider ? (MODEL_SUGGESTIONS[provider] ?? []) : []), [provider])
+  const suggestions = useMemo(
+    () => (provider ? (MODEL_SUGGESTIONS[provider] ?? []) : []),
+    [provider],
+  )
   const noModelAvailable = kind === "llm" && keys.length === 0 && !hasServerModel
 
   useEffect(() => {
@@ -126,7 +129,9 @@ export function AgentCreateForm({
           onChange={(event) => setKind(event.target.value)}
         >
           <option value="llm">AI model (uses an API key)</option>
-          <option value="external">Bring your own bot (ChatGPT, Claude, Gemini, Cursor via MCP, or a webhook)</option>
+          <option value="external">
+            Bring your own bot (ChatGPT, Claude, Gemini, Cursor via MCP, or a webhook)
+          </option>
         </Select>
       </Field>
 
@@ -193,7 +198,11 @@ export function AgentCreateForm({
           htmlFor="agent-webhook"
           hint="optional. Leave empty to connect from ChatGPT, Claude, Gemini or Cursor over MCP (Settings → Bots)"
         >
-          <Input id="agent-webhook" name="webhookUrl" placeholder="https://bot.example.com/hooks/sayabot" />
+          <Input
+            id="agent-webhook"
+            name="webhookUrl"
+            placeholder="https://bot.example.com/hooks/sayabot"
+          />
         </Field>
       )}
 
@@ -224,7 +233,9 @@ export function AgentCreateForm({
             />
           </Field>
           <fieldset>
-            <legend className="mb-1.5 font-mono text-[12px] text-muted">MCP servers it can use</legend>
+            <legend className="mb-1.5 font-mono text-[12px] text-muted">
+              MCP servers it can use
+            </legend>
             {mcpServers.length === 0 ? (
               <p className="text-[12px] text-faint">No MCP servers added yet.</p>
             ) : (

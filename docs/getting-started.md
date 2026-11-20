@@ -8,14 +8,14 @@ This guide walks you through setting up, configuring, and launching Sayabot loca
 
 Before you begin, ensure your local development environment meets the following requirements:
 
-| Tool | Minimum Version | Recommended | Notes |
-| :--- | :--- | :--- | :--- |
-| **Node.js** | `>= 24.0.0` | `24.x LTS` | Sayabot relies on modern Node.js web standard APIs. |
-| **pnpm** | `>= 10.0.0` | `10.33.0+` | Core monorepo package manager (`corepack enable pnpm`). |
-| **Docker Engine** | `>= 24.0.0` | Docker Desktop / OrbStack | Required for persistent bot sandboxes (`computerd`). |
-| **PostgreSQL** | `>= 15.0` | Supabase (Hosted or Local) | Requires `LISTEN/NOTIFY` and Advisory Lock support. |
-| **OpenSSL** | `>= 1.1.1` | Modern system OpenSSL | Used to generate master AES-256 keys and secrets. |
-| **Git** | `>= 2.30` | Modern Git | Required for repository cloning and bot workspace tools. |
+| Tool              | Minimum Version | Recommended                | Notes                                                    |
+| :---------------- | :-------------- | :------------------------- | :------------------------------------------------------- |
+| **Node.js**       | `>= 24.0.0`     | `24.x LTS`                 | Sayabot relies on modern Node.js web standard APIs.      |
+| **pnpm**          | `>= 10.0.0`     | `10.33.0+`                 | Core monorepo package manager (`corepack enable pnpm`).  |
+| **Docker Engine** | `>= 24.0.0`     | Docker Desktop / OrbStack  | Required for persistent bot sandboxes (`computerd`).     |
+| **PostgreSQL**    | `>= 15.0`       | Supabase (Hosted or Local) | Requires `LISTEN/NOTIFY` and Advisory Lock support.      |
+| **OpenSSL**       | `>= 1.1.1`      | Modern system OpenSSL      | Used to generate master AES-256 keys and secrets.        |
+| **Git**           | `>= 2.30`       | Modern Git                 | Required for repository cloning and bot workspace tools. |
 
 ---
 
@@ -92,7 +92,7 @@ Sayabot utilizes PostgreSQL for relational storage, row-level security (RLS), re
    http://localhost:3000/auth/complete
    http://localhost:3000/**
    ```
-4. *(Optional for Dev)* Go to **Authentication** → **Email Templates**. If using Email Magic Links or OTPs, make sure `{{ .Token }}` or `{{ .ConfirmationURL }}` is present in the template.
+4. _(Optional for Dev)_ Go to **Authentication** → **Email Templates**. If using Email Magic Links or OTPs, make sure `{{ .Token }}` or `{{ .ConfirmationURL }}` is present in the template.
 
 ---
 
@@ -171,6 +171,7 @@ pnpm db:migrate
 ```
 
 You should see output confirming that migrations `0001` through `0014_routines.sql` were applied:
+
 - `0001_functions.sql`: Extension setup, cryptographic functions
 - `0002_rls.sql`: Multi-tenant organization and room security policies
 - `0003_realtime.sql`: Realtime replication publication for chats and canvas
@@ -196,12 +197,12 @@ pnpm dev
 
 Turborepo will spin up all workspace microservices in parallel:
 
-| Service | Port | Description |
-| :--- | :--- | :--- |
-| **`apps/web`** | `http://localhost:3000` | Next.js 16 Web Dashboard, Chat, Canvas & Cron Canvas |
-| **`apps/orchestrator`** | `http://localhost:4000` | Hono Agent Runner, Turn Coordinator, Cron Scheduler |
-| **Collab WebSocket** | `ws://localhost:4000/collab` | Real-time Yjs CRDT synchronization for live canvas |
-| **MCP Gateway** | `http://localhost:4000/api/v1/mcp` | Universal Model Context Protocol endpoint |
+| Service                 | Port                               | Description                                          |
+| :---------------------- | :--------------------------------- | :--------------------------------------------------- |
+| **`apps/web`**          | `http://localhost:3000`            | Next.js 16 Web Dashboard, Chat, Canvas & Cron Canvas |
+| **`apps/orchestrator`** | `http://localhost:4000`            | Hono Agent Runner, Turn Coordinator, Cron Scheduler  |
+| **Collab WebSocket**    | `ws://localhost:4000/collab`       | Real-time Yjs CRDT synchronization for live canvas   |
+| **MCP Gateway**         | `http://localhost:4000/api/v1/mcp` | Universal Model Context Protocol endpoint            |
 
 ---
 
@@ -228,12 +229,12 @@ If you want your agents to have access to persistent Linux containers (`/home/bo
 
 Every agent gets its own computer. Pick whichever your machine supports — `computerd` detects it (`COMPUTER_BACKEND=auto`):
 
-| Your machine | Install | What each agent gets |
-| :--- | :--- | :--- |
-| Mac with Apple silicon | `brew install smol-machines/tap/smolvm` | a microVM with its own kernel (no Docker needed) |
-| Linux with KVM | `sudo deploy/scripts/setup-computers.sh` | a microVM with its own kernel |
-| Anything with Docker Desktop / OrbStack | nothing | a container |
-| Not enough RAM/CPU for local computers | set `COMPUTER_BACKEND=e2b` and `E2B_API_KEY` | a cloud microVM (E2B) |
+| Your machine                            | Install                                      | What each agent gets                             |
+| :-------------------------------------- | :------------------------------------------- | :----------------------------------------------- |
+| Mac with Apple silicon                  | `brew install smol-machines/tap/smolvm`      | a microVM with its own kernel (no Docker needed) |
+| Linux with KVM                          | `sudo deploy/scripts/setup-computers.sh`     | a microVM with its own kernel                    |
+| Anything with Docker Desktop / OrbStack | nothing                                      | a container                                      |
+| Not enough RAM/CPU for local computers  | set `COMPUTER_BACKEND=e2b` and `E2B_API_KEY` | a cloud microVM (E2B)                            |
 
 Then, in a separate terminal tab:
 
@@ -251,18 +252,22 @@ pnpm --filter @sayabot/computerd dev
 ## 🔍 Troubleshooting & FAQ
 
 ### 1. `Error: LISTEN/NOTIFY failed or advisory lock timed out`
+
 - **Cause**: You connected via the Supabase Transaction Pooler (port `6543`).
 - **Solution**: Open `.env` and change `DATABASE_URL` to port `5432` (Session Pooler or Direct Database URL).
 
 ### 2. `Error: secret decryption failed: invalid authentication tag`
+
 - **Cause**: The `MESH_KEK` in `.env` does not match the key that originally encrypted existing secrets in the database.
 - **Solution**: If developing locally and resetting the database, generate a fresh `MESH_KEK`, update `.env`, and re-run `pnpm db:seed`.
 
 ### 3. `WebSocket connection to 'ws://localhost:4000/collab' failed`
+
 - **Cause**: The orchestrator microservice is not running or port 4000 is occupied.
 - **Solution**: Check the console output of `pnpm dev`. Ensure no other process is bound to port 4000 (`lsof -i :4000`).
 
 ### 4. `Tool call failed: docker daemon is not reachable`
+
 - **Cause**: The agent has the `computer` capability enabled, but no computer backend is available (Docker not running, smolvm not installed, no `E2B_API_KEY`).
 - **Solution**: Install smolvm (Apple silicon / KVM), start Docker Desktop / OrbStack, or set `COMPUTER_BACKEND=e2b`. If you do not need Linux computers, toggle off the `computer` capability in Agent Settings (`/[org]/agents`).
 

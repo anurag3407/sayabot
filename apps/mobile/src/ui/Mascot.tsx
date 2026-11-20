@@ -114,7 +114,7 @@ export function Mascot({
     ? "waiting"
     : working
       ? "working"
-      : MOOD_MAP[mood] ?? "idle"
+      : (MOOD_MAP[mood] ?? "idle")
   const isLit = lit || working
   const isLive = live ?? (working || isLit)
 
@@ -287,11 +287,7 @@ export function Mascot({
           {isLit ? <Ellipse cx="50" cy="52" rx="46" ry="44" fill={`url(#${haloId})`} /> : null}
 
           {/* Saaya depth shadow layer */}
-          <Path
-            d={g.shell}
-            fill={isRare ? "#7c6fd6" : shade}
-            translateY={SAYA_SAAYA_OFFSET}
-          />
+          <Path d={g.shell} fill={isRare ? "#7c6fd6" : shade} translateY={SAYA_SAAYA_OFFSET} />
 
           {/* Base body shell */}
           <Path d={g.shell} fill={isRare ? `url(#${prismId})` : base} />

@@ -85,7 +85,13 @@ function fromOklab([L, a, b]: Rgb): Rgb {
 }
 
 function rgbToHex(rgb: Rgb): string {
-  return `#${rgb.map((c) => Math.round(c * 255).toString(16).padStart(2, "0")).join("")}`
+  return `#${rgb
+    .map((c) =>
+      Math.round(c * 255)
+        .toString(16)
+        .padStart(2, "0"),
+    )
+    .join("")}`
 }
 
 function mixOklab(a: string, weight: number, b: string): string {
@@ -120,10 +126,16 @@ const LIVE_CSS = `
 @keyframes saya-spark{0%,100%{opacity:0;transform:scale(.4)}50%{opacity:1;transform:scale(1) rotate(45deg)}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important}}`
 
-function finish(markup: string, prefix: string, { live, figure }: { live: boolean; figure: boolean }): string {
+function finish(
+  markup: string,
+  prefix: string,
+  { live, figure }: { live: boolean; figure: boolean },
+): string {
   let svg = resolveColours(markup)
   // Namespaced ids, so several mascots can share one page or one design file.
-  svg = svg.replace(/id="([^"]+)"/g, `id="${prefix}-$1"`).replace(/url\(#([^)]+)\)/g, `url(#${prefix}-$1)`)
+  svg = svg
+    .replace(/id="([^"]+)"/g, `id="${prefix}-$1"`)
+    .replace(/url\(#([^)]+)\)/g, `url(#${prefix}-$1)`)
   // Halo glowing as a plain attribute (no stylesheet needed for static use).
   svg = svg.replace(/class="saya-halo"/g, `class="saya-halo" opacity="${live ? "0.32" : "0.24"}"`)
   // Gradient stops as attributes (design tools ignore some inline styles); the pointer-tracking
@@ -148,11 +160,15 @@ function finish(markup: string, prefix: string, { live, figure }: { live: boolea
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${box}" width="${Math.round((112 / (figure ? 158 : 116)) * height)}" height="${height}">` +
       (live ? `<style>${LIVE_CSS}</style>` : ""),
   )
-  if (live) svg = svg.replace("</defs>", '</defs><g class="saya-float">').replace(/<\/svg>$/, "</g></svg>")
+  if (live)
+    svg = svg.replace("</defs>", '</defs><g class="saya-float">').replace(/<\/svg>$/, "</g></svg>")
   return `<?xml version="1.0" encoding="UTF-8"?>\n${svg}\n`
 }
 
-function render(name: string, opts: { mood?: MascotMood; live?: boolean; figure?: boolean } = {}): string {
+function render(
+  name: string,
+  opts: { mood?: MascotMood; live?: boolean; figure?: boolean } = {},
+): string {
   const markup = renderToStaticMarkup(
     createElement(Mascot, {
       seed: name,
@@ -198,7 +214,10 @@ const rows = Math.ceil(CAST.length / columns)
 const tiles = CAST.map(({ name }, index) => {
   const inner = render(name)
     .replace(/^<\?xml[^>]*>\n/, "")
-    .replace(/ width="\d+" height="\d+"/, ` x="${(index % columns) * cell + 10}" y="${Math.floor(index / columns) * (cell + 24) + 10}" width="100" height="104"`)
+    .replace(
+      / width="\d+" height="\d+"/,
+      ` x="${(index % columns) * cell + 10}" y="${Math.floor(index / columns) * (cell + 24) + 10}" width="100" height="104"`,
+    )
   const tx = (index % columns) * cell + 60
   const ty = Math.floor(index / columns) * (cell + 24) + 132
   return `${inner}<text x="${tx}" y="${ty}" text-anchor="middle" font-family="Geist, -apple-system, Helvetica, Arial, sans-serif" font-size="11" fill="#ededf0">${name}${name === RARE_MASCOT ? " ✦" : ""}</text>`
@@ -233,6 +252,7 @@ ${CAST.map(({ name, role }) => `- **${name}**: ${role}`).join("\n")}
 
 // The Mac app's sign-in screens use the live trio.
 mkdirSync(DESKTOP, { recursive: true })
-for (const name of ["pip", slug(RARE_MASCOT), "moss"]) copyFileSync(join(OUT, `${name}-live.svg`), join(DESKTOP, `${name}-live.svg`))
+for (const name of ["pip", slug(RARE_MASCOT), "moss"])
+  copyFileSync(join(OUT, `${name}-live.svg`), join(DESKTOP, `${name}-live.svg`))
 
 console.log(`Wrote ${CAST.length * 2 + 9 + 2} files to ${OUT}`)

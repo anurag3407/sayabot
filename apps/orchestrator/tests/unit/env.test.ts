@@ -10,13 +10,18 @@ const BASE = {
 
 async function loadEnv(env: Record<string, string>) {
   vi.resetModules()
+  // Hermetic: the host shell exports PORT (sometimes `0`), which would override the default.
+  vi.stubEnv("PORT", env.PORT ?? "4000")
   for (const [k, v] of Object.entries(env)) vi.stubEnv(k, v)
   const mod = await import("../../src/env")
   return mod
 }
 
 describe("orchestrator env", () => {
-  afterEach(() => { vi.unstubAllEnvs(); vi.resetModules() })
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.resetModules()
+  })
 
   it("parses the minimum required env and applies defaults", async () => {
     const { getEnv } = await loadEnv(BASE)
@@ -34,7 +39,13 @@ describe("orchestrator env", () => {
 
   it("falls back to NEXT_PUBLIC_SUPABASE_URL", async () => {
     const { DATABASE_URL, MESH_KEK, SUPABASE_SERVICE_ROLE_KEY, ORCHESTRATOR_INTERNAL_SECRET } = BASE
-    const { getEnv } = await loadEnv({ DATABASE_URL, MESH_KEK, SUPABASE_SERVICE_ROLE_KEY, ORCHESTRATOR_INTERNAL_SECRET, NEXT_PUBLIC_SUPABASE_URL: "https://next.supabase.co" })
+    const { getEnv } = await loadEnv({
+      DATABASE_URL,
+      MESH_KEK,
+      SUPABASE_SERVICE_ROLE_KEY,
+      ORCHESTRATOR_INTERNAL_SECRET,
+      NEXT_PUBLIC_SUPABASE_URL: "https://next.supabase.co",
+    })
     expect(getEnv().SUPABASE_URL).toBe("https://next.supabase.co")
   })
 
@@ -59,7 +70,11 @@ describe("orchestrator env", () => {
   })
 
   it("coerces string booleans strictly (only 'true' is true)", async () => {
-    const { getEnv } = await loadEnv({ ...BASE, COMPUTE_ENABLED: "1", MESH_ALLOW_PRIVATE_WEBHOOKS: "TRUE" })
+    const { getEnv } = await loadEnv({
+      ...BASE,
+      COMPUTE_ENABLED: "1",
+      MESH_ALLOW_PRIVATE_WEBHOOKS: "TRUE",
+    })
     expect(getEnv().COMPUTE_ENABLED).toBe(false)
     expect(getEnv().MESH_ALLOW_PRIVATE_WEBHOOKS).toBe(false)
   })

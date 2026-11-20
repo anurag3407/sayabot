@@ -4,7 +4,9 @@ import { computeFoldKey, normalizeQuestion } from "./fold-key"
 describe("fold-key", () => {
   it("normalizes question text and strips prefixes and punctuation", () => {
     expect(normalizeQuestion("Hey, can you please approve the budget?")).toBe("approve the budget")
-    expect(normalizeQuestion("Question: what database should we use???")).toBe("what database should we use")
+    expect(normalizeQuestion("Question: what database should we use???")).toBe(
+      "what database should we use",
+    )
     expect(normalizeQuestion("   urgent:   please review PR #123  ")).toBe("review pr 123")
   })
 

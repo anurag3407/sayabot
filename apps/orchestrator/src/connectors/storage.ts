@@ -20,6 +20,8 @@ export interface StorageClientConfig {
   source: ConnectorSource
   token: string
   config: Record<string, unknown>
+  /** Override the Hugging Face origin. Tests point this at a local stub server. */
+  baseUrl?: string
 }
 
 export class CloudStorageClient {
@@ -28,11 +30,13 @@ export class CloudStorageClient {
   private config: Record<string, unknown>
   private s3Client?: S3Client
   private supabaseClient?: SupabaseClient
+  private baseUrl?: string
 
   constructor(opts: StorageClientConfig) {
     this.source = opts.source
     this.token = opts.token
     this.config = opts.config
+    this.baseUrl = opts.baseUrl?.replace(/\/+$/, "")
 
     if (
       this.source === "cloudflare_r2" ||
@@ -59,6 +63,8 @@ export class CloudStorageClient {
       this.s3Client = new S3Client({
         endpoint,
         region: (cfg.region as string) || "auto",
+        // MinIO and most self-hosted S3 gateways only answer path-style requests.
+        ...(this.source === "s3_storage" ? { forcePathStyle: true } : {}),
         credentials: {
           accessKeyId,
           secretAccessKey: this.token,
@@ -76,6 +82,47 @@ export class CloudStorageClient {
   getBucketName(): string {
     const cfg = this.config as { bucket?: string; repoId?: string }
     return cfg.bucket || cfg.repoId || "sayabot-storage"
+  }
+
+  private hfBase(): string {
+    return this.baseUrl ?? "https://huggingface.co"
+  }
+
+  /** `owner/name` with each segment encoded, keeping the slash the Hub API expects. */
+  private hfRepoPath(repo: string): string {
+    return repo
+      .split("/")
+      .map((segment) => encodeURIComponent(segment))
+      .join("/")
+  }
+
+  /**
+   * Hugging Face has no per-file write endpoint: a write is a commit on `main`. The body is
+   * NDJSON — a header line, then one line per file operation.
+   */
+  private async huggingfaceCommit(
+    repo: string,
+    operations: Record<string, unknown>[],
+    summary: string,
+  ): Promise<unknown> {
+    const body = [
+      JSON.stringify({ key: "header", value: { summary } }),
+      ...operations.map((operation) => JSON.stringify(operation)),
+    ].join("\n")
+
+    const res = await fetch(`${this.hfBase()}/api/datasets/${this.hfRepoPath(repo)}/commit/main`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.token}`,
+        "Content-Type": "application/x-ndjson",
+      },
+      body: `${body}\n`,
+    })
+    if (!res.ok) {
+      const text = await res.text()
+      throw new Error(`Hugging Face commit failed (${res.status}): ${text.slice(0, 150)}`)
+    }
+    return res.json().catch(() => ({}))
   }
 
   async listFiles(prefix = "", limit = 50): Promise<StorageFileMeta[]> {
@@ -118,7 +165,7 @@ export class CloudStorageClient {
       const cfg = this.config as { repoId?: string }
       const repo = cfg.repoId
       if (!repo) throw new Error("Hugging Face repoId is not configured")
-      const url = `https://huggingface.co/api/datasets/${encodeURIComponent(repo)}/tree/main/${cleanPrefix}`
+      const url = `${this.hfBase()}/api/datasets/${this.hfRepoPath(repo)}/tree/main/${cleanPrefix}`
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${this.token}` },
       })
@@ -159,9 +206,7 @@ export class CloudStorageClient {
     }
 
     if (this.supabaseClient) {
-      const { data, error } = await this.supabaseClient.storage
-        .from(bucket)
-        .download(cleanPath)
+      const { data, error } = await this.supabaseClient.storage.from(bucket).download(cleanPath)
       if (error) {
         throw new Error(`Supabase download failed: ${error.message}`)
       }
@@ -175,7 +220,8 @@ export class CloudStorageClient {
     if (this.source === "huggingface") {
       const cfg = this.config as { repoId?: string }
       const repo = cfg.repoId
-      const url = `https://huggingface.co/datasets/${encodeURIComponent(repo || "")}/raw/main/${cleanPath}`
+      if (!repo) throw new Error("Hugging Face repoId is not configured")
+      const url = `${this.hfBase()}/datasets/${this.hfRepoPath(repo)}/resolve/main/${cleanPath}`
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${this.token}` },
       })
@@ -213,12 +259,10 @@ export class CloudStorageClient {
     }
 
     if (this.supabaseClient) {
-      const { error } = await this.supabaseClient.storage
-        .from(bucket)
-        .upload(cleanPath, content, {
-          upsert: true,
-          contentType,
-        })
+      const { error } = await this.supabaseClient.storage.from(bucket).upload(cleanPath, content, {
+        upsert: true,
+        contentType,
+      })
       if (error) {
         throw new Error(`Supabase upload failed: ${error.message}`)
       }
@@ -228,19 +272,12 @@ export class CloudStorageClient {
     if (this.source === "huggingface") {
       const cfg = this.config as { repoId?: string }
       const repo = cfg.repoId
-      const url = `https://huggingface.co/api/datasets/${encodeURIComponent(repo || "")}/raw/main/${cleanPath}`
-      const res = await fetch(url, {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${this.token}`,
-          "Content-Type": contentType,
-        },
-        body: content,
-      })
-      if (!res.ok) {
-        const text = await res.text()
-        throw new Error(`Hugging Face upload failed (${res.status}): ${text.slice(0, 100)}`)
-      }
+      if (!repo) throw new Error("Hugging Face repoId is not configured")
+      await this.huggingfaceCommit(
+        repo,
+        [{ key: "file", value: { path: cleanPath, content, encoding: "utf-8" } }],
+        `Add ${cleanPath}`,
+      )
       return { ok: true, path: cleanPath }
     }
 
@@ -262,9 +299,7 @@ export class CloudStorageClient {
     }
 
     if (this.supabaseClient) {
-      const { error } = await this.supabaseClient.storage
-        .from(bucket)
-        .remove([cleanPath])
+      const { error } = await this.supabaseClient.storage.from(bucket).remove([cleanPath])
       if (error) {
         throw new Error(`Supabase delete failed: ${error.message}`)
       }
@@ -274,15 +309,12 @@ export class CloudStorageClient {
     if (this.source === "huggingface") {
       const cfg = this.config as { repoId?: string }
       const repo = cfg.repoId
-      const url = `https://huggingface.co/api/datasets/${encodeURIComponent(repo || "")}/raw/main/${cleanPath}`
-      const res = await fetch(url, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${this.token}` },
-      })
-      if (!res.ok) {
-        const text = await res.text()
-        throw new Error(`Hugging Face delete failed (${res.status}): ${text.slice(0, 100)}`)
-      }
+      if (!repo) throw new Error("Hugging Face repoId is not configured")
+      await this.huggingfaceCommit(
+        repo,
+        [{ key: "deletedEntry", value: { path: cleanPath } }],
+        `Delete ${cleanPath}`,
+      )
       return { ok: true, path: cleanPath }
     }
 

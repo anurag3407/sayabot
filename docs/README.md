@@ -45,262 +45,264 @@ Task-oriented guides live at the top level of `docs/`. The **reference library**
 
 ### Architecture & Platform — `docs/reference/architecture/`
 
-| Doc | Covers |
-| :-- | :-- |
-| [system-overview](reference/architecture/system-overview.md) | Service map, orchestrator boot, request flow, package graph, failure modes |
-| [monorepo-and-build](reference/architecture/monorepo-and-build.md) | Workspace members, turbo pipeline, scripts, Docker images, CI |
-| [turn-lifecycle](reference/architecture/turn-lifecycle.md) | Message → queue planning → coordination loop → engine run → reply |
-| [realtime-and-events](reference/architecture/realtime-and-events.md) | Supabase Realtime broadcast, 15-event catalogue, Hocuspocus, LISTEN/NOTIFY |
-| [auth-and-authorization](reference/architecture/auth-and-authorization.md) | Sessions, agent API keys/OAuth, org roles, internal auth, RLS split |
-| [security-model](reference/architecture/security-model.md) | KEK envelope crypto, secret broker, SSRF walls, approvals, redaction |
-| [configuration](reference/architecture/configuration.md) | Every env var across all services, with defaults from code |
-| [editions-and-licensing](reference/architecture/editions-and-licensing.md) | AGPL vs `ee/`, plans, `effectivePlan`, turn admission, Stripe |
+| Doc                                                                        | Covers                                                                     |
+| :------------------------------------------------------------------------- | :------------------------------------------------------------------------- |
+| [system-overview](reference/architecture/system-overview.md)               | Service map, orchestrator boot, request flow, package graph, failure modes |
+| [monorepo-and-build](reference/architecture/monorepo-and-build.md)         | Workspace members, turbo pipeline, scripts, Docker images, CI              |
+| [turn-lifecycle](reference/architecture/turn-lifecycle.md)                 | Message → queue planning → coordination loop → engine run → reply          |
+| [realtime-and-events](reference/architecture/realtime-and-events.md)       | Supabase Realtime broadcast, 15-event catalogue, Hocuspocus, LISTEN/NOTIFY |
+| [auth-and-authorization](reference/architecture/auth-and-authorization.md) | Sessions, agent API keys/OAuth, org roles, internal auth, RLS split        |
+| [security-model](reference/architecture/security-model.md)                 | KEK envelope crypto, secret broker, SSRF walls, approvals, redaction       |
+| [configuration](reference/architecture/configuration.md)                   | Every env var across all services, with defaults from code                 |
+| [editions-and-licensing](reference/architecture/editions-and-licensing.md) | AGPL vs `ee/`, plans, `effectivePlan`, turn admission, Stripe              |
 
 ### `@sayabot/core` — `docs/reference/core/`
 
-| Doc | Covers |
-| :-- | :-- |
-| [overview-and-types](reference/core/overview-and-types.md) | Package export surface, `types.ts` vocabulary, dependency map |
-| [turns](reference/core/turns.md) | Turn planning state machine: mentions / debate / moderated, sessions |
-| [capabilities-and-mentions](reference/core/capabilities-and-mentions.md) | 14 capability flags, tool gating, mention parsing |
-| [speech-text](reference/core/speech-text.md) | Spoken normalization, markdown stripping, TTFB utterance chunking |
-| [asks](reference/core/asks.md) | Ask/response protocol, fact keys, answer application |
-| [thinking](reference/core/thinking.md) | Fold model reasoning into a click-to-open chat line |
-| [commands](reference/core/commands.md) | Destructive-command classifier feeding the approval gate |
-| [cron-and-schedule](reference/core/cron-and-schedule.md) | Cron parsing, natural-language shorthands, schedule windows |
-| [cost-and-plan-limits](reference/core/cost-and-plan-limits.md) | Cost math, model pricing tables, provider plan-limit parsers |
-| [patch-and-fold-key](reference/core/patch-and-fold-key.md) | Canvas patch planner, message fold keys |
-| [redact-and-breakers](reference/core/redact-and-breakers.md) | 14-pattern secret redaction, pre-turn quota breakers, repetition guard |
-| [engine-and-computers](reference/core/engine-and-computers.md) | Engine budget/compaction helpers, computer placement types |
-| [invites-pairing-and-remote](reference/core/invites-pairing-and-remote.md) | Invite codes, bot invites, device pairing, remote hosts, clients |
-| [scanner](reference/core/scanner.md) | Read-only scanning of local Claude Code / Codex / Antigravity installs |
-| [platform-utilities](reference/core/platform-utilities.md) | Cloud handoff, workspace copy, Saya AI, editions, server helpers |
-| [mascot](reference/core/mascot.md) | Saya mascot geometry shared by web, landing, mobile and brand exports |
+| Doc                                                                        | Covers                                                                 |
+| :------------------------------------------------------------------------- | :--------------------------------------------------------------------- |
+| [overview-and-types](reference/core/overview-and-types.md)                 | Package export surface, `types.ts` vocabulary, dependency map          |
+| [turns](reference/core/turns.md)                                           | Turn planning state machine: mentions / debate / moderated, sessions   |
+| [capabilities-and-mentions](reference/core/capabilities-and-mentions.md)   | 14 capability flags, tool gating, mention parsing                      |
+| [speech-text](reference/core/speech-text.md)                               | Spoken normalization, markdown stripping, TTFB utterance chunking      |
+| [asks](reference/core/asks.md)                                             | Ask/response protocol, fact keys, answer application                   |
+| [thinking](reference/core/thinking.md)                                     | Fold model reasoning into a click-to-open chat line                    |
+| [commands](reference/core/commands.md)                                     | Destructive-command classifier feeding the approval gate               |
+| [cron-and-schedule](reference/core/cron-and-schedule.md)                   | Cron parsing, natural-language shorthands, schedule windows            |
+| [cost-and-plan-limits](reference/core/cost-and-plan-limits.md)             | Cost math, model pricing tables, provider plan-limit parsers           |
+| [patch-and-fold-key](reference/core/patch-and-fold-key.md)                 | Canvas patch planner, message fold keys                                |
+| [redact-and-breakers](reference/core/redact-and-breakers.md)               | 14-pattern secret redaction, pre-turn quota breakers, repetition guard |
+| [engine-and-computers](reference/core/engine-and-computers.md)             | Engine budget/compaction helpers, computer placement types             |
+| [invites-pairing-and-remote](reference/core/invites-pairing-and-remote.md) | Invite codes, bot invites, device pairing, remote hosts, clients       |
+| [scanner](reference/core/scanner.md)                                       | Read-only scanning of local Claude Code / Codex / Antigravity installs |
+| [platform-utilities](reference/core/platform-utilities.md)                 | Cloud handoff, workspace copy, Saya AI, editions, server helpers       |
+| [mascot](reference/core/mascot.md)                                         | Saya mascot geometry shared by web, landing, mobile and brand exports  |
 
 ### Database — `docs/reference/database/`
 
-| Doc | Covers |
-| :-- | :-- |
-| [overview](reference/database/overview.md) | `createDb`, two-phase migrator, drizzle config, all 33 enums |
-| [schema-identity-and-invites](reference/database/schema-identity-and-invites.md) | Profiles, orgs, members, room/workspace/bot invites, OAuth clients, merge tickets |
-| [schema-agents-and-templates](reference/database/schema-agents-and-templates.md) | Agents, provider keys, API keys, tool configs, agent templates |
-| [schema-rooms-messages-canvas](reference/database/schema-rooms-messages-canvas.md) | Rooms, members, messages, turn sessions, agent runs, canvases |
-| [schema-tasks-and-facts](reference/database/schema-tasks-and-facts.md) | Tasks, task events/comments, owner facts |
-| [schema-memory](reference/database/schema-memory.md) | Memories, embeddings, sources, open loops, links, vector providers |
-| [schema-routines-and-meetings](reference/database/schema-routines-and-meetings.md) | Routines, routine runs, room schedules, meetings |
-| [schema-connectors-and-vault](reference/database/schema-connectors-and-vault.md) | Workspace connectors (AES envelope), grants, vault secrets, quotas |
-| [schema-computers-devices-desktop](reference/database/schema-computers-devices-desktop.md) | Agent computers, org settings, device pairings, desktop hosts, jobs |
-| [schema-engine-tools-ops](reference/database/schema-engine-tools-ops.md) | Run steps/transcripts, skills, MCP servers, audited `tool_calls`, webhooks, usage, audit |
-| [schema-billing](reference/database/schema-billing.md) | Org plans, monthly usage rollup, `bump_server_turns` |
-| [migrations-catalog](reference/database/migrations-catalog.md) | Every migration (4 Drizzle + 35 SQL): objects created, ordering |
-| [rls-and-realtime](reference/database/rls-and-realtime.md) | RLS helper functions, policy inventory, realtime publication, RPCs, pitfalls |
-| [seed](reference/database/seed.md) | Model pricing seed + 9 curated agent templates, idempotency |
+| Doc                                                                                        | Covers                                                                                   |
+| :----------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------- |
+| [overview](reference/database/overview.md)                                                 | `createDb`, two-phase migrator, drizzle config, all 33 enums                             |
+| [schema-identity-and-invites](reference/database/schema-identity-and-invites.md)           | Profiles, orgs, members, room/workspace/bot invites, OAuth clients, merge tickets        |
+| [schema-agents-and-templates](reference/database/schema-agents-and-templates.md)           | Agents, provider keys, API keys, tool configs, agent templates                           |
+| [schema-rooms-messages-canvas](reference/database/schema-rooms-messages-canvas.md)         | Rooms, members, messages, turn sessions, agent runs, canvases                            |
+| [schema-tasks-and-facts](reference/database/schema-tasks-and-facts.md)                     | Tasks, task events/comments, owner facts                                                 |
+| [schema-memory](reference/database/schema-memory.md)                                       | Memories, embeddings, sources, open loops, links, vector providers                       |
+| [schema-routines-and-meetings](reference/database/schema-routines-and-meetings.md)         | Routines, routine runs, room schedules, meetings                                         |
+| [schema-connectors-and-vault](reference/database/schema-connectors-and-vault.md)           | Workspace connectors (AES envelope), grants, vault secrets, quotas                       |
+| [schema-computers-devices-desktop](reference/database/schema-computers-devices-desktop.md) | Agent computers, org settings, device pairings, desktop hosts, jobs                      |
+| [schema-engine-tools-ops](reference/database/schema-engine-tools-ops.md)                   | Run steps/transcripts, skills, MCP servers, audited `tool_calls`, webhooks, usage, audit |
+| [schema-billing](reference/database/schema-billing.md)                                     | Org plans, monthly usage rollup, `bump_server_turns`                                     |
+| [migrations-catalog](reference/database/migrations-catalog.md)                             | Every migration (4 Drizzle + 35 SQL): objects created, ordering                          |
+| [rls-and-realtime](reference/database/rls-and-realtime.md)                                 | RLS helper functions, policy inventory, realtime publication, RPCs, pitfalls             |
+| [seed](reference/database/seed.md)                                                         | Model pricing seed + 9 curated agent templates, idempotency                              |
 
 ### `@sayabot/llm` — `docs/reference/llm/`
 
-| Doc | Covers |
-| :-- | :-- |
-| [overview](reference/llm/overview.md) | Package role, 17-provider abstraction, model-resolution paths |
-| [tts](reference/llm/tts.md) | Multi-provider TTS (ElevenLabs, Fish Audio, OpenAI, Gemini, Grok, Chatterbox, System) & STT |
-| [crypto](reference/llm/crypto.md) | `encryptSecret`/`sealSecret` envelope format, KEK validation |
-| [registry-and-models](reference/llm/registry-and-models.md) | Provider adapters, model catalog pipeline, effort ladders, snapshots |
-| [plan-usage](reference/llm/plan-usage.md) | Claude/Codex quota windows, credential reading, caches |
-| [mcp](reference/llm/mcp.md) | MCP client gateway: transports, tool bridging, dangerous-tool patterns |
-| [mcp-oauth](reference/llm/mcp-oauth.md) | OAuth for MCP servers: discovery, PKCE, sealed state, refresh |
-| [langfuse](reference/llm/langfuse.md) | Tracing mirror: traces, generations, spans, env gating |
-| [copilot-and-local-apps](reference/llm/copilot-and-local-apps.md) | Copilot token exchange, local app catalog |
-| [connector-secret](reference/llm/connector-secret.md) | Connector credential packing/unpacking |
+| Doc                                                               | Covers                                                                                      |
+| :---------------------------------------------------------------- | :------------------------------------------------------------------------------------------ |
+| [overview](reference/llm/overview.md)                             | Package role, 17-provider abstraction, model-resolution paths                               |
+| [tts](reference/llm/tts.md)                                       | Multi-provider TTS (ElevenLabs, Fish Audio, OpenAI, Gemini, Grok, Chatterbox, System) & STT |
+| [crypto](reference/llm/crypto.md)                                 | `encryptSecret`/`sealSecret` envelope format, KEK validation                                |
+| [registry-and-models](reference/llm/registry-and-models.md)       | Provider adapters, model catalog pipeline, effort ladders, snapshots                        |
+| [plan-usage](reference/llm/plan-usage.md)                         | Claude/Codex quota windows, credential reading, caches                                      |
+| [mcp](reference/llm/mcp.md)                                       | MCP client gateway: transports, tool bridging, dangerous-tool patterns                      |
+| [mcp-oauth](reference/llm/mcp-oauth.md)                           | OAuth for MCP servers: discovery, PKCE, sealed state, refresh                               |
+| [langfuse](reference/llm/langfuse.md)                             | Tracing mirror: traces, generations, spans, env gating                                      |
+| [copilot-and-local-apps](reference/llm/copilot-and-local-apps.md) | Copilot token exchange, local app catalog                                                   |
+| [connector-secret](reference/llm/connector-secret.md)             | Connector credential packing/unpacking                                                      |
 
 ### Orchestrator — `docs/reference/orchestrator/`
 
 **Engine & runners — `engine/`**
 
-| Doc | Covers |
-| :-- | :-- |
-| [service-overview](reference/orchestrator/engine/service-overview.md) | Boot, HTTP route inventory, env vars, `withRoomLock`, authz |
-| [coordinator](reference/orchestrator/engine/coordinator.md) | pg-boss queues, turn loop, queue planners, interrupts, active runs |
-| [engine-loop](reference/orchestrator/engine/engine-loop.md) | The agent loop: context assembly, passes, step preparation, persistence |
-| [engine-budget-and-compaction](reference/orchestrator/engine/engine-budget-and-compaction.md) | Token budgets, cache metrics, compaction ladder, summarization |
-| [engine-interrupts-and-recovery](reference/orchestrator/engine/engine-interrupts-and-recovery.md) | Steering, park/resume, stale-run recovery, error classification |
-| [engine-planning](reference/orchestrator/engine/engine-planning.md) | `update_plan`, model fitting, skills lifecycle |
-| [engine-subagents-and-tool-search](reference/orchestrator/engine/engine-subagents-and-tool-search.md) | Subagent spawning, BM25 tool index, `find_tools` |
-| [engine-verify](reference/orchestrator/engine/engine-verify.md) | Verify modes (self/critic), verification gate |
-| [runner-llm](reference/orchestrator/engine/runner-llm.md) | Model resolution ladders, streaming runner, Mac approval pipeline |
-| [runner-external-and-local](reference/orchestrator/engine/runner-external-and-local.md) | External bots, CLI runners (Claude Code/Codex), local Mac runner |
+| Doc                                                                                                   | Covers                                                                  |
+| :---------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------- |
+| [service-overview](reference/orchestrator/engine/service-overview.md)                                 | Boot, HTTP route inventory, env vars, `withRoomLock`, authz             |
+| [coordinator](reference/orchestrator/engine/coordinator.md)                                           | pg-boss queues, turn loop, queue planners, interrupts, active runs      |
+| [engine-loop](reference/orchestrator/engine/engine-loop.md)                                           | The agent loop: context assembly, passes, step preparation, persistence |
+| [engine-budget-and-compaction](reference/orchestrator/engine/engine-budget-and-compaction.md)         | Token budgets, cache metrics, compaction ladder, summarization          |
+| [engine-interrupts-and-recovery](reference/orchestrator/engine/engine-interrupts-and-recovery.md)     | Steering, park/resume, stale-run recovery, error classification         |
+| [engine-planning](reference/orchestrator/engine/engine-planning.md)                                   | `update_plan`, model fitting, skills lifecycle                          |
+| [engine-subagents-and-tool-search](reference/orchestrator/engine/engine-subagents-and-tool-search.md) | Subagent spawning, BM25 tool index, `find_tools`                        |
+| [engine-verify](reference/orchestrator/engine/engine-verify.md)                                       | Verify modes (self/critic), verification gate                           |
+| [runner-llm](reference/orchestrator/engine/runner-llm.md)                                             | Model resolution ladders, streaming runner, Mac approval pipeline       |
+| [runner-external-and-local](reference/orchestrator/engine/runner-external-and-local.md)               | External bots, CLI runners (Claude Code/Codex), local Mac runner        |
 
 **Tools — `tools/`**
 
-| Doc | Covers |
-| :-- | :-- |
-| [tool-system](reference/orchestrator/tools/tool-system.md) | `buildTools` registry, `ToolSpec`, audit pipeline, 60+ tool inventory |
-| [approvals](reference/orchestrator/tools/approvals.md) | `pending_approval` lifecycle, 5-min timeout, push fan-out |
-| [secrets-broker](reference/orchestrator/tools/secrets-broker.md) | `use_secret`, placeholder swap, grant tiers, egress resolve gateway |
-| [tool-computer](reference/orchestrator/tools/tool-computer.md) | `select_computer` + 17 computer tools + 10 browser tools |
-| [tool-sandbox](reference/orchestrator/tools/tool-sandbox.md) | `code_sandbox`/`terminal_exec`, 6-backend catalog |
-| [tool-connectors](reference/orchestrator/tools/tool-connectors.md) | 19 connector tools with grant-scope enforcement |
-| [tool-cronjob](reference/orchestrator/tools/tool-cronjob.md) | Agent self-scheduling of routines |
-| [tool-document](reference/orchestrator/tools/tool-document.md) | Document extraction providers |
-| [tool-github](reference/orchestrator/tools/tool-github.md) | `github_bridge` read/commit tools |
-| [tool-postgres](reference/orchestrator/tools/tool-postgres.md) | Read-only SQL inspector with hard caps |
-| [tool-tasks](reference/orchestrator/tools/tool-tasks.md) | 11 task-board tools and their invariants |
-| [tool-verification](reference/orchestrator/tools/tool-verification.md) | `verify_workspace`, `workspace_detect`, `report_findings` |
-| [tool-web](reference/orchestrator/tools/tool-web.md) | `web_search` (10 providers) + `web_fetch` SSRF pipeline |
-| [tool-workspace](reference/orchestrator/tools/tool-workspace.md) | `workspace_fork`/`workspace_inspect` |
-| [tool-voice-note](reference/orchestrator/tools/tool-voice-note.md) | `send_voice_note` audio synthesis and interactive voice bubble generator |
+| Doc                                                                    | Covers                                                                   |
+| :--------------------------------------------------------------------- | :----------------------------------------------------------------------- |
+| [tool-system](reference/orchestrator/tools/tool-system.md)             | `buildTools` registry, `ToolSpec`, audit pipeline, 60+ tool inventory    |
+| [approvals](reference/orchestrator/tools/approvals.md)                 | `pending_approval` lifecycle, 5-min timeout, push fan-out                |
+| [secrets-broker](reference/orchestrator/tools/secrets-broker.md)       | `use_secret`, placeholder swap, grant tiers, egress resolve gateway      |
+| [tool-computer](reference/orchestrator/tools/tool-computer.md)         | `select_computer` + 17 computer tools + 10 browser tools                 |
+| [tool-sandbox](reference/orchestrator/tools/tool-sandbox.md)           | `code_sandbox`/`terminal_exec`, 6-backend catalog                        |
+| [tool-connectors](reference/orchestrator/tools/tool-connectors.md)     | 19 connector tools with grant-scope enforcement                          |
+| [tool-cronjob](reference/orchestrator/tools/tool-cronjob.md)           | Agent self-scheduling of routines                                        |
+| [tool-document](reference/orchestrator/tools/tool-document.md)         | Document extraction providers                                            |
+| [tool-github](reference/orchestrator/tools/tool-github.md)             | `github_bridge` read/commit tools                                        |
+| [tool-postgres](reference/orchestrator/tools/tool-postgres.md)         | Read-only SQL inspector with hard caps                                   |
+| [tool-tasks](reference/orchestrator/tools/tool-tasks.md)               | 11 task-board tools and their invariants                                 |
+| [tool-verification](reference/orchestrator/tools/tool-verification.md) | `verify_workspace`, `workspace_detect`, `report_findings`                |
+| [tool-web](reference/orchestrator/tools/tool-web.md)                   | `web_search` (10 providers) + `web_fetch` SSRF pipeline                  |
+| [tool-workspace](reference/orchestrator/tools/tool-workspace.md)       | `workspace_fork`/`workspace_inspect`                                     |
+| [tool-voice-note](reference/orchestrator/tools/tool-voice-note.md)     | `send_voice_note` audio synthesis and interactive voice bubble generator |
 
 **Platform services — `platform/`**
 
-| Doc | Covers |
-| :-- | :-- |
-| [connector-platform](reference/orchestrator/platform/connector-platform.md) | ConnectorService, scope grants, retry/backoff, inbound intake |
-| [connectors-chat](reference/orchestrator/platform/connectors-chat.md) | Slack, Discord gateway, Telegram/WhatsApp clients |
-| [connectors-content](reference/orchestrator/platform/connectors-content.md) | GitHub, Google Drive, password managers, desktop bridge |
-| [bot-platform](reference/orchestrator/platform/bot-platform.md) | Bring-your-own-bot auth, streaming endpoints, reply correlation |
-| [mcp-server](reference/orchestrator/platform/mcp-server.md) | Exposed MCP JSON-RPC surface, 27 tools, activity long-poll |
-| [canvas-server](reference/orchestrator/platform/canvas-server.md) | Hocuspocus server, canvas persistence, canvas tools |
-| [collab-tasks](reference/orchestrator/platform/collab-tasks.md) | Agent message posting, task service invariants, wake, check-ins |
-| [internal-api-and-jobs](reference/orchestrator/platform/internal-api-and-jobs.md) | `/internal/*` routes, egress resolve/approval gateway, job queues, webhooks |
-| [scheduler-routines](reference/orchestrator/platform/scheduler-routines.md) | Distributed cron scan, routine claiming, result delivery |
-| [scheduler-meetings](reference/orchestrator/platform/scheduler-meetings.md) | Meeting lifecycle, morning/evening windows, check-ins |
-| [ssrf-and-realtime](reference/orchestrator/platform/ssrf-and-realtime.md) | Webhook SSRF checks, realtime broadcast, event catalogue |
-| [push-usage-plans](reference/orchestrator/platform/push-usage-plans.md) | Web push/APNs/Expo, usage funnel, plan admission |
+| Doc                                                                               | Covers                                                                        |
+| :-------------------------------------------------------------------------------- | :---------------------------------------------------------------------------- |
+| [connector-platform](reference/orchestrator/platform/connector-platform.md)       | ConnectorService, scope grants, retry/backoff, inbound intake                 |
+| [connectors-chat](reference/orchestrator/platform/connectors-chat.md)             | Slack, Discord gateway, Telegram/WhatsApp clients                             |
+| [connectors-content](reference/orchestrator/platform/connectors-content.md)       | GitHub, Google Drive, password managers, desktop bridge                       |
+| [connectors-storage](reference/orchestrator/platform/connectors-storage.md)       | `CloudStorageClient`: Supabase, R2, B2, S3/MinIO, Hugging Face object storage |
+| [connectors-apps](reference/orchestrator/platform/connectors-apps.md)             | Composio connected apps: Gmail, Calendar, Notion and the rest of the catalog  |
+| [bot-platform](reference/orchestrator/platform/bot-platform.md)                   | Bring-your-own-bot auth, streaming endpoints, reply correlation               |
+| [mcp-server](reference/orchestrator/platform/mcp-server.md)                       | Exposed MCP JSON-RPC surface, 27 tools, activity long-poll                    |
+| [canvas-server](reference/orchestrator/platform/canvas-server.md)                 | Hocuspocus server, canvas persistence, canvas tools                           |
+| [collab-tasks](reference/orchestrator/platform/collab-tasks.md)                   | Agent message posting, task service invariants, wake, check-ins               |
+| [internal-api-and-jobs](reference/orchestrator/platform/internal-api-and-jobs.md) | `/internal/*` routes, egress resolve/approval gateway, job queues, webhooks   |
+| [scheduler-routines](reference/orchestrator/platform/scheduler-routines.md)       | Distributed cron scan, routine claiming, result delivery                      |
+| [scheduler-meetings](reference/orchestrator/platform/scheduler-meetings.md)       | Meeting lifecycle, morning/evening windows, check-ins                         |
+| [ssrf-and-realtime](reference/orchestrator/platform/ssrf-and-realtime.md)         | Webhook SSRF checks, realtime broadcast, event catalogue                      |
+| [push-usage-plans](reference/orchestrator/platform/push-usage-plans.md)           | Web push/APNs/Expo, usage funnel, plan admission                              |
 
 **Memory — `memory/`** and **Computers — `computers/`**
 
-| Doc | Covers |
-| :-- | :-- |
-| [memory/overview](reference/orchestrator/memory/overview.md) | Cognitive memory architecture, scopes, extraction triggers |
-| [memory/scheduler-and-mirror](reference/orchestrator/memory/scheduler-and-mirror.md) | Dream-cycle scheduler, `/home/bot/.saaya/memory/` mirror |
-| [memory/tools](reference/orchestrator/memory/tools.md) | `remember`/`recall`/`open_loop`/`reflect`/`graph_walk`/`forget` |
-| [memory/modules](reference/orchestrator/memory/modules.md) | 9 memory modules: beliefs, dream, graph, retrieval, salience, … |
-| [computers/boat](reference/orchestrator/computers/boat.md) | Boat-hosted Linux desktops: client, provisioning, shell layer |
-| [computers/vps-and-client](reference/orchestrator/computers/vps-and-client.md) | Docker-over-SSH VPS (alias or host + sealed key, one container per bot), sleep policy, computerd client |
-| [computers/e2b](reference/orchestrator/computers/e2b.md) | E2B cloud sandbox per bot: key, create/resume, shell, screen |
+| Doc                                                                                  | Covers                                                                                                  |
+| :----------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------ |
+| [memory/overview](reference/orchestrator/memory/overview.md)                         | Cognitive memory architecture, scopes, extraction triggers                                              |
+| [memory/scheduler-and-mirror](reference/orchestrator/memory/scheduler-and-mirror.md) | Dream-cycle scheduler, `/home/bot/.saaya/memory/` mirror                                                |
+| [memory/tools](reference/orchestrator/memory/tools.md)                               | `remember`/`recall`/`open_loop`/`reflect`/`graph_walk`/`forget`                                         |
+| [memory/modules](reference/orchestrator/memory/modules.md)                           | 9 memory modules: beliefs, dream, graph, retrieval, salience, …                                         |
+| [computers/boat](reference/orchestrator/computers/boat.md)                           | Boat-hosted Linux desktops: client, provisioning, shell layer                                           |
+| [computers/vps-and-client](reference/orchestrator/computers/vps-and-client.md)       | Docker-over-SSH VPS (alias or host + sealed key, one container per bot), sleep policy, computerd client |
+| [computers/e2b](reference/orchestrator/computers/e2b.md)                             | E2B cloud sandbox per bot: key, create/resume, shell, screen                                            |
 
 ### Landing Site — `docs/reference/landing/`
 
-| Doc | Covers |
-| :-- | :-- |
+| Doc                                       | Covers                                                                      |
+| :---------------------------------------- | :-------------------------------------------------------------------------- |
 | [overview](reference/landing/overview.md) | `apps/landing`: static public site, sections, motion system, download links |
 
 ### Web App — `docs/reference/web/`
 
 **Pages & features — `pages/`**
 
-| Doc | Covers |
-| :-- | :-- |
-| [app-overview](reference/web/pages/app-overview.md) | Proxy middleware, layouts, workspace shell, PWA/service worker, updates |
-| [auth-flows](reference/web/pages/auth-flows.md) | Login/signup/OTP, OAuth, guest→account merge, desktop/mobile handoff |
-| [onboarding](reference/web/pages/onboarding.md) | Workspace name form, then the first room |
-| [room-chat-ui](reference/web/pages/room-chat-ui.md) | Room page, chat panel, composer, messages, threads, approvals UI |
-| [voice-ui](reference/web/pages/voice-ui.md) | Take-turns audio call, streaming TTS prefetch, voice notes, dictation |
-| [room-settings-ui](reference/web/pages/room-settings-ui.md) | Name-only room creation; room settings: agents (ready-made, existing, your app), where each runs, lead agent, tools, people |
-| [canvas-ui](reference/web/pages/canvas-ui.md) | Yjs/Monaco collaborative canvas, presence, versions, restore |
-| [model-system](reference/web/pages/model-system.md) | Model catalog, pickers, accounts, provider keys |
-| [agents-ui](reference/web/pages/agents-ui.md) | Agent roster, creation, profile, connector scopes, testing |
-| [settings-ui](reference/web/pages/settings-ui.md) | All 14 settings pages + settings components |
-| [cron-ui](reference/web/pages/cron-ui.md) | n8n-style visual routine canvas |
-| [tasks-inbox-meetings-ui](reference/web/pages/tasks-inbox-meetings-ui.md) | Tasks kanban, decision inbox, ask cards, meetings, chats |
-| [marketplace](reference/web/pages/marketplace.md) | MCP app catalog + agent template marketplace |
-| [analytics-usage-ui](reference/web/pages/analytics-usage-ui.md) | Usage dashboard, bars, plan rings, pricing |
-| [computers-remote-ui](reference/web/pages/computers-remote-ui.md) | Computer settings, WebRTC remote viewer |
-| [search-files-storage](reference/web/pages/search-files-storage.md) | Message search, files view, storage summary |
-| [trace-observability](reference/web/pages/trace-observability.md) | Run inspector drawer over `agent_runs`/`run_steps` |
-| [admin-public-pages](reference/web/pages/admin-public-pages.md) | Admin redirect, member management, public/legal/download pages |
-| [landing-page](reference/web/pages/landing-page.md) | Marketing site sections and motion system |
-| [ui-shell-and-kit](reference/web/pages/ui-shell-and-kit.md) | Sidebar, chat list, command palette, UI kit primitives |
-| [lib-reference](reference/web/pages/lib-reference.md) | Remaining `lib/` modules: notify, outbox, bridges, Supabase clients, … |
+| Doc                                                                       | Covers                                                                                                                      |
+| :------------------------------------------------------------------------ | :-------------------------------------------------------------------------------------------------------------------------- |
+| [app-overview](reference/web/pages/app-overview.md)                       | Proxy middleware, layouts, workspace shell, PWA/service worker, updates                                                     |
+| [auth-flows](reference/web/pages/auth-flows.md)                           | Login/signup/OTP, OAuth, guest→account merge, desktop/mobile handoff                                                        |
+| [onboarding](reference/web/pages/onboarding.md)                           | Workspace name form, then the first room                                                                                    |
+| [room-chat-ui](reference/web/pages/room-chat-ui.md)                       | Room page, chat panel, composer, messages, threads, approvals UI                                                            |
+| [voice-ui](reference/web/pages/voice-ui.md)                               | Take-turns audio call, streaming TTS prefetch, voice notes, dictation                                                       |
+| [room-settings-ui](reference/web/pages/room-settings-ui.md)               | Name-only room creation; room settings: agents (ready-made, existing, your app), where each runs, lead agent, tools, people |
+| [canvas-ui](reference/web/pages/canvas-ui.md)                             | Yjs/Monaco collaborative canvas, presence, versions, restore                                                                |
+| [model-system](reference/web/pages/model-system.md)                       | Model catalog, pickers, accounts, provider keys                                                                             |
+| [agents-ui](reference/web/pages/agents-ui.md)                             | Agent roster, creation, profile, connector scopes, testing                                                                  |
+| [settings-ui](reference/web/pages/settings-ui.md)                         | All 14 settings pages + settings components                                                                                 |
+| [cron-ui](reference/web/pages/cron-ui.md)                                 | n8n-style visual routine canvas                                                                                             |
+| [tasks-inbox-meetings-ui](reference/web/pages/tasks-inbox-meetings-ui.md) | Tasks kanban, decision inbox, ask cards, meetings, chats                                                                    |
+| [marketplace](reference/web/pages/marketplace.md)                         | MCP app catalog + agent template marketplace                                                                                |
+| [analytics-usage-ui](reference/web/pages/analytics-usage-ui.md)           | Usage dashboard, bars, plan rings, pricing                                                                                  |
+| [computers-remote-ui](reference/web/pages/computers-remote-ui.md)         | Computer settings, WebRTC remote viewer                                                                                     |
+| [search-files-storage](reference/web/pages/search-files-storage.md)       | Message search, files view, storage summary                                                                                 |
+| [trace-observability](reference/web/pages/trace-observability.md)         | Run inspector drawer over `agent_runs`/`run_steps`                                                                          |
+| [admin-public-pages](reference/web/pages/admin-public-pages.md)           | Admin redirect, member management, public/legal/download pages                                                              |
+| [landing-page](reference/web/pages/landing-page.md)                       | Marketing site sections and motion system                                                                                   |
+| [ui-shell-and-kit](reference/web/pages/ui-shell-and-kit.md)               | Sidebar, chat list, command palette, UI kit primitives                                                                      |
+| [lib-reference](reference/web/pages/lib-reference.md)                     | Remaining `lib/` modules: notify, outbox, bridges, Supabase clients, …                                                      |
 
 **Server actions — `actions/`**
 
-| Doc | Covers |
-| :-- | :-- |
-| [server-actions-overview](reference/web/actions/server-actions-overview.md) | Action pattern, `ActionResult`, orchestrator client |
-| [actions-agents-bots](reference/web/actions/actions-agents-bots.md) | Agent/bot CRUD, bot invites, templates |
-| [actions-rooms-messages](reference/web/actions/actions-rooms-messages.md) | Rooms, memberships, message sending, outbox |
-| [actions-connectors-keys](reference/web/actions/actions-connectors-keys.md) | Connectors, provider keys, vault, vector, MCP servers |
+| Doc                                                                               | Covers                                                   |
+| :-------------------------------------------------------------------------------- | :------------------------------------------------------- |
+| [server-actions-overview](reference/web/actions/server-actions-overview.md)       | Action pattern, `ActionResult`, orchestrator client      |
+| [actions-agents-bots](reference/web/actions/actions-agents-bots.md)               | Agent/bot CRUD, bot invites, templates                   |
+| [actions-rooms-messages](reference/web/actions/actions-rooms-messages.md)         | Rooms, memberships, message sending, outbox              |
+| [actions-connectors-keys](reference/web/actions/actions-connectors-keys.md)       | Connectors, provider keys, vault, vector, MCP servers    |
 | [actions-org-computers-misc](reference/web/actions/actions-org-computers-misc.md) | Orgs, invites, profile, facts, memory, computers, phones |
-| [billing-and-pricing](reference/web/actions/billing-and-pricing.md) | Stripe integration, plan gating, pricing |
-| [email-system](reference/web/actions/email-system.md) | Resend client, auth/invite templates |
+| [billing-and-pricing](reference/web/actions/billing-and-pricing.md)               | Stripe integration, plan gating, pricing                 |
+| [email-system](reference/web/actions/email-system.md)                             | Resend client, auth/invite templates                     |
 
 **API routes — `api/`**
 
-| Doc | Covers |
-| :-- | :-- |
-| [api-mobile](reference/web/api/api-mobile.md) | `/api/mobile/*`: pairing, push, inbox, upload, usage, models, version |
-| [api-desktop](reference/web/api/api-desktop.md) | `/api/desktop/*`: host registration, job queue, secrets/MCP delegation |
-| [api-webhooks-oauth](reference/web/api/api-webhooks-oauth.md) | Messaging webhooks, billing webhook, OAuth 2.1 server, bot invites |
-| [api-proxy-files](reference/web/api/api-proxy-files.md) | `/api/v1` proxy, files, providers, sessions, health/version |
-| [api-guard-and-auth](reference/web/api/api-guard-and-auth.md) | Credential classes, `PUBLIC_PATHS`, route guards |
+| Doc                                                           | Covers                                                                 |
+| :------------------------------------------------------------ | :--------------------------------------------------------------------- |
+| [api-mobile](reference/web/api/api-mobile.md)                 | `/api/mobile/*`: pairing, push, inbox, upload, usage, models, version  |
+| [api-desktop](reference/web/api/api-desktop.md)               | `/api/desktop/*`: host registration, job queue, secrets/MCP delegation |
+| [api-webhooks-oauth](reference/web/api/api-webhooks-oauth.md) | Messaging webhooks, billing webhook, OAuth 2.1 server, bot invites     |
+| [api-proxy-files](reference/web/api/api-proxy-files.md)       | `/api/v1` proxy, files, providers, sessions, health/version            |
+| [api-guard-and-auth](reference/web/api/api-guard-and-auth.md) | Credential classes, `PUBLIC_PATHS`, route guards                       |
 
 ### computerd — `docs/reference/computerd/`
 
-| Doc | Covers |
-| :-- | :-- |
-| [overview](reference/computerd/overview.md) | HTTP surface, NDJSON transport, orchestrator wiring |
-| [lifecycle](reference/computerd/lifecycle.md) | Computer state machine, ensure/boot/admit, sleep/sweep |
-| [capacity-and-identity](reference/computerd/capacity-and-identity.md) | Capacity policy, eviction, proxy-identity HMAC credentials |
-| [docker-runtime](reference/computerd/docker-runtime.md) | Docker client, stream demux, resource naming |
-| [backends](reference/computerd/backends.md) | Backend interface, `auto` ranking, hardened Docker spec |
-| [backend-smolvm](reference/computerd/backend-smolvm.md) | libkrun microVM backend, socket bridges |
-| [backend-e2b](reference/computerd/backend-e2b.md) | E2B cloud backend: pause/resume, constraints |
-| [agentd](reference/computerd/agentd.md) | In-container daemon: exec, files, env, stats ops |
-| [agentd-files](reference/computerd/agentd-files.md) | `isSafePath` confinement, atomic writes, hash-guarded edits |
-| [agentd-code-intelligence](reference/computerd/agentd-code-intelligence.md) | In-sandbox code search/definition/rename services |
-| [egress-bridge](reference/computerd/egress-bridge.md) | Per-agent egress socket bridging, credential injection |
+| Doc                                                                         | Covers                                                      |
+| :-------------------------------------------------------------------------- | :---------------------------------------------------------- |
+| [overview](reference/computerd/overview.md)                                 | HTTP surface, NDJSON transport, orchestrator wiring         |
+| [lifecycle](reference/computerd/lifecycle.md)                               | Computer state machine, ensure/boot/admit, sleep/sweep      |
+| [capacity-and-identity](reference/computerd/capacity-and-identity.md)       | Capacity policy, eviction, proxy-identity HMAC credentials  |
+| [docker-runtime](reference/computerd/docker-runtime.md)                     | Docker client, stream demux, resource naming                |
+| [backends](reference/computerd/backends.md)                                 | Backend interface, `auto` ranking, hardened Docker spec     |
+| [backend-smolvm](reference/computerd/backend-smolvm.md)                     | libkrun microVM backend, socket bridges                     |
+| [backend-e2b](reference/computerd/backend-e2b.md)                           | E2B cloud backend: pause/resume, constraints                |
+| [agentd](reference/computerd/agentd.md)                                     | In-container daemon: exec, files, env, stats ops            |
+| [agentd-files](reference/computerd/agentd-files.md)                         | `isSafePath` confinement, atomic writes, hash-guarded edits |
+| [agentd-code-intelligence](reference/computerd/agentd-code-intelligence.md) | In-sandbox code search/definition/rename services           |
+| [egress-bridge](reference/computerd/egress-bridge.md)                       | Per-agent egress socket bridging, credential injection      |
 
 ### Egress Proxy — `docs/reference/egress/`
 
-| Doc | Covers |
-| :-- | :-- |
-| [overview](reference/egress/overview.md) | Hardened proxy: identity, 9-step pipeline, DNS pinning, IP deny-list |
-| [scrub-and-swapper](reference/egress/scrub-and-swapper.md) | In-flight secret swapping, response scrubbing |
+| Doc                                                        | Covers                                                               |
+| :--------------------------------------------------------- | :------------------------------------------------------------------- |
+| [overview](reference/egress/overview.md)                   | Hardened proxy: identity, 9-step pipeline, DNS pinning, IP deny-list |
+| [scrub-and-swapper](reference/egress/scrub-and-swapper.md) | In-flight secret swapping, response scrubbing                        |
 
 ### Mobile App — `docs/reference/mobile/`
 
-| Doc | Covers |
-| :-- | :-- |
-| [overview](reference/mobile/overview.md) | App entry, env config, build setup, navigation root |
-| [navigation-and-auth](reference/mobile/navigation-and-auth.md) | Tab navigation, auth session, guest mode, app lock |
-| [pairing-and-onboarding](reference/mobile/pairing-and-onboarding.md) | QR/deep-link pairing, server checks, onboarding wizard |
-| [home-and-chat](reference/mobile/home-and-chat.md) | Home dashboard, room chat, realtime events, terminal drawer |
-| [inbox-tasks-usage](reference/mobile/inbox-tasks-usage.md) | Approval inbox (Allow/Deny/typed), tasks, usage |
-| [computers-and-share](reference/mobile/computers-and-share.md) | Computers, web viewer, share-target, agent profiles |
-| [push-and-updates](reference/mobile/push-and-updates.md) | Push registration, action routing, APK update checks |
-| [settings-and-ui-kit](reference/mobile/settings-and-ui-kit.md) | Settings storage, theming, UI primitives |
+| Doc                                                                  | Covers                                                      |
+| :------------------------------------------------------------------- | :---------------------------------------------------------- |
+| [overview](reference/mobile/overview.md)                             | App entry, env config, build setup, navigation root         |
+| [navigation-and-auth](reference/mobile/navigation-and-auth.md)       | Tab navigation, auth session, guest mode, app lock          |
+| [pairing-and-onboarding](reference/mobile/pairing-and-onboarding.md) | QR/deep-link pairing, server checks, onboarding wizard      |
+| [home-and-chat](reference/mobile/home-and-chat.md)                   | Home dashboard, room chat, realtime events, terminal drawer |
+| [inbox-tasks-usage](reference/mobile/inbox-tasks-usage.md)           | Approval inbox (Allow/Deny/typed), tasks, usage             |
+| [computers-and-share](reference/mobile/computers-and-share.md)       | Computers, web viewer, share-target, agent profiles         |
+| [push-and-updates](reference/mobile/push-and-updates.md)             | Push registration, action routing, APK update checks        |
+| [settings-and-ui-kit](reference/mobile/settings-and-ui-kit.md)       | Settings storage, theming, UI primitives                    |
 
 ### Desktop App — `docs/reference/desktop/`
 
-| Doc | Covers |
-| :-- | :-- |
-| [overview](reference/desktop/overview.md) | Electron lifecycle, IPC surface, storage, deep links, Mac and Windows packaging |
-| [host](reference/desktop/host.md) | Host registration, heartbeat, remote-desktop gating |
-| [runner-and-stream](reference/desktop/runner-and-stream.md) | Local Mac agent runner: job claiming, CLI dispatch, approvals, streaming |
-| [local-agents-and-injector](reference/desktop/local-agents-and-injector.md) | 19 local AI CLI specs, session injection |
-| [local-mcp-and-models](reference/desktop/local-mcp-and-models.md) | Local MCP servers, fail-closed approvals, model discovery |
-| [install-and-updates](reference/desktop/install-and-updates.md) | Mac DMG and Windows zip update state machine, verify→swap→rollback |
-| [vault-cli](reference/desktop/vault-cli.md) | Password-manager job fulfillment |
-| [usage-and-cloud-handoff](reference/desktop/usage-and-cloud-handoff.md) | Local plan-usage readers, cloud-home snapshot, copy_to_cloud |
+| Doc                                                                         | Covers                                                                          |
+| :-------------------------------------------------------------------------- | :------------------------------------------------------------------------------ |
+| [overview](reference/desktop/overview.md)                                   | Electron lifecycle, IPC surface, storage, deep links, Mac and Windows packaging |
+| [host](reference/desktop/host.md)                                           | Host registration, heartbeat, remote-desktop gating                             |
+| [runner-and-stream](reference/desktop/runner-and-stream.md)                 | Local Mac agent runner: job claiming, CLI dispatch, approvals, streaming        |
+| [local-agents-and-injector](reference/desktop/local-agents-and-injector.md) | 19 local AI CLI specs, session injection                                        |
+| [local-mcp-and-models](reference/desktop/local-mcp-and-models.md)           | Local MCP servers, fail-closed approvals, model discovery                       |
+| [install-and-updates](reference/desktop/install-and-updates.md)             | Mac DMG and Windows zip update state machine, verify→swap→rollback              |
+| [vault-cli](reference/desktop/vault-cli.md)                                 | Password-manager job fulfillment                                                |
+| [usage-and-cloud-handoff](reference/desktop/usage-and-cloud-handoff.md)     | Local plan-usage readers, cloud-home snapshot, copy_to_cloud                    |
 
 ### Operations — `docs/reference/operations/`
 
-| Doc | Covers |
-| :-- | :-- |
-| [deployment](reference/operations/deployment.md) | Dockerfiles, compose services, rolling updates, rollback |
-| [nginx-and-cloudflare](reference/operations/nginx-and-cloudflare.md) | Proxy routes, WSS/SSE tuning, Cloudflare tunnel/Workers |
-| [supabase-platform](reference/operations/supabase-platform.md) | Bundled Supabase: roles, webhooks, realtime, pooler, JWT |
-| [scripts](reference/operations/scripts.md) | setup-vps.sh, setup-computers.sh, pinned versions, idempotency |
-| [examples](reference/operations/examples.md) | `examples/python-bot` HMAC webhooks + streaming |
-| [troubleshooting](reference/operations/troubleshooting.md) | 9 failure modes tied to exact code paths |
+| Doc                                                                  | Covers                                                         |
+| :------------------------------------------------------------------- | :------------------------------------------------------------- |
+| [deployment](reference/operations/deployment.md)                     | Dockerfiles, compose services, rolling updates, rollback       |
+| [nginx-and-cloudflare](reference/operations/nginx-and-cloudflare.md) | Proxy routes, WSS/SSE tuning, Cloudflare tunnel/Workers        |
+| [supabase-platform](reference/operations/supabase-platform.md)       | Bundled Supabase: roles, webhooks, realtime, pooler, JWT       |
+| [scripts](reference/operations/scripts.md)                           | setup-vps.sh, setup-computers.sh, pinned versions, idempotency |
+| [examples](reference/operations/examples.md)                         | `examples/python-bot` HMAC webhooks + streaming                |
+| [troubleshooting](reference/operations/troubleshooting.md)           | 9 failure modes tied to exact code paths                       |
 
 ### Testing — `docs/reference/testing/`
 
-| Doc | Covers |
-| :-- | :-- |
-| [overview](reference/testing/overview.md) | Test lanes, turbo pipeline, CI jobs, per-workspace counts |
-| [unit-testing](reference/testing/unit-testing.md) | Vitest conventions, mocking patterns, worked examples |
-| [integration-testing](reference/testing/integration-testing.md) | Integration runner, aliases, cross-package suites |
-| [e2e-testing](reference/testing/e2e-testing.md) | Playwright config, fixtures, spec-by-spec coverage |
+| Doc                                                             | Covers                                                    |
+| :-------------------------------------------------------------- | :-------------------------------------------------------- |
+| [overview](reference/testing/overview.md)                       | Test lanes, turbo pipeline, CI jobs, per-workspace counts |
+| [unit-testing](reference/testing/unit-testing.md)               | Vitest conventions, mocking patterns, worked examples     |
+| [integration-testing](reference/testing/integration-testing.md) | Integration runner, aliases, cross-package suites         |
+| [e2e-testing](reference/testing/e2e-testing.md)                 | Playwright config, fixtures, spec-by-spec coverage        |
 
 ---
 

@@ -42,10 +42,17 @@ export function useInbox(orgSlug: string) {
   const refresh = useCallback(async () => {
     if (!orgSlug) return
     try {
-      const res = await fetch(`${currentWebApiUrl()}/api/mobile/inbox?orgSlug=${encodeURIComponent(orgSlug)}`, {
-        headers: await authHeaders(),
-      })
-      const data = (await res.json().catch(() => ({}))) as { questions?: InboxQuestion[]; approvals?: number; error?: string }
+      const res = await fetch(
+        `${currentWebApiUrl()}/api/mobile/inbox?orgSlug=${encodeURIComponent(orgSlug)}`,
+        {
+          headers: await authHeaders(),
+        },
+      )
+      const data = (await res.json().catch(() => ({}))) as {
+        questions?: InboxQuestion[]
+        approvals?: number
+        error?: string
+      }
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
       setQuestions(data.questions ?? [])
       setApprovals(data.approvals ?? 0)
@@ -58,13 +65,22 @@ export function useInbox(orgSlug: string) {
   }, [orgSlug])
 
   const answer = useCallback(
-    async (input: { taskId: string; answer?: string; itemAnswers?: Record<string, string>; alsoPost?: boolean }) => {
+    async (input: {
+      taskId: string
+      answer?: string
+      itemAnswers?: Record<string, string>
+      alsoPost?: boolean
+    }) => {
       const res = await fetch(`${currentWebApiUrl()}/api/mobile/inbox/answer`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(await authHeaders()) },
         body: JSON.stringify({ orgSlug, ...input }),
       })
-      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; message?: string }
+      const data = (await res.json().catch(() => ({}))) as {
+        ok?: boolean
+        error?: string
+        message?: string
+      }
       if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`)
       await refresh()
       return data.message ?? "Sent"
@@ -76,7 +92,11 @@ export function useInbox(orgSlug: string) {
     void refresh()
     const channel = supabase
       .channel(`inbox:live:${Math.random().toString(36).slice(2)}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, () => void refresh())
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tasks" },
+        () => void refresh(),
+      )
       .subscribe()
     const timer = setInterval(() => void refresh(), 30_000)
     return () => {

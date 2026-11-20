@@ -45,7 +45,10 @@ async function syncUserProfile(user: User) {
       })
     } else {
       const updates: { display_name?: string; avatar_url?: string } = {}
-      if ((!existing.display_name || existing.display_name === "member") && displayName !== "member") {
+      if (
+        (!existing.display_name || existing.display_name === "member") &&
+        displayName !== "member"
+      ) {
         updates.display_name = displayName
       }
       if (!existing.avatar_url && avatarUrl) {
@@ -157,7 +160,8 @@ export async function GET(request: Request) {
   const tokenHash = url.searchParams.get("token_hash")
   const type = url.searchParams.get("type") as EmailOtpType | null
   const requestedNext = url.searchParams.get("next")
-  const errorDescription = url.searchParams.get("error_description") || url.searchParams.get("error")
+  const errorDescription =
+    url.searchParams.get("error_description") || url.searchParams.get("error")
 
   // Determine origin safely for redirects behind proxies/tunnels
   const origin = getPublicOrigin(request)

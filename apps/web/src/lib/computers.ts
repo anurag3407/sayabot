@@ -18,7 +18,11 @@ export interface ComputerView {
 }
 
 /** Computers this person can open: their own, plus ones shared with this workspace. */
-export async function listComputers(userId: string, orgId: string, role: "owner" | "admin" | "member"): Promise<ComputerView[]> {
+export async function listComputers(
+  userId: string,
+  orgId: string,
+  role: "owner" | "admin" | "member",
+): Promise<ComputerView[]> {
   const admin = createAdminClient()
   const { data, error } = await admin
     .from("desktop_hosts")
@@ -29,8 +33,12 @@ export async function listComputers(userId: string, orgId: string, role: "owner"
   if (error) return []
   const hosts = (data ?? []) as HostRow[]
   const ownerIds = [...new Set(hosts.map((h) => h.user_id))]
-  const { data: owners } = ownerIds.length ? await admin.from("profiles").select("id, display_name").in("id", ownerIds) : { data: [] }
-  const ownerNames = new Map(((owners ?? []) as { id: string; display_name: string }[]).map((o) => [o.id, o.display_name]))
+  const { data: owners } = ownerIds.length
+    ? await admin.from("profiles").select("id, display_name").in("id", ownerIds)
+    : { data: [] }
+  const ownerNames = new Map(
+    ((owners ?? []) as { id: string; display_name: string }[]).map((o) => [o.id, o.display_name]),
+  )
   return hosts
     .filter((h) =>
       canOpenHost({

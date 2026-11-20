@@ -52,23 +52,23 @@ Several endpoints authenticate with single-purpose secrets compared in constant 
 
 Everything a page-redirect must not intercept — each entry is either self-guarding or public by design:
 
-| Prefix | Why it is open |
-| :--- | :--- |
-| `/`, `/login`, `/signup`, `/forgot-password`, `/reset-password` | The auth pages themselves. |
-| `/terms`, `/privacy`, `/security`, `/help`, `/download`, `/offline` | Public content. |
-| `/auth` | Callback/merge/complete pages (token-validated). |
-| `/api/v1` | The proxy — every guarded branch checks bearer/session itself; `/api/health` is excluded entirely by the matcher. |
-| `/api/connectors` | Session-gated inside (`requireRouteUser`); model lists are member-only. |
-| `/api/mobile` | Bearer/session inside; `/pair` is code-authenticated, `/device` uses device tokens. |
-| `/api/version`, `/api/instance` | Public server identity and update checks (CORS `*`). |
-| `/api/billing/webhook` | Verified by the Stripe signature instead of a session (`proxy.ts:24`). |
-| `/api/download` | Public redirects. |
-| `/mcp` | The MCP proxy — authenticated by the agent key in the path (`proxy.ts:27`). |
-| `/bot` | Bot join links — the code is the credential; humans approve in the Inbox. |
-| `/api/desktop`, `/api/remote` | Host-token auth and WebRTC signaling (session or bearer inside). |
-| `/api/files` | The route checks room access itself, cookie or bearer (`proxy.ts:34`). |
-| `/api/account/merge` | The desktop calls it with its bearer token; the route checks auth. |
-| `/.well-known`, `/oauth/register`, `/oauth/token`, `/oauth/callback` | OAuth 2.1 public endpoints (discovery, dynamic client registration, token exchange, vendor callbacks). |
+| Prefix                                                               | Why it is open                                                                                                    |
+| :------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------- |
+| `/`, `/login`, `/signup`, `/forgot-password`, `/reset-password`      | The auth pages themselves.                                                                                        |
+| `/terms`, `/privacy`, `/security`, `/help`, `/download`, `/offline`  | Public content.                                                                                                   |
+| `/auth`                                                              | Callback/merge/complete pages (token-validated).                                                                  |
+| `/api/v1`                                                            | The proxy — every guarded branch checks bearer/session itself; `/api/health` is excluded entirely by the matcher. |
+| `/api/connectors`                                                    | Session-gated inside (`requireRouteUser`); model lists are member-only.                                           |
+| `/api/mobile`                                                        | Bearer/session inside; `/pair` is code-authenticated, `/device` uses device tokens.                               |
+| `/api/version`, `/api/instance`                                      | Public server identity and update checks (CORS `*`).                                                              |
+| `/api/billing/webhook`                                               | Verified by the Stripe signature instead of a session (`proxy.ts:24`).                                            |
+| `/api/download`                                                      | Public redirects.                                                                                                 |
+| `/mcp`                                                               | The MCP proxy — authenticated by the agent key in the path (`proxy.ts:27`).                                       |
+| `/bot`                                                               | Bot join links — the code is the credential; humans approve in the Inbox.                                         |
+| `/api/desktop`, `/api/remote`                                        | Host-token auth and WebRTC signaling (session or bearer inside).                                                  |
+| `/api/files`                                                         | The route checks room access itself, cookie or bearer (`proxy.ts:34`).                                            |
+| `/api/account/merge`                                                 | The desktop calls it with its bearer token; the route checks auth.                                                |
+| `/.well-known`, `/oauth/register`, `/oauth/token`, `/oauth/callback` | OAuth 2.1 public endpoints (discovery, dynamic client registration, token exchange, vendor callbacks).            |
 
 The matcher (`proxy.ts:83`) skips `/api/health` and static assets (`_next/*`, icons, manifest, service worker files), so health probes never touch Supabase.
 
@@ -101,36 +101,36 @@ Server actions and routes reach the engine through `lib/orchestrator.ts` (full e
 
 ## 🧭 Guard per surface (summary)
 
-| Surface | Credential | Guard helper |
-| :--- | :--- | :--- |
-| Pages & server actions | Session cookie | `requireUser` / `getOrgAccess` / `adminOrgAccess` (`lib/auth.ts`, `lib/actions/shared.ts`) |
-| `/api/mobile/*` | Bearer or session (`/pair`: pairing code; `/device`: device token) | `userFromRequest`, code guards |
-| `/api/desktop/*` | Host token (`register`/`refresh`/`guest`: bearer or open) | `hostFromRequest` |
-| `/api/v1/tools/:id/approve`, `/api/v1/computers/*` | Bearer or session + room/org role | in-route (`v1/[...path]/route.ts`) |
-| `/api/messages`, `/api/files`, `/api/remote/*`, `/api/account/merge` | Bearer or session + resource check (RLS room, `canOpenHost`, guest identity) | `userFromRequest` |
-| `/api/connectors/*`, `/api/providers/*` | Session only | `requireRouteUser` (+ org role for admin branches) |
-| `/api/usage/local` | No login — machine check | `isOwnMachine` (loopback host or `SAYABOT_LOCAL_USAGE_SCAN` env; reads the server machine's own logs) |
-| `/api/workspaces/*` | Session + `getOrgAccess` (RLS) | in-route |
-| `/api/messaging/*` | Connector inbound secret (`?k=`) | constant-time compare |
-| `/api/billing/webhook` | Stripe signature | `verifyStripeSignature` |
-| `/bot/[code]/*` | Invite code + poll token | `pollTokenMatches` |
-| `/mcp/[token]` | Agent API key | orchestrator (post-forward) |
-| `/oauth/token`, `/oauth/register`, `/.well-known/...` | Public (OAuth 2.1 + PKCE) | client/secret-less flows in-route |
-| `/api/instance`, `/api/version`, `/api/health`, `/api/download` | Public | none (public data only) |
-| `/api/auth/send-email` | Trusted webhook (Supabase Auth hook) | payload-shape validation |
+| Surface                                                              | Credential                                                                   | Guard helper                                                                                          |
+| :------------------------------------------------------------------- | :--------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------- |
+| Pages & server actions                                               | Session cookie                                                               | `requireUser` / `getOrgAccess` / `adminOrgAccess` (`lib/auth.ts`, `lib/actions/shared.ts`)            |
+| `/api/mobile/*`                                                      | Bearer or session (`/pair`: pairing code; `/device`: device token)           | `userFromRequest`, code guards                                                                        |
+| `/api/desktop/*`                                                     | Host token (`register`/`refresh`/`guest`: bearer or open)                    | `hostFromRequest`                                                                                     |
+| `/api/v1/tools/:id/approve`, `/api/v1/computers/*`                   | Bearer or session + room/org role                                            | in-route (`v1/[...path]/route.ts`)                                                                    |
+| `/api/messages`, `/api/files`, `/api/remote/*`, `/api/account/merge` | Bearer or session + resource check (RLS room, `canOpenHost`, guest identity) | `userFromRequest`                                                                                     |
+| `/api/connectors/*`, `/api/providers/*`                              | Session only                                                                 | `requireRouteUser` (+ org role for admin branches)                                                    |
+| `/api/usage/local`                                                   | No login — machine check                                                     | `isOwnMachine` (loopback host or `SAYABOT_LOCAL_USAGE_SCAN` env; reads the server machine's own logs) |
+| `/api/workspaces/*`                                                  | Session + `getOrgAccess` (RLS)                                               | in-route                                                                                              |
+| `/api/messaging/*`                                                   | Connector inbound secret (`?k=`)                                             | constant-time compare                                                                                 |
+| `/api/billing/webhook`                                               | Stripe signature                                                             | `verifyStripeSignature`                                                                               |
+| `/bot/[code]/*`                                                      | Invite code + poll token                                                     | `pollTokenMatches`                                                                                    |
+| `/mcp/[token]`                                                       | Agent API key                                                                | orchestrator (post-forward)                                                                           |
+| `/oauth/token`, `/oauth/register`, `/.well-known/...`                | Public (OAuth 2.1 + PKCE)                                                    | client/secret-less flows in-route                                                                     |
+| `/api/instance`, `/api/version`, `/api/health`, `/api/download`      | Public                                                                       | none (public data only)                                                                               |
+| `/api/auth/send-email`                                               | Trusted webhook (Supabase Auth hook)                                         | payload-shape validation                                                                              |
 
 ---
 
 ## ⚙️ Environment variables behind the guards
 
-| Variable | Role | Default |
-| :--- | :--- | :--- |
-| `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Session and bearer clients; missing values hard-fail the middleware (`lib/supabase/proxy.ts:9`) | required |
-| `SUPABASE_SERVICE_ROLE_KEY` | The admin client that bypasses RLS | required |
-| `ORCHESTRATOR_INTERNAL_SECRET` | The `x-internal-secret` the web sends to the orchestrator/computerd | required (`getInternalSecret` throws) |
-| `ORCHESTRATOR_URL` / `COMPUTERD_URL` | Upstream bases for `lib/orchestrator.ts` and the `/api/v1` proxy | `http://localhost:4000` / `:4100` |
-| `DESKTOP_GUEST_MODE` | Guest-mode opt-out (`false`/`0`/`off` disable) | enabled |
-| `SAYABOT_LOCAL_USAGE_SCAN` | Force on/off the local-usage machine check | auto (loopback detection) |
+| Variable                                                     | Role                                                                                            | Default                               |
+| :----------------------------------------------------------- | :---------------------------------------------------------------------------------------------- | :------------------------------------ |
+| `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Session and bearer clients; missing values hard-fail the middleware (`lib/supabase/proxy.ts:9`) | required                              |
+| `SUPABASE_SERVICE_ROLE_KEY`                                  | The admin client that bypasses RLS                                                              | required                              |
+| `ORCHESTRATOR_INTERNAL_SECRET`                               | The `x-internal-secret` the web sends to the orchestrator/computerd                             | required (`getInternalSecret` throws) |
+| `ORCHESTRATOR_URL` / `COMPUTERD_URL`                         | Upstream bases for `lib/orchestrator.ts` and the `/api/v1` proxy                                | `http://localhost:4000` / `:4100`     |
+| `DESKTOP_GUEST_MODE`                                         | Guest-mode opt-out (`false`/`0`/`off` disable)                                                  | enabled                               |
+| `SAYABOT_LOCAL_USAGE_SCAN`                                   | Force on/off the local-usage machine check                                                      | auto (loopback detection)             |
 
 ## 🚫 Error shapes
 

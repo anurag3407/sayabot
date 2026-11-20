@@ -1,9 +1,19 @@
 import { describe, expect, it } from "vitest"
-import { formatInvitationMessage, generateSetupInstructions, normalizeClient } from "../../src/mcp/instructions"
+import {
+  formatInvitationMessage,
+  generateSetupInstructions,
+  normalizeClient,
+} from "../../src/mcp/instructions"
 
 const ctx = {
-  handle: "ada", displayName: "Ada", roomName: "General", roomId: "r1", roomOwnerName: "Sam",
-  timezone: "Asia/Kolkata", token: "tok", connectionUrl: "https://x/mcp/tok",
+  handle: "ada",
+  displayName: "Ada",
+  roomName: "General",
+  roomId: "r1",
+  roomOwnerName: "Sam",
+  timezone: "Asia/Kolkata",
+  token: "tok",
+  connectionUrl: "https://x/mcp/tok",
 }
 
 describe("mcp normalizeClient", () => {
@@ -17,7 +27,12 @@ describe("mcp normalizeClient", () => {
 
 describe("formatInvitationMessage", () => {
   it("names the room, owner and link, and defaults sanely", () => {
-    const out = formatInvitationMessage({ roomName: "Ops", roomOwnerName: "Jo", timezone: "UTC", connectionUrl: "https://x/y" })
+    const out = formatInvitationMessage({
+      roomName: "Ops",
+      roomOwnerName: "Jo",
+      timezone: "UTC",
+      connectionUrl: "https://x/y",
+    })
     expect(out).toContain("Ops")
     expect(out).toContain("UTC")
     expect(out).toContain("https://x/y")

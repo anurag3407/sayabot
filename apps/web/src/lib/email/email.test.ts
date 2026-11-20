@@ -15,7 +15,7 @@ describe("Email Templates Suite", () => {
       name: "Alice",
     })
 
-    expect(subject).toBe("Verify your Sayalabs account")
+    expect(subject).toBe("Verify your Sayabot account")
     expect(html).toContain("123456")
     expect(html).toContain("https://sayalabs.in/auth/callback?code=test")
     expect(html).toContain("Alice")
@@ -28,7 +28,7 @@ describe("Email Templates Suite", () => {
       link: "https://sayalabs.in/auth/callback?code=magic",
     })
 
-    expect(subject).toBe("Your Sayalabs sign-in code")
+    expect(subject).toBe("Your Sayabot sign-in code")
     expect(html).toContain("654321")
     expect(html).toContain("https://sayalabs.in/auth/callback?code=magic")
     expect(text).toContain("654321")
@@ -39,9 +39,9 @@ describe("Email Templates Suite", () => {
       link: "https://sayalabs.in/auth/complete?type=recovery",
     })
 
-    expect(subject).toBe("Reset your Sayalabs password")
+    expect(subject).toBe("Reset your Sayabot password")
     expect(html).toContain("https://sayalabs.in/auth/complete?type=recovery")
-    expect(text).toContain("Reset your Sayalabs password")
+    expect(text).toContain("Reset your Sayabot password")
   })
 
   it("renders workspace invite template with inviter and role details", () => {

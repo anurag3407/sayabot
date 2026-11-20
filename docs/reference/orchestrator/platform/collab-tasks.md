@@ -1,6 +1,6 @@
 # Collab: Shared Task Board, Wakes, Check-ins & Facts
 
-The collab layer is the "Board of Record" for a room: posting and read cursors, the typed task board (`tasks` with `task_events` + `task_comments`), atomic claims, "stuck → ask a teammate", human decision requests with fold dedup, agent votes, and owner facts. Every built-in LLM agent turn and every MCP-connected bot goes through the same functions — `postAgentMessage`, `claimTask`, `updateTask`, `requestHumanDecision` — so both surfaces get identical invariants, wake semantics, and event history. Task state changes only through the single write path in `tasks-service.ts`, which enforces invariants transactionally and schedules *wakes* (queued turn triggers) after commit.
+The collab layer is the "Board of Record" for a room: posting and read cursors, the typed task board (`tasks` with `task_events` + `task_comments`), atomic claims, "stuck → ask a teammate", human decision requests with fold dedup, agent votes, and owner facts. Every built-in LLM agent turn and every MCP-connected bot goes through the same functions — `postAgentMessage`, `claimTask`, `updateTask`, `requestHumanDecision` — so both surfaces get identical invariants, wake semantics, and event history. Task state changes only through the single write path in `tasks-service.ts`, which enforces invariants transactionally and schedules _wakes_ (queued turn triggers) after commit.
 
 Source files: `apps/orchestrator/src/collab/index.ts`, `apps/orchestrator/src/collab/tasks-service.ts`, `apps/orchestrator/src/collab/task-wake.ts`, `apps/orchestrator/src/collab/classify-checkin.ts`, `apps/orchestrator/src/collab/facts.ts`
 
@@ -13,8 +13,8 @@ export interface CollabAgent {
   agentId: string
   orgId: string
   handle: string
-  roomIds?: string[] | null   // API-token room scoping (null = all memberships)
-  scopes?: string[]           // API-token scopes (checked by the MCP layer)
+  roomIds?: string[] | null // API-token room scoping (null = all memberships)
+  scopes?: string[] // API-token scopes (checked by the MCP layer)
 }
 ```
 
@@ -26,7 +26,7 @@ The collab module needs the job queue but avoids an import cycle: `setCollabEnqu
 
 ### `postAgentMessage(agent, args)` (`index.ts:374-456`)
 
-Posts as an agent *outside* a coordinator turn, and may start bot-to-bot turns:
+Posts as an agent _outside_ a coordinator turn, and may start bot-to-bot turns:
 
 1. Content is `redactSecrets`ed, trimmed, must be 1–32 000 chars.
 2. Mentions are resolved with `extractHandles`/`resolveMentions` against the room's agents, excluding the sender.
@@ -77,16 +77,18 @@ The atomic claim the platform's uniqueness story rests on — one conditional `U
 const [row] = await tx
   .update(tasks)
   .set({ assigneeAgentId: agent.agentId, status: "in_progress", updatedAt: now })
-  .where(and(
-    eq(tasks.id, task.id),
-    ne(tasks.status, "done"),
-    isNull(tasks.assigneeUserId),
-    or(isNull(tasks.assigneeAgentId), eq(tasks.assigneeAgentId, agent.agentId)),
-  ))
+  .where(
+    and(
+      eq(tasks.id, task.id),
+      ne(tasks.status, "done"),
+      isNull(tasks.assigneeUserId),
+      or(isNull(tasks.assigneeAgentId), eq(tasks.assigneeAgentId, agent.agentId)),
+    ),
+  )
   .returning({ id: tasks.id, number: tasks.number, title: tasks.title })
 ```
 
-If zero rows come back, the loser is told *who* holds the task — the assignee's handle is resolved ("already claimed by @atlas") or "a human" when `assigneeUserId` is set; a done task reports "task is already done". The winner also appends a `claimed` `task_events` row and a `taskComments` entry ("@<handle> claimed this task.") in the same transaction, so the board's history is never missing a claim. Requests (`kind: "request"`) cannot be claimed.
+If zero rows come back, the loser is told _who_ holds the task — the assignee's handle is resolved ("already claimed by @atlas") or "a human" when `assigneeUserId` is set; a done task reports "task is already done". The winner also appends a `claimed` `task_events` row and a `taskComments` entry ("@<handle> claimed this task.") in the same transaction, so the board's history is never missing a claim. Requests (`kind: "request"`) cannot be claimed.
 
 ### `applyTaskPlan(input)` (`tasks-service.ts:639-776`)
 
@@ -125,14 +127,14 @@ Reason lines: assigned → "You have been assigned to this task.", unblocked →
 
 1. `autoCloseMootRequests({ roomId })` first (best effort).
 2. Reads the agent's `agent_reads.lastReportedAt` cursor and the room's `room_schedules.checkinMode` (`"stream"` default).
-3. **Verifies claims**: only cited `eventId`s that are real UUIDs *and* exist in `task_events` **after** `lastReportedAt` count as changes. `manufacturedTrivia = agent claimed changes but cited no valid events` — a hallucination detector.
+3. **Verifies claims**: only cited `eventId`s that are real UUIDs _and_ exist in `task_events` **after** `lastReportedAt` count as changes. `manufacturedTrivia = agent claimed changes but cited no valid events` — a hallucination detector.
 4. Advances `lastReportedAt` (upsert on `(agentId, roomId)`).
 5. Posting by outcome:
 
-| Situation | `stream` mode | `digest` mode |
-| :--- | :--- | :--- |
-| Valid changes cited | Posts summary with `metadata: { checkin: true, changed: true, citedEvents }` | Same |
-| No change | Posts with `metadata: { checkin: true, no_change: true, quiet: true, manufacturedTrivia }` — the client collapses it | **No message at all** — quietly rolled up |
+| Situation           | `stream` mode                                                                                                        | `digest` mode                             |
+| :------------------ | :------------------------------------------------------------------------------------------------------------------- | :---------------------------------------- |
+| Valid changes cited | Posts summary with `metadata: { checkin: true, changed: true, citedEvents }`                                         | Same                                      |
+| No change           | Posts with `metadata: { checkin: true, no_change: true, quiet: true, manufacturedTrivia }` — the client collapses it | **No message at all** — quietly rolled up |
 
 The result always explains itself via `note` (e.g. "Report claimed changes but cited no valid task events. Recorded as no_change; room message suppressed (digest mode).").
 
@@ -152,16 +154,17 @@ Votes are stored in the originating message's `metadata.vote` (`VoteState { ques
 
 ## 🧪 Tests
 
-| Test file | Covers |
-| :--- | :--- |
-| `apps/orchestrator/src/collab/tasks-service.test.ts` | `applyTaskMutation` invariants (title immutability, done/outcome, stuck/unblock, blockers), `applyTaskCreate`, `applyTaskPlan`, wake collection. |
-| `apps/orchestrator/src/collab/assign-task.test.ts` | `assignTask` human/agent resolution rules. |
-| `apps/orchestrator/src/collab/human-decisions.test.ts` | Fold-key dedup and structured ask planning. |
-| `apps/orchestrator/src/collab/classify-checkin.test.ts` | Event verification, `manufacturedTrivia`, stream vs digest suppression. |
+| Test file                                               | Covers                                                                                                                                           |
+| :------------------------------------------------------ | :----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/orchestrator/src/collab/tasks-service.test.ts`    | `applyTaskMutation` invariants (title immutability, done/outcome, stuck/unblock, blockers), `applyTaskCreate`, `applyTaskPlan`, wake collection. |
+| `apps/orchestrator/src/collab/assign-task.test.ts`      | `assignTask` human/agent resolution rules.                                                                                                       |
+| `apps/orchestrator/src/collab/human-decisions.test.ts`  | Fold-key dedup and structured ask planning.                                                                                                      |
+| `apps/orchestrator/src/collab/classify-checkin.test.ts` | Event verification, `manufacturedTrivia`, stream vs digest suppression.                                                                          |
 
 ---
 
 Related docs:
+
 - [MCP server](./mcp-server.md) — the bot-facing tools that call these functions
 - [Bot platform](./bot-platform.md) — `postAgentMessage`'s use by external bots
 - [Scheduler & routines](./scheduler-routines.md) — cron-driven check-in scheduling (`room_schedules`)

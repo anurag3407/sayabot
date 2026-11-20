@@ -84,11 +84,19 @@ function envBool(name: string): boolean {
 }
 
 export function ssoEnabled(): boolean {
-  return process.env.SSO_ENABLED === "true" || envBool("SSO_ENABLED") || envBool("NEXT_PUBLIC_SSO_ENABLED")
+  return (
+    process.env.SSO_ENABLED === "true" ||
+    envBool("SSO_ENABLED") ||
+    envBool("NEXT_PUBLIC_SSO_ENABLED")
+  )
 }
 
 export function githubAuthEnabled(): boolean {
-  return process.env.GITHUB_AUTH_ENABLED === "true" || envBool("GITHUB_AUTH_ENABLED") || envBool("NEXT_PUBLIC_GITHUB_AUTH_ENABLED")
+  return (
+    process.env.GITHUB_AUTH_ENABLED === "true" ||
+    envBool("GITHUB_AUTH_ENABLED") ||
+    envBool("NEXT_PUBLIC_GITHUB_AUTH_ENABLED")
+  )
 }
 
 /** Desktop guest mode is on unless the operator turns it off (`DESKTOP_GUEST_MODE=false`). */
@@ -98,7 +106,11 @@ export function desktopGuestModeEnabled(): boolean {
 }
 
 export function googleAuthEnabled(): boolean {
-  return process.env.GOOGLE_AUTH_ENABLED === "true" || envBool("GOOGLE_AUTH_ENABLED") || envBool("NEXT_PUBLIC_GOOGLE_AUTH_ENABLED")
+  return (
+    process.env.GOOGLE_AUTH_ENABLED === "true" ||
+    envBool("GOOGLE_AUTH_ENABLED") ||
+    envBool("NEXT_PUBLIC_GOOGLE_AUTH_ENABLED")
+  )
 }
 
 /** self-hosted (default) or cloud: plans, limits and billing only exist on Sayabot Cloud. */

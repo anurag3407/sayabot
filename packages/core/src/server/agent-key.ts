@@ -37,7 +37,10 @@ export function generatePollToken(): { token: string; hash: string } {
 }
 
 /** An 8-character pairing code from PAIRING_ALPHABET, without modulo bias. */
-export function generatePairingCode(alphabet = "23456789ABCDEFGHJKMNPQRSTUVWXYZ", length = 8): string {
+export function generatePairingCode(
+  alphabet = "23456789ABCDEFGHJKMNPQRSTUVWXYZ",
+  length = 8,
+): string {
   const limit = 256 - (256 % alphabet.length)
   let out = ""
   while (out.length < length) {

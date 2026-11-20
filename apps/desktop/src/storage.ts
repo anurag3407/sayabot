@@ -11,7 +11,9 @@ import * as path from "node:path"
 
 const MAX_ENTRIES = 200_000
 
-async function folderSize(root: string): Promise<{ bytes: number; files: number; approximate: boolean }> {
+async function folderSize(
+  root: string,
+): Promise<{ bytes: number; files: number; approximate: boolean }> {
   let bytes = 0
   let files = 0
   let seen = 0
@@ -53,12 +55,18 @@ export async function measureLocalStorage(): Promise<LocalStorageReport> {
   const agentsRoot = path.join(os.homedir(), "Sayabot", "agents")
   let handles: string[] = []
   try {
-    handles = (await readdir(agentsRoot, { withFileTypes: true })).filter((d) => d.isDirectory()).map((d) => d.name).slice(0, 100)
+    handles = (await readdir(agentsRoot, { withFileTypes: true }))
+      .filter((d) => d.isDirectory())
+      .map((d) => d.name)
+      .slice(0, 100)
   } catch {
     // no local runner folders yet
   }
   const agents = await Promise.all(
-    handles.map(async (handle) => ({ handle, ...(await folderSize(path.join(agentsRoot, handle))) })),
+    handles.map(async (handle) => ({
+      handle,
+      ...(await folderSize(path.join(agentsRoot, handle))),
+    })),
   )
   return {
     measuredAt: new Date().toISOString(),

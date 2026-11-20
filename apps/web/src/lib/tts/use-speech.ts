@@ -46,13 +46,19 @@ export function useSpeech() {
     speaker.resume()
   }, [])
 
-  const toggle = useCallback((messageId: string, text: string, options?: PlayOptions) => {
-    if (status.messageId === messageId && (status.state === "playing" || status.state === "preparing")) {
-      speaker.stop()
-    } else {
-      void speaker.play(messageId, text, options)
-    }
-  }, [status.messageId, status.state])
+  const toggle = useCallback(
+    (messageId: string, text: string, options?: PlayOptions) => {
+      if (
+        status.messageId === messageId &&
+        (status.state === "playing" || status.state === "preparing")
+      ) {
+        speaker.stop()
+      } else {
+        void speaker.play(messageId, text, options)
+      }
+    },
+    [status.messageId, status.state],
+  )
 
   return {
     status,

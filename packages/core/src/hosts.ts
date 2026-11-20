@@ -9,10 +9,19 @@
  * - Never allow private/local TLDs (.local, .internal, .localhost, .test, .example) unless allowInternal is true
  * - No protocol schemes, paths, ports or credentials
  */
-export function isValidHostPattern(pattern: string, options?: { allowInternal?: boolean }): boolean {
+export function isValidHostPattern(
+  pattern: string,
+  options?: { allowInternal?: boolean },
+): boolean {
   if (!pattern || typeof pattern !== "string") return false
   const trimmed = pattern.trim().toLowerCase()
-  if (!trimmed || trimmed === "*" || trimmed.includes("/") || trimmed.includes(":") || trimmed.includes("@")) {
+  if (
+    !trimmed ||
+    trimmed === "*" ||
+    trimmed.includes("/") ||
+    trimmed.includes(":") ||
+    trimmed.includes("@")
+  ) {
     return false
   }
 

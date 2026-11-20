@@ -1,6 +1,16 @@
-const fs = require("fs"), path = require("path")
-const u = (n) => "data:image/svg+xml;base64," + fs.readFileSync(path.join(__dirname, "svg", n + ".svg")).toString("base64")
-const I = { r: u("sayabot-icon-rounded"), mac: u("sayabot-icon-macos"), s: u("sayabot-icon-small"), mono: u("sayabot-mono-white"), b: u("alt-cursor-buddy"), c: u("alt-prompt-pal") }
+const fs = require("fs"),
+  path = require("path")
+const u = (n) =>
+  "data:image/svg+xml;base64," +
+  fs.readFileSync(path.join(__dirname, "svg", n + ".svg")).toString("base64")
+const I = {
+  r: u("sayabot-icon-rounded"),
+  mac: u("sayabot-icon-macos"),
+  s: u("sayabot-icon-small"),
+  mono: u("sayabot-mono-white"),
+  b: u("alt-cursor-buddy"),
+  c: u("alt-prompt-pal"),
+}
 const ph = (c) => `<i style="background:${c}"></i>`
 const html = `<title>Sayabot Icon</title>
 <meta name="claude:viewport-fit-sides" content="cover">

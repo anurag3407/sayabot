@@ -110,7 +110,7 @@ jobs:
 
           Install from Terminal so macOS opens Sayabot directly:
 
-          curl -fsSL https://sayabot.sayalabs.in/install-mac.sh | bash
+          curl -fsSL https://<your-server-domain>/install-mac.sh | bash
 
           A DMG saved in the browser is checked by macOS. Click Done, then System Settings → Privacy & Security → Open Anyway."
 

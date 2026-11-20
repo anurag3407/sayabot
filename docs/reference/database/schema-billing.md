@@ -10,17 +10,17 @@ Source files: `packages/db/src/schema/billing.ts`, `packages/db/sql/0033_cloud_p
 
 Defined at `packages/db/src/schema/billing.ts:8`. One row per workspace; `org_id` is the primary key. Row creation and updates are driven by the Stripe webhook flow on the Cloud deployment — no client can write (see RLS below).
 
-| Column | SQL type | Constraints / Default | Description |
-| :--- | :--- | :--- | :--- |
-| `org_id` | `uuid` | PK, FK → `orgs.id`, `ON DELETE CASCADE` | The subscribed workspace. |
-| `plan` | `text` | NOT NULL, default `"free"` | Plan tier. The Drizzle schema keeps this free-form; the SQL migration adds `org_plans_plan_check` restricting it to `free`, `pro`, or `team` (`packages/db/sql/0033_cloud_plans.sql:17`). |
-| `status` | `text` | NOT NULL, default `"active"` | Payment provider's subscription status: `active`, `trialing`, `past_due`, `canceled`, … (`packages/db/sql/0033_cloud_plans.sql:9`). |
-| `provider` | `text` | nullable | Payment provider, e.g. `stripe`. |
-| `customer_id` | `text` | nullable | Provider customer id. Uniquely indexed when non-null (see below). |
-| `subscription_id` | `text` | nullable | Provider subscription id. |
-| `current_period_end` | `timestamptz` | nullable | End of the current billing period. |
-| `cancel_at_period_end` | `boolean` | NOT NULL, default `false` | True when cancellation is scheduled at period end. |
-| `updated_at` | `timestamptz` | NOT NULL, default `now()` | Last webhook-driven update. |
+| Column                 | SQL type      | Constraints / Default                   | Description                                                                                                                                                                               |
+| :--------------------- | :------------ | :-------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `org_id`               | `uuid`        | PK, FK → `orgs.id`, `ON DELETE CASCADE` | The subscribed workspace.                                                                                                                                                                 |
+| `plan`                 | `text`        | NOT NULL, default `"free"`              | Plan tier. The Drizzle schema keeps this free-form; the SQL migration adds `org_plans_plan_check` restricting it to `free`, `pro`, or `team` (`packages/db/sql/0033_cloud_plans.sql:17`). |
+| `status`               | `text`        | NOT NULL, default `"active"`            | Payment provider's subscription status: `active`, `trialing`, `past_due`, `canceled`, … (`packages/db/sql/0033_cloud_plans.sql:9`).                                                       |
+| `provider`             | `text`        | nullable                                | Payment provider, e.g. `stripe`.                                                                                                                                                          |
+| `customer_id`          | `text`        | nullable                                | Provider customer id. Uniquely indexed when non-null (see below).                                                                                                                         |
+| `subscription_id`      | `text`        | nullable                                | Provider subscription id.                                                                                                                                                                 |
+| `current_period_end`   | `timestamptz` | nullable                                | End of the current billing period.                                                                                                                                                        |
+| `cancel_at_period_end` | `boolean`     | NOT NULL, default `false`               | True when cancellation is scheduled at period end.                                                                                                                                        |
+| `updated_at`           | `timestamptz` | NOT NULL, default `now()`               | Last webhook-driven update.                                                                                                                                                               |
 
 Index from SQL (not in the Drizzle schema): unique partial `org_plans_customer_idx` on `(customer_id)` with `where customer_id is not null` (`packages/db/sql/0033_cloud_plans.sql:19-20`), so one provider customer maps to at most one workspace plan.
 
@@ -30,12 +30,12 @@ Index from SQL (not in the Drizzle schema): unique partial `org_plans_customer_i
 
 Defined at `packages/db/src/schema/billing.ts:22`. One row per workspace per calendar month (UTC, formatted `"2026-11"`), with the composite primary key `(org_id, month)`. This is the fast-read rollup behind Cloud's turn limits; the fine-grained source is `usage_events` (see [Engine, Tools & Ops schemas](./schema-engine-tools-ops.md)).
 
-| Column | SQL type | Constraints / Default | Description |
-| :--- | :--- | :--- | :--- |
-| `org_id` | `uuid` | NOT NULL, FK → `orgs.id`, `ON DELETE CASCADE`, part of PK | The workspace. |
-| `month` | `text` | NOT NULL, part of PK | Calendar month in UTC, `"2026-11"` format. |
-| `server_turns` | `integer` | NOT NULL, default `0` | Count of server-side agent replies this month. |
-| `updated_at` | `timestamptz` | NOT NULL, default `now()` | Last increment time. |
+| Column         | SQL type      | Constraints / Default                                     | Description                                    |
+| :------------- | :------------ | :-------------------------------------------------------- | :--------------------------------------------- |
+| `org_id`       | `uuid`        | NOT NULL, FK → `orgs.id`, `ON DELETE CASCADE`, part of PK | The workspace.                                 |
+| `month`        | `text`        | NOT NULL, part of PK                                      | Calendar month in UTC, `"2026-11"` format.     |
+| `server_turns` | `integer`     | NOT NULL, default `0`                                     | Count of server-side agent replies this month. |
+| `updated_at`   | `timestamptz` | NOT NULL, default `now()`                                 | Last increment time.                           |
 
 ---
 
@@ -79,10 +79,10 @@ grant all on public.org_plans, public.org_usage_monthly to service_role;
 
 Every policy on the two billing tables, verbatim in purpose:
 
-| Policy | Table | Command | Predicate |
-| :--- | :--- | :--- | :--- |
-| `org_plans_member_read` | `org_plans` | `SELECT` | `org_id in (select org_id from org_members where user_id = auth.uid())` |
-| `org_usage_member_read` | `org_usage_monthly` | `SELECT` | same membership predicate |
+| Policy                  | Table               | Command  | Predicate                                                               |
+| :---------------------- | :------------------ | :------- | :---------------------------------------------------------------------- |
+| `org_plans_member_read` | `org_plans`         | `SELECT` | `org_id in (select org_id from org_members where user_id = auth.uid())` |
+| `org_usage_member_read` | `org_usage_monthly` | `SELECT` | same membership predicate                                               |
 
 Neither table has insert/update/delete policies for client roles — combined with the explicit `revoke insert, update, delete ... from anon, authenticated, public`, only the `service_role` (which bypasses RLS) can write. This matches the table's purpose: rows change exclusively through the payment webhook and the turn-counting RPC, both server-side.
 
@@ -98,12 +98,12 @@ Neither table has insert/update/delete policies for client roles — combined wi
 
 ## `bump_server_turns()` truth table
 
-| Situation | Result |
-| :--- | :--- |
-| Month row missing | Row is created (`server_turns = 0`), then incremented. |
-| Under `p_limit` (or `p_limit` is null) | `(allowed = true, used = new count)` |
-| Exactly at/over `p_limit` | `(allowed = false, used = current count)` — no increment happened. |
-| Parallel calls racing | Each `UPDATE` is a single atomic statement, so the sum of increments never exceeds the limit; losers re-read the count and return `false`. |
+| Situation                              | Result                                                                                                                                     |
+| :------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------- |
+| Month row missing                      | Row is created (`server_turns = 0`), then incremented.                                                                                     |
+| Under `p_limit` (or `p_limit` is null) | `(allowed = true, used = new count)`                                                                                                       |
+| Exactly at/over `p_limit`              | `(allowed = false, used = current count)` — no increment happened.                                                                         |
+| Parallel calls racing                  | Each `UPDATE` is a single atomic statement, so the sum of increments never exceeds the limit; losers re-read the count and return `false`. |
 
 The function is `SECURITY DEFINER` with `search_path = public`, and `EXECUTE` is revoked from `public`, `anon`, and `authenticated` before being granted to `service_role` (`packages/db/sql/0033_cloud_plans.sql:78-79`).
 

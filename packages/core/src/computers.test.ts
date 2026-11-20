@@ -43,7 +43,11 @@ describe("resolveComputer", () => {
   })
 
   it("wakes or creates a Boat only when the bot asks", () => {
-    expect(resolveComputer("auto", idle, "boat")).toEqual({ surface: "boat", action: "wake", reason: "" })
+    expect(resolveComputer("auto", idle, "boat")).toEqual({
+      surface: "boat",
+      action: "wake",
+      reason: "",
+    })
     expect(resolveComputer("boat", { ...idle, boatState: "absent" })).toEqual({
       surface: "boat",
       action: "provision",
@@ -53,7 +57,9 @@ describe("resolveComputer", () => {
 
   it("keeps this computer off until that bot turns it on", () => {
     expect(resolveComputer("this_computer", idle).action).toBe("none")
-    expect(resolveComputer("this_computer", { ...idle, thisComputer: true }).surface).toBe("this_computer")
+    expect(resolveComputer("this_computer", { ...idle, thisComputer: true }).surface).toBe(
+      "this_computer",
+    )
   })
 
   it("creates a local VM when asked, and reuses one that Auto already finds ready", () => {
@@ -65,7 +71,9 @@ describe("resolveComputer", () => {
   it("reuses a ready VPS and never starts the server on its own", () => {
     expect(resolveComputer("auto", { ...idle, vpsReady: true }).surface).toBe("vps")
     expect(resolveComputer("auto", idle, "vps").action).toBe("none")
-    expect(resolveComputer("auto", { ...idle, startVpsAutomatically: true }, "vps").action).toBe("provision")
+    expect(resolveComputer("auto", { ...idle, startVpsAutomatically: true }, "vps").action).toBe(
+      "provision",
+    )
   })
 
   it("starts the container when a person pinned the bot to their VPS", () => {
@@ -77,20 +85,29 @@ describe("resolveComputer", () => {
   it("creates an E2B sandbox only when asked, and only with a key", () => {
     expect(resolveComputer("e2b", idle).reason).toContain("E2B key")
     expect(resolveComputer("e2b", { ...idle, e2bConfigured: true }).action).toBe("provision")
-    expect(resolveComputer("auto", { ...idle, e2bConfigured: true }, "e2b").action).toBe("provision")
+    expect(resolveComputer("auto", { ...idle, e2bConfigured: true }, "e2b").action).toBe(
+      "provision",
+    )
     expect(resolveComputer("e2b", { ...idle, e2bConfigured: true, e2bReady: true })).toEqual({
       surface: "e2b",
       action: "use",
       reason: "",
     })
     // Auto never picks an E2B sandbox on its own: connecting would resume a paused one.
-    expect(resolveComputer("auto", { ...idle, e2bConfigured: true, e2bReady: true }).surface).toBe("off")
+    expect(resolveComputer("auto", { ...idle, e2bConfigured: true, e2bReady: true }).surface).toBe(
+      "off",
+    )
   })
 
   it("keeps an E2B sandbox visible to the next tool in the same turn", () => {
     const available = { ...idle, e2bConfigured: true }
     const params: Record<string, unknown> = {}
-    rememberSelectedDesktop(available, params, { surface: "e2b", action: "provision", reason: "" }, { ok: true, e2bId: "sbx-1" })
+    rememberSelectedDesktop(
+      available,
+      params,
+      { surface: "e2b", action: "provision", reason: "" },
+      { ok: true, e2bId: "sbx-1" },
+    )
     expect(available.e2bReady).toBe(true)
     expect(params.computer).toMatchObject({ e2bId: "sbx-1", e2bReady: true })
     expect(desktopHome("e2b")).toBe("/home/user")
@@ -130,7 +147,9 @@ describe("desktopGuidance", () => {
 describe("macScreenAllowed", () => {
   it("stays off until this bot is allowed to use the Mac", () => {
     expect(macScreenAllowed({ worksOn: "this_computer" })).toBe(false)
-    expect(macScreenAllowed({ worksOn: "this_computer", computer: { thisComputer: true } })).toBe(true)
+    expect(macScreenAllowed({ worksOn: "this_computer", computer: { thisComputer: true } })).toBe(
+      true,
+    )
     expect(macScreenAllowed({ worksOn: "auto", computer: { thisComputer: true } })).toBe(true)
     expect(macScreenAllowed({ worksOn: "boat", computer: { thisComputer: true } })).toBe(false)
     expect(macScreenAllowed({ worksOn: "vps", computer: { thisComputer: true } })).toBe(false)
@@ -141,17 +160,89 @@ describe("boatShouldSleep", () => {
   const now = 1_000_000_000_000
 
   it("sleeps after 10 idle minutes", () => {
-    expect(boatShouldSleep({ now, lastUsedAt: now - BOAT_IDLE_MS, nextRoutineAt: null, backgroundStartedAt: null, watching: false })).toBe(true)
-    expect(boatShouldSleep({ now, lastUsedAt: now - BOAT_IDLE_MS + 1, nextRoutineAt: null, backgroundStartedAt: null, watching: false })).toBe(false)
+    expect(
+      boatShouldSleep({
+        now,
+        lastUsedAt: now - BOAT_IDLE_MS,
+        nextRoutineAt: null,
+        backgroundStartedAt: null,
+        watching: false,
+      }),
+    ).toBe(true)
+    expect(
+      boatShouldSleep({
+        now,
+        lastUsedAt: now - BOAT_IDLE_MS + 1,
+        nextRoutineAt: null,
+        backgroundStartedAt: null,
+        watching: false,
+      }),
+    ).toBe(false)
   })
 
   it("stays awake for a routine due within 30 minutes, a watcher, or a background command under 2 hours", () => {
-    expect(boatShouldSleep({ now, lastUsedAt: now - BOAT_IDLE_MS, nextRoutineAt: now + BOAT_ROUTINE_LOOKAHEAD_MS, backgroundStartedAt: null, watching: false })).toBe(false)
-    expect(boatShouldSleep({ now, lastUsedAt: now - BOAT_IDLE_MS, nextRoutineAt: now + BOAT_ROUTINE_LOOKAHEAD_MS + 1, backgroundStartedAt: null, watching: false })).toBe(true)
-    expect(boatShouldSleep({ now, lastUsedAt: now - BOAT_IDLE_MS, nextRoutineAt: now - 60_000, backgroundStartedAt: null, watching: false })).toBe(false)
-    expect(boatShouldSleep({ now, lastUsedAt: now - BOAT_IDLE_MS, nextRoutineAt: now - BOAT_ROUTINE_LOOKAHEAD_MS - 1, backgroundStartedAt: null, watching: false })).toBe(true)
-    expect(boatShouldSleep({ now, lastUsedAt: null, nextRoutineAt: null, backgroundStartedAt: null, watching: true })).toBe(false)
-    expect(boatShouldSleep({ now, lastUsedAt: null, nextRoutineAt: null, backgroundStartedAt: now - BOAT_BACKGROUND_MAX_MS + 1, watching: false })).toBe(false)
-    expect(boatShouldSleep({ now, lastUsedAt: null, nextRoutineAt: null, backgroundStartedAt: now - BOAT_BACKGROUND_MAX_MS, watching: false })).toBe(true)
+    expect(
+      boatShouldSleep({
+        now,
+        lastUsedAt: now - BOAT_IDLE_MS,
+        nextRoutineAt: now + BOAT_ROUTINE_LOOKAHEAD_MS,
+        backgroundStartedAt: null,
+        watching: false,
+      }),
+    ).toBe(false)
+    expect(
+      boatShouldSleep({
+        now,
+        lastUsedAt: now - BOAT_IDLE_MS,
+        nextRoutineAt: now + BOAT_ROUTINE_LOOKAHEAD_MS + 1,
+        backgroundStartedAt: null,
+        watching: false,
+      }),
+    ).toBe(true)
+    expect(
+      boatShouldSleep({
+        now,
+        lastUsedAt: now - BOAT_IDLE_MS,
+        nextRoutineAt: now - 60_000,
+        backgroundStartedAt: null,
+        watching: false,
+      }),
+    ).toBe(false)
+    expect(
+      boatShouldSleep({
+        now,
+        lastUsedAt: now - BOAT_IDLE_MS,
+        nextRoutineAt: now - BOAT_ROUTINE_LOOKAHEAD_MS - 1,
+        backgroundStartedAt: null,
+        watching: false,
+      }),
+    ).toBe(true)
+    expect(
+      boatShouldSleep({
+        now,
+        lastUsedAt: null,
+        nextRoutineAt: null,
+        backgroundStartedAt: null,
+        watching: true,
+      }),
+    ).toBe(false)
+    expect(
+      boatShouldSleep({
+        now,
+        lastUsedAt: null,
+        nextRoutineAt: null,
+        backgroundStartedAt: now - BOAT_BACKGROUND_MAX_MS + 1,
+        watching: false,
+      }),
+    ).toBe(false)
+    expect(
+      boatShouldSleep({
+        now,
+        lastUsedAt: null,
+        nextRoutineAt: null,
+        backgroundStartedAt: now - BOAT_BACKGROUND_MAX_MS,
+        watching: false,
+      }),
+    ).toBe(true)
   })
 })

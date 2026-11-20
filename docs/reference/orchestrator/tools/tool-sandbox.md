@@ -10,23 +10,23 @@ Source files: `apps/orchestrator/src/tools/builtins/sandbox.ts`, `apps/orchestra
 
 The exported `SANDBOX_BACKENDS` catalog (used by settings UIs and asserted in tests, `sandbox.test.ts:9-32`) describes six execution environments:
 
-| id | Name | Tag | Isolation | Requires |
-| :--- | :--- | :--- | :--- | :--- |
-| `local` | Local (Host OS) | Free / Local | Host process isolation (scoped directory & timeout) | nothing |
-| `docker` | Docker (Persistent Sandbox) | Self-Hosted | Docker container (dropped capabilities, isolated network) | a host running computerd |
-| `modal` | Modal Labs (Serverless Cloud) | Cloud / BYOK | Serverless ephemeral Linux container | API key |
-| `daytona` | Daytona (Cloud Workspaces) | Cloud / BYOK | Automated cloud dev environment | API key + host |
-| `ssh` | Remote SSH (Homelab / VPS) | Self-Hosted | Remote execution over SSH | host (`user@host`) |
-| `serverless_vm` | Serverless MicroVM (E2B / Singularity) | HPC / MicroVM | Firecracker microVM boundary | `E2B_API_KEY` |
+| id              | Name                                   | Tag           | Isolation                                                 | Requires                 |
+| :-------------- | :------------------------------------- | :------------ | :-------------------------------------------------------- | :----------------------- |
+| `local`         | Local (Host OS)                        | Free / Local  | Host process isolation (scoped directory & timeout)       | nothing                  |
+| `docker`        | Docker (Persistent Sandbox)            | Self-Hosted   | Docker container (dropped capabilities, isolated network) | a host running computerd |
+| `modal`         | Modal Labs (Serverless Cloud)          | Cloud / BYOK  | Serverless ephemeral Linux container                      | API key                  |
+| `daytona`       | Daytona (Cloud Workspaces)             | Cloud / BYOK  | Automated cloud dev environment                           | API key + host           |
+| `ssh`           | Remote SSH (Homelab / VPS)             | Self-Hosted   | Remote execution over SSH                                 | host (`user@host`)       |
+| `serverless_vm` | Serverless MicroVM (E2B / Singularity) | HPC / MicroVM | Firecracker microVM boundary                              | `E2B_API_KEY`            |
 
 ## 🛠️ `code_sandbox` (`sandbox.ts:352-399`)
 
-| Parameter | Type | Default | Description |
-| :--- | :--- | :--- | :--- |
-| `language` | enum `python \| javascript \| bash` | `"bash"` | Snippet language |
-| `code` | string | — (1–20,000 chars) | Code to execute |
-| `backend` | enum `local \| docker \| modal \| daytona \| ssh \| serverless_vm` | optional | Target environment; defaults to the org-configured backend, then `local` |
-| `timeoutSeconds` | int 1–60 | optional | Per-run timeout |
+| Parameter        | Type                                                               | Default            | Description                                                              |
+| :--------------- | :----------------------------------------------------------------- | :----------------- | :----------------------------------------------------------------------- |
+| `language`       | enum `python \| javascript \| bash`                                | `"bash"`           | Snippet language                                                         |
+| `code`           | string                                                             | — (1–20,000 chars) | Code to execute                                                          |
+| `backend`        | enum `local \| docker \| modal \| daytona \| ssh \| serverless_vm` | optional           | Target environment; defaults to the org-configured backend, then `local` |
+| `timeoutSeconds` | int 1–60                                                           | optional           | Per-run timeout                                                          |
 
 - `dangerous: (input) => input.backend === "local" || input.backend === "ssh" || isDestructiveCommand(...)` — executes without approval only in fully isolated container/microVM backends for non-destructive commands. Any execution on the host OS (`local`), remote SSH host (`ssh`), or involving destructive patterns (`rm -rf`, `mkfs`, fork bombs, DROP TABLE) triggers human approval per AGENTS.md Rule 4.
 - Credential resolution: `resolveToolCredential({ orgId, agentId, tool: "terminal_sandbox" })` (`sandbox.ts:379-381`); the config's `provider` selects the default backend, `apiKey`/`baseUrl` feed the remote backends.
@@ -34,12 +34,12 @@ The exported `SANDBOX_BACKENDS` catalog (used by settings UIs and asserted in te
 
 ## 🖥️ `terminal_exec` (`sandbox.ts:401-449`)
 
-| Parameter | Type | Default | Description |
-| :--- | :--- | :--- | :--- |
-| `cmd` | string (min 1) | — | Shell command string |
-| `cwd` | string | optional | Working directory |
-| `backend` | same enum as `code_sandbox` | optional | Target environment |
-| `timeoutSeconds` | int 1–120 | `30` | Timeout |
+| Parameter        | Type                        | Default  | Description          |
+| :--------------- | :-------------------------- | :------- | :------------------- |
+| `cmd`            | string (min 1)              | —        | Shell command string |
+| `cwd`            | string                      | optional | Working directory    |
+| `backend`        | same enum as `code_sandbox` | optional | Target environment   |
+| `timeoutSeconds` | int 1–120                   | `30`     | Timeout              |
 
 Same credential path and dynamic `dangerous` human approval evaluation as `code_sandbox`, always executing with `language: "bash"` (`sandbox.ts:439`).
 
@@ -75,8 +75,8 @@ export interface ExecutionResult {
   exitCode: number
   backend: SandboxBackend
   executionTimeMs: number
-  results?: string[]                                                     // E2B rich cells
-  error?: { name: string; value: string; traceback?: string } | null     // E2B exception
+  results?: string[] // E2B rich cells
+  error?: { name: string; value: string; traceback?: string } | null // E2B exception
 }
 ```
 
@@ -88,12 +88,12 @@ No database tables are read or written by the tools themselves. The audit layer 
 
 The `terminal_sandbox` org config's JSON maps to dispatcher arguments (`sandbox.ts:384-387`):
 
-| Config field | Used as |
-| :--- | :--- |
-| `provider` | Default backend when the call omits `backend` |
-| `apiKey` | E2B `Sandbox.create`, Modal token check, Daytona token check |
-| `baseUrl` | Daytona workspace name; SSH `host` string (via `executeRemoteSsh(args.baseUrl)`) |
-| `token`, `connectionString`, … | Ignored by these two tools |
+| Config field                   | Used as                                                                          |
+| :----------------------------- | :------------------------------------------------------------------------------- |
+| `provider`                     | Default backend when the call omits `backend`                                    |
+| `apiKey`                       | E2B `Sandbox.create`, Modal token check, Daytona token check                     |
+| `baseUrl`                      | Daytona workspace name; SSH `host` string (via `executeRemoteSsh(args.baseUrl)`) |
+| `token`, `connectionString`, … | Ignored by these two tools                                                       |
 
 Resolution failures are swallowed (`.catch(() => null)`), so a missing/broken org config degrades silently to the `local` backend rather than failing the call (`sandbox.ts:380-381, 429-430`).
 
@@ -120,9 +120,9 @@ expect(result.stdout).toContain("hello from sayabot sandbox")
 expect(SANDBOX_BACKENDS.length).toBe(6)
 
 const sTool = sandboxTool({ orgId: "org-1" })
-expect(sTool.name).toBe("code_sandbox")     // dangerous === false
+expect(sTool.name).toBe("code_sandbox") // dangerous === false
 const tTool = terminalExecTool({ orgId: "org-1" })
-expect(tTool.name).toBe("terminal_exec")    // dangerous === false
+expect(tTool.name).toBe("terminal_exec") // dangerous === false
 ```
 
 Related docs: [./tool-system.md](./tool-system.md) · [./tool-computer.md](./tool-computer.md) · [./secrets-broker.md](./secrets-broker.md) · [./tool-web.md](./tool-web.md) · [../../database/schema-connectors-and-vault.md](../../database/schema-connectors-and-vault.md)

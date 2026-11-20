@@ -63,7 +63,11 @@ describe("connectorTools", () => {
       expect(gdriveOnly.map((t) => t.name)).toEqual(["gdrive_search", "gdrive_read_file"])
 
       const slackOnly = connectorTools({ ...defaultOpts, sources: ["slack"] })
-      expect(slackOnly.map((t) => t.name)).toEqual(["slack_search", "slack_read_thread", "slack_send_message"])
+      expect(slackOnly.map((t) => t.name)).toEqual([
+        "slack_search",
+        "slack_read_thread",
+        "slack_send_message",
+      ])
 
       const githubOnly = connectorTools({ ...defaultOpts, sources: ["github"] })
       expect(githubOnly.map((t) => t.name)).toEqual([
@@ -661,9 +665,7 @@ describe("connectorTools", () => {
 
         await expect(
           tool.execute({ repo: "secret/repo", path: "config.json", ref: "main" }),
-        ).rejects.toThrow(
-          "Access Denied: Agent is not granted access to repository secret/repo",
-        )
+        ).rejects.toThrow("Access Denied: Agent is not granted access to repository secret/repo")
       })
     })
   })
@@ -701,9 +703,9 @@ describe("connectorTools", () => {
         expect(tool.schema.safeParse({ repo: "sayalabs/core", issue_number: 12.34 }).success).toBe(
           false,
         )
-        expect(
-          tool.schema.safeParse({ repo: "sayalabs/core", issue_number: "142" }).success,
-        ).toBe(false)
+        expect(tool.schema.safeParse({ repo: "sayalabs/core", issue_number: "142" }).success).toBe(
+          false,
+        )
       })
     })
 
@@ -762,9 +764,9 @@ describe("connectorTools", () => {
           new Error("Not Found: GitHub issue #9999 does not exist"),
         )
 
-        await expect(
-          tool.execute({ repo: "sayalabs/core", issue_number: 9999 }),
-        ).rejects.toThrow("Not Found: GitHub issue #9999 does not exist")
+        await expect(tool.execute({ repo: "sayalabs/core", issue_number: 9999 })).rejects.toThrow(
+          "Not Found: GitHub issue #9999 does not exist",
+        )
       })
     })
   })
@@ -788,9 +790,17 @@ describe("connectorTools", () => {
     })
 
     it("passes the agent and org through to the service on send", async () => {
-      mockConnectorService.sendDiscordMessage.mockResolvedValue({ id: "m1", url: "https://discord.com/channels/1/2/m1" })
-      const tool = connectorTools({ ...defaultOpts, sources: ["discord"] }).find((t) => t.name === "discord_send_message")!
-      const result = (await tool.execute({ channel_id: "123456", content: "hi" })) as { ok: boolean; id: string }
+      mockConnectorService.sendDiscordMessage.mockResolvedValue({
+        id: "m1",
+        url: "https://discord.com/channels/1/2/m1",
+      })
+      const tool = connectorTools({ ...defaultOpts, sources: ["discord"] }).find(
+        (t) => t.name === "discord_send_message",
+      )!
+      const result = (await tool.execute({ channel_id: "123456", content: "hi" })) as {
+        ok: boolean
+        id: string
+      }
       expect(result).toMatchObject({ ok: true, id: "m1" })
       expect(mockConnectorService.sendDiscordMessage).toHaveBeenCalledWith({
         agentId: "agent-test-456",
@@ -802,7 +812,9 @@ describe("connectorTools", () => {
 
     it("defaults the WhatsApp template language", async () => {
       mockConnectorService.sendWhatsAppTemplate.mockResolvedValue({ id: "wamid.1" })
-      const tool = connectorTools({ ...defaultOpts, sources: ["whatsapp"] }).find((t) => t.name === "whatsapp_send_template")!
+      const tool = connectorTools({ ...defaultOpts, sources: ["whatsapp"] }).find(
+        (t) => t.name === "whatsapp_send_template",
+      )!
       await tool.execute({ to: "+14155550123", template: "hello_world" })
       expect(mockConnectorService.sendWhatsAppTemplate).toHaveBeenCalledWith(
         expect.objectContaining({ template: "hello_world", language: "en_US" }),

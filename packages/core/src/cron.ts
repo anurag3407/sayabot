@@ -182,11 +182,7 @@ export function isValidCron(expr: string): boolean {
  * Calculates the next matching Date for a cron expression after a reference date.
  * Inspects up to 366 days ahead. Returns null if no match found.
  */
-export function getNextCronRun(
-  expr: string,
-  fromDate = new Date(),
-  timeZone = "UTC",
-): Date | null {
+export function getNextCronRun(expr: string, fromDate = new Date(), timeZone = "UTC"): Date | null {
   const parsed = parseCron(expr)
   if (!parsed) return null
 
@@ -233,9 +229,7 @@ export function getNextCronRun(
     const domRestricted = parsed.daysOfMonth.length < 31
     const dowRestricted = parsed.daysOfWeek.length < 7
     const dayMatches =
-      domRestricted && dowRestricted
-        ? matchesDom || matchesDow
-        : matchesDom && matchesDow
+      domRestricted && dowRestricted ? matchesDom || matchesDow : matchesDom && matchesDow
 
     if (!parsed.months.includes(month) || !dayMatches) {
       // Advance to next day at 00:00

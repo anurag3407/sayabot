@@ -1,11 +1,6 @@
 import { createClient, type User } from "@supabase/supabase-js"
 import { audit } from "@/lib/actions/shared"
-import {
-  getComputerdUrl,
-  getOrchestratorUrl,
-  getSupabaseAnonKey,
-  getSupabaseUrl,
-} from "@/lib/env"
+import { getComputerdUrl, getOrchestratorUrl, getSupabaseAnonKey, getSupabaseUrl } from "@/lib/env"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { macApprovalBlock, readMacMarker } from "@/lib/mac-runner"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
@@ -274,7 +269,13 @@ async function forward(request: Request, path: string[]) {
   }
 
   // Handle mobile tool approval endpoint
-  if (path[0] === "tools" && path[2] === "approve" && path.length === 3 && request.method === "POST" && path[1]) {
+  if (
+    path[0] === "tools" &&
+    path[2] === "approve" &&
+    path.length === 3 &&
+    request.method === "POST" &&
+    path[1]
+  ) {
     return handleToolApproval(request, path[1])
   }
 
@@ -287,7 +288,13 @@ async function forward(request: Request, path: string[]) {
   }
 
   // Handle mobile computer stop endpoint
-  if (path[0] === "computers" && path[2] === "stop" && path.length === 3 && request.method === "POST" && path[1]) {
+  if (
+    path[0] === "computers" &&
+    path[2] === "stop" &&
+    path.length === 3 &&
+    request.method === "POST" &&
+    path[1]
+  ) {
     return handleComputerStop(request, path[1])
   }
 

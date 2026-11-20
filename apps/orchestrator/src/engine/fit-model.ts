@@ -37,7 +37,8 @@ export async function runFittingTheModel(
   }
 
   const params = { ...((args.agent.params as Record<string, unknown> | null) ?? {}) }
-  const limits = params.requestLimits && typeof params.requestLimits === "object" ? params.requestLimits : {}
+  const limits =
+    params.requestLimits && typeof params.requestLimits === "object" ? params.requestLimits : {}
   params.requestLimits = { ...(limits as Record<string, unknown>), [key]: next }
   return run({ ...args, agent: { ...args.agent, params } })
 }

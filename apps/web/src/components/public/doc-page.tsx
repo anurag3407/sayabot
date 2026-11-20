@@ -34,22 +34,25 @@ export function DocPage({
           <Link href="/" className="hover:text-text">
             back to sayabot
           </Link>{" "}
-          · <Link href="/security" className="hover:text-text">security</Link> ·{" "}
-          <Link href="/privacy" className="hover:text-text">privacy</Link> ·{" "}
-          <Link href="/terms" className="hover:text-text">terms</Link>
+          ·{" "}
+          <Link href="/security" className="hover:text-text">
+            security
+          </Link>{" "}
+          ·{" "}
+          <Link href="/privacy" className="hover:text-text">
+            privacy
+          </Link>{" "}
+          ·{" "}
+          <Link href="/terms" className="hover:text-text">
+            terms
+          </Link>
         </p>
       </article>
     </PublicShell>
   )
 }
 
-export function DocSection({
-  title,
-  children,
-}: {
-  title: string
-  children: ReactNode
-}) {
+export function DocSection({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section>
       <h2 className="text-[16px] font-medium">{title}</h2>

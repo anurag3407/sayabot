@@ -21,21 +21,21 @@ Containers run as non-root with read-only filesystems, all capabilities dropped,
 
 ## Files
 
-| Path | Purpose |
-|---|---|
-| `deploy/docker/web.Dockerfile` | Multi-stage Next.js build → standalone server image |
-| `deploy/docker/orchestrator.Dockerfile` | Orchestrator image (also runs migrations and seeds) |
-| `deploy/docker-compose.yml` | web, orchestrator, nginx, certbot, and a one-off `migrate` |
-| `deploy/docker-compose.tunnel.yml` | Cloudflare Tunnel overlay (added when `CLOUDFLARE_TUNNEL_TOKEN` is set) |
-| `deploy/docker-compose.supabase.yml` | Bundled Supabase overlay (added when `SAYABOT_SUPABASE=bundled`) |
-| `deploy/nginx/supabase-locations.conf` | Supabase's public paths on the same domain (bundled mode) |
-| `deploy/supabase/` | Supabase's database init scripts (Apache-2.0, see `NOTICE`) |
-| `deploy/install.sh` | Interactive setup: answers → `.env.production`, certificate, first deploy |
-| `deploy/nginx/` | `nginx.conf`, the site template, shared proxy and header snippets |
-| `deploy/.env.production.example` | Every setting, documented |
-| `deploy/scripts/setup-vps.sh` | One-time server hardening + Docker install (run as root) |
-| `deploy/scripts/init-letsencrypt.sh` | First TLS certificate |
-| `deploy/deploy.sh` | Build, migrate, health-gated rollout, auto-rollback, ops commands |
+| Path                                    | Purpose                                                                   |
+| --------------------------------------- | ------------------------------------------------------------------------- |
+| `deploy/docker/web.Dockerfile`          | Multi-stage Next.js build → standalone server image                       |
+| `deploy/docker/orchestrator.Dockerfile` | Orchestrator image (also runs migrations and seeds)                       |
+| `deploy/docker-compose.yml`             | web, orchestrator, nginx, certbot, and a one-off `migrate`                |
+| `deploy/docker-compose.tunnel.yml`      | Cloudflare Tunnel overlay (added when `CLOUDFLARE_TUNNEL_TOKEN` is set)   |
+| `deploy/docker-compose.supabase.yml`    | Bundled Supabase overlay (added when `SAYABOT_SUPABASE=bundled`)          |
+| `deploy/nginx/supabase-locations.conf`  | Supabase's public paths on the same domain (bundled mode)                 |
+| `deploy/supabase/`                      | Supabase's database init scripts (Apache-2.0, see `NOTICE`)               |
+| `deploy/install.sh`                     | Interactive setup: answers → `.env.production`, certificate, first deploy |
+| `deploy/nginx/`                         | `nginx.conf`, the site template, shared proxy and header snippets         |
+| `deploy/.env.production.example`        | Every setting, documented                                                 |
+| `deploy/scripts/setup-vps.sh`           | One-time server hardening + Docker install (run as root)                  |
+| `deploy/scripts/init-letsencrypt.sh`    | First TLS certificate                                                     |
+| `deploy/deploy.sh`                      | Build, migrate, health-gated rollout, auto-rollback, ops commands         |
 
 ## Requirements
 
@@ -161,12 +161,12 @@ Then run `./deploy/deploy.sh --ref <same commit> --pull` on the server, after `d
 
 ## Troubleshooting
 
-| Symptom | Check |
-|---|---|
-| `init-letsencrypt` fails | DNS A record points here; port 80 open (`ufw status`); no other web server running |
-| Deploy stuck on "web is not healthy" | `./deploy/deploy.sh logs web`: usually a missing env value |
-| Orchestrator restarts | `logs orchestrator`: `DATABASE_URL` must be the session pooler on 5432 |
-| Canvas never connects | Browser console: `wss://DOMAIN/collab` must return 101. Rebuild after changing the domain |
-| MCP client says unauthorized | Key revoked, or the URL lost its `/mcp/<key>` suffix |
-| 429 responses | nginx rate limits in `deploy/nginx/nginx.conf` (`sayabot_api`, `sayabot_auth`, `sayabot_general`) |
-| Build killed (exit 137) | Out of memory: check that swap is on (`swapon --show`), or build in CI |
+| Symptom                              | Check                                                                                             |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| `init-letsencrypt` fails             | DNS A record points here; port 80 open (`ufw status`); no other web server running                |
+| Deploy stuck on "web is not healthy" | `./deploy/deploy.sh logs web`: usually a missing env value                                        |
+| Orchestrator restarts                | `logs orchestrator`: `DATABASE_URL` must be the session pooler on 5432                            |
+| Canvas never connects                | Browser console: `wss://DOMAIN/collab` must return 101. Rebuild after changing the domain         |
+| MCP client says unauthorized         | Key revoked, or the URL lost its `/mcp/<key>` suffix                                              |
+| 429 responses                        | nginx rate limits in `deploy/nginx/nginx.conf` (`sayabot_api`, `sayabot_auth`, `sayabot_general`) |
+| Build killed (exit 137)              | Out of memory: check that swap is on (`swapon --show`), or build in CI                            |

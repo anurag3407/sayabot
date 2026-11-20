@@ -86,7 +86,9 @@ export interface RoutineChatTarget {
 }
 
 const chatKey = (t: { connectorId?: unknown; chatId?: unknown } | null | undefined) =>
-  t && typeof t.connectorId === "string" && typeof t.chatId === "string" ? `${t.connectorId}|${t.chatId}` : ""
+  t && typeof t.connectorId === "string" && typeof t.chatId === "string"
+    ? `${t.connectorId}|${t.chatId}`
+    : ""
 
 /** Form value "connectorId|chatId" → routine metadata. null clears it (PATCH merges metadata). */
 function deliverToFromForm(value: FormDataEntryValue | null) {
@@ -94,7 +96,15 @@ function deliverToFromForm(value: FormDataEntryValue | null) {
   return connectorId && chatId ? { connectorId, chatId } : null
 }
 
-function ChatTargetField({ id, targets, current }: { id: string; targets: RoutineChatTarget[]; current?: string }) {
+function ChatTargetField({
+  id,
+  targets,
+  current,
+}: {
+  id: string
+  targets: RoutineChatTarget[]
+  current?: string
+}) {
   return (
     <Field
       label="Also send results to"
@@ -324,7 +334,9 @@ export function N8nCanvas({
               onClick={() => setViewMode("canvas")}
               className={cn(
                 "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[12px] transition-colors",
-                viewMode === "canvas" ? "bg-panel text-text shadow-xs" : "text-muted hover:text-text",
+                viewMode === "canvas"
+                  ? "bg-panel text-text shadow-xs"
+                  : "text-muted hover:text-text",
               )}
             >
               <LayoutGrid className="h-3.5 w-3.5" />
@@ -406,9 +418,7 @@ export function N8nCanvas({
                         </div>
                       </td>
                       <td className="px-4 py-3.5">
-                        <span className="text-muted">
-                          #{routine.rooms?.name || "default room"}
-                        </span>
+                        <span className="text-muted">#{routine.rooms?.name || "default room"}</span>
                       </td>
                       <td className="px-4 py-3.5 text-muted font-mono text-[11px]">
                         {routine.next_run_at
@@ -470,7 +480,8 @@ export function N8nCanvas({
                   {filteredRoutines.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="px-4 py-8 text-center text-muted">
-                        No routines found. Click &quot;New Routine&quot; to create your first automation.
+                        No routines found. Click &quot;New Routine&quot; to create your first
+                        automation.
                       </td>
                     </tr>
                   ) : null}
@@ -604,9 +615,7 @@ export function N8nCanvas({
                             <span className="font-mono text-[11px] font-semibold text-muted uppercase tracking-wider">
                               Workflow:
                             </span>
-                            <span className="text-[13px] font-bold text-text">
-                              {routine.name}
-                            </span>
+                            <span className="text-[13px] font-bold text-text">{routine.name}</span>
                             <span
                               className={cn(
                                 "rounded-full px-2 py-0.2 text-[10px] font-medium",
@@ -865,7 +874,8 @@ export function N8nCanvas({
               ) : (
                 <div className="p-12 text-center text-muted">
                   <p>
-                    No routines found. Click &quot;New Routine&quot; to build an automation workflow.
+                    No routines found. Click &quot;New Routine&quot; to build an automation
+                    workflow.
                   </p>
                 </div>
               )}
@@ -1015,12 +1025,7 @@ export function N8nCanvas({
                 className="space-y-4"
               >
                 <Field label="Workflow Name" htmlFor="routine-name">
-                  <Input
-                    id="routine-name"
-                    name="name"
-                    defaultValue={activeRoutine.name}
-                    required
-                  />
+                  <Input id="routine-name" name="name" defaultValue={activeRoutine.name} required />
                 </Field>
 
                 <Field label="Schedule Expression (Cron or Shorthand)" htmlFor="routine-schedule">
@@ -1134,7 +1139,8 @@ export function N8nCanvas({
                   </div>
                 ) : runs.length === 0 ? (
                   <div className="text-center py-8 text-muted text-[13px]">
-                    No recorded executions yet. Click &quot;Execute Now&quot; to test run this workflow.
+                    No recorded executions yet. Click &quot;Execute Now&quot; to test run this
+                    workflow.
                   </div>
                 ) : (
                   runs.map((run) => (
@@ -1308,12 +1314,7 @@ export function N8nCanvas({
                 htmlFor="new-schedule"
                 hint="Cron expr ('0 9 * * 1-5') or natural shorthand ('daily at 9am')"
               >
-                <Input
-                  id="new-schedule"
-                  name="schedule_expr"
-                  placeholder="daily at 9am"
-                  required
-                />
+                <Input id="new-schedule" name="schedule_expr" placeholder="daily at 9am" required />
               </Field>
 
               <Field label="Timezone" htmlFor="new-timezone">
@@ -1362,11 +1363,7 @@ export function N8nCanvas({
               </Field>
 
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-line">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsCreatingNew(false)}
-                >
+                <Button type="button" variant="outline" onClick={() => setIsCreatingNew(false)}>
                   Cancel
                 </Button>
                 <Button type="submit" variant="primary">

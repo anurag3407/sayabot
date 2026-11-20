@@ -7,7 +7,10 @@ const GROQ =
 
 describe("request too large", () => {
   it("recognizes Groq's per-minute refusal and reads its limit", () => {
-    expect(classifyEngineError(new Error(GROQ))).toMatchObject({ category: "request_too_large", limitTokens: 8000 })
+    expect(classifyEngineError(new Error(GROQ))).toMatchObject({
+      category: "request_too_large",
+      limitTokens: 8000,
+    })
   })
 
   it("tells people what to do, without the provider's account id", () => {
@@ -36,16 +39,23 @@ describe("lean turns", () => {
   })
 
   it("fits input and answer under the limit", () => {
-    expect(leanParams({ maxOutputTokens: 900 }, 8000)).toEqual({ maxOutputTokens: 900, contextBudgetTokens: 4800 })
+    expect(leanParams({ maxOutputTokens: 900 }, 8000)).toEqual({
+      maxOutputTokens: 900,
+      contextBudgetTokens: 4800,
+    })
     expect(leanParams({}, 8000)).toEqual({ contextBudgetTokens: 4800, maxOutputTokens: 2000 })
     const same = { a: 1 }
     expect(leanParams(same, null)).toBe(same)
   })
 
   it("offers a few tools plus whatever find_tools turned on", () => {
-    const specs = ["fs_read", "remember", "canvas_read", "web_search"].map((name) => ({ name })) as never
+    const specs = ["fs_read", "remember", "canvas_read", "web_search"].map((name) => ({
+      name,
+    })) as never
     expect(leanToolNames(() => undefined, specs)()).toEqual(["remember", "canvas_read"])
-    expect(leanToolNames(() => ["find_tools", "fs_read", "remember", "web_search"], specs)()).toEqual(["find_tools", "remember", "web_search"])
+    expect(
+      leanToolNames(() => ["find_tools", "fs_read", "remember", "web_search"], specs)(),
+    ).toEqual(["find_tools", "remember", "web_search"])
   })
 
   it("steps the limit down and stops when it can't shrink", () => {

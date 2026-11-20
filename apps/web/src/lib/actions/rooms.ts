@@ -153,7 +153,8 @@ export async function updateRoomSettings(
   const roomAgentIds = new Set((roomAgents ?? []).map((r) => r.agent_id))
   const moderatorAgentId = optionalField(formData, "moderatorAgentId")
   if (moderatorAgentId) {
-    if (!roomAgentIds.has(moderatorAgentId)) return fail("The lead agent must be an agent in this room")
+    if (!roomAgentIds.has(moderatorAgentId))
+      return fail("The lead agent must be an agent in this room")
     const { data: lead } = await admin
       .from("agents")
       .select("kind")
@@ -265,10 +266,12 @@ export async function addRoomMember(
     .from("room_members")
     .insert({ room_id: roomId, user_id: memberId, role: "member" })
   if (error) return fail(errorMessage(error))
-  await admin.from("room_reads").upsert(
-    { user_id: memberId, room_id: roomId, last_read_at: new Date().toISOString() },
-    { onConflict: "user_id,room_id" },
-  )
+  await admin
+    .from("room_reads")
+    .upsert(
+      { user_id: memberId, room_id: roomId, last_read_at: new Date().toISOString() },
+      { onConflict: "user_id,room_id" },
+    )
   await audit({
     orgId: check.access.org.id,
     actorId: check.access.user.id,
@@ -339,7 +342,8 @@ export async function addAgentToRoom(
     .select("id, org_id, handle")
     .eq("id", agentId)
     .maybeSingle()
-  if (!agent || agent.org_id !== check.access.org.id) return fail("Agent not found in this organization")
+  if (!agent || agent.org_id !== check.access.org.id)
+    return fail("Agent not found in this organization")
   const { data: existing } = await admin
     .from("room_agents")
     .select("agent_id")

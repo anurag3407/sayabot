@@ -2,7 +2,11 @@ import type { AudioOutput, Voice } from "./types"
 
 const DEFAULT_API = "https://api.elevenlabs.io/v1"
 
-export async function listVoices(apiKey: string, api = DEFAULT_API, signal?: AbortSignal): Promise<Voice[]> {
+export async function listVoices(
+  apiKey: string,
+  api = DEFAULT_API,
+  signal?: AbortSignal,
+): Promise<Voice[]> {
   const url = `${api.replace(/\/+$/, "")}/voices`
   const res = await fetch(url, {
     method: "GET",
@@ -13,7 +17,9 @@ export async function listVoices(apiKey: string, api = DEFAULT_API, signal?: Abo
     const errorText = await res.text().catch(() => "")
     throw new Error(`ElevenLabs list voices failed (${res.status}): ${errorText.slice(0, 200)}`)
   }
-  const data = (await res.json()) as { voices?: Array<{ voice_id: string; name: string; category?: string }> }
+  const data = (await res.json()) as {
+    voices?: Array<{ voice_id: string; name: string; category?: string }>
+  }
   return (data.voices ?? []).map((v) => ({
     id: v.voice_id,
     label: v.name,
@@ -42,7 +48,9 @@ export async function synthesize(
       model_id: model,
       voice_settings: { stability: 0.5, similarity_boost: 0.75 },
     }),
-    signal: signal ? AbortSignal.any([AbortSignal.timeout(60_000), signal]) : AbortSignal.timeout(60_000),
+    signal: signal
+      ? AbortSignal.any([AbortSignal.timeout(60_000), signal])
+      : AbortSignal.timeout(60_000),
   })
 
   if (!res.ok) {

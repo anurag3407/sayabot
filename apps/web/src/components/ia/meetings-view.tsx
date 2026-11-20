@@ -55,7 +55,9 @@ function minutesNow(timeZone: string): number | null {
 
 function isWeekday(timeZone: string): boolean {
   try {
-    const weekday = new Intl.DateTimeFormat("en-US", { timeZone, weekday: "short" }).format(new Date())
+    const weekday = new Intl.DateTimeFormat("en-US", { timeZone, weekday: "short" }).format(
+      new Date(),
+    )
     return !["Sat", "Sun"].includes(weekday)
   } catch {
     return true
@@ -113,13 +115,23 @@ function MeetingCard({
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           {meeting.status === "scheduled" ? (
-            <Button size="sm" variant="outline" disabled={pending} onClick={() => onAction("start", meeting)}>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={pending}
+              onClick={() => onAction("start", meeting)}
+            >
               Start now
             </Button>
           ) : null}
           {meeting.status === "active" ? (
             <>
-              <Button size="sm" variant="outline" disabled={pending} onClick={() => onAction("wake", meeting)}>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={pending}
+                onClick={() => onAction("wake", meeting)}
+              >
                 Ask agents again
               </Button>
               <ConfirmButton
@@ -190,9 +202,15 @@ function ScheduleCard({
   const now = minutesNow(schedule.timezone)
   const weekday = isWeekday(schedule.timezone)
   const inMorning =
-    weekday && now !== null && now >= schedule.morningStartMinutes && now < schedule.morningEndMinutes
+    weekday &&
+    now !== null &&
+    now >= schedule.morningStartMinutes &&
+    now < schedule.morningEndMinutes
   const inEvening =
-    weekday && now !== null && now >= schedule.eveningStartMinutes && now < schedule.eveningEndMinutes
+    weekday &&
+    now !== null &&
+    now >= schedule.eveningStartMinutes &&
+    now < schedule.eveningEndMinutes
   return (
     <li className="border border-line bg-panel p-4">
       <div className="flex items-center gap-2">
@@ -210,13 +228,15 @@ function ScheduleCard({
         <div className="flex justify-between gap-3">
           <dt className="text-faint">morning</dt>
           <dd className="text-muted">
-            {formatMinutes(schedule.morningStartMinutes)}–{formatMinutes(schedule.morningEndMinutes)}
+            {formatMinutes(schedule.morningStartMinutes)}–
+            {formatMinutes(schedule.morningEndMinutes)}
           </dd>
         </div>
         <div className="flex justify-between gap-3">
           <dt className="text-faint">evening</dt>
           <dd className="text-muted">
-            {formatMinutes(schedule.eveningStartMinutes)}–{formatMinutes(schedule.eveningEndMinutes)}
+            {formatMinutes(schedule.eveningStartMinutes)}–
+            {formatMinutes(schedule.eveningEndMinutes)}
           </dd>
         </div>
         <div className="flex justify-between gap-3">
@@ -395,10 +415,7 @@ export function MeetingsView({
           </div>
         ) : null}
         {showForm ? (
-          <form
-            action={submitMeeting}
-            className="mt-5 border border-line bg-panel p-4 sm:p-5"
-          >
+          <form action={submitMeeting} className="mt-5 border border-line bg-panel p-4 sm:p-5">
             <div className="flex flex-wrap items-center gap-2">
               <p className="mr-2 font-mono text-[11px] text-faint">new meeting</p>
               <div className="flex gap-1">
@@ -440,7 +457,13 @@ export function MeetingsView({
                 </Select>
               </Field>
               <Field label="title" htmlFor="meeting-title">
-                <Input id="meeting-title" name="title" required maxLength={80} defaultValue="Stand-up" />
+                <Input
+                  id="meeting-title"
+                  name="title"
+                  required
+                  maxLength={80}
+                  defaultValue="Stand-up"
+                />
               </Field>
             </div>
             <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_170px]">

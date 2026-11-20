@@ -161,7 +161,12 @@ describe("Workspace Connectors Server Actions", () => {
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
               maybeSingle: vi.fn().mockResolvedValue({
-                data: { id: "grant-1", agent_id: "agent-cfo", connector_id: "conn-1", org_id: "org-1" },
+                data: {
+                  id: "grant-1",
+                  agent_id: "agent-cfo",
+                  connector_id: "conn-1",
+                  org_id: "org-1",
+                },
               }),
             }),
           }),

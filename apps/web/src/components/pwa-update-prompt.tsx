@@ -61,9 +61,12 @@ export function PwaUpdatePrompt() {
         })
 
         // 2. Poll for updates periodically (every 30 minutes)
-        intervalId = setInterval(() => {
-          reg.update().catch(() => {})
-        }, 30 * 60 * 1000)
+        intervalId = setInterval(
+          () => {
+            reg.update().catch(() => {})
+          },
+          30 * 60 * 1000,
+        )
 
         // 3. Check for update when user refocuses the tab / Mac app
         const handleVisibilityChange = () => {

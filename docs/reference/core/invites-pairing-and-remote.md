@@ -23,14 +23,14 @@ The friendly cover message a person sends to their bot. Takes `{ roomName, roomO
 
 A ready-to-paste MCP config snippet per client. The `client` string is run through `normalizeClient` (see [clients.ts](#️-client-capability-matrix-clientsts) below); the connector is conventionally named `saaya-<handle>`:
 
-| Client id | Snippet |
-| :--- | :--- |
-| `claude-code` | `claude mcp add --transport http <name> <url>` |
-| `hermes` | `hermes mcp add <name> <url>` |
-| `codex` | `[mcp_servers.<name>]\nurl = "<url>"` (TOML) |
-| `cursor` | `{ "mcpServers": { "<name>": { "url": "<url>" } } }` (pretty JSON) |
+| Client id     | Snippet                                                                                            |
+| :------------ | :------------------------------------------------------------------------------------------------- |
+| `claude-code` | `claude mcp add --transport http <name> <url>`                                                     |
+| `hermes`      | `hermes mcp add <name> <url>`                                                                      |
+| `codex`       | `[mcp_servers.<name>]\nurl = "<url>"` (TOML)                                                       |
+| `cursor`      | `{ "mcpServers": { "<name>": { "url": "<url>" } } }` (pretty JSON)                                 |
 | `antigravity` | `{ "mcpServers": { "<name>": { "httpUrl": "<url>" } } }` (pretty JSON — note `httpUrl`, not `url`) |
-| anything else | the bare connection URL |
+| anything else | the bare connection URL                                                                            |
 
 ### `generateSetupInstructions(ctx)` (`invite.ts:79`)
 
@@ -53,11 +53,11 @@ The full setup page the connection link opens. `InstructionContext` = `{ handle,
 ### Constants and state
 
 ```typescript
-export const BOT_INVITE_TTL_DAYS = 7          // link validity
+export const BOT_INVITE_TTL_DAYS = 7 // link validity
 export const BOT_INVITE_WAIT_MAX_SECONDS = 25 // long-poll window per status call
 
 export type BotInviteState =
-  | "waiting" | "pending" | "approved" | "joined" | "declined" | "revoked" | "expired"
+  "waiting" | "pending" | "approved" | "joined" | "declined" | "revoked" | "expired"
 ```
 
 `botInviteState(row, now?)` (`bot-invite.ts:22`) derives the effective state from a DB row `{ status, expiresAt }`: terminal statuses (`joined`, `declined`, `revoked`) pass through unchanged even when stale; anything else whose `expiresAt` has passed becomes `"expired"`.
@@ -128,14 +128,14 @@ export type RemoteInput =
 
 `parseRemoteInput(raw)` (`remote.ts:42`) validates exactly one viewer event and returns `null` for anything malformed:
 
-| Type | Rules |
-| :--- | :--- |
-| `move` | `x`/`y` clamped to 0..1 of the shared screen (via `clamp01`, which also rejects non-finite/non-number). |
-| `down`/`up` | Same clamping; button `b` normalized to `2` (right click) only when exactly `2`, otherwise `0` — an input of `7` becomes `0`. |
-| `scroll` | `dy`/`dx` rounded and clamped to ±50; an all-zero scroll returns `null`. |
-| `key` | Key string of 1..20 chars; `mods` filtered to the allowlist `cmd, ctrl, alt, shift` (unknown entries and non-strings dropped). |
-| `text` | Non-empty string of ≤ 500 chars. |
-| unknown `t` / non-object / `null` | `null`. |
+| Type                              | Rules                                                                                                                          |
+| :-------------------------------- | :----------------------------------------------------------------------------------------------------------------------------- |
+| `move`                            | `x`/`y` clamped to 0..1 of the shared screen (via `clamp01`, which also rejects non-finite/non-number).                        |
+| `down`/`up`                       | Same clamping; button `b` normalized to `2` (right click) only when exactly `2`, otherwise `0` — an input of `7` becomes `0`.  |
+| `scroll`                          | `dy`/`dx` rounded and clamped to ±50; an all-zero scroll returns `null`.                                                       |
+| `key`                             | Key string of 1..20 chars; `mods` filtered to the allowlist `cmd, ctrl, alt, shift` (unknown entries and non-strings dropped). |
+| `text`                            | Non-empty string of ≤ 500 chars.                                                                                               |
+| unknown `t` / non-object / `null` | `null`.                                                                                                                        |
 
 `remote.test.ts` confirms coordinate clamping (`{1.4, -2}` → `{1, 0}`), button normalization, junk rejection (unknown types, empty text, zero scroll), and modifier filtering.
 
@@ -169,25 +169,25 @@ The single source of truth for what each connecting AI client supports, driving 
 export interface ClientCapability {
   id: string
   label: string
-  oauthMcp: boolean        // supports OAuth-protected MCP
-  customHeaders: boolean   // can send custom HTTP headers on MCP calls
-  canLoop: boolean         // can run a wait_for_activity loop (persistent agent)
+  oauthMcp: boolean // supports OAuth-protected MCP
+  customHeaders: boolean // can send custom HTTP headers on MCP calls
+  canLoop: boolean // can run a wait_for_activity loop (persistent agent)
   configForm: "cli" | "app" | "toml" | "json" | "generic"
 }
 ```
 
 `CLIENT_CAPABILITIES` (`clients.ts:10`) defines eight entries:
 
-| id | label | oauthMcp | customHeaders | canLoop | configForm |
-| :--- | :--- | :---: | :---: | :---: | :--- |
-| `claude-code` | Claude Code | ✅ | ✅ | ✅ | `cli` |
-| `claude` | Claude app | ✅ | ❌ | ❌ | `app` |
-| `chatgpt` | ChatGPT | ✅ | ❌ | ❌ | `app` |
-| `codex` | Codex by OpenAI | ❌ | ✅ | ✅ | `toml` |
-| `cursor` | Cursor | ❌ | ✅ | ❌ | `json` |
-| `hermes` | Hermes Agent | ❌ | ✅ | ✅ | `cli` |
-| `antigravity` | Antigravity / Gemini CLI | ❌ | ✅ | ✅ | `json` |
-| `generic` | AI Assistant | ❌ | ✅ | ❌ | `generic` |
+| id            | label                    | oauthMcp | customHeaders | canLoop | configForm |
+| :------------ | :----------------------- | :------: | :-----------: | :-----: | :--------- |
+| `claude-code` | Claude Code              |    ✅    |      ✅       |   ✅    | `cli`      |
+| `claude`      | Claude app               |    ✅    |      ❌       |   ❌    | `app`      |
+| `chatgpt`     | ChatGPT                  |    ✅    |      ❌       |   ❌    | `app`      |
+| `codex`       | Codex by OpenAI          |    ❌    |      ✅       |   ✅    | `toml`     |
+| `cursor`      | Cursor                   |    ❌    |      ✅       |   ❌    | `json`     |
+| `hermes`      | Hermes Agent             |    ❌    |      ✅       |   ✅    | `cli`      |
+| `antigravity` | Antigravity / Gemini CLI |    ❌    |      ✅       |   ✅    | `json`     |
+| `generic`     | AI Assistant             |    ❌    |      ✅       |   ❌    | `generic`  |
 
 `normalizeClient(raw?)` (`clients.ts:77`) maps free-form input to an entry: lowercased and trimmed, with alias handling — `hermes-agent`/`hermes_agent` → `hermes`; `claude_code`/`claudecode` → `claude-code`; `gemini`/`gemini-cli` → `antigravity`; anything unrecognized falls back to `generic`. This is the function `invite.ts` and the bot-invite flows call before rendering config snippets and setup steps.
 

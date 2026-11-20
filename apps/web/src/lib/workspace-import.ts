@@ -13,7 +13,11 @@ export async function restoreWorkspaceCopy(orgId: string, incoming: WorkspaceCop
     admin.from("rooms").select("id").eq("org_id", orgId).limit(500),
     admin.from("routines").select("id").eq("org_id", orgId).limit(500),
     admin.from("provider_keys").select("id").eq("org_id", orgId).limit(200),
-    admin.from("org_computer_settings").select("org_id, boat_ciphertext, vps_ssh_alias").eq("org_id", orgId).maybeSingle(),
+    admin
+      .from("org_computer_settings")
+      .select("org_id, boat_ciphertext, vps_ssh_alias")
+      .eq("org_id", orgId)
+      .maybeSingle(),
   ])
   const plan = materializeCopy(
     {

@@ -2,10 +2,7 @@
 
 import { z } from "zod"
 import { generateText } from "ai"
-import {
-  createLanguageModel,
-  providerKeyToApiKey,
-} from "@sayabot/llm"
+import { createLanguageModel, providerKeyToApiKey } from "@sayabot/llm"
 import { PROVIDERS, redactSecrets } from "@sayabot/core"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getKek } from "@/lib/env"
@@ -111,17 +108,10 @@ export async function testProviderKey(
   const check = await adminOrgAccess(orgSlug)
   if ("error" in check) return fail(check.error)
   const admin = createAdminClient()
-  const { data: key } = await admin
-    .from("provider_keys")
-    .select("*")
-    .eq("id", keyId)
-    .maybeSingle()
+  const { data: key } = await admin.from("provider_keys").select("*").eq("id", keyId).maybeSingle()
   if (!key || key.org_id !== check.access.org.id) return fail("Key not found")
   const model =
-    modelOverride?.trim() ||
-    defaultModel(key.provider) ||
-    process.env.DEV_OPENAI_COMPAT_MODEL ||
-    ""
+    modelOverride?.trim() || defaultModel(key.provider) || process.env.DEV_OPENAI_COMPAT_MODEL || ""
   if (!model) return fail("Enter a model name to test custom endpoints")
   const started = Date.now()
   try {
@@ -154,4 +144,3 @@ export async function testProviderKey(
     return fail(`Connection failed: ${redactSecrets(errorMessage(error)).text}`)
   }
 }
-

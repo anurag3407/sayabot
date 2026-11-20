@@ -101,7 +101,16 @@ export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 28 }
 export const radius = { sm: 10, md: 14, lg: 18, xl: 24, pill: 999 }
 
 /** Pastels that give each agent its own identity (never status). */
-export const IDENTITY = ["#ee5fb8", "#f2c14e", "#4fcdb0", "#5b9df5", "#b79cf0", "#ff7a70", "#7fce95", "#f59e6b"]
+export const IDENTITY = [
+  "#ee5fb8",
+  "#f2c14e",
+  "#4fcdb0",
+  "#5b9df5",
+  "#b79cf0",
+  "#ff7a70",
+  "#7fce95",
+  "#f59e6b",
+]
 
 export function hashString(input: string): number {
   let h = 2166136261

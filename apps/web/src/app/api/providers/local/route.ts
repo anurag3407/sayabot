@@ -20,7 +20,10 @@ export async function GET(request: Request) {
   const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host")
   if (localDetectionAllowed(host)) {
     const agents = await detectLocalAgents()
-    return NextResponse.json({ available: true, agents, source: "server" } satisfies LocalAgentsResponse, { headers })
+    return NextResponse.json(
+      { available: true, agents, source: "server" } satisfies LocalAgentsResponse,
+      { headers },
+    )
   }
 
   const { data } = await createAdminClient()
@@ -38,7 +41,10 @@ export async function GET(request: Request) {
   }>
   // The Mac seen most recently that reported any app; else the most recent one at all.
   const mac = rows.find((row) => reportedAgentsToReports(row.local_agents).length) ?? rows[0]
-  if (!mac) return NextResponse.json({ available: false, agents: [] } satisfies LocalAgentsResponse, { headers })
+  if (!mac)
+    return NextResponse.json({ available: false, agents: [] } satisfies LocalAgentsResponse, {
+      headers,
+    })
   return NextResponse.json(
     {
       available: true,

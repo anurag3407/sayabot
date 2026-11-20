@@ -14,19 +14,19 @@ Agents edit the live shared canvas by submitting **search/replace edits**, not r
 
 ```typescript
 export interface CanvasEdit {
-  search: string   // exact substring to find — must match exactly once
-  replace: string  // what to put in its place
+  search: string // exact substring to find — must match exactly once
+  replace: string // what to put in its place
 }
 
 export interface CanvasSplice {
-  from: number     // start offset in the text as it exists at this point in the sequence
-  to: number       // end offset (exclusive)
-  insert: string   // the replacement text
+  from: number // start offset in the text as it exists at this point in the sequence
+  to: number // end offset (exclusive)
+  insert: string // the replacement text
 }
 
 export interface CanvasPatchPlan {
-  text: string             // the fully patched document
-  splices: CanvasSplice[]  // positional operations, in application order
+  text: string // the fully patched document
+  splices: CanvasSplice[] // positional operations, in application order
 }
 
 export class CanvasPatchError extends Error {
@@ -44,7 +44,7 @@ export class CanvasPatchError extends Error {
 1. Start with `text = snapshot`.
 2. For each edit `i` (1-based in error messages):
    - Reject an empty or non-string `search` → `CanvasPatchError("edit N: search must not be empty")`.
-   - Count occurrences of `search` in the *current* `text` (`countOccurrences`, `patch.ts:24` — a non-overlapping `indexOf` loop advancing by `needle.length`).
+   - Count occurrences of `search` in the _current_ `text` (`countOccurrences`, `patch.ts:24` — a non-overlapping `indexOf` loop advancing by `needle.length`).
    - `0` matches → `CanvasPatchError("edit N: search text not found")`.
    - More than `1` match → `CanvasPatchError("edit N: search text matched M times; make it unique")`. Uniqueness is enforced so the patch is deterministic and cannot clobber the wrong region.
    - Locate `from = text.indexOf(search)`, `to = from + search.length`, splice in `replace`, and record `{ from, to, insert: replace }`.
@@ -54,14 +54,14 @@ The critical invariant (stated in the doc comment at `patch.ts:34`): **splice po
 
 ### Behaviour matrix (from `patch.test.ts`)
 
-| Input | Result |
-| :--- | :--- |
-| `edits` is empty | Plan is `{ text: snapshot, splices: [] }` — snapshot returned unchanged. |
-| Unique match | Replacement applied; e.g. replacing `"migration"` at offset 17 in `# Plan\n\nShip the migration.\n\nRun the tests.` yields splice `{ from: 17, to: 26, insert: "rollback" }`. |
-| Edit 2 references text created by edit 1 | Works — later edits see earlier replacements (`"Run the tests."` → `"Run all tests twice."`, then `"all tests"` → `"the full suite"`). |
-| Search matches twice | Throws `CanvasPatchError` with the match count. |
-| Search matches zero times | Throws `CanvasPatchError("... search text not found")`. |
-| Empty search | Throws `CanvasPatchError("... search must not be empty")`. |
+| Input                                    | Result                                                                                                                                                                        |
+| :--------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `edits` is empty                         | Plan is `{ text: snapshot, splices: [] }` — snapshot returned unchanged.                                                                                                      |
+| Unique match                             | Replacement applied; e.g. replacing `"migration"` at offset 17 in `# Plan\n\nShip the migration.\n\nRun the tests.` yields splice `{ from: 17, to: 26, insert: "rollback" }`. |
+| Edit 2 references text created by edit 1 | Works — later edits see earlier replacements (`"Run the tests."` → `"Run all tests twice."`, then `"all tests"` → `"the full suite"`).                                        |
+| Search matches twice                     | Throws `CanvasPatchError` with the match count.                                                                                                                               |
+| Search matches zero times                | Throws `CanvasPatchError("... search text not found")`.                                                                                                                       |
+| Empty search                             | Throws `CanvasPatchError("... search must not be empty")`.                                                                                                                    |
 
 There is no fuzzy matching, no whitespace tolerance, and no regex support — matching is exact substring equality, which is what makes the plan safe to apply on a concurrently-edited Yjs document after a snapshot check.
 
@@ -69,7 +69,7 @@ There is no fuzzy matching, no whitespace tolerance, and no regex support — ma
 
 ## 🔑 Question Fold Keys (`fold-key.ts`)
 
-When an agent asks a human a question, the UI groups repeated asks of the *same* question into one folded thread instead of spamming the room. `fold-key.ts` derives the grouping key.
+When an agent asks a human a question, the UI groups repeated asks of the _same_ question into one folded thread instead of spamming the room. `fold-key.ts` derives the grouping key.
 
 ### `normalizeQuestion(text)` (`fold-key.ts:8`)
 
@@ -85,11 +85,11 @@ Produces a canonical form of the question so rewordings with common framing coll
 
 Examples verified by `fold-key.test.ts`:
 
-| Input | Output |
-| :--- | :--- |
-| `Hey, can you please approve the budget?` | `approve the budget` |
+| Input                                      | Output                        |
+| :----------------------------------------- | :---------------------------- |
+| `Hey, can you please approve the budget?`  | `approve the budget`          |
 | `Question: what database should we use???` | `what database should we use` |
-| `   urgent:   please review PR #123  ` | `review pr 123` |
+| `   urgent:   please review PR #123  `     | `review pr 123`               |
 
 ### `hash128(text)` — internal FNV-1a variant (`fold-key.ts:33`)
 

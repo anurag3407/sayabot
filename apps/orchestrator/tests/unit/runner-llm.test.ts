@@ -20,7 +20,9 @@ describe("getCheapModelName", () => {
 describe("resolveEffortLevel", () => {
   it("passes through explicit levels", () => {
     for (const level of ["low", "medium", "high", "max"] as const) {
-      expect(resolveEffortLevel({ configuredEffort: level, hasTask: true, isSubagent: true })).toBe(level)
+      expect(resolveEffortLevel({ configuredEffort: level, hasTask: true, isSubagent: true })).toBe(
+        level,
+      )
     }
   })
 

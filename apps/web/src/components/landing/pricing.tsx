@@ -20,15 +20,29 @@ export function Pricing() {
   return (
     <section id="pricing" className="l-section">
       <div className="l-container">
-        <SectionHead center act="14" label="Pricing" title="Free while we build it." lead="Your agents run on your own keys or subscriptions, so model costs stay between you and your provider." />
+        <SectionHead
+          center
+          act="14"
+          label="Pricing"
+          title="Free while we build it."
+          lead="Your agents run on your own keys or subscriptions, so model costs stay between you and your provider."
+        />
 
         <div className="mt-14 grid gap-4 lg:grid-cols-[1.35fr_1fr_1fr]">
-          <article data-reveal className="l-card l-spot !border-accent/50 p-8 !shadow-[inset_0_1px_0_rgb(255_255_255/0.12),0_40px_100px_-40px_rgb(255_93_108/0.85)]">
+          <article
+            data-reveal
+            className="l-card l-spot !border-accent/50 p-8 !shadow-[inset_0_1px_0_rgb(255_255_255/0.12),0_40px_100px_-40px_rgb(255_93_108/0.85)]"
+          >
             <div className="flex items-center justify-between">
               <h3 className="text-[15px] font-medium">Free</h3>
               <span className="l-chip border-accent/40 text-accent">AVAILABLE NOW</span>
             </div>
-            <p className="mt-6 text-[84px] font-[800] leading-none" style={{ fontFamily: "var(--display)", fontStretch: "76%" }}>$0</p>
+            <p
+              className="mt-6 text-[84px] font-[800] leading-none"
+              style={{ fontFamily: "var(--display)", fontStretch: "76%" }}
+            >
+              $0
+            </p>
             <ul className="mt-7 space-y-2.5">
               {FREE.map((item) => (
                 <li key={item} className="flex gap-2.5 text-[14px] text-muted">

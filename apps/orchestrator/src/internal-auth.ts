@@ -1,7 +1,10 @@
 import { timingSafeEqual } from "node:crypto"
 import { getEnv } from "./env"
 
-export function isInternalRequest(authorization: string | undefined, secretHeader?: string): boolean {
+export function isInternalRequest(
+  authorization: string | undefined,
+  secretHeader?: string,
+): boolean {
   const expected = getEnv().ORCHESTRATOR_INTERNAL_SECRET
   if (!expected || expected.length < 16) return false
   const provided =

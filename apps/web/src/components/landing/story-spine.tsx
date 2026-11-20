@@ -43,7 +43,13 @@ export function StorySpine() {
   return (
     <nav aria-label="Chapters" className="sp-rail">
       {CHAPTERS.map((chapter) => (
-        <a key={chapter.id} href={`/#${chapter.id}`} className="sp-link" data-active={active === chapter.id} aria-current={active === chapter.id ? "true" : undefined}>
+        <a
+          key={chapter.id}
+          href={`/#${chapter.id}`}
+          className="sp-link"
+          data-active={active === chapter.id}
+          aria-current={active === chapter.id ? "true" : undefined}
+        >
           <i />
           <span>{chapter.label}</span>
         </a>

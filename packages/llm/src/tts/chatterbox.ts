@@ -63,12 +63,16 @@ export async function synthesize(
       voice: voiceId || "default",
       response_format: "wav",
     }),
-    signal: signal ? AbortSignal.any([AbortSignal.timeout(60_000), signal]) : AbortSignal.timeout(60_000),
+    signal: signal
+      ? AbortSignal.any([AbortSignal.timeout(60_000), signal])
+      : AbortSignal.timeout(60_000),
   })
 
   if (!res.ok) {
     const errorText = await res.text().catch(() => "")
-    throw new Error(`Chatterbox speech generation failed (${res.status}): ${errorText.slice(0, 200)}`)
+    throw new Error(
+      `Chatterbox speech generation failed (${res.status}): ${errorText.slice(0, 200)}`,
+    )
   }
 
   const mime = res.headers.get("content-type")?.split(";")[0]?.trim() || "audio/wav"

@@ -25,7 +25,10 @@ describe("scrubResponseText edge cases", () => {
   })
 
   it("multiple secrets are all scrubbed", () => {
-    const m = new Map([["secret-one", "[1]"], ["secret-two", "[2]"]])
+    const m = new Map([
+      ["secret-one", "[1]"],
+      ["secret-two", "[2]"],
+    ])
     expect(scrubResponseText("secret-one and secret-two", m)).toBe("[1] and [2]")
   })
 

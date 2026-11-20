@@ -6,7 +6,10 @@ import { getSupabaseUrl } from "@/lib/env"
 import { createAdminClient } from "@/lib/supabase/admin"
 
 function json(body: unknown, status = 200) {
-  return NextResponse.json(body, { status, headers: { "cache-control": "no-store", "referrer-policy": "no-referrer" } })
+  return NextResponse.json(body, {
+    status,
+    headers: { "cache-control": "no-store", "referrer-policy": "no-referrer" },
+  })
 }
 
 /**
@@ -22,7 +25,8 @@ export async function POST(req: Request) {
     return json({ error: "Send JSON with the code." }, 400)
   }
   const code = normalizePairingCode(typeof body.code === "string" ? body.code : "")
-  if (!isPairingCode(code)) return json({ error: "That code doesn't look right. Check it on your computer." }, 400)
+  if (!isPairingCode(code))
+    return json({ error: "That code doesn't look right. Check it on your computer." }, 400)
   const deviceName = typeof body.deviceName === "string" ? body.deviceName.trim().slice(0, 80) : ""
   const platform = typeof body.platform === "string" ? body.platform.trim().slice(0, 20) : ""
 
@@ -45,24 +49,41 @@ export async function POST(req: Request) {
     .gt("expires_at", now)
     .select("id, user_id, org_id")
     .maybeSingle()
-  if (!pairing) return json({ error: "That code expired or was already used. Make a new one on your computer." }, 410)
+  if (!pairing)
+    return json(
+      { error: "That code expired or was already used. Make a new one on your computer." },
+      410,
+    )
 
   const { data: userRes, error: userError } = await admin.auth.admin.getUserById(pairing.user_id)
   const email = userRes?.user?.email
   if (userError || !email) {
-    await admin.from("device_pairings").update({ status: "revoked", revoked_at: now }).eq("id", pairing.id)
+    await admin
+      .from("device_pairings")
+      .update({ status: "revoked", revoked_at: now })
+      .eq("id", pairing.id)
     return json({ error: "This account has no email to sign in with." }, 409)
   }
-  const { data: link, error: linkError } = await admin.auth.admin.generateLink({ type: "magiclink", email })
+  const { data: link, error: linkError } = await admin.auth.admin.generateLink({
+    type: "magiclink",
+    email,
+  })
   const tokenHash = link?.properties?.hashed_token
   if (linkError || !tokenHash) {
-    await admin.from("device_pairings").update({ status: "revoked", revoked_at: now }).eq("id", pairing.id)
+    await admin
+      .from("device_pairings")
+      .update({ status: "revoked", revoked_at: now })
+      .eq("id", pairing.id)
     return json({ error: "Could not sign this phone in. Try a new code." }, 500)
   }
 
   let orgSlug: string | null = null
   if (pairing.org_id) {
-    const { data: org } = await admin.from("orgs").select("slug").eq("id", pairing.org_id).maybeSingle()
+    const { data: org } = await admin
+      .from("orgs")
+      .select("slug")
+      .eq("id", pairing.org_id)
+      .maybeSingle()
     orgSlug = org?.slug ?? null
   }
   if (pairing.org_id) {

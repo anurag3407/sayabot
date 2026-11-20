@@ -19,11 +19,7 @@ export function SpeakButton({ messageId, text, className }: SpeakButtonProps) {
   const isPlaying = isMessagePlaying(messageId)
   const isPreparing = isCurrent && status.state === "preparing"
 
-  const label = isPlaying
-    ? "Stop reading aloud"
-    : isPreparing
-      ? "Preparing audio…"
-      : "Read aloud"
+  const label = isPlaying ? "Stop reading aloud" : isPreparing ? "Preparing audio…" : "Read aloud"
 
   return (
     <button

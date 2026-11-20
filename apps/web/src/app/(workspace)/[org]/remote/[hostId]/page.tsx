@@ -7,10 +7,16 @@ import { RemoteViewer } from "@/components/computers/remote-viewer"
 export const metadata: Metadata = { title: "Remote desktop" }
 export const dynamic = "force-dynamic"
 
-export default async function RemotePage({ params }: { params: Promise<{ org: string; hostId: string }> }) {
+export default async function RemotePage({
+  params,
+}: {
+  params: Promise<{ org: string; hostId: string }>
+}) {
   const { org: orgSlug, hostId } = await params
   const access = await requireOrgAccess(orgSlug)
-  const computer = (await listComputers(access.user.id, access.org.id, access.role)).find((c) => c.id === hostId)
+  const computer = (await listComputers(access.user.id, access.org.id, access.role)).find(
+    (c) => c.id === hostId,
+  )
   if (!computer) notFound()
   return <RemoteViewer orgSlug={orgSlug} hostId={computer.id} hostName={computer.name} />
 }

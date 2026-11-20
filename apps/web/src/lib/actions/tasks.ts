@@ -214,7 +214,9 @@ export async function addTaskCommentAction(
   return ok("Comment added")
 }
 
-export async function answerTaskRequestAction(input: Parameters<typeof answerRequestsAs>[1]): Promise<ActionResult> {
+export async function answerTaskRequestAction(
+  input: Parameters<typeof answerRequestsAs>[1],
+): Promise<ActionResult> {
   const user = await requireUser(`/${input.orgSlug}`)
   const result = await answerRequestsAs({ user }, input)
   if (result.ok) revalidatePath(`/${input.orgSlug}`, "layout")

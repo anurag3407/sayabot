@@ -1,7 +1,20 @@
 import { createHash, randomUUID } from "node:crypto"
 import {
-  closeSync, constants, existsSync, fchmodSync, fchownSync, fstatSync, fsyncSync,
-  lstatSync, mkdirSync, openSync, readSync, realpathSync, renameSync, unlinkSync, writeSync,
+  closeSync,
+  constants,
+  existsSync,
+  fchmodSync,
+  fchownSync,
+  fstatSync,
+  fsyncSync,
+  lstatSync,
+  mkdirSync,
+  openSync,
+  readSync,
+  realpathSync,
+  renameSync,
+  unlinkSync,
+  writeSync,
 } from "node:fs"
 import { dirname, isAbsolute, resolve, sep } from "node:path"
 
@@ -17,7 +30,9 @@ export function isSafePath(path: string): boolean {
   if (typeof path !== "string" || !isAbsolute(path) || path.includes("\0")) return false
   try {
     const roots = ["/home/bot", "/tmp", process.env.BOT_HOME || "/home/bot"]
-    const canonicalRoots = roots.map((root) => existsSync(root) ? realpathSync(root) : resolve(root))
+    const canonicalRoots = roots.map((root) =>
+      existsSync(root) ? realpathSync(root) : resolve(root),
+    )
     const absolute = resolve(path)
     if (![...roots, ...canonicalRoots].some((root) => within(absolute, root))) return false
     let ancestor = absolute
@@ -27,7 +42,10 @@ export function isSafePath(path: string): boolean {
       ancestor = parent
     }
     // realpath also rejects dangling links and link loops, including in ancestors.
-    const canonical = resolve(realpathSync(ancestor), absolute.slice(ancestor.length).replace(/^\//, ""))
+    const canonical = resolve(
+      realpathSync(ancestor),
+      absolute.slice(ancestor.length).replace(/^\//, ""),
+    )
     return canonicalRoots.some((root) => within(canonical, root))
   } catch {
     return false
@@ -35,7 +53,10 @@ export function isSafePath(path: string): boolean {
 }
 
 export function assertSafePath(path: string): void {
-  if (!isSafePath(path)) throw new Error("access denied: path must be inside /home/bot or /tmp (including symlink targets)")
+  if (!isSafePath(path))
+    throw new Error(
+      "access denied: path must be inside /home/bot or /tmp (including symlink targets)",
+    )
 }
 
 export function hashBytes(bytes: Uint8Array): string {
@@ -58,7 +79,8 @@ export function openSafeFile(path: string, maxBytes: number) {
   try {
     const stat = fstatSync(fd)
     if (!stat.isFile()) throw new Error("Not a regular file")
-    if (stat.size > maxBytes) throw new Error(`File exceeds ${maxBytes} byte limit; refusing truncated input`)
+    if (stat.size > maxBytes)
+      throw new Error(`File exceeds ${maxBytes} byte limit; refusing truncated input`)
     return { fd, stat, canonical }
   } catch (error) {
     closeSync(fd)
@@ -103,11 +125,20 @@ export interface ReadRequest {
 export function readFilePage(req: ReadRequest) {
   const maxBytes = integer(req.maxBytes, 256 * 1024, 1, MAX_PAGE_BYTES, "maxBytes")
   const start = integer(req.startLine, 1, 1, Number.MAX_SAFE_INTEGER, "startLine")
-  const end = integer(req.endLine, Number.MAX_SAFE_INTEGER, start, Number.MAX_SAFE_INTEGER, "endLine")
-  if (req.encoding !== undefined && req.encoding !== "utf8" && req.encoding !== "base64") throw new Error("Invalid encoding")
+  const end = integer(
+    req.endLine,
+    Number.MAX_SAFE_INTEGER,
+    start,
+    Number.MAX_SAFE_INTEGER,
+    "endLine",
+  )
+  if (req.encoding !== undefined && req.encoding !== "utf8" && req.encoding !== "base64")
+    throw new Error("Invalid encoding")
   const binary = req.encoding === "base64"
-  if (binary && (req.startLine !== undefined || req.endLine !== undefined)) throw new Error("base64 reads use offsetBytes, not line ranges")
-  if (!binary && req.offsetBytes !== undefined) throw new Error("offsetBytes requires base64 encoding")
+  if (binary && (req.startLine !== undefined || req.endLine !== undefined))
+    throw new Error("base64 reads use offsetBytes, not line ranges")
+  if (!binary && req.offsetBytes !== undefined)
+    throw new Error("offsetBytes requires base64 encoding")
   const offset = integer(req.offsetBytes, 0, 0, Number.MAX_SAFE_INTEGER, "offsetBytes")
   const { fd, stat } = openSafeFile(req.path, MAX_FILE_BYTES)
   try {
@@ -167,25 +198,48 @@ export function readFilePage(req: ReadRequest) {
       if (bytesRead > MAX_FILE_BYTES) throw new Error("File grew beyond read limit")
     }
     const after = fstatSync(fd)
-    if (bytesRead !== stat.size || after.mtimeMs !== stat.mtimeMs || after.ctimeMs !== stat.ctimeMs) throw new Error("File changed while reading; retry")
+    if (bytesRead !== stat.size || after.mtimeMs !== stat.mtimeMs || after.ctimeMs !== stat.ctimeMs)
+      throw new Error("File changed while reading; retry")
     const digest = hash.digest("hex")
     if (binary) {
       const bytes = Buffer.concat(binaryPage)
       const next = Math.min(offset + bytes.length, stat.size)
-      return { path: req.path, content: bytes.toString("base64"), encoding: "base64", size: stat.size,
-        bytesReturned: bytes.length, hash: digest, truncated: offset > 0 || next < stat.size,
-        hasMore: next < stat.size, nextOffsetBytes: next < stat.size ? next : null }
+      return {
+        path: req.path,
+        content: bytes.toString("base64"),
+        encoding: "base64",
+        size: stat.size,
+        bytesReturned: bytes.length,
+        hash: digest,
+        truncated: offset > 0 || next < stat.size,
+        hasMore: next < stat.size,
+        nextOffsetBytes: next < stat.size ? next : null,
+      }
     }
     consume(decoder.decode())
     finishLine() // split("\n") semantics: an empty file and a final newline have an empty last line.
-    if (oversized) throw new Error("Requested line exceeds maxBytes; increase maxBytes or use a base64 byte page")
+    if (oversized)
+      throw new Error(
+        "Requested line exceeds maxBytes; increase maxBytes or use a base64 byte page",
+      )
     const totalLines = line - 1
     const last = page.length ? start + page.length - 1 : null
     const hasMore = last !== null && last < totalLines
-    return { path: req.path, content: page.join("\n"), encoding: "utf8", size: stat.size,
-      bytesReturned, hash: digest, totalLines, startLine: start, endLine: last, linesReturned: page.length,
-      truncated: start > 1 || page.length < totalLines, hasMore,
-      nextStartLine: hasMore ? last + 1 : null }
+    return {
+      path: req.path,
+      content: page.join("\n"),
+      encoding: "utf8",
+      size: stat.size,
+      bytesReturned,
+      hash: digest,
+      totalLines,
+      startLine: start,
+      endLine: last,
+      linesReturned: page.length,
+      truncated: start > 1 || page.length < totalLines,
+      hasMore,
+      nextStartLine: hasMore ? last + 1 : null,
+    }
   } finally {
     closeSync(fd)
   }
@@ -195,14 +249,20 @@ function atomicReplace(path: string, bytes: Buffer, expectedHash?: string, mode 
   assertSafePath(path)
   mkdirSync(dirname(path), { recursive: true })
   assertSafePath(path)
-  const target = existsSync(path) ? realpathSync(path) : resolve(realpathSync(dirname(path)), path.split(sep).pop()!)
+  const target = existsSync(path)
+    ? realpathSync(path)
+    : resolve(realpathSync(dirname(path)), path.split(sep).pop()!)
   assertSafePath(target)
   const original = lstatSync(target, { throwIfNoEntry: false })
   if (original && !original.isFile()) throw new Error("Not a regular file")
   const temp = resolve(dirname(target), `.agentd-${randomUUID()}.tmp`)
   let fd: number | undefined
   try {
-    fd = openSync(temp, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, original?.mode ?? mode)
+    fd = openSync(
+      temp,
+      constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW,
+      original?.mode ?? mode,
+    )
     let written = 0
     while (written < bytes.length) written += writeSync(fd, bytes, written, bytes.length - written)
     if (original && process.getuid?.() === 0) fchownSync(fd, original.uid, original.gid)
@@ -215,16 +275,24 @@ function atomicReplace(path: string, bytes: Buffer, expectedHash?: string, mode 
     if (original) {
       if (realpathSync(path) !== target) throw new Error("File path changed during edit")
       const current = lstatSync(target)
-      if (current.ino !== original.ino || current.dev !== original.dev || current.mtimeMs !== original.mtimeMs || current.ctimeMs !== original.ctimeMs) {
+      if (
+        current.ino !== original.ino ||
+        current.dev !== original.dev ||
+        current.mtimeMs !== original.mtimeMs ||
+        current.ctimeMs !== original.ctimeMs
+      ) {
         throw new Error("File changed during edit; retry")
       }
     } else if (existsSync(target)) throw new Error("File appeared during write; retry")
-    if (expectedHash && hashBytes(readCompleteFile(target)) !== expectedHash) throw new Error("Stale hash: file changed; read it again")
+    if (expectedHash && hashBytes(readCompleteFile(target)) !== expectedHash)
+      throw new Error("Stale hash: file changed; read it again")
     renameSync(temp, target)
     return { bytes: bytes.length, hash: hashBytes(bytes) }
   } finally {
     if (fd !== undefined) closeSync(fd)
-    try { unlinkSync(temp) } catch {}
+    try {
+      unlinkSync(temp)
+    } catch {}
   }
 }
 
@@ -236,7 +304,8 @@ export function writeFileAtomic(req: {
   allowOverwriteLarge?: boolean
 }) {
   if (typeof req.content !== "string") throw new Error("content must be a string")
-  if (req.encoding !== undefined && req.encoding !== "utf8" && req.encoding !== "base64") throw new Error("Invalid encoding")
+  if (req.encoding !== undefined && req.encoding !== "utf8" && req.encoding !== "base64")
+    throw new Error("Invalid encoding")
   assertSafePath(req.path)
 
   let writeContent = req.content
@@ -248,12 +317,16 @@ export function writeFileAtomic(req: {
         if (stat.size > 2048 && !req.allowOverwriteLarge) {
           throw new Error(
             `Refusing to overwrite existing file (${stat.size} bytes) with fs_write. ` +
-            `To prevent accidental truncation of files you only partially viewed, use fs_edit for targeted changes, ` +
-            `or pass allowOverwriteLarge: true to overwrite deliberately.`
+              `To prevent accidental truncation of files you only partially viewed, use fs_edit for targeted changes, ` +
+              `or pass allowOverwriteLarge: true to overwrite deliberately.`,
           )
         }
         // If file uses CRLF line endings and incoming content uses LF, preserve CRLF
-        if (req.encoding !== "base64" && !writeContent.includes("\r\n") && writeContent.includes("\n")) {
+        if (
+          req.encoding !== "base64" &&
+          !writeContent.includes("\r\n") &&
+          writeContent.includes("\n")
+        ) {
           const sample = readCompleteFile(canonical, Math.min(stat.size, 16384))
           if (sample.includes(Buffer.from("\r\n"))) {
             writeContent = writeContent.replace(/\r?\n/g, "\r\n")
@@ -283,12 +356,15 @@ export interface EditRequest {
 
 export function editFileAtomic(req: EditRequest) {
   if (req.truncated) throw new Error("Cannot edit truncated input")
-  if (typeof req.oldString !== "string" || !req.oldString || typeof req.newString !== "string") throw new Error("oldString must be nonempty and newString must be a string")
+  if (typeof req.oldString !== "string" || !req.oldString || typeof req.newString !== "string")
+    throw new Error("oldString must be nonempty and newString must be a string")
   const bytes = readCompleteFile(req.path)
   const previousHash = hashBytes(bytes)
   if (req.expectedHash !== undefined) {
-    if (typeof req.expectedHash !== "string" || !/^[a-f0-9]{64}$/.test(req.expectedHash)) throw new Error("expectedHash must be the SHA-256 hash from fs_read")
-    if (previousHash !== req.expectedHash) throw new Error("Stale hash: file changed; read it again")
+    if (typeof req.expectedHash !== "string" || !/^[a-f0-9]{64}$/.test(req.expectedHash))
+      throw new Error("expectedHash must be the SHA-256 hash from fs_read")
+    if (previousHash !== req.expectedHash)
+      throw new Error("Stale hash: file changed; read it again")
   }
   const content = text(bytes)
   const exactMatches: Array<{ start: number; end: number }> = []
@@ -311,13 +387,17 @@ export function editFileAtomic(req: EditRequest) {
     const searchTrailingNewline = /\n$/.test(req.oldString)
     const requestedLines = req.oldString.replace(/\n$/, "").split("\n")
     const needle = requestedLines.map((line, index) =>
-      fileUsesCRLF && !line.endsWith("\r") && index < requestedLines.length - 1 ? `${line}\r` : line,
+      fileUsesCRLF && !line.endsWith("\r") && index < requestedLines.length - 1
+        ? `${line}\r`
+        : line,
     )
     if (needle.some((line) => line.endsWith("\r")) && !fileUsesCRLF) {
       throw new Error("Whitespace matching cannot mix CRLF search text with LF file lines")
     }
-    if (!needle.some((line) => normalize(line))) throw new Error("Whitespace-only matching is not allowed")
-    if (bodyLines.length > 100_000 || needle.length > 100_000) throw new Error("Whitespace match line count limit exceeded")
+    if (!needle.some((line) => normalize(line)))
+      throw new Error("Whitespace-only matching is not allowed")
+    if (bodyLines.length > 100_000 || needle.length > 100_000)
+      throw new Error("Whitespace match line count limit exceeded")
     const normalized = bodyLines.map(normalize)
     const normalizedContent = normalized.join("\n")
     const normalizedNeedle = needle.map(normalize).join("\n")
@@ -341,34 +421,59 @@ export function editFileAtomic(req: EditRequest) {
     for (const found of candidates) {
       const i = starts.get(found)
       const end = found + normalizedNeedle.length
-      if (i === undefined || !(end === normalizedContent.length || normalizedContent[end] === "\n")) continue
+      if (i === undefined || !(end === normalizedContent.length || normalizedContent[end] === "\n"))
+        continue
       const lastIndex = i + needle.length - 1
       if (lastIndex >= bodyLines.length) continue
       // A trailing newline in the search can't match the last line of a file without one.
       if (searchTrailingNewline && lastIndex === bodyLines.length - 1 && !hasFinalNewline) continue
-      whitespaceMatches.push({ start: offsets[i]!, end: offsets[lastIndex]! + bodyLines[lastIndex]!.length + (searchTrailingNewline ? 1 : bodyLines[lastIndex]!.endsWith("\r") ? -1 : 0) })
+      whitespaceMatches.push({
+        start: offsets[i]!,
+        end:
+          offsets[lastIndex]! +
+          bodyLines[lastIndex]!.length +
+          (searchTrailingNewline ? 1 : bodyLines[lastIndex]!.endsWith("\r") ? -1 : 0),
+      })
     }
     if (!exactMatches.length) {
-      if (whitespaceMatches.length > 1) throw new Error("Ambiguous whitespace match: provide more context")
+      if (whitespaceMatches.length > 1)
+        throw new Error("Ambiguous whitespace match: provide more context")
       if (whitespaceMatches.length === 1) {
         matchMode = "whitespace"
         matches.push(...whitespaceMatches)
       } else if (candidates.length) {
-        throw new Error("Whitespace matching only supports complete line blocks; provide the full contiguous line block")
+        throw new Error(
+          "Whitespace matching only supports complete line blocks; provide the full contiguous line block",
+        )
       }
     }
   }
   if (!matches.length) throw new Error("Could not find a match for oldString")
-  if (matches.length > 1 && (matchMode !== "exact" || !req.replaceAll)) throw new Error(`Ambiguous match: found ${matches.length} occurrences; provide more context`)
-  if (matches.some((match, i) => i > 0 && match.start < matches[i - 1]!.end)) throw new Error("Overlapping matches are ambiguous")
+  if (matches.length > 1 && (matchMode !== "exact" || !req.replaceAll))
+    throw new Error(`Ambiguous match: found ${matches.length} occurrences; provide more context`)
+  if (matches.some((match, i) => i > 0 && match.start < matches[i - 1]!.end))
+    throw new Error("Overlapping matches are ambiguous")
   let replacement = req.newString
-  if (matchMode === "whitespace" && content.includes("\r\n") && !content.replace(/\r\n/g, "").includes("\n")) replacement = replacement.replace(/\r?\n/g, "\r\n")
+  if (
+    matchMode === "whitespace" &&
+    content.includes("\r\n") &&
+    !content.replace(/\r\n/g, "").includes("\n")
+  )
+    replacement = replacement.replace(/\r?\n/g, "\r\n")
   let updated = content
-  for (const match of [...matches].reverse()) updated = updated.slice(0, match.start) + replacement + updated.slice(match.end)
+  for (const match of [...matches].reverse())
+    updated = updated.slice(0, match.start) + replacement + updated.slice(match.end)
   const output = Buffer.from(updated)
   if (output.length > MAX_EDIT_BYTES) throw new Error("Edited file exceeds byte limit")
   const result = atomicReplace(req.path, output, req.expectedHash)
-  return { ok: true, path: req.path, ...result, previousHash, replacements: matches.length, matchMode }
+  return {
+    ok: true,
+    path: req.path,
+    ...result,
+    previousHash,
+    replacements: matches.length,
+    matchMode,
+  }
 }
 
 export interface PatchChunk {
@@ -410,7 +515,9 @@ export function parseStructuredPatch(patchText: string): ParsedPatch[] {
   const endIndex = lines.findIndex((l) => l.trim() === END_MARKER)
 
   if (beginIndex === -1 || endIndex === -1 || beginIndex >= endIndex) {
-    throw new Error("Invalid patch format: missing Begin/End markers (*** Begin Patch / *** End Patch)")
+    throw new Error(
+      "Invalid patch format: missing Begin/End markers (*** Begin Patch / *** End Patch)",
+    )
   }
 
   const sections: ParsedPatch[] = []
@@ -424,7 +531,12 @@ export function parseStructuredPatch(patchText: string): ParsedPatch[] {
 
   const isSectionHeader = (line: string): boolean => {
     const t = line.trim()
-    return t.startsWith(ADD_HEADER) || t.startsWith(DELETE_HEADER) || t.startsWith(UPDATE_HEADER) || t === END_MARKER
+    return (
+      t.startsWith(ADD_HEADER) ||
+      t.startsWith(DELETE_HEADER) ||
+      t.startsWith(UPDATE_HEADER) ||
+      t === END_MARKER
+    )
   }
 
   while (index < endIndex) {
@@ -450,7 +562,11 @@ export function parseStructuredPatch(patchText: string): ParsedPatch[] {
         }
         index++
       }
-      sections.push({ type: "add", path, contents: contents.join("\n") + (contents.length > 0 ? "\n" : "") })
+      sections.push({
+        type: "add",
+        path,
+        contents: contents.join("\n") + (contents.length > 0 ? "\n" : ""),
+      })
       continue
     }
 
@@ -474,13 +590,22 @@ export function parseStructuredPatch(patchText: string): ParsedPatch[] {
       while (index < endIndex && !isSectionHeader(lines[index] ?? "")) {
         const hLine = lines[index] ?? ""
         if (hLine.trim().startsWith("@@")) {
-          const changeContext = hLine.trim().replace(/^@@\s*/, "").replace(/\s*@@$/, "").trim() || undefined
+          const changeContext =
+            hLine
+              .trim()
+              .replace(/^@@\s*/, "")
+              .replace(/\s*@@$/, "")
+              .trim() || undefined
           index++
           const oldLines: string[] = []
           const newLines: string[] = []
           let endOfFile = false
 
-          while (index < endIndex && !isSectionHeader(lines[index] ?? "") && !(lines[index] ?? "").trim().startsWith("@@")) {
+          while (
+            index < endIndex &&
+            !isSectionHeader(lines[index] ?? "") &&
+            !(lines[index] ?? "").trim().startsWith("@@")
+          ) {
             const cLine = lines[index] ?? ""
             if (cLine.trim() === END_OF_FILE_MARKER) {
               endOfFile = true
@@ -522,7 +647,12 @@ export function parseStructuredPatch(patchText: string): ParsedPatch[] {
   return sections
 }
 
-function linesMatch(lines: string[], pattern: string[], startIndex: number, mode: "exact" | "trimEnd" | "trim"): boolean {
+function linesMatch(
+  lines: string[],
+  pattern: string[],
+  startIndex: number,
+  mode: "exact" | "trimEnd" | "trim",
+): boolean {
   for (let i = 0; i < pattern.length; i++) {
     const a = lines[startIndex + i] ?? ""
     const b = pattern[i] ?? ""
@@ -533,7 +663,12 @@ function linesMatch(lines: string[], pattern: string[], startIndex: number, mode
   return true
 }
 
-function findSequence(lines: string[], pattern: string[], startIndex: number, eof?: boolean): number {
+function findSequence(
+  lines: string[],
+  pattern: string[],
+  startIndex: number,
+  eof?: boolean,
+): number {
   if (pattern.length === 0) return startIndex
   const modes = ["exact", "trimEnd", "trim"] as const
 
@@ -553,7 +688,11 @@ function findSequence(lines: string[], pattern: string[], startIndex: number, eo
   return -1
 }
 
-export function applyHunksToContent(content: string, chunks: PatchChunk[], filePath: string): string {
+export function applyHunksToContent(
+  content: string,
+  chunks: PatchChunk[],
+  filePath: string,
+): string {
   const isCRLF = content.includes("\r\n") && !content.replace(/\r\n/g, "").includes("\n")
   const hasTrailingNewline = content.endsWith("\n")
   const lines = content.replace(/\r\n/g, "\n").split("\n")
@@ -567,7 +706,11 @@ export function applyHunksToContent(content: string, chunks: PatchChunk[], fileP
 
   for (const chunk of chunks) {
     if (chunk.changeContext) {
-      const ctxIdx = lines.findIndex((l, idx) => idx >= lineIndex && (l === chunk.changeContext || l.trim() === chunk.changeContext!.trim()))
+      const ctxIdx = lines.findIndex(
+        (l, idx) =>
+          idx >= lineIndex &&
+          (l === chunk.changeContext || l.trim() === chunk.changeContext!.trim()),
+      )
       if (ctxIdx !== -1) {
         lineIndex = ctxIdx
       }
@@ -581,7 +724,10 @@ export function applyHunksToContent(content: string, chunks: PatchChunk[], fileP
     let found = findSequence(lines, chunk.oldLines, lineIndex, chunk.endOfFile)
     if (found === -1 && chunk.oldLines[chunk.oldLines.length - 1] === "") {
       const trimmedOld = chunk.oldLines.slice(0, -1)
-      const trimmedNew = chunk.newLines[chunk.newLines.length - 1] === "" ? chunk.newLines.slice(0, -1) : chunk.newLines
+      const trimmedNew =
+        chunk.newLines[chunk.newLines.length - 1] === ""
+          ? chunk.newLines.slice(0, -1)
+          : chunk.newLines
       found = findSequence(lines, trimmedOld, lineIndex, chunk.endOfFile)
       if (found !== -1) {
         replacements.push([found, trimmedOld.length, trimmedNew])
@@ -604,7 +750,11 @@ export function applyHunksToContent(content: string, chunks: PatchChunk[], fileP
   }
 
   const joined = result.join(isCRLF ? "\r\n" : "\n")
-  return hasTrailingNewline || joined.length > 0 ? (joined.endsWith("\n") ? joined : joined + (isCRLF ? "\r\n" : "\n")) : ""
+  return hasTrailingNewline || joined.length > 0
+    ? joined.endsWith("\n")
+      ? joined
+      : joined + (isCRLF ? "\r\n" : "\n")
+    : ""
 }
 
 export interface ApplyPatchRequest {
@@ -647,8 +797,11 @@ export function applyPatchAtomic(req: ApplyPatchRequest): ApplyPatchResult {
       const targetPath = resolve(section.path)
       assertSafePath(targetPath)
       const bytes = Buffer.from(section.contents, "utf8")
-      if (bytes.length > MAX_EDIT_BYTES) throw new Error(`Added file ${section.path} exceeds byte limit`)
-      const addLines = section.contents ? section.contents.split("\n").filter((l) => l.length > 0).length : 0
+      if (bytes.length > MAX_EDIT_BYTES)
+        throw new Error(`Added file ${section.path} exceeds byte limit`)
+      const addLines = section.contents
+        ? section.contents.split("\n").filter((l) => l.length > 0).length
+        : 0
       planned.push({
         section,
         targetPath,
@@ -659,11 +812,14 @@ export function applyPatchAtomic(req: ApplyPatchRequest): ApplyPatchResult {
     } else if (section.type === "delete") {
       const targetPath = resolve(section.path)
       assertSafePath(targetPath)
-      if (!existsSync(targetPath)) throw new Error(`Cannot delete nonexistent file: ${section.path}`)
+      if (!existsSync(targetPath))
+        throw new Error(`Cannot delete nonexistent file: ${section.path}`)
       const stat = lstatSync(targetPath)
       if (!stat.isFile()) throw new Error(`Cannot delete non-file: ${section.path}`)
       const bytes = readCompleteFile(targetPath)
-      const delLines = text(bytes).split("\n").filter((l) => l.length > 0).length
+      const delLines = text(bytes)
+        .split("\n")
+        .filter((l) => l.length > 0).length
       planned.push({
         section,
         targetPath,
@@ -680,7 +836,8 @@ export function applyPatchAtomic(req: ApplyPatchRequest): ApplyPatchResult {
       const originalText = text(bytes)
       const updatedText = applyHunksToContent(originalText, section.chunks, section.path)
       const outBytes = Buffer.from(updatedText, "utf8")
-      if (outBytes.length > MAX_EDIT_BYTES) throw new Error(`Patched file ${section.path} exceeds byte limit`)
+      if (outBytes.length > MAX_EDIT_BYTES)
+        throw new Error(`Patched file ${section.path} exceeds byte limit`)
 
       let additions = 0
       let deletions = 0
@@ -725,10 +882,14 @@ export function applyPatchAtomic(req: ApplyPatchRequest): ApplyPatchResult {
     } else if (action.section.type === "update") {
       const res = atomicReplace(action.targetPath, action.newContent!)
       if (action.oldPath && action.oldPath !== action.targetPath) {
-        try { unlinkSync(action.oldPath) } catch {}
+        try {
+          unlinkSync(action.oldPath)
+        } catch {}
       }
       files.push({
-        path: action.section.movePath ? `${action.section.path} -> ${action.section.movePath}` : action.section.path,
+        path: action.section.movePath
+          ? `${action.section.path} -> ${action.section.movePath}`
+          : action.section.path,
         action: action.section.movePath ? "move" : "update",
         additions: action.additions,
         deletions: action.deletions,
@@ -738,8 +899,14 @@ export function applyPatchAtomic(req: ApplyPatchRequest): ApplyPatchResult {
     }
   }
 
-  const summary = `Successfully applied patch to ${files.length} file(s): ` +
-    files.map((f) => `${f.action === "add" ? "A" : f.action === "delete" ? "D" : f.action === "move" ? "R" : "M"} ${f.path} (+${f.additions}/-${f.deletions})`).join(", ")
+  const summary =
+    `Successfully applied patch to ${files.length} file(s): ` +
+    files
+      .map(
+        (f) =>
+          `${f.action === "add" ? "A" : f.action === "delete" ? "D" : f.action === "move" ? "R" : "M"} ${f.path} (+${f.additions}/-${f.deletions})`,
+      )
+      .join(", ")
 
   return { ok: true, summary, files }
 }

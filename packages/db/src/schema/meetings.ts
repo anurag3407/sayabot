@@ -1,13 +1,4 @@
-import {
-  boolean,
-  index,
-  integer,
-  jsonb,
-  pgTable,
-  text,
-  timestamp,
-  uuid,
-} from "drizzle-orm/pg-core"
+import { boolean, index, integer, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core"
 import { meetingKindEnum, meetingStatusEnum } from "./enums"
 import { orgs, profiles } from "./identity"
 import { messages } from "./messages"

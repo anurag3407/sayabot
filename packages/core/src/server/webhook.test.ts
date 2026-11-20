@@ -68,7 +68,8 @@ describe("webhook signatures", () => {
   })
 
   it("rejects missing headers", () => {
-    expect(verifyWebhook({ secret, id: undefined, timestamp: undefined, signature: undefined, body }))
-      .toEqual({ valid: false, reason: "missing signature headers" })
+    expect(
+      verifyWebhook({ secret, id: undefined, timestamp: undefined, signature: undefined, body }),
+    ).toEqual({ valid: false, reason: "missing signature headers" })
   })
 })

@@ -1,5 +1,5 @@
-# Install Sayabot for Windows without hunting for the file in a browser.
-#   irm https://sayabot.sayalabs.in/install-windows.ps1 | iex
+﻿# Install Sayabot for Windows without hunting for the file in a browser.
+#   irm https://<your-server>/install-windows.ps1 | iex
 $ErrorActionPreference = "Stop"
 
 $arch = if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") { "arm64" } else { "x64" }

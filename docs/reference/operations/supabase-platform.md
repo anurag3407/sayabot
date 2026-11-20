@@ -10,13 +10,13 @@ Source files: `deploy/docker-compose.supabase.yml`, `deploy/supabase/db/_supabas
 
 Enabled by `deploy.sh` when `SAYABOT_SUPABASE=bundled` (the default chosen by `deploy/install.sh`). All services join the internal `sayabot` network only; public access is exclusively through the nginx gateway routes (see [nginx-and-cloudflare.md](nginx-and-cloudflare.md)).
 
-| Service | Image (pinned) | Port | Healthcheck |
-| :--- | :--- | :--- | :--- |
-| `supabase-db` | `supabase/postgres:17.6.1.136` | 5432 | `pg_isready -U postgres -h localhost` (5s interval, 20 retries) |
-| `supabase-auth` | `supabase/gotrue:v2.197.0` | 9999 | `wget --spider http://localhost:9999/health` |
-| `supabase-rest` | `postgrest/postgrest:v14.18` | 3000 (admin 3001, localhost-only) | `postgrest --ready` |
-| `supabase-realtime` | `supabase/realtime:v2.148.3` | 4000 | authenticated HEAD to `/api/tenants/realtime-dev/health` with the anon key |
-| `supabase-storage` | `supabase/storage-api:v1.89.12` | 5000 | `wget --spider http://127.0.0.1:5000/status` |
+| Service             | Image (pinned)                  | Port                              | Healthcheck                                                                |
+| :------------------ | :------------------------------ | :-------------------------------- | :------------------------------------------------------------------------- |
+| `supabase-db`       | `supabase/postgres:17.6.1.136`  | 5432                              | `pg_isready -U postgres -h localhost` (5s interval, 20 retries)            |
+| `supabase-auth`     | `supabase/gotrue:v2.197.0`      | 9999                              | `wget --spider http://localhost:9999/health`                               |
+| `supabase-rest`     | `postgrest/postgrest:v14.18`    | 3000 (admin 3001, localhost-only) | `postgrest --ready`                                                        |
+| `supabase-realtime` | `supabase/realtime:v2.148.3`    | 4000                              | authenticated HEAD to `/api/tenants/realtime-dev/health` with the anon key |
+| `supabase-storage`  | `supabase/storage-api:v1.89.12` | 5000                              | `wget --spider http://127.0.0.1:5000/status`                               |
 
 `supabase-db` persists data in the `supabase-db-data` volume plus a `supabase-db-config` volume for the custom Postgres config; it runs with `log_min_messages=fatal`. `supabase-storage` uses the **file** backend (`STORAGE_BACKEND: file`) writing to the `supabase-storage` volume at `/var/lib/storage`, with `FILE_SIZE_LIMIT: 52428800` (50 MB).
 
@@ -38,15 +38,15 @@ The `migrate` job, `web`, and `orchestrator` get extra `depends_on` entries in t
 
 These are mounted into the Postgres image's init directories. The `migrations/` prefix runs via the official postgres image's migration mechanism and the `init-scripts/` prefix runs after; numbering fixes the order (docker-compose.supabase.yml:28-34):
 
-| Mount point | File | What it does |
-| :--- | :--- | :--- |
-| `initdb/migrations/97-_supabase.sql` | `_supabase.sql` | Creates the `_supabase` maintenance database owned by `$POSTGRES_USER` |
-| `initdb/migrations/99-realtime.sql` | `realtime.sql` | Creates the `_realtime` schema in the `postgres` DB, owned by `$POSTGRES_USER` |
-| `initdb/migrations/99-logs.sql` | `logs.sql` | Connects to `_supabase` and creates the `_analytics` schema (log pipeline target) |
-| `initdb/migrations/99-pooler.sql` | `pooler.sql` | Connects to `_supabase` and creates the `_supavisor` schema (connection pooler state) |
-| `initdb/init-scripts/98-webhooks.sql` | `webhooks.sql` | The largest file — see below |
-| `initdb/init-scripts/99-roles.sql` | `roles.sql` | Sets passwords for the five Supabase service roles |
-| `initdb/init-scripts/99-jwt.sql` | `jwt.sql` | `ALTER DATABASE postgres SET "app.settings.jwt_exp"` to `$JWT_EXP` (3600 s) |
+| Mount point                           | File            | What it does                                                                          |
+| :------------------------------------ | :-------------- | :------------------------------------------------------------------------------------ |
+| `initdb/migrations/97-_supabase.sql`  | `_supabase.sql` | Creates the `_supabase` maintenance database owned by `$POSTGRES_USER`                |
+| `initdb/migrations/99-realtime.sql`   | `realtime.sql`  | Creates the `_realtime` schema in the `postgres` DB, owned by `$POSTGRES_USER`        |
+| `initdb/migrations/99-logs.sql`       | `logs.sql`      | Connects to `_supabase` and creates the `_analytics` schema (log pipeline target)     |
+| `initdb/migrations/99-pooler.sql`     | `pooler.sql`    | Connects to `_supabase` and creates the `_supavisor` schema (connection pooler state) |
+| `initdb/init-scripts/98-webhooks.sql` | `webhooks.sql`  | The largest file — see below                                                          |
+| `initdb/init-scripts/99-roles.sql`    | `roles.sql`     | Sets passwords for the five Supabase service roles                                    |
+| `initdb/init-scripts/99-jwt.sql`      | `jwt.sql`       | `ALTER DATABASE postgres SET "app.settings.jwt_exp"` to `$JWT_EXP` (3600 s)           |
 
 The files read `POSTGRES_USER`, `POSTGRES_PASSWORD`, and `JWT_EXP` through psql `\set` backtick interpolation from the container environment. `deploy/supabase/NOTICE` records provenance: the SQL comes from the Supabase project's self-hosting setup (`github.com/supabase/supabase/tree/master/docker/volumes/db`), Apache License 2.0, used unchanged.
 
@@ -76,13 +76,13 @@ Small schema bootstraps: `realtime.sql` creates `_realtime` in `postgres` (where
 
 `deploy/install.sh` generates all of these in bundled mode and refuses to overwrite existing values on re-run:
 
-| Secret | Used by |
-| :--- | :--- |
-| `POSTGRES_PASSWORD` | DB superuser + the five service roles (`roles.sql`) |
-| `JWT_SECRET` | HS256 signing shared by GoTrue (`GOTRUE_JWT_SECRET`), PostgREST (`PGRST_JWT_SECRET`), realtime (`API_JWT_SECRET`, `METRICS_JWT_SECRET`), and storage (`AUTH_JWT_SECRET`) |
+| Secret                          | Used by                                                                                                                                                                                    |
+| :------------------------------ | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POSTGRES_PASSWORD`             | DB superuser + the five service roles (`roles.sql`)                                                                                                                                        |
+| `JWT_SECRET`                    | HS256 signing shared by GoTrue (`GOTRUE_JWT_SECRET`), PostgREST (`PGRST_JWT_SECRET`), realtime (`API_JWT_SECRET`, `METRICS_JWT_SECRET`), and storage (`AUTH_JWT_SECRET`)                   |
 | `ANON_KEY` / `SERVICE_ROLE_KEY` | 10-year HS256 JWTs for the `anon` and `service_role` roles minted by `install.sh`'s `supabase_jwt()` helper (install.sh:75-82); realtime and storage need the anon key/service key at boot |
-| `SECRET_KEY_BASE` | realtime (Elixir) secret |
-| `REALTIME_DB_ENC_KEY` | realtime's encryption key for DB-stored tenant secrets |
+| `SECRET_KEY_BASE`               | realtime (Elixir) secret                                                                                                                                                                   |
+| `REALTIME_DB_ENC_KEY`           | realtime's encryption key for DB-stored tenant secrets                                                                                                                                     |
 
 Because every service signs and verifies with the same `JWT_SECRET`, tokens issued by GoTrue are accepted by PostgREST, realtime, and storage without any JWKS distribution. On hosted Supabase these are the project's API keys instead, and none of this SQL runs — the files only matter for the bundled mode.
 

@@ -10,8 +10,8 @@ and RLS all work exactly like a normal account. Later the person can sign in to 
 
 ```
 First launch (no session, not signed out before)
-  └─ useThisMacOnFirstLaunch → controller page → main: auth:start-guest
-     A server address is entered later from Sayabot → Change Server…
+  └─ If SAYABOT_SERVER_URL is set: connects to server
+     Otherwise: prompts for self-hosted server address (or connects via sayabot://connect?server=...)
        ├─ GET  {server}/api/desktop/guest           → { enabled, supabaseUrl, anonKey }
        └─ POST {supabaseUrl}/auth/v1/signup  {}      → anonymous session (from this Mac's IP)
             └─ session saved (isGuest: true) → host registers → /auth/complete → /onboarding
@@ -52,13 +52,13 @@ such column, add it to the function.**
 
 ### Why there's a confirm step
 
-Without it, someone could send a merge link for *their* guest and get it added to another
+Without it, someone could send a merge link for _their_ guest and get it added to another
 person's account (including their desktop host, which would then run that person's jobs). The
 confirm page names the workspaces and computers being moved. The ticket is single-use, expires in
 30 minutes, and only its hash is stored.
 
 - Explicit **Sign Out** sets `guestDeclined` in `sayabot-config.json`. The next launch shows the
-  sign-in card (with a *Continue without an account* button) instead of making a new guest.
+  sign-in card (with a _Continue without an account_ button) instead of making a new guest.
 - **Sayabot → Sign In to Existing Account…** in the app menu runs the same merge flow for a guest
   (and a plain sign-in for everyone else).
 - The sign-up request goes from the Mac directly to Supabase, so Supabase's per-IP rate limit for
@@ -86,9 +86,9 @@ pnpm db:migrate
 
 ## Server switch
 
-| Env (web) | Default | Effect |
-| --- | --- | --- |
-| `DESKTOP_GUEST_MODE` | on | `false` / `0` / `off` disables guest mode; the app shows the sign-in card |
+| Env (web)            | Default | Effect                                                                    |
+| -------------------- | ------- | ------------------------------------------------------------------------- |
+| `DESKTOP_GUEST_MODE` | on      | `false` / `0` / `off` disables guest mode; the app shows the sign-in card |
 
 ## Cleaning up abandoned guests
 

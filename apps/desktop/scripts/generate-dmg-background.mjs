@@ -141,7 +141,7 @@ execFileSync(chromePath, [
   "--disable-gpu",
   `--screenshot=${outPng1x}`,
   `--window-size=${W},${H}`,
-  htmlPath
+  htmlPath,
 ])
 
 // Render 2x (1320x800)
@@ -152,7 +152,7 @@ execFileSync(chromePath, [
   `--screenshot=${outPng2x}`,
   `--window-size=${W},${H}`,
   "--force-device-scale-factor=2",
-  htmlPath
+  htmlPath,
 ])
 
 // Set DPI metadata using macOS sips

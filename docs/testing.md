@@ -2,14 +2,14 @@
 
 ## Commands
 
-| Command | Suite | Notes |
-|---|---|---|
-| `pnpm test` | unit + integration (all workspaces) | turbo; 7/7 packages green (see below) |
-| `pnpm test:unit` | unit + integration per package | same as `pnpm test` (turbo) |
-| `pnpm test:integration` | repo-root cross-package contracts | `tests/integration/run.mjs` |
-| `pnpm test:e2e` | full Playwright (seeded) | needs Supabase + `E2E_USER_*_EMAIL` |
-| `pnpm test:e2e:api` | smoke lane: API + navigation + guards | `E2E_SMOKE=1`, no seeding |
-| `pnpm typecheck:e2e` | e2e TS | |
+| Command                 | Suite                                 | Notes                                 |
+| ----------------------- | ------------------------------------- | ------------------------------------- |
+| `pnpm test`             | unit + integration (all workspaces)   | turbo; 7/7 packages green (see below) |
+| `pnpm test:unit`        | unit + integration per package        | same as `pnpm test` (turbo)           |
+| `pnpm test:integration` | repo-root cross-package contracts     | `tests/integration/run.mjs`           |
+| `pnpm test:e2e`         | full Playwright (seeded)              | needs Supabase + `E2E_USER_*_EMAIL`   |
+| `pnpm test:e2e:api`     | smoke lane: API + navigation + guards | `E2E_SMOKE=1`, no seeding             |
+| `pnpm typecheck:e2e`    | e2e TS                                |                                       |
 
 ## Layout
 

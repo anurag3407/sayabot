@@ -10,7 +10,9 @@ describe("redactValue", () => {
   })
 
   it("applies the run scrubber before pattern redaction", () => {
-    const out = redactValue("my-secret-value here", (s) => s.replaceAll("my-secret-value", "[scrubbed]"))
+    const out = redactValue("my-secret-value here", (s) =>
+      s.replaceAll("my-secret-value", "[scrubbed]"),
+    )
     expect(out).toBe("[scrubbed] here")
   })
 

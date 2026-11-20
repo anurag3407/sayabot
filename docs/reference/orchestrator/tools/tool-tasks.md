@@ -12,16 +12,16 @@ Source files: `apps/orchestrator/src/tools/builtins/tasks.ts`, `apps/orchestrato
 taskTools({ roomId, orgId, agentId, handle: args.agent.handle })
 ```
 
-Registered when `caps.tasks` is true (default). All tools bind to the **current room** — there is no cross-room task access via these tools. The shared suffix in descriptions: *"To get a teammate to act on it during this turn, also mention them with @handle in your reply."* (`tasks.ts:56-57`)
+Registered when `caps.tasks` is true (default). All tools bind to the **current room** — there is no cross-room task access via these tools. The shared suffix in descriptions: _"To get a teammate to act on it during this turn, also mention them with @handle in your reply."_ (`tasks.ts:56-57`)
 
 ## 📋 Tool reference
 
 ### `list_tasks` (`tasks.ts:59-67`)
 
-| Parameter | Type | Description |
-| :--- | :--- | :--- |
-| `status` | enum `open \| in_progress \| stuck \| done`, optional | Filter by status |
-| `mine` | boolean, optional | Only tasks assigned to the calling agent |
+| Parameter | Type                                                  | Description                              |
+| :-------- | :---------------------------------------------------- | :--------------------------------------- |
+| `status`  | enum `open \| in_progress \| stuck \| done`, optional | Filter by status                         |
+| `mine`    | boolean, optional                                     | Only tasks assigned to the calling agent |
 
 Returns up to 40 tasks ordered by `updatedAt` desc (`collab/index.ts:492-517`):
 
@@ -32,18 +32,18 @@ Returns up to 40 tasks ordered by `updatedAt` desc (`collab/index.ts:492-517`):
 
 ### `create_task` (`tasks.ts:68-87`)
 
-| Parameter | Type | Description |
-| :--- | :--- | :--- |
-| `title` | string (2–120) | Task title |
-| `description` | string (≤ 4,000), optional | Details |
-| `assign_to_me` | boolean, optional | `false` leaves the task unassigned (`open`) for a teammate to claim; default assigns to the caller (`in_progress`) |
+| Parameter      | Type                       | Description                                                                                                        |
+| :------------- | :------------------------- | :----------------------------------------------------------------------------------------------------------------- |
+| `title`        | string (2–120)             | Task title                                                                                                         |
+| `description`  | string (≤ 4,000), optional | Details                                                                                                            |
+| `assign_to_me` | boolean, optional          | `false` leaves the task unassigned (`open`) for a teammate to claim; default assigns to the caller (`in_progress`) |
 
 `createTask` (`collab/index.ts:519-541`) calls `applyTaskCreate` with `metadata: { source: "agent", createdByAgent: agentId }`. Returns `{ id, ref: "MESH-<n>", title, status }`.
 
 ### `claim_task` — the atomic claim (`tasks.ts:123-130`)
 
-| Parameter | Type | Description |
- | :--- | :--- | :--- |
+| Parameter | Type          | Description   |
+| :-------- | :------------ | :------------ |
 | `task_id` | string (uuid) | Task to claim |
 
 `claimTask` (`collab/index.ts:543-600`) runs a single transaction with a conditional `UPDATE … WHERE id = task AND status != 'done' AND assignee_user_id IS NULL AND (assignee_agent_id IS NULL OR assignee_agent_id = me)` — two agents racing get exactly one winner; the loser receives:
@@ -56,20 +56,20 @@ The winner gets `{ claimed: true, id, ref, title }`, plus a `taskEvents` row (`r
 
 ### `update_task` — guarded mutations (`tasks.ts:168-226`)
 
-| Parameter | Type | Description |
-| :--- | :--- | :--- |
-| `task_id` | string (uuid) | Task to update |
-| `status` | enum `open \| in_progress \| stuck \| done`, optional | New status |
-| `note` | string (≤ 4,000), optional | Progress note (becomes a `task_comments` row) |
-| `ask_help_from` | string, optional | `@handle` to ping for help when going stuck (default `@all_bots`) |
-| `release` | boolean, optional | Release the task back to unassigned (`open`) |
-| `due_at` | string, optional | Due date |
-| `unblock_needs` | enum `human_answer \| another_agent \| credential \| external_access \| time \| other`, optional | Required when status = `stuck` |
-| `unblock_detail` | string (≤ 1,000), optional | What exactly is blocking |
-| `form_ref` | string, optional | Form evidence when claiming a `human_answer` blocker |
-| `blocked_by` | uuid[], optional | Dependency task ids (same room only) |
-| `outcome` | `{ kind: artifact \| submission \| external_change \| decision \| none \| legacy, ref? }`, optional | Required when status = `done` |
-| `reason` | string, optional | Required when moving to `in_progress` with unresolved blockers |
+| Parameter        | Type                                                                                                | Description                                                       |
+| :--------------- | :-------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------- |
+| `task_id`        | string (uuid)                                                                                       | Task to update                                                    |
+| `status`         | enum `open \| in_progress \| stuck \| done`, optional                                               | New status                                                        |
+| `note`           | string (≤ 4,000), optional                                                                          | Progress note (becomes a `task_comments` row)                     |
+| `ask_help_from`  | string, optional                                                                                    | `@handle` to ping for help when going stuck (default `@all_bots`) |
+| `release`        | boolean, optional                                                                                   | Release the task back to unassigned (`open`)                      |
+| `due_at`         | string, optional                                                                                    | Due date                                                          |
+| `unblock_needs`  | enum `human_answer \| another_agent \| credential \| external_access \| time \| other`, optional    | Required when status = `stuck`                                    |
+| `unblock_detail` | string (≤ 1,000), optional                                                                          | What exactly is blocking                                          |
+| `form_ref`       | string, optional                                                                                    | Form evidence when claiming a `human_answer` blocker              |
+| `blocked_by`     | uuid[], optional                                                                                    | Dependency task ids (same room only)                              |
+| `outcome`        | `{ kind: artifact \| submission \| external_change \| decision \| none \| legacy, ref? }`, optional | Required when status = `done`                                     |
+| `reason`         | string, optional                                                                                    | Required when moving to `in_progress` with unresolved blockers    |
 
 Server-side invariants enforced by `applyTaskMutation` (`collab/tasks-service.ts:55-230`):
 
@@ -85,33 +85,33 @@ Ownership: a task held by another agent can only be touched when it is `stuck` (
 
 ### `schedule_followup` (`tasks.ts:88-122`)
 
-| Parameter | Type | Description |
- | :--- | :--- | :--- |
-| `in_minutes` | int 1–10,080 (1 min – 7 days) | Delay before the wake-up |
-| `title` | string (2–120) | Short title (prefixed `[Follow-up] `) |
-| `note` | string (≤ 2,000) | What to check when awakened |
+| Parameter    | Type                          | Description                           |
+| :----------- | :---------------------------- | :------------------------------------ |
+| `in_minutes` | int 1–10,080 (1 min – 7 days) | Delay before the wake-up              |
+| `title`      | string (2–120)                | Short title (prefixed `[Follow-up] `) |
+| `note`       | string (≤ 2,000)              | What to check when awakened           |
 
 Implementation: creates a task assigned to self with `unblockNeeds: "time"` and `dueAt = now + in_minutes`, then `{ ok: true, taskId, scheduledFor, inMinutes, message }`. The wake-up is driven by the scheduler's due-follow-up pass (`src/scheduler/meetings.ts:355-400`): open tasks with `unblockNeeds = "time"` and `dueAt <= now` are claimed (`in_progress`, unblock fields cleared) and the assigned agent's handle is mentioned in the room, which starts a new turn. (`enqueueTaskWake` fires immediately for assignment/unblock events, not on the timer — the due pass is what honors `in_minutes`.)
 
 ### `report_checkin` (`tasks.ts:131-167`)
 
-| Parameter | Type | Description |
- | :--- | :--- | :--- |
-| `summary` | string (≤ 1,000), optional | Free-text progress summary |
-| `changed` | `{ task_ref?, task_id?, event_id? }[]`, optional | Cited task-event ids proving changes |
-| `no_change` | boolean, optional | Nothing changed since last check-in |
+| Parameter   | Type                                             | Description                          |
+| :---------- | :----------------------------------------------- | :----------------------------------- |
+| `summary`   | string (≤ 1,000), optional                       | Free-text progress summary           |
+| `changed`   | `{ task_ref?, task_id?, event_id? }[]`, optional | Cited task-event ids proving changes |
+| `no_change` | boolean, optional                                | Nothing changed since last check-in  |
 
 `classifyAndRecordCheckin` (`collab/classify-checkin.ts:43-121`) verifies cited `event_id`s against `task_events` created after the agent's last check-in cursor (`agent_reads.lastReportedAt`). Room `roomSchedules.checkinMode` decides delivery: `"digest"` mode keeps no-change reports quiet (rolled into the daily digest); `"stream"` mode posts them with `metadata.quiet = true` for client collapsing. Claims of change without valid events are flagged `manufacturedTrivia`. Requests/auto-moot closing runs first (`autoCloseMootRequests`).
 
 ### `request_human_decision` (`tasks.ts:227-250`)
 
-| Parameter | Type | Description |
- | :--- | :--- | :--- |
-| `task_id` | string (uuid), optional | Task the question is about |
-| `question` | string (4–120) | Short question |
-| `details` | string (≤ 4,000), optional | Context |
-| `options` | string[] (each 1–60), max 6, optional | Tap-able answers |
-| `fold_key` | string (≤ 64), optional | Dedup key; repeated asks fold instead of duplicating |
+| Parameter  | Type                                  | Description                                          |
+| :--------- | :------------------------------------ | :--------------------------------------------------- |
+| `task_id`  | string (uuid), optional               | Task the question is about                           |
+| `question` | string (4–120)                        | Short question                                       |
+| `details`  | string (≤ 4,000), optional            | Context                                              |
+| `options`  | string[] (each 1–60), max 6, optional | Tap-able answers                                     |
+| `fold_key` | string (≤ 64), optional               | Dedup key; repeated asks fold instead of duplicating |
 
 Behavior (`collab/index.ts:765-880+`): asks on `done` tasks are rejected as moot (`"cannot request decision on MESH-<n>: task is already done; this ask is moot"`); an open request with the same computed fold key absorbs repeats (increments `askedCount`, records a `taskEvents` row, returns `{ folded: true, status: "waiting_for_human", asked_count }`); otherwise a `kind: "request"` row is inserted with `expiresAt = now + 72 h` and the humans are notified. The decision card lives in the human Inbox ([./approvals.md](./approvals.md)).
 
@@ -123,33 +123,33 @@ Behavior (`collab/index.ts:765-880+`): asks on `done` tasks are rejected as moot
 
 ### `plan_task` (`tasks.ts:275-298`)
 
-| Parameter | Type | Description |
- | :--- | :--- | :--- |
-| `task_id` | string (uuid) | Parent task |
+| Parameter  | Type                                                                                                           | Description   |
+| :--------- | :------------------------------------------------------------------------------------------------------------- | :------------ |
+| `task_id`  | string (uuid)                                                                                                  | Parent task   |
 | `subtasks` | array 1–12 of `{ key (≤32), title (≤200), description? (≤4,000), assignee?, blockedBy?, budgetTurns? (1–20) }` | Subtask graph |
 
 `applyTaskPlan` (`collab/tasks-service.ts:639-710+`) rejects > 12 subtasks and detects dependency cycles via `hasDependencyCycle` (`"cyclic dependency detected in subtask plan"`); unblocked assignees are woken.
 
 ### `assign_task` (`tasks.ts:299-309`)
 
-| Parameter | Type | Description |
- | :--- | :--- | :--- |
-| `task_id` | string (uuid) | Task |
+| Parameter  | Type           | Description                               |
+| :--------- | :------------- | :---------------------------------------- |
+| `task_id`  | string (uuid)  | Task                                      |
 | `assignee` | string (min 1) | Agent `@handle` or `human:<display name>` |
 
 Human assignment matches display names among people who can read the room (`collab/index.ts:617-660+`).
 
 ## 🗃️ Tables and events
 
-| Table | Used by |
-| :--- | :--- |
-| `tasks` | list/create/claim/update/plan/assign; `kind` distinguishes `task` vs `request`; `foldKey`, `askedCount`, `unblockNeeds`, `blockedBy`, `outcomeKind/Ref` columns |
-| `task_events` | audit trail per mutation (from/to status, reason, outcome, metadata); check-in verification reads it |
-| `task_comments` | notes, claim comments |
-| `agent_reads` | `lastReportedAt` check-in cursor |
-| `room_schedules` | `checkinMode` (stream/digest) |
-| `messages` | vote state (`metadata.vote`), stuck-help and vote posts |
-| `profiles` / `org_members` / `room_members` | human assignee resolution |
+| Table                                       | Used by                                                                                                                                                         |
+| :------------------------------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tasks`                                     | list/create/claim/update/plan/assign; `kind` distinguishes `task` vs `request`; `foldKey`, `askedCount`, `unblockNeeds`, `blockedBy`, `outcomeKind/Ref` columns |
+| `task_events`                               | audit trail per mutation (from/to status, reason, outcome, metadata); check-in verification reads it                                                            |
+| `task_comments`                             | notes, claim comments                                                                                                                                           |
+| `agent_reads`                               | `lastReportedAt` check-in cursor                                                                                                                                |
+| `room_schedules`                            | `checkinMode` (stream/digest)                                                                                                                                   |
+| `messages`                                  | vote state (`metadata.vote`), stuck-help and vote posts                                                                                                         |
+| `profiles` / `org_members` / `room_members` | human assignee resolution                                                                                                                                       |
 
 Realtime: vote casting broadcasts `message.done`; the collab layer posts regular messages (which trigger the standard message events). All calls are audited in `tool_calls` by the wrapper.
 

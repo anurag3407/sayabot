@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest"
-import { abortRoomRuns, abortRun, activeRunIds, addRunInterrupt, consumeRunInterrupts, findActiveRunForAgent, registerRun, unregisterRun } from "../../src/active-runs"
+import {
+  abortRoomRuns,
+  abortRun,
+  activeRunIds,
+  addRunInterrupt,
+  consumeRunInterrupts,
+  findActiveRunForAgent,
+  registerRun,
+  unregisterRun,
+} from "../../src/active-runs"
 
 describe("active-runs registry", () => {
   it("registers, finds and unregisters runs", () => {
@@ -21,11 +30,15 @@ describe("active-runs registry", () => {
   })
 
   it("abortRoomRuns aborts the whole room except an excluded run", () => {
-    registerRun("ra", "roomX"); registerRun("rb", "roomX"); registerRun("rc", "roomY")
+    registerRun("ra", "roomX")
+    registerRun("rb", "roomX")
+    registerRun("rc", "roomY")
     expect(abortRoomRuns("roomX", "ra")).toBe(1)
     expect(abortRoomRuns("roomX")).toBe(2)
     expect(abortRoomRuns("roomY")).toBe(1)
-    unregisterRun("ra"); unregisterRun("rb"); unregisterRun("rc")
+    unregisterRun("ra")
+    unregisterRun("rb")
+    unregisterRun("rc")
   })
 
   it("queues and drains interrupts FIFO, exactly once", () => {

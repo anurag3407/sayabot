@@ -3,7 +3,7 @@
 # curl does not mark the app as "downloaded from the internet", so macOS opens it
 # directly. A DMG saved by Chrome or Safari still shows "Apple could not verify".
 #
-#   curl -fsSL https://sayabot.sayalabs.in/install-mac.sh | bash
+#   curl -fsSL https://<your-server>/install-mac.sh | bash
 set -euo pipefail
 
 if [[ "$(uname -s)" != "Darwin" ]]; then

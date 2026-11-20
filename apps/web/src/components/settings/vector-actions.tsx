@@ -1,7 +1,11 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { deleteVectorProvider, setActiveVectorProvider, testVectorProvider } from "@/lib/actions/vector-keys"
+import {
+  deleteVectorProvider,
+  setActiveVectorProvider,
+  testVectorProvider,
+} from "@/lib/actions/vector-keys"
 import { Button } from "@/components/ui/button"
 import type { ActionResult } from "@/lib/types"
 
@@ -52,13 +56,7 @@ export function SetActiveVectorButton({
   )
 }
 
-export function TestVectorButton({
-  orgSlug,
-  providerId,
-}: {
-  orgSlug: string
-  providerId: string
-}) {
+export function TestVectorButton({ orgSlug, providerId }: { orgSlug: string; providerId: string }) {
   const [pending, startTransition] = useTransition()
   const [result, setResult] = useState<ActionResult | null>(null)
 
@@ -72,7 +70,13 @@ export function TestVectorButton({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <Button size="sm" variant="outline" className="h-7 text-[11px]" disabled={pending} onClick={test}>
+      <Button
+        size="sm"
+        variant="outline"
+        className="h-7 text-[11px]"
+        disabled={pending}
+        onClick={test}
+      >
         {pending ? "Testing…" : "Test Connection"}
       </Button>
       {result ? (
@@ -118,7 +122,13 @@ export function DeleteVectorButton({
     <div className="flex flex-wrap items-center gap-2">
       {confirming ? (
         <>
-          <Button size="sm" variant="danger" className="h-7 text-[11px]" disabled={pending} onClick={remove}>
+          <Button
+            size="sm"
+            variant="danger"
+            className="h-7 text-[11px]"
+            disabled={pending}
+            onClick={remove}
+          >
             {pending ? "Deleting…" : "Confirm"}
           </Button>
           <Button

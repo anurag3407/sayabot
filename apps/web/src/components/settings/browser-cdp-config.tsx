@@ -13,7 +13,8 @@ export function BrowserCdpConfig() {
       icon: Code2,
       description:
         "Executes model-generated Python or JavaScript code snippets using pre-imported browser helpers (page.goto, page.click, page.screenshot, page.evaluate). Returns stdout, logs, and evaluated return values.",
-      example: "page.goto('https://github.com')\npage.click('a.HeaderMenu-link--sign-in')\nreturn page.title()",
+      example:
+        "page.goto('https://github.com')\npage.click('a.HeaderMenu-link--sign-in')\nreturn page.title()",
     },
     {
       name: "browser_cdp(method, params)",
@@ -37,7 +38,8 @@ export function BrowserCdpConfig() {
       icon: KeyRound,
       description:
         "Safely auto-fills credentials (passwords, API tokens, 2FA codes) into browser input fields without exposing the secret to the model conversation context.",
-      example: 'browser_vault(secret_name="PROD_ADMIN_PASSWORD", selector="input[type=password]", submit=True)',
+      example:
+        'browser_vault(secret_name="PROD_ADMIN_PASSWORD", selector="input[type=password]", submit=True)',
     },
   ]
 
@@ -51,13 +53,16 @@ export function BrowserCdpConfig() {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-[13px] font-semibold text-text">Browser Automation & CDP Toolset</h3>
+              <h3 className="text-[13px] font-semibold text-text">
+                Browser Automation & CDP Toolset
+              </h3>
               <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 font-mono text-[10px] text-emerald-400 font-medium">
                 Active in "browser" profile
               </span>
             </div>
             <p className="text-[11px] text-muted">
-              Drives persistent Chromium instances using Chrome DevTools Protocol (CDP) inside per-agent containers.
+              Drives persistent Chromium instances using Chrome DevTools Protocol (CDP) inside
+              per-agent containers.
             </p>
           </div>
         </div>
@@ -118,7 +123,9 @@ export function BrowserCdpConfig() {
                 </div>
 
                 <div className="rounded bg-void/80 p-2 border border-line/60">
-                  <span className="font-mono text-[10px] text-faint block mb-0.5">Example Model Call:</span>
+                  <span className="font-mono text-[10px] text-faint block mb-0.5">
+                    Example Model Call:
+                  </span>
                   <pre className="font-mono text-[11px] text-emerald-400 overflow-x-auto whitespace-pre-wrap select-all">
                     {tool.example}
                   </pre>
@@ -137,9 +144,9 @@ export function BrowserCdpConfig() {
             How browser_vault Protects Outbound Credentials
           </div>
           <p className="text-[12px] text-muted leading-relaxed">
-            In standard coding agents, if a model needs to log into a staging portal or SaaS product, the
-            developer must pass the plaintext password into the prompt context. This risks token leakage to
-            the LLM provider and exposes secrets in chat histories.
+            In standard coding agents, if a model needs to log into a staging portal or SaaS
+            product, the developer must pass the plaintext password into the prompt context. This
+            risks token leakage to the LLM provider and exposes secrets in chat histories.
           </p>
           <div className="grid gap-2 sm:grid-cols-3 pt-1">
             <div className="rounded border border-line bg-void/50 p-3 text-[11px]">
@@ -148,7 +155,8 @@ export function BrowserCdpConfig() {
             </div>
             <div className="rounded border border-line bg-void/50 p-3 text-[11px]">
               <b className="text-text block mb-1">2. Blind Injection</b>
-              Sayabot's computerd daemon injects the decrypted secret directly into the DOM input field.
+              Sayabot's computerd daemon injects the decrypted secret directly into the DOM input
+              field.
             </div>
             <div className="rounded border border-line bg-void/50 p-3 text-[11px]">
               <b className="text-text block mb-1">3. Masked Context</b>

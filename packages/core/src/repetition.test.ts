@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest"
-import { detectRepetition, isPoliteAgreement, levenshteinSimilarity, tokenCosine } from "./repetition"
+import {
+  detectRepetition,
+  isPoliteAgreement,
+  levenshteinSimilarity,
+  tokenCosine,
+} from "./repetition"
 
 describe("similarity", () => {
   it("scores identical text as 1", () => {

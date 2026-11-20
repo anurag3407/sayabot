@@ -49,7 +49,14 @@ services:
       PGDATABASE: postgres
       POSTGRES_DB: postgres
       JWT_EXP: 3600
-    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf", "-c", "log_min_messages=fatal"]
+    command:
+      [
+        "postgres",
+        "-c",
+        "config_file=/etc/postgresql/postgresql.conf",
+        "-c",
+        "log_min_messages=fatal",
+      ]
 
   supabase-auth:
     image: supabase/gotrue:v2.197.0

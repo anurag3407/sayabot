@@ -100,7 +100,7 @@ node ... workspace-draft.test.ts markdown.test.ts server-url.test.ts server-chec
 
 Two Vitest mechanics the suites code around:
 
-- **`vi.mock` calls are hoisted** to the top of the file, above imports — so the factory cannot reference variables declared later unless they are also moved into the factory or the module under test is imported dynamically. `runner/local-events.test.ts:36` uses `const { recordMacToolEvents, requestMacApproval, storedArgs } = await import("./local-events")` *after* all `vi.mock` declarations for exactly this reason.
+- **`vi.mock` calls are hoisted** to the top of the file, above imports — so the factory cannot reference variables declared later unless they are also moved into the factory or the module under test is imported dynamically. `runner/local-events.test.ts:36` uses `const { recordMacToolEvents, requestMacApproval, storedArgs } = await import("./local-events")` _after_ all `vi.mock` declarations for exactly this reason.
 - **Shared mock state must be reset.** Arrays like `broadcastEvents` and `lastInsertedValues` are module-scope so assertions can inspect them; `audited.test.ts:45-47` clears them in `beforeEach`, and one test clears `lastInsertedValues` again before its own insert-count assertion (line 109) — a reminder that insert-recording mocks accumulate across tests in the same file.
 
 ## ✅ Writing a New Unit Test (recipe)

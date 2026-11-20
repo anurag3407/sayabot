@@ -40,9 +40,7 @@ function createMockDb() {
         innerJoin: () => ({
           where: () => ({
             orderBy: () =>
-              Promise.resolve([
-                { id: "00000000-0000-0000-0000-000000000001", name: "general" },
-              ]),
+              Promise.resolve([{ id: "00000000-0000-0000-0000-000000000001", name: "general" }]),
           }),
         }),
         where: (condition: any) => ({
@@ -51,9 +49,7 @@ function createMockDb() {
             const matched = tasksTable.filter((t) => strings.includes(t.id))
             if (matched.length) return matched.slice(0, n)
 
-            const openReqs = tasksTable.filter(
-              (t) => t.kind === "request" && t.status === "open",
-            )
+            const openReqs = tasksTable.filter((t) => t.kind === "request" && t.status === "open")
             return openReqs.slice(0, n)
           },
         }),

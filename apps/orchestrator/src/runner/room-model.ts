@@ -15,7 +15,10 @@ export function parseRoomModelOverride(value: unknown): RoomModelOverride | null
   if (!value || typeof value !== "object" || Array.isArray(value)) return null
   const v = value as Record<string, unknown>
   const str = (x: unknown) => (typeof x === "string" && x ? x : null)
-  const runner = v.runner && typeof v.runner === "object" && !Array.isArray(v.runner) ? (v.runner as Record<string, unknown>) : null
+  const runner =
+    v.runner && typeof v.runner === "object" && !Array.isArray(v.runner)
+      ? (v.runner as Record<string, unknown>)
+      : null
   return {
     keyId: str(v.keyId),
     model: str(v.model),

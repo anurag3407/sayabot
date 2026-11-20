@@ -12,17 +12,17 @@ The Copilot chat API does not accept the GitHub token itself: each call needs a 
 
 ### Constants
 
-| Export | Value | Purpose |
-| :-- | :-- | :-- |
-| `COPILOT_TOKEN_URL` | `https://api.github.com/copilot_internal/v2/token` | Where the exchange happens (`copilot.ts:11`) |
-| `COPILOT_API_BASE` | `https://api.githubcopilot.com` | The chat API base the registry uses as the provider's default base URL (`copilot.ts:12`) |
-| `COPILOT_HEADERS` | `Copilot-Integration-Id: vscode-chat`, `Editor-Version: vscode/1.96.2`, `Editor-Plugin-Version: copilot-chat/0.22.4`, `User-Agent: GitHubCopilotChat/0.22.4` | "The client identity Copilot's chat API expects alongside the token" (`copilot.ts:15-20`) |
+| Export              | Value                                                                                                                                                        | Purpose                                                                                   |
+| :------------------ | :----------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------- |
+| `COPILOT_TOKEN_URL` | `https://api.github.com/copilot_internal/v2/token`                                                                                                           | Where the exchange happens (`copilot.ts:11`)                                              |
+| `COPILOT_API_BASE`  | `https://api.githubcopilot.com`                                                                                                                              | The chat API base the registry uses as the provider's default base URL (`copilot.ts:12`)  |
+| `COPILOT_HEADERS`   | `Copilot-Integration-Id: vscode-chat`, `Editor-Version: vscode/1.96.2`, `Editor-Plugin-Version: copilot-chat/0.22.4`, `User-Agent: GitHubCopilotChat/0.22.4` | "The client identity Copilot's chat API expects alongside the token" (`copilot.ts:15-20`) |
 
 Timing constants: `REFRESH_MARGIN_MS = 60_000` (reuse the cached token until 1 minute before it expires) and `TIMEOUT_MS = 10_000` for the token request.
 
 ### Helpers
 
-- `isGitHubToken(value)` (`copilot.ts:34-36`) — true for GitHub OAuth (`gho_`), app user (`ghu_`), personal (`ghp_`) and fine-grained (`github_pat_`) tokens. Anything else is passed through as-is, so a key that is *already* a Copilot token works without an exchange.
+- `isGitHubToken(value)` (`copilot.ts:34-36`) — true for GitHub OAuth (`gho_`), app user (`ghu_`), personal (`ghp_`) and fine-grained (`github_pat_`) tokens. Anything else is passed through as-is, so a key that is _already_ a Copilot token works without an exchange.
 - `isCopilotBaseUrl(baseUrl)` (`copilot.ts:39-46`) — true when the URL's hostname **ends with** `githubcopilot.com` (covers `api.individual.githubcopilot.com` too). The registry uses this to turn a stored `openai-compatible` row pointing at Copilot's API into a proper Copilot client with the custom fetch.
 - `CopilotAuthError extends Error` (`copilot.ts:48`) — thrown when GitHub refuses the token or the account has no Copilot plan; the message never includes the token.
 - `clearCopilotSessions()` (`copilot.ts:113-116`) — empties the caches (tests, or after a key is removed).
@@ -60,13 +60,13 @@ So the stored GitHub credential never reaches Copilot's API, and the Copilot tok
 
 ### Test coverage (`copilot.test.ts`)
 
-| Test | Pins |
-| :-- | :-- |
+| Test                                                                             | Pins                                                                                                                                                                    |
+| :------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `swaps a GitHub token for a Copilot token and reuses it until it nearly expires` | Two calls share one fetch; request carries `authorization: "token gho_secret"`; after advancing the clock 29.5 minutes (past the 60 s margin) a second exchange happens |
-| `passes a token that is not a GitHub token through untouched` | `"tid=already-copilot"` returned with zero fetches |
-| `explains a refused account without echoing the token` | 404 → `CopilotAuthError`; the rejection message does not contain `topsecret` |
-| `signs each API call with the Copilot token and Copilot's client headers` | After `copilotFetch("ghu_secret")`, the chat call carries `authorization: Bearer tid=xyz` and `copilot-integration-id: vscode-chat` |
-| `recognises Copilot base URLs` | `api.githubcopilot.com` and `api.individual.githubcopilot.com/` true; `openrouter.ai` and `null` false |
+| `passes a token that is not a GitHub token through untouched`                    | `"tid=already-copilot"` returned with zero fetches                                                                                                                      |
+| `explains a refused account without echoing the token`                           | 404 → `CopilotAuthError`; the rejection message does not contain `topsecret`                                                                                            |
+| `signs each API call with the Copilot token and Copilot's client headers`        | After `copilotFetch("ghu_secret")`, the chat call carries `authorization: Bearer tid=xyz` and `copilot-integration-id: vscode-chat`                                     |
+| `recognises Copilot base URLs`                                                   | `api.githubcopilot.com` and `api.individual.githubcopilot.com/` true; `openrouter.ai` and `null` false                                                                  |
 
 ---
 
@@ -78,23 +78,23 @@ MCP apps that are a program rather than a website. The module header states the 
 
 `LOCAL_APPS` is a `readonly LocalApp[]` with exactly seven entries (`local-apps.ts:27-117`):
 
-| id | Name | Category | Where | Command | Env required | dangerousTools |
-| :-- | :-- | :-- | :-- | :-- | :-- | :-- |
-| `airtable` | Airtable | data | server | `npx -y airtable-mcp-server` | `AIRTABLE_API_KEY` | `["@writes"]` |
-| `brave-search` | Brave Search | search | server | `npx -y @brave/brave-search-mcp-server` | `BRAVE_API_KEY` | `[]` |
-| `resend` | Resend | automation | server | `npx -y resend-mcp` | `RESEND_API_KEY` | `["@writes"]` |
-| `firecrawl-local` | Firecrawl CLI | search | server | `npx -y firecrawl-mcp` | `FIRECRAWL_API_KEY` | `["@writes"]` |
-| `obsidian` | Obsidian | knowledge | desktop | `npx -y obsidian-mcp-server` | `OBSIDIAN_API_KEY` (Local REST API plugin) | `["@writes"]` |
-| `paper` | Paper | design | desktop | `paper mcp` | — | `["@writes"]` |
-| `apple-apps` | Apple apps | productivity | desktop | `npx -y mcp-icloud` | — | `["@writes"]` |
+| id                | Name          | Category     | Where   | Command                                 | Env required                               | dangerousTools |
+| :---------------- | :------------ | :----------- | :------ | :-------------------------------------- | :----------------------------------------- | :------------- |
+| `airtable`        | Airtable      | data         | server  | `npx -y airtable-mcp-server`            | `AIRTABLE_API_KEY`                         | `["@writes"]`  |
+| `brave-search`    | Brave Search  | search       | server  | `npx -y @brave/brave-search-mcp-server` | `BRAVE_API_KEY`                            | `[]`           |
+| `resend`          | Resend        | automation   | server  | `npx -y resend-mcp`                     | `RESEND_API_KEY`                           | `["@writes"]`  |
+| `firecrawl-local` | Firecrawl CLI | search       | server  | `npx -y firecrawl-mcp`                  | `FIRECRAWL_API_KEY`                        | `["@writes"]`  |
+| `obsidian`        | Obsidian      | knowledge    | desktop | `npx -y obsidian-mcp-server`            | `OBSIDIAN_API_KEY` (Local REST API plugin) | `["@writes"]`  |
+| `paper`           | Paper         | design       | desktop | `paper mcp`                             | —                                          | `["@writes"]`  |
+| `apple-apps`      | Apple apps    | productivity | desktop | `npx -y mcp-icloud`                     | —                                          | `["@writes"]`  |
 
 Each row also carries `tagline`, `docs` (a documentation URL), `color` (a hex for the marketplace card) and, where present, an `env` descriptor `{ name, label, help }` that tells the person where to get the key (e.g. Airtable: "Include the bases this workspace may use"; Obsidian: "Leave the Sayabot app open on that computer").
 
 ### Lookup and launch
 
 ```typescript
-export function findLocalApp(id: string | null | undefined): LocalApp | null  // BY_ID map
-export function localAppArgv(app: LocalApp): string  // "npx -y <pkg>" or "paper mcp"
+export function findLocalApp(id: string | null | undefined): LocalApp | null // BY_ID map
+export function localAppArgv(app: LocalApp): string // "npx -y <pkg>" or "paper mcp"
 ```
 
 (`local-apps.ts:119-129`.) `localAppArgv` is described as "What the desktop app is willing to start. Anything else is refused, even if the server asked." The desktop app parses this string and nothing else — a database row cannot inject a different binary or flags.

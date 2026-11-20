@@ -39,14 +39,27 @@ export function TabNavigator() {
           elevation: 0,
         },
         tabBarBackground: () =>
-          Platform.OS === "ios" ? <BlurView tint={theme.dark ? "dark" : "light"} intensity={80} style={StyleSheet.absoluteFill} /> : null,
+          Platform.OS === "ios" ? (
+            <BlurView
+              tint={theme.dark ? "dark" : "light"}
+              intensity={80}
+              style={StyleSheet.absoluteFill}
+            />
+          ) : null,
         tabBarActiveTintColor: theme.accent,
         tabBarInactiveTintColor: theme.faint,
         tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
         sceneStyle: { backgroundColor: theme.bg },
       }}
     >
-      <Tab.Screen name="HomeTab" component={HomeScreen} options={{ tabBarLabel: "Chats", tabBarIcon: ({ color, size }) => <MessageCircle size={size} color={color} /> }} />
+      <Tab.Screen
+        name="HomeTab"
+        component={HomeScreen}
+        options={{
+          tabBarLabel: "Chats",
+          tabBarIcon: ({ color, size }) => <MessageCircle size={size} color={color} />,
+        }}
+      />
       <Tab.Screen
         name="InboxTab"
         component={InboxScreen}
@@ -57,8 +70,22 @@ export function TabNavigator() {
           tabBarBadgeStyle: { backgroundColor: theme.accent, color: theme.onAccent, fontSize: 11 },
         }}
       />
-      <Tab.Screen name="TasksTab" component={TasksScreen} options={{ tabBarLabel: "Tasks", tabBarIcon: ({ color, size }) => <CheckSquare size={size} color={color} /> }} />
-      <Tab.Screen name="MoreTab" component={MoreScreen} options={{ tabBarLabel: "More", tabBarIcon: ({ color, size }) => <Ellipsis size={size} color={color} /> }} />
+      <Tab.Screen
+        name="TasksTab"
+        component={TasksScreen}
+        options={{
+          tabBarLabel: "Tasks",
+          tabBarIcon: ({ color, size }) => <CheckSquare size={size} color={color} />,
+        }}
+      />
+      <Tab.Screen
+        name="MoreTab"
+        component={MoreScreen}
+        options={{
+          tabBarLabel: "More",
+          tabBarIcon: ({ color, size }) => <Ellipsis size={size} color={color} />,
+        }}
+      />
     </Tab.Navigator>
   )
 }

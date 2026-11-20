@@ -86,10 +86,12 @@ export async function setChatPreferenceAction(input: {
       ? new Date(new Date(latest.created_at).getTime() - 1_000).toISOString()
       : new Date(now.getTime() - 1_000).toISOString()
   }
-  const { error } = await admin.from("room_reads").upsert(
-    { user_id: access.user.id, room_id: input.roomId, ...values },
-    { onConflict: "user_id,room_id" },
-  )
+  const { error } = await admin
+    .from("room_reads")
+    .upsert(
+      { user_id: access.user.id, room_id: input.roomId, ...values },
+      { onConflict: "user_id,room_id" },
+    )
   if (error) return fail(errorMessage(error))
   revalidatePath(`/${input.orgSlug}`, "layout")
   return ok("Chat updated")
@@ -144,10 +146,12 @@ export async function setRoomExecutionModeAction(input: {
   roomId: string
   mode: "review_all" | "ask_risky" | "auto" | "turbo"
 }): Promise<ActionResult> {
-  if (!["review_all", "ask_risky", "auto", "turbo"].includes(input.mode)) return fail("Unknown mode")
+  if (!["review_all", "ask_risky", "auto", "turbo"].includes(input.mode))
+    return fail("Unknown mode")
   const access = await getRoomAccess(input.orgSlug, input.roomId)
   if (!access) return fail("Room not found")
-  if (access.roomRole === null && !access.canAdmin) return fail("Only people in this chat can change this")
+  if (access.roomRole === null && !access.canAdmin)
+    return fail("Only people in this chat can change this")
   const { error } = await createAdminClient()
     .from("rooms")
     .update({ execution_mode: input.mode, execution_mode_set_by: access.user.id })

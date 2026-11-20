@@ -25,7 +25,8 @@ function useCountdown(expiresAt: string | null) {
   const [left, setLeft] = useState(0)
   useEffect(() => {
     if (!expiresAt) return
-    const tick = () => setLeft(Math.max(0, Math.round((new Date(expiresAt).getTime() - Date.now()) / 1000)))
+    const tick = () =>
+      setLeft(Math.max(0, Math.round((new Date(expiresAt).getTime() - Date.now()) / 1000)))
     tick()
     const id = window.setInterval(tick, 1000)
     return () => window.clearInterval(id)
@@ -96,7 +97,13 @@ export function AddPhoneDialog({
       }
       const next = result.data as unknown as Pairing
       setPairing(next)
-      setQr(await QRCode.toDataURL(next.deepLink, { margin: 1, width: 360, color: { dark: "#0b0b0c", light: "#ffffff" } }).catch(() => null))
+      setQr(
+        await QRCode.toDataURL(next.deepLink, {
+          margin: 1,
+          width: 360,
+          color: { dark: "#0b0b0c", light: "#ffffff" },
+        }).catch(() => null),
+      )
       setStep("code")
     })
   }
@@ -139,7 +146,9 @@ export function AddPhoneDialog({
               >
                 <ScanLine aria-hidden className="h-5 w-5 shrink-0 text-muted" />
                 <span>
-                  <span className="block text-[15px] font-medium text-text">{pending ? "Making a code…" : "Yes, sign in"}</span>
+                  <span className="block text-[15px] font-medium text-text">
+                    {pending ? "Making a code…" : "Yes, sign in"}
+                  </span>
                   <span className="block text-[13px] text-muted">Show a one-time code</span>
                 </span>
               </button>
@@ -163,15 +172,21 @@ export function AddPhoneDialog({
           <div className="mt-6 space-y-4">
             <div className="rounded-xl border border-line bg-ink p-4">
               <p className="text-[15px] font-medium text-text">Android</p>
-              <p className="mt-1 text-[13px] text-muted">Open this on the phone to download the app, then install it.</p>
-              <a href={ANDROID_APK} className="mt-3 inline-flex text-[13px] font-medium text-accent hover:underline">
+              <p className="mt-1 text-[13px] text-muted">
+                Open this on the phone to download the app, then install it.
+              </p>
+              <a
+                href={ANDROID_APK}
+                className="mt-3 inline-flex text-[13px] font-medium text-accent hover:underline"
+              >
                 Download for Android ↗
               </a>
             </div>
             <div className="rounded-xl border border-line bg-ink p-4">
               <p className="text-[15px] font-medium text-text">iPhone</p>
               <p className="mt-1 text-[13px] text-muted">
-                Open Sayabot in Safari on the phone, tap Share, then <span className="text-text">Add to Home Screen</span>.
+                Open Sayabot in Safari on the phone, tap Share, then{" "}
+                <span className="text-text">Add to Home Screen</span>.
               </p>
             </div>
             <div className="flex justify-between gap-2">
@@ -189,7 +204,11 @@ export function AddPhoneDialog({
           <div className="mt-6">
             <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-start">
               {qr ? (
-                <img src={qr} alt="Scan with the phone's camera to sign in" className="h-40 w-40 shrink-0 rounded-lg bg-white p-1" />
+                <img
+                  src={qr}
+                  alt="Scan with the phone's camera to sign in"
+                  className="h-40 w-40 shrink-0 rounded-lg bg-white p-1"
+                />
               ) : null}
               <div className="min-w-0 text-center sm:text-left">
                 <p className="text-[13px] text-muted">On the phone, open Sayabot and tap</p>
@@ -201,7 +220,8 @@ export function AddPhoneDialog({
                   {pairing.code}
                 </p>
                 <p className="mt-1 text-[12px] text-faint">
-                  {qr ? "Or scan the square with the phone's camera. " : ""}Works once · {left > 0 ? `${mm}:${ss} left` : "expired"}
+                  {qr ? "Or scan the square with the phone's camera. " : ""}Works once ·{" "}
+                  {left > 0 ? `${mm}:${ss} left` : "expired"}
                 </p>
               </div>
             </div>
@@ -210,7 +230,8 @@ export function AddPhoneDialog({
               Waiting for the phone…
             </div>
             <p className="mt-3 text-[12px] text-faint">
-              If the app asks for a server, use <span className="select-all text-muted">{pairing.server}</span>.
+              If the app asks for a server, use{" "}
+              <span className="select-all text-muted">{pairing.server}</span>.
             </p>
             {pairing.reach === "same-wifi" || pairing.reach === "this-computer" ? (
               <div className="mt-3 rounded-lg border border-line bg-ink px-3 py-2.5 text-[12px] leading-relaxed text-muted">
@@ -221,13 +242,15 @@ export function AddPhoneDialog({
                   </p>
                 ) : (
                   <p>
-                    This computer has no address a phone can open. Connect it to Wi-Fi, or use a tunnel.
+                    This computer has no address a phone can open. Connect it to Wi-Fi, or use a
+                    tunnel.
                   </p>
                 )}
                 <p className="mt-1.5">
                   To use the phone from anywhere, free: run{" "}
                   <code className="select-all rounded bg-panel px-1 py-0.5 font-mono text-[11px] text-text">
-                    cloudflared tunnel --url {pairing.server.replace(/^https?:\/\/[^/:]+/, "http://localhost")}
+                    cloudflared tunnel --url{" "}
+                    {pairing.server.replace(/^https?:\/\/[^/:]+/, "http://localhost")}
                   </code>{" "}
                   then open Sayabot at the https address it prints and add the phone from there.
                 </p>

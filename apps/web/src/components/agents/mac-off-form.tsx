@@ -6,9 +6,17 @@ import { Select } from "@/components/ui/field"
 import { showToast } from "@/components/ui/toast"
 
 const OPTIONS: Array<[string, string, string]> = [
-  ["auto", "Answer from Sayabot, or wait", "Uses this bot's API key or Sayabot's own model when it has one; otherwise waits for your Mac."],
+  [
+    "auto",
+    "Answer from Sayabot, or wait",
+    "Uses this bot's API key or Sayabot's own model when it has one; otherwise waits for your Mac.",
+  ],
   ["server", "Answer from Sayabot", "Replies right away from the server while your Mac is off."],
-  ["wait", "Wait for my Mac", "Keeps the message for up to 15 minutes and answers once Sayabot for Mac is open again."],
+  [
+    "wait",
+    "Wait for my Mac",
+    "Keeps the message for up to 15 minutes and answers once Sayabot for Mac is open again.",
+  ],
   ["fail", "Tell me it's off", "Says your Mac is off, so you can open it and retry."],
 ]
 
@@ -44,7 +52,10 @@ export function MacOffForm({
           startTransition(async () => {
             const result = await setAgentWhenMacOffAction({ orgSlug, agentId, whenMacOff: next })
             if (!result.ok) setChoice(prev)
-            showToast({ tone: result.ok ? "success" : "danger", message: result.ok ? (result.message ?? "Saved") : (result.error ?? "Could not save") })
+            showToast({
+              tone: result.ok ? "success" : "danger",
+              message: result.ok ? (result.message ?? "Saved") : (result.error ?? "Could not save"),
+            })
           })
         }}
       >

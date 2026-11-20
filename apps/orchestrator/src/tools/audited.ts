@@ -46,7 +46,10 @@ export function redactValue(value: unknown, scrub?: (s: string) => string, depth
   if (Array.isArray(value)) return value.map((v) => redactValue(v, scrub, depth + 1))
   if (value && typeof value === "object") {
     return Object.fromEntries(
-      Object.entries(value as Record<string, unknown>).map(([k, v]) => [k, redactValue(v, scrub, depth + 1)]),
+      Object.entries(value as Record<string, unknown>).map(([k, v]) => [
+        k,
+        redactValue(v, scrub, depth + 1),
+      ]),
     )
   }
   return value
@@ -107,7 +110,8 @@ export function toAuditedTools(specs: ToolSpec[], runtime: ToolRuntime): ToolSet
       inputSchema: spec.schema,
       execute: async (args: unknown, options) => {
         const input = (args ?? {}) as Record<string, unknown>
-        if (options.abortSignal?.aborted) return { ok: false, error: "Run stopped before tool execution" }
+        if (options.abortSignal?.aborted)
+          return { ok: false, error: "Run stopped before tool execution" }
         const dangerous = isDangerous(spec, input) || (await roomReviewsEveryStep(runtime.roomId))
         const storedArgs = forStorage(input, runtime.scrub)
         const [row] = await getDb()
@@ -188,7 +192,9 @@ export function toAuditedTools(specs: ToolSpec[], runtime: ToolRuntime): ToolSet
               .set({
                 status: "rejected",
                 resolvedAt: new Date(),
-                error: signal?.aborted ? "Run stopped while awaiting approval" : "Approval expired or was rejected",
+                error: signal?.aborted
+                  ? "Run stopped while awaiting approval"
+                  : "Approval expired or was rejected",
               })
               .where(eq(toolCalls.id, row.id))
             await broadcast(runtime.roomId, {
@@ -234,7 +240,11 @@ export function toAuditedTools(specs: ToolSpec[], runtime: ToolRuntime): ToolSet
           const scrubbedError = runtime.scrub ? runtime.scrub(message) : message
           await getDb()
             .update(toolCalls)
-            .set({ status: "error", error: redactSecrets(scrubbedError).text, resolvedAt: new Date() })
+            .set({
+              status: "error",
+              error: redactSecrets(scrubbedError).text,
+              resolvedAt: new Date(),
+            })
             .where(eq(toolCalls.id, row.id))
           await broadcast(runtime.roomId, {
             type: "tool.finished",

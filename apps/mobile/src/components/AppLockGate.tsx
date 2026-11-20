@@ -18,7 +18,10 @@ export function AppLockGate({ children }: { children: ReactNode }) {
   const checkedOnce = useRef(false)
 
   const unlock = useCallback(async () => {
-    const res = await LocalAuthentication.authenticateAsync({ promptMessage: "Unlock Sayabot", fallbackLabel: "Use passcode" })
+    const res = await LocalAuthentication.authenticateAsync({
+      promptMessage: "Unlock Sayabot",
+      fallbackLabel: "Use passcode",
+    })
     if (res.success) setLocked(false)
   }, [])
 
@@ -47,7 +50,20 @@ export function AppLockGate({ children }: { children: ReactNode }) {
     <View style={{ flex: 1 }}>
       {children}
       {locked ? (
-        <View style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0, backgroundColor: theme.bg, alignItems: "center", justifyContent: "center", gap: 14, padding: 32 }}>
+        <View
+          style={{
+            position: "absolute",
+            top: 0,
+            bottom: 0,
+            left: 0,
+            right: 0,
+            backgroundColor: theme.bg,
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 14,
+            padding: 32,
+          }}
+        >
           <Lock size={40} color={theme.muted} />
           <Text variant="title" center>
             Sayabot is locked

@@ -37,9 +37,9 @@ export function messageFromRow(row: RawMessageRow, lookup: PersonLookup): Messag
     senderName:
       row.sender_type === "system"
         ? "system"
-        : agent?.displayName ??
+        : (agent?.displayName ??
           member?.displayName ??
-          (row.sender_type === "agent" ? "Removed agent" : "Former member"),
+          (row.sender_type === "agent" ? "Removed agent" : "Former member")),
     senderHandle: agent?.handle ?? null,
   }
 }

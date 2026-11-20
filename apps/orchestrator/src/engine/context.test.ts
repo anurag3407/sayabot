@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { AgentRow, ContextMessage, RoomRow } from "../runner/context"
-import {
-  buildEngineContext,
-  computeCanvasDiffSummary,
-  sortToolSpecs,
-} from "./context"
+import { buildEngineContext, computeCanvasDiffSummary, sortToolSpecs } from "./context"
 
 const mockAgent: AgentRow = {
   id: "agent-123",
@@ -108,14 +104,10 @@ describe("Engine Context Builder (E3)", () => {
         { slug: "run-tests", description: "Run test suite" },
         { slug: "build-page", description: "Build landing page" },
       ],
-      pinnedMemories: [
-        { id: "mem-1", title: "DB policy", body: "Staging DB is read-only" },
-      ],
+      pinnedMemories: [{ id: "mem-1", title: "DB policy", body: "Staging DB is read-only" }],
       volatileTail: {
         now: time1,
-        recalledMemories: [
-          { id: "mem-2", title: "User preference", body: "Anurag prefers pnpm" },
-        ],
+        recalledMemories: [{ id: "mem-2", title: "User preference", body: "Anurag prefers pnpm" }],
         canvasDiffs: [{ id: "canv-1", title: "API Docs", diffSummary: "+5 -2 lines" }],
         currentTrigger: "Run the tests.",
       },
@@ -130,14 +122,10 @@ describe("Engine Context Builder (E3)", () => {
         { slug: "build-page", description: "Build landing page" }, // different initial order
         { slug: "run-tests", description: "Run test suite" },
       ],
-      pinnedMemories: [
-        { id: "mem-1", title: "DB policy", body: "Staging DB is read-only" },
-      ],
+      pinnedMemories: [{ id: "mem-1", title: "DB policy", body: "Staging DB is read-only" }],
       volatileTail: {
         now: time2, // completely different now time
-        recalledMemories: [
-          { id: "mem-2", title: "User preference", body: "Anurag prefers pnpm" },
-        ],
+        recalledMemories: [{ id: "mem-2", title: "User preference", body: "Anurag prefers pnpm" }],
         canvasDiffs: [{ id: "canv-1", title: "API Docs", diffSummary: "+5 -2 lines" }],
         currentTrigger: "Run the tests.",
       },
@@ -148,8 +136,8 @@ describe("Engine Context Builder (E3)", () => {
     expect(res1.prefix).toEqual(res2.prefix)
 
     // Volatile tail message should reflect the differing timestamps
-    expect((res1.tail.content as string)).toContain("Current Time: 2026-11-07T10:00:00.000Z")
-    expect((res2.tail.content as string)).toContain("Current Time: 2026-11-07T18:45:22.123Z")
+    expect(res1.tail.content as string).toContain("Current Time: 2026-11-07T10:00:00.000Z")
+    expect(res2.tail.content as string).toContain("Current Time: 2026-11-07T18:45:22.123Z")
   })
 
   it("applies Anthropic cache breakpoints at system 1, system 2, and rolling run history", () => {
@@ -180,17 +168,23 @@ describe("Engine Context Builder (E3)", () => {
     // Breakpoint 1: System 1 (frozen)
     const sys1 = res.prefix[0]!
     expect(sys1.role).toBe("system")
-    expect((sys1.providerOptions as any)?.anthropic).toEqual({ cacheControl: { type: "ephemeral" } })
+    expect((sys1.providerOptions as any)?.anthropic).toEqual({
+      cacheControl: { type: "ephemeral" },
+    })
 
     // Breakpoint 2: System 2 (slow-changing)
     const sys2 = res.prefix[1]!
     expect(sys2.role).toBe("system")
-    expect((sys2.providerOptions as any)?.anthropic).toEqual({ cacheControl: { type: "ephemeral" } })
+    expect((sys2.providerOptions as any)?.anthropic).toEqual({
+      cacheControl: { type: "ephemeral" },
+    })
 
     // Breakpoint 3: Rolling last runHistory step
     const lastRunStep = res.prefix[res.prefix.length - 1]!
     expect(lastRunStep.role).toBe("tool")
-    expect((lastRunStep.providerOptions as any)?.anthropic).toEqual({ cacheControl: { type: "ephemeral" } })
+    expect((lastRunStep.providerOptions as any)?.anthropic).toEqual({
+      cacheControl: { type: "ephemeral" },
+    })
   })
 
   it("maps room history speakers correctly: other speakers -> user, self -> assistant", () => {
@@ -216,7 +210,13 @@ describe("Engine Context Builder (E3)", () => {
 
   it("never sends Anthropic-style cache controls to automatic-cache providers", () => {
     for (const provider of ["google", "openai", "openai-compatible"]) {
-      const context = buildEngineContext({ agent: mockAgent, room: mockRoom, provider, roomHistory: [], volatileTail: { now: "fixed" } })
+      const context = buildEngineContext({
+        agent: mockAgent,
+        room: mockRoom,
+        provider,
+        roomHistory: [],
+        volatileTail: { now: "fixed" },
+      })
       expect(context.prefix.every((message) => message.providerOptions === undefined)).toBe(true)
     }
   })

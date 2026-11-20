@@ -33,7 +33,13 @@ The page accepts `?template=<slug|id>` (from the Marketplace; template usable if
 
 ```typescript
 // apps/web/src/components/agents/new-bot-form.tsx:51
-const result = await createBotAction({ orgSlug, name, instructions: systemPrompt, templateId, roomId })
+const result = await createBotAction({
+  orgSlug,
+  name,
+  instructions: systemPrompt,
+  templateId,
+  roomId,
+})
 ```
 
 On success it toasts any warning (e.g. plan-gated computer) and `router.push`es to `result.data.path`.
@@ -63,15 +69,15 @@ On success it toasts any warning (e.g. plan-gated computer) and `router.push`es 
 
 Shared `validateAgentFields` (`agents.ts:40`) enforces one rule set for both actions:
 
-| Field | Rule |
-| :--- | :--- |
-| `handle` | lowercase, regex `/^[a-z][a-z0-9-]{0,38}$/` — "Use lowercase letters, numbers and hyphens, starting with a letter" |
-| reserved handles | `all_bots`, `human`, `system`, `moderator` ("That handle is reserved") |
-| `displayName` | 1–60 chars |
-| `params` | parseable JSON (`parseJsonObject` from `src/lib/actions/shared.ts`) |
-| `toolIds` | repeated form values filtered to strings (MCP server ids) |
-| `providerKeyId` + `model` | "A model id is required when a provider key is attached" (`kind === "llm"`) |
-| `webhookUrl` | "Webhook URL must start with http(s)://" — "External agents without a webhook connect over MCP from their owner's own client." |
+| Field                     | Rule                                                                                                                           |
+| :------------------------ | :----------------------------------------------------------------------------------------------------------------------------- |
+| `handle`                  | lowercase, regex `/^[a-z][a-z0-9-]{0,38}$/` — "Use lowercase letters, numbers and hyphens, starting with a letter"             |
+| reserved handles          | `all_bots`, `human`, `system`, `moderator` ("That handle is reserved")                                                         |
+| `displayName`             | 1–60 chars                                                                                                                     |
+| `params`                  | parseable JSON (`parseJsonObject` from `src/lib/actions/shared.ts`)                                                            |
+| `toolIds`                 | repeated form values filtered to strings (MCP server ids)                                                                      |
+| `providerKeyId` + `model` | "A model id is required when a provider key is attached" (`kind === "llm"`)                                                    |
+| `webhookUrl`              | "Webhook URL must start with http(s)://" — "External agents without a webhook connect over MCP from their owner's own client." |
 
 `createAgent` verifies the key belongs to the org, gates on plan (`planGate(orgId, "agents")`), generates a webhook secret for external+webhook agents (sealed with `sealSecret(secret, getKek())` into `webhook_secret_enc`), and appends the agent to `room_agents` positionally (max existing `position` + 1) when `roomId` given. Uniqueness violations (PG `23505`) return "@handle already exists". Success returns `{ agentId, kind, webhookSecret }` with a message that prioritizes the one-time secret ("Copy the webhook secret now."), then room join, then plain creation. `updateAgent` re-validates the same fields against the **existing** kind and audits `agent.updated`.
 
@@ -103,11 +109,11 @@ A server component querying with the admin client: the agent with `agent_compute
 
 Three admin-gated actions for `kind === "external"` agents only:
 
-| Action | Behaviour |
-| :--- | :--- |
+| Action                                          | Behaviour                                                                                                                                                                                                                     |
+| :---------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `issueAgentApiKey({ orgSlug, agentId, label })` | `generateAgentApiKey()` (`@sayabot/core/server`); stores only `prefix` + `key_hash` + `scopes: ["messages:write"]` in `agent_api_keys`; audits with last4; returns the raw token once ("Copy it now; it is not shown again"). |
-| `rotateWebhookSecret({ orgSlug, agentId })` | New `generateWebhookSecret()` sealed into `webhook_secret_enc` via `sealSecret(secret, getKek())`; returns the plaintext once with "Update the bot before it receives its next turn." |
-| `revokeAgentApiKey({ orgSlug, keyId })` | Sets `revoked_at`; verifies the key's agent belongs to the caller's org. |
+| `rotateWebhookSecret({ orgSlug, agentId })`     | New `generateWebhookSecret()` sealed into `webhook_secret_enc` via `sealSecret(secret, getKek())`; returns the plaintext once with "Update the bot before it receives its next turn."                                         |
+| `revokeAgentApiKey({ orgSlug, keyId })`         | Sets `revoked_at`; verifies the key's agent belongs to the caller's org.                                                                                                                                                      |
 
 ## 🎛️ Model Actions (`lib/actions/agents.ts` recap)
 

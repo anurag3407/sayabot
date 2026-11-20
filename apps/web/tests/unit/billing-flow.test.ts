@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("server-only", () => ({}))
 vi.mock("next/headers", () => ({
-  headers: async () => new Headers({ host: "sayabot.sayalabs.in", "x-forwarded-proto": "https" }),
+  headers: async () => new Headers({ host: "sayabot.example.com", "x-forwarded-proto": "https" }),
 }))
 vi.mock("@/lib/actions/shared", async () => {
   const actual =
@@ -97,7 +97,7 @@ function signedRequest(event: unknown, secret = "whsec_test") {
   const payload = JSON.stringify(event)
   const t = Math.floor(Date.now() / 1000)
   const v1 = createHmac("sha256", secret).update(`${t}.${payload}`).digest("hex")
-  return new Request("https://sayabot.sayalabs.in/api/billing/webhook", {
+  return new Request("https://sayabot.example.com/api/billing/webhook", {
     method: "POST",
     headers: { "stripe-signature": `t=${t},v1=${v1}` },
     body: payload,
@@ -121,10 +121,10 @@ describe("upgrading a workspace", () => {
     expect(body?.get("subscription_data[metadata][org_id]")).toBe("org-1")
     expect(body?.get("customer_email")).toBe("owner@acme.dev")
     expect(body?.get("success_url")).toBe(
-      "https://sayabot.sayalabs.in/acme/settings/billing?upgraded=pro",
+      "https://sayabot.example.com/acme/settings/billing?upgraded=pro",
     )
     expect(body?.get("cancel_url")).toBe(
-      "https://sayabot.sayalabs.in/acme/settings/billing?canceled=1",
+      "https://sayabot.example.com/acme/settings/billing?canceled=1",
     )
   })
 

@@ -8,11 +8,7 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { getCurrentUser } from "@/lib/auth"
 import { fail, field, ok } from "@/lib/actions/shared"
 import { safeNextPath } from "@/lib/safe-next"
-import {
-  sendMagicLinkEmail,
-  sendPasswordResetEmail,
-  sendVerificationEmail,
-} from "@/lib/email"
+import { sendMagicLinkEmail, sendPasswordResetEmail, sendVerificationEmail } from "@/lib/email"
 import type { ActionResult } from "@/lib/types"
 
 const emailSchema = z.string().trim().email()
@@ -149,7 +145,7 @@ export async function resendVerificationAction(
 ): Promise<ActionResult> {
   const email = field(formData, "email").toLowerCase()
   if (!emailSchema.safeParse(email).success) return fail("Enter a valid email address")
-  
+
   const admin = createAdminClient()
   const redirectTarget = await callbackUrl("/onboarding")
 

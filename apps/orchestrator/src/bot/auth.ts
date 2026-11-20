@@ -33,7 +33,10 @@ export function markAgentSeen(agentId: string, now = new Date()): void {
     .where(
       and(
         eq(agents.id, agentId),
-        or(isNull(agents.lastSeenAt), lt(agents.lastSeenAt, new Date(now.getTime() - SEEN_EVERY_MS))),
+        or(
+          isNull(agents.lastSeenAt),
+          lt(agents.lastSeenAt, new Date(now.getTime() - SEEN_EVERY_MS)),
+        ),
       ),
     )
     .catch(() => {})
@@ -77,7 +80,12 @@ export async function authenticateAgentKey(
   }
 
   // 2. Direct API Key path (mesh_ak_... or saaya_ak_... or sayabot_ak_...)
-  if (!token.startsWith("mesh_ak_") && !token.startsWith("saaya_ak_") && !token.startsWith("sayabot_ak_")) return null
+  if (
+    !token.startsWith("mesh_ak_") &&
+    !token.startsWith("saaya_ak_") &&
+    !token.startsWith("sayabot_ak_")
+  )
+    return null
   const prefix = agentKeyPrefix(token)
   const now = new Date()
 

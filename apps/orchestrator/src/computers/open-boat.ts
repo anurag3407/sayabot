@@ -8,7 +8,9 @@ import { applyBoatDecision } from "./apply-boat"
 import { BoatClient } from "./boat"
 
 /** The person's own Boat key wins. The Cloud relay token is used only when they have none. */
-export async function boatTokenForOrg(orgId: string): Promise<{ token: string; source: "own" | "included" } | null> {
+export async function boatTokenForOrg(
+  orgId: string,
+): Promise<{ token: string; source: "own" | "included" } | null> {
   const [settings] = await getDb()
     .select({
       ciphertext: orgComputerSettings.boatCiphertext,
@@ -21,7 +23,10 @@ export async function boatTokenForOrg(orgId: string): Promise<{ token: string; s
   let own: string | null = null
   if (settings?.ciphertext && settings.iv && settings.tag) {
     try {
-      own = decryptSecret({ ciphertext: settings.ciphertext, iv: settings.iv, tag: settings.tag }, getEnv().MESH_KEK)
+      own = decryptSecret(
+        { ciphertext: settings.ciphertext, iv: settings.iv, tag: settings.tag },
+        getEnv().MESH_KEK,
+      )
     } catch {
       own = null
     }

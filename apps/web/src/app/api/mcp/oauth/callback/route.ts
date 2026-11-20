@@ -24,7 +24,10 @@ export async function GET(request: Request) {
   }
 
   const user = await getCurrentUser()
-  if (!user) return NextResponse.redirect(new URL(`/login?next=${encodeURIComponent(url.pathname + url.search)}`, appUrl))
+  if (!user)
+    return NextResponse.redirect(
+      new URL(`/login?next=${encodeURIComponent(url.pathname + url.search)}`, appUrl),
+    )
 
   const state = url.searchParams.get("state") ?? ""
   const serverId = serverIdFromMcpOAuthState(state)
@@ -37,21 +40,27 @@ export async function GET(request: Request) {
     .eq("id", serverId)
     .maybeSingle()
   const slug = (row as { orgs?: { slug?: string } } | null)?.orgs?.slug ?? null
-  if (!row || !slug || row.auth_kind !== "oauth") return back(null, { signin_error: "That connection no longer exists." })
+  if (!row || !slug || row.auth_kind !== "oauth")
+    return back(null, { signin_error: "That connection no longer exists." })
 
   const access = await getOrgAccess(slug, { user })
-  if (!access || !isOrgAdmin(access.role)) return back(slug, { signin_error: "Only workspace admins can connect apps." })
+  if (!access || !isOrgAdmin(access.role))
+    return back(slug, { signin_error: "Only workspace admins can connect apps." })
 
   const vendorError = url.searchParams.get("error")
   if (vendorError) {
     const detail = url.searchParams.get("error_description")
     return back(slug, {
-      signin_error: vendorError === "access_denied" ? `${row.name} sign-in was cancelled.` : `${row.name}: ${detail || vendorError}`,
+      signin_error:
+        vendorError === "access_denied"
+          ? `${row.name} sign-in was cancelled.`
+          : `${row.name}: ${detail || vendorError}`,
     })
   }
   const code = url.searchParams.get("code")
   const saved = readMcpOAuth(row)
-  if (!code || !saved) return back(slug, { signin_error: `${row.name} sign-in expired. Start it again.` })
+  if (!code || !saved)
+    return back(slug, { signin_error: `${row.name} sign-in expired. Start it again.` })
 
   try {
     await completeMcpOAuth({
@@ -64,10 +73,15 @@ export async function GET(request: Request) {
       persist: persistMcpOAuth(row.id),
     })
   } catch (error) {
-    return back(slug, { signin_error: `${row.name}: ${error instanceof Error ? error.message : "sign-in failed"}` })
+    return back(slug, {
+      signin_error: `${row.name}: ${error instanceof Error ? error.message : "sign-in failed"}`,
+    })
   }
 
-  await admin.from("mcp_servers").update({ auth_status: "ok", updated_at: new Date().toISOString() }).eq("id", row.id)
+  await admin
+    .from("mcp_servers")
+    .update({ auth_status: "ok", updated_at: new Date().toISOString() })
+    .eq("id", row.id)
   await audit({
     orgId: row.org_id,
     actorId: access.user.id,
@@ -77,5 +91,8 @@ export async function GET(request: Request) {
   })
   const test = await listMcpTools(slug, row.id)
   const tools = (test.data as { tools?: unknown[] } | undefined)?.tools
-  return back(slug, { connected: row.name, ...(Array.isArray(tools) ? { tools: String(tools.length) } : {}) })
+  return back(slug, {
+    connected: row.name,
+    ...(Array.isArray(tools) ? { tools: String(tools.length) } : {}),
+  })
 }

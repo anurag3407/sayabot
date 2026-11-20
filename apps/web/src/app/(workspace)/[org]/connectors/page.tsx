@@ -41,9 +41,7 @@ export default async function ConnectorsPage({
     enabled: s.enabled,
     catalogApp: s.catalog_app,
     signIn:
-      s.auth_kind === "oauth"
-        ? ((s.auth_status ?? "ok") as "ok" | "pending" | "signed_out")
-        : null,
+      s.auth_kind === "oauth" ? ((s.auth_status ?? "ok") as "ok" | "pending" | "signed_out") : null,
   }))
 
   return (

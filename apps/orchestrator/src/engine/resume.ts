@@ -12,11 +12,7 @@ export interface StaleRecoveryResult {
 /**
  * Builds a deterministic idempotency key for a tool call within a run step.
  */
-export function buildToolIdempotencyKey(
-  runId: string,
-  stepIdx: number,
-  callIdx: number,
-): string {
+export function buildToolIdempotencyKey(runId: string, stepIdx: number, callIdx: number): string {
   return `${runId}:${stepIdx}:${callIdx}`
 }
 
@@ -24,7 +20,10 @@ export function buildToolIdempotencyKey(
  * Parks a running Engine v2 turn when waiting on external input (approvals > 30s, ask cards).
  * Frees worker resources and sets agent_runs.status = 'waiting'.
  */
-export async function parkRun(runId: string, reason: "approval" | "ask_card" | "quota"): Promise<void> {
+export async function parkRun(
+  runId: string,
+  reason: "approval" | "ask_card" | "quota",
+): Promise<void> {
   const db = getDb()
 
   const [run] = await db
@@ -58,11 +57,7 @@ export async function parkRun(runId: string, reason: "approval" | "ask_card" | "
 export async function resumeRun(runId: string): Promise<boolean> {
   const db = getDb()
 
-  const [run] = await db
-    .select()
-    .from(agentRuns)
-    .where(eq(agentRuns.id, runId))
-    .limit(1)
+  const [run] = await db.select().from(agentRuns).where(eq(agentRuns.id, runId)).limit(1)
 
   if (!run || (run.status !== "waiting" && run.status !== "running")) {
     return false

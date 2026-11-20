@@ -78,9 +78,7 @@ export function useRoomRealtime(args: {
       : null,
   )
   const [presence, setPresence] = useState<PresencePerson[]>([])
-  const [threadCounts, setThreadCounts] = useState<Record<string, number>>(
-    args.initialThreadCounts,
-  )
+  const [threadCounts, setThreadCounts] = useState<Record<string, number>>(args.initialThreadCounts)
   const [runActivity, setRunActivity] = useState<RunActivityState | null>(null)
   const [connection, setConnection] = useState<Connection>("connecting")
   const [hasOlder, setHasOlder] = useState(args.initialMessages.length >= MESSAGE_PAGE_SIZE)
@@ -141,11 +139,7 @@ export function useRoomRealtime(args: {
   const refreshMessage = useCallback(
     async (messageId: string) => {
       const supabase = supabaseRef.current
-      const { data } = await supabase
-        .from("messages")
-        .select("*")
-        .eq("id", messageId)
-        .maybeSingle()
+      const { data } = await supabase.from("messages").select("*").eq("id", messageId).maybeSingle()
       if (data) mergeMessage(messageFromRow(data as RawMessageRow, lookupRef.current), true)
     },
     [mergeMessage],
@@ -262,282 +256,299 @@ export function useRoomRealtime(args: {
       })
       channelRef.current = channel
 
-    const applyPresence = () => {
-      const state = channel.presenceState<PresenceMeta>()
-      const byId = new Map<string, PresencePerson>()
-      for (const [key, entries] of Object.entries(state)) {
-        for (const meta of entries) {
-          const id = meta.userId || key
-          const current = byId.get(id)
-          byId.set(id, {
-            id,
-            name: meta.name || current?.name || "someone",
-            typing: Boolean(meta.typing) || Boolean(current?.typing),
-          })
+      const applyPresence = () => {
+        const state = channel.presenceState<PresenceMeta>()
+        const byId = new Map<string, PresencePerson>()
+        for (const [key, entries] of Object.entries(state)) {
+          for (const meta of entries) {
+            const id = meta.userId || key
+            const current = byId.get(id)
+            byId.set(id, {
+              id,
+              name: meta.name || current?.name || "someone",
+              typing: Boolean(meta.typing) || Boolean(current?.typing),
+            })
+          }
         }
+        setPresence([...byId.values()])
       }
-      setPresence([...byId.values()])
-    }
 
-    channel
-      .on("broadcast", { event: "message.delta" }, ({ payload }) => {
-        const event = eventPayload<{ messageId: string; seq: number; delta: string }>(payload)
-        const last = deltaSeq.current.get(event.messageId) ?? -1
-        if (event.seq <= last) return
-        deltaSeq.current.set(event.messageId, event.seq)
-        setMessages((prev) => {
-          const index = prev.findIndex((message) => message.id === event.messageId)
-          if (index === -1) {
-            return sortMessages([
+      channel
+        .on("broadcast", { event: "message.delta" }, ({ payload }) => {
+          const event = eventPayload<{ messageId: string; seq: number; delta: string }>(payload)
+          const last = deltaSeq.current.get(event.messageId) ?? -1
+          if (event.seq <= last) return
+          deltaSeq.current.set(event.messageId, event.seq)
+          setMessages((prev) => {
+            const index = prev.findIndex((message) => message.id === event.messageId)
+            if (index === -1) {
+              return sortMessages([
+                ...prev,
+                {
+                  id: event.messageId,
+                  roomId: roomIdRef.current,
+                  threadRootId: null,
+                  senderType: "agent",
+                  senderId: null,
+                  content: event.delta,
+                  status: "streaming",
+                  mentions: [],
+                  runId: null,
+                  metadata: {},
+                  createdAt: new Date().toISOString(),
+                  senderName: "agent",
+                  senderHandle: null,
+                },
+              ])
+            }
+            const current = prev[index]!
+            if (current.status !== "streaming") return prev
+            const copy = [...prev]
+            copy[index] = { ...current, content: current.content + event.delta }
+            return copy
+          })
+        })
+        .on("broadcast", { event: "message.done" }, ({ payload }) => {
+          const event = eventPayload<{ messageId: string; status: MessageView["status"] }>(payload)
+          setRunActivity(null)
+          setMessages((prev) => {
+            const index = prev.findIndex((message) => message.id === event.messageId)
+            if (index === -1) return prev
+            const copy = [...prev]
+            copy[index] = { ...copy[index]!, status: event.status }
+            return copy
+          })
+          void refreshMessage(event.messageId)
+        })
+        .on("broadcast", { event: "message.removed" }, ({ payload }) => {
+          // A failed attempt the server retried; the retry arrives as its own message.
+          const event = eventPayload<{ messageId: string }>(payload)
+          setMessages((prev) => prev.filter((message) => message.id !== event.messageId))
+        })
+        .on("broadcast", { event: "run.step" }, ({ payload }) => {
+          const event = eventPayload<{ runId: string; step: number; kind: string; label: string }>(
+            payload,
+          )
+          setRunActivity((prev) => ({
+            runId: event.runId,
+            step: event.step,
+            label: event.label,
+            status: prev?.status,
+            plan: prev?.plan,
+          }))
+        })
+        .on("broadcast", { event: "run.status" }, ({ payload }) => {
+          const event = eventPayload<{ runId: string; status: string }>(payload)
+          setRunActivity((prev) => ({
+            runId: event.runId,
+            step: prev?.step,
+            label: prev?.label,
+            status: event.status,
+            plan: prev?.plan,
+          }))
+        })
+        .on("broadcast", { event: "run.plan" }, ({ payload }) => {
+          const event = eventPayload<{
+            runId: string
+            plan: Array<{ id: string; title: string; status: string; note?: string }>
+          }>(payload)
+          setRunActivity((prev) => ({
+            runId: event.runId,
+            step: prev?.step,
+            label: prev?.label,
+            status: prev?.status,
+            plan: event.plan,
+          }))
+        })
+        .on("broadcast", { event: "turn.state" }, ({ payload }) => {
+          const event = eventPayload<TurnStateView>(payload)
+          if (event.threadRootId) return
+          setTurnState(event)
+        })
+        .on("broadcast", { event: "tool.approval_requested" }, ({ payload }) => {
+          const event = eventPayload<{
+            toolCallId: string
+            agentId: string
+            toolName: string
+            args: Record<string, unknown>
+          }>(payload)
+          setToolCalls((prev) => {
+            if (prev.some((call) => call.id === event.toolCallId)) {
+              return prev.map((call) =>
+                call.id === event.toolCallId ? { ...call, status: "pending_approval" } : call,
+              )
+            }
+            return sortToolCalls([
               ...prev,
               {
-                id: event.messageId,
-                roomId: roomIdRef.current,
-                threadRootId: null,
-                senderType: "agent",
-                senderId: null,
-                content: event.delta,
-                status: "streaming",
-                mentions: [],
+                id: event.toolCallId,
                 runId: null,
-                metadata: {},
+                roomId: roomIdRef.current,
+                messageId: null,
+                toolName: event.toolName,
+                args: event.args,
+                result: null,
+                status: "pending_approval",
+                approvedBy: null,
+                resolvedAt: null,
+                error: null,
                 createdAt: new Date().toISOString(),
-                senderName: "agent",
-                senderHandle: null,
               },
             ])
-          }
-          const current = prev[index]!
-          if (current.status !== "streaming") return prev
-          const copy = [...prev]
-          copy[index] = { ...current, content: current.content + event.delta }
-          return copy
+          })
         })
-      })
-      .on("broadcast", { event: "message.done" }, ({ payload }) => {
-        const event = eventPayload<{ messageId: string; status: MessageView["status"] }>(payload)
-        setRunActivity(null)
-        setMessages((prev) => {
-          const index = prev.findIndex((message) => message.id === event.messageId)
-          if (index === -1) return prev
-          const copy = [...prev]
-          copy[index] = { ...copy[index]!, status: event.status }
-          return copy
+        .on("broadcast", { event: "tool.approval_resolved" }, ({ payload }) => {
+          const event = eventPayload<{ toolCallId: string; status: "approved" | "rejected" }>(
+            payload,
+          )
+          setToolCalls((prev) =>
+            prev.map((call) =>
+              call.id === event.toolCallId ? { ...call, status: event.status } : call,
+            ),
+          )
         })
-        void refreshMessage(event.messageId)
-      })
-      .on("broadcast", { event: "message.removed" }, ({ payload }) => {
-        // A failed attempt the server retried; the retry arrives as its own message.
-        const event = eventPayload<{ messageId: string }>(payload)
-        setMessages((prev) => prev.filter((message) => message.id !== event.messageId))
-      })
-      .on("broadcast", { event: "run.step" }, ({ payload }) => {
-        const event = eventPayload<{ runId: string; step: number; kind: string; label: string }>(payload)
-        setRunActivity((prev) => ({
-          runId: event.runId,
-          step: event.step,
-          label: event.label,
-          status: prev?.status,
-          plan: prev?.plan,
-        }))
-      })
-      .on("broadcast", { event: "run.status" }, ({ payload }) => {
-        const event = eventPayload<{ runId: string; status: string }>(payload)
-        setRunActivity((prev) => ({
-          runId: event.runId,
-          step: prev?.step,
-          label: prev?.label,
-          status: event.status,
-          plan: prev?.plan,
-        }))
-      })
-      .on("broadcast", { event: "run.plan" }, ({ payload }) => {
-        const event = eventPayload<{ runId: string; plan: Array<{ id: string; title: string; status: string; note?: string }> }>(payload)
-        setRunActivity((prev) => ({
-          runId: event.runId,
-          step: prev?.step,
-          label: prev?.label,
-          status: prev?.status,
-          plan: event.plan,
-        }))
-      })
-      .on("broadcast", { event: "turn.state" }, ({ payload }) => {
-        const event = eventPayload<TurnStateView>(payload)
-        if (event.threadRootId) return
-        setTurnState(event)
-      })
-      .on("broadcast", { event: "tool.approval_requested" }, ({ payload }) => {
-        const event = eventPayload<{
-          toolCallId: string
-          agentId: string
-          toolName: string
-          args: Record<string, unknown>
-        }>(payload)
-        setToolCalls((prev) => {
-          if (prev.some((call) => call.id === event.toolCallId)) {
-            return prev.map((call) =>
-              call.id === event.toolCallId ? { ...call, status: "pending_approval" } : call,
-            )
-          }
-          return sortToolCalls([
-            ...prev,
-            {
-              id: event.toolCallId,
-              runId: null,
-              roomId: roomIdRef.current,
-              messageId: null,
-              toolName: event.toolName,
-              args: event.args,
-              result: null,
-              status: "pending_approval",
-              approvedBy: null,
-              resolvedAt: null,
-              error: null,
-              createdAt: new Date().toISOString(),
-            },
-          ])
-        })
-      })
-      .on("broadcast", { event: "tool.approval_resolved" }, ({ payload }) => {
-        const event = eventPayload<{ toolCallId: string; status: "approved" | "rejected" }>(payload)
-        setToolCalls((prev) =>
-          prev.map((call) =>
-            call.id === event.toolCallId ? { ...call, status: event.status } : call,
-          ),
-        )
-      })
-      .on("broadcast", { event: "tool.started" }, ({ payload }) => {
-        const event = eventPayload<{
-          toolCallId: string
-          agentId: string
-          toolName: string
-          args: Record<string, unknown>
-        }>(payload)
-        setToolCalls((prev) => {
-          if (prev.some((call) => call.id === event.toolCallId)) {
-            return prev
-          }
-          return sortToolCalls([
-            ...prev,
-            {
-              id: event.toolCallId,
-              runId: null,
-              roomId: roomIdRef.current,
-              messageId: null,
-              toolName: event.toolName,
-              args: event.args ?? {},
-              result: null,
-              status: "running",
-              approvedBy: null,
-              resolvedAt: null,
-              error: null,
-              createdAt: new Date().toISOString(),
-              liveOutput: "",
-            },
-          ])
-        })
-      })
-      .on("broadcast", { event: "tool.finished" }, ({ payload }) => {
-        const event = eventPayload<{
-          toolCallId: string
-          status: "done" | "error" | "rejected"
-          durationMs: number
-        }>(payload)
-        setToolCalls((prev) =>
-          prev.map((call) =>
-            call.id === event.toolCallId
-              ? {
-                  ...call,
-                  status: event.status === "error" ? "error" : event.status === "rejected" ? "rejected" : "done",
-                  resolvedAt: new Date().toISOString(),
-                }
-              : call,
-          ),
-        )
-      })
-      .on("broadcast", { event: "tool.output" }, ({ payload }) => {
-        const event = eventPayload<{
-          toolCallId: string
-          seq: number
-          chunk: string
-        }>(payload)
-        setToolCalls((prev) =>
-          prev.map((call) =>
-            call.id === event.toolCallId
-              ? {
-                  ...call,
-                  liveOutput: (call.liveOutput ?? "") + event.chunk,
-                }
-              : call,
-          ),
-        )
-      })
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "messages", filter: `room_id=eq.${args.roomId}` },
-        (payload) => {
-          if (payload.eventType === "DELETE") {
-            const old = payload.old as { id?: string }
-            if (old.id) setMessages((prev) => prev.filter((m) => m.id !== old.id))
-            return
-          }
-          const row = payload.new as RawMessageRow
-          mergeMessage(messageFromRow(row, lookupRef.current))
-          if (payload.eventType === "INSERT" && row.thread_root_id) {
-            setThreadCounts((prev) => ({
+        .on("broadcast", { event: "tool.started" }, ({ payload }) => {
+          const event = eventPayload<{
+            toolCallId: string
+            agentId: string
+            toolName: string
+            args: Record<string, unknown>
+          }>(payload)
+          setToolCalls((prev) => {
+            if (prev.some((call) => call.id === event.toolCallId)) {
+              return prev
+            }
+            return sortToolCalls([
               ...prev,
-              [row.thread_root_id as string]: (prev[row.thread_root_id as string] ?? 0) + 1,
-            }))
+              {
+                id: event.toolCallId,
+                runId: null,
+                roomId: roomIdRef.current,
+                messageId: null,
+                toolName: event.toolName,
+                args: event.args ?? {},
+                result: null,
+                status: "running",
+                approvedBy: null,
+                resolvedAt: null,
+                error: null,
+                createdAt: new Date().toISOString(),
+                liveOutput: "",
+              },
+            ])
+          })
+        })
+        .on("broadcast", { event: "tool.finished" }, ({ payload }) => {
+          const event = eventPayload<{
+            toolCallId: string
+            status: "done" | "error" | "rejected"
+            durationMs: number
+          }>(payload)
+          setToolCalls((prev) =>
+            prev.map((call) =>
+              call.id === event.toolCallId
+                ? {
+                    ...call,
+                    status:
+                      event.status === "error"
+                        ? "error"
+                        : event.status === "rejected"
+                          ? "rejected"
+                          : "done",
+                    resolvedAt: new Date().toISOString(),
+                  }
+                : call,
+            ),
+          )
+        })
+        .on("broadcast", { event: "tool.output" }, ({ payload }) => {
+          const event = eventPayload<{
+            toolCallId: string
+            seq: number
+            chunk: string
+          }>(payload)
+          setToolCalls((prev) =>
+            prev.map((call) =>
+              call.id === event.toolCallId
+                ? {
+                    ...call,
+                    liveOutput: (call.liveOutput ?? "") + event.chunk,
+                  }
+                : call,
+            ),
+          )
+        })
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "messages", filter: `room_id=eq.${args.roomId}` },
+          (payload) => {
+            if (payload.eventType === "DELETE") {
+              const old = payload.old as { id?: string }
+              if (old.id) setMessages((prev) => prev.filter((m) => m.id !== old.id))
+              return
+            }
+            const row = payload.new as RawMessageRow
+            mergeMessage(messageFromRow(row, lookupRef.current))
+            if (payload.eventType === "INSERT" && row.thread_root_id) {
+              setThreadCounts((prev) => ({
+                ...prev,
+                [row.thread_root_id as string]: (prev[row.thread_root_id as string] ?? 0) + 1,
+              }))
+            }
+          },
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "tool_calls",
+            filter: `room_id=eq.${args.roomId}`,
+          },
+          (payload) => {
+            if (payload.eventType === "DELETE") return
+            mergeToolCall(toolCallFromRow(payload.new as RawToolCallRow))
+          },
+        )
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "canvases", filter: `room_id=eq.${args.roomId}` },
+          (payload) => {
+            // Content edits arrive through the canvas sync; only the list of canvases refreshes here.
+            if (payload.eventType !== "UPDATE") scheduleRefresh()
+          },
+        )
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "meetings", filter: `room_id=eq.${args.roomId}` },
+          () => scheduleRefresh(),
+        )
+        .on("presence", { event: "sync" }, applyPresence)
+        .on("presence", { event: "join" }, applyPresence)
+        .on("presence", { event: "leave" }, applyPresence)
+        .subscribe(async (status) => {
+          if (disposed) return
+          if (status === "SUBSCRIBED") {
+            setConnection(navigator.onLine ? "connected" : "offline")
+            await channel.track({
+              userId: userRef.current.id,
+              name: userRef.current.name,
+              typing: false,
+            } satisfies PresenceMeta)
+          } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+            setConnection("error")
+          } else if (status === "CLOSED") {
+            setConnection("error")
           }
-        },
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "tool_calls", filter: `room_id=eq.${args.roomId}` },
-        (payload) => {
-          if (payload.eventType === "DELETE") return
-          mergeToolCall(toolCallFromRow(payload.new as RawToolCallRow))
-        },
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "canvases", filter: `room_id=eq.${args.roomId}` },
-        (payload) => {
-          // Content edits arrive through the canvas sync; only the list of canvases refreshes here.
-          if (payload.eventType !== "UPDATE") scheduleRefresh()
-        },
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "meetings", filter: `room_id=eq.${args.roomId}` },
-        () => scheduleRefresh(),
-      )
-      .on("presence", { event: "sync" }, applyPresence)
-      .on("presence", { event: "join" }, applyPresence)
-      .on("presence", { event: "leave" }, applyPresence)
-      .subscribe(async (status) => {
-        if (disposed) return
-        if (status === "SUBSCRIBED") {
-          setConnection(navigator.onLine ? "connected" : "offline")
-          await channel.track({
-            userId: userRef.current.id,
-            name: userRef.current.name,
-            typing: false,
-          } satisfies PresenceMeta)
-        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-          setConnection("error")
-        } else if (status === "CLOSED") {
-          setConnection("error")
-        }
-      })
-
+        })
     })
 
     const onOffline = () => setConnection("offline")
     const onOnline = () => {
       // A short network drop can leave the channel joined, in which case no new SUBSCRIBED
       // event arrives and the room would look disconnected forever.
-      const joined = (channelRef.current as unknown as { state?: string } | null)?.state === "joined"
+      const joined =
+        (channelRef.current as unknown as { state?: string } | null)?.state === "joined"
       setConnection(joined ? "connected" : "connecting")
     }
     window.addEventListener("offline", onOffline)

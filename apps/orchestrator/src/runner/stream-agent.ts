@@ -1,5 +1,11 @@
 import { appendThinking, closeThinking, type ThinkingFold } from "@sayabot/core"
-import { stepCountIs, streamText, type LanguageModel, type LanguageModelUsage, type ToolSet } from "ai"
+import {
+  stepCountIs,
+  streamText,
+  type LanguageModel,
+  type LanguageModelUsage,
+  type ToolSet,
+} from "ai"
 
 export interface StreamAgentOptions {
   model: LanguageModel

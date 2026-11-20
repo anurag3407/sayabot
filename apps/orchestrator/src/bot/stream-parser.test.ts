@@ -6,7 +6,10 @@ describe("BotStreamParser", () => {
   it("parses NDJSON split across chunks", () => {
     const parser = new BotStreamParser("application/x-ndjson")
     expect(parser.push('{"delta":"hel')).toEqual({ deltas: [], done: false })
-    expect(parser.push('lo"}\n{"delta":" world"}\n')).toEqual({ deltas: ["hello", " world"], done: false })
+    expect(parser.push('lo"}\n{"delta":" world"}\n')).toEqual({
+      deltas: ["hello", " world"],
+      done: false,
+    })
     expect(parser.push('{"done":true}\n')).toEqual({ deltas: [], done: true })
   })
 

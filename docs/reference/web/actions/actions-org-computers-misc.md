@@ -120,6 +120,7 @@ Phone devices pair to a person via one-time codes in `device_pairings`:
   3. That URL with this machine's Wi-Fi IPv4 (192.168.x preferred) in place of `localhost`, keeping the port.
 
   `reach` is `"anywhere"` (a public host), `"same-wifi"` (a private address) or `"this-computer"` (nothing reachable). So a Mac running Sayabot itself hands out `http://192.168.x.x:3000` instead of `http://localhost:3000`.
+
 - `phonePairingStatusAction(input)` (`phones.ts:52`) — polls the pairing (own only) and reports `status` (an expired `waiting` reads as `expired`), `deviceName`, `platform`.
 - `revokePhoneAction(input)` (`phones.ts:69`) — own phones only; sets `status: "revoked"`, `revoked_at`, clears `device_token_hash`; audit `phone.revoked`.
 
@@ -127,16 +128,16 @@ Phone devices pair to a person via one-time codes in `device_pairings`:
 
 ## 🧾 Rows written by these actions
 
-| Table | Written by | Columns of note |
-| :--- | :--- | :--- |
-| `org_members` | `createOrg`, `setupWorkspaceAction`, `decideJoinRequestAction` | `role` ∈ `owner \| admin \| member`; the first member of a new workspace is always `owner`. Approving a join request writes `member` or `admin` only. |
-| `workspace_invites` | `createInviteLinkAction` (legacy `email` rows are only revoked) | `kind` ∈ `email \| link \| permanent`, `code`, `role`, `room_ids`, `max_uses` (1 for single-use links, `null` for permanent), `use_count`, `last_used_at`, `expires_at`, `revoked_at`, `created_by`. |
-| `workspace_join_requests` | `requestJoinAction`, `decideJoinRequestAction` | `status` ∈ `pending \| approved \| declined`, one row per `(invite_id, user_id)`, `role`, `room_ids`, `decided_by`, `decided_at`. |
-| `device_pairings` | phone pairing actions + `POST /api/mobile/pair` | `code_hash`, `status` ∈ `waiting \| paired \| revoked`, `device_name`, `platform`, `device_token_hash`, `expires_at`, `last_seen_at`, `revoked_at`. |
-| `memories` | `rememberAction` | `scope` ∈ `agent \| room \| org`, `kind: "fact"`, `source: "human"`, `confidence: 1.0`, `title`/`body` (secret-redacted), `tags`, `pinned`, `created_by_user_id`. |
-| `owner_facts` | `upsertFact` | Keyed by `(org_id, key, room_id)` — a `null` `room_id` is the workspace-wide row; `source` ∈ `answer \| manual`; `source_task_id` links inbox answers. |
-| `agent_computers` | `createBotAction`, start/stop actions | `profile`, `status` ∈ `none \| stopped \| running`, Docker volume name `saaya-bot-<agentId>`, `started_at`, `last_active_at`. |
-| `agent_templates` | `saveAgentAsTemplate` | Org-scoped slug, name/description/category, system prompt, parsed capabilities, `default_model`, `secret_slots`, `starter_tasks`. |
+| Table                     | Written by                                                      | Columns of note                                                                                                                                                                                      |
+| :------------------------ | :-------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `org_members`             | `createOrg`, `setupWorkspaceAction`, `decideJoinRequestAction`  | `role` ∈ `owner \| admin \| member`; the first member of a new workspace is always `owner`. Approving a join request writes `member` or `admin` only.                                                |
+| `workspace_invites`       | `createInviteLinkAction` (legacy `email` rows are only revoked) | `kind` ∈ `email \| link \| permanent`, `code`, `role`, `room_ids`, `max_uses` (1 for single-use links, `null` for permanent), `use_count`, `last_used_at`, `expires_at`, `revoked_at`, `created_by`. |
+| `workspace_join_requests` | `requestJoinAction`, `decideJoinRequestAction`                  | `status` ∈ `pending \| approved \| declined`, one row per `(invite_id, user_id)`, `role`, `room_ids`, `decided_by`, `decided_at`.                                                                    |
+| `device_pairings`         | phone pairing actions + `POST /api/mobile/pair`                 | `code_hash`, `status` ∈ `waiting \| paired \| revoked`, `device_name`, `platform`, `device_token_hash`, `expires_at`, `last_seen_at`, `revoked_at`.                                                  |
+| `memories`                | `rememberAction`                                                | `scope` ∈ `agent \| room \| org`, `kind: "fact"`, `source: "human"`, `confidence: 1.0`, `title`/`body` (secret-redacted), `tags`, `pinned`, `created_by_user_id`.                                    |
+| `owner_facts`             | `upsertFact`                                                    | Keyed by `(org_id, key, room_id)` — a `null` `room_id` is the workspace-wide row; `source` ∈ `answer \| manual`; `source_task_id` links inbox answers.                                               |
+| `agent_computers`         | `createBotAction`, start/stop actions                           | `profile`, `status` ∈ `none \| stopped \| running`, Docker volume name `saaya-bot-<agentId>`, `started_at`, `last_active_at`.                                                                        |
+| `agent_templates`         | `saveAgentAsTemplate`                                           | Org-scoped slug, name/description/category, system prompt, parsed capabilities, `default_model`, `secret_slots`, `starter_tasks`.                                                                    |
 
 ## 🧭 What onboarding leaves behind
 

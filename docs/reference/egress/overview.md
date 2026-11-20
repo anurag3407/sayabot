@@ -10,10 +10,10 @@ Source files: `apps/egress/src/index.ts`, `apps/egress/src/ssrf.ts` (re-export o
 
 The process starts two servers (`index.ts:12-15`, `54-56`, `340-342`):
 
-| Listener | Port env (default) | Purpose |
-| :--- | :--- | :--- |
-| Proxy server (raw `node:http`) | `PROXY_PORT` / **8080** | agent traffic: absolute-form HTTP proxying + CONNECT tunnels |
-| Admin server (Hono) | `ADMIN_PORT` / **8081** | cache flush, identity invalidation — computerd's management handle |
+| Listener                       | Port env (default)      | Purpose                                                            |
+| :----------------------------- | :---------------------- | :----------------------------------------------------------------- |
+| Proxy server (raw `node:http`) | `PROXY_PORT` / **8080** | agent traffic: absolute-form HTTP proxying + CONNECT tunnels       |
+| Admin server (Hono)            | `ADMIN_PORT` / **8081** | cache flush, identity invalidation — computerd's management handle |
 
 Both read `ORCHESTRATOR_URL` (default `http://orchestrator:4000`) and `ORCHESTRATOR_INTERNAL_SECRET` for orchestrator callbacks.
 
@@ -92,9 +92,7 @@ lookup: (_hostname, opts, cb) => {
 servername: host,
 ```
 
-The attacker's classic move — a DNS record that alternates between a public IP and `169.254.169.254` — fails twice: the pre-check rejects any resolution containing a private IP, and even a change *between* check and connect is irrelevant because the connection dials the already-vetted address.
-8. **Response scrubbing**: response headers are always scrubbed; the body is scrubbed only when `content-type` contains `text`, `json`, or `xml`, with `content-length` recomputed after rewriting (`index.ts:258-284`). See [scrub-and-swapper.md](scrub-and-swapper.md) for the replacement rules (raw + base64 + URL-encoded forms).
-9. Upstream connection errors answer `502 saaya: upstream connection failed (…)`; unexpected handler exceptions answer `500 saaya: egress internal error (…)`.
+The attacker's classic move — a DNS record that alternates between a public IP and `169.254.169.254` — fails twice: the pre-check rejects any resolution containing a private IP, and even a change _between_ check and connect is irrelevant because the connection dials the already-vetted address. 8. **Response scrubbing**: response headers are always scrubbed; the body is scrubbed only when `content-type` contains `text`, `json`, or `xml`, with `content-length` recomputed after rewriting (`index.ts:258-284`). See [scrub-and-swapper.md](scrub-and-swapper.md) for the replacement rules (raw + base64 + URL-encoded forms). 9. Upstream connection errors answer `502 saaya: upstream connection failed (…)`; unexpected handler exceptions answer `500 saaya: egress internal error (…)`.
 
 ### CONNECT tunnels (`index.ts:305-338`)
 
@@ -119,16 +117,16 @@ The deny list is broader than the classic RFC 1918 set:
 
 **IPv4**
 
-| Range | Meaning |
-| :--- | :--- |
-| `127.0.0.0/8`, `::1`, `localhost`, `::` | loopback |
-| `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16` | RFC 1918 private |
-| `169.254.0.0/16` | link-local **and cloud metadata endpoints** (`169.254.169.254`) |
-| `100.64.0.0/10` | CGNAT (Tailscale-style overlays) |
-| `0.0.0.0/8` | "this network" |
-| `198.18.0.0/15` | RFC 2544 benchmarking |
-| `192.0.2.0/24`, `198.51.100.0/24`, `203.0.113.0/24` | TEST-NET documentation ranges |
-| `224.0.0.0/4` and up (`a >= 224`) | multicast + reserved; `255.255.255.255` broadcast |
+| Range                                               | Meaning                                                         |
+| :-------------------------------------------------- | :-------------------------------------------------------------- |
+| `127.0.0.0/8`, `::1`, `localhost`, `::`             | loopback                                                        |
+| `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`     | RFC 1918 private                                                |
+| `169.254.0.0/16`                                    | link-local **and cloud metadata endpoints** (`169.254.169.254`) |
+| `100.64.0.0/10`                                     | CGNAT (Tailscale-style overlays)                                |
+| `0.0.0.0/8`                                         | "this network"                                                  |
+| `198.18.0.0/15`                                     | RFC 2544 benchmarking                                           |
+| `192.0.2.0/24`, `198.51.100.0/24`, `203.0.113.0/24` | TEST-NET documentation ranges                                   |
+| `224.0.0.0/4` and up (`a >= 224`)                   | multicast + reserved; `255.255.255.255` broadcast               |
 
 **IPv6** (`parseIpv6Words` handles `::` expansion and IPv4-embedded forms): multicast `ff00::/8`; unspecified/loopback; **IPv4-mapped** `::ffff:a.b.c.d`, **IPv4-compatible** `::a.b.c.d`, **NAT64** `64:ff9b::/96`, and **6to4** `2002::/16` (all recursed into the IPv4 check on the embedded address); link-local `fe80::/10`; unique-local `fc00::/7`; discard-only `100::/64`; documentation `2001:db8::/32`. Unparseable IPv6 is treated as private (fail closed), as is anything that is not a valid IP.
 

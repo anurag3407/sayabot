@@ -47,28 +47,14 @@ const taskMutateSchema = z.object({
   assigneeAgentId: z.string().uuid().nullable().optional(),
   dueAt: z.string().nullable().optional(),
   unblockNeeds: z
-    .enum([
-      "human_answer",
-      "another_agent",
-      "credential",
-      "external_access",
-      "time",
-      "other",
-    ])
+    .enum(["human_answer", "another_agent", "credential", "external_access", "time", "other"])
     .nullable()
     .optional(),
   unblockDetail: z.string().nullable().optional(),
   blockedBy: z.array(z.string().uuid()).nullable().optional(),
   outcome: z
     .object({
-      kind: z.enum([
-        "artifact",
-        "submission",
-        "external_change",
-        "decision",
-        "none",
-        "legacy",
-      ]),
+      kind: z.enum(["artifact", "submission", "external_change", "decision", "none", "legacy"]),
       ref: z.string().nullable().optional(),
     })
     .nullable()
@@ -107,7 +93,9 @@ const testDocumentOcrSchema = z.object({
   provider: z.string().optional(),
   apiKey: z.string().optional(),
   baseUrl: z.string().optional(),
-  source: z.string().default("https://raw.githubusercontent.com/DS4SD/docling/main/tests/data/2206.01062.pdf"),
+  source: z
+    .string()
+    .default("https://raw.githubusercontent.com/DS4SD/docling/main/tests/data/2206.01062.pdf"),
 })
 
 export function createApp() {
@@ -132,11 +120,7 @@ export function createApp() {
     const parsed = roomMessageSchema.safeParse(body)
     if (!parsed.success) return c.json({ error: "invalid body" }, 400)
     const message = await loadMessage(parsed.data.messageId)
-    if (
-      !message ||
-      message.roomId !== parsed.data.roomId ||
-      message.senderType !== "human"
-    ) {
+    if (!message || message.roomId !== parsed.data.roomId || message.senderType !== "human") {
       return c.json({ error: "message not found or not a human message" }, 404)
     }
     await interruptRoom(parsed.data.roomId)
@@ -152,7 +136,8 @@ export function createApp() {
       raw?: string
     } | null
     const platform = body?.platform
-    if (platform !== "telegram" && platform !== "whatsapp") return c.json({ error: "unsupported" }, 400)
+    if (platform !== "telegram" && platform !== "whatsapp")
+      return c.json({ error: "unsupported" }, 400)
     if (!body?.connectorId || typeof body.raw !== "string" || body.raw.length > 100_000) {
       return c.json({ error: "invalid body" }, 400)
     }
@@ -160,7 +145,9 @@ export function createApp() {
     if (events.length === 0) return c.json({ queued: false })
     const results = []
     for (const event of events.slice(0, 10)) {
-      results.push(await acceptInbound({ connectorId: body.connectorId, platform, key: body.key, ...event }))
+      results.push(
+        await acceptInbound({ connectorId: body.connectorId, platform, key: body.key, ...event }),
+      )
     }
     return c.json({ results })
   })
@@ -215,7 +202,11 @@ export function createApp() {
     try {
       const cli = await agentCliRunner(agent)
       if (cli) {
-        const out = await runCliOnce(cli, agent.systemPrompt || "", "Reply with the single word: ok")
+        const out = await runCliOnce(
+          cli,
+          agent.systemPrompt || "",
+          "Reply with the single word: ok",
+        )
         return c.json({
           text: redactSecrets(out.text).text.slice(0, 300),
           model: out.model,
@@ -248,7 +239,10 @@ export function createApp() {
     const started = Date.now()
     try {
       let { provider, apiKey, baseUrl } = parsed.data
-      if (parsed.data.orgId && (!provider || (!apiKey && provider !== "duckduckgo" && provider !== "searxng"))) {
+      if (
+        parsed.data.orgId &&
+        (!provider || (!apiKey && provider !== "duckduckgo" && provider !== "searxng"))
+      ) {
         const stored = await resolveToolCredential({ orgId: parsed.data.orgId, tool: "web_search" })
         if (stored) {
           provider = provider || stored.provider
@@ -285,7 +279,13 @@ export function createApp() {
     try {
       const { provider } = parsed.data
       let { apiKey, baseUrl } = parsed.data
-      if (parsed.data.orgId && (!apiKey && provider !== "duckduckgo" && provider !== "searxng" && provider !== "whoogle")) {
+      if (
+        parsed.data.orgId &&
+        !apiKey &&
+        provider !== "duckduckgo" &&
+        provider !== "searxng" &&
+        provider !== "whoogle"
+      ) {
         const stored = await resolveToolCredential({ orgId: parsed.data.orgId, tool: "web_search" })
         if (stored) {
           apiKey = apiKey || stored.apiKey
@@ -311,8 +311,15 @@ export function createApp() {
     const started = Date.now()
     try {
       let { provider, apiKey, baseUrl } = parsed.data
-      if (parsed.data.orgId && (!provider || (!apiKey && provider !== "docling" && provider !== "marker" && provider !== "tesseract"))) {
-        const stored = await resolveToolCredential({ orgId: parsed.data.orgId, tool: "document_extract" })
+      if (
+        parsed.data.orgId &&
+        (!provider ||
+          (!apiKey && provider !== "docling" && provider !== "marker" && provider !== "tesseract"))
+      ) {
+        const stored = await resolveToolCredential({
+          orgId: parsed.data.orgId,
+          tool: "document_extract",
+        })
         if (stored) {
           provider = provider || stored.provider
           apiKey = apiKey || stored.apiKey
@@ -333,7 +340,7 @@ export function createApp() {
         pageCount: out.pageCount,
         tablesCount: out.tablesCount,
         markdownPreview: out.markdown.slice(0, 300),
-        processingTimeMs: out.processingTimeMs || (Date.now() - started),
+        processingTimeMs: out.processingTimeMs || Date.now() - started,
         fallback: out.fallback,
         warning: out.warning,
       })
@@ -399,11 +406,7 @@ export function createApp() {
     }
     const runId = c.req.param("runId")
     const db = getDb()
-    const [run] = await db
-      .select()
-      .from(agentRuns)
-      .where(eq(agentRuns.id, runId))
-      .limit(1)
+    const [run] = await db.select().from(agentRuns).where(eq(agentRuns.id, runId)).limit(1)
 
     if (!run) return c.json({ error: "run not found" }, 404)
 

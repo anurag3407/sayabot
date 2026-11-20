@@ -18,7 +18,11 @@ export const DEFAULT_MODEL_PRICES: Record<string, ModelPrice> = {
   "gemini-3.6-flash": { inputPerMtok: 0.15, outputPerMtok: 0.6, cacheReadPerMtok: 0.0375 },
   "gemini-3.5-flash-high": { inputPerMtok: 0.15, outputPerMtok: 0.6, cacheReadPerMtok: 0.0375 },
   "gemini-3.5-flash-medium": { inputPerMtok: 0.15, outputPerMtok: 0.6, cacheReadPerMtok: 0.0375 },
-  "gemini-3.5-flash-extra-low": { inputPerMtok: 0.15, outputPerMtok: 0.6, cacheReadPerMtok: 0.0375 },
+  "gemini-3.5-flash-extra-low": {
+    inputPerMtok: 0.15,
+    outputPerMtok: 0.6,
+    cacheReadPerMtok: 0.0375,
+  },
   "gemini-3.5-flash": { inputPerMtok: 0.15, outputPerMtok: 0.6, cacheReadPerMtok: 0.0375 },
   "gemini-3-flash-preview": { inputPerMtok: 0.15, outputPerMtok: 0.6, cacheReadPerMtok: 0.0375 },
   "gemini-3.1-pro": { inputPerMtok: 1.25, outputPerMtok: 5.0, cacheReadPerMtok: 0.3125 },
@@ -144,10 +148,7 @@ export function normalizeModelKey(rawModel: string): string {
 }
 
 /** Resolves the pricing rate for a given model string */
-export function getModelPrice(
-  model: string,
-  overrides?: Record<string, ModelPrice>,
-): ModelPrice {
+export function getModelPrice(model: string, overrides?: Record<string, ModelPrice>): ModelPrice {
   const normalized = normalizeModelKey(model)
   if (overrides && overrides[normalized]) {
     return overrides[normalized]
@@ -202,10 +203,7 @@ export function computeUsageCost(
 }
 
 /** Computes the estimated dollars saved through prompt cache hits */
-export function computeUsageCacheSavings(
-  totals: UsageTokenTotals,
-  price: ModelPrice,
-): number {
+export function computeUsageCacheSavings(totals: UsageTokenTotals, price: ModelPrice): number {
   const cached = Math.max(0, totals.cachedInputTokens)
   if (cached === 0) return 0
 

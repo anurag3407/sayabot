@@ -39,7 +39,7 @@ jobs:
       - name: Build static landing export
         env:
           NEXT_PUBLIC_SITE_URL: "https://sayabot.tech"
-          NEXT_PUBLIC_APP_URL: "https://sayabot.sayalabs.in"
+          NEXT_PUBLIC_APP_URL: "https://sayabot.tech"
         run: |
           pnpm --filter @sayabot/landing build || pnpm --filter @sayabot/landing build
 

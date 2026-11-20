@@ -45,7 +45,10 @@ describe("runFittingTheModel", () => {
     const run = vi.fn().mockResolvedValueOnce(tooLarge).mockResolvedValueOnce(ok)
     expect(await runFittingTheModel(args, run)).toBe(ok)
     expect(run).toHaveBeenCalledTimes(2)
-    expect(run.mock.calls[1]?.[0].agent.params).toEqual({ other: 1, requestLimits: { "groq/gpt-oss": 8000 } })
+    expect(run.mock.calls[1]?.[0].agent.params).toEqual({
+      other: 1,
+      requestLimits: { "groq/gpt-oss": 8000 },
+    })
     expect(updates).toHaveLength(1)
     expect(deletes).toHaveLength(1)
     expect(broadcast).toHaveBeenCalledWith("r1", { type: "message.removed", messageId: "m1" })

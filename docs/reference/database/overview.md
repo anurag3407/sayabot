@@ -33,7 +33,12 @@ export function createDb(connectionString: string, options?: { max?: number }) {
   const max =
     options?.max ??
     (process.env.DATABASE_POOL_MAX ? parseInt(process.env.DATABASE_POOL_MAX, 10) : defaultMax)
-  const pool = new pg.Pool({ connectionString, max, idleTimeoutMillis: 10_000, connectionTimeoutMillis: 10_000 })
+  const pool = new pg.Pool({
+    connectionString,
+    max,
+    idleTimeoutMillis: 10_000,
+    connectionTimeoutMillis: 10_000,
+  })
   const db = drizzle(pool, { schema })
   return { pool, db }
 }
@@ -71,22 +76,22 @@ Consequences worth knowing:
 
 ### Where each table comes from
 
-| Origin | Tables |
-| :--- | :--- |
-| Drizzle snapshots (`migrations/0000`–`0003`) | Core identity, agents, rooms, messages, canvas, tools, ops tables (full list above) |
-| `sql/0005_ia.sql` | RLS + realtime for `tasks`, `task_comments`, `room_reads`, `meetings`, `room_schedules` |
-| `sql/0007_agent_reads.sql` | RLS lockdown for `agent_reads` |
-| `sql/0008_task_integrity.sql` | `task_events` table plus task integrity columns/trigger |
-| `sql/0009_bot_platform.sql` | `agent_templates`, `vault_secrets`, `agent_secret_grants`, `org_quotas`, `agent_computers`, `room_invites`, `oauth_clients`, `oauth_codes`, `oauth_tokens` |
-| `sql/0010_engine.sql` | `run_steps`, `run_transcripts`, `skills` |
-| `sql/0011_memory.sql` | `memories` |
-| `sql/0014_routines.sql` | `routines`, `routine_runs` |
-| `sql/0016_cognitive_memory.sql` | `memory_sources`, `open_loops`, `memory_links` |
-| `sql/0017_vector_providers.sql` | `vector_providers` |
-| `sql/0018_workspace_connectors.sql` | `workspace_connectors`, `agent_connector_grants` |
-| `sql/0019_owner_facts.sql` | `owner_facts` |
-| `sql/0020_bot_invites.sql` | `bot_invites` |
-| `sql/0021_device_pairings.sql`, `0024_desktop_hosts.sql`, `0026_mobile_push_and_files.sql`, `0030_local_apps_inbound.sql`, `0031_guest_account_merge.sql`, `0033_cloud_plans.sql`, `0034_computer_placement.sql` | devices/desktop/push/local-apps/merge-tickets/cloud-plans/computer-placement tables |
+| Origin                                                                                                                                                                                                           | Tables                                                                                                                                                     |
+| :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Drizzle snapshots (`migrations/0000`–`0003`)                                                                                                                                                                     | Core identity, agents, rooms, messages, canvas, tools, ops tables (full list above)                                                                        |
+| `sql/0005_ia.sql`                                                                                                                                                                                                | RLS + realtime for `tasks`, `task_comments`, `room_reads`, `meetings`, `room_schedules`                                                                    |
+| `sql/0007_agent_reads.sql`                                                                                                                                                                                       | RLS lockdown for `agent_reads`                                                                                                                             |
+| `sql/0008_task_integrity.sql`                                                                                                                                                                                    | `task_events` table plus task integrity columns/trigger                                                                                                    |
+| `sql/0009_bot_platform.sql`                                                                                                                                                                                      | `agent_templates`, `vault_secrets`, `agent_secret_grants`, `org_quotas`, `agent_computers`, `room_invites`, `oauth_clients`, `oauth_codes`, `oauth_tokens` |
+| `sql/0010_engine.sql`                                                                                                                                                                                            | `run_steps`, `run_transcripts`, `skills`                                                                                                                   |
+| `sql/0011_memory.sql`                                                                                                                                                                                            | `memories`                                                                                                                                                 |
+| `sql/0014_routines.sql`                                                                                                                                                                                          | `routines`, `routine_runs`                                                                                                                                 |
+| `sql/0016_cognitive_memory.sql`                                                                                                                                                                                  | `memory_sources`, `open_loops`, `memory_links`                                                                                                             |
+| `sql/0017_vector_providers.sql`                                                                                                                                                                                  | `vector_providers`                                                                                                                                         |
+| `sql/0018_workspace_connectors.sql`                                                                                                                                                                              | `workspace_connectors`, `agent_connector_grants`                                                                                                           |
+| `sql/0019_owner_facts.sql`                                                                                                                                                                                       | `owner_facts`                                                                                                                                              |
+| `sql/0020_bot_invites.sql`                                                                                                                                                                                       | `bot_invites`                                                                                                                                              |
+| `sql/0021_device_pairings.sql`, `0024_desktop_hosts.sql`, `0026_mobile_push_and_files.sql`, `0030_local_apps_inbound.sql`, `0031_guest_account_merge.sql`, `0033_cloud_plans.sql`, `0034_computer_placement.sql` | devices/desktop/push/local-apps/merge-tickets/cloud-plans/computer-placement tables                                                                        |
 
 The full per-file catalog lives in [Migrations catalog](./migrations-catalog.md).
 
@@ -96,13 +101,13 @@ The full per-file catalog lives in [Migrations catalog](./migrations-catalog.md)
 
 `pnpm db:generate` runs `drizzle-kit generate` with this config (`packages/db/drizzle.config.ts:7-16`):
 
-| Setting | Value | Meaning |
-| :--- | :--- | :--- |
-| `dialect` | `"postgresql"` | Target database. |
-| `schema` | `"./src/schema/index.ts"` | drizzle-kit reads the barrel file, so **every new schema module must be re-exported there** or it will be invisible to generation. |
-| `out` | `"./migrations"` | Snapshot SQL + `meta/` journal land here; phase 1 of `migrate.ts` applies them. |
-| `dbCredentials.url` | `process.env.DATABASE_URL ?? ""` | Only needed for `drizzle-kit pull/push`; `generate` works offline. Loaded from the repo-root `.env` (`drizzle.config.ts:5`). |
-| `strict` / `verbose` | `true` | Generation asks for confirmation and prints the full diff. |
+| Setting              | Value                            | Meaning                                                                                                                            |
+| :------------------- | :------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------- |
+| `dialect`            | `"postgresql"`                   | Target database.                                                                                                                   |
+| `schema`             | `"./src/schema/index.ts"`        | drizzle-kit reads the barrel file, so **every new schema module must be re-exported there** or it will be invisible to generation. |
+| `out`                | `"./migrations"`                 | Snapshot SQL + `meta/` journal land here; phase 1 of `migrate.ts` applies them.                                                    |
+| `dbCredentials.url`  | `process.env.DATABASE_URL ?? ""` | Only needed for `drizzle-kit pull/push`; `generate` works offline. Loaded from the repo-root `.env` (`drizzle.config.ts:5`).       |
+| `strict` / `verbose` | `true`                           | Generation asks for confirmation and prints the full diff.                                                                         |
 
 The intended workflow (AGENTS.md Rule 3): edit `src/schema/*.ts`, re-export from `src/schema/index.ts`, run `pnpm db:generate`, then hand-write a numbered idempotent `sql/00NN_*.sql` for anything Drizzle cannot express — RLS policies, grants, triggers, SQL functions, partial/expressional indexes, enum value additions, and views.
 
@@ -114,60 +119,60 @@ All PostgreSQL enum types are defined once here and imported by the domain modul
 
 ### Identity, rooms, and turns
 
-| Enum (`path:line`) | Values | Used by |
-| :--- | :--- | :--- |
-| `orgRoleEnum` — `org_role` (`enums.ts:3`) | `owner`, `admin`, `member` | `org_members.role` |
-| `roomMemberRoleEnum` — `room_member_role` (`enums.ts:4`) | `admin`, `member` | `room_members.role` |
-| `roomKindEnum` — `room_kind` (`enums.ts:5`) | `public`, `private`, `dm` | `rooms.kind` |
-| `turnModeEnum` — `turn_mode` (`enums.ts:6`) | `mentions`, `debate`, `moderated` | `rooms.turn_mode` |
-| `agentKindEnum` — `agent_kind` (`enums.ts:7`) | `llm`, `external` | `agents.kind` |
-| `agentVisibilityEnum` — `agent_visibility` (`enums.ts:103`) | `private`, `org` | `agents.visibility` |
-| `senderTypeEnum` — `sender_type` (`enums.ts:16`) | `human`, `agent`, `system` | `messages.sender_type` |
-| `messageStatusEnum` — `message_status` (`enums.ts:17-22`) | `streaming`, `complete`, `error`, `halted` | `messages.status` |
-| `turnSessionStateEnum` — `turn_session_state` (`enums.ts:23-28`) | `active`, `complete`, `halted`, `superseded` | `turn_sessions.state` |
-| `agentRunStatusEnum` — `agent_run_status` (`enums.ts:29-35`) | `running`, `complete`, `error`, `halted`, `waiting` (the `waiting` value is added by `sql/0010_engine.sql:6`) | `agent_runs.status` |
-| `turnRoleEnum` — `turn_role` (`enums.ts:36-42`) | `responder`, `producer`, `critic`, `summarizer`, `moderator` | `agent_runs.role`, turn queue items |
-| `providerEnum` — `provider` (`enums.ts:8-15`) | `openai`, `anthropic`, `google`, `groq`, `cerebras`, `openai-compatible` | `provider_keys.provider`, `agent_templates.default_provider` |
+| Enum (`path:line`)                                               | Values                                                                                                        | Used by                                                      |
+| :--------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------ | :----------------------------------------------------------- |
+| `orgRoleEnum` — `org_role` (`enums.ts:3`)                        | `owner`, `admin`, `member`                                                                                    | `org_members.role`                                           |
+| `roomMemberRoleEnum` — `room_member_role` (`enums.ts:4`)         | `admin`, `member`                                                                                             | `room_members.role`                                          |
+| `roomKindEnum` — `room_kind` (`enums.ts:5`)                      | `public`, `private`, `dm`                                                                                     | `rooms.kind`                                                 |
+| `turnModeEnum` — `turn_mode` (`enums.ts:6`)                      | `mentions`, `debate`, `moderated`                                                                             | `rooms.turn_mode`                                            |
+| `agentKindEnum` — `agent_kind` (`enums.ts:7`)                    | `llm`, `external`                                                                                             | `agents.kind`                                                |
+| `agentVisibilityEnum` — `agent_visibility` (`enums.ts:103`)      | `private`, `org`                                                                                              | `agents.visibility`                                          |
+| `senderTypeEnum` — `sender_type` (`enums.ts:16`)                 | `human`, `agent`, `system`                                                                                    | `messages.sender_type`                                       |
+| `messageStatusEnum` — `message_status` (`enums.ts:17-22`)        | `streaming`, `complete`, `error`, `halted`                                                                    | `messages.status`                                            |
+| `turnSessionStateEnum` — `turn_session_state` (`enums.ts:23-28`) | `active`, `complete`, `halted`, `superseded`                                                                  | `turn_sessions.state`                                        |
+| `agentRunStatusEnum` — `agent_run_status` (`enums.ts:29-35`)     | `running`, `complete`, `error`, `halted`, `waiting` (the `waiting` value is added by `sql/0010_engine.sql:6`) | `agent_runs.status`                                          |
+| `turnRoleEnum` — `turn_role` (`enums.ts:36-42`)                  | `responder`, `producer`, `critic`, `summarizer`, `moderator`                                                  | `agent_runs.role`, turn queue items                          |
+| `providerEnum` — `provider` (`enums.ts:8-15`)                    | `openai`, `anthropic`, `google`, `groq`, `cerebras`, `openai-compatible`                                      | `provider_keys.provider`, `agent_templates.default_provider` |
 
 ### Canvas, tools, and ops
 
-| Enum (`path:line`) | Values | Used by |
-| :--- | :--- | :--- |
-| `canvasKindEnum` — `canvas_kind` (`enums.ts:43`) | `markdown`, `code`, `svg`, `html` | `canvases.kind` |
-| `mcpTransportEnum` — `mcp_transport` (`enums.ts:44`) | `http`, `sse`, `stdio` (`stdio` added by `sql/0029_mcp_stdio_enum.sql:4`) | `mcp_servers.transport` |
-| `toolCallStatusEnum` — `tool_call_status` (`enums.ts:45-52`) | `pending_approval`, `approved`, `rejected`, `running`, `done`, `error` | `tool_calls.status` (human-approval gate states) |
-| `builtinToolEnum` — `builtin_tool` (`enums.ts:53-57`) | `web_search`, `github_bridge`, `postgres_inspector` | tool call classification |
+| Enum (`path:line`)                                           | Values                                                                    | Used by                                          |
+| :----------------------------------------------------------- | :------------------------------------------------------------------------ | :----------------------------------------------- |
+| `canvasKindEnum` — `canvas_kind` (`enums.ts:43`)             | `markdown`, `code`, `svg`, `html`                                         | `canvases.kind`                                  |
+| `mcpTransportEnum` — `mcp_transport` (`enums.ts:44`)         | `http`, `sse`, `stdio` (`stdio` added by `sql/0029_mcp_stdio_enum.sql:4`) | `mcp_servers.transport`                          |
+| `toolCallStatusEnum` — `tool_call_status` (`enums.ts:45-52`) | `pending_approval`, `approved`, `rejected`, `running`, `done`, `error`    | `tool_calls.status` (human-approval gate states) |
+| `builtinToolEnum` — `builtin_tool` (`enums.ts:53-57`)        | `web_search`, `github_bridge`, `postgres_inspector`                       | tool call classification                         |
 
 ### Meetings and tasks
 
-| Enum (`path:line`) | Values | Used by |
-| :--- | :--- | :--- |
-| `meetingKindEnum` — `meeting_kind` (`enums.ts:58`) | `meeting`, `checkin` | `meetings.kind` |
-| `meetingStatusEnum` — `meeting_status` (`enums.ts:59-64`) | `scheduled`, `active`, `ended`, `canceled` | `meetings.status` |
-| `taskKindEnum` — `task_kind` (`enums.ts:65`) | `task`, `request` | `tasks.kind` |
-| `taskStatusEnum` — `task_status` (`enums.ts:66`) | `open`, `in_progress`, `stuck`, `done` | `tasks.status` |
-| `unblockNeedsEnum` — `unblock_needs` (`enums.ts:67-74`) | `human_answer`, `another_agent`, `credential`, `external_access`, `time`, `other` | typed mirror of `tasks.unblock_needs` |
-| `outcomeKindEnum` — `outcome_kind` (`enums.ts:75-82`) | `artifact`, `submission`, `external_change`, `decision`, `none`, `legacy` | typed mirror of `tasks.outcome_kind` / `task_events.outcome_kind` |
-| `checkinModeEnum` — `checkin_mode` (`enums.ts:83`) | `stream`, `digest` | typed mirror of `room_schedules.checkin_mode` |
+| Enum (`path:line`)                                        | Values                                                                            | Used by                                                           |
+| :-------------------------------------------------------- | :-------------------------------------------------------------------------------- | :---------------------------------------------------------------- |
+| `meetingKindEnum` — `meeting_kind` (`enums.ts:58`)        | `meeting`, `checkin`                                                              | `meetings.kind`                                                   |
+| `meetingStatusEnum` — `meeting_status` (`enums.ts:59-64`) | `scheduled`, `active`, `ended`, `canceled`                                        | `meetings.status`                                                 |
+| `taskKindEnum` — `task_kind` (`enums.ts:65`)              | `task`, `request`                                                                 | `tasks.kind`                                                      |
+| `taskStatusEnum` — `task_status` (`enums.ts:66`)          | `open`, `in_progress`, `stuck`, `done`                                            | `tasks.status`                                                    |
+| `unblockNeedsEnum` — `unblock_needs` (`enums.ts:67-74`)   | `human_answer`, `another_agent`, `credential`, `external_access`, `time`, `other` | typed mirror of `tasks.unblock_needs`                             |
+| `outcomeKindEnum` — `outcome_kind` (`enums.ts:75-82`)     | `artifact`, `submission`, `external_change`, `decision`, `none`, `legacy`         | typed mirror of `tasks.outcome_kind` / `task_events.outcome_kind` |
+| `checkinModeEnum` — `checkin_mode` (`enums.ts:83`)        | `stream`, `digest`                                                                | typed mirror of `room_schedules.checkin_mode`                     |
 
 Note: `tasks.unblock_needs`, `tasks.outcome_kind`, and `room_schedules.checkin_mode` are **`text` columns with CHECK constraints** in the SQL migration (`packages/db/sql/0008_task_integrity.sql:17-27`), not native enums — `unblockNeedsEnum`/`outcomeKindEnum`/`checkinModeEnum` exist in TypeScript so Drizzle rows are typed, but drizzle-kit never emits a `create type` for them.
 
 ### Vault, computers, memory, routines
 
-| Enum (`path:line`) | Values | Used by |
-| :--- | :--- | :--- |
-| `vaultSecretKindEnum` — `vault_secret_kind` (`enums.ts:85-91`) | `api_token`, `basic_auth`, `password`, `header_set`, `github_app` | `vault_secrets.kind` |
-| `secretInjectEnum` — `secret_inject` (`enums.ts:92`) | `header`, `basic`, `query`, `body` | secret injection modes (vault slots / connectors) |
-| `computerStatusEnum` — `computer_status` (`enums.ts:93-101`) | `none`, `stopped`, `starting`, `running`, `stopping`, `error`, `over_quota` | `agent_computers.status` |
-| `computerProfileEnum` — `computer_profile` (`enums.ts:102`) | `standard`, `browser` | computer profile selection |
-| `memoryScopeEnum` — `memory_scope` (`enums.ts:105`) | `agent`, `room`, `org` | `memories.scope` |
-| `memoryKindEnum` — `memory_kind` (`enums.ts:106-112`) | `fact`, `preference`, `decision`, `procedure`, `episode` | `memories.kind` |
-| `memorySourceEnum` — `memory_source` (`enums.ts:113-119`) | `agent`, `human`, `compaction`, `consolidation`, `import` | `memories.source` |
-| `epistemicStatusEnum` — `epistemic_status` (`enums.ts:121-127`) | `hypothesis`, `belief`, `verified`, `withdrawn`, `superseded` | `memories.epistemic_status` |
-| `openLoopStatusEnum` — `open_loop_status` (`enums.ts:129-135`) | `open`, `in_progress`, `blocked`, `resolved`, `dropped` | `open_loops.status` |
-| `memoryLinkTypeEnum` — `memory_link_type` (`enums.ts:137-144`) | `relates_to`, `depends_on`, `caused_by`, `contradicts`, `supersedes`, `supports` | `memory_links.relationship` |
-| `routineStatusEnum` — `routine_status` (`enums.ts:146-151`) | `idle`, `running`, `success`, `failed` | `routines.last_status`, `routine_runs.status` |
-| `vectorProviderKindEnum` — `vector_provider_kind` (`enums.ts:153-156`) | `vector_db`, `embedding` | `vector_providers.kind` |
+| Enum (`path:line`)                                                     | Values                                                                           | Used by                                           |
+| :--------------------------------------------------------------------- | :------------------------------------------------------------------------------- | :------------------------------------------------ |
+| `vaultSecretKindEnum` — `vault_secret_kind` (`enums.ts:85-91`)         | `api_token`, `basic_auth`, `password`, `header_set`, `github_app`                | `vault_secrets.kind`                              |
+| `secretInjectEnum` — `secret_inject` (`enums.ts:92`)                   | `header`, `basic`, `query`, `body`                                               | secret injection modes (vault slots / connectors) |
+| `computerStatusEnum` — `computer_status` (`enums.ts:93-101`)           | `none`, `stopped`, `starting`, `running`, `stopping`, `error`, `over_quota`      | `agent_computers.status`                          |
+| `computerProfileEnum` — `computer_profile` (`enums.ts:102`)            | `standard`, `browser`                                                            | computer profile selection                        |
+| `memoryScopeEnum` — `memory_scope` (`enums.ts:105`)                    | `agent`, `room`, `org`                                                           | `memories.scope`                                  |
+| `memoryKindEnum` — `memory_kind` (`enums.ts:106-112`)                  | `fact`, `preference`, `decision`, `procedure`, `episode`                         | `memories.kind`                                   |
+| `memorySourceEnum` — `memory_source` (`enums.ts:113-119`)              | `agent`, `human`, `compaction`, `consolidation`, `import`                        | `memories.source`                                 |
+| `epistemicStatusEnum` — `epistemic_status` (`enums.ts:121-127`)        | `hypothesis`, `belief`, `verified`, `withdrawn`, `superseded`                    | `memories.epistemic_status`                       |
+| `openLoopStatusEnum` — `open_loop_status` (`enums.ts:129-135`)         | `open`, `in_progress`, `blocked`, `resolved`, `dropped`                          | `open_loops.status`                               |
+| `memoryLinkTypeEnum` — `memory_link_type` (`enums.ts:137-144`)         | `relates_to`, `depends_on`, `caused_by`, `contradicts`, `supersedes`, `supports` | `memory_links.relationship`                       |
+| `routineStatusEnum` — `routine_status` (`enums.ts:146-151`)            | `idle`, `running`, `success`, `failed`                                           | `routines.last_status`, `routine_runs.status`     |
+| `vectorProviderKindEnum` — `vector_provider_kind` (`enums.ts:153-156`) | `vector_db`, `embedding`                                                         | `vector_providers.kind`                           |
 
 ---
 

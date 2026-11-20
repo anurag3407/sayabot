@@ -46,9 +46,16 @@ export function recoveryHint(args: {
     case "auth_error":
       return { label: "Update the API key", href: `/${args.orgSlug}/settings/keys` }
     case "runner_off":
-      return { label: "Turn it on in Settings → Computers", href: `/${args.orgSlug}/settings/computers` }
+      return {
+        label: "Turn it on in Settings → Computers",
+        href: `/${args.orgSlug}/settings/computers`,
+      }
   }
-  if (/provider key|api key|api_key|unauthori[sz]ed|\b401\b|\b403\b|incorrect api|invalid x-api/.test(text)) {
+  if (
+    /provider key|api key|api_key|unauthori[sz]ed|\b401\b|\b403\b|incorrect api|invalid x-api/.test(
+      text,
+    )
+  ) {
     return { label: "Check provider keys", href: `/${args.orgSlug}/settings/keys` }
   }
   if (/model.*(not found|does not exist|not available)|unknown model|\b404\b/.test(text)) {

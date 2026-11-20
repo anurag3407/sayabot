@@ -64,14 +64,21 @@ export class BoatClient {
   }
 
   async get(id: string): Promise<BoatSandbox> {
-    return this.sandbox(await this.json<BoatSandbox & { sandbox?: BoatSandbox }>(`/sandboxes/${encodeURIComponent(id)}`))
+    return this.sandbox(
+      await this.json<BoatSandbox & { sandbox?: BoatSandbox }>(
+        `/sandboxes/${encodeURIComponent(id)}`,
+      ),
+    )
   }
 
   /**
    * Polls until the desktop can take a command. An archived sandbox is resumed.
    * The pause is short in tests; the budget is the limit for a real wake.
    */
-  async waitUntilReady(id: string, options?: { budgetMs?: number; pauseMs?: number }): Promise<BoatSandbox> {
+  async waitUntilReady(
+    id: string,
+    options?: { budgetMs?: number; pauseMs?: number },
+  ): Promise<BoatSandbox> {
     const budgetMs = options?.budgetMs ?? 90_000
     const pauseMs = options?.pauseMs ?? 2_000
     const deadline = Date.now() + budgetMs
@@ -80,16 +87,21 @@ export class BoatClient {
       latest = await this.get(id)
       if (BOAT_READY_STATES.has(latest.state)) return latest
       if (latest.state === "archived") await this.resume(id)
-      await new Promise((resolve) => setTimeout(resolve, Math.min(pauseMs, Math.max(0, deadline - Date.now()))))
+      await new Promise((resolve) =>
+        setTimeout(resolve, Math.min(pauseMs, Math.max(0, deadline - Date.now()))),
+      )
     }
     throw new Error(latest ? `The Boat is ${latest.state}` : "The Boat did not become ready")
   }
 
   async resume(id: string): Promise<BoatSandbox> {
     return this.sandbox(
-      await this.json<BoatSandbox & { sandbox?: BoatSandbox }>(`/sandboxes/${encodeURIComponent(id)}/resume`, {
-        method: "POST",
-      }),
+      await this.json<BoatSandbox & { sandbox?: BoatSandbox }>(
+        `/sandboxes/${encodeURIComponent(id)}/resume`,
+        {
+          method: "POST",
+        },
+      ),
     )
   }
 
@@ -98,22 +110,37 @@ export class BoatClient {
   }
 
   /** A foreground command waits. `detached` returns at once with a process id. */
-  async command(id: string, command: string, detached = false): Promise<{ exitCode?: number; output?: string; stdout?: string; pid?: string }> {
-    const body = await this.json<{ exitCode?: number; output?: string; stdout?: string; pid?: string }>(
-      `/sandboxes/${encodeURIComponent(id)}/commands`,
-      { method: "POST", body: JSON.stringify({ command, detached }) },
-    )
+  async command(
+    id: string,
+    command: string,
+    detached = false,
+  ): Promise<{ exitCode?: number; output?: string; stdout?: string; pid?: string }> {
+    const body = await this.json<{
+      exitCode?: number
+      output?: string
+      stdout?: string
+      pid?: string
+    }>(`/sandboxes/${encodeURIComponent(id)}/commands`, {
+      method: "POST",
+      body: JSON.stringify({ command, detached }),
+    })
     return { ...body, output: body.output ?? body.stdout }
   }
 
   /** A frame or other file from the desktop. Bytes stay on this request and are not a shell command. */
-  async artifact(id: string, filePath: string): Promise<{ contentType: string; base64: string } | null> {
+  async artifact(
+    id: string,
+    filePath: string,
+  ): Promise<{ contentType: string; base64: string } | null> {
     const response = await this.request(
       `/sandboxes/${encodeURIComponent(id)}/artifacts?path=${encodeURIComponent(filePath)}`,
     )
     if (!response.ok) return null
     const bytes = Buffer.from(await response.arrayBuffer())
     if (!bytes.length || bytes.length > 8 * 1024 * 1024) return null
-    return { contentType: response.headers.get("content-type") ?? "application/octet-stream", base64: bytes.toString("base64") }
+    return {
+      contentType: response.headers.get("content-type") ?? "application/octet-stream",
+      base64: bytes.toString("base64"),
+    }
   }
 }

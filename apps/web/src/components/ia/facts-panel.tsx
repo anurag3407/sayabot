@@ -59,8 +59,17 @@ function FactForm({
         disabled={Boolean(fact)}
         aria-label="Name"
       />
-      <Input value={value} onChange={(event) => setValue(event.target.value)} placeholder="Your answer" aria-label="Answer" />
-      <Select value={scope} onChange={(event) => setScope(event.target.value)} aria-label="Which bots can read it">
+      <Input
+        value={value}
+        onChange={(event) => setValue(event.target.value)}
+        placeholder="Your answer"
+        aria-label="Answer"
+      />
+      <Select
+        value={scope}
+        onChange={(event) => setScope(event.target.value)}
+        aria-label="Which bots can read it"
+      >
         <option value="">Every room in this workspace</option>
         {rooms.map((room) => (
           <option key={room.id} value={room.id}>
@@ -70,7 +79,12 @@ function FactForm({
       </Select>
       {error ? <p className="text-[12px] text-danger">{error}</p> : null}
       <div className="flex gap-2">
-        <Button size="sm" variant="primary" disabled={pending || !label.trim() || !value.trim()} onClick={save}>
+        <Button
+          size="sm"
+          variant="primary"
+          disabled={pending || !label.trim() || !value.trim()}
+          onClick={save}
+        >
           {pending ? "Saving…" : "Save"}
         </Button>
         <Button size="sm" variant="ghost" onClick={onDone}>
@@ -103,7 +117,10 @@ export function FactsPanel({
   function forget(fact: OwnerFactView) {
     startTransition(async () => {
       const result = await deleteOwnerFactAction({ orgSlug, id: fact.id })
-      showToast({ tone: result.ok ? "neutral" : "danger", message: result.ok ? `Forgot "${fact.label}"` : (result.error ?? "Could not delete") })
+      showToast({
+        tone: result.ok ? "neutral" : "danger",
+        message: result.ok ? `Forgot "${fact.label}"` : (result.error ?? "Could not delete"),
+      })
       if (result.ok) onChanged()
     })
   }
@@ -114,7 +131,12 @@ export function FactsPanel({
         <h2 id="facts-heading" className="text-[15px] font-medium text-text">
           What your agents know
         </h2>
-        <Button size="icon-sm" variant="ghost" aria-label="Add a fact" onClick={() => setAdding(true)}>
+        <Button
+          size="icon-sm"
+          variant="ghost"
+          aria-label="Add a fact"
+          onClick={() => setAdding(true)}
+        >
           <PlusIcon width={14} height={14} />
         </Button>
       </div>
@@ -180,7 +202,12 @@ export function FactsPanel({
                     <Button size="sm" variant="quiet" onClick={() => setEditing(fact.id)}>
                       {fact.source === "agent" ? "Confirm" : "Edit"}
                     </Button>
-                    <Button size="sm" variant="quiet" disabled={pending} onClick={() => forget(fact)}>
+                    <Button
+                      size="sm"
+                      variant="quiet"
+                      disabled={pending}
+                      onClick={() => forget(fact)}
+                    >
                       Forget
                     </Button>
                   </div>

@@ -2,7 +2,7 @@
 
 This page documents the server actions behind the workspace "Connectors" and "Tools" settings: workspace connector CRUD with envelope-encrypted tokens, per-agent connector grants, provider API keys, the vault of org-wide secrets with per-agent grants, vector/embedding providers, MCP server registration, and the OAuth client helpers that connect external AI accounts (GitHub Copilot, OpenRouter) to the workspace.
 
-Source files: `apps/web/src/lib/actions/connectors.ts`, `apps/web/src/lib/actions/keys.ts`, `apps/web/src/lib/actions/vault.ts`, `apps/web/src/lib/actions/vector-keys.ts`, `apps/web/src/lib/actions/mcp.ts`, `apps/web/src/lib/mcp-oauth.ts`, `apps/web/src/lib/connectors/types.ts`, `apps/web/src/lib/connectors/copilot.ts`, `apps/web/src/lib/connectors/openrouter.ts`, `apps/web/src/lib/connectors/pkce.ts`, `apps/web/src/lib/provider-key-store.ts`
+Source files: `apps/web/src/lib/actions/connectors.ts`, `apps/web/src/lib/connectors/probe.ts`, `apps/web/src/lib/mcp-client.ts`, `apps/web/src/lib/actions/keys.ts`, `apps/web/src/lib/actions/vault.ts`, `apps/web/src/lib/actions/vector-keys.ts`, `apps/web/src/lib/actions/mcp.ts`, `apps/web/src/lib/mcp-oauth.ts`, `apps/web/src/lib/connectors/types.ts`, `apps/web/src/lib/connectors/copilot.ts`, `apps/web/src/lib/connectors/openrouter.ts`, `apps/web/src/lib/connectors/pkce.ts`, `apps/web/src/lib/provider-key-store.ts`
 
 ---
 
@@ -10,7 +10,7 @@ Source files: `apps/web/src/lib/actions/connectors.ts`, `apps/web/src/lib/action
 
 ### Sources and credentials
 
-`connectorSourceSchema` (`connectors.ts:20`) accepts: `google_drive`, `slack`, `github`, `jira`, `discord`, `telegram`, `whatsapp`, `onepassword`, `bitwarden`, `protonpass`. A connector is stored in `workspace_connectors` with the token sealed as `ciphertext` / `iv` / `tag` (AES-256-GCM via `encryptSecret(rawToken, getKek())` — `connectors.ts:114`) plus a `last4` preview and a free-form `config` JSON object.
+`connectorSourceSchema` (`connectors.ts:20`) accepts: `google_drive`, `slack`, `github`, `jira`, `discord`, `telegram`, `whatsapp`, `onepassword`, `bitwarden`, `protonpass`, `supabase`, `cloudflare_r2`, `backblaze_b2`, `s3_storage`, `huggingface`, `composio`. A connector is stored in `workspace_connectors` with the token sealed as `ciphertext` / `iv` / `tag` (AES-256-GCM via `encryptSecret(rawToken, getKek())` — `connectors.ts:114`) plus a `last4` preview and a free-form `config` JSON object.
 
 ### `saveWorkspaceConnector(_prev, formData)`
 
@@ -19,6 +19,7 @@ Org-admin form action that creates or updates (`connectorId` present → update,
 - Name 1–80 chars; per-source config fields: `driveDomain` → `config.domain`, `defaultChannel`, `defaultOrg`, `guildId` (Discord, digits 5–25), `phoneNumberId` (WhatsApp, digits 5–25, **required** for WhatsApp — `connectors.ts:81`).
 - Password managers (`onepassword`, `bitwarden`, `protonpass`) choose `authMode`: `"computer"` (the Sayabot app signed in on a user's computer; token falls back to `"desktop"`) or `"api"` (token ≥ 4 chars). 1Password API mode additionally requires an https `connectUrl` (`connectors.ts:95`); Bitwarden records `region: "us" | "eu"` (`connectors.ts:106`).
 - Telegram tokens must match `^\d+:[A-Za-z0-9_-]{20,}$` (the @BotFather format, `connectors.ts:110`).
+- `composio` takes an API key plus two optional fields: `composioBaseUrl` (https, for a self-hosted Composio project) → `config.baseUrl`, and `composioUserId` (≤ 120 chars) → `config.userId`, which defaults to `org:<orgId>`. Changing the user id disconnects the apps connected under the old one.
 - Updates keep the previous inbound webhook secret: if the stored envelope wraps an `inboundSecret`, the new token is re-wrapped with it via `wrapConnectorSecret` / `unwrapConnectorSecret` (`connectors.ts:130`); an unreadable old envelope is simply replaced.
 - Update sets `status: "active"`, clears `error_message`; insert sets `auth_type: "token"`, `status: "active"`, `owner_user_id`. Audits `workspace_connector.updated` / `workspace_connector.created`.
 
@@ -28,23 +29,27 @@ Org-admin plain-object action; the connector must belong to the org. Audit `work
 
 ### `testWorkspaceConnector(orgSlug, connectorId)`
 
-Org-admin probe that decrypts the token (`unwrapConnectorSecret(decryptSecret(...))`, `connectors.ts:266`) and calls each provider's cheap identity endpoint:
+Org-admin probe that decrypts the token (`unwrapConnectorSecret(decryptSecret(...))`, `connectors.ts:266`) and delegates the vendor call to `probeConnector` in `apps/web/src/lib/connectors/probe.ts` (`probeConnector({ source, token, config, bases })` → a human-readable detail line, or a thrown error). `bases` overrides vendor origins and is only used by the integration suite; production omits it. Each provider gets one cheap identity call:
 
-| Source | Endpoint probe |
-| :--- | :--- |
-| `google_drive` | `GET googleapis.com/drive/v3/about?fields=user` → "Connected as \<email\>" |
-| `slack` | `POST slack.com/api/auth.test` → "Connected to workspace … as @user" |
-| `github` | `GET api.github.com/user` → "Connected as GitHub user @login" |
-| `discord` | `GET discord.com/api/v10/users/@me` with `Bot <token>` → bot username |
-| `telegram` | `GET api.telegram.org/bot<token>/getMe` — the response body/URL are never echoed back |
-| password managers | `computer` mode reports "Saved for the app signed in on a computer…"; 1Password Connect pings `<connectUrl>/v1/vaults`; Bitwarden pings `api.bitwarden(.eu|.com)/public/secrets` |
-| `whatsapp` | `GET graph.facebook.com/v21.0/<phoneNumberId>` → verified name + phone |
+| Source            | Endpoint probe                                                                                                                                             |
+| :---------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `google_drive`    | `GET googleapis.com/drive/v3/about?fields=user` → "Connected as \<email\>"                                                                                 |
+| `slack`           | `POST slack.com/api/auth.test` → "Connected to workspace … as @user"                                                                                       |
+| `github`          | `GET api.github.com/user` → "Connected as GitHub user @login"                                                                                              |
+| `discord`         | `GET discord.com/api/v10/users/@me` with `Bot <token>` → bot username                                                                                      |
+| `telegram`        | `GET api.telegram.org/bot<token>/getMe` — the response body/URL are never echoed back                                                                      |
+| password managers | `computer` mode reports "Saved for the app signed in on a computer…"; 1Password Connect pings `<connectUrl>/v1/vaults`; Bitwarden pings `api.bitwarden(.eu | .com)/public/secrets` |
+| `whatsapp`        | `GET graph.facebook.com/v21.0/<phoneNumberId>` → verified name + phone                                                                                     |
+| `supabase`        | `GET <projectUrl>/storage/v1/bucket` with `Authorization` + `apikey` → confirms the bucket                                                                 |
+| `cloudflare_r2`, `backblaze_b2`, `s3_storage` | `HeadBucket` (falling back to `ListObjectsV2` with `MaxKeys: 1`) through the AWS SDK; `s3_storage` — and any loopback endpoint — uses path-style addressing |
+| `huggingface`     | `GET huggingface.co/api/whoami-v2` → `Connected to Hugging Face as @<name> (<repoId>)`                                                                     |
+| `composio`        | `GET <base>/toolkits?limit=1` with `x-api-key` → `Connected to Composio (<total_items>+ apps available)`                                                   |
 
 On success the row is set `active` with `last_synced_at` and the result reports latency; on failure the error message is scrubbed of the raw token (`split(token).join("[token]")` — `connectors.ts:397`) and the row is set `status: "error"` with `error_message`. A decryption failure marks the connector errored with "Decryption failed; check workspace master key" (`connectors.ts:281`).
 
 ### Per-agent grants
 
-- `saveAgentConnectorGrant(_prev, formData)` (`connectors.ts:412`) — org-admin. Builds a `scope_config` from form text lists: `allowedFolders`, `allowedChannels` (leading `#` stripped), `allowedRepos`, `allowedRecipients` (phone numbers normalized to digits, `^\d{7,15}$`), `allowedVaults` (max 20, ≤ 80 chars, may not start with `-`), and `readOnly`. Upserts into `agent_connector_grants` per `(org, agent, connector)`; audit `agent_connector_grant.saved`.
+- `saveAgentConnectorGrant(_prev, formData)` (`connectors.ts:412`) — org-admin. Builds a `scope_config` from form text lists: `allowedFolders`, `allowedChannels` (leading `#` stripped), `allowedRepos`, `allowedRecipients` (phone numbers normalized to digits, `^\d{7,15}$`), `allowedVaults` (max 20, ≤ 80 chars, may not start with `-`), `allowedApps` (Composio slugs, lowercased, `^[a-z0-9][a-z0-9_-]{0,63}$`, max 100), and `readOnly`. Upserts into `agent_connector_grants` per `(org, agent, connector)`; audit `agent_connector_grant.saved`.
 - `deleteAgentConnectorGrant(input)` (`connectors.ts:521`) — org-admin hard delete; audit `agent_connector_grant.deleted`.
 
 ### Inbound chat wiring (`saveConnectorChat`)
@@ -112,8 +117,8 @@ MCP servers live in `mcp_servers` (transport `http` | `sse`, optional room scopi
 - `addMcpServer(_prev, formData)` (`mcp.ts:60`) — org-admin; name 1–60, URL `http(s)://`, headers must be a JSON object of strings (`parseHeaders`, `mcp.ts:33`), optional room must belong to the org. Audit `mcp_server.created`.
 - `updateMcpServer(_prev, formData)` (`mcp.ts:114`) — org-admin; toggles `enabled`, edits `dangerous_tools`, and optionally URL/headers. Audit `mcp_server.updated`.
 - `setMcpServerRoomAction({ orgSlug, serverId, roomId })` (`mcp.ts:478`) — org-admin; sets `mcp_servers.room_id`: `null` lets agents in every room use the app, a room id limits it to that room (which must belong to the org). Used by "Only this room" / "Use in all rooms" in [room settings](../pages/room-settings-ui.md). Audit `mcp_server.scope_changed`.
-- `listMcpTools(orgSlug, serverId)` (`mcp.ts:158`) — org-admin; connects with `createMCPClient` from `@ai-sdk/mcp` using `redirect: "error"` (no browser-side redirects) and the OAuth provider from `mcpAuthProviderFor` (see below), returns `{ name, description }` per tool. `stdio` servers (program-run-on-use) report "This program runs when an agent uses it."
-- `invokeMcpTool(orgSlug, serverId, toolName, argsJson)` (`mcp.ts:191`) — org-admin "Try a tool": args must be a JSON object; returns `result.content` and flags `isError`.
+- `listMcpTools(orgSlug, serverId)` (`mcp.ts:158`) — org-admin; returns `{ name, description }` per tool through the shared `connectMcpServer` in `apps/web/src/lib/mcp-client.ts` (which mirrors the orchestrator's rules: HTTPS only unless `ALLOW_LOCAL_MCP=true`, no credentials or fragment in the URL, OAuth provider from `mcpAuthProviderFor`, `redirect: "error"`). `stdio` servers (program-run-on-use) report "This program runs when an agent uses it."
+- `invokeMcpTool(orgSlug, serverId, toolName, argsJson)` (`mcp.ts:191`) — org-admin "Try a tool": args must be a JSON object; returns `result.content` and flags `isError`. It uses the same `mcp-client.ts` transport builder (so headers, URL checks and OAuth cannot drift from `listMcpTools`) and rejects `stdio` rows with the same message instead of trying to spawn a program.
 - `saveOrgToolConfig(_prev, formData)` (`mcp.ts:238`) — org-admin settings for built-in tools in `org_tool_configs` (`config_enc` sealed JSON, unique per `(org_id, tool)`). Built-in ids (`mcp.ts:25`): `github_bridge` (GitHub token), `web_search` (provider + optional key/baseUrl; keyless providers `duckduckgo`/`searxng` need no key, others keep the previously saved key when the field is left blank), `document_extract` (provider `docling`/`marker`/`tesseract`/`vision_llm` and `fallbackToVision`), `terminal_sandbox` (`local`/`docker` or hosted), and `postgres_inspector` (PostgreSQL connection string, must start `postgres(ql)://`). Audit `tool_config.updated`.
 - `testWebSearchAction(_prev, formData)` (`mcp.ts:365`) and `testDocumentOcrAction(_prev, formData)` (`mcp.ts:416`) — org-admin test actions that fall back to the saved key from `org_tool_configs` and delegate to the orchestrator (`testWebSearchInOrchestrator` / `testDocumentOcrInOrchestrator`, see the server-actions overview). OCR defaults to a Docling sample PDF and reports tables, page count, markdown preview, and whether it fell back to vision.
 

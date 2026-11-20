@@ -4,7 +4,14 @@
  */
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-const PROVIDERS = new Set(["openai", "anthropic", "google", "groq", "cerebras", "openai-compatible"])
+const PROVIDERS = new Set([
+  "openai",
+  "anthropic",
+  "google",
+  "groq",
+  "cerebras",
+  "openai-compatible",
+])
 const SENDERS = new Set(["human", "agent", "system"])
 
 export interface BotCopy {
@@ -93,7 +100,9 @@ function uuid(value: unknown): string | null {
 }
 
 function record(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : null
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null
 }
 
 /** Drops anything that is not a bot, chat, routine, or sealed key. */
@@ -131,7 +140,8 @@ export function parseWorkspaceCopy(value: unknown): WorkspaceCopy {
       const entry = record(message)
       const messageId = uuid(entry?.id)
       const senderType = entry?.senderType
-      if (!entry || !messageId || typeof senderType !== "string" || !SENDERS.has(senderType)) continue
+      if (!entry || !messageId || typeof senderType !== "string" || !SENDERS.has(senderType))
+        continue
       messages.push({
         id: messageId,
         senderType: senderType as ChatMessageCopy["senderType"],
@@ -216,7 +226,10 @@ export function parseWorkspaceCopy(value: unknown): WorkspaceCopy {
  * Rows to insert. An id or a bot handle that the destination already has is skipped,
  * so Cloud keeps its own copy of that bot.
  */
-export function materializeCopy(existing: ExistingWorkspace, incoming: WorkspaceCopy): WorkspaceCopy {
+export function materializeCopy(
+  existing: ExistingWorkspace,
+  incoming: WorkspaceCopy,
+): WorkspaceCopy {
   const botIds = new Set(existing.botIds)
   const handles = new Set(existing.handles)
   const chatIds = new Set(existing.chatIds)
@@ -244,7 +257,8 @@ export function materializeCopy(existing: ExistingWorkspace, incoming: Workspace
   return {
     bots: bots.map((bot) => ({
       ...bot,
-      providerKeyId: bot.providerKeyId && knownKeys.has(bot.providerKeyId) ? bot.providerKeyId : null,
+      providerKeyId:
+        bot.providerKeyId && knownKeys.has(bot.providerKeyId) ? bot.providerKeyId : null,
     })),
     chats,
     routines: incoming.routines.filter(

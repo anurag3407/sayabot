@@ -34,7 +34,11 @@ export function classifyEngineError(error: unknown): EngineErrorClassification {
   const lower = msg.toLowerCase()
 
   // A bot with nothing to answer with: the message already says what to do.
-  if (lower.includes("has no model yet") || lower.includes("has no model configured") || lower.includes("no saya ai model set up")) {
+  if (
+    lower.includes("has no model yet") ||
+    lower.includes("has no model configured") ||
+    lower.includes("no saya ai model set up")
+  ) {
     return { category: "no_model", retryable: false, message: msg }
   }
 
@@ -148,7 +152,11 @@ export function classifyEngineError(error: unknown): EngineErrorClassification {
   }
 
   // 7. Refusals
-  if (lower.includes("refused to respond") || lower.includes("content policy") || lower.includes("safety check")) {
+  if (
+    lower.includes("refused to respond") ||
+    lower.includes("content policy") ||
+    lower.includes("safety check")
+  ) {
     return {
       category: "refusal",
       retryable: false,
@@ -181,7 +189,8 @@ export async function executeWithRecovery<T>(
   const maxRetries = options.maxRetries ?? 5
   const baseDelayMs = options.baseDelayMs ?? 1000
   const maxDelayMs = options.maxDelayMs ?? 30_000
-  const sleep = options.sleepFn ?? ((ms: number) => new Promise((resolve) => setTimeout(resolve, ms)))
+  const sleep =
+    options.sleepFn ?? ((ms: number) => new Promise((resolve) => setTimeout(resolve, ms)))
 
   let attempt = 0
 
@@ -219,12 +228,18 @@ export function scrubProviderIds(text: string): string {
 }
 
 /** What a person sees when a reply fails, in plain words with what to do next. */
-export function userFacingError(classified: EngineErrorClassification, raw: string, modelName?: string): string {
+export function userFacingError(
+  classified: EngineErrorClassification,
+  raw: string,
+  modelName?: string,
+): string {
   const model = modelName ? `\`${modelName}\`` : "this model"
   switch (classified.category) {
     case "request_too_large":
       return `This chat is too big for ${model} on its current plan${
-        classified.limitTokens ? ` (${classified.limitTokens.toLocaleString("en-US")} tokens at a time)` : ""
+        classified.limitTokens
+          ? ` (${classified.limitTokens.toLocaleString("en-US")} tokens at a time)`
+          : ""
       }, even shortened. Switch this bot to a bigger model, or start a new chat.`
     case "context_overflow":
       return `This chat is longer than ${model} can read. Start a new chat, or switch to a model with a bigger context.`

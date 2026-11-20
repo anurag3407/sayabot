@@ -11,26 +11,26 @@ Source files: `apps/orchestrator/src/tools/builtins/github.ts`, `apps/orchestrat
 Registered when the agent has the `github` capability (`src/tools/index.ts:353`):
 
 ```typescript
-githubTool(args.orgId, args.agent.id)   // agentId optional
+githubTool(args.orgId, args.agent.id) // agentId optional
 ```
 
-Tool name: `github_bridge`. Description: *"Read a file or list issues in a GitHub repository, or commit a file (write, requires human approval). Requires a GitHub token in org tool settings."*
+Tool name: `github_bridge`. Description: _"Read a file or list issues in a GitHub repository, or commit a file (write, requires human approval). Requires a GitHub token in org tool settings."_
 
 ## 📥 Schema (`github.ts:7-17`)
 
 One flat object; required fields depend on `action` (validated at execute time):
 
-| Parameter | Type | Description |
-| :--- | :--- | :--- |
-| `action` | enum `get_file \| list_issues \| commit_file` | Operation to perform |
-| `owner` | string (min 1) | Repository owner / org login |
-| `repo` | string (min 1) | Repository name |
-| `path` | string, optional | File path relative to repo root (required for `get_file` and `commit_file`) |
-| `ref` | string, optional | Git ref for `get_file` (`?ref=` query) or `commit_file` (branch to read the existing file from) |
-| `state` | enum `open \| closed \| all`, optional | Issue filter for `list_issues`; defaults to `open` |
-| `content` | string, optional | New file content for `commit_file` |
-| `message` | string, optional | Commit message for `commit_file` |
-| `branch` | string, optional | Target branch for `commit_file` |
+| Parameter | Type                                          | Description                                                                                     |
+| :-------- | :-------------------------------------------- | :---------------------------------------------------------------------------------------------- |
+| `action`  | enum `get_file \| list_issues \| commit_file` | Operation to perform                                                                            |
+| `owner`   | string (min 1)                                | Repository owner / org login                                                                    |
+| `repo`    | string (min 1)                                | Repository name                                                                                 |
+| `path`    | string, optional                              | File path relative to repo root (required for `get_file` and `commit_file`)                     |
+| `ref`     | string, optional                              | Git ref for `get_file` (`?ref=` query) or `commit_file` (branch to read the existing file from) |
+| `state`   | enum `open \| closed \| all`, optional        | Issue filter for `list_issues`; defaults to `open`                                              |
+| `content` | string, optional                              | New file content for `commit_file`                                                              |
+| `message` | string, optional                              | Commit message for `commit_file`                                                                |
+| `branch`  | string, optional                              | Target branch for `commit_file`                                                                 |
 
 ## ⚠️ Danger evaluation (`github.ts:57`)
 
@@ -58,12 +58,12 @@ Two tiers ([./secrets-broker.md](./secrets-broker.md)):
 
 `githubFetch(token, path, init?)` calls `https://api.github.com<path>` with headers:
 
-| Header | Value |
-| :--- | :--- |
-| `accept` | `application/vnd.github+json` |
-| `authorization` | `Bearer <token>` |
-| `x-github-api-version` | `2022-11-28` |
-| `user-agent` | `sayabot-orchestrator` |
+| Header                 | Value                         |
+| :--------------------- | :---------------------------- |
+| `accept`               | `application/vnd.github+json` |
+| `authorization`        | `Bearer <token>`              |
+| `x-github-api-version` | `2022-11-28`                  |
+| `user-agent`           | `sayabot-orchestrator`        |
 
 Response bodies are JSON-parsed when possible; non-200 statuses raise `GitHub returned <status>: <body-json>`.
 
@@ -92,11 +92,11 @@ Note: no diff/merge logic — a concurrent upstream change wins or the commit fa
 
 ## 🗃️ Tables and events
 
-| Concern | Details |
-| :--- | :--- |
-| DB tables | `agent_secret_grants` ⋈ `vault_secrets` (canonical grant tier), `org_tool_configs` (org tier) — read-only; the audit layer writes `tool_calls` |
-| Realtime events | standard audit events only; `commit_file` additionally emits `tool.approval_requested` / `tool.approval_resolved` |
-| Egress | direct `fetch` to `api.github.com`; no SSRF guard is applied here because the host is fixed |
+| Concern         | Details                                                                                                                                        |
+| :-------------- | :--------------------------------------------------------------------------------------------------------------------------------------------- |
+| DB tables       | `agent_secret_grants` ⋈ `vault_secrets` (canonical grant tier), `org_tool_configs` (org tier) — read-only; the audit layer writes `tool_calls` |
+| Realtime events | standard audit events only; `commit_file` additionally emits `tool.approval_requested` / `tool.approval_resolved`                              |
+| Egress          | direct `fetch` to `api.github.com`; no SSRF guard is applied here because the host is fixed                                                    |
 
 ## 🧪 Example calls
 
@@ -117,13 +117,13 @@ Note: no diff/merge logic — a concurrent upstream change wins or the commit fa
 
 ## ⚠️ Error modes
 
-| Condition | Model-visible result |
-| :--- | :--- |
-| No token configured | `{ ok: false, error: "github_bridge is not configured. Add a GitHub token in Settings → Tools." }` |
-| Missing per-action fields | `{ ok: false, error: "path is required for get_file" }` / `"path, content and message are required for commit_file"` |
-| GitHub non-200 (bad ref, no perms, rate limit) | `{ ok: false, error: "GitHub returned <status>: <body>" }` |
-| Path points at a directory | `{ ok: false, error: "path is not a file" }` |
-| Approval rejected/expired for `commit_file` | `{ ok: false, rejected: true, error: "A room admin rejected this tool call." }` |
+| Condition                                      | Model-visible result                                                                                                 |
+| :--------------------------------------------- | :------------------------------------------------------------------------------------------------------------------- |
+| No token configured                            | `{ ok: false, error: "github_bridge is not configured. Add a GitHub token in Settings → Tools." }`                   |
+| Missing per-action fields                      | `{ ok: false, error: "path is required for get_file" }` / `"path, content and message are required for commit_file"` |
+| GitHub non-200 (bad ref, no perms, rate limit) | `{ ok: false, error: "GitHub returned <status>: <body>" }`                                                           |
+| Path points at a directory                     | `{ ok: false, error: "path is not a file" }`                                                                         |
+| Approval rejected/expired for `commit_file`    | `{ ok: false, rejected: true, error: "A room admin rejected this tool call." }`                                      |
 
 ## ⚠️ Notes
 

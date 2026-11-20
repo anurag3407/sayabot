@@ -17,13 +17,7 @@ import { getKek } from "@/lib/env"
 import { createAdminClient } from "@/lib/supabase/admin"
 import type { ActionResult } from "@/lib/types"
 
-const secretKindSchema = z.enum([
-  "api_token",
-  "basic_auth",
-  "password",
-  "header_set",
-  "github_app",
-])
+const secretKindSchema = z.enum(["api_token", "basic_auth", "password", "header_set", "github_app"])
 
 export async function saveVaultSecret(
   _prev: ActionResult | null,
@@ -178,7 +172,9 @@ export async function grantSecret(
   }
 
   if (!/^[A-Z][A-Z0-9_]{1,63}$/.test(envName)) {
-    return fail("Environment variable name must be uppercase letters, numbers, and underscores (e.g. STRIPE_API_KEY)")
+    return fail(
+      "Environment variable name must be uppercase letters, numbers, and underscores (e.g. STRIPE_API_KEY)",
+    )
   }
 
   const rawHosts = field(formData, "allowedHosts")
@@ -192,12 +188,16 @@ export async function grantSecret(
 
   for (const host of rawHosts) {
     if (!isValidHostPattern(host)) {
-      return fail(`Invalid host pattern: "${host}". Must be a valid domain (e.g. api.stripe.com or *.github.com). IP addresses and wildcards alone are not permitted.`)
+      return fail(
+        `Invalid host pattern: "${host}". Must be a valid domain (e.g. api.stripe.com or *.github.com). IP addresses and wildcards alone are not permitted.`,
+      )
     }
   }
 
-  const injectMode = (field(formData, "injectMode") || "header") as "header" | "basic" | "query" | "body"
-  const requiresApproval = field(formData, "requiresApproval") === "true" || field(formData, "requiresApproval") === "on"
+  const injectMode = (field(formData, "injectMode") || "header") as
+    "header" | "basic" | "query" | "body"
+  const requiresApproval =
+    field(formData, "requiresApproval") === "true" || field(formData, "requiresApproval") === "on"
   const placeholder = `saaya_ph_${randomBytes(16).toString("hex")}`
 
   const admin = createAdminClient()

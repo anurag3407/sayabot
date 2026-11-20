@@ -24,7 +24,9 @@ export function AgentTestButton({ orgSlug, agentId }: { orgSlug: string; agentId
       {result ? (
         <span
           role="status"
-          className={result.ok ? "max-w-sm text-[12px] text-ok" : "max-w-sm text-[12px] text-danger"}
+          className={
+            result.ok ? "max-w-sm text-[12px] text-ok" : "max-w-sm text-[12px] text-danger"
+          }
         >
           {result.ok ? result.message : result.error}
           {result.ok && typeof result.data?.reply === "string" ? ` · "${result.data.reply}"` : ""}

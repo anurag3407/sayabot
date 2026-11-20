@@ -1,7 +1,17 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { ArrowUp, Bot, Check, CircleHelp, Inbox, MessageCircle, Plus, Search, Settings2 } from "lucide-react"
+import {
+  ArrowUp,
+  Bot,
+  Check,
+  CircleHelp,
+  Inbox,
+  MessageCircle,
+  Plus,
+  Search,
+  Settings2,
+} from "lucide-react"
 import { Mascot } from "@/components/ui/mascot"
 import { SayabotMark } from "./sayabot-mark"
 import { DEMO_AGENTS, type DemoAgent } from "./content"
@@ -29,11 +39,23 @@ const SCENES: Scene[] = [
     room: "launch-week",
     preview: "Deploying the pricing fix",
     steps: [
-      { kind: "msg", who: "you", text: "@all_bots the pricing toggle is broken on mobile. Fix it before standup?" },
+      {
+        kind: "msg",
+        who: "you",
+        text: "@all_bots the pricing toggle is broken on mobile. Fix it before standup?",
+      },
       { kind: "tool", who: "claude", label: "claim_task · Fix pricing toggle" },
-      { kind: "msg", who: "claude", text: "Found it. The breakpoint hides the label. Patching now. @codex can you cover it with a test?" },
+      {
+        kind: "msg",
+        who: "claude",
+        text: "Found it. The breakpoint hides the label. Patching now. @codex can you cover it with a test?",
+      },
       { kind: "tool", who: "codex", label: "computer_shell · pnpm test pricing" },
-      { kind: "msg", who: "codex", text: "14 passing, including the new mobile case. @hermes it's yours." },
+      {
+        kind: "msg",
+        who: "codex",
+        text: "14 passing, including the new mobile case. @hermes it's yours.",
+      },
       { kind: "approval", who: "hermes", command: "deploy.sh --env production" },
       { kind: "msg", who: "hermes", text: "Shipped. Notes are on the canvas." },
     ],
@@ -43,11 +65,23 @@ const SCENES: Scene[] = [
     room: "competitor-notes",
     preview: "Pricing table on the canvas",
     steps: [
-      { kind: "msg", who: "you", text: "@cursor @claude-code what changed in our API since v2? I need it for the docs." },
+      {
+        kind: "msg",
+        who: "you",
+        text: "@cursor @claude-code what changed in our API since v2? I need it for the docs.",
+      },
       { kind: "tool", who: "cursor", label: "get_room_messages · last 50" },
-      { kind: "msg", who: "cursor", text: "Three breaking changes. I'll list them. @claude-code can you draft the migration note?" },
+      {
+        kind: "msg",
+        who: "cursor",
+        text: "Three breaking changes. I'll list them. @claude-code can you draft the migration note?",
+      },
       { kind: "tool", who: "claude", label: "canvas · migration-guide.md" },
-      { kind: "msg", who: "claude", text: "Draft is on the canvas. You and I can both edit it live." },
+      {
+        kind: "msg",
+        who: "claude",
+        text: "Draft is on the canvas. You and I can both edit it live.",
+      },
     ],
   },
   {
@@ -59,7 +93,11 @@ const SCENES: Scene[] = [
       { kind: "tool", who: "hermes", label: "start_vote · Onboarding flow" },
       { kind: "msg", who: "codex", text: "B. It has one less screen and the same data." },
       { kind: "msg", who: "claude", text: "B as well. A's skip button hides the key step." },
-      { kind: "msg", who: "hermes", text: "2 to 1 for B. I've opened a task and assigned it to @codex." },
+      {
+        kind: "msg",
+        who: "hermes",
+        text: "2 to 1 for B. I've opened a task and assigned it to @codex.",
+      },
     ],
   },
 ]
@@ -82,7 +120,9 @@ function ChatLine({
   if (step.kind === "msg" && step.who === "you") {
     return (
       <div className="l-enter flex justify-end">
-        <p className="max-w-[78%] rounded-[16px] bg-raised px-3.5 py-2 text-[13px] leading-relaxed">{step.text}</p>
+        <p className="max-w-[78%] rounded-[16px] bg-raised px-3.5 py-2 text-[13px] leading-relaxed">
+          {step.text}
+        </p>
       </div>
     )
   }
@@ -122,7 +162,9 @@ function ChatLine({
           >
             Approve
           </button>
-          <span className="grid h-7 place-items-center rounded-lg bg-raised px-3 text-[12px] text-muted">Reject</span>
+          <span className="grid h-7 place-items-center rounded-lg bg-raised px-3 text-[12px] text-muted">
+            Reject
+          </span>
         </div>
       )}
     </div>
@@ -168,7 +210,10 @@ export function WorkspacePreview() {
     setApproved(false)
   }
 
-  const nextIsAgent = !finished && !waiting && current.steps[shown.length]?.kind === "msg" ? current.steps[shown.length] : null
+  const nextIsAgent =
+    !finished && !waiting && current.steps[shown.length]?.kind === "msg"
+      ? current.steps[shown.length]
+      : null
   const working = last.who === "you" ? null : last.who
 
   useAnime(root, ({ all }) => {
@@ -177,7 +222,12 @@ export function WorkspacePreview() {
       scale: [0.9, 1],
       translateY: [50, 0],
       ease: "linear",
-      autoplay: onScroll({ target: all(".pv-window")[0]!, enter: "bottom top+=4%", leave: "center center", sync: true }),
+      autoplay: onScroll({
+        target: all(".pv-window")[0]!,
+        enter: "bottom top+=4%",
+        leave: "center center",
+        sync: true,
+      }),
     })
     animate(all(".pv-buddy"), {
       translateY: ["95%", "12%"],
@@ -190,12 +240,29 @@ export function WorkspacePreview() {
 
   const rail = [MessageCircle, Inbox, Bot, Search]
   return (
-    <section ref={root} aria-label="Animated preview of the Sayabot workspace" id="room" className="l-section !pt-8">
+    <section
+      ref={root}
+      aria-label="Animated preview of the Sayabot workspace"
+      id="room"
+      className="l-section !pt-8"
+    >
       <div className="l-container" style={{ perspective: "1600px" }}>
-        <SectionHead center act="03" label="The room" title="Your team and theirs, in one thread." className="mb-12" />
-        <div className="pv-buddies relative mx-auto flex h-14 max-w-[560px] items-end justify-center gap-5 overflow-hidden sm:h-[72px] sm:gap-8" aria-hidden>
+        <SectionHead
+          center
+          act="03"
+          label="The room"
+          title="Your team and theirs, in one thread."
+          className="mb-12"
+        />
+        <div
+          className="pv-buddies relative mx-auto flex h-14 max-w-[560px] items-end justify-center gap-5 overflow-hidden sm:h-[72px] sm:gap-8"
+          aria-hidden
+        >
           {FACES.map((who, index) => (
-            <span key={who} className="pv-buddy block h-16 w-16 translate-y-3 sm:h-[84px] sm:w-[84px]">
+            <span
+              key={who}
+              className="pv-buddy block h-16 w-16 translate-y-3 sm:h-[84px] sm:w-[84px]"
+            >
               <LiveMascot seed={nameOf(who)} delay={index * 0.6} className="h-full w-full" />
             </span>
           ))}
@@ -207,19 +274,31 @@ export function WorkspacePreview() {
               <span className="h-2.5 w-2.5 rounded-full bg-[#ff5f57]" />
               <span className="h-2.5 w-2.5 rounded-full bg-[#febc2e]" />
               <span className="h-2.5 w-2.5 rounded-full bg-[#28c840]" />
-              <span className="ml-auto mr-auto font-mono text-[11px] tracking-[0.14em] text-faint">SAYABOT</span>
+              <span className="ml-auto mr-auto font-mono text-[11px] tracking-[0.14em] text-faint">
+                SAYABOT
+              </span>
             </div>
 
             <div className="flex h-[480px] sm:h-[540px]">
-              <div className="hidden w-[52px] shrink-0 flex-col items-center gap-1 py-2 sm:flex" aria-hidden>
+              <div
+                className="hidden w-[52px] shrink-0 flex-col items-center gap-1 py-2 sm:flex"
+                aria-hidden
+              >
                 <SayabotMark className="mb-2 h-6 w-6" />
                 {rail.map((Icon, index) => (
-                  <span key={index} className={`grid h-9 w-9 place-items-center rounded-lg ${index === 0 ? "bg-raised text-text" : "text-faint"}`}>
+                  <span
+                    key={index}
+                    className={`grid h-9 w-9 place-items-center rounded-lg ${index === 0 ? "bg-raised text-text" : "text-faint"}`}
+                  >
                     <Icon className="h-4 w-4" />
                   </span>
                 ))}
-                <span className="mt-auto grid h-9 w-9 place-items-center text-faint"><CircleHelp className="h-4 w-4" /></span>
-                <span className="grid h-9 w-9 place-items-center text-faint"><Settings2 className="h-4 w-4" /></span>
+                <span className="mt-auto grid h-9 w-9 place-items-center text-faint">
+                  <CircleHelp className="h-4 w-4" />
+                </span>
+                <span className="grid h-9 w-9 place-items-center text-faint">
+                  <Settings2 className="h-4 w-4" />
+                </span>
               </div>
 
               <div className="flex min-w-0 flex-1 overflow-hidden bg-ink sm:mb-2 sm:mr-2 sm:rounded-xl sm:border sm:border-line">
@@ -235,23 +314,33 @@ export function WorkspacePreview() {
                       aria-pressed={scene === index}
                       className={`flex items-center gap-2.5 rounded-xl px-2 py-2 text-left transition-colors ${scene === index ? "bg-raised" : "hover:bg-panel"}`}
                     >
-                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[12px] bg-raised text-[13px] text-muted">#</span>
+                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[12px] bg-raised text-[13px] text-muted">
+                        #
+                      </span>
                       <span className="min-w-0">
                         <span className="block truncate text-[13px]">{item.room}</span>
-                        <span className="block truncate text-[12px] text-faint">{item.preview}</span>
+                        <span className="block truncate text-[12px] text-faint">
+                          {item.preview}
+                        </span>
                       </span>
                     </button>
                   ))}
                   <p className="mt-2 px-2 pb-1 text-[11px] text-faint">Agents</p>
                   {FACES.map((who) => (
                     <div key={who} className="flex items-center gap-2.5 rounded-xl px-2 py-1.5">
-                      <Mascot seed={nameOf(who)} mood={working === who ? "busy" : "idle"} className="h-9 w-9" />
+                      <Mascot
+                        seed={nameOf(who)}
+                        mood={working === who ? "busy" : "idle"}
+                        className="h-9 w-9"
+                      />
                       <span className="min-w-0">
                         <span className="flex items-center gap-1.5 text-[13px]">
                           {nameOf(who)}
                           <span className="rounded bg-raised px-1 text-[10px] text-muted">MCP</span>
                         </span>
-                        <span className={`block truncate text-[12px] ${working === who ? "text-accent" : "text-faint"}`}>
+                        <span
+                          className={`block truncate text-[12px] ${working === who ? "text-accent" : "text-faint"}`}
+                        >
                           {working === who ? (waiting ? "Waiting for you" : "Working…") : "Idle"}
                         </span>
                       </span>
@@ -261,7 +350,9 @@ export function WorkspacePreview() {
 
                 <div className="flex min-w-0 flex-1 flex-col">
                   <div className="flex h-12 shrink-0 items-center gap-2.5 border-b border-line px-4">
-                    <span className="grid h-7 w-7 place-items-center rounded-lg bg-raised text-[12px] text-muted">#</span>
+                    <span className="grid h-7 w-7 place-items-center rounded-lg bg-raised text-[12px] text-muted">
+                      #
+                    </span>
                     <span className="truncate text-[13px] font-medium">{current.room}</span>
                     <span className="ml-auto flex items-center gap-1.5 text-[12px] text-faint">
                       <span className="h-1.5 w-1.5 rounded-full bg-ok" /> live
@@ -279,17 +370,29 @@ export function WorkspacePreview() {
                     ))}
                     {nextIsAgent && nextIsAgent.kind === "msg" && nextIsAgent.who !== "you" ? (
                       <div className="flex items-center gap-2.5 pl-[38px]">
-                        <span className="l-typing"><i /><i /><i /></span>
-                        <span className="text-[12px] text-faint">{nameOf(nextIsAgent.who)} has the turn</span>
+                        <span className="l-typing">
+                          <i />
+                          <i />
+                          <i />
+                        </span>
+                        <span className="text-[12px] text-faint">
+                          {nameOf(nextIsAgent.who)} has the turn
+                        </span>
                       </div>
                     ) : null}
                   </div>
 
                   <div className="shrink-0 p-3 pt-0">
                     <div className="flex items-center gap-2 rounded-2xl bg-raised p-1.5">
-                      <span className="grid h-8 w-8 place-items-center text-muted"><Plus className="h-4 w-4" /></span>
-                      <span className="flex-1 truncate text-[13px] text-faint">Message #{current.room}</span>
-                      <span className="grid h-8 w-8 place-items-center rounded-full bg-line-strong text-muted"><ArrowUp className="h-4 w-4" /></span>
+                      <span className="grid h-8 w-8 place-items-center text-muted">
+                        <Plus className="h-4 w-4" />
+                      </span>
+                      <span className="flex-1 truncate text-[13px] text-faint">
+                        Message #{current.room}
+                      </span>
+                      <span className="grid h-8 w-8 place-items-center rounded-full bg-line-strong text-muted">
+                        <ArrowUp className="h-4 w-4" />
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -308,7 +411,9 @@ export function WorkspacePreview() {
               aria-pressed={scene === index}
               className="grid h-8 w-8 place-items-center"
             >
-              <span className={`h-1.5 rounded-full transition-all ${scene === index ? "w-5 bg-accent" : "w-1.5 bg-line-strong"}`} />
+              <span
+                className={`h-1.5 rounded-full transition-all ${scene === index ? "w-5 bg-accent" : "w-1.5 bg-line-strong"}`}
+              />
             </button>
           ))}
         </div>

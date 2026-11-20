@@ -12,22 +12,22 @@ Source files: `apps/orchestrator/src/tools/builtins/document.ts`, `apps/orchestr
 
 ## 📥 Schema (`document.ts:405-425`)
 
-| Parameter | Type | Default | Description |
-| :--- | :--- | :--- | :--- |
-| `source` | string (min 1) | — | Public URL, internal storage URI, or local container file path to the PDF or image document |
-| `extractTables` | boolean | `true` | Use neural TableFormer to reconstruct nested multi-column tables |
-| `format` | enum `markdown \| json \| tables_csv` | `"markdown"` | Desired output format |
-| `maxPages` | int 1–100 | optional | Limit on the number of pages to extract |
+| Parameter       | Type                                  | Default      | Description                                                                                 |
+| :-------------- | :------------------------------------ | :----------- | :------------------------------------------------------------------------------------------ |
+| `source`        | string (min 1)                        | —            | Public URL, internal storage URI, or local container file path to the PDF or image document |
+| `extractTables` | boolean                               | `true`       | Use neural TableFormer to reconstruct nested multi-column tables                            |
+| `format`        | enum `markdown \| json \| tables_csv` | `"markdown"` | Desired output format                                                                       |
+| `maxPages`      | int 1–100                             | optional     | Limit on the number of pages to extract                                                     |
 
 Note: the agent-facing schema does not expose `provider`/`apiKey`/`baseUrl`; those come from the org tool config (see below). The lower-level `executeDocumentExtract()` (`document.ts:356-392`) accepts `provider`, `apiKey`, `baseUrl`, and `fallbackToVision` for direct callers.
 
 ## 🧩 Providers (`DOCUMENT_PROVIDERS`, `document.ts:41-162`)
 
-| Provider | Tag | Badge | Requires | Notes |
-| :--- | :--- | :--- | :--- | :--- |
-| `docling` (IBM Research) | Free / Self-Hosted | Free (SOTA Tables) | self-hosted URL (default `http://localhost:5001`) | DocLayNet layout + TableFormer tables, ~2.5 GB weights |
-| `marker` (Vik Paruchuri) | Free / Self-Hosted | Free (Books & Papers) | self-hosted URL (default `http://localhost:5002`) | Surya OCR; strong on academic papers |
-| `tesseract` / `vision_llm` / `mistral_ocr` / `aws_textract` | Free / Cloud | various | URL or API key | Present in the metadata catalog; see implementation notes |
+| Provider                                                    | Tag                | Badge                 | Requires                                          | Notes                                                     |
+| :---------------------------------------------------------- | :----------------- | :-------------------- | :------------------------------------------------ | :-------------------------------------------------------- |
+| `docling` (IBM Research)                                    | Free / Self-Hosted | Free (SOTA Tables)    | self-hosted URL (default `http://localhost:5001`) | DocLayNet layout + TableFormer tables, ~2.5 GB weights    |
+| `marker` (Vik Paruchuri)                                    | Free / Self-Hosted | Free (Books & Papers) | self-hosted URL (default `http://localhost:5002`) | Surya OCR; strong on academic papers                      |
+| `tesseract` / `vision_llm` / `mistral_ocr` / `aws_textract` | Free / Cloud       | various               | URL or API key                                    | Present in the metadata catalog; see implementation notes |
 
 The catalog carries hardware/cost metadata for settings UIs (asserted in `document.test.ts:23-34`), but the execution dispatcher implements **docling, marker, mistral_ocr, and vision_llm** paths (`document.ts:362-379`). Unknown providers default to docling (`document.ts:377-379`).
 
@@ -72,8 +72,14 @@ const fallbackToVision = config?.fallbackToVision !== false
 If the selected provider throws and `fallbackToVision` is enabled (default true) and the provider isn't already `vision_llm`:
 
 ```typescript
-console.warn(`[document_extract] provider "${provider}" failed (${message}), falling back to Vision LLM...`)
-return { ...visionResult, fallback: true, warning: `Primary engine "${provider}" was unavailable: ${message}. Automatically fell back to Multimodal Vision.` }
+console.warn(
+  `[document_extract] provider "${provider}" failed (${message}), falling back to Vision LLM...`,
+)
+return {
+  ...visionResult,
+  fallback: true,
+  warning: `Primary engine "${provider}" was unavailable: ${message}. Automatically fell back to Multimodal Vision.`,
+}
 ```
 
 With fallback disabled, the original error propagates.
@@ -96,20 +102,20 @@ With fallback disabled, the original error propagates.
 
 ## 🗃️ Tables and events
 
-| Concern | Details |
-| :--- | :--- |
-| DB tables | `org_tool_configs` (read-only, via `loadOrgToolConfig`); results are returned to the model and stored in `tool_calls` by the audit layer — no dedicated document tables |
-| Realtime events | none beyond standard `tool.started` / `tool.finished` |
-| Env vars | none; docling/marker endpoints come from org config (`baseUrl`), Mistral key from org config `apiKey` |
+| Concern         | Details                                                                                                                                                                 |
+| :-------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| DB tables       | `org_tool_configs` (read-only, via `loadOrgToolConfig`); results are returned to the model and stored in `tool_calls` by the audit layer — no dedicated document tables |
+| Realtime events | none beyond standard `tool.started` / `tool.finished`                                                                                                                   |
+| Env vars        | none; docling/marker endpoints come from org config (`baseUrl`), Mistral key from org config `apiKey`                                                                   |
 
 ## ⚠️ Error modes
 
-| Condition | Result |
-| :--- | :--- |
-| Docling/Marker HTTP error | throw with status + 300-char body excerpt → fallback to vision (if enabled) |
-| Mistral key missing | throw `"Mistral OCR requires an API key (Bearer token)."` → fallback |
-| Provider throws with fallback disabled | error propagates; audit layer stores `status: "error"` and the model sees `{ ok: false, error }` |
-| Self-hosted URL unsafe (non-http/https or embedded credentials) | `assertSafeWebhookUrl` throws before any fetch |
+| Condition                                                       | Result                                                                                           |
+| :-------------------------------------------------------------- | :----------------------------------------------------------------------------------------------- |
+| Docling/Marker HTTP error                                       | throw with status + 300-char body excerpt → fallback to vision (if enabled)                      |
+| Mistral key missing                                             | throw `"Mistral OCR requires an API key (Bearer token)."` → fallback                             |
+| Provider throws with fallback disabled                          | error propagates; audit layer stores `status: "error"` and the model sees `{ ok: false, error }` |
+| Self-hosted URL unsafe (non-http/https or embedded credentials) | `assertSafeWebhookUrl` throws before any fetch                                                   |
 
 ## 🧪 Examples (from `document.test.ts`)
 

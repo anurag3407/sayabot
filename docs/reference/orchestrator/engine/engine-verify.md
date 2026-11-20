@@ -68,12 +68,15 @@ Evidence status transitions (from `RunEvidence`): mutating tools (`fs_edit`, `fs
 The final message's `metadata.harness` block (built in `runEngineTurn`'s `finalize`) carries the full picture for the UI and for debugging:
 
 ```typescript
-harness: redactValue({
-  cache: cacheMetrics.snapshot(),
-  verification: verification(),   // VerificationEvidence: { status, mutationRevision, checks, reason? }
-  compactions,                    // number of compaction events this run
-  peakEstimatedInputTokens,
-}, runScrubber)
+harness: redactValue(
+  {
+    cache: cacheMetrics.snapshot(),
+    verification: verification(), // VerificationEvidence: { status, mutationRevision, checks, reason? }
+    compactions, // number of compaction events this run
+    peakEstimatedInputTokens,
+  },
+  runScrubber,
+)
 ```
 
 Alongside it, verification-related warnings accumulate in `metadata.warnings`:
@@ -131,13 +134,13 @@ When `verifyMode === "critic"` and the pass produced text:
 
 ## 🧪 Verify Modes Compared
 
-| Aspect | `off` | `self` (default) | `critic` |
-| :--- | :--- | :--- | :--- |
-| Closing checklist in volatile tail | no | yes (when task brief or `verify_workspace` present) | yes |
-| Evidence gate after each pass | skipped | reminder → revise, or warn-and-finish | reminder → revise, or warn-and-finish |
-| Independent reviewer model call | no | no | yes (`resolveAgentCheapModel`, ≤ 6 steps, ≤ 2 cycles) |
-| Extra `usage_events` kind | — | — | `verify` |
-| Unresolved outcome | — | `Work remains unverified: <reason>` warning in metadata | `Critic verification unresolved: <findings>` warning (after 2 cycles / budget) |
+| Aspect                             | `off`   | `self` (default)                                        | `critic`                                                                       |
+| :--------------------------------- | :------ | :------------------------------------------------------ | :----------------------------------------------------------------------------- |
+| Closing checklist in volatile tail | no      | yes (when task brief or `verify_workspace` present)     | yes                                                                            |
+| Evidence gate after each pass      | skipped | reminder → revise, or warn-and-finish                   | reminder → revise, or warn-and-finish                                          |
+| Independent reviewer model call    | no      | no                                                      | yes (`resolveAgentCheapModel`, ≤ 6 steps, ≤ 2 cycles)                          |
+| Extra `usage_events` kind          | —       | —                                                       | `verify`                                                                       |
+| Unresolved outcome                 | —       | `Work remains unverified: <reason>` warning in metadata | `Critic verification unresolved: <findings>` warning (after 2 cycles / budget) |
 
 The mode lives at `params.verify` on the agent (settable per agent; the room-model override can replace `effort`/model but not `verify`). Because `getVerifyMode` defaults to `"self"`, agents are verification-gated out of the box.
 
@@ -183,12 +186,12 @@ flowchart TD
 
 ## 🧪 Tests
 
-| Test file | Covers |
-| :--- | :--- |
-| `src/engine/verify.test.ts` | `getVerifyMode` defaults, critic result parsing/failure paths. |
-| `src/engine/evidence.test.ts` | `RunEvidence` status transitions, `shellMayMutate` allow/deny. |
-| `src/engine/harness.test.ts` | End-to-end: verify reminders, critic revise loop, evidence surfaced in message metadata. |
-| `src/tools/builtins/sandbox.test.ts` | Adjacent computer-tool coverage including check execution paths. |
+| Test file                            | Covers                                                                                   |
+| :----------------------------------- | :--------------------------------------------------------------------------------------- |
+| `src/engine/verify.test.ts`          | `getVerifyMode` defaults, critic result parsing/failure paths.                           |
+| `src/engine/evidence.test.ts`        | `RunEvidence` status transitions, `shellMayMutate` allow/deny.                           |
+| `src/engine/harness.test.ts`         | End-to-end: verify reminders, critic revise loop, evidence surfaced in message metadata. |
+| `src/tools/builtins/sandbox.test.ts` | Adjacent computer-tool coverage including check execution paths.                         |
 
 ---
 

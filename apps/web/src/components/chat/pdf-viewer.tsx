@@ -78,12 +78,7 @@ interface PdfViewerProps {
   defaultCollapsed?: boolean
 }
 
-export function PdfViewer({
-  url,
-  title,
-  className,
-  defaultCollapsed = false,
-}: PdfViewerProps) {
+export function PdfViewer({ url, title, className, defaultCollapsed = false }: PdfViewerProps) {
   const [collapsed, setCollapsed] = useState(defaultCollapsed)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [page, setPage] = useState(1)
@@ -164,10 +159,7 @@ export function PdfViewer({
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <span
-                className="truncate text-[13px] font-medium text-text"
-                title={filename}
-              >
+              <span className="truncate text-[13px] font-medium text-text" title={filename}>
                 {filename}
               </span>
               <span className="shrink-0 rounded bg-line px-1.5 py-0.5 font-mono text-[10px] uppercase text-muted">

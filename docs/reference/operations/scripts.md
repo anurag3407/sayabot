@@ -81,33 +81,33 @@ Flow (init-letsencrypt.sh:29-94):
 
 ## 📌 Pinned Versions & Integrity
 
-| Component | Version / source | Integrity mechanism |
-| :--- | :--- | :--- |
-| smolvm | `1.34.1` (override with `SMOLVM_VERSION` env) | mandatory `sha256sum -c` against the release's `checksums.sha256`; install **refuses** without it |
-| gVisor (`runsc`) | whatever the `release` apt channel currently ships | official gVisor archive GPG key (`gvisor.dev/archive.key` → `/usr/share/keyrings/gvisor-archive-keyring.gpg`) |
-| Docker Engine | `download.docker.com/linux/<distro>` stable apt repo | repo GPG keyring at `/etc/apt/keyrings/docker.asc` |
-| Let's Encrypt cert | ECDSA `secp384r1` key, standalone issuance | cert state lives in `deploy/certbot/conf` (root-owned 0700, inspected via an `alpine:3.20` container) |
-| OS | Ubuntu 22.04/24.04, Debian 12 | hard `die` on anything else |
+| Component          | Version / source                                     | Integrity mechanism                                                                                           |
+| :----------------- | :--------------------------------------------------- | :------------------------------------------------------------------------------------------------------------ |
+| smolvm             | `1.34.1` (override with `SMOLVM_VERSION` env)        | mandatory `sha256sum -c` against the release's `checksums.sha256`; install **refuses** without it             |
+| gVisor (`runsc`)   | whatever the `release` apt channel currently ships   | official gVisor archive GPG key (`gvisor.dev/archive.key` → `/usr/share/keyrings/gvisor-archive-keyring.gpg`) |
+| Docker Engine      | `download.docker.com/linux/<distro>` stable apt repo | repo GPG keyring at `/etc/apt/keyrings/docker.asc`                                                            |
+| Let's Encrypt cert | ECDSA `secp384r1` key, standalone issuance           | cert state lives in `deploy/certbot/conf` (root-owned 0700, inspected via an `alpine:3.20` container)         |
+| OS                 | Ubuntu 22.04/24.04, Debian 12                        | hard `die` on anything else                                                                                   |
 
 The scripts deliberately avoid one class of risk: smolvm releases are **not signed**, so the published SHA-256 is treated as the only integrity check and is enforced ("refusing to install an unverified binary", setup-computers.sh:44).
 
 ## ♻️ Idempotency Matrix
 
-| Script | Safe to re-run? | Guarantees |
-| :--- | :--- | :--- |
-| `setup-vps.sh` | Yes | skips Docker install if present; user creation, SSH key appends (grep-dedup), swap file, and sysctl all check before acting; SSH hardening only activates once a key exists |
-| `setup-computers.sh` | Yes | `runsc` apt install skipped when the binary exists; smolvm reinstalls into `/opt/smolvm` (same pinned version → same result) |
-| `init-letsencrypt.sh` | Yes | exits early when `certbot/conf/live/$DOMAIN/fullchain.pem` exists unless `--force`; `--force` removes `live/`, `archive/`, `renewal/` for the domain first |
+| Script                | Safe to re-run? | Guarantees                                                                                                                                                                  |
+| :-------------------- | :-------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `setup-vps.sh`        | Yes             | skips Docker install if present; user creation, SSH key appends (grep-dedup), swap file, and sysctl all check before acting; SSH hardening only activates once a key exists |
+| `setup-computers.sh`  | Yes             | `runsc` apt install skipped when the binary exists; smolvm reinstalls into `/opt/smolvm` (same pinned version → same result)                                                |
+| `init-letsencrypt.sh` | Yes             | exits early when `certbot/conf/live/$DOMAIN/fullchain.pem` exists unless `--force`; `--force` removes `live/`, `archive/`, `renewal/` for the domain first                  |
 
 ## 🔧 Variables the Scripts Set or Read
 
 Scripts both read and write `deploy/.env.production`. What each stage expects afterward:
 
-| Script | Writes (suggests) | Reads |
-| :--- | :--- | :--- |
-| `setup-vps.sh` | nothing (host only) | `--user`, `--ssh-key`, `--ssh-port`, `--swap`, `--no-ssh-hardening` flags |
-| `setup-computers.sh` | prints `COMPUTER_BACKEND`, `COMPUTER_DOCKER_RUNTIME`, `SAYABOT_APP_SERVICES` to add manually | `SMOLVM_VERSION`, mode arg (`auto`/`smolvm`/`gvisor`) |
-| `init-letsencrypt.sh` | certbot state only (no env writes) | `SAYABOT_DOMAIN`/`MESH_DOMAIN`, `LETSENCRYPT_EMAIL`, optional `--staging`/`--force`/`--skip-dns-check` |
+| Script                | Writes (suggests)                                                                            | Reads                                                                                                  |
+| :-------------------- | :------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------- |
+| `setup-vps.sh`        | nothing (host only)                                                                          | `--user`, `--ssh-key`, `--ssh-port`, `--swap`, `--no-ssh-hardening` flags                              |
+| `setup-computers.sh`  | prints `COMPUTER_BACKEND`, `COMPUTER_DOCKER_RUNTIME`, `SAYABOT_APP_SERVICES` to add manually | `SMOLVM_VERSION`, mode arg (`auto`/`smolvm`/`gvisor`)                                                  |
+| `init-letsencrypt.sh` | certbot state only (no env writes)                                                           | `SAYABOT_DOMAIN`/`MESH_DOMAIN`, `LETSENCRYPT_EMAIL`, optional `--staging`/`--force`/`--skip-dns-check` |
 
 The consistent pattern is that scripts prepare the host and **print** the `.env.production` lines; only `deploy/install.sh` writes environment files (see [deployment.md](deployment.md)).
 

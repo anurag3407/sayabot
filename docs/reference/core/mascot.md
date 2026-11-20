@@ -8,14 +8,14 @@ Source files: `packages/core/src/mascot.ts`, `packages/core/src/mascot.test.ts` 
 
 Back to front:
 
-| Layer | What it is | Colour |
-| :-- | :-- | :-- |
-| saaya | The shell's silhouette again, translated down by `SAYA_SAAYA_OFFSET` (6 units). "Saaya" means shadow | `palette.shade` |
-| shell | One rounded silhouette per shape | `palette.base` |
-| detail | Optional accent on the shell (only Ledger's folded corner) | `palette.shade` |
-| visor | An ink pill, `SAYA_INK` (`#17141f`) | ink |
-| eyes | Two marks; moods only change these | `palette.eye` |
-| extras | Thought dots, approval badge + "!", or "zz", top right, outside the shell | base / `SAYA_BADGE` (`#ffb547`) |
+| Layer  | What it is                                                                                           | Colour                          |
+| :----- | :--------------------------------------------------------------------------------------------------- | :------------------------------ |
+| saaya  | The shell's silhouette again, translated down by `SAYA_SAAYA_OFFSET` (6 units). "Saaya" means shadow | `palette.shade`                 |
+| shell  | One rounded silhouette per shape                                                                     | `palette.base`                  |
+| detail | Optional accent on the shell (only Ledger's folded corner)                                           | `palette.shade`                 |
+| visor  | An ink pill, `SAYA_INK` (`#17141f`)                                                                  | ink                             |
+| eyes   | Two marks; moods only change these                                                                   | `palette.eye`                   |
+| extras | Thought dots, approval badge + "!", or "zz", top right, outside the shell                            | base / `SAYA_BADGE` (`#ffb547`) |
 
 Every multi-part shell (Bubble's tail, Hoot's tufts, Sprout's leaves, Bloom's lobes, Block's ports) is a union of **clockwise** subpaths, so one `<path>` with the default nonzero fill rule never punches holes. `mascot.test.ts` pins the winding of the hand-reversed subpaths.
 
@@ -33,17 +33,17 @@ type SayaTone = "lilac" | "coral" | "blue" | "yellow" | "teal" | "pink" | "green
 
 ## API
 
-| Export | Purpose |
-| :-- | :-- |
-| `sayaGeometry(shape, mood = "idle"): SayaGeometry` | `{ shell, detail, visor: {x,y,w,h,r}, eyesFill, eyesLine, dots, badge, bang, zz }`. Absent parts are `null` |
-| `sayaPick(seed)` | Stable `{ shape, tone }` for any seed (an agent's name or handle) |
-| `resolveMascotLook(seed)` | Canonical look resolution checking `SAYA_CAST` (case-insensitive & agent aliases) before falling back to `sayaPick` |
-| `SAYA_CAST` | Art-directed dictionary of canonical cast members (`Saya`, `Claude Code`, `Codex`, `Hermes`, `Cursor`, etc.) |
-| `RARE_MASCOT` | The orchestrator mascot name (`"Nova"`, prism shell and sparkles) |
-| `sayaHash(seed)` | The FNV-1a hash behind `sayaPick` |
-| `sayaCircle(cx, cy, r)` / `sayaRoundedRect(x, y, w, h, r)` | Clockwise path helpers used by the shells |
-| `SAYA_SHAPES`, `SAYA_MOODS`, `SAYA_TONE_NAMES` | Ordered lists |
-| `SAYA_INK`, `SAYA_BADGE`, `SAYA_SAAYA_OFFSET`, `SAYA_EYE_STROKE`, `SAYA_ZZ_STROKE` | Shared constants |
+| Export                                                                             | Purpose                                                                                                             |
+| :--------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------ |
+| `sayaGeometry(shape, mood = "idle"): SayaGeometry`                                 | `{ shell, detail, visor: {x,y,w,h,r}, eyesFill, eyesLine, dots, badge, bang, zz }`. Absent parts are `null`         |
+| `sayaPick(seed)`                                                                   | Stable `{ shape, tone }` for any seed (an agent's name or handle)                                                   |
+| `resolveMascotLook(seed)`                                                          | Canonical look resolution checking `SAYA_CAST` (case-insensitive & agent aliases) before falling back to `sayaPick` |
+| `SAYA_CAST`                                                                        | Art-directed dictionary of canonical cast members (`Saya`, `Claude Code`, `Codex`, `Hermes`, `Cursor`, etc.)        |
+| `RARE_MASCOT`                                                                      | The orchestrator mascot name (`"Nova"`, prism shell and sparkles)                                                   |
+| `sayaHash(seed)`                                                                   | The FNV-1a hash behind `sayaPick`                                                                                   |
+| `sayaCircle(cx, cy, r)` / `sayaRoundedRect(x, y, w, h, r)`                         | Clockwise path helpers used by the shells                                                                           |
+| `SAYA_SHAPES`, `SAYA_MOODS`, `SAYA_TONE_NAMES`                                     | Ordered lists                                                                                                       |
+| `SAYA_INK`, `SAYA_BADGE`, `SAYA_SAAYA_OFFSET`, `SAYA_EYE_STROKE`, `SAYA_ZZ_STROKE` | Shared constants                                                                                                    |
 
 Rendering one mascot:
 

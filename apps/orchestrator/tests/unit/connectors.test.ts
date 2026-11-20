@@ -374,9 +374,28 @@ describe("ConnectorService Scoping & Decryption", () => {
       }),
     }
 
+    const mockFetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("conversations.list")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              channels: [
+                { id: "C1", name: "engineering" },
+                { id: "C2", name: "security" },
+                { id: "C3", name: "executive-confidential" },
+              ],
+            }),
+          ),
+        )
+      }
+      return Promise.resolve(new Response(JSON.stringify({ ok: true })))
+    })
+
     const service = new ConnectorService({
       db: mockDb,
       kek: mockKek,
+      fetchFn: mockFetch,
     })
 
     await expect(
@@ -386,7 +405,7 @@ describe("ConnectorService Scoping & Decryption", () => {
         query: "bonus calculations",
         channel: "executive-confidential",
       }),
-    ).rejects.toThrow("Channel 'executive-confidential' is outside this agent's allowed channels")
+    ).rejects.toThrow(/outside this agent's allowed/)
   })
 
   it("throws when agent has no grant for connector", async () => {
@@ -417,9 +436,28 @@ describe("ConnectorService Scoping & Decryption", () => {
       }),
     }
 
+    const mockFetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("conversations.list")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              channels: [
+                { id: "C1", name: "engineering" },
+                { id: "C2", name: "security" },
+                { id: "C3", name: "executive-confidential" },
+              ],
+            }),
+          ),
+        )
+      }
+      return Promise.resolve(new Response(JSON.stringify({ ok: true })))
+    })
+
     const service = new ConnectorService({
       db: mockDb,
       kek: mockKek,
+      fetchFn: mockFetch,
     })
 
     await expect(

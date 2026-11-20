@@ -97,36 +97,36 @@ Three public redirects over the landing page's `DOWNLOADS` constants, all `force
 
 Into the upstream call (`v1/[...path]/route.ts:325`):
 
-| Header | Direction | Purpose |
-| :--- | :--- | :--- |
-| `authorization` | → | The caller's own Supabase token, re-validated upstream. |
-| `content-type`, `accept` | → | Body negotiation. |
-| `x-sayabot-thread-id`, `x-sayabot-reply-to` (and legacy `x-mesh-*`) | → | MCP thread/reply addressing. |
-| `mcp-protocol-version`, `mcp-session-id` | → | MCP session continuity. |
-| `x-internal-secret` | → computers only | Lets computerd trust the web app; never added for orchestrator paths. |
+| Header                                                              | Direction        | Purpose                                                               |
+| :------------------------------------------------------------------ | :--------------- | :-------------------------------------------------------------------- |
+| `authorization`                                                     | →                | The caller's own Supabase token, re-validated upstream.               |
+| `content-type`, `accept`                                            | →                | Body negotiation.                                                     |
+| `x-sayabot-thread-id`, `x-sayabot-reply-to` (and legacy `x-mesh-*`) | →                | MCP thread/reply addressing.                                          |
+| `mcp-protocol-version`, `mcp-session-id`                            | →                | MCP session continuity.                                               |
+| `x-internal-secret`                                                 | → computers only | Lets computerd trust the web app; never added for orchestrator paths. |
 
 Back to the client: `content-type`, `www-authenticate`, `allow`, `mcp-session-id`, plus `x-accel-buffering: no` so SSE streams and streaming bodies are not buffered by intermediate proxies (`v1/[...path]/route.ts:362`). Non-GET/HEAD bodies stream through with `duplex: "half"`.
 
 ## 🧭 Guard summary
 
-| Path under `/api` | Guard | Body |
-| :--- | :--- | :--- |
-| `v1/tools/:id/approve` (POST) | bearer/session + Mac-owner or room/org admin | `{ approved }` → `{ ok, status }` |
-| `v1/tools/…` (other) | none allowed | `403 { error: "forbidden" }` |
-| `v1/computers/…` | bearer/session + org member (`admin` for DELETE) | streams computerd |
-| `v1/computers/:id/stop` (POST) | org admin | `{ ok, status: "stopped" }` |
-| `v1/…` (anything else) | none (upstream decides) | streamed orchestrator response |
-| `messages` (POST) | bearer/session + room access | `{ messageId, queued, warning? }` |
-| `files/rooms/<roomId>/…` (GET) | bearer/session + room RLS | `302` → 60-second signed URL |
-| `providers/local`, `providers/saya` | session (saya: bearer too) | `{ available, agents \| enabled, … }` |
-| `connectors/models`, `connectors/models/room` | session + org member | `{ groups \| bots, canManage \| canEdit }` |
-| `connectors/copilot` | session (`POST`: org admin) | device flow / `{ status, plan, label, last4 }` |
-| `remote/sessions` (POST) | bearer/session + `canOpenHost` + host online | `{ id }` |
-| `remote/sessions/:id` (GET/DELETE) | bearer/session + own session | `{ status, answer, error }` / `{ ok: true }` |
-| `workspaces/:org/activity`, `/routines*` | session + `getOrgAccess` (RLS) | JSON domain payloads |
-| `account/merge` (POST) | bearer/session + anonymous-only | `{ url }` |
-| `auth/send-email` (POST) | Supabase Auth hook (no browser session) | `{ ok: true }` |
-| `instance`, `version`, `health`, `download/*` | public | JSON / redirects |
+| Path under `/api`                             | Guard                                            | Body                                           |
+| :-------------------------------------------- | :----------------------------------------------- | :--------------------------------------------- |
+| `v1/tools/:id/approve` (POST)                 | bearer/session + Mac-owner or room/org admin     | `{ approved }` → `{ ok, status }`              |
+| `v1/tools/…` (other)                          | none allowed                                     | `403 { error: "forbidden" }`                   |
+| `v1/computers/…`                              | bearer/session + org member (`admin` for DELETE) | streams computerd                              |
+| `v1/computers/:id/stop` (POST)                | org admin                                        | `{ ok, status: "stopped" }`                    |
+| `v1/…` (anything else)                        | none (upstream decides)                          | streamed orchestrator response                 |
+| `messages` (POST)                             | bearer/session + room access                     | `{ messageId, queued, warning? }`              |
+| `files/rooms/<roomId>/…` (GET)                | bearer/session + room RLS                        | `302` → 60-second signed URL                   |
+| `providers/local`, `providers/saya`           | session (saya: bearer too)                       | `{ available, agents \| enabled, … }`          |
+| `connectors/models`, `connectors/models/room` | session + org member                             | `{ groups \| bots, canManage \| canEdit }`     |
+| `connectors/copilot`                          | session (`POST`: org admin)                      | device flow / `{ status, plan, label, last4 }` |
+| `remote/sessions` (POST)                      | bearer/session + `canOpenHost` + host online     | `{ id }`                                       |
+| `remote/sessions/:id` (GET/DELETE)            | bearer/session + own session                     | `{ status, answer, error }` / `{ ok: true }`   |
+| `workspaces/:org/activity`, `/routines*`      | session + `getOrgAccess` (RLS)                   | JSON domain payloads                           |
+| `account/merge` (POST)                        | bearer/session + anonymous-only                  | `{ url }`                                      |
+| `auth/send-email` (POST)                      | Supabase Auth hook (no browser session)          | `{ ok: true }`                                 |
+| `instance`, `version`, `health`, `download/*` | public                                           | JSON / redirects                               |
 
 ## 📥 Representative responses
 

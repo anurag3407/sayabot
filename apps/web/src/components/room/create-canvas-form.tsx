@@ -35,7 +35,13 @@ export function CreateCanvasForm({
       <input type="hidden" name="roomId" value={roomId} />
       <div className="grid gap-3 sm:grid-cols-[1fr_150px]">
         <Field label="title" htmlFor="canvas-title">
-          <Input id="canvas-title" name="title" required maxLength={60} placeholder="launch notes" />
+          <Input
+            id="canvas-title"
+            name="title"
+            required
+            maxLength={60}
+            placeholder="launch notes"
+          />
         </Field>
         <Field label="type" htmlFor="canvas-kind">
           <Select

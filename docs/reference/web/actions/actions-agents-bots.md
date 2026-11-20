@@ -64,6 +64,7 @@ Changes only `display_name` (1–60 chars) and `system_prompt` (trimmed, capped 
 ### `updateBotPromptAction(input: { orgSlug, agentId, systemPrompt, roomId? })`
 
 Allows room members (`getRoomAccess`) or workspace admins (`adminOrgAccess`) to update an agent's system prompt during runtime on the fly (`agents.ts:526`).
+
 - Trims and bounds prompt to 20,000 characters.
 - Audits `agent.updated` with `{ fields: ["system_prompt"], runtime: true, roomId }`.
 - Revalidates the workspace org.

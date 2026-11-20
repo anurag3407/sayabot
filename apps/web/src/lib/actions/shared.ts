@@ -23,7 +23,9 @@ export function optionalField(form: FormData, name: string): string | null {
   return value === "" ? null : value
 }
 
-export function parseJsonObject(text: string): { ok: true; value: Record<string, unknown> } | { ok: false; error: string } {
+export function parseJsonObject(
+  text: string,
+): { ok: true; value: Record<string, unknown> } | { ok: false; error: string } {
   if (!text.trim()) return { ok: true, value: {} }
   try {
     const parsed = JSON.parse(text) as unknown
@@ -55,8 +57,19 @@ export function slugify(value: string): string {
 
 /** Top-level routes a workspace slug must never shadow. */
 const RESERVED_SLUGS = new Set([
-  "api", "auth", "forgot-password", "help", "login", "new-workspace", "offline", "onboarding",
-  "privacy", "reset-password", "security", "signup", "terms",
+  "api",
+  "auth",
+  "forgot-password",
+  "help",
+  "login",
+  "new-workspace",
+  "offline",
+  "onboarding",
+  "privacy",
+  "reset-password",
+  "security",
+  "signup",
+  "terms",
 ])
 
 export async function uniqueOrgSlug(base: string): Promise<string> {

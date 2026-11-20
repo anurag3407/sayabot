@@ -48,17 +48,24 @@ export async function configureNotifications(): Promise<void> {
   ])
   await Notifications.setNotificationCategoryAsync("approval", [
     { identifier: "allow", buttonTitle: "Allow", options: { opensAppToForeground: true } },
-    { identifier: "deny", buttonTitle: "Don't allow", options: { opensAppToForeground: true, isDestructive: true } },
+    {
+      identifier: "deny",
+      buttonTitle: "Don't allow",
+      options: { opensAppToForeground: true, isDestructive: true },
+    },
   ])
 }
 
 export async function enablePush(prompt = true): Promise<boolean> {
   if (!Device.isDevice) throw new Error("Alerts need a real phone, not a simulator.")
   let { status } = await Notifications.getPermissionsAsync()
-  if (status !== "granted" && prompt) status = (await Notifications.requestPermissionsAsync()).status
+  if (status !== "granted" && prompt)
+    status = (await Notifications.requestPermissionsAsync()).status
   if (status !== "granted") return false
-  const projectId = (Constants.expoConfig?.extra as { eas?: { projectId?: string } } | undefined)?.eas?.projectId
-  const token = (await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined)).data
+  const projectId = (Constants.expoConfig?.extra as { eas?: { projectId?: string } } | undefined)
+    ?.eas?.projectId
+  const token = (await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined))
+    .data
   await api("/api/mobile/push", { body: { token, platform: Platform.OS } })
   await AsyncStorage.setItem(TOKEN_KEY, token)
   return true
@@ -82,7 +89,9 @@ interface AlertData {
 const handledResponses = new Set<string>()
 
 /** Acts on a tapped alert or one of its buttons. */
-export async function handleNotificationResponse(response: Notifications.NotificationResponse): Promise<void> {
+export async function handleNotificationResponse(
+  response: Notifications.NotificationResponse,
+): Promise<void> {
   const data = (response.notification.request.content.data ?? {}) as AlertData
   const action = response.actionIdentifier
   const key = `${response.notification.request.identifier}:${action}`
@@ -90,8 +99,18 @@ export async function handleNotificationResponse(response: Notifications.Notific
   handledResponses.add(key)
   try {
     if (action === "answer" && data.refId && data.orgSlug && response.userText?.trim()) {
-      await api("/api/mobile/inbox/answer", { body: { orgSlug: data.orgSlug, taskId: data.refId, answer: response.userText.trim(), alsoPost: false } })
-      await Notifications.scheduleNotificationAsync({ content: { title: "Answer sent", body: response.userText.trim().slice(0, 100) }, trigger: null })
+      await api("/api/mobile/inbox/answer", {
+        body: {
+          orgSlug: data.orgSlug,
+          taskId: data.refId,
+          answer: response.userText.trim(),
+          alsoPost: false,
+        },
+      })
+      await Notifications.scheduleNotificationAsync({
+        content: { title: "Answer sent", body: response.userText.trim().slice(0, 100) },
+        trigger: null,
+      })
       return
     }
     if ((action === "allow" || action === "deny") && data.refId) {
@@ -102,7 +121,8 @@ export async function handleNotificationResponse(response: Notifications.Notific
     // Fall through and open the app so the person can act there.
   }
   if (data.kind === "request") navigateWhenReady("MainTabs", { screen: "InboxTab" })
-  else if (data.roomId) navigateWhenReady("Chat", { roomId: data.roomId, roomName: "Chat", orgSlug: data.orgSlug })
+  else if (data.roomId)
+    navigateWhenReady("Chat", { roomId: data.roomId, roomName: "Chat", orgSlug: data.orgSlug })
 }
 
 /** Android: an ongoing "Hermes is working…" notification while the app is in the background. */

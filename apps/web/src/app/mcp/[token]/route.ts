@@ -24,7 +24,7 @@ async function forward(request: Request, token: string) {
 
   // Preserve host/proto for instruction rendering
   const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host")
-  const proto = request.headers.get("x-forwarded-proto") ?? (url.protocol.replace(":", ""))
+  const proto = request.headers.get("x-forwarded-proto") ?? url.protocol.replace(":", "")
   if (host) headers.set("x-forwarded-host", host)
   if (proto) headers.set("x-forwarded-proto", proto)
 
@@ -40,7 +40,13 @@ async function forward(request: Request, token: string) {
   }
   const response = await fetch(target, init)
   const responseHeaders = new Headers()
-  for (const name of ["content-type", "www-authenticate", "allow", "mcp-session-id", "cache-control"]) {
+  for (const name of [
+    "content-type",
+    "www-authenticate",
+    "allow",
+    "mcp-session-id",
+    "cache-control",
+  ]) {
     const value = response.headers.get(name)
     if (value) responseHeaders.set(name, value)
   }

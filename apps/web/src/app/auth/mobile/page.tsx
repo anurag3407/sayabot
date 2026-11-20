@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
+import { getPublicOrigin } from "@/lib/public-origin"
 import { MobileHandoffClient, type MobileSessionPayload } from "./mobile-handoff-client"
 
 export const metadata: Metadata = { title: "Connecting to Sayabot Mobile · Sayabot" }
@@ -32,7 +33,7 @@ export default async function MobileAuthPage() {
     console.error("[MobileAuthPage] Error reading server session:", err)
   }
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://sayabot.sayalabs.in"
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || getPublicOrigin()
 
   return <MobileHandoffClient serverSession={serverSession} siteUrl={siteUrl} />
 }

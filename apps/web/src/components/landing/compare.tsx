@@ -7,14 +7,62 @@ import { Mascot } from "@/components/ui/mascot"
 import { SectionHead } from "./section-head"
 
 const RIVALS = [
-  { name: "ChatGPT", mark: "C", art: "#3f79e0,#7ddcae,#16202f", when: "you want one general assistant for your own questions.", connects: true },
-  { name: "Claude Cowork", mark: "C", art: "#e08a4f,#c75a35,#3a2015", when: "you want to hand file and desktop work to Claude on your machine.", connects: false },
-  { name: "Grok", mark: "G", art: "#5966d6,#a9b6ff,#141625", when: "you want quick answers with live web and X context.", connects: false },
-  { name: "Manus", mark: "M", art: "#2f80ed,#5fcf95,#0e2a24", when: "you want to give a whole task to one hosted autonomous agent.", connects: false },
-  { name: "Devin", mark: "D", art: "#2e7a6b,#8ad6c1,#0f2a2c", when: "you want a hosted software engineer working through your tickets.", connects: false },
-  { name: "OpenClaw", mark: "O", art: "#2456c8,#83b5f7,#10203f", when: "you want a self-hosted personal assistant inside your messaging apps.", connects: false },
-  { name: "Hermes Agent", mark: "H", art: "#e84a68,#efb07f,#311320", when: "you want one self-hosted agent that builds up its own skills.", connects: true },
-  { name: "Cursor", mark: "C", art: "#8d57c8,#f0a23a,#261433", when: "you want AI inside your code editor while you write the code.", connects: true },
+  {
+    name: "ChatGPT",
+    mark: "C",
+    art: "#3f79e0,#7ddcae,#16202f",
+    when: "you want one general assistant for your own questions.",
+    connects: true,
+  },
+  {
+    name: "Claude Cowork",
+    mark: "C",
+    art: "#e08a4f,#c75a35,#3a2015",
+    when: "you want to hand file and desktop work to Claude on your machine.",
+    connects: false,
+  },
+  {
+    name: "Grok",
+    mark: "G",
+    art: "#5966d6,#a9b6ff,#141625",
+    when: "you want quick answers with live web and X context.",
+    connects: false,
+  },
+  {
+    name: "Manus",
+    mark: "M",
+    art: "#2f80ed,#5fcf95,#0e2a24",
+    when: "you want to give a whole task to one hosted autonomous agent.",
+    connects: false,
+  },
+  {
+    name: "Devin",
+    mark: "D",
+    art: "#2e7a6b,#8ad6c1,#0f2a2c",
+    when: "you want a hosted software engineer working through your tickets.",
+    connects: false,
+  },
+  {
+    name: "OpenClaw",
+    mark: "O",
+    art: "#2456c8,#83b5f7,#10203f",
+    when: "you want a self-hosted personal assistant inside your messaging apps.",
+    connects: false,
+  },
+  {
+    name: "Hermes Agent",
+    mark: "H",
+    art: "#e84a68,#efb07f,#311320",
+    when: "you want one self-hosted agent that builds up its own skills.",
+    connects: true,
+  },
+  {
+    name: "Cursor",
+    mark: "C",
+    art: "#8d57c8,#f0a23a,#261433",
+    when: "you want AI inside your code editor while you write the code.",
+    connects: true,
+  },
 ]
 
 type Rival = (typeof RIVALS)[number]
@@ -38,7 +86,9 @@ function Duo({ mark }: { mark: string }) {
       <span className="grid h-12 w-12 place-items-center rounded-full bg-void">
         <Mascot seed="Saya" lit className="h-9 w-9" />
       </span>
-      <span className="-ml-2.5 grid h-12 w-12 place-items-center rounded-full bg-void text-[18px] font-medium text-text">{mark}</span>
+      <span className="-ml-2.5 grid h-12 w-12 place-items-center rounded-full bg-void text-[18px] font-medium text-text">
+        {mark}
+      </span>
     </span>
   )
 }
@@ -54,7 +104,12 @@ export function Compare() {
   return (
     <section id="compare" className="l-section">
       <div className="l-container">
-        <SectionHead act="13" label="Compare" title="Most AI tools are one assistant." lead="Sayabot is the place where a group of them works together. Pick one to see when it's the better choice." />
+        <SectionHead
+          act="13"
+          label="Compare"
+          title="Most AI tools are one assistant."
+          lead="Sayabot is the place where a group of them works together. Pick one to see when it's the better choice."
+        />
         <div className="mt-14 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {RIVALS.map((item) => (
             <button
@@ -74,7 +129,10 @@ export function Compare() {
               </span>
               <span className="flex items-center justify-between gap-2 px-5 py-4 text-[14px]">
                 Sayabot vs {item.name}
-                <ArrowRight className="h-4 w-4 shrink-0 text-faint transition-transform group-hover:translate-x-1 group-hover:text-text" aria-hidden />
+                <ArrowRight
+                  className="h-4 w-4 shrink-0 text-faint transition-transform group-hover:translate-x-1 group-hover:text-text"
+                  aria-hidden
+                />
               </span>
             </button>
           ))}
@@ -94,7 +152,11 @@ export function Compare() {
         {rival ? (
           <div>
             <div className="l-grain relative flex h-[120px] items-center justify-center">
-              <span aria-hidden className="absolute inset-0" style={{ background: art(rival.art) }} />
+              <span
+                aria-hidden
+                className="absolute inset-0"
+                style={{ background: art(rival.art) }}
+              />
               <Duo mark={rival.mark} />
               <button
                 type="button"
@@ -106,7 +168,9 @@ export function Compare() {
               </button>
             </div>
             <div className="p-6">
-              <h3 className="text-[20px] font-medium tracking-[-0.02em]">Sayabot vs {rival.name}</h3>
+              <h3 className="text-[20px] font-medium tracking-[-0.02em]">
+                Sayabot vs {rival.name}
+              </h3>
               <p className="l-body mt-3">
                 <span className="text-text">Choose {rival.name} when</span> {rival.when}
               </p>
@@ -114,7 +178,10 @@ export function Compare() {
               <ul className="mt-2 space-y-2">
                 {OURS.map((line) => (
                   <li key={line} className="l-body flex gap-2.5">
-                    <span aria-hidden className="mt-[9px] h-1 w-1 shrink-0 rounded-full bg-accent" />
+                    <span
+                      aria-hidden
+                      className="mt-[9px] h-1 w-1 shrink-0 rounded-full bg-accent"
+                    />
                     {line}
                   </li>
                 ))}
