@@ -3,7 +3,7 @@ import { GET } from "../../src/app/api/usage/local/route"
 
 describe("Local Usage Scanner API Route", () => {
   it("returns scanned local agent usage with summary and events", async () => {
-    const request = new Request("http://localhost:3000/api/usage/local?days=7")
+    const request = new Request("http://localhost:7431/api/usage/local?days=7")
     const response = await GET(request)
     expect(response.status).toBe(200)
 
@@ -22,7 +22,7 @@ describe("Local Usage Scanner API Route", () => {
   }, 20000)
 
   it("handles custom provider filters", async () => {
-    const request = new Request("http://localhost:3000/api/usage/local?providers=antigravity")
+    const request = new Request("http://localhost:7431/api/usage/local?providers=antigravity")
     const response = await GET(request)
     expect(response.status).toBe(200)
 

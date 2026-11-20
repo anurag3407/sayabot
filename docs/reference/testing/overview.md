@@ -59,7 +59,7 @@ Two jobs:
    - `pnpm test` (unit via turbo)
    - `pnpm test:integration`
    - `pnpm typecheck:e2e` (`tsc -p tsconfig.e2e.json` — the Playwright specs are typechecked but not run)
-2. **`e2e-smoke`** — "E2E smoke (Playwright, API + navigation)", `needs: unit-integration`, **pushes only** (`if: github.event_name == 'push'`). It sets CI-only env (fake `DATABASE_URL`, `SAYABOT_KEK`/`MESH_KEK = ci-test-kek`, `SUPABASE_URL = https://ci.supabase.co`, `ORCHESTRATOR_INTERNAL_SECRET`), installs Playwright + Chromium, builds and starts `@sayabot/web`, waits for `http://localhost:3000/api/health` (30 x 2s, then fails with the web log), and runs `pnpm test:e2e:api` — marked `continue-on-error: true` (test.yml:66-67), so smoke failures do not fail the workflow.
+2. **`e2e-smoke`** — "E2E smoke (Playwright, API + navigation)", `needs: unit-integration`, **pushes only** (`if: github.event_name == 'push'`). It sets CI-only env (fake `DATABASE_URL`, `SAYABOT_KEK`/`MESH_KEK = ci-test-kek`, `SUPABASE_URL = https://ci.supabase.co`, `ORCHESTRATOR_INTERNAL_SECRET`), installs Playwright + Chromium, builds and starts `@sayabot/web`, waits for `http://localhost:7431/api/health` (30 x 2s, then fails with the web log), and runs `pnpm test:e2e:api` — marked `continue-on-error: true` (test.yml:66-67), so smoke failures do not fail the workflow.
 
 The full browser E2E suite (`chat.spec.ts`, `turns.spec.ts`, `approval.spec.ts`) is **not** in CI; it needs a real Supabase project and seeded credentials (see [e2e-testing.md](e2e-testing.md)). Separate workflows (`deploy.yml`, `desktop-release.yml`, `mobile-updates.yml`) handle releases, not tests.
 

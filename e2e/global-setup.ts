@@ -7,7 +7,7 @@ const url = process.env.NEXT_PUBLIC_SUPABASE_URL
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 const emailA = process.env.E2E_USER_A_EMAIL
 const emailB = process.env.E2E_USER_B_EMAIL
-const baseURL = process.env.E2E_BASE_URL ?? "http://localhost:3000"
+const baseURL = process.env.E2E_BASE_URL ?? "http://localhost:7431"
 
 if (!url || !serviceKey) {
   throw new Error("E2E needs NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env")

@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "dotenv -e ../../.env -- next dev -p 3000",
+    "dev": "dotenv -e ../../.env -- next dev -p 7431",
     "build": "dotenv -e ../../.env -- next build --webpack",
-    "start": "dotenv -e ../../.env -- next start -p 3000",
+    "start": "dotenv -e ../../.env -- next start -p 7431",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
     "brand:mascots": "tsx --tsconfig scripts/tsconfig.json scripts/export-mascots.ts",

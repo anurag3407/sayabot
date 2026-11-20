@@ -59,7 +59,7 @@ beforeEach(() => {
 })
 
 function post(body: unknown) {
-  return new Request("http://localhost:3000/api/account/merge", {
+  return new Request("http://localhost:7431/api/account/merge", {
     method: "POST",
     headers: { "content-type": "application/json", authorization: "Bearer guest-token" },
     body: JSON.stringify(body),
@@ -106,7 +106,7 @@ describe("POST /api/account/merge", () => {
 
 describe("GET /auth/merge", () => {
   const entry = (ticket: string) =>
-    mergeEntry(new Request(`http://localhost:3000/auth/merge?ticket=${ticket}&next=/auth/desktop`))
+    mergeEntry(new Request(`http://localhost:7431/auth/merge?ticket=${ticket}&next=/auth/desktop`))
 
   it("sends expired or unknown tickets to login with an error", async () => {
     queue("account_merge_tickets", { data: null, error: null })

@@ -8,8 +8,8 @@ describe("normalizeServerUrl (what people type on the start screen)", () => {
   })
 
   it("uses http:// for local and private-network addresses", () => {
-    expect(normalizeServerUrl("localhost:3000")).toBe("http://localhost:3000")
-    expect(normalizeServerUrl("192.168.1.20:3000")).toBe("http://192.168.1.20:3000")
+    expect(normalizeServerUrl("localhost:7431")).toBe("http://localhost:7431")
+    expect(normalizeServerUrl("192.168.1.20:7431")).toBe("http://192.168.1.20:7431")
     expect(normalizeServerUrl("10.0.0.5")).toBe("http://10.0.0.5")
     expect(normalizeServerUrl("mybox.local")).toBe("http://mybox.local")
   })

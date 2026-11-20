@@ -17,7 +17,7 @@ async function mcpEndpoint(): Promise<string> {
   const configured = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, "")
   if (configured) return `${configured}/api/v1/mcp`
   const h = await headers()
-  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000"
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:7431"
   const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https")
   return `${proto}://${host}/api/v1/mcp`
 }

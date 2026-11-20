@@ -48,7 +48,7 @@ describe("web env helpers", () => {
     expect(getAppUrl()).toBe("https://app.example")
     const { getOrchestratorUrl: defO, getAppUrl: defA } = await load({})
     expect(defO()).toBe("http://localhost:4000")
-    expect(defA()).toBe("http://localhost:3000")
+    expect(defA()).toBe("http://localhost:7431")
   })
 
   it("getKek prefers SAYABOT_KEK, allows MESH_KEK, throws when neither", async () => {

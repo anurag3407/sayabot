@@ -3,7 +3,7 @@
 
 upstream sayabot_web {
     zone sayabot_web 64k;
-    server web:3000;
+    server web:7431;
     keepalive 32;
 }
 

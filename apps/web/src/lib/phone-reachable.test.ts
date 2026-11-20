@@ -9,11 +9,11 @@ import {
 
 describe("reachOf", () => {
   it("classifies addresses by how far a phone can reach them", () => {
-    expect(reachOf("http://localhost:3000")).toBe("this-computer")
-    expect(reachOf("http://127.0.0.1:3000")).toBe("this-computer")
-    expect(reachOf("http://[::1]:3000")).toBe("this-computer")
-    expect(reachOf("http://192.168.1.4:3000")).toBe("same-wifi")
-    expect(reachOf("http://macbook.local:3000")).toBe("same-wifi")
+    expect(reachOf("http://localhost:7431")).toBe("this-computer")
+    expect(reachOf("http://127.0.0.1:7431")).toBe("this-computer")
+    expect(reachOf("http://[::1]:7431")).toBe("this-computer")
+    expect(reachOf("http://192.168.1.4:7431")).toBe("same-wifi")
+    expect(reachOf("http://macbook.local:7431")).toBe("same-wifi")
     expect(reachOf("https://abc.trycloudflare.com")).toBe("anywhere")
     expect(reachOf("https://sayabot.example.com")).toBe("anywhere")
   })
@@ -25,7 +25,7 @@ describe("reachOf", () => {
 describe("phoneServerUrl", () => {
   it("prefers the address the browser is using when a phone can reach it", () => {
     expect(
-      phoneServerUrl("http://localhost:3000", "https://abc.trycloudflare.com", "192.168.1.4"),
+      phoneServerUrl("http://localhost:7431", "https://abc.trycloudflare.com", "192.168.1.4"),
     ).toEqual({
       url: "https://abc.trycloudflare.com",
       reach: "anywhere",
@@ -33,14 +33,14 @@ describe("phoneServerUrl", () => {
   })
   it("uses the configured domain when the browser is on localhost", () => {
     expect(
-      phoneServerUrl("https://sayabot.acme.com", "http://localhost:3000", "192.168.1.4"),
+      phoneServerUrl("https://sayabot.acme.com", "http://localhost:7431", "192.168.1.4"),
     ).toEqual({
       url: "https://sayabot.acme.com",
       reach: "anywhere",
     })
   })
   it("swaps localhost for the Mac's Wi-Fi address, keeping the port", () => {
-    expect(phoneServerUrl("http://localhost:3000", "http://localhost:3005", "192.168.1.4")).toEqual(
+    expect(phoneServerUrl("http://localhost:7431", "http://localhost:3005", "192.168.1.4")).toEqual(
       {
         url: "http://192.168.1.4:3005",
         reach: "same-wifi",
@@ -48,8 +48,8 @@ describe("phoneServerUrl", () => {
     )
   })
   it("says so when no address would work", () => {
-    expect(phoneServerUrl("http://localhost:3000", null, null)).toEqual({
-      url: "http://localhost:3000",
+    expect(phoneServerUrl("http://localhost:7431", null, null)).toEqual({
+      url: "http://localhost:7431",
       reach: "this-computer",
     })
   })

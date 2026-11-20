@@ -289,7 +289,7 @@ export function createApp() {
     </div>
     <div class="header-actions">
       <button class="btn" onclick="returnToController()">Controller</button>
-      <a class="btn" href="http://127.0.0.1:3000" target="_blank" title="Open full Next.js web application if running">Web App (3000)</a>
+      <a class="btn" href="http://127.0.0.1:7431" target="_blank" title="Open full Next.js web application if running">Web App (7431)</a>
     </div>
   </header>
 

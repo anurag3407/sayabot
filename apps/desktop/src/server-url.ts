@@ -1,4 +1,4 @@
-/** Turns what someone typed ("sayabot.acme.com", "http://10.0.0.5:3000/") into a base URL. */
+/** Turns what someone typed ("sayabot.acme.com", "http://10.0.0.5:7431/") into a base URL. */
 export function normalizeServerUrl(input: string): string | null {
   let value = (input || "").trim()
   if (!value || /\s/.test(value)) return null

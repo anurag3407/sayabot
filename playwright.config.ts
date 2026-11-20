@@ -1,7 +1,7 @@
 import "dotenv/config"
 import { defineConfig, devices } from "@playwright/test"
 
-const baseURL = process.env.E2E_BASE_URL ?? "http://localhost:3000"
+const baseURL = process.env.E2E_BASE_URL ?? "http://localhost:7431"
 const orchURL = process.env.ORCHESTRATOR_URL ?? "http://localhost:4000"
 // The seeded browser specs (chat/approval/turns) need E2E_USER_* + Supabase;
 // the smoke lane (api/, navigation, api-guard) only needs running servers.

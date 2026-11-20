@@ -1,7 +1,7 @@
 import os from "node:os"
 
 // Which address can a phone actually open? A Sayabot running on someone's Mac knows itself as
-// http://localhost:3000, which on a phone means the phone. These helpers swap in an address the
+// http://localhost:7431, which on a phone means the phone. These helpers swap in an address the
 // phone can reach, and say how far it reaches, so pairing works for self-hosted and Mac setups.
 
 export type Reach = "anywhere" | "same-wifi" | "this-computer"

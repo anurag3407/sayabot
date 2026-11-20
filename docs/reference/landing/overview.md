@@ -18,7 +18,7 @@ Build-time env (both optional):
 
 | Variable               | Default                                         | Used for                                                               |
 | :--------------------- | :---------------------------------------------- | :--------------------------------------------------------------------- |
-| `NEXT_PUBLIC_APP_URL`  | `http://localhost:3000` (or self-hosted domain) | Web app links (`/login`, `/signup`, `/privacy`, `/terms`, `/security`) |
+| `NEXT_PUBLIC_APP_URL`  | `http://localhost:7431` (or self-hosted domain) | Web app links (`/login`, `/signup`, `/privacy`, `/terms`, `/security`) |
 | `NEXT_PUBLIC_SITE_URL` | `https://sayabot.tech`                          | `metadataBase` for Open Graph URLs                                     |
 
 ## Deployment & CI/CD

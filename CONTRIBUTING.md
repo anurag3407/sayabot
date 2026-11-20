@@ -76,7 +76,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY="<your_supabase_anon_key>"
 SUPABASE_SERVICE_ROLE_KEY="<your_supabase_service_role_key>"
 
 # Application URLs
-NEXT_PUBLIC_APP_URL="http://localhost:3000"
+NEXT_PUBLIC_APP_URL="http://localhost:7431"
 ORCHESTRATOR_URL="http://localhost:4000"
 ```
 
@@ -106,7 +106,7 @@ pnpm dev
 
 The services will be available at:
 
-- **Web UI & Canvas**: `http://localhost:3000`
+- **Web UI & Canvas**: `http://localhost:7431`
 - **Orchestrator Engine**: `http://localhost:4000`
 - **SSRF Egress Proxy**: `http://localhost:4001`
 - **Computerd Daemon**: `http://localhost:4002`

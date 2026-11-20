@@ -25,14 +25,14 @@ describe("Download API & page redirect routes", () => {
   })
 
   it("redirects /api/download/mac to Apple Silicon DMG by default", async () => {
-    const req = new Request("http://localhost:3000/api/download/mac")
+    const req = new Request("http://localhost:7431/api/download/mac")
     const res = await getDownloadMac(req)
     expect(res.status).toBe(302)
     expect(res.headers.get("location")).toBe(DOWNLOADS.macArm64)
   })
 
   it("redirects /api/download/mac?arch=x64 to Intel DMG", async () => {
-    const req = new Request("http://localhost:3000/api/download/mac?arch=x64")
+    const req = new Request("http://localhost:7431/api/download/mac?arch=x64")
     const res = await getDownloadMac(req)
     expect(res.status).toBe(302)
     expect(res.headers.get("location")).toBe(DOWNLOADS.macIntel)
@@ -51,21 +51,21 @@ describe("Download API & page redirect routes", () => {
   })
 
   it("redirects /download/mac to DMG", async () => {
-    const req = new Request("http://localhost:3000/download/mac")
+    const req = new Request("http://localhost:7431/download/mac")
     const res = await getPageDownloadMac(req)
     expect(res.status).toBe(302)
     expect(res.headers.get("location")).toBe(DOWNLOADS.macArm64)
   })
 
   it("redirects /api/download/windows to the x64 setup exe", async () => {
-    const req = new Request("http://localhost:3000/api/download/windows")
+    const req = new Request("http://localhost:7431/api/download/windows")
     const res = await getDownloadWindows(req)
     expect(res.status).toBe(302)
     expect(res.headers.get("location")).toBe(DOWNLOADS.winX64)
   })
 
   it("redirects /download/windows?arch=arm64 to the ARM setup exe", async () => {
-    const req = new Request("http://localhost:3000/download/windows?arch=arm64")
+    const req = new Request("http://localhost:7431/download/windows?arch=arm64")
     const res = await getPageDownloadWindows(req)
     expect(res.status).toBe(302)
     expect(res.headers.get("location")).toBe(DOWNLOADS.winArm64)

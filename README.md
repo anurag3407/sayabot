@@ -162,7 +162,7 @@ Point the apps at your server and sign in with the same account. The apps check 
 ```text
 you          the web app · Sayabot for Mac · the Android app
                │
-the room     Next.js on :3000
+the room     Next.js on :7431
              sign-in, rooms, the canvas, settings
                │
 the engine   the orchestrator on :4000
@@ -233,7 +233,7 @@ Most of this is filled in by the installer. These are the ones that matter when 
 | `ORCHESTRATOR_INTERNAL_SECRET`                                                           | Shared secret between the web app and the orchestrator. `openssl rand -hex 32`                                                                        |
 | `ORCHESTRATOR_URL`                                                                       | The orchestrator. Default `http://localhost:4000`                                                                                                     |
 | `NEXT_PUBLIC_COLLAB_URL`                                                                 | Canvas websocket. Default `ws://localhost:4000/collab`                                                                                                |
-| `NEXT_PUBLIC_SITE_URL`                                                                   | The web app's public address. Default `http://localhost:3000`                                                                                         |
+| `NEXT_PUBLIC_SITE_URL`                                                                   | The web app's public address. Default `http://localhost:7431`                                                                                         |
 | `COMPUTER_BACKEND`                                                                       | `auto`, or pin how agent computers are started. `COMPUTER_MEM_MB` defaults to 1024.                                                                   |
 | `SAYABOT_ALLOW_PRIVATE_WEBHOOKS`                                                         | Leave `false` except when you are developing a bot on your own machine.                                                                               |
 | `SAYA_AI_BASE_URL`, `SAYA_AI_API_KEY`                                                    | Optional shared model for agents that do not bring their own key.                                                                                     |
@@ -256,7 +256,7 @@ pnpm db:migrate && pnpm db:seed
 pnpm dev
 ```
 
-The web app is on [localhost:3000](http://localhost:3000). The orchestrator listens on port 4000.
+The web app is on [localhost:7431](http://localhost:7431). The orchestrator listens on port 4000.
 
 ```bash
 pnpm dev            # web, orchestrator, and the rest of the workspace

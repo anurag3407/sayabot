@@ -7,7 +7,7 @@
  *    with ERR_CONNECTION_REFUSED. If detected, it is replaced with "localhost".
  * 2. Behind reverse proxies (Nginx, Caddy, Cloudflare Tunnel), respects x-forwarded-host
  *    and x-forwarded-proto so that production domains (e.g. sayabot.example.com) are preserved.
- * 3. In development, preserves the current listening port (e.g. localhost:3000, localhost:3005).
+ * 3. In development, preserves the current listening port (e.g. localhost:7431, localhost:3005).
  * 4. Falls back to NEXT_PUBLIC_SITE_URL or NEXT_PUBLIC_APP_URL.
  */
 export function getPublicOrigin(request?: Request): string {
@@ -34,7 +34,7 @@ export function getPublicOrigin(request?: Request): string {
   }
 
   const configured =
-    process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+    process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:7431"
 
   let origin = configured.replace(/\/+$/, "")
   if (origin.includes("0.0.0.0")) {

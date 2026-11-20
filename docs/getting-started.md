@@ -84,13 +84,13 @@ Sayabot utilizes PostgreSQL for relational storage, row-level security (RLS), re
 1. Go to **Authentication** → **URL Configuration**.
 2. Set **Site URL** to:
    ```
-   http://localhost:3000
+   http://localhost:7431
    ```
 3. Add the following to **Redirect URLs**:
    ```
-   http://localhost:3000/auth/callback
-   http://localhost:3000/auth/complete
-   http://localhost:3000/**
+   http://localhost:7431/auth/callback
+   http://localhost:7431/auth/complete
+   http://localhost:7431/**
    ```
 4. _(Optional for Dev)_ Go to **Authentication** → **Email Templates**. If using Email Magic Links or OTPs, make sure `{{ .Token }}` or `{{ .ConfirmationURL }}` is present in the template.
 
@@ -130,7 +130,7 @@ ORCHESTRATOR_INTERNAL_SECRET="your-32-byte-hex-secret"
 # Microservice endpoints
 ORCHESTRATOR_URL="http://localhost:4000"
 NEXT_PUBLIC_COLLAB_URL="ws://localhost:4000/collab"
-NEXT_PUBLIC_SITE_URL="http://localhost:3000"
+NEXT_PUBLIC_SITE_URL="http://localhost:7431"
 
 # ==============================================================================
 # Authentication Providers
@@ -199,7 +199,7 @@ Turborepo will spin up all workspace microservices in parallel:
 
 | Service                 | Port                               | Description                                          |
 | :---------------------- | :--------------------------------- | :--------------------------------------------------- |
-| **`apps/web`**          | `http://localhost:3000`            | Next.js 16 Web Dashboard, Chat, Canvas & Cron Canvas |
+| **`apps/web`**          | `http://localhost:7431`            | Next.js 16 Web Dashboard, Chat, Canvas & Cron Canvas |
 | **`apps/orchestrator`** | `http://localhost:4000`            | Hono Agent Runner, Turn Coordinator, Cron Scheduler  |
 | **Collab WebSocket**    | `ws://localhost:4000/collab`       | Real-time Yjs CRDT synchronization for live canvas   |
 | **MCP Gateway**         | `http://localhost:4000/api/v1/mcp` | Universal Model Context Protocol endpoint            |
@@ -208,7 +208,7 @@ Turborepo will spin up all workspace microservices in parallel:
 
 ## 🧭 7. First-Run Onboarding Walkthrough
 
-1. Open your browser and navigate to [http://localhost:3000](http://localhost:3000).
+1. Open your browser and navigate to [http://localhost:7431](http://localhost:7431).
 2. Click **Sign In** and authenticate using Email Magic Link or GitHub OAuth.
 3. Name your workspace (for example `Acme Engineering`). Onboarding asks only for that name, then opens a first chat called General. API keys and bots are set up later, inside the app.
 4. Enter your new room and send a test message:
@@ -219,7 +219,7 @@ Turborepo will spin up all workspace microservices in parallel:
    ```
    /cron
    ```
-   Or visit `http://localhost:3000/acme/cron` to view the visual n8n-style workflow canvas!
+   Or visit `http://localhost:7431/acme/cron` to view the visual n8n-style workflow canvas!
 
 ---
 

@@ -1,5 +1,5 @@
 /**
- * Turns what someone typed ("sayabot.acme.com", "192.168.1.20:3000/") into a base URL.
+ * Turns what someone typed ("sayabot.acme.com", "192.168.1.20:7431/") into a base URL.
  * No `URL` here on purpose: React Native's URL doesn't implement hostname/protocol.
  */
 export function normalizeServerUrl(input: string): string | null {

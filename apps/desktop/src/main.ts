@@ -306,7 +306,7 @@ export function loadConfig(): DesktopConfig {
     if (data) {
       if (
         !process.env.SAYABOT_SERVER_URL &&
-        (data.serverUrl === "http://localhost:3000" || data.serverUrl === "http://127.0.0.1:3000")
+        (data.serverUrl === "http://localhost:7431" || data.serverUrl === "http://127.0.0.1:7431")
       ) {
         data.serverUrl = DEFAULT_SERVER_URL
         data.serverChosen = true

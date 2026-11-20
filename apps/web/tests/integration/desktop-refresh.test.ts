@@ -21,7 +21,7 @@ describe("desktop token refresh route", () => {
   })
 
   it("rejects empty body with 400", async () => {
-    const req = new Request("http://localhost:3000/api/desktop/refresh", {
+    const req = new Request("http://localhost:7431/api/desktop/refresh", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({}),
@@ -38,7 +38,7 @@ describe("desktop token refresh route", () => {
       error: { message: "Invalid refresh token" },
     })
 
-    const req = new Request("http://localhost:3000/api/desktop/refresh", {
+    const req = new Request("http://localhost:7431/api/desktop/refresh", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ refreshToken: "invalid-dummy-token" }),
@@ -55,7 +55,7 @@ describe("desktop token refresh route", () => {
       error: { name: "AuthRetryableFetchError", message: "fetch failed", status: 0 },
     })
 
-    const req = new Request("http://localhost:3000/api/desktop/refresh", {
+    const req = new Request("http://localhost:7431/api/desktop/refresh", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ refreshToken: "valid-token" }),
@@ -77,7 +77,7 @@ describe("desktop token refresh route", () => {
       error: null,
     })
 
-    const req = new Request("http://localhost:3000/api/desktop/refresh", {
+    const req = new Request("http://localhost:7431/api/desktop/refresh", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ refreshToken: "valid-token" }),
@@ -104,7 +104,7 @@ describe("desktop token refresh route", () => {
       error: null,
     })
 
-    const req = new Request("http://localhost:3000/api/desktop/refresh", {
+    const req = new Request("http://localhost:7431/api/desktop/refresh", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ refreshToken: "guest-refresh-old" }),

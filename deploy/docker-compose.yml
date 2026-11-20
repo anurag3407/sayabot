@@ -1,6 +1,6 @@
 # Sayabot production stack for a single VPS.
 #
-#   internet ─▶ nginx :80/:443 ─┬─▶ web :3000            (pages, server actions, /api/v1 bot+MCP proxy)
+#   internet ─▶ nginx :80/:443 ─┬─▶ web :7431            (pages, server actions, /api/v1 bot+MCP proxy)
 #                               └─▶ orchestrator :4000   (/collab canvas WebSocket only)
 #   web ─▶ orchestrator (internal HTTP)     both ─▶ Supabase (Postgres, Auth, Realtime)
 #

@@ -119,7 +119,7 @@ Phone devices pair to a person via one-time codes in `device_pairings`:
   2. The configured `NEXT_PUBLIC_APP_URL`, if it isn't loopback.
   3. That URL with this machine's Wi-Fi IPv4 (192.168.x preferred) in place of `localhost`, keeping the port.
 
-  `reach` is `"anywhere"` (a public host), `"same-wifi"` (a private address) or `"this-computer"` (nothing reachable). So a Mac running Sayabot itself hands out `http://192.168.x.x:3000` instead of `http://localhost:3000`.
+  `reach` is `"anywhere"` (a public host), `"same-wifi"` (a private address) or `"this-computer"` (nothing reachable). So a Mac running Sayabot itself hands out `http://192.168.x.x:7431` instead of `http://localhost:7431`.
 
 - `phonePairingStatusAction(input)` (`phones.ts:52`) — polls the pairing (own only) and reports `status` (an expired `waiting` reads as `expired`), `deviceName`, `platform`.
 - `revokePhoneAction(input)` (`phones.ts:69`) — own phones only; sets `status: "revoked"`, `revoked_at`, clears `device_token_hash`; audit `phone.revoked`.

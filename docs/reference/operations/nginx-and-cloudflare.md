@@ -45,7 +45,7 @@ Shared verbatim by the TLS server (port 443) and the tunnel listener (port 8080)
 | Route                                                              | Upstream                                     | Rate limit                          | Timeouts / notes                                                                                                                             |
 | :----------------------------------------------------------------- | :------------------------------------------- | :---------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------- |
 | `location = /collab`                                               | `sayabot_orchestrator` (`orchestrator:4000`) | —                                   | WebSocket (Hocuspocus canvas sync); read/send timeout **1h**, buffering off. The only orchestrator path exposed; `/internal/*` stays private |
-| `~ ^/(api/v1\|mcp)/`                                               | `sayabot_web` (`web:3000`)                   | `sayabot_api` burst 60 nodelay      | NDJSON/SSE streaming: `proxy_buffering off`, `proxy_request_buffering off`, `proxy_cache off`, read/send **330s**, `X-Accel-Buffering: no`   |
+| `~ ^/(api/v1\|mcp)/`                                               | `sayabot_web` (`web:7431`)                   | `sayabot_api` burst 60 nodelay      | NDJSON/SSE streaming: `proxy_buffering off`, `proxy_request_buffering off`, `proxy_cache off`, read/send **330s**, `X-Accel-Buffering: no`   |
 | `location = /api/health`                                           | `sayabot_web`                                | none                                | Liveness for uptime monitors; `access_log off`                                                                                               |
 | `~ ^/(login\|signup\|forgot-password\|reset-password\|auth)(/\|$)` | `sayabot_web`                                | `sayabot_auth` burst 20 nodelay     | Slows password guessing and code brute force                                                                                                 |
 | `location /_next/static/`                                          | `sayabot_web`                                | —                                   | `expires 1y` + `Cache-Control: public, max-age=31536000, immutable` (content-hashed assets)                                                  |
@@ -58,7 +58,7 @@ Shared verbatim by the TLS server (port 443) and the tunnel listener (port 8080)
 
 ### TLS mode (`templates/sayabot.conf.template`)
 
-- **Upstreams**: `sayabot_web` (`web:3000`, keepalive 32) and `sayabot_orchestrator` (`orchestrator:4000`, keepalive 8), each with a 64k shared zone.
+- **Upstreams**: `sayabot_web` (`web:7431`, keepalive 32) and `sayabot_orchestrator` (`orchestrator:4000`, keepalive 8), each with a 64k shared zone.
 - **`:80` default server**: serves `/.well-known/acme-challenge/` from `/var/www/certbot` (the certbot webroot) and 301-redirects everything else to `https://${SAYABOT_DOMAIN}$request_uri`.
 - **`:443` default server**: `http2 on`, the domain's certificate, and `return 444` — "reject unknown Host headers (IP scans, spoofed hosts)".
 - **`:443` Sayabot server**: certificate, security headers, `limit_conn sayabot_conn 100`, then `include /etc/nginx/supabase/*.conf` (empty unless bundled Supabase is active) and `include /etc/nginx/snippets/sayabot-locations.conf`.

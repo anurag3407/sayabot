@@ -940,7 +940,7 @@ async function renderInstructions(c: Context, token: string | undefined) {
   }
 
   const proto = c.req.header("x-forwarded-proto") || "http"
-  const host = c.req.header("x-forwarded-host") || c.req.header("host") || "localhost:3000"
+  const host = c.req.header("x-forwarded-host") || c.req.header("host") || "localhost:7431"
   const rawToken = token || ""
   const connectionUrl = `${proto}://${host}/mcp/${rawToken}`
 

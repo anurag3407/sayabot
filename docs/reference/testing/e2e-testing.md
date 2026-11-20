@@ -22,7 +22,7 @@ viewport: { width: 1440, height: 900 }
 Two knobs drive everything (`playwright.config.ts:4-8,16`):
 
 - `E2E_SMOKE=1` — smoke lane. Disables `globalSetup` (no Supabase seeding), drops the orchestrator `webServer`, and the root script `pnpm test:e2e:api` additionally restricts tests to `api navigation.spec.ts api-guard.spec.ts`.
-- `E2E_BASE_URL` (default `http://localhost:3000`) and `ORCHESTRATOR_URL` (default `http://localhost:4000`) — targets.
+- `E2E_BASE_URL` (default `http://localhost:7431`) and `ORCHESTRATOR_URL` (default `http://localhost:4000`) — targets.
 
 `webServer` entries start missing services automatically with `reuseExistingServer: true`: always `pnpm --filter @sayabot/web dev` (URL-checked against `baseURL`, 180s timeout) and, outside smoke mode, `pnpm --filter @sayabot/orchestrator dev` (checked against `/health`) — so `pnpm e2e` boots what it needs but reuses a dev stack you already have running. One Chromium project only.
 
@@ -108,7 +108,7 @@ Environment for the full lane (read from `.env` by `dotenv/config` in the config
 | `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | global-setup, fixtures | Supabase admin client for seeding and magic links   |
 | `E2E_USER_A_EMAIL`, `E2E_USER_B_EMAIL`                  | global-setup           | the two seeded users (A = owner/admin, B = member)  |
 | `E2E_ORG_SLUG`                                          | global-setup           | org slug, default `mesh-e2e`                        |
-| `E2E_BASE_URL`                                          | config, specs          | web target, default `http://localhost:3000`         |
+| `E2E_BASE_URL`                                          | config, specs          | web target, default `http://localhost:7431`         |
 | `ORCHESTRATOR_URL`, `COMPUTERD_URL`, `EGRESS_URL`       | `api/health.spec.ts`   | service targets, defaults `:4000`, `:4100`, `:8081` |
 | `E2E_SMOKE`                                             | config, root script    | selects the smoke lane                              |
 

@@ -72,7 +72,7 @@ Human copy for approval cards: `describeToolCall({ toolName, input, agentName })
 
 ### `public-origin.ts` (shared)
 
-`getPublicOrigin(request?)` — the public address for OAuth callbacks and external redirects: prefers `x-forwarded-host`/`x-forwarded-proto` (reverse proxies, tunnels), then the request URL's origin, then `NEXT_PUBLIC_SITE_URL`/`NEXT_PUBLIC_APP_URL`, defaulting to `http://localhost:3000`. Any `0.0.0.0` (a bind address Chromium refuses) is rewritten to `localhost`.
+`getPublicOrigin(request?)` — the public address for OAuth callbacks and external redirects: prefers `x-forwarded-host`/`x-forwarded-proto` (reverse proxies, tunnels), then the request URL's origin, then `NEXT_PUBLIC_SITE_URL`/`NEXT_PUBLIC_APP_URL`, defaulting to `http://localhost:7431`. Any `0.0.0.0` (a bind address Chromium refuses) is rewritten to `localhost`.
 
 ## 🔄 Update & Activity Buses
 
@@ -170,7 +170,7 @@ Typed accessors that throw when required values are missing:
 | `getComputerdUrl`                       | `COMPUTERD_URL`                                              | `http://localhost:4100`                |
 | `getInternalSecret`                     | `ORCHESTRATOR_INTERNAL_SECRET`                               | — (required)                           |
 | `getCollabUrl`                          | `NEXT_PUBLIC_COLLAB_URL`                                     | `ws://localhost:4000/collab`           |
-| `getAppUrl`                             | `NEXT_PUBLIC_APP_URL` / `NEXT_PUBLIC_SITE_URL`               | `http://localhost:3000`                |
+| `getAppUrl`                             | `NEXT_PUBLIC_APP_URL` / `NEXT_PUBLIC_SITE_URL`               | `http://localhost:7431`                |
 
 Feature/edition helpers: `sayaAi()` (the operator's Saya AI provider from `SAYA_AI_*` or legacy `DEV_OPENAI_COMPAT_*`, re-read per request) and `sayaAiPublic()` (names/aliases only — never the key — safe for clients); `devModelConfigured()`; `ssoEnabled()`, `githubAuthEnabled()`, `googleAuthEnabled()` (each from `*_ENABLED` including `NEXT_PUBLIC_*` forms); `desktopGuestModeEnabled()` (on unless `DESKTOP_GUEST_MODE=false/0/off`); `edition()` (`self-hosted` default vs `cloud`); `instanceName()` (`SAYABOT_INSTANCE_NAME` capped at 60 chars, else "Sayabot").
 

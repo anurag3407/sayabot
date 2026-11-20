@@ -65,7 +65,7 @@ over the limit keep working; only adding more is blocked.
 6. `./deploy/deploy.sh`. A full deploy is needed, because the edition is also built into the web
    app so it can show the Plan & billing page.
 
-Test first with Stripe's test keys and `stripe listen --forward-to localhost:3000/api/billing/webhook`.
+Test first with Stripe's test keys and `stripe listen --forward-to localhost:7431/api/billing/webhook`.
 
 ## How a purchase flows
 

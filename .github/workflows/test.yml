@@ -55,13 +55,13 @@ jobs:
           pnpm --filter @sayabot/web build
           pnpm --filter @sayabot/web start > /tmp/web.log 2>&1 &
           for i in $(seq 1 30); do
-            if curl -fsS http://localhost:3000/api/health >/dev/null 2>&1; then
+            if curl -fsS http://localhost:7431/api/health >/dev/null 2>&1; then
               echo "Web service is healthy!"
               break
             fi
             echo "Waiting for web service to be healthy... ($i/30)"
             sleep 2
           done
-          curl -fsS http://localhost:3000/api/health || (cat /tmp/web.log; exit 1)
+          curl -fsS http://localhost:7431/api/health || (cat /tmp/web.log; exit 1)
       - run: pnpm test:e2e:api
         continue-on-error: true

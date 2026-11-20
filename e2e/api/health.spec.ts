@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test"
 // API-level e2e: contract checks against already-running services.
 // The browser specs in e2e/*.spec.ts need Supabase + seeded users; these need
 // only the HTTP surfaces, so they run in the smoke lane too.
-const web = process.env.E2E_BASE_URL ?? "http://localhost:3000"
+const web = process.env.E2E_BASE_URL ?? "http://localhost:7431"
 const orch = process.env.ORCHESTRATOR_URL ?? "http://localhost:4000"
 const computerd = process.env.COMPUTERD_URL ?? "http://localhost:4100"
 const egress = process.env.EGRESS_URL ?? "http://localhost:8081"

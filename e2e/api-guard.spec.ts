@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test"
 
 // API guard matrix against the web app (no Supabase session).
-const web = process.env.E2E_BASE_URL ?? "http://localhost:3000"
+const web = process.env.E2E_BASE_URL ?? "http://localhost:7431"
 
 test.describe("web API guards", () => {
   test("POST /api/messages without a session is 401", async ({ request }) => {

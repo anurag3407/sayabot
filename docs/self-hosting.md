@@ -73,7 +73,7 @@ Choose the ingress and hosting pattern that matches your networking constraints,
 | **Behind NAT / Home Lab / Dynamic IP**            | **[Pathway B: Cloudflare Zero Trust](#pathway-b-cloudflare-zero-trust-tunnels)**   |     None (`0`)     |       Required       |      ~7 minutes      | `https://sayabot.example.com`        |
 | **Internal Team / Private Corporate Network**     | **[Pathway C: Tailscale Private Mesh](#pathway-c-tailscale-private-mesh-network)** |     None (`0`)     | MagicDNS / Tailscale |      ~3 minutes      | `https://sayabot-srv.tailnet.ts.net` |
 | **Serverless Web + Managed Background Compute**   | **[Pathway D: Split Cloud Hosting](#pathway-d-split-cloud-hosting)**               |  Managed (Fly.io)  |       Required       |     ~10 minutes      | `https://app.example.com`            |
-| **Local Workstation / Mac Mini / Offline Rig**    | **[Pathway E: Local Homelab](#pathway-e-local-homelab-and-on-premises)**           |      LAN only      | Optional (`.local`)  |      ~2 minutes      | `http://localhost:3000`              |
+| **Local Workstation / Mac Mini / Offline Rig**    | **[Pathway E: Local Homelab](#pathway-e-local-homelab-and-on-premises)**           |      LAN only      | Optional (`.local`)  |      ~2 minutes      | `http://localhost:7431`              |
 
 ---
 
@@ -96,7 +96,7 @@ Sayabot is architected as a set of decoupled, purpose-built microservices coordi
               /collab (WebSocket)    │                 │  HTTP / HTTPS
                                      ▼                 ▼
  ┌──────────────────────────────────────┐     ┌─────────────────────────────────┐
- │       apps/orchestrator (:4000)      │     │         apps/web (:3000)        │
+ │       apps/orchestrator (:4000)      │     │         apps/web (:7431)        │
  │ • Turn Engine & Advisory Locking     │     │ • Next.js 16 App Router (SSR)   │
  │ • Hocuspocus Yjs WebSocket Server    │◄────┤ • Server Actions (Admin Client) │
  │ • pg-boss Distributed Queue Worker   │     │ • Proxy: /api/v1/*, /mcp/*      │
@@ -134,7 +134,7 @@ Sayabot is architected as a set of decoupled, purpose-built microservices coordi
 
 | Service                 | Internal Port                    | Description & Runtime Requirements                                                                                                                                                                                                                                  |
 | :---------------------- | :------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **`apps/web`**          | `3000`                           | Next.js 16 standalone server running React 19. Renders the interactive UI, Monaco canvas editors, n8n visual cron builder, and proxies external bot & MCP traffic to the orchestrator. Stateless; horizontally scalable.                                            |
+| **`apps/web`**          | `7431`                           | Next.js 16 standalone server running React 19. Renders the interactive UI, Monaco canvas editors, n8n visual cron builder, and proxies external bot & MCP traffic to the orchestrator. Stateless; horizontally scalable.                                            |
 | **`apps/orchestrator`** | `4000`                           | Node.js 24 + Hono runtime. Manages turn loops, acquires Postgres advisory locks (`mesh:room:<id>`), runs Hocuspocus CRDT sync on `/collab`, and schedules cron routines. Must run as a persistent singleton unless distributed Redis canvas clustering is attached. |
 | **`apps/computerd`**    | `4100`                           | Privileged agent sandbox coordinator. Communicates directly with the host `/var/run/docker.sock` to instantiate isolated Linux containers with persistent storage (`saaya-bot-${agentId}`) and Chromium instances over Chrome DevTools Protocol (CDP).              |
 | **`apps/egress`**       | `8080` (proxy)<br>`8081` (admin) | Secret-brokering proxy. Traps outbound traffic from containers, substitutes opaque placeholders (`saaya_ph_...`) with real decrypted credentials in flight, and drops requests destined for RFC-1918 subnets or cloud metadata endpoints.                           |
@@ -187,7 +187,7 @@ Choose the ingress pattern that matches your security model and networking archi
 The turnkey production configuration packaged in `deploy/` runs the entire stack on a hardened single Linux instance.
 
 ```
-Internet ──▶ Nginx (:80/:443) ──┬──▶ apps/web (:3000) ──▶ apps/orchestrator (:4000)
+Internet ──▶ Nginx (:80/:443) ──┬──▶ apps/web (:7431) ──▶ apps/orchestrator (:4000)
                                  └──▶ apps/orchestrator:4000 (/collab WebSocket)
 ```
 
@@ -337,14 +337,14 @@ ingress:
 
   # 2. Universal MCP & External Bot Streamable Endpoints (Disable Proxy Buffering)
   - path: ^/(api/v1|mcp)/
-    service: http://127.0.0.1:3000
+    service: http://127.0.0.1:7431
     originRequest:
       noTLSVerify: true
       connectTimeout: 330s
       noChunkedEncoding: true
 
   # 3. Web UI, Server Actions, & Static Content
-  - service: http://127.0.0.1:3000
+  - service: http://127.0.0.1:7431
 
   # Catch-all 404 rule
   - service: http_status:404
@@ -530,11 +530,11 @@ pnpm db:seed
 pnpm dev
 ```
 
-- Web UI: `http://localhost:3000`
+- Web UI: `http://localhost:7431`
 - Orchestrator API: `http://localhost:4000`
 - Live Canvas WebSocket: `ws://localhost:4000/collab`
 
-To access from other devices on your local Wi-Fi or LAN, bind to `0.0.0.0` and set `NEXT_PUBLIC_SITE_URL=http://192.168.1.X:3000` and `NEXT_PUBLIC_COLLAB_URL=ws://192.168.1.X:4000/collab`.
+To access from other devices on your local Wi-Fi or LAN, bind to `0.0.0.0` and set `NEXT_PUBLIC_SITE_URL=http://192.168.1.X:7431` and `NEXT_PUBLIC_COLLAB_URL=ws://192.168.1.X:4000/collab`.
 
 ---
 
@@ -720,8 +720,8 @@ In your Supabase project dashboard (**Authentication → URL Configuration**):
 2. **Redirect Allowlist**:
    - `https://sayabot.yourcompany.com/auth/callback`
    - `https://sayabot.yourcompany.com/auth/complete`
-   - `http://localhost:3000/auth/callback` (for local development)
-   - `http://localhost:3000/auth/complete`
+   - `http://localhost:7431/auth/callback` (for local development)
+   - `http://localhost:7431/auth/complete`
 3. **Email Templates**:
    - Ensure the **Confirm signup** template contains the 6-digit confirmation token `{{ .Token }}` in addition to the URL link:
      ```html
@@ -863,7 +863,7 @@ Sayabot's reverse proxy setup is organized into modular templates and snippets u
    ```nginx
    upstream sayabot_web {
        zone sayabot_web 64k;
-       server web:3000;
+       server web:7431;
        keepalive 32;
    }
 
@@ -1006,8 +1006,8 @@ Sayabot exposes dedicated ingress paths for real-time external event processing:
 
 | Endpoint Path                          | Upstream Target                  | Source Provider     | Signature Header                                 | Security & Protocol Rules                                                                                                                                                                               |
 | :------------------------------------- | :------------------------------- | :------------------ | :----------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **`/api/v1/connectors/slack/events`**  | `web:3000` ➔ `orchestrator:4000` | Slack Events API    | `X-Slack-Signature`, `X-Slack-Request-Timestamp` | Must return `200 OK` with URL verification challenge within 3,000ms. Validates HMAC-SHA256 signature against `SLACK_SIGNING_SECRET`. Rejects timestamps skewed > 300 seconds to prevent replay attacks. |
-| **`/api/v1/connectors/github/events`** | `web:3000` ➔ `orchestrator:4000` | GitHub App Webhooks | `X-Hub-Signature-256`                            | Validates HMAC-SHA256 digest against `GITHUB_APP_WEBHOOK_SECRET`. Handles push events, pull requests, issue mentions, and installation callbacks.                                                       |
+| **`/api/v1/connectors/slack/events`**  | `web:7431` ➔ `orchestrator:4000` | Slack Events API    | `X-Slack-Signature`, `X-Slack-Request-Timestamp` | Must return `200 OK` with URL verification challenge within 3,000ms. Validates HMAC-SHA256 signature against `SLACK_SIGNING_SECRET`. Rejects timestamps skewed > 300 seconds to prevent replay attacks. |
+| **`/api/v1/connectors/github/events`** | `web:7431` ➔ `orchestrator:4000` | GitHub App Webhooks | `X-Hub-Signature-256`                            | Validates HMAC-SHA256 digest against `GITHUB_APP_WEBHOOK_SECRET`. Handles push events, pull requests, issue mentions, and installation callbacks.                                                       |
 
 ```mermaid
 sequenceDiagram
@@ -1086,7 +1086,7 @@ sayabot.yourcompany.com {
     # Disables response buffering and passes raw payloads for HMAC validation
     @connectorWebhooks path /api/v1/connectors/*
     handle @connectorWebhooks {
-        reverse_proxy web:3000 {
+        reverse_proxy web:7431 {
             flush_interval -1
             header_up Host {host}
             header_up X-Forwarded-Proto https
@@ -1102,7 +1102,7 @@ sayabot.yourcompany.com {
     # 3. Universal MCP & Bot API Streamable Proxy (NDJSON/SSE)
     @mcp path_regexp ^/(api/v1|mcp)/
     handle @mcp {
-        reverse_proxy web:3000 {
+        reverse_proxy web:7431 {
             flush_interval -1
             transport http {
                 response_header_timeout 330s
@@ -1113,7 +1113,7 @@ sayabot.yourcompany.com {
     # 4. Auth & Connector OAuth Handshakes (Google, GitHub, Slack)
     @oauth path /auth/* /api/connectors/*
     handle @oauth {
-        reverse_proxy web:3000 {
+        reverse_proxy web:7431 {
             header_up Host {host}
             header_up X-Forwarded-Proto https
         }
@@ -1121,7 +1121,7 @@ sayabot.yourcompany.com {
 
     # 5. Web UI & Next.js App
     handle {
-        reverse_proxy web:3000
+        reverse_proxy web:7431
     }
 }
 ```
@@ -1155,7 +1155,7 @@ http:
     web-svc:
       loadBalancer:
         servers:
-          - url: "http://web:3000"
+          - url: "http://web:7431"
 ```
 
 ---

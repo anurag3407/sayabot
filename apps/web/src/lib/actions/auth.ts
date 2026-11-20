@@ -24,7 +24,7 @@ async function requestOrigin(): Promise<string> {
   return (
     process.env.NEXT_PUBLIC_SITE_URL ||
     headerList.get("origin") ||
-    `http://${headerList.get("host") ?? "localhost:3000"}`
+    `http://${headerList.get("host") ?? "localhost:7431"}`
   ).replace(/\/+$/, "")
 }
 

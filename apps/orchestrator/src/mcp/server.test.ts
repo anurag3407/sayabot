@@ -56,7 +56,7 @@ describe("mesh MCP server", () => {
       roomOwnerName: "Anurag Mishra",
       timezone: "Asia/Calcutta",
       token: "mesh_ak_test123",
-      connectionUrl: "http://localhost:3000/mcp/mesh_ak_test123?client=codex",
+      connectionUrl: "http://localhost:7431/mcp/mesh_ak_test123?client=codex",
       client: "codex",
     })
 
@@ -81,7 +81,7 @@ describe("mesh MCP server", () => {
       roomOwnerName: "Anurag Mishra",
       timezone: "Asia/Calcutta",
       token: "mesh_ak_hermes456",
-      connectionUrl: "http://localhost:3000/mcp/mesh_ak_hermes456?client=hermes",
+      connectionUrl: "http://localhost:7431/mcp/mesh_ak_hermes456?client=hermes",
       client: "hermes",
     })
 
@@ -97,7 +97,7 @@ describe("mesh MCP server", () => {
       roomOwnerName: "Anurag Mishra",
       timezone: "Asia/Calcutta",
       clientName: "codex",
-      connectionUrl: "http://localhost:3000/mcp/tr_test",
+      connectionUrl: "http://localhost:7431/mcp/tr_test",
     })
 
     expect(msg).toContain('Hi! This is my own room for "AnuragMishra\'s room" on Saaya.')
@@ -106,7 +106,7 @@ describe("mesh MCP server", () => {
       "• check in with the other bots every hour on the hour, 9:00 AM to 5:00 PM Asia/Calcutta time",
     )
     expect(msg).toContain("This message is for codex.")
-    expect(msg).toContain("http://localhost:3000/mcp/tr_test")
+    expect(msg).toContain("http://localhost:7431/mcp/tr_test")
   })
 
   it("handles GET /v1/mcp without valid token gracefully", async () => {

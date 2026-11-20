@@ -109,7 +109,7 @@ sequenceDiagram
     autonumber
     actor Admin as Workspace Admin
     actor User as Room Member
-    participant UI as Next.js Web App (:3000)
+    participant UI as Next.js Web App (:7431)
     participant DB as PostgreSQL (Supabase)
     participant Orch as Orchestrator (:4000)
     participant Agent as Autonomous Agent

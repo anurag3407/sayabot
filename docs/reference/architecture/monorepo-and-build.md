@@ -130,7 +130,7 @@ x-hardening: &hardening
 
 Key traits:
 
-- **Only nginx publishes ports.** web (:3000) and orchestrator (:4000) are reachable via `deploy/nginx`; `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_APP_URL` and `NEXT_PUBLIC_COLLAB_URL` are derived from `SAYABOT_DOMAIN` rather than set by hand.
+- **Only nginx publishes ports.** web (:7431) and orchestrator (:4000) are reachable via `deploy/nginx`; `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_APP_URL` and `NEXT_PUBLIC_COLLAB_URL` are derived from `SAYABOT_DOMAIN` rather than set by hand.
 - **Read-only containers.** `read_only: true` with tmpfs mounts for `/tmp` and web's `.next/cache`; memory limits via `SAYABOT_WEB_MEMORY` / `SAYABOT_ORCHESTRATOR_MEMORY` (1g default).
 - **Graceful shutdown.** orchestrator gets `stop_grace_period: 30s` so pg-boss jobs finish and Hocuspocus flushes canvas state on SIGTERM.
 - **`migrate` / `seed` are one-off tool profiles** (`profiles: ["tools"]`), run via `deploy.sh migrate` / `deploy.sh seed`, never by `up`.

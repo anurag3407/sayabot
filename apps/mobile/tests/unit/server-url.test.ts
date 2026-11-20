@@ -20,8 +20,8 @@ test("a bare domain gets https://", () => {
 })
 
 test("local and private-network addresses get http://", () => {
-  assert.equal(normalizeServerUrl("192.168.1.20:3000"), "http://192.168.1.20:3000")
-  assert.equal(normalizeServerUrl("localhost:3000"), "http://localhost:3000")
+  assert.equal(normalizeServerUrl("192.168.1.20:7431"), "http://192.168.1.20:7431")
+  assert.equal(normalizeServerUrl("localhost:7431"), "http://localhost:7431")
 })
 
 test("non-web addresses and plain text are refused", () => {

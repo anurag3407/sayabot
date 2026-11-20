@@ -69,7 +69,7 @@ describe("desktop session and config management", () => {
 
   it("migrates dead localhost config and preserves DEFAULT_SERVER_URL", () => {
     saveConfig({
-      serverUrl: "http://localhost:3000",
+      serverUrl: "http://localhost:7431",
       enableLocalRunner: true,
       serverChosen: true,
       serverName: "This Mac",

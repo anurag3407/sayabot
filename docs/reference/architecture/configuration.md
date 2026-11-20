@@ -41,7 +41,7 @@ Required (no default, boot fails without them):
 | `EGRESS_URL`                                   | `http://localhost:8081`                                    | orchestrator → egress admin                                                                               |
 | `EGRESS_PROXY_URL`                             | `http://localhost:8080`                                    | orchestrator → egress proxy                                                                               |
 | `NEXT_PUBLIC_COLLAB_URL`                       | `ws://localhost:4000/collab`                               | browser Yjs socket; prod `wss://<domain>/collab`                                                          |
-| `NEXT_PUBLIC_SITE_URL` / `NEXT_PUBLIC_APP_URL` | `http://localhost:3000`                                    | web origin for redirects/emails; **derived from `SAYABOT_DOMAIN` in docker-compose — do not set by hand** |
+| `NEXT_PUBLIC_SITE_URL` / `NEXT_PUBLIC_APP_URL` | `http://localhost:7431`                                    | web origin for redirects/emails; **derived from `SAYABOT_DOMAIN` in docker-compose — do not set by hand** |
 | `SAYABOT_DOMAIN` (legacy `MESH_DOMAIN`)        | —                                                          | prod hostname; drives nginx, Let's Encrypt, derived URLs                                                  |
 | `PROXY_PORT` / `ADMIN_PORT`                    | `8080` / `8081`                                            | egress listeners (read directly from `process.env` in `apps/egress/src/index.ts:12-14`)                   |
 

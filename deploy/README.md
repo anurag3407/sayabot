@@ -10,8 +10,8 @@ or stays hosted on supabase.com (`SAYABOT_SUPABASE=hosted`).
 ```
 internet ──▶ nginx :80/:443 (TLS, rate limits, HSTS, gzip)
                ├─ /collab            ──▶ orchestrator :4000   (canvas WebSocket)
-               ├─ /api/v1/*, /mcp/*  ──▶ web :3000 ──▶ orchestrator   (bots + MCP, unbuffered)
-               └─ everything else    ──▶ web :3000            (Next.js standalone)
+               ├─ /api/v1/*, /mcp/*  ──▶ web :7431 ──▶ orchestrator   (bots + MCP, unbuffered)
+               └─ everything else    ──▶ web :7431            (Next.js standalone)
 certbot ── renews Let's Encrypt every 12h; nginx reloads every 6h
 ```
 

@@ -58,7 +58,7 @@ ARG GIT_COMMIT_SHA=unknown
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     HOSTNAME=0.0.0.0 \
-    PORT=3000 \
+    PORT=7431 \
     GIT_COMMIT_SHA=$GIT_COMMIT_SHA
 WORKDIR /app
 
@@ -71,7 +71,7 @@ LABEL org.opencontainers.image.title="sayabot-web" \
       org.opencontainers.image.revision=$GIT_COMMIT_SHA
 
 USER node
-EXPOSE 3000
+EXPOSE 7431
 HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=5 \
-  CMD ["node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+  CMD ["node", "-e", "fetch('http://127.0.0.1:7431/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
 CMD ["node", "apps/web/server.js"]

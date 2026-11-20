@@ -59,8 +59,8 @@ streams, LISTEN connections and the canvas WebSocket, so it needs a long-running
 5. Auth settings:
    - Site URL: `https://<web-host>`
    - Redirect allow list: `https://<web-host>/auth/callback`,
-     `https://<web-host>/auth/complete`, `http://localhost:3000/auth/callback`,
-     `http://localhost:3000/auth/complete`
+     `https://<web-host>/auth/complete`, `http://localhost:7431/auth/callback`,
+     `http://localhost:7431/auth/complete`
    - Configure SMTP and include `{{ .Token }}` in the Confirm signup email template
      alongside the link. The sign-up and code screens read the six-digit token; a
      template with only `{{ .ConfirmationURL }}` cannot complete them.
@@ -201,7 +201,7 @@ Production deployments define upstreams in `deploy/nginx/templates/sayabot.conf.
 # Upstream definitions (deploy/nginx/templates/sayabot.conf.template)
 upstream sayabot_web {
     zone sayabot_web 64k;
-    server web:3000;
+    server web:7431;
     keepalive 32;
 }
 
@@ -257,7 +257,7 @@ location / {
 # Webhooks
 @webhooks path /api/v1/connectors/*
 handle @webhooks {
-    reverse_proxy web:3000 {
+    reverse_proxy web:7431 {
         flush_interval -1
         header_up Host {host}
         header_up X-Forwarded-Proto https
@@ -267,7 +267,7 @@ handle @webhooks {
 # OAuth Handshakes
 @oauth path /auth/* /api/connectors/*
 handle @oauth {
-    reverse_proxy web:3000 {
+    reverse_proxy web:7431 {
         header_up Host {host}
         header_up X-Forwarded-Proto https
     }

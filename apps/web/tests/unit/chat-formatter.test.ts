@@ -7,7 +7,7 @@ import { Callout, parseAlert } from "../../src/components/chat/callout"
 describe("PDF URL and Filename Detection", () => {
   it("detects valid PDF URLs and paths", () => {
     expect(isPdfUrl("https://example.com/reports/financials.pdf")).toBe(true)
-    expect(isPdfUrl("http://localhost:3000/docs/spec.pdf#page=2")).toBe(true)
+    expect(isPdfUrl("http://localhost:7431/docs/spec.pdf#page=2")).toBe(true)
     expect(isPdfUrl("https://api.domain.org/download?format=pdf")).toBe(true)
     expect(isPdfUrl("/files/user-manual.PDF")).toBe(true)
     expect(isPdfUrl("data:application/pdf;base64,JVBERi0xLjQK")).toBe(true)
