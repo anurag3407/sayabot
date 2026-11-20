@@ -29,7 +29,6 @@ export default function Home() {
             <AgentWindow />
           </div>
         </section>
-        <Partners />
         <Tools />
         <Jobs />
         <How />
@@ -43,6 +42,7 @@ export default function Home() {
         <Homes />
         <Faq />
         <Downloads />
+        <Partners />
         <FinalCta />
       </main>
       <Footer />
