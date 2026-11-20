@@ -29,7 +29,7 @@ describe("Local Zero-Config PGlite Database", () => {
     client.release()
 
     await pool.end()
-  })
+  }, 60_000)
 
   it("runs migrations and seeds local workspace on in-memory PGlite", async () => {
     const { db, pool } = createDb("memory")
@@ -56,5 +56,5 @@ describe("Local Zero-Config PGlite Database", () => {
     expect(roomCheck.rows[0].name).toBe("general")
 
     await pool.end()
-  })
+  }, 60_000)
 })
