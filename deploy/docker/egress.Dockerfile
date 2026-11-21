@@ -15,6 +15,7 @@ WORKDIR /repo
 
 FROM base AS install
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
+COPY patches ./patches
 COPY packages ./packages
 COPY apps/egress ./apps/egress
 RUN pnpm install --filter "@sayabot/egress..." --filter "@sayabot/core"

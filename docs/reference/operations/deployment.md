@@ -19,6 +19,7 @@ All four app images share the same recipe shape: `node:24.21.0-bookworm-slim` ba
 
 Key differences per image:
 
+- All Dockerfiles copy `patches/` in their install/deps stages so `pnpm` can resolve workspace `patchedDependencies`.
 - **web** (`deploy/docker/web.Dockerfile`): three stages — `deps` (pnpm fetch from the lockfile only), `build` (full install, then `pnpm exec next build --webpack` in `apps/web` with `NEXT_OUTPUT=standalone`), and `runtime` copying only `.next/standalone`, `.next/static`, and `public/`. All `NEXT_PUBLIC_*` values (Supabase URL/anon key, site URL, collab URL, VAPID key, auth-provider flags, edition) are build args inlined into the browser bundle at build time — changing them requires a rebuild, not a `reload`. Runs as `USER node` with a writable `.next/cache` tmpfs.
 - **orchestrator** (`deploy/docker/orchestrator.Dockerfile:20-30`): no compile step — production deps installed with `--filter "@sayabot/orchestrator..." --filter "@sayabot/db"`, `*.test.ts` files deleted from the image, and TypeScript executed through `tsx`. The CMD is a single node process (no wrapper) "so SIGTERM reaches the graceful shutdown handler" (pg-boss jobs and Hocuspocus canvas flushes).
 - **computerd** (`deploy/docker/computerd.Dockerfile:22`): additionally runs `pnpm --filter @sayabot/computerd build:agentd` to bundle the agentd daemon that gets uploaded into cloud (E2B) computers on first boot.

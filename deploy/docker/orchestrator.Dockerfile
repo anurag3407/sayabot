@@ -16,6 +16,7 @@ WORKDIR /repo
 
 FROM base AS deps
 COPY pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY patches ./patches
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store pnpm fetch --frozen-lockfile --prod
 
 # The orchestrator runs its TypeScript through tsx (a runtime dependency), so there is

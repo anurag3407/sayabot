@@ -17,6 +17,7 @@ WORKDIR /repo
 # ── 1. Fetch dependencies from the lockfile only (cached until it changes) ──
 FROM base AS deps
 COPY pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY patches ./patches
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store pnpm fetch --frozen-lockfile
 
 # ── 2. Build ──

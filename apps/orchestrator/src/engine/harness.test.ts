@@ -45,6 +45,7 @@ vi.mock("../runner/llm", () => ({
     modelName: "test-model",
   }),
   resolveEffortLevel: () => undefined,
+  rememberLastModel: async () => {},
 }))
 vi.mock("../runner/context", () => ({
   loadConversation: async () => [],
