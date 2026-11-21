@@ -7,12 +7,15 @@ export function Avatar({
   kind,
   size = "md",
   src,
+  crown = false,
   className,
 }: {
   name: string
   kind: "human" | "agent" | "system"
   size?: "sm" | "md" | "lg"
   src?: string | null
+  /** The workspace orchestrator wears a crown. */
+  crown?: boolean
   className?: string
 }) {
   const dimension =
@@ -36,7 +39,7 @@ export function Avatar({
     )
   }
   if (kind === "agent") {
-    return <Mascot seed={name} className={cn("shrink-0", dimension, className)} />
+    return <Mascot seed={name} crown={crown} className={cn("shrink-0", dimension, className)} />
   }
   return (
     <span

@@ -7,8 +7,10 @@ to create bots and rooms, move bots between rooms, read usage, and inspect the w
 configuration, from chat, the CLI, or any MCP client.
 
 Source files: `packages/core/src/saya.ts`, `packages/core/src/saya-policy.ts`,
+`packages/core/src/harness.ts`,
 `apps/orchestrator/src/orchestrator-admin/service.ts`,
 `apps/orchestrator/src/orchestrator-admin/control.ts`,
+`apps/orchestrator/src/orchestrator-admin/extended.ts`,
 `apps/orchestrator/src/tools/builtins/orchestrator.ts`, `apps/orchestrator/src/mcp/admin-tools.ts`,
 `apps/web/src/lib/saya.ts`
 
@@ -22,7 +24,7 @@ Source files: `packages/core/src/saya.ts`, `packages/core/src/saya-policy.ts`,
 | `display_name`  | `Saya`                                                           |
 | `kind`          | `llm`                                                            |
 | `visibility`    | `org`                                                            |
-| `system_prompt` | `SAYA_SYSTEM_PROMPT` — orchestrator identity and operating rules |
+| `system_prompt` | `SAYA_PERSONA`: her persona (role, voice, habits). The tool manual is `ORCHESTRATOR_GUIDE` in the harness, added for any agent with `orchestrator` (see [harness-and-persona](../../core/harness-and-persona.md)) |
 | `capabilities`  | `DEFAULT_CAPABILITIES` + `orchestrator: true` + `secrets: true`  |
 | `model`         | `null` until an admin picks one. `sayabot_create_bot` refuses to create another bot without a model the admin chose. |
 | `params.mascot` | `{ shape: "ghost", tone: "lilac" }` — the wordmark icon          |
@@ -37,9 +39,11 @@ reading a value.
 `ensureSayaAgent()` (`apps/web/src/lib/saya.ts`) is idempotent on `(org_id, handle = "saya")`:
 
 1. Look for the row; if it exists, reuse it.
-2. Otherwise insert it with `SAYA_CAPABILITIES`, `SAYA_SYSTEM_PROMPT`, and `params.mascot`
+2. Otherwise insert it with `SAYA_CAPABILITIES`, `SAYA_PERSONA`, and `params.mascot`
    set to the wordmark ghost (`SAYA_MASCOT`).
 3. An existing row whose mascot is not that ghost is updated in place. Other `params` keys stay.
+   A row whose stored persona is the legacy operating manual (starts with
+   `SAYA_LEGACY_PROMPT_PREFIX`) gets `SAYA_PERSONA` instead; a hand-edited persona stays.
 4. When a `roomId` is given, upsert `room_agents` so Saya is in that room.
 
 It is called from both workspace-creation paths — `setupWorkspaceAction` (onboarding wizard) and
@@ -71,8 +75,22 @@ include `orchestrator: true` gets them (`buildTools`, `apps/orchestrator/src/too
 | `sayabot_decide`               |  ⚠️/ok | `approve` is ⚠️, `reject` is safe. Refuses her own call, `use_secret`, and `sayabot_decide`         |
 | `sayabot_errors`               |  safe  | Recent failed turns and failed tool calls, redacted                                                  |
 | `sayabot_retry`                |   ⚠️   | Enqueue the failed turn's message again. Does not take the room lock                                |
-| `sayabot_usage`                |  safe  | This month's turns, tokens, cost, and per-bot cost                                                   |
+| `sayabot_usage`                |  safe  | Turns, tokens, cost and per-bot cost for this month, or a rolling `days` window (1-90)               |
 | `sayabot_config`               |  safe  | Plan, counts, provider labels, connectors, MCP status, desktops, computer availability. No ciphertext |
+| `sayabot_capabilities`         |  safe  | Every capability flag and every `sayabot_tune_bot` setting, with what each unlocks                   |
+| `sayabot_bot`                  |  safe  | One bot in full: persona, bio, model, effort, reply style, works_on, look, capabilities, rooms, connector grants, secret grants (names only), routines |
+| `sayabot_tune_bot`             |   ⚠️   | Any bot setting in one call: persona, bio, name, model, effort, reply style, works_on, max output tokens, computer (off/standard/browser), mascot shape/tone, capability toggles. Saya's persona and look stay fixed |
+| `sayabot_delete_bot`           |   ⚠️   | Delete a bot. Refuses Saya (or any orchestrator) and the caller itself                               |
+| `sayabot_room`                 |  safe  | One room in full: settings, directive, people, bots and the model each uses there, open tasks, latest messages (redacted) |
+| `sayabot_post`                 |  safe  | Post as the orchestrator in another room (joins it if needed); `@mentions` there wake those bots      |
+| `sayabot_delete_room`          |   ⚠️   | Delete a group room. Direct chats are refused                                                         |
+| `sayabot_room_model`           |   ⚠️   | Model override for one bot in one room (`room_agents.model_override`); `null` returns to the default  |
+| `sayabot_members`              |  safe  | People in the workspace and their role                                                                |
+| `sayabot_tasks`                |  safe  | Tasks across every room, unfinished by default, filterable by status or bot                           |
+| `sayabot_connectors`           |  list  | List connectors and who may use them. `grant` / `revoke` (⚠️) change one bot's `agent_connector_grants` row (`read_only` defaults true) |
+| `sayabot_secrets`              |  list  | Secret labels and `last4` with their grants. `revoke` (⚠️) sets `revoked_at` on one grant. Values are never read |
+| `sayabot_mcp`                  |  list  | MCP servers with sign-in status and cached tool names. `enable` / `disable` (⚠️)                    |
+| `sayabot_memory`               |  list  | List or search shared memories, `remember` one (workspace, room or bot scope, redacted), `forget` one (⚠️) |
 
 A mutation is `dangerous: true`, or dangerous only for the write (`sayabot_decide` when the
 decision is `approve`, `sayabot_routines` for anything other than `list`). The audited wrapper
@@ -134,10 +152,12 @@ A key belonging to any other bot gets `Unknown tool: sayabot_bots` — the tools
 ## 🔄 What is deliberately not here
 
 - **No process or secret-file writer.** Configuration changes workspace objects (bots, rooms,
-  routines, models), not `.env` files and not the orchestrator's own process. Secrets stay in the
-  encrypted vault and are referenced, never round-tripped through the model.
-- **No bot or workspace deletion.** Removing a bot from a room and pausing a routine are reversible.
-  Deleting a bot stays in the web UI.
+  routines, models, grants, memory), not `.env` files and not the orchestrator's own process.
+- **No secret values.** Saya lists secret labels and revokes grants, but adding a secret or a new
+  grant happens in Settings → Secrets, so a value never passes through the model. New connectors
+  and MCP apps likewise need a browser sign-in in Settings.
+- **No workspace deletion, and no deleting Saya.** Bot and room deletion exist (`sayabot_delete_bot`,
+  `sayabot_delete_room`) and wait on the approval gate. Direct chats and the orchestrator are refused.
 - **No cross-workspace or platform-admin tools.** A `saya` in one workspace cannot enumerate another.
 
 Related docs: [../../orchestrator/platform/mcp-server.md](./mcp-server.md) ·

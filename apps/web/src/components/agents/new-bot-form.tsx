@@ -19,7 +19,7 @@ const field =
 const label = "mb-2 block text-[13px] font-medium text-muted"
 
 /**
- * New bot: a name and a system prompt, nothing else. The AI it runs on, its skills and the rest
+ * New bot: a name and a persona, nothing else. The AI it runs on, its skills and the rest
  * are set later from its chat or its page, and both of these can be changed there too.
  */
 export function NewBotForm({
@@ -108,7 +108,7 @@ export function NewBotForm({
 
         <div>
           <label htmlFor="bot-prompt" className={label}>
-            System prompt <span className="text-faint">(optional)</span>
+            Persona <span className="text-faint">(optional)</span>
           </label>
           <textarea
             id="bot-prompt"

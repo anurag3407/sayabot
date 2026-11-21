@@ -1,3 +1,7 @@
+"use client"
+
+import { useEffect, useState, type ReactNode } from "react"
+import type { SayaShape } from "@sayabot/core/mascot"
 import { DOWNLOADS, LINKS } from "@/lib/links"
 import { CopyButton } from "./copy-button"
 import {
@@ -10,8 +14,63 @@ import {
   WindowsIcon,
 } from "./icons"
 import { Reveal } from "./reveal"
+import { Saya } from "./saya"
+
+type Platform = "mac" | "windows" | "android" | "web"
+
+function detectPlatform(): Platform | null {
+  const ua = navigator.userAgent
+  if (/android/i.test(ua)) return "android"
+  if (/iphone|ipad|ipod/i.test(ua)) return "web"
+  if (/mac/i.test(ua)) return "mac"
+  if (/win/i.test(ua)) return "windows"
+  return null
+}
+
+const INSTALL_CMD = "curl -fsSL https://sayabot.sayalabs.in/install-mac.sh | bash"
+
+function Card({
+  platform,
+  recommended,
+  index,
+  icon,
+  title,
+  body,
+  meta,
+  mascot,
+  children,
+}: {
+  platform: Platform
+  recommended: boolean
+  index: number
+  icon: ReactNode
+  title: string
+  body: string
+  meta: string
+  mascot: SayaShape
+  children: ReactNode
+}) {
+  return (
+    <Reveal className={`dl-card card ${recommended ? "is-rec" : ""}`} index={index}>
+      <Saya shape={mascot} mood="done" className="dl-card-peek" />
+      <div className="dl-card-top">
+        <span className="dl-card-tile">{icon}</span>
+        {recommended ? <span className="dl-card-rec">For this device</span> : null}
+      </div>
+      <h3>{title}</h3>
+      <p>{body}</p>
+      <div className="dl-card-foot">
+        <div className="dl-card-links">{children}</div>
+        <small data-platform={platform}>{meta}</small>
+      </div>
+    </Reveal>
+  )
+}
 
 export function Downloads() {
+  const [platform, setPlatform] = useState<Platform | null>(null)
+  useEffect(() => setPlatform(detectPlatform()), [])
+
   return (
     <section className="section" id="download" aria-labelledby="download-title">
       <div className="wrap">
@@ -27,135 +86,89 @@ export function Downloads() {
         </Reveal>
 
         <div className="dls">
-          <Reveal className="dl-card card" index={0}>
-            <AppleIcon className="dl-card-icon" />
-            <h3>Mac</h3>
-            <p>Native app with approvals, notifications and local agents on your Mac.</p>
-            <div className="dl-card-links">
-              <a
-                className="btn btn-primary btn-sm"
-                href={DOWNLOADS.macArm.href}
-                download={DOWNLOADS.macArm.file}
-              >
-                <DownloadIcon /> Apple silicon
-              </a>
-              <a
-                className="btn btn-ghost btn-sm"
-                href={DOWNLOADS.macIntel.href}
-                download={DOWNLOADS.macIntel.file}
-              >
-                Intel
-              </a>
-            </div>
-            <div
-              style={{
-                marginTop: "12px",
-                padding: "8px 10px",
-                borderRadius: "10px",
-                background: "rgba(255, 255, 255, 0.04)",
-                border: "1px solid rgba(255, 255, 255, 0.08)",
-                textAlign: "left",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  fontSize: "11px",
-                  color: "var(--faint)",
-                  marginBottom: "4px",
-                }}
-              >
-                <span>Terminal install (bypasses Gatekeeper):</span>
-                <CopyButton text="curl -fsSL https://sayabot.sayalabs.in/install-mac.sh | bash" />
-              </div>
-              <code
-                style={{
-                  fontSize: "10.5px",
-                  color: "var(--accent)",
-                  wordBreak: "break-all",
-                  fontFamily: "var(--mono)",
-                  display: "block",
-                }}
-              >
-                curl -fsSL https://sayabot.sayalabs.in/install-mac.sh | bash
-              </code>
-            </div>
-            <small style={{ marginTop: "10px", display: "block" }}>macOS 14 or later · .dmg</small>
-          </Reveal>
-
-          <Reveal className="dl-card card" index={1}>
-            <WindowsIcon className="dl-card-icon" />
-            <h3>Windows</h3>
-            <p>The desktop app for your PC: every chat, approval and notification.</p>
-            <div className="dl-card-links">
-              <a
-                className="btn btn-primary btn-sm"
-                href={DOWNLOADS.winX64.href}
-                download={DOWNLOADS.winX64.file}
-              >
-                <DownloadIcon /> x64
-              </a>
-              <a
-                className="btn btn-ghost btn-sm"
-                href={DOWNLOADS.winArm.href}
-                download={DOWNLOADS.winArm.file}
-              >
-                ARM64
-              </a>
-            </div>
-            <small>.exe installer</small>
-          </Reveal>
-
-          <Reveal className="dl-card card" index={2}>
-            <AndroidIcon className="dl-card-icon" />
-            <h3>Android</h3>
-            <p>Approvals, chats, tasks and each agent&apos;s computer, in your pocket.</p>
-            <div className="dl-card-links">
-              <a
-                className="btn btn-primary btn-sm"
-                href={DOWNLOADS.android.href}
-                download={DOWNLOADS.android.file}
-              >
-                <DownloadIcon /> Get the APK
-              </a>
-            </div>
-            <small>Android 7 or later · .apk</small>
-          </Reveal>
-
-          <Reveal className="dl-card card" index={3}>
-            <GlobeIcon className="dl-card-icon" />
-            <h3>Web</h3>
-            <p>Nothing to install. Everything the apps do, in any browser.</p>
-            <div className="dl-card-links">
-              <a className="btn btn-primary btn-sm" href={LINKS.app}>
-                Open the web app <ArrowUpRight />
-              </a>
-            </div>
-            <small>Chrome, Safari, Firefox, Edge</small>
-          </Reveal>
-        </div>
-
-        <div style={{ textAlign: "center", marginTop: "28px", marginBottom: "32px" }}>
-          <a
-            href="/download"
-            className="btn btn-ghost"
-            style={{
-              display: "inline-flex",
-              gap: "8px",
-              alignItems: "center",
-              padding: "10px 20px",
-            }}
+          <Card
+            platform="mac"
+            recommended={platform === "mac"}
+            index={0}
+            icon={<AppleIcon />}
+            title="Mac"
+            body="Native app with approvals, notifications and local agents on your Mac."
+            meta="macOS 14 or later · .dmg"
+            mascot="ghost"
           >
-            <span>View complete desktop &amp; mobile installation specs</span>
-            <ArrowUpRight />
-          </a>
+            <a className="btn btn-primary btn-sm" href={DOWNLOADS.macArm.href} download={DOWNLOADS.macArm.file}>
+              <DownloadIcon /> Apple silicon
+            </a>
+            <a className="btn btn-ghost btn-sm" href={DOWNLOADS.macIntel.href} download={DOWNLOADS.macIntel.file}>
+              Intel
+            </a>
+          </Card>
+          <Card
+            platform="windows"
+            recommended={platform === "windows"}
+            index={1}
+            icon={<WindowsIcon />}
+            title="Windows"
+            body="The desktop app for your PC: every chat, approval and notification."
+            meta="Windows 10 or later · .exe"
+            mascot="block"
+          >
+            <a className="btn btn-primary btn-sm" href={DOWNLOADS.winX64.href} download={DOWNLOADS.winX64.file}>
+              <DownloadIcon /> x64
+            </a>
+            <a className="btn btn-ghost btn-sm" href={DOWNLOADS.winArm.href} download={DOWNLOADS.winArm.file}>
+              ARM64
+            </a>
+          </Card>
+          <Card
+            platform="android"
+            recommended={platform === "android"}
+            index={2}
+            icon={<AndroidIcon />}
+            title="Android"
+            body="Approvals, chats, tasks and each agent's computer, in your pocket."
+            meta="Android 7 or later · .apk"
+            mascot="sprout"
+          >
+            <a className="btn btn-primary btn-sm" href={DOWNLOADS.android.href} download={DOWNLOADS.android.file}>
+              <DownloadIcon /> Get the APK
+            </a>
+          </Card>
+          <Card
+            platform="web"
+            recommended={platform === "web"}
+            index={3}
+            icon={<GlobeIcon />}
+            title="Web"
+            body="Nothing to install. Everything the apps do, in any browser."
+            meta="Chrome, Safari, Firefox, Edge"
+            mascot="bubble"
+          >
+            <a className="btn btn-primary btn-sm" href={LINKS.app}>
+              Open the web app <ArrowUpRight />
+            </a>
+          </Card>
         </div>
+
+        <Reveal className="dl-term" index={1}>
+          <span className="dl-term-label">
+            <AppleIcon /> Prefer the terminal?
+          </span>
+          <code className="mono">
+            <span className="dim">$</span> {INSTALL_CMD}
+          </code>
+          <CopyButton text={INSTALL_CMD} />
+          <a className="dl-term-more" href="/download">
+            All install options <ArrowUpRight />
+          </a>
+        </Reveal>
 
         <Reveal className="oss card" index={1}>
           <div className="oss-copy">
-            <GitHubIcon className="oss-icon" />
+            <span className="oss-badge">
+              <GitHubIcon className="oss-icon" />
+              <Saya shape="hoot" mood="done" className="oss-face" />
+            </span>
             <h3>Open source. Run it on your own server.</h3>
             <p>
               The core is AGPL-3.0 and self-hosting is free. Point the desktop and phone apps at

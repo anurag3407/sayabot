@@ -1,7 +1,36 @@
 /* Homepage band, under the hero. Kept airy on purpose. */
 .self-host-band {
   position: relative;
-  padding: 132px 0 156px;
+  padding: clamp(96px, 11vw, 128px) 0 clamp(96px, 11vw, 132px);
+}
+
+.self-host-stage {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 18px;
+  width: 100%;
+}
+
+.self-host-stage .prompt-anchor {
+  width: auto;
+  min-width: 0;
+}
+
+.self-host-mascot {
+  width: 58px;
+  height: 58px;
+  flex: none;
+  margin-bottom: 6px;
+}
+
+.self-host-mascot.is-left {
+  transform: rotate(-8deg);
+}
+
+.self-host-mascot.is-right {
+  transform: rotate(8deg);
 }
 
 .self-host-wrap {
@@ -23,7 +52,7 @@
   display: flex;
   justify-content: center;
   width: 100%;
-  margin-top: 72px;
+  margin-top: 44px;
   padding-top: 52px;
 }
 
@@ -127,7 +156,7 @@
 }
 
 .prompt-hint {
-  margin: 28px 0 0;
+  margin: 20px 0 0;
   color: var(--faint);
   font-size: 15px;
   text-align: center;
@@ -138,18 +167,41 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 28px 32px;
   width: 100%;
-  max-width: 1040px;
-  margin: 96px 0 0;
+  max-width: 1080px;
+  margin: 64px 0 0;
   padding: 0;
   list-style: none;
+  gap: 14px;
 }
 
 .self-host-checks li {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding-top: 18px;
-  border-top: 1px solid var(--line);
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: linear-gradient(180deg, var(--raised), var(--surface));
+  transition:
+    transform 0.4s var(--spring),
+    border-color 0.3s;
+}
+
+.self-host-checks li:hover {
+  transform: translateY(-4px);
+  border-color: var(--line-2);
+}
+
+.self-host-check-face {
+  width: 36px;
+  height: 36px;
+  margin-bottom: 6px;
+  transition: transform 0.45s var(--spring);
+}
+
+.self-host-checks li:hover .self-host-check-face {
+  transform: translateY(-3px) rotate(-6deg);
 }
 
 .self-host-checks strong {
@@ -165,7 +217,7 @@
 }
 
 .self-host-more {
-  margin-top: 72px;
+  margin-top: 40px;
 }
 
 /* Guide page */
@@ -458,6 +510,10 @@ html.light .guide-term,
 }
 
 @media (max-width: 860px) {
+  .self-host-mascot {
+    display: none;
+  }
+
   .self-host-band {
     padding: 96px 0 112px;
   }

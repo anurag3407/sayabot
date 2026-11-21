@@ -1,6 +1,5 @@
 "use client"
 
-import Link from "next/link"
 import { useSyncExternalStore } from "react"
 import { RefreshCw } from "lucide-react"
 import { cn } from "@/lib/format"
@@ -17,7 +16,7 @@ import { mergePlanLimits } from "@/lib/plan-limits-store"
 const POLL_MS = 5 * 60_000
 
 /**
- * One store for every ring on the page (top bar, model picker, Usage page). Readings survive
+ * One store for every ring on the page (sidebar Usage row, model picker, Usage page). Readings survive
  * remounts and navigation, and a failed read never wipes a good one (see `mergePlanLimits`).
  */
 interface PlanLimitsState {
@@ -199,31 +198,6 @@ export function PlanRing({
         <ProviderIcon provider={providerIconId(limits.provider)} size={Math.round(size * glyph)} />
       </span>
     </span>
-  )
-}
-
-/**
- * Plan gauges for the sidebar header. One square, icon only: the mark sits in the box and a thin
- * ring on that mark shows what's left. Tap opens Usage.
- */
-export function TopBarPlanRings({ usageHref }: { usageHref: string }) {
-  const { supported, limits } = usePlanLimits()
-  const shown = (limits ?? []).filter((item) => item.windows.length > 0)
-  if (!supported || !shown.length) return null
-  const summary = shown.map(describeLimits)
-  return (
-    <Link
-      href={usageHref}
-      aria-label={`Plan limits. ${summary.join(". ")}. Open Usage.`}
-      title={summary.join("\n")}
-      className="fade-in flex h-9 shrink-0 items-center rounded-xl px-0.5 text-text transition-colors hover:bg-white/5 [-webkit-app-region:no-drag]"
-    >
-      {shown.map((item) => (
-        <span key={item.provider} className="grid h-7 w-7 place-items-center">
-          <PlanRing limits={item} size={22} glyph={0.5} stroke={1.5} />
-        </span>
-      ))}
-    </Link>
   )
 }
 

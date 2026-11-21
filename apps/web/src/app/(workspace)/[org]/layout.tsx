@@ -7,6 +7,7 @@ import { isOrgAdmin } from "@/lib/auth"
 import { edition } from "@/lib/env"
 import { workspacePlan, workspaceUsage } from "@/lib/plan-limits"
 import { ensureWorkspaceOrchestrator } from "@/lib/saya"
+import { loadSidebarUsage } from "@/lib/sidebar-usage"
 
 /** Sayabot Cloud admins: how much of the month's server replies are used, once it's 80% or more. */
 async function planUsageNotice(orgId: string, admin: boolean) {
@@ -33,11 +34,12 @@ export default async function OrgLayout({
   } catch (error) {
     console.warn("[saya] could not ensure the workspace orchestrator", error)
   }
-  const [chatData, orgAgents, orgs, planUsage] = await Promise.all([
+  const [chatData, orgAgents, orgs, planUsage, usage] = await Promise.all([
     loadChatList(access),
     listOrgAgents(access.org.id),
     listUserOrgs(access.user.id),
     planUsageNotice(access.org.id, isOrgAdmin(access.role)),
+    loadSidebarUsage(access.org.id),
   ])
   return (
     <WorkspaceShell
@@ -62,6 +64,7 @@ export default async function OrgLayout({
       }}
       role={access.role}
       planUsage={planUsage}
+      usage={usage}
     >
       {children}
     </WorkspaceShell>

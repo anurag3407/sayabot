@@ -14,7 +14,7 @@ import {
   type WebhookPayload,
 } from "@sayabot/core"
 import { agentRuns, agents, messages, tasks, turnSessions, usageEvents } from "@sayabot/db"
-import { generateObject } from "ai"
+import { generateObject, generateText } from "ai"
 import { and, desc, eq, gte, isNull, ne, sql } from "drizzle-orm"
 import { z } from "zod"
 import { recordUsageEvent, tokensFrom } from "../usage"
@@ -396,6 +396,75 @@ export const LEAD_AGENT_INSTRUCTIONS = [
   '"next" is one agent id from the list, or the exact string "human".',
 ].join(" ")
 
+const leadPickSchema = z.object({
+  next: z.string(),
+  also: z.array(z.string()).default([]),
+  reason: z.string().default(""),
+})
+type LeadPick = z.infer<typeof leadPickSchema>
+
+/** First balanced `{...}` in a prose reply, parsed. Null when there is none. */
+export function parseLeadPickText(text: string): LeadPick | null {
+  const start = text.indexOf("{")
+  if (start < 0) return null
+  let depth = 0
+  for (let index = start; index < text.length; index++) {
+    const char = text[index]
+    if (char === "{") depth++
+    else if (char === "}") {
+      depth--
+      if (depth === 0) {
+        try {
+          const parsed = leadPickSchema.safeParse(JSON.parse(text.slice(start, index + 1)))
+          return parsed.success ? parsed.data : null
+        } catch {
+          return null
+        }
+      }
+    }
+  }
+  return null
+}
+
+/**
+ * Many open models (DeepSeek, Qwen, local runtimes) ignore strict JSON-schema output and answer
+ * in prose. A schema miss must not halt the room: retry as plain text and pull the JSON out, and
+ * if that fails too, the lead answers itself.
+ */
+async function pickWithFallback(args: {
+  model: Parameters<typeof generateObject>[0]["model"]
+  system: string
+  prompt: string
+  /** Who answers when the reply carries no usable pick: the lead itself. */
+  fallbackId: string
+}): Promise<{ object: LeadPick; usage: Parameters<typeof tokensFrom>[0] }> {
+  try {
+    const result = await generateObject({
+      model: args.model,
+      system: args.system,
+      prompt: args.prompt,
+      schema: leadPickSchema,
+      temperature: 0,
+      abortSignal: AbortSignal.timeout(60_000),
+    })
+    return { object: result.object, usage: result.usage }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    if (!/did not match schema|no object generated|response_format|json/i.test(message)) throw error
+  }
+  const text = await generateText({
+    model: args.model,
+    system: args.system,
+    prompt: `${args.prompt}\n\nAnswer with the JSON object only.`,
+    temperature: 0,
+    abortSignal: AbortSignal.timeout(60_000),
+  })
+  return {
+    object: parseLeadPickText(text.text) ?? { next: args.fallbackId, also: [], reason: "lead answers" },
+    usage: text.usage,
+  }
+}
+
 async function decideModerator(args: {
   room: RoomRow
   roomAgentRows: RoomAgentRow[]
@@ -433,13 +502,11 @@ async function decideModerator(args: {
   ].join("\n\n")
 
   const started = Date.now()
-  const result = await generateObject({
+  const result = await pickWithFallback({
     model: resolved.model,
     system,
     prompt,
-    schema: z.object({ next: z.string(), also: z.array(z.string()), reason: z.string() }),
-    temperature: 0,
-    abortSignal: AbortSignal.timeout(60_000),
+    fallbackId: moderator.id,
   })
   const latencyMs = Date.now() - started
   const agentRefs = args.roomAgentRows.map(({ agent }) => ({

@@ -20,6 +20,8 @@ import {
   BellRing,
   Bot,
   Cable,
+  Crown,
+  Gauge,
   CheckSquare,
   ChevronDown,
   CircleHelp,
@@ -33,7 +35,6 @@ import {
   Plus,
   RefreshCw,
   Search,
-  Settings,
   Settings2,
   SlidersHorizontal,
   Store,
@@ -41,7 +42,7 @@ import {
   Zap,
 } from "lucide-react"
 import { useAppUpdate } from "@/components/update-notification"
-import { TopBarPlanRings } from "@/components/usage/plan-rings"
+import { PlanRing, describeLimits, usePlanLimits } from "@/components/usage/plan-rings"
 import { signOutAction } from "@/lib/actions/auth"
 import { openBotDmAction, setChatPreferenceAction } from "@/lib/actions/room-state"
 import { Avatar } from "@/components/ui/avatar"
@@ -49,8 +50,9 @@ import { DetailsMenu } from "@/components/ui/details-menu"
 import { Mascot } from "@/components/ui/mascot"
 import { showToast } from "@/components/ui/toast"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { cn } from "@/lib/format"
+import { cn, formatTokens } from "@/lib/format"
 import type { ChatListItem, OrgRole, OrgSummary } from "@/lib/types"
+import type { SidebarUsage } from "@/lib/sidebar-usage"
 
 export interface BotLink {
   id: string
@@ -124,47 +126,62 @@ function useFolded(key: string): [boolean, () => void] {
 function Section({
   id,
   label,
+  count,
   action,
   children,
 }: {
   id: string
   label: string
+  count?: number
   action?: ReactNode
   children: ReactNode
 }) {
   const [folded, toggle] = useFolded(id)
   return (
-    <section className="mt-3">
+    <section className="mt-4 first:mt-2">
       <div className="group/section flex h-7 items-center gap-1 px-2">
         <button
           type="button"
           onClick={toggle}
           aria-expanded={!folded}
-          className="flex items-center gap-1 rounded-md text-[12.5px] font-medium text-faint transition-colors hover:text-text"
+          className="flex items-center gap-1.5 rounded-md text-[11px] font-semibold uppercase tracking-[0.08em] text-faint transition-colors hover:text-text"
         >
+          <ChevronDown
+            className={cn("h-3 w-3 transition-transform duration-200", folded && "-rotate-90")}
+          />
           {label}
-          <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", folded && "-rotate-90")} />
+          {count ? (
+            <span className="rounded-full bg-text/[0.06] px-1.5 py-px text-[10px] font-medium tabular-nums tracking-normal text-faint">
+              {count}
+            </span>
+          ) : null}
         </button>
-        <span className="ml-auto opacity-0 transition-opacity group-hover/section:opacity-100 focus-within:opacity-100">
+        <span className="ml-auto opacity-0 transition-opacity group-hover/section:opacity-100 focus-within:opacity-100 max-md:opacity-100">
           {action}
         </span>
       </div>
-      {folded ? null : children}
+      {folded ? null : <div className="mt-0.5">{children}</div>}
     </section>
   )
 }
 
 function RowFace({ item }: { item: ChatListItem }) {
-  if (item.isBotDm) {
-    return <Mascot seed={item.agentNames[0] ?? item.name} className="h-9 w-9 shrink-0" />
+  if (item.isBotDm || item.orchestrator) {
+    return (
+      <Mascot
+        seed={item.agentNames[0] ?? item.name}
+        crown={item.orchestrator}
+        className="h-8 w-8 shrink-0"
+      />
+    )
   }
   return (
-    <span className="relative grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-raised text-[14px] font-medium text-muted">
+    <span className="relative grid h-8 w-8 shrink-0 place-items-center rounded-[10px] bg-text/[0.06] text-[13px] font-semibold text-muted ring-1 ring-inset ring-text/[0.04]">
       {item.kind === "public" ? "#" : item.name.slice(0, 1).toUpperCase()}
       {item.agentNames[0] ? (
         <Mascot
           seed={item.agentNames[0]}
-          className="absolute -bottom-1 -right-1 h-[18px] w-[18px]"
+          className="absolute -bottom-1 -right-1 h-4 w-4"
         />
       ) : null}
     </span>
@@ -207,8 +224,10 @@ function ThreadRow({
         data-testid="room-link"
         data-room-name={item.name}
         className={cn(
-          "flex items-center gap-2.5 rounded-xl px-2 py-2 transition-colors",
-          active ? "bg-raised" : "hover:bg-panel",
+          "relative flex items-center gap-2.5 rounded-xl px-2 py-[7px] transition-colors",
+          active
+            ? "bg-text/[0.07] before:absolute before:inset-y-2 before:-left-2.5 before:w-[3px] before:rounded-r-full before:bg-accent"
+            : "hover:bg-text/[0.035]",
         )}
       >
         <RowFace item={item} />
@@ -216,8 +235,8 @@ function ThreadRow({
           <span className="flex items-baseline gap-2">
             <span
               className={cn(
-                "truncate text-[14px] text-text",
-                unread ? "font-semibold" : "font-medium",
+                "truncate text-[13.5px] leading-5",
+                unread ? "font-semibold text-text" : "font-medium text-text/90",
               )}
             >
               {item.name}
@@ -225,13 +244,19 @@ function ThreadRow({
             {item.pinned ? (
               <Pin className="h-3 w-3 shrink-0 self-center text-faint" aria-label="Pinned" />
             ) : null}
-            <span className="ml-auto shrink-0 text-[11.5px] text-faint md:group-hover:opacity-0 md:group-focus-within:opacity-0">
+            <span
+              suppressHydrationWarning
+              className="ml-auto shrink-0 text-[11px] tabular-nums text-faint md:group-hover:opacity-0 md:group-focus-within:opacity-0"
+            >
               {shortTime(item.lastAt)}
             </span>
           </span>
           <span className="mt-px flex items-center gap-2">
             <span
-              className={cn("min-w-0 truncate text-[12.5px]", unread ? "text-muted" : "text-faint")}
+              className={cn(
+                "min-w-0 truncate text-[12px] leading-4",
+                unread ? "text-muted" : "text-faint",
+              )}
             >
               {item.lastMessage ?? (item.isBotDm ? "Say hello" : "No messages yet")}
             </span>
@@ -252,7 +277,7 @@ function ThreadRow({
       </Link>
 
       <DetailsMenu
-        className="absolute right-1.5 top-1.5"
+        className="absolute right-1 top-1/2 -translate-y-1/2"
         summaryLabel={`Options for ${item.name}`}
         summaryClassName="grid h-7 w-7 cursor-pointer list-none place-items-center rounded-lg text-faint opacity-100 transition-opacity hover:bg-hover hover:text-text md:opacity-0 md:group-hover:opacity-100 [[open]>&]:opacity-100"
         summary={<Ellipsis className="h-4 w-4" />}
@@ -386,12 +411,14 @@ function NewBotRow({
         onClick={start}
         disabled={pending}
         title={`Chat with ${bot.displayName}`}
-        className="flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-left transition-colors hover:bg-panel disabled:opacity-60"
+        className="flex w-full items-center gap-2.5 rounded-xl px-2 py-[7px] text-left transition-colors hover:bg-text/[0.035] disabled:opacity-60"
       >
-        <Mascot seed={bot.displayName} className="h-9 w-9 shrink-0" />
+        <Mascot seed={bot.displayName} className="h-8 w-8 shrink-0 opacity-90" />
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-2">
-            <span className="truncate text-[14px] font-medium text-text">{bot.displayName}</span>
+            <span className="truncate text-[13.5px] font-medium leading-5 text-text/90">
+              {bot.displayName}
+            </span>
             {bot.kind === "external" ? (
               <span className="shrink-0 rounded-md bg-raised px-1.5 py-px text-[10.5px] text-muted">
                 MCP
@@ -400,7 +427,7 @@ function NewBotRow({
           </span>
           <span
             className={cn(
-              "mt-px block truncate text-[12.5px]",
+              "mt-px block truncate text-[12px] leading-4",
               error ? "text-danger" : "text-faint",
             )}
           >
@@ -433,10 +460,12 @@ function WorkspaceSwitcher({
     <DetailsMenu
       className="group min-w-0"
       summaryLabel={`${org.name}: switch workspace`}
-      summaryClassName="flex h-9 min-w-0 max-w-full cursor-pointer list-none items-center gap-2 rounded-full bg-white/[0.06] px-2 text-[14px] font-medium text-text transition-colors hover:bg-white/10 group-open:bg-white/10"
+      summaryClassName="flex h-9 min-w-0 max-w-full cursor-pointer list-none items-center gap-2 rounded-xl px-1.5 text-[14px] font-semibold tracking-[-0.01em] text-text transition-colors hover:bg-text/[0.06] group-open:bg-text/[0.08]"
       summary={
         <>
-          <Mascot seed={org.name} mood="happy" className="h-6 w-6 shrink-0" />
+          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-text/[0.07]">
+            <Mascot seed={org.name} mood="happy" className="h-5 w-5" />
+          </span>
           <span className="truncate">{org.name}</span>
           <ChevronDown className="h-3.5 w-3.5 shrink-0 text-faint" />
         </>
@@ -476,7 +505,7 @@ function AccountRow({ base, user, role }: { base: string; user: SidebarUser; rol
     <DetailsMenu
       className="relative min-w-0 flex-1"
       summaryLabel="Your account"
-      summaryClassName="flex h-11 min-w-0 cursor-pointer list-none items-center gap-2.5 rounded-xl px-2 transition-colors hover:bg-panel"
+      summaryClassName="flex h-10 min-w-0 cursor-pointer list-none items-center gap-2.5 rounded-xl px-1.5 transition-colors hover:bg-text/[0.05]"
       summary={
         <>
           <span className="relative shrink-0">
@@ -488,7 +517,14 @@ function AccountRow({ base, user, role }: { base: string; user: SidebarUser; rol
               />
             ) : null}
           </span>
-          <span className="truncate text-[14px] font-medium text-text">{user.displayName}</span>
+          <span className="min-w-0">
+            <span className="block truncate text-[13.5px] font-medium leading-5 text-text">
+              {user.displayName}
+            </span>
+            <span className="block truncate text-[11px] capitalize leading-4 text-faint">
+              {user.isGuest ? "Guest" : role}
+            </span>
+          </span>
         </>
       }
     >
@@ -557,6 +593,174 @@ function AccountRow({ base, user, role }: { base: string; user: SidebarUser; rol
   )
 }
 
+/** Saya gets her own card: she runs the workspace, so she sits above every list. */
+function OrchestratorCard({
+  item,
+  orgSlug,
+  active,
+  onNavigate,
+}: {
+  item: ChatListItem
+  orgSlug: string
+  active: boolean
+  onNavigate?: () => void
+}) {
+  const unread = item.unreadCount > 0
+  return (
+    <Link
+      href={`/${orgSlug}/r/${item.id}`}
+      onClick={onNavigate}
+      aria-current={active ? "page" : undefined}
+      data-testid="room-link"
+      data-room-name={item.name}
+      className={cn(
+        "group/saya relative mt-1 flex items-center gap-3 overflow-hidden rounded-2xl p-2.5 pr-3 transition-all",
+        "bg-[linear-gradient(135deg,rgba(157,140,255,0.16),rgba(110,180,255,0.07)_55%,rgba(255,255,255,0.02))]",
+        "ring-1 ring-inset",
+        active ? "ring-accent/50" : "ring-text/[0.07] hover:ring-accent/30",
+      )}
+    >
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute -right-6 -top-8 h-24 w-24 rounded-full bg-accent/20 blur-2xl transition-opacity group-hover/saya:opacity-100 md:opacity-60"
+      />
+      <span className="relative grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-void/60">
+        <Mascot seed={item.agentNames[0] ?? item.name} crown live className="h-9 w-9" />
+      </span>
+      <span className="relative min-w-0 flex-1">
+        <span className="flex items-center gap-1.5">
+          <span className={cn("truncate text-[14px] text-text", unread ? "font-semibold" : "font-medium")}>
+            {item.name}
+          </span>
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-warn/15 px-1.5 py-px text-[10px] font-semibold uppercase tracking-[0.06em] text-warn">
+            <Crown className="h-2.5 w-2.5" aria-hidden="true" />
+            Lead
+          </span>
+          {item.mentionCount > 0 ? (
+            <span className="ml-auto grid h-[18px] min-w-[18px] shrink-0 place-items-center rounded-full bg-accent px-1 text-[11px] font-semibold text-void">
+              {item.mentionCount}
+            </span>
+          ) : unread ? (
+            <span className="ml-auto h-2 w-2 shrink-0 rounded-full bg-accent" aria-label="Unread" />
+          ) : null}
+        </span>
+        <span className="mt-0.5 block truncate text-[12px] text-muted">
+          {item.lastMessage ?? "Ask me to set up bots, rooms and routines"}
+        </span>
+      </span>
+    </Link>
+  )
+}
+
+/** Usage, a tap away: Mac plan rings when there are readings, this month's numbers otherwise. */
+function UsageRow({
+  href,
+  usage,
+  active,
+  onNavigate,
+}: {
+  href: string
+  usage: SidebarUsage | null
+  active: boolean
+  onNavigate?: () => void
+}) {
+  const { supported, limits } = usePlanLimits()
+  const rings = supported ? (limits ?? []).filter((item) => item.windows.length > 0) : []
+  const planShare = usage?.plan ? Math.min(1, usage.plan.used / Math.max(1, usage.plan.limit)) : null
+  const title = [
+    ...rings.map(describeLimits),
+    usage
+      ? `This month: ${usage.replies.toLocaleString()} replies, ${formatTokens(usage.tokens)} tokens, $${usage.costUsd.toFixed(2)}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join("\n")
+
+  return (
+    <Link
+      href={href}
+      onClick={onNavigate}
+      aria-current={active ? "page" : undefined}
+      title={title || "Usage"}
+      className={cn(
+        "flex items-center gap-2.5 rounded-xl px-2 py-1.5 text-[13.5px] font-medium transition-colors",
+        active ? "bg-text/[0.07] text-text" : "text-text/90 hover:bg-text/[0.035]",
+      )}
+    >
+      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-text/[0.06]">
+        <Gauge className="h-4 w-4 text-muted" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block leading-5">Usage</span>
+        {planShare !== null ? (
+          <span className="mt-0.5 block h-1 overflow-hidden rounded-full bg-text/[0.07]">
+            <span
+              className={cn(
+                "block h-full rounded-full",
+                planShare >= 0.9 ? "bg-danger" : planShare >= 0.75 ? "bg-warn" : "bg-accent",
+              )}
+              style={{ width: `${Math.max(3, planShare * 100)}%` }}
+            />
+          </span>
+        ) : null}
+      </span>
+      {rings.length ? (
+        <span className="flex shrink-0 items-center -space-x-0.5" aria-hidden="true">
+          {rings.map((item) => (
+            <span key={item.provider} className="grid h-6 w-6 place-items-center">
+              <PlanRing limits={item} size={20} glyph={0.5} stroke={1.5} />
+            </span>
+          ))}
+        </span>
+      ) : usage ? (
+        <span className="shrink-0 text-right text-[11px] font-normal leading-tight tabular-nums text-faint">
+          <span className="block text-muted">{formatTokens(usage.tokens)} tok</span>
+          <span className="block">${usage.costUsd.toFixed(2)}</span>
+        </span>
+      ) : null}
+    </Link>
+  )
+}
+
+function ToolsGrid({
+  base,
+  pathname,
+  onNavigate,
+}: {
+  base: string
+  pathname: string
+  onNavigate?: () => void
+}) {
+  return (
+    <nav aria-label="Tools" className="grid grid-cols-3 gap-1 pb-1">
+      {TOOLS.map((tool) => {
+        const href = `${base}${tool.href}`
+        const active = pathname.startsWith(href)
+        return (
+          <Link
+            key={tool.key}
+            href={href}
+            onClick={onNavigate}
+            aria-current={active ? "page" : undefined}
+            className={cn(
+              "group/tool flex flex-col items-center gap-1 rounded-xl px-1 py-2 text-[11px] font-medium transition-colors",
+              active ? "bg-text/[0.08] text-text" : "text-muted hover:bg-text/[0.04] hover:text-text",
+            )}
+          >
+            <tool.icon
+              className={cn(
+                "h-[17px] w-[17px] transition-transform group-hover/tool:-translate-y-px",
+                active ? "text-accent" : "text-faint group-hover/tool:text-text",
+              )}
+            />
+            <span className="truncate">{tool.label}</span>
+          </Link>
+        )
+      })}
+    </nav>
+  )
+}
+
 /**
  * The whole left side in one column: workspace, search, inbox, your bots, group chats, and a
  * folded "Tools" drawer for everything else. New people see bots first, not a control panel.
@@ -569,6 +773,7 @@ export function AppSidebar({
   user,
   role,
   inboxCount,
+  usage = null,
   desktopApp,
   onOpenPalette,
   onNavigate,
@@ -581,6 +786,7 @@ export function AppSidebar({
   user: SidebarUser
   role: OrgRole
   inboxCount: number
+  usage?: SidebarUsage | null
   desktopApp: boolean
   onOpenPalette: () => void
   onNavigate?: () => void
@@ -704,12 +910,15 @@ export function AppSidebar({
     !groupChats.length &&
     !newBots.length
 
+  const usageActive = pathname.startsWith(`${base}/analytics`)
+  const orchestrator = orchestratorChats[0] ?? null
+
   return (
     <div className="relative flex h-full min-h-0 flex-col overflow-hidden [-webkit-app-region:no-drag]">
       {/* A soft wash of colour at the top, so the sidebar feels like a place, not a table. */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 h-56 bg-[radial-gradient(120%_80%_at_0%_0%,rgba(157,140,255,0.10),transparent_60%),radial-gradient(90%_70%_at_100%_0%,rgba(110,180,255,0.06),transparent_65%)]"
+        className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[radial-gradient(120%_80%_at_0%_0%,rgba(157,140,255,0.12),transparent_60%),radial-gradient(90%_70%_at_100%_0%,rgba(110,180,255,0.07),transparent_65%)]"
       />
 
       <div
@@ -722,14 +931,13 @@ export function AppSidebar({
         <div className="min-w-0 flex-1 [-webkit-app-region:no-drag]">
           <WorkspaceSwitcher org={org} orgs={orgs} />
         </div>
-        <TopBarPlanRings usageHref={`${base}/analytics`} />
         <DetailsMenu
           className="shrink-0 [-webkit-app-region:no-drag]"
           summaryLabel="New bot or group chat"
-          summaryClassName="grid h-9 w-9 cursor-pointer list-none place-items-center rounded-xl text-muted transition-colors hover:bg-white/5 hover:text-text"
+          summaryClassName="grid h-9 w-9 cursor-pointer list-none place-items-center rounded-xl bg-text/[0.06] text-text transition-colors hover:bg-accent hover:text-void"
           summary={<Plus className="h-[18px] w-[18px]" />}
         >
-          <div className={cn(popover, "right-2.5 top-full z-50 mt-1 w-56")}>
+          <div className={cn(popover, "right-2.5 top-full z-50 mt-1 w-60")}>
             <Link href={`${base}/agents/new`} onClick={onNavigate} className={popoverItem}>
               <Bot className="h-4 w-4 text-faint" />
               <span className="flex-1">New bot</span>
@@ -741,12 +949,22 @@ export function AppSidebar({
               <Users className="h-4 w-4 text-faint" />
               New group chat
             </Link>
+            {orchestrator ? (
+              <Link
+                href={`${base}/r/${orchestrator.id}`}
+                onClick={onNavigate}
+                className={popoverItem}
+              >
+                <Crown className="h-4 w-4 text-warn" />
+                Ask Saya to set it up
+              </Link>
+            ) : null}
           </div>
         </DetailsMenu>
       </div>
 
-      <div className="relative shrink-0 px-2.5">
-        <label className="flex h-10 items-center gap-2.5 rounded-xl bg-white/[0.06] px-3 transition-colors focus-within:bg-white/[0.09]">
+      <div className="relative shrink-0 space-y-1 px-2.5">
+        <label className="flex h-9 items-center gap-2.5 rounded-xl bg-text/[0.05] px-3 ring-1 ring-inset ring-text/[0.04] transition-colors focus-within:bg-text/[0.08] focus-within:ring-accent/40">
           <Search className="h-4 w-4 shrink-0 text-faint" aria-hidden />
           <span className="sr-only">Search chats. Press Enter to search every message.</span>
           <input
@@ -761,7 +979,7 @@ export function AppSidebar({
               }
             }}
             placeholder="Search"
-            className="w-full min-w-0 bg-transparent text-[14px] text-text outline-none placeholder:text-faint"
+            className="w-full min-w-0 bg-transparent text-[13.5px] text-text outline-none placeholder:text-faint"
           />
           <button
             type="button"
@@ -774,35 +992,59 @@ export function AppSidebar({
           </button>
         </label>
 
-        <Link
-          href={`${base}/inbox`}
-          onClick={onNavigate}
-          aria-current={inboxActive ? "page" : undefined}
-          className={cn(
-            "mt-2 flex items-center gap-2.5 rounded-xl px-2 py-1.5 text-[14.5px] font-medium transition-colors",
-            inboxActive ? "bg-raised text-text" : "text-text hover:bg-white/5",
-          )}
-        >
-          <span className="grid h-9 w-9 place-items-center rounded-full bg-white/[0.07]">
-            <Inbox className="h-[17px] w-[17px] text-muted" />
-          </span>
-          <span className="flex-1">Inbox</span>
-          {inboxCount > 0 ? (
-            <span className="grid h-5 min-w-5 place-items-center rounded-full bg-accent px-1.5 text-[11px] font-semibold text-void">
-              {inboxCount > 99 ? "99+" : inboxCount}
+        <nav aria-label="Workspace" className="pt-1">
+          <Link
+            href={`${base}/inbox`}
+            onClick={onNavigate}
+            aria-current={inboxActive ? "page" : undefined}
+            className={cn(
+              "flex items-center gap-2.5 rounded-xl px-2 py-1.5 text-[13.5px] font-medium transition-colors",
+              inboxActive ? "bg-text/[0.07] text-text" : "text-text/90 hover:bg-text/[0.035]",
+            )}
+          >
+            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-text/[0.06]">
+              <Inbox className="h-4 w-4 text-muted" />
             </span>
-          ) : null}
-        </Link>
+            <span className="flex-1 leading-5">Inbox</span>
+            {inboxCount > 0 ? (
+              <span className="grid h-5 min-w-5 place-items-center rounded-full bg-accent px-1.5 text-[11px] font-semibold text-void">
+                {inboxCount > 99 ? "99+" : inboxCount}
+              </span>
+            ) : null}
+          </Link>
+          <UsageRow
+            href={`${base}/analytics`}
+            usage={usage}
+            active={usageActive}
+            onNavigate={onNavigate}
+          />
+        </nav>
+
+        {orchestrator ? (
+          <OrchestratorCard
+            item={orchestrator}
+            orgSlug={org.slug}
+            active={pathname.startsWith(`${base}/r/${orchestrator.id}`)}
+            onNavigate={onNavigate}
+          />
+        ) : null}
       </div>
 
-      <div className="relative min-h-0 flex-1 overflow-y-auto px-2.5 pb-3 pt-1">
-        {orchestratorChats.length || pinned.length ? (
-          <ul className="mt-2 space-y-0.5">{[...orchestratorChats, ...pinned].map(row)}</ul>
+      <div className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain px-2.5 pb-3 pt-1 [scrollbar-width:thin]">
+        {orchestratorChats.length > 1 || pinned.length ? (
+          <Section id="pinned" label="Pinned" count={pinned.length || undefined}>
+            <ul className="space-y-px">{[...orchestratorChats.slice(1), ...pinned].map(row)}</ul>
+          </Section>
         ) : null}
 
         {botChats.length || newBots.length || !needle ? (
-          <Section id="bots" label="Bots" action={sectionAction(`${base}/agents/new`, "New bot")}>
-            <ul className="space-y-0.5">
+          <Section
+            id="bots"
+            label="Bots"
+            count={botChats.length + newBots.length || undefined}
+            action={sectionAction(`${base}/agents/new`, "New bot")}
+          >
+            <ul className="space-y-px">
               {botChats.map(row)}
               {newBots.map((bot) => (
                 <NewBotRow key={bot.id} bot={bot} orgSlug={org.slug} onNavigate={onNavigate} />
@@ -812,9 +1054,9 @@ export function AppSidebar({
               <Link
                 href={`${base}/agents/new`}
                 onClick={onNavigate}
-                className="mx-2 mt-1 flex items-center gap-2 rounded-xl border border-dashed border-line-strong px-3 py-2.5 text-[13px] text-muted hover:border-faint hover:text-text"
+                className="mt-1 flex items-center gap-2.5 rounded-xl border border-dashed border-line-strong px-3 py-2.5 text-[12.5px] text-muted transition-colors hover:border-accent/50 hover:text-text"
               >
-                <Plus className="h-4 w-4" />
+                <Mascot seed="Pip" mood="happy" className="h-6 w-6" />
                 Make your first bot
               </Link>
             ) : null}
@@ -825,14 +1067,15 @@ export function AppSidebar({
           <Section
             id="groups"
             label="Group chats"
+            count={groupChats.length || undefined}
             action={sectionAction(`${base}/chats/new`, "New group chat")}
           >
-            <ul className="space-y-0.5">{groupChats.map(row)}</ul>
+            <ul className="space-y-px">{groupChats.map(row)}</ul>
             {!groupChats.length && !needle ? (
               <Link
                 href={`${base}/chats/new`}
                 onClick={onNavigate}
-                className="mx-2 mt-1 flex items-center gap-2 rounded-xl border border-dashed border-line-strong px-3 py-2.5 text-[13px] text-muted hover:border-faint hover:text-text"
+                className="mt-1 flex items-center gap-2.5 rounded-xl border border-dashed border-line-strong px-3 py-2.5 text-[12.5px] text-muted transition-colors hover:border-accent/50 hover:text-text"
               >
                 <Plus className="h-4 w-4" />
                 Start a group chat and invite bots
@@ -842,50 +1085,36 @@ export function AppSidebar({
         ) : null}
 
         {archived.length ? (
-          <div className="mt-3">
+          <div className="mt-4">
             <button
               type="button"
               onClick={() => setShowArchived((open) => !open)}
               aria-expanded={showArchived}
-              className="flex h-7 items-center gap-1 px-2 text-[12.5px] text-faint hover:text-text"
+              className="flex h-7 items-center gap-1.5 px-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-faint hover:text-text"
             >
-              <Archive className="h-3.5 w-3.5" />
-              Archived ({archived.length})
+              <Archive className="h-3 w-3" />
+              Archived
+              <span className="rounded-full bg-text/[0.06] px-1.5 py-px text-[10px] font-medium tracking-normal">
+                {archived.length}
+              </span>
             </button>
-            {showArchived ? <ul className="space-y-0.5 opacity-80">{archived.map(row)}</ul> : null}
+            {showArchived ? <ul className="space-y-px opacity-80">{archived.map(row)}</ul> : null}
           </div>
         ) : null}
 
         {nothing && needle ? (
-          <p className="px-3 py-8 text-center text-[13px] leading-relaxed text-faint">
-            Nothing matches. Press Enter to search every message.
-          </p>
+          <div className="flex flex-col items-center gap-2 px-3 py-8 text-center">
+            <Mascot seed="Hoot" mood="thinking" className="h-10 w-10" />
+            <p className="text-[12.5px] leading-relaxed text-faint">
+              Nothing matches. Press Enter to search every message.
+            </p>
+          </div>
         ) : null}
       </div>
 
-      <div className="relative shrink-0 border-t border-line/60 px-2.5 pt-1">
+      <div className="relative shrink-0 border-t border-text/[0.06] px-2.5 pt-1">
         <Section id="tools" label="Tools">
-          <nav aria-label="Tools" className="space-y-0.5 pb-1">
-            {TOOLS.map((tool) => {
-              const href = `${base}${tool.href}`
-              const active = pathname.startsWith(href)
-              return (
-                <Link
-                  key={tool.key}
-                  href={href}
-                  onClick={onNavigate}
-                  aria-current={active ? "page" : undefined}
-                  className={cn(
-                    "flex items-center gap-3 rounded-xl px-2.5 py-[7px] text-[14px] transition-colors",
-                    active ? "bg-raised text-text" : "text-text/90 hover:bg-panel",
-                  )}
-                >
-                  <tool.icon className="h-[17px] w-[17px] text-muted" />
-                  {tool.label}
-                </Link>
-              )
-            })}
-          </nav>
+          <ToolsGrid base={base} pathname={pathname} onNavigate={onNavigate} />
         </Section>
       </div>
 
@@ -894,27 +1123,27 @@ export function AppSidebar({
           <Link
             href={`/auth/save-account?next=${encodeURIComponent(base)}`}
             onClick={onNavigate}
-            className="flex items-center gap-2.5 rounded-xl border border-line px-3 py-2 text-[12.5px] leading-snug text-muted transition-colors hover:border-line-strong hover:text-text"
+            className="flex items-center gap-2.5 rounded-xl bg-accent/10 px-3 py-2 text-[12px] leading-snug text-muted ring-1 ring-inset ring-accent/20 transition-colors hover:bg-accent/15 hover:text-text"
           >
-            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" aria-hidden="true" />
+            <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-accent" aria-hidden="true" />
             <span className="min-w-0 flex-1">
-              <span className="block text-text">Save your account</span>
-              Keep your bots on your phone and the web
+              <span className="block font-medium text-text">Save your account</span>
+              <span className="block truncate">Keep your bots on phone and web</span>
             </span>
           </Link>
         </div>
       ) : null}
 
-      <div className="relative flex shrink-0 items-center gap-1 px-2.5 pb-3 pt-1">
+      <div className="relative flex shrink-0 items-center gap-1 px-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-1">
         <AccountRow base={base} user={user} role={role} />
         <Link
           href={`${base}/settings`}
           onClick={onNavigate}
           aria-label="Settings"
           title="Settings"
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted transition-colors hover:bg-panel hover:text-text"
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-muted transition-colors hover:bg-text/[0.05] hover:text-text"
         >
-          <Settings className="h-[18px] w-[18px]" />
+          <Settings2 className="h-[17px] w-[17px]" />
         </Link>
       </div>
     </div>

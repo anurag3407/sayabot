@@ -288,7 +288,7 @@ The database schemas in [packages/db/src/schema/](file:///Users/jarvis/saaya/pac
 | :-------------- | :------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------- |
 | `identity.ts`   | `profiles`, `orgs`, `orgMembers`                                                                         | User profiles, organizations, RBAC membership (`owner`, `admin`, `member`, `guest`).                                              |
 | `invites.ts`    | `roomInvites`, `workspaceInvites`, `botInvites`, `workspaceJoinRequests`, `oauthClients`, `mergeTickets` | Single-use room invite tokens, workspace invitation links, join requests, OAuth applications, and guest-to-account merge tickets. |
-| `agents.ts`     | `agents`, `providerKeys`, `agentToolConfigs`, `agentConnectorGrants`                                     | Agent definitions, model configs, system prompts, API keys, and connector scope grants.                                           |
+| `agents.ts`     | `agents`, `providerKeys`, `agentToolConfigs`, `agentConnectorGrants`                                     | Agent definitions, model configs, personas (`system_prompt`), API keys, and connector scope grants.                                          |
 | `rooms.ts`      | `rooms`, `roomMembers`, `roomSchedules`                                                                  | Multi-agent collaboration rooms, turn modes (`mentions`, `debate`, `moderated`), RPM limits, and daily budgets.                   |
 | `messages.ts`   | `messages`                                                                                               | Chat messages, human/agent/system attribution, thread roots, metadata, and token usage.                                           |
 | `canvas.ts`     | `canvases`, `canvasVersions`                                                                             | Collaborative documents (Markdown, code, SVG), live content, Yjs update snapshots.                                                |
@@ -410,7 +410,7 @@ If a human submits a message while an agent is generating:
 
 The engine execution loop ([apps/orchestrator/src/engine/run.ts](file:///Users/jarvis/saaya/apps/orchestrator/src/engine/run.ts)):
 
-- **Context Assembly**: Concatenates system prompt, room directives, owner facts, active skills, collaborative canvas snapshot, and retrieved semantic memories.
+- **Context Assembly**: Concatenates the harness system prompt (Sayabot's operating rules for every bot), the owner's persona, room directives, owner facts, active skills, collaborative canvas snapshot, and retrieved semantic memories.
 - **Thinking Blocks**: Reasoned tokens wrapped in `<thinking>...</thinking>` are extracted via `@sayabot/core/thinking` and folded into collapsible UI rows in the room chat.
 - **Token Compaction Ladder**: If the context approaches token limits, a 3-stage compaction pipeline activates:
   1. Strip extra whitespace and comment bloat.

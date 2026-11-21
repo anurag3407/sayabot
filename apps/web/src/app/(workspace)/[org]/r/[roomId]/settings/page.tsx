@@ -227,7 +227,7 @@ export default async function RoomSettingsPage({
                             <Link
                               href={`/${orgSlug}/r/${roomId}?configure=${agent.id}#soul`}
                               className="inline-flex items-center gap-1 rounded-md border border-line bg-raised px-2.5 py-1 text-[11px] font-medium text-text hover:border-line-strong hover:bg-hover transition-colors"
-                              title="Edit system prompt and personality during runtime in the bot sidebar"
+                              title="Edit the persona in the bot sidebar"
                             >
                               <Sparkles className="h-3 w-3 text-accent" />
                               Edit in sidebar
@@ -248,13 +248,13 @@ export default async function RoomSettingsPage({
                         {agent.systemPrompt?.trim() ? (
                           <div className="mt-2 ml-7 rounded-lg border border-line/60 bg-raised/40 px-3 py-2 text-[11.5px] font-mono text-muted leading-relaxed line-clamp-2">
                             <span className="font-sans text-[10px] uppercase font-semibold tracking-wider text-faint block mb-0.5">
-                              Active System Prompt:
+                              Persona:
                             </span>
                             {agent.systemPrompt}
                           </div>
                         ) : (
                           <p className="mt-1 ml-7 text-[11.5px] text-faint italic">
-                            No custom system prompt set (using default persona).
+                            No persona set yet.
                           </p>
                         )}
                       </li>

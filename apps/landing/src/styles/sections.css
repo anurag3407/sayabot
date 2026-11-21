@@ -2277,15 +2277,57 @@
   animation-play-state: paused !important;
 }
 
-.how-title {
-  margin: 22px 0 0;
-  font-size: 19px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+.how-scene {
+  transition:
+    transform 0.45s var(--spring),
+    border-color 0.3s;
+}
+
+.how-item:hover .how-scene {
+  transform: translateY(-5px);
+  border-color: var(--line-2);
+}
+
+/* Numbered steps joined by one line across the row. */
+.how-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 22px;
 }
 
 .how-num {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  background: rgba(157, 140, 255, 0.14);
+  border: 1px solid rgba(157, 140, 255, 0.3);
   color: var(--accent-2);
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.how-line {
+  flex: 1;
+  height: 1px;
+  margin-right: -20px;
+  background: linear-gradient(90deg, rgba(157, 140, 255, 0.4), var(--line));
+}
+
+.how-item:last-child .how-line {
+  margin-right: 0;
+  background: linear-gradient(90deg, rgba(157, 140, 255, 0.4), transparent);
+}
+
+.how-title {
+  margin: 12px 0 0;
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .how-body {
@@ -3289,25 +3331,21 @@
   font-family: var(--mono);
 }
 
-.flow-captions {
-  display: grid;
-  grid-template-columns: 1.2fr 1.6fr 1.3fr 0.9fr;
-  margin-top: 18px;
+/* Room under the diagram for the column labels (a scroll box clips overflow). */
+.flow-scroll {
+  padding-bottom: 52px;
+}
+
+.flow-caption {
+  position: absolute;
+  top: calc(100% + 18px);
+  transform: translateX(-50%);
   font-family: var(--mono);
   font-size: 12px;
   color: var(--faint);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-}
-
-.flow-captions span {
-  text-align: center;
-}
-
-@media (max-width: 860px) {
-  .flow-captions {
-    display: none;
-  }
+  white-space: nowrap;
 }
 
 /* ======================================================================
@@ -3767,37 +3805,100 @@
 }
 
 .dl-card {
+  position: relative;
   display: flex;
   flex-direction: column;
-  padding: 28px;
+  padding: 24px;
+  overflow: visible;
   transition:
     transform 0.4s var(--spring),
-    border-color 0.3s;
+    border-color 0.3s,
+    box-shadow 0.4s;
 }
 
 .dl-card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-6px);
   border-color: var(--line-2);
+  box-shadow: 0 30px 60px -30px rgba(0, 0, 0, 0.8);
 }
 
-.dl-card-icon {
-  width: 28px;
-  height: 28px;
+.dl-card.is-rec {
+  border-color: rgba(157, 140, 255, 0.5);
+  box-shadow: 0 0 0 1px rgba(157, 140, 255, 0.15), 0 30px 70px -40px rgba(157, 140, 255, 0.45);
+}
+
+.dl-card-peek {
+  position: absolute;
+  top: -18px;
+  right: 18px;
+  width: 44px;
+  height: 44px;
+  opacity: 0;
+  transform: translateY(16px) scale(0.8);
+  transition:
+    opacity 0.3s,
+    transform 0.45s var(--spring);
+  pointer-events: none;
+}
+
+.dl-card:hover .dl-card-peek,
+.dl-card.is-rec .dl-card-peek {
+  opacity: 1;
+  transform: none;
+}
+
+.dl-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.dl-card-tile {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  background: var(--raised-2);
+  border: 1px solid var(--line);
   color: var(--text);
+}
+
+.dl-card-tile svg {
+  width: 22px;
+  height: 22px;
+}
+
+.dl-card-rec {
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: rgba(157, 140, 255, 0.14);
+  color: var(--accent-2);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 .dl-card h3 {
   margin: 18px 0 0;
   font-size: 21px;
   font-weight: 600;
+  letter-spacing: -0.02em;
 }
 
 .dl-card p {
-  flex: 1;
-  margin: 8px 0 20px;
+  margin: 8px 0 0;
   font-size: 14.5px;
   line-height: 1.55;
   color: var(--muted);
+}
+
+/* Pinned to the bottom, so every card's buttons line up. */
+.dl-card-foot {
+  margin-top: auto;
+  padding-top: 22px;
 }
 
 .dl-card-links {
@@ -3807,9 +3908,81 @@
 }
 
 .dl-card small {
-  margin-top: 14px;
+  display: block;
+  margin-top: 12px;
   font-size: 12.5px;
   color: var(--faint);
+}
+
+.dl-term {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 16px;
+  padding: 12px 14px 12px 18px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--surface);
+}
+
+.dl-term-label {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
+.dl-term-label svg {
+  width: 15px;
+  height: 15px;
+}
+
+.dl-term code {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  white-space: nowrap;
+  scrollbar-width: none;
+  font-size: 13px;
+  color: var(--accent-2);
+}
+
+.dl-term code .dim {
+  color: var(--faint);
+}
+
+.dl-term-more {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.dl-term-more:hover {
+  color: var(--text);
+}
+
+.dl-term-more svg {
+  width: 13px;
+  height: 13px;
+}
+
+.oss-badge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.oss-face {
+  width: 34px;
+  height: 34px;
+  margin-left: -6px;
+  transform: rotate(8deg);
 }
 
 .oss {
@@ -3873,6 +4046,15 @@
 }
 
 @media (max-width: 760px) {
+  .dl-term {
+    flex-wrap: wrap;
+  }
+
+  .dl-term code {
+    order: 3;
+    flex-basis: 100%;
+  }
+
   .dls,
   .oss {
     grid-template-columns: minmax(0, 1fr);

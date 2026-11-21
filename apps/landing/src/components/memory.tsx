@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef } from "react"
+import { useRef, useState } from "react"
 import type { SayaShape } from "@sayabot/core/mascot"
 import { useInView, useSequence } from "@/lib/motion"
 import { Reveal } from "./reveal"
@@ -60,10 +60,20 @@ const POINTS = [
   },
 ]
 
+const SCOPES = ["This agent", "This room", "The workspace"]
+
+function scopeOf(note: Memory): string {
+  if (note.scope === "This agent") return "This agent"
+  if (note.scope === "The workspace") return "The workspace"
+  return "This room"
+}
+
 export function Memory() {
   const ref = useRef<HTMLDivElement>(null)
   const on = useInView(ref)
-  const step = useSequence([3200, 3200, 3200, 3200], on)
+  const [picked, setPicked] = useState<number | null>(null)
+  const sequence = useSequence([3200, 3200, 3200, 3200], on && picked === null)
+  const step = picked ?? sequence
   const note = NOTES[step] ?? NOTES[0]
   if (!note) return null
 
@@ -79,33 +89,60 @@ export function Memory() {
             The next run starts from what you already decided. A preference, a fact, an open
             promise. Not from a blank chat.
           </p>
-          <ul className="story-points">
-            {POINTS.map((point) => (
+          <ol className="story-points story-points-num">
+            {POINTS.map((point, index) => (
               <li key={point.title}>
+                <span className="story-num" aria-hidden>
+                  {index + 1}
+                </span>
                 <strong>{point.title}</strong>
                 <span>{point.body}</span>
               </li>
             ))}
-          </ul>
+          </ol>
         </Reveal>
 
         <Reveal index={1}>
-          <div ref={ref} className="mem-stage" aria-hidden>
-            <div className="mem-card card">
-              <div className="mem-top">
-                <span className="mono">Recalled for this run</span>
-                <Saya shape={note.shape} mood="thinking" live className="mem-face" />
-              </div>
-              <div className="mem-slip" key={note.kind}>
-                <div className="mem-kicker">
-                  <span className={`mem-kind ${note.kind === "Still open" ? "is-open" : ""}`}>
-                    {note.kind}
-                  </span>
-                  <span className="mem-scope">{note.scope}</span>
-                </div>
-                <p className="mem-title">{note.title}</p>
-                <p className="mem-detail">{note.detail}</p>
-              </div>
+          <div ref={ref} className="mem-card card">
+            <div className="mem-top">
+              <Saya shape={note.shape} mood="thinking" live lit className="mem-face" />
+              <span className="mem-top-copy">
+                <strong>Recalled for this run</strong>
+                <span>
+                  {NOTES.length} notes · read before the first step
+                </span>
+              </span>
+            </div>
+            <ul className="mem-list">
+              {NOTES.map((item, index) => {
+                const open = index === step
+                return (
+                  <li key={item.kind}>
+                    <button
+                      type="button"
+                      onClick={() => setPicked(index)}
+                      aria-expanded={open}
+                      className={`mem-row ${open ? "is-on" : ""}`}
+                    >
+                      <span className={`mem-kind ${item.kind === "Still open" ? "is-open" : ""}`}>
+                        {item.kind}
+                      </span>
+                      <span className="mem-title">{item.title}</span>
+                      {open ? <span className="mem-detail">{item.detail}</span> : null}
+                      <span className="mem-used" aria-hidden>
+                        {open ? "used ✓" : ""}
+                      </span>
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+            <div className="mem-scopes" aria-label="Where this note lives">
+              {SCOPES.map((scope) => (
+                <span key={scope} className={scope === scopeOf(note) ? "is-on" : ""}>
+                  {scope}
+                </span>
+              ))}
             </div>
           </div>
         </Reveal>

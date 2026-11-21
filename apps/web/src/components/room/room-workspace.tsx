@@ -40,6 +40,7 @@ import {
 } from "lucide-react"
 import { CallModal, VoiceSettingsDialog } from "@/components/voice"
 import { cn } from "@/lib/format"
+import { isSayaHandle } from "@sayabot/core"
 import type { RoomPageData } from "@/lib/types"
 
 type View = "chat" | "panel"
@@ -127,7 +128,8 @@ export function RoomWorkspace({
   })
 
   useEffect(() => {
-    const query = window.matchMedia("(min-width: 768px)")
+    // Side-by-side needs room for both minimums (chat 380 + panel 340) next to the sidebar.
+    const query = window.matchMedia("(min-width: 1100px)")
     const apply = () => setIsDesktop(query.matches)
     apply()
     query.addEventListener("change", apply)
@@ -370,28 +372,21 @@ export function RoomWorkspace({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <header className="grid min-h-14 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-2 px-3 py-2">
-        <div className="flex min-w-0 items-center gap-1">
-          {someoneTyping || (data.room.kind !== "dm" && presence.length > 1) ? (
-            <div className="hidden truncate text-[12px] text-faint lg:block">
-              <PresenceLine people={presence} selfId={data.user.id} />
-            </div>
-          ) : null}
-        </div>
-
-        <div className="flex min-w-0 items-center gap-1 rounded-full border border-line bg-panel/80 py-1 pl-1 pr-1.5">
+      <header className="relative flex min-h-14 shrink-0 items-center gap-3 border-b border-line/60 px-3 py-2 md:px-4">
+        <div className="flex min-w-0 flex-1 items-center gap-2.5">
           {dmAgent ? (
             <button
               type="button"
               onClick={() => openConfig(dmAgent.id)}
               aria-label={`Configure ${dmAgent.displayName}`}
-              className="shrink-0 rounded-full"
+              className="relative shrink-0 rounded-xl p-0.5 transition-transform hover:scale-105"
             >
               <Mascot
                 {...mascotFor(dmAgent, identityPreview)}
                 {...(realtime.turnState?.activeAgentId ? { mood: "busy" as const, lit: true } : {})}
+                crown={isSayaHandle(dmAgent.handle)}
                 live
-                className="h-8 w-8"
+                className="h-9 w-9"
               />
             </button>
           ) : data.roomAgents.length ? (
@@ -402,82 +397,110 @@ export function RoomWorkspace({
                   type="button"
                   onClick={() => openConfig(agent.id)}
                   aria-label={`Configure ${agent.displayName}`}
-                  className="rounded-full"
+                  title={agent.displayName}
+                  className="rounded-full transition-transform hover:z-10 hover:-translate-y-0.5"
                 >
                   <Mascot
                     {...mascotFor(agent, identityPreview)}
-                    className="h-7 w-7 rounded-full ring-2 ring-panel"
+                    crown={isSayaHandle(agent.handle)}
+                    className="h-8 w-8 rounded-full bg-ink ring-2 ring-ink"
                   />
                 </button>
               ))}
+              {data.roomAgents.length > 3 ? (
+                <span className="z-10 grid h-8 w-8 place-items-center rounded-full bg-raised text-[11px] font-semibold text-muted ring-2 ring-ink">
+                  +{data.roomAgents.length - 3}
+                </span>
+              ) : null}
             </span>
           ) : (
             <span
               aria-hidden="true"
-              className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-raised text-[14px] text-muted"
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-raised text-[15px] font-semibold text-muted"
             >
               {roomPrefix}
             </span>
           )}
-          {dmAgent ? (
-            <button
-              type="button"
-              onClick={() => openConfig(dmAgent.id)}
-              className="max-w-[40vw] truncate pl-1 text-left text-[15px] font-semibold tracking-[-0.01em] md:max-w-[260px]"
-              data-testid="room-title"
-            >
-              {identityPreview?.agentId === dmAgent.id &&
-              identityPreview.name.trim() &&
-              identityPreview.name.trim() !== dmAgent.displayName
-                ? identityPreview.name.trim()
-                : data.room.name}
-            </button>
-          ) : (
-            <h1
-              className="max-w-[40vw] truncate pl-1 text-[15px] font-semibold tracking-[-0.01em] md:max-w-[260px]"
-              data-testid="room-title"
-            >
-              {data.room.name}
-            </h1>
-          )}
-          {dmAgent ? (
-            <button
-              type="button"
-              onClick={() => openConfig(dmAgent.id)}
-              aria-pressed={Boolean(configAgent)}
-              aria-label={`Edit ${dmAgent.displayName}`}
-              title="Edit bot"
-              className={cn(
-                "grid h-7 w-7 shrink-0 place-items-center rounded-full text-faint transition-colors hover:bg-raised hover:text-text",
-                configAgent && "bg-raised text-text",
+
+          <div className="min-w-0">
+            <div className="flex min-w-0 items-center gap-1">
+              {dmAgent ? (
+                <button
+                  type="button"
+                  onClick={() => openConfig(dmAgent.id)}
+                  className="min-w-0 truncate text-left text-[15px] font-semibold tracking-[-0.01em] text-text"
+                  data-testid="room-title"
+                >
+                  {identityPreview?.agentId === dmAgent.id &&
+                  identityPreview.name.trim() &&
+                  identityPreview.name.trim() !== dmAgent.displayName
+                    ? identityPreview.name.trim()
+                    : data.room.name}
+                </button>
+              ) : (
+                <h1
+                  className="min-w-0 truncate text-[15px] font-semibold tracking-[-0.01em] text-text"
+                  data-testid="room-title"
+                >
+                  {data.room.name}
+                </h1>
               )}
-            >
-              <Pencil className="h-3.5 w-3.5" />
-            </button>
-          ) : (
-            <Link
-              href={aboutHref}
-              aria-label="Chat settings"
-              title="Chat settings"
-              className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-faint transition-colors hover:bg-raised hover:text-text"
-            >
-              <Pencil className="h-3.5 w-3.5" />
-            </Link>
-          )}
-          {realtime.turnState?.activeAgentId ? (
-            <span className="hidden shrink-0 items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-0.5 text-[12px] text-accent sm:flex">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
-              Working
-            </span>
-          ) : dmAgent ? (
-            <span className="hidden shrink-0 rounded-full bg-raised px-2.5 py-0.5 text-[12px] text-muted sm:block">
-              @{dmAgent.handle}
-            </span>
-          ) : data.roomAgents.length ? (
-            <span className="hidden shrink-0 rounded-full bg-raised px-2.5 py-0.5 text-[12px] text-muted sm:block">
-              {data.roomAgents.length === 1 ? "1 bot" : `${data.roomAgents.length} bots`}
-            </span>
-          ) : null}
+              {dmAgent ? (
+                <button
+                  type="button"
+                  onClick={() => openConfig(dmAgent.id)}
+                  aria-pressed={Boolean(configAgent)}
+                  aria-label={`Edit ${dmAgent.displayName}`}
+                  title="Edit bot"
+                  className={cn(
+                    "grid h-6 w-6 shrink-0 place-items-center rounded-md text-faint transition-colors hover:bg-raised hover:text-text",
+                    configAgent && "bg-raised text-text",
+                  )}
+                >
+                  <Pencil className="h-3 w-3" />
+                </button>
+              ) : (
+                <Link
+                  href={aboutHref}
+                  aria-label="Chat settings"
+                  title="Chat settings"
+                  className="grid h-6 w-6 shrink-0 place-items-center rounded-md text-faint transition-colors hover:bg-raised hover:text-text"
+                >
+                  <Pencil className="h-3 w-3" />
+                </Link>
+              )}
+            </div>
+            <div className="flex min-w-0 items-center gap-1.5 text-[12px] leading-4 text-faint">
+              {realtime.turnState?.activeAgentId ? (
+                <span className="flex shrink-0 items-center gap-1.5 font-medium text-accent">
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-60" />
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-accent" />
+                  </span>
+                  Working
+                </span>
+              ) : null}
+              {realtime.turnState?.activeAgentId ? <span aria-hidden="true">·</span> : null}
+              {someoneTyping || (data.room.kind !== "dm" && presence.length > 1) ? (
+                <span className="min-w-0 truncate">
+                  <PresenceLine people={presence} selfId={data.user.id} />
+                </span>
+              ) : dmAgent ? (
+                <span className="min-w-0 truncate">
+                  @{dmAgent.handle}
+                  {isSayaHandle(dmAgent.handle) ? " · Orchestrator" : ""}
+                </span>
+              ) : (
+                <span className="min-w-0 truncate">
+                  {data.roomAgents.length === 1 ? "1 bot" : `${data.roomAgents.length} bots`}
+                  {data.roomMemberIds.length > 1
+                    ? ` · ${data.roomMemberIds.length} people`
+                    : ""}
+                  {data.room.kind === "private" ? " · private" : ""}
+                </span>
+              )}
+            </div>
+          </div>
           {realtime.connection !== "connected" ? <span className="sr-only">Connecting</span> : null}
         </div>
 

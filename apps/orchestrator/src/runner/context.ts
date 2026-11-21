@@ -1,4 +1,7 @@
 import {
+  ORCHESTRATOR_GUIDE,
+  harnessSystemPrompt,
+  personaBlock,
   debateRoleInstruction,
   desktopGuidance,
   desktopHome,
@@ -339,14 +342,10 @@ export function buildSystemPrompt(args: {
   const caps = parseCapabilities(args.agent.capabilities)
 
   const parts = [
-    `You are @${args.agent.handle} (${args.agent.displayName}), an autonomous teammate in the Sayabot room "#${args.room.name}".`,
+    harnessSystemPrompt(args.agent),
     "The conversation below is a shared transcript. Each message is labelled with its sender and whether they are human or an agent.",
-    "Reply as yourself only. Do not prefix your reply with your handle, and do not speak for anyone else.",
-    "Use the provided tools when they help. To hand the conversation to another agent, mention them with @handle in your reply; do not mention agents just to be polite.",
-    "Canvas ids come from the shared canvas list or from canvas_create / canvas_write. A room id is not a canvas id. If this room has no canvas, create one. Do not ask a person to make it in the UI.",
-    "Run terminal_exec and code_sandbox on the local backend. Do not try Modal, Daytona, SSH, or E2B when a token is missing, and do not loop shell commands after the files exist. Deliver the work on the canvas or in your reply.",
-    "Keep replies focused. Markdown is rendered, including code fences, tables, math and Mermaid diagrams.",
   ]
+  if (caps.orchestrator) parts.push(ORCHESTRATOR_GUIDE)
 
   if (caps.computer) {
     const worksOn = worksOnFromParams(args.agent.params as Record<string, unknown> | null)
@@ -374,9 +373,8 @@ export function buildSystemPrompt(args: {
   if (args.room.systemDirective?.trim()) {
     parts.push(`Room directive from the humans:\n${args.room.systemDirective.trim()}`)
   }
-  if (args.agent.systemPrompt?.trim()) {
-    parts.push(`Your instructions:\n${args.agent.systemPrompt.trim()}`)
-  }
+  const persona = personaBlock(args.agent.systemPrompt)
+  if (persona) parts.push(persona)
   const replyStyle = replyStyleInstruction(
     replyStyleFromParams(args.agent.params as Record<string, unknown> | null),
   )

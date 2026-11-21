@@ -25,9 +25,11 @@ function Scene({
       <div ref={ref} className={`how-scene card ${on ? "is-on" : ""}`} aria-hidden>
         {children}
       </div>
-      <h3 className="how-title">
-        <span className="how-num">{index + 1}.</span> {title}
-      </h3>
+      <div className="how-step" aria-hidden>
+        <span className="how-num">{index + 1}</span>
+        <span className="how-line" />
+      </div>
+      <h3 className="how-title">{title}</h3>
       <p className="how-body">{body}</p>
     </Reveal>
   )

@@ -1,12 +1,30 @@
 import { LINKS } from "@/lib/links"
 import { AgentPrompt } from "./agent-prompt"
+import type { SayaShape } from "@sayabot/core/mascot"
 import { ArrowRight } from "./icons"
+import { Saya } from "./saya"
 
-const CHECKS = [
-  { title: "Workspace", text: "Rooms, schedules, memory, and sign-in on a machine you control." },
-  { title: "Safety", text: "Risky tools wait for a yes. Saved keys stay sealed with your key." },
-  { title: "Computers", text: "Each agent can have a Linux computer. That service is a second step." },
-  { title: "Your apps", text: "Mac and phone read the server name, then sign in on your domain." },
+const CHECKS: { title: string; text: string; shape: SayaShape }[] = [
+  {
+    title: "Workspace",
+    text: "Rooms, schedules, memory, and sign-in on a machine you control.",
+    shape: "ghost",
+  },
+  {
+    title: "Safety",
+    text: "Risky tools wait for a yes. Saved keys stay sealed with your key.",
+    shape: "block",
+  },
+  {
+    title: "Computers",
+    text: "Each agent can have a Linux computer. That service is a second step.",
+    shape: "ledger",
+  },
+  {
+    title: "Your apps",
+    text: "Mac and phone read the server name, then sign in on your domain.",
+    shape: "bubble",
+  },
 ]
 
 export function SelfHostBand() {
@@ -24,7 +42,11 @@ export function SelfHostBand() {
           </p>
         </div>
 
-        <AgentPrompt />
+        <div className="self-host-stage">
+          <Saya shape="ledger" mood="working" follow live className="self-host-mascot is-left" />
+          <AgentPrompt />
+          <Saya shape="hoot" mood="thinking" follow live className="self-host-mascot is-right" />
+        </div>
 
         <p className="prompt-hint">
           The names on the button are the agents that do the installing.
@@ -33,6 +55,7 @@ export function SelfHostBand() {
         <ul className="self-host-checks">
           {CHECKS.map((item) => (
             <li key={item.title}>
+              <Saya shape={item.shape} mood="done" className="self-host-check-face" />
               <strong>{item.title}</strong>
               <span>{item.text}</span>
             </li>

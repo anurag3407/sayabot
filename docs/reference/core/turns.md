@@ -89,7 +89,7 @@ Returns `{ next: choice, valid: true }` when the choice names a real room agent,
 
 - **`validateLeadPlan(next, also, roomAgents)`** checks the lead agent's whole plan. The lead picks `next` and may add more agents for the same message in `also`, in order. Unknown and repeated ids are dropped, and the list is capped at **`LEAD_MAX_AGENTS = 3`**. `next === "human"`, or no usable id at all, returns `{ agentIds: [], human: true }`; otherwise it returns `{ agentIds, human: false }`. A hallucinated first pick doesn't discard valid `also` picks.
 
-The coordinator's lead step (`decideModerator` in `apps/orchestrator/src/coordinator/index.ts`) runs a `generateObject` call whose Zod schema is `{ next: z.string(), also: z.array(z.string()), reason: z.string() }` at `temperature: 0` with a 60-second abort timeout. It records the turn as a usage event of kind `"moderator"`, passes the result through `validateLeadPlan`, and queues every resolved agent as a responder. `validateModeratorChoice` stays exported for single-pick callers.
+The coordinator's lead step (`decideModerator` in `apps/orchestrator/src/coordinator/index.ts`) runs a `generateObject` call whose Zod schema is `{ next: z.string(), also: z.array(z.string()), reason: z.string() }` at `temperature: 0` with a 60-second abort timeout; when the model ignores the schema it falls back to plain text and parses the JSON out, and finally to the lead answering itself (see [coordinator](../orchestrator/engine/coordinator.md)). It records the turn as a usage event of kind `"moderator"`, passes the result through `validateLeadPlan`, and queues every resolved agent as a responder. `validateModeratorChoice` stays exported for single-pick callers.
 
 ## 🗣️ Debate role instructions
 

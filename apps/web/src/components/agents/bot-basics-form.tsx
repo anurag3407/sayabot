@@ -11,7 +11,7 @@ import { RUNTIME_PROMPT_PRESETS, QUICK_RUNTIME_RULES } from "@/lib/curated-bot-t
 const field =
   "w-full rounded-xl border border-line bg-raised px-3.5 text-[14px] text-text outline-none placeholder:text-faint focus:border-line-strong disabled:opacity-70"
 
-/** The bot's name and system prompt, editable on its page with live runtime update support. */
+/** The bot's name and persona, editable on its page with live runtime update support. */
 export function BotBasicsForm({
   orgSlug,
   agentId,
@@ -90,7 +90,7 @@ export function BotBasicsForm({
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <label htmlFor="bot-edit-prompt" className="text-[13px] font-medium text-muted">
-              System Prompt
+              Persona
             </label>
             <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-400">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -104,8 +104,8 @@ export function BotBasicsForm({
         </div>
 
         <p className="text-[12px] text-faint">
-          Defines the persona, instructions, reasoning rules, and constraints. Updates take effect
-          immediately on next turns across all rooms.
+          Who this bot is: its voice, role and focus. Sayabot&apos;s harness adds the operating
+          rules (tools, approvals, honesty) on top. Changes apply from the next turn in every room.
         </p>
 
         {canEdit && (

@@ -107,8 +107,12 @@ The underlying collab functions (`checkIn`, `getInbox`, `postAgentMessage`, task
 
 When the authenticated agent's capabilities include `orchestrator` (only the built-in `saya`),
 `listTools()` appends the workspace control-plane tools derived from the audited
-`orchestratorTools()` specs: roster, models, rooms, configure, delegate, routines, approvals,
-decide, errors, retry, usage, and config. `initialize` appends a short orchestrator instruction
+`orchestratorTools()` specs: roster, one bot in full, tune (any bot setting), create/update/delete
+bots, models, capabilities catalog, rooms, one room in full, create/delete rooms, per-room models,
+posting into a room, people, tasks, configure, delegate, routines, connectors (grant/revoke),
+secrets by name (revoke grants), MCP servers (enable/disable), shared memory, approvals, decide,
+errors, retry, usage (month or last N days) and config. Because they are projected from the same
+specs, every new orchestrator tool appears here with no MCP-specific code. `initialize` appends a short orchestrator instruction
 block for that agent only. Each tool requires the `orchestrator` token scope. In a room those
 mutations still wait on the approval gate; over MCP the scope is the owner's grant, except
 `sayabot_decide` still refuses self-approval, `use_secret`, and nested decisions. For any other

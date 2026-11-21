@@ -25,6 +25,7 @@ import { cn } from "@/lib/format"
 import { CloseIcon, MenuIcon } from "@/components/ui/icons"
 import { PlanUsageBanner } from "@/components/plan-usage-banner"
 import type { ChatListItem, OrgRole, OrgSummary } from "@/lib/types"
+import type { SidebarUsage } from "@/lib/sidebar-usage"
 
 type NavIcon = ComponentType<{ className?: string }>
 
@@ -107,6 +108,7 @@ export function WorkspaceShell({
   user,
   role,
   planUsage = null,
+  usage = null,
   children,
 }: {
   org: { slug: string; name: string }
@@ -126,6 +128,8 @@ export function WorkspaceShell({
   role: OrgRole
   /** Sayabot Cloud: month's server replies at 80%+ (admins only). */
   planUsage?: { used: number; limit: number; planName: string } | null
+  /** This month's replies, tokens and spend for the sidebar's Usage row. */
+  usage?: SidebarUsage | null
   children: React.ReactNode
 }) {
   const pathname = usePathname()
@@ -200,6 +204,7 @@ export function WorkspaceShell({
     user,
     role,
     inboxCount,
+    usage,
     onOpenPalette: () => setPaletteOpen(true),
   }
 
@@ -230,7 +235,7 @@ export function WorkspaceShell({
         {/* In the Mac app the window has no title bar: the dark gutters are what you drag. */}
         <div className={cn("flex min-h-0 flex-1", desktopApp && "[-webkit-app-region:drag]")}>
           <aside
-            className="hidden w-[284px] shrink-0 border-r border-line bg-void md:flex md:flex-col"
+            className="hidden w-[272px] shrink-0 border-r border-line/70 bg-void md:flex md:flex-col lg:w-[288px]"
             aria-label="Sidebar"
           >
             <AppSidebar

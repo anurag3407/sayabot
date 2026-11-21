@@ -3,7 +3,7 @@
 import { Avatar } from "@/components/ui/avatar"
 import { CopyButton } from "@/components/copy-button"
 import { Markdown } from "@/components/markdown"
-import { splitThinking } from "@sayabot/core"
+import { isSayaHandle, splitThinking } from "@sayabot/core"
 import { InlineAlert } from "@/components/ui/empty"
 import { ReplyIcon } from "@/components/ui/icons"
 import { FailureActions, PokeBotButton } from "@/components/room/message-actions"
@@ -41,23 +41,36 @@ export function MessageItem({
   continued?: boolean
 }) {
   if (message.senderType === "system") {
+    const halted = message.status === "halted"
     return (
       <div
         className={cn(
-          "mx-4 my-2 rounded-xl bg-panel px-4 py-3",
-          message.status === "halted" && "bg-accent-soft",
+          "mx-4 my-2 flex gap-3 rounded-xl border px-3 py-2.5",
+          halted ? "border-warn/25 bg-warn/[0.06]" : "border-line/70 bg-panel/40",
         )}
         role="status"
         data-testid="system-message"
         data-status={message.status}
       >
+        <span
+          aria-hidden="true"
+          className={cn(
+            "mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full text-[11px] font-bold",
+            halted ? "bg-warn/15 text-warn" : "bg-raised text-faint",
+          )}
+        >
+          {halted ? "!" : "i"}
+        </span>
+        <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-2">
-          <span className="text-[12px] text-muted">Sayabot</span>
-          <span className="font-mono text-[11px] text-faint" title={fullTime(message.createdAt)}>
+          <span className="text-[11.5px] font-medium text-muted">Sayabot</span>
+          <span className="font-mono text-[10.5px] text-faint" title={fullTime(message.createdAt)}>
             {clockTime(message.createdAt)}
           </span>
-          {message.status === "halted" ? (
-            <span className="text-[12px] text-accent">Halted</span>
+          {halted ? (
+            <span className="rounded-full bg-warn/15 px-1.5 py-px text-[10.5px] font-medium text-warn">
+              Halted
+            </span>
           ) : null}
         </div>
         <div className="mt-1 text-[13px] leading-relaxed text-muted">
@@ -84,6 +97,7 @@ export function MessageItem({
             showRetry={showRetry}
           />
         ) : null}
+        </div>
       </div>
     )
   }
@@ -130,6 +144,7 @@ export function MessageItem({
               kind={message.senderType}
               size="md"
               src={avatarUrl}
+              crown={isAgent && isSayaHandle(message.senderHandle ?? "")}
               className="h-8 w-8"
             />
           )}
@@ -144,7 +159,7 @@ export function MessageItem({
           )}
         >
           {mine || continued ? null : (
-            <span className="text-[13px] font-medium text-text">{message.senderName}</span>
+            <span className="text-[13.5px] font-semibold text-text">{message.senderName}</span>
           )}
           {typeof message.metadata.dmToHandle === "string" ? (
             <span
@@ -213,9 +228,11 @@ export function MessageItem({
         {answer ? (
           <div
             className={cn(
-              "mt-1 inline-block min-w-0 max-w-full overflow-x-auto rounded-[22px] px-4 py-2.5 text-[15px] [overflow-wrap:anywhere]",
-              isAgent ? "rounded-tl-md bg-panel" : "bg-raised",
-              mine && "ml-auto rounded-tl-[22px] rounded-tr-md",
+              "mt-1 min-w-0 max-w-full overflow-x-auto text-[15px] leading-[1.65] [overflow-wrap:anywhere]",
+              isAgent
+                ? "max-w-[76ch] text-text/95"
+                : "inline-block rounded-[20px] bg-raised px-4 py-2.5",
+              mine && "ml-auto rounded-tr-md",
             )}
           >
             {!isAgent &&

@@ -54,6 +54,7 @@ export function Mascot({
   blink = false,
   live = false,
   rare,
+  crown = false,
   label,
   className,
   style,
@@ -76,6 +77,8 @@ export function Mascot({
   live?: boolean
   /** The rare prism Saya (iridescent shell, sparkles). Defaults on for the rare cast member. */
   rare?: boolean
+  /** A small gold crown on the head: the workspace orchestrator (Saya). */
+  crown?: boolean
   label?: string
   className?: string
   style?: CSSProperties
@@ -131,6 +134,25 @@ export function Mascot({
       {g.dots ? <path d={g.dots} fill={base} /> : null}
       {g.badge ? <path d={g.badge} fill={SAYA_BADGE} /> : null}
       {g.bang ? <path d={g.bang} fill={SAYA_INK} /> : null}
+      {crown ? (
+        <g className="saya-crown" transform="rotate(-9 50 18)">
+          <path
+            d="M33 22L31.5 7.5L41.5 14L50 3.5L58.5 14L68.5 7.5L67 22Z"
+            fill={`url(#${id}c)`}
+            stroke="#b45309"
+            strokeWidth="1.4"
+            strokeLinejoin="round"
+          />
+          <rect x="32.6" y="19" width="34.8" height="5" rx="2" fill="#f59e0b" stroke="#b45309" strokeWidth="1.2" />
+          <circle cx="50" cy="3.5" r="2.4" fill="#fef3c7" />
+          <circle cx="31.5" cy="7.5" r="1.9" fill="#fef3c7" />
+          <circle cx="68.5" cy="7.5" r="1.9" fill="#fef3c7" />
+          <circle cx="50" cy="21.5" r="1.6" fill="#f472b6" />
+          <circle cx="41" cy="21.5" r="1.2" fill="#60a5fa" />
+          <circle cx="59" cy="21.5" r="1.2" fill="#60a5fa" />
+          <path d="M36 17L38 10" stroke="#fffbeb" strokeOpacity="0.7" strokeWidth="1.3" strokeLinecap="round" />
+        </g>
+      ) : null}
       {g.zz ? (
         <path
           d={g.zz}
@@ -164,6 +186,12 @@ export function Mascot({
           <stop offset="0" stopColor={halo} stopOpacity="0.45" />
           <stop offset="1" stopColor={halo} stopOpacity="0" />
         </radialGradient>
+        {crown ? (
+          <linearGradient id={`${id}c`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#fde68a" />
+            <stop offset="1" stopColor="#f59e0b" />
+          </linearGradient>
+        ) : null}
         {isRare ? (
           <linearGradient id={`${id}p`} x1="0" y1="0" x2="1" y2="1">
             <stop offset="0" stopColor="#fbcfe8" />

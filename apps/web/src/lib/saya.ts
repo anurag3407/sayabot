@@ -4,8 +4,9 @@ import {
   SAYA_CAPABILITIES,
   SAYA_DISPLAY_NAME,
   SAYA_HANDLE,
+  SAYA_LEGACY_PROMPT_PREFIX,
   SAYA_MASCOT,
-  SAYA_SYSTEM_PROMPT,
+  SAYA_PERSONA,
 } from "@sayabot/core"
 import { createAdminClient } from "@/lib/supabase/admin"
 
@@ -41,7 +42,7 @@ export async function ensureSayaAgent(
 
   const { data: existing } = await admin
     .from("agents")
-    .select("id, params")
+    .select("id, params, system_prompt")
     .eq("org_id", input.orgId)
     .eq("handle", SAYA_HANDLE)
     .maybeSingle()
@@ -57,7 +58,7 @@ export async function ensureSayaAgent(
         handle: SAYA_HANDLE,
         display_name: SAYA_DISPLAY_NAME,
         kind: "llm",
-        system_prompt: SAYA_SYSTEM_PROMPT,
+        system_prompt: SAYA_PERSONA,
         params: withOfficialMascot({}),
         capabilities: SAYA_CAPABILITIES,
         visibility: "org",
@@ -89,10 +90,18 @@ export async function ensureSayaAgent(
       typeof existing.params === "object" &&
       !Array.isArray(existing.params) &&
       (existing.params as { mascot?: { shape?: string; tone?: string } }).mascot
-    if (look?.shape !== SAYA_MASCOT.shape || look?.tone !== SAYA_MASCOT.tone) {
+    // Older rows stored the whole operating manual as the persona. The manual now lives in the
+    // harness, so swap in the persona. A persona someone edited by hand is left alone.
+    const stored = typeof existing?.system_prompt === "string" ? existing.system_prompt : ""
+    const legacyPersona = stored.startsWith(SAYA_LEGACY_PROMPT_PREFIX) && stored !== SAYA_PERSONA
+    const lookChanged = look?.shape !== SAYA_MASCOT.shape || look?.tone !== SAYA_MASCOT.tone
+    if (lookChanged || legacyPersona) {
       await admin
         .from("agents")
-        .update({ params: withOfficialMascot(existing?.params) })
+        .update({
+          ...(lookChanged ? { params: withOfficialMascot(existing?.params) } : {}),
+          ...(legacyPersona ? { system_prompt: SAYA_PERSONA } : {}),
+        })
         .eq("id", agentId)
     }
   }

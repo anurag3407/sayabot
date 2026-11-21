@@ -20,7 +20,7 @@ Each agent row shows a mascot (green dot when active in the last 24 h — `activ
 
 - **Model control** — `AgentModelPicker` for `kind === "llm"` (saves via `setAgentModelAction`); "Uses its own app's model" for `external`.
 - **Test** — `AgentTestButton` (admins, llm only).
-- **More settings** `<details>` — an `ActionForm` over `updateAgent` with handle/name, system prompt (llm), webhook URL (external), plus an Advanced area with raw `params` JSON and MCP-server checkboxes (`toolIds`). LLM agents carry hidden `providerKeyId`/`model` fields so the form doesn't clobber a picker-set model.
+- **More settings** `<details>` — an `ActionForm` over `updateAgent` with handle/name, persona (llm; stored as `system_prompt`), webhook URL (external), plus an Advanced area with raw `params` JSON and MCP-server checkboxes (`toolIds`). LLM agents carry hidden `providerKeyId`/`model` fields so the form doesn't clobber a picker-set model.
 - **Delete** — `DeleteAgentButton` with confirm ("This removes it from every room and deletes direct chats with it. Its messages in rooms stay.").
 
 Admins also get an **Add agent to a room** section: an `ActionForm` over `addAgentToRoom` (from `src/lib/actions/rooms.ts`) with agent + room selects ("Agents reply in the order they were added"; debate order is set in room settings), and the `AddAgentChooser` header button.
@@ -29,7 +29,7 @@ Admins also get an **Add agent to a room** section: an `ActionForm` over `addAge
 
 ## ➕ New Bot (`/agents/new`)
 
-The page accepts `?template=<slug|id>` (from the Marketplace; template usable if global or org-owned) and `?room=<id>` (from a group chat's "Add bot"). `NewBotForm` (`new-bot-form.tsx`) is intentionally minimal — name (≤60, live mascot reacts) and optional system prompt — and calls:
+The page accepts `?template=<slug|id>` (from the Marketplace; template usable if global or org-owned) and `?room=<id>` (from a group chat's "Add bot"). `NewBotForm` (`new-bot-form.tsx`) is intentionally minimal — name (≤60, live mascot reacts) and an optional **persona** — and calls:
 
 ```typescript
 // apps/web/src/components/agents/new-bot-form.tsx:51
@@ -47,7 +47,7 @@ On success it toasts any warning (e.g. plan-gated computer) and `router.push`es 
 ### `createBotAction` (`lib/actions/agents.ts:294`)
 
 1. `adminOrgAccess` + `planGate(orgId, "agents")` (plan limits).
-2. Optionally loads the `agent_templates` row (global or org-owned) for its system prompt and `default_capabilities`.
+2. Optionally loads the `agent_templates` row (global or org-owned) for its persona (`system_prompt`) and `default_capabilities`.
 3. `resolveModelChoice` with the optional `keyId`/`model` — usually null, meaning "server default"; a `host:…` keyId is validated against the caller's own Mac.
 4. Merges capabilities: `DEFAULT_CAPABILITIES` ← template defaults ← request overrides. On Cloud, `planGate(orgId, "computers")` may strip the `computer` capability and return a warning instead of failing.
 5. Derives the handle from the name (`handleFromName`: NFKD-slug, `bot-` prefix when it can't start with a letter, reserved handles suffixed) and de-clashes with `-2`, `-3`…
@@ -85,7 +85,7 @@ Shared `validateAgentFields` (`agents.ts:40`) enforces one rule set for both act
 
 A server component querying with the admin client: the agent with `agent_computers`, unrevoked `agent_secret_grants` (with `vault_secrets(label, last4)`), the latest 10 assigned `tasks` (as `MESH-<number>`), connector grants and workspace connectors. Header: avatar initial, `@handle · kind`, and a "Save as Template" `ActionForm` over `saveAgentAsTemplate` (from `src/lib/actions/templates.ts`) for admins. Sections:
 
-- **`BotBasicsForm`** — name + system prompt, saving through `updateBotBasicsAction` (prompt truncated to 20k). The save also renames the bot's DM room to match (`agents.ts:468`). Submit stays disabled until something changed.
+- **`BotBasicsForm`** — name + **Persona** (with a note that the harness adds the operating rules; see [harness-and-persona](../../core/harness-and-persona.md)), saving through `updateBotBasicsAction` (prompt truncated to 20k). The save also renames the bot's DM room to match (`agents.ts:468`). Submit stays disabled until something changed.
 - **Model & Runtime card** — read-only `runsOnLabel(agent)` (from `src/lib/runs-on.ts`), engine/maxSteps/temperature from `params`, then:
   - **`WorksOnForm`** — the shared `WorksOnPicker` + a "This computer can use the Mac screen" checkbox, submitting `setAgentWorksOnAction` on Save. Non-admins see a static "Works on <label>" line.
   - **`WorksOnPicker`** (`src/components/agents/works-on-picker.tsx`) — five tiles from `WORKS_ON_TILES` (`src/lib/works-on.ts`): Auto, **Cloud desktop**, Private desktop (`local_vm`), This computer, Off. Choosing Cloud desktop picks the first set-up provider (else Boat) and shows a **Cloud provider** switch — Boat | Self-hosted VPS | E2B (`CLOUD_PROVIDERS` in `lib/computer-providers-shared.ts`) — with that provider's description and setup status from `getComputerProvidersAction` (fetched once per workspace per page load; `forgetComputerProviders` drops the cache after a Settings save). An unset provider shows "Not set up yet" with a link to `/settings/computers` for admins. The same picker is used in the room side panel's Screen tab and the bot config panel's Computer section.

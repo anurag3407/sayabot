@@ -947,7 +947,7 @@ export function Composer({
 
       <div
         className={cn(
-          "relative flex flex-col rounded-[22px] border border-white/[0.08] bg-panel shadow-[0_1px_0_rgba(255,255,255,0.04)_inset,0_10px_30px_-18px_rgba(0,0,0,0.9)] transition-[border-color,box-shadow] duration-200 focus-within:border-white/[0.14] focus-within:shadow-[0_1px_0_rgba(255,255,255,0.05)_inset,0_0_0_4px_rgba(157,140,255,0.06),0_10px_30px_-18px_rgba(0,0,0,0.9)]",
+          "relative flex flex-col rounded-[22px] border border-line bg-panel shadow-[0_1px_0_rgba(255,255,255,0.04)_inset,0_10px_30px_-18px_rgba(0,0,0,0.6)] transition-[border-color,box-shadow] duration-200 focus-within:border-accent/40 focus-within:shadow-[0_1px_0_rgba(255,255,255,0.05)_inset,0_0_0_4px_rgba(157,140,255,0.10),0_10px_30px_-18px_rgba(0,0,0,0.6)]",
           isDragging && "ring-2 ring-accent",
         )}
         onDragOver={(e) => {

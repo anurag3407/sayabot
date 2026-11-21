@@ -431,6 +431,8 @@ export async function addBotToRoom(
 
 export interface UsageSummary {
   month: string
+  /** Start of the counted window (ISO). */
+  since?: string
   plan: string | null
   serverTurns: number
   turns: number
@@ -440,10 +442,16 @@ export interface UsageSummary {
   byBot: Array<{ handle: string | null; agentId: string | null; calls: number; costUsd: number }>
 }
 
-export async function usageSummary(actor: OrchestratorActor): Promise<UsageSummary> {
+export async function usageSummary(
+  actor: OrchestratorActor,
+  options: { days?: number } = {},
+): Promise<UsageSummary> {
   const now = new Date()
   const month = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`
-  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
+  // Default: this calendar month. With `days`, a rolling window of 1 to 90 days instead.
+  const monthStart = options.days
+    ? new Date(now.getTime() - Math.max(1, Math.min(90, Math.round(options.days))) * 86_400_000)
+    : new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
 
   const [totals] = await getDb()
     .select({
@@ -481,6 +489,7 @@ export async function usageSummary(actor: OrchestratorActor): Promise<UsageSumma
 
   return {
     month,
+    since: monthStart.toISOString(),
     plan: plan?.plan ?? null,
     serverTurns: monthly?.serverTurns ?? 0,
     turns: Number(totals?.calls ?? 0),

@@ -63,6 +63,7 @@ Task-oriented guides live at the top level of `docs/`. The **reference library**
 | :------------------------------------------------------------------------- | :--------------------------------------------------------------------- |
 | [overview-and-types](reference/core/overview-and-types.md)                 | Package export surface, `types.ts` vocabulary, dependency map          |
 | [turns](reference/core/turns.md)                                           | Turn planning state machine: mentions / debate / moderated, sessions   |
+| [harness-and-persona](reference/core/harness-and-persona.md)               | Harness system prompt every bot runs under, owner persona, Saya guide  |
 | [capabilities-and-mentions](reference/core/capabilities-and-mentions.md)   | 14 capability flags, tool gating, mention parsing                      |
 | [speech-text](reference/core/speech-text.md)                               | Spoken normalization, markdown stripping, TTFB utterance chunking      |
 | [asks](reference/core/asks.md)                                             | Ask/response protocol, fact keys, answer application                   |

@@ -4,13 +4,16 @@ import Link from "next/link"
 import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
 import {
+  BarChart3,
   Bell,
   BookOpen,
   Brain,
   CalendarClock,
   Check,
   ChevronDown,
+  ChevronRight,
   Cloud,
+  Crown,
   Cpu,
   Folder,
   History,
@@ -130,68 +133,128 @@ type SectionId =
 
 type Flag = Exclude<keyof AgentCapabilities, "computer">
 
-const SECTIONS: { id: SectionId; label: string; icon: LucideIcon; keywords: string }[] = [
-  { id: "overview", label: "Overview", icon: LayoutGrid, keywords: "setup ideas start checklist" },
+type SectionGroup = "profile" | "abilities" | "runtime" | "activity"
+
+const GROUPS: { id: SectionGroup; label: string }[] = [
+  { id: "profile", label: "Profile" },
+  { id: "abilities", label: "Abilities" },
+  { id: "runtime", label: "Runtime" },
+  { id: "activity", label: "Activity" },
+]
+
+const SECTIONS: {
+  id: SectionId
+  label: string
+  icon: LucideIcon
+  keywords: string
+  group: SectionGroup
+}[] = [
+  {
+    id: "overview",
+    label: "Overview",
+    icon: LayoutGrid,
+    keywords: "setup ideas start checklist",
+    group: "profile",
+  },
   {
     id: "identity",
     label: "Identity",
     icon: UserRound,
     keywords: "name shape colour color mascot avatar look expression face",
+    group: "profile",
   },
   {
     id: "soul",
-    label: "System Prompt",
+    label: "Persona",
     icon: Sparkles,
     keywords:
-      "system prompt standing instructions rules personality reply style conversational soul runtime",
+      "persona system prompt standing instructions rules personality reply style conversational soul runtime voice role",
+    group: "profile",
   },
   {
     id: "skills",
     label: "Skills",
     icon: BookOpen,
     keywords: "command procedure learned skill import",
+    group: "abilities",
   },
   {
     id: "tools",
     label: "Tools",
     icon: Wrench,
     keywords: "search canvas terminal github database apps capabilities",
+    group: "abilities",
   },
-  { id: "memory", label: "Memory", icon: Brain, keywords: "remember notes facts pin upkeep" },
+  {
+    id: "memory",
+    label: "Memory",
+    icon: Brain,
+    keywords: "remember notes facts pin upkeep",
+    group: "abilities",
+  },
   {
     id: "library",
     label: "Library",
     icon: Library,
     keywords: "pages files what it remembers working folder",
+    group: "abilities",
   },
-  { id: "routines", label: "Routines", icon: CalendarClock, keywords: "schedule cron trigger" },
+  {
+    id: "routines",
+    label: "Routines",
+    icon: CalendarClock,
+    keywords: "schedule cron trigger",
+    group: "abilities",
+  },
+  {
+    id: "model",
+    label: "Model",
+    icon: Cpu,
+    keywords: "effort thinking provider",
+    group: "runtime",
+  },
   {
     id: "computer",
     label: "Computer",
     icon: Monitor,
     keywords: "desktop works on screen sandbox",
+    group: "runtime",
   },
   {
     id: "access",
     label: "Access",
     icon: Folder,
     keywords: "working folder connected apps api key cloud",
+    group: "runtime",
   },
-  { id: "model", label: "Model", icon: Cpu, keywords: "effort thinking provider" },
   {
     id: "permissions",
     label: "Permissions",
     icon: Shield,
     keywords: "approval secrets auto turbo review",
+    group: "runtime",
   },
   {
     id: "alerts",
     label: "Voice & alerts",
     icon: Bell,
     keywords: "notifications voice mentions sound",
+    group: "activity",
   },
-  { id: "history", label: "History", icon: History, keywords: "activity steps tool calls" },
-  { id: "usage", label: "Usage", icon: Cpu, keywords: "tokens cost spend" },
+  {
+    id: "history",
+    label: "History",
+    icon: History,
+    keywords: "activity steps tool calls",
+    group: "activity",
+  },
+  {
+    id: "usage",
+    label: "Usage",
+    icon: BarChart3,
+    keywords: "tokens cost spend",
+    group: "activity",
+  },
 ]
 
 const TOOLS: { key: Flag; label: string; detail: string }[] = [
@@ -274,7 +337,7 @@ function Toggle({
 
 function Card({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <div className={cn("rounded-2xl border border-line bg-panel/70 p-3.5", className)}>
+    <div className={cn("rounded-xl border border-line/60 bg-panel/60 p-3.5", className)}>
       {children}
     </div>
   )
@@ -541,7 +604,7 @@ export function AgentConfigPanel({
       setPrompt(trimmed)
       showToast({
         tone: "success",
-        message: `System prompt updated for @${bot.handle} · Active on next turn`,
+        message: `Persona updated for @${bot.handle} · Active on next turn`,
       })
       router.refresh()
     })
@@ -902,7 +965,7 @@ export function AgentConfigPanel({
       const result = await sendMessage({
         orgSlug,
         roomId,
-        content: `@${bot.handle} Help me set you up. Ask a few short questions, one at a time, about what you should do, what you should remember, and which tools you need. Then propose standing instructions I can save.`,
+        content: `@${bot.handle} Help me set you up. Ask a few short questions, one at a time, about what you should do, what you should remember, and which tools you need. Then propose a persona I can save: who you are, your voice and your focus.`,
         clientId: crypto.randomUUID(),
       })
       if (!result.ok) {
@@ -922,7 +985,7 @@ export function AgentConfigPanel({
     },
     {
       id: "soul",
-      label: "Set system prompt (standing instructions)",
+      label: "Write its persona",
       done: prompt.trim().length > 40,
     },
     {
@@ -996,14 +1059,14 @@ export function AgentConfigPanel({
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <p className="text-[13px] font-semibold text-text">System Prompt</p>
+                  <p className="text-[13px] font-semibold text-text">Persona</p>
                   <span className="inline-flex items-center gap-1 rounded-full bg-ok/10 px-2 py-0.5 text-[10.5px] font-medium text-ok">
                     <span className="h-1.5 w-1.5 rounded-full bg-ok animate-pulse" />
-                    Runtime Active
+                    Live
                   </span>
                 </div>
                 <p className="mt-2 line-clamp-3 rounded-xl border border-line bg-raised/50 p-2.5 font-mono text-[12px] leading-relaxed text-text">
-                  {prompt.trim() || "No standing instructions set yet."}
+                  {prompt.trim() || "No persona yet. Sayabot's harness still gives it the operating rules."}
                 </p>
               </div>
             </div>
@@ -1018,7 +1081,7 @@ export function AgentConfigPanel({
                 onClick={() => go("soul")}
                 className="inline-flex items-center gap-1 text-[12.5px] font-medium text-accent hover:underline"
               >
-                Edit runtime prompt →
+                Edit persona →
               </button>
             </div>
           </Card>
@@ -1211,7 +1274,7 @@ export function AgentConfigPanel({
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <div className="flex items-center gap-2">
-                <p className="text-[14px] font-semibold text-text">Runtime System Prompt</p>
+                <p className="text-[14px] font-semibold text-text">Persona</p>
                 {isDirty ? (
                   <span className="inline-flex items-center gap-1 rounded-full bg-warn/15 px-2 py-0.5 text-[11px] font-medium text-warn">
                     <span className="h-1.5 w-1.5 rounded-full bg-warn" />
@@ -1225,7 +1288,7 @@ export function AgentConfigPanel({
                 )}
               </div>
               <p className="mt-0.5 text-[12.5px] leading-relaxed text-muted">
-                Standing instructions that shape @{bot.handle}&apos;s identity, goals, and rules.
+                Who @{bot.handle} is: its voice, role and focus. Sayabot&apos;s harness adds the operating rules (tools, approvals, honesty) on top.
                 Updating this takes effect immediately on its next turn.
               </p>
             </div>
@@ -1273,7 +1336,7 @@ export function AgentConfigPanel({
               onChange={(event) => setPrompt(event.target.value)}
               rows={10}
               maxLength={20000}
-              placeholder="Who this bot is, its personality, technical focus, and strict operating rules."
+              placeholder="You are Scout, a sharp market researcher. You speak plainly, cite sources, and…"
               className={cn(
                 field,
                 "resize-y py-3 font-mono text-[13px] leading-relaxed",
@@ -2299,140 +2362,245 @@ export function AgentConfigPanel({
     )
   }
 
+  const isLead = parseCapabilities(bot.capabilities).orchestrator === true
+  const enabledToolCount = TOOLS.filter((tool) => caps[tool.key]).length
+  const spentForSummary = usage[bot.id]
+  const modeLabel = MODES.find((item) => item.id === mode)?.label ?? "Default"
+  const summary: Partial<Record<SectionId, string>> = {
+    identity: name.trim() || bot.displayName,
+    soul: prompt.trim() ? `${prompt.trim().split(/\s+/).length} words` : "Not set",
+    skills: skills.length ? `${skills.length}` : undefined,
+    tools: `${enabledToolCount} on`,
+    memory: notes.length ? `${notes.length} notes` : undefined,
+    routines: agentRoutines.length ? `${agentRoutines.length} active` : "None",
+    model: bot.model ? (bot.model.split("/").pop() ?? bot.model) : "Pick one",
+    computer: caps.computer ? caps.computer.profile : place.worksOn === "off" ? "Off" : "Auto",
+    permissions: modeLabel,
+    alerts: alertMode === "all" ? "All" : alertMode === "off" ? "Off" : "Mentions",
+    usage: spentForSummary?.requests ? `$${spentForSummary.costUsd.toFixed(2)}` : undefined,
+  }
+
+  function toggleSection(sectionId: SectionId, expanded: boolean) {
+    const opening = Boolean(needle) || !expanded
+    if (needle) {
+      setQuery("")
+      setOpen(sectionId)
+    } else {
+      setOpen(expanded ? null : sectionId)
+    }
+    if (opening) {
+      requestAnimationFrame(() => {
+        refs.current[sectionId]?.scrollIntoView({ block: "nearest", behavior: "smooth" })
+      })
+    }
+  }
+
   return (
     <div className="flex h-full min-h-0 flex-col bg-ink" data-testid="bot-config-panel">
-      <div className="flex shrink-0 items-center gap-2 px-3 pb-1 pt-3">
-        <div className="flex min-w-0 flex-1 items-center gap-2">
-          <Mascot {...faceProps(bot.displayName, look)} className="h-7 w-7 shrink-0" />
-          <h2 className="min-w-0 truncate text-[16px] font-semibold tracking-[-0.01em]">
-            {name.trim() || bot.displayName}
-          </h2>
+      {/* Who you are editing: a real header, not a row in the list. */}
+      <div className="relative shrink-0 overflow-hidden border-b border-line/60">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(90%_120%_at_10%_0%,rgba(157,140,255,0.16),transparent_60%)]"
+        />
+        <div className="relative flex items-start gap-3 px-4 pb-3 pt-3.5">
+          <span className="relative grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-panel ring-1 ring-inset ring-line">
+            <Mascot {...faceProps(bot.displayName, look)} crown={isLead} live className="h-11 w-11" />
+          </span>
+          <div className="min-w-0 flex-1 pt-0.5">
+            <div className="flex min-w-0 items-center gap-1.5">
+              <h2 className="min-w-0 truncate text-[17px] font-semibold tracking-[-0.015em] text-text">
+                {name.trim() || bot.displayName}
+              </h2>
+              {isLead ? (
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-warn/15 px-1.5 py-px text-[10px] font-semibold uppercase tracking-[0.06em] text-warn">
+                  <Crown className="h-2.5 w-2.5" aria-hidden="true" />
+                  Orchestrator
+                </span>
+              ) : null}
+            </div>
+            <p className="mt-0.5 truncate text-[12.5px] text-faint">@{bot.handle}</p>
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => toggleSection("model", open === "model")}
+                className="inline-flex max-w-[180px] items-center gap-1 truncate rounded-full bg-panel px-2 py-0.5 text-[11.5px] text-muted ring-1 ring-inset ring-line transition-colors hover:text-text"
+              >
+                <Cpu className="h-3 w-3 shrink-0" />
+                <span className="truncate">{summary.model}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => toggleSection("tools", open === "tools")}
+                className="inline-flex items-center gap-1 rounded-full bg-panel px-2 py-0.5 text-[11.5px] text-muted ring-1 ring-inset ring-line transition-colors hover:text-text"
+              >
+                <Wrench className="h-3 w-3" />
+                {enabledToolCount} tools
+              </button>
+              <button
+                type="button"
+                onClick={() => toggleSection("permissions", open === "permissions")}
+                className="inline-flex items-center gap-1 rounded-full bg-panel px-2 py-0.5 text-[11.5px] text-muted ring-1 ring-inset ring-line transition-colors hover:text-text"
+              >
+                <Shield className="h-3 w-3" />
+                {modeLabel}
+              </button>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-0.5">
+            <button
+              type="button"
+              onClick={() => onOpenWorkspace("canvas")}
+              className="relative rounded-lg px-2 py-1 text-[12.5px] text-muted hover:bg-panel hover:text-text"
+            >
+              Canvas
+              {pendingApprovals ? (
+                <span className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-accent" />
+              ) : null}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close bot settings"
+              className="grid h-8 w-8 place-items-center rounded-lg text-muted hover:bg-panel hover:text-text"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={() => onOpenWorkspace("canvas")}
-          className="relative rounded-lg px-2 py-1 text-[12.5px] text-muted hover:bg-panel hover:text-text"
-        >
-          Canvas
-          {pendingApprovals ? (
-            <span className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-accent" />
-          ) : null}
-        </button>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close bot settings"
-          className="grid h-8 w-8 place-items-center rounded-lg text-muted hover:bg-panel hover:text-text"
-        >
-          <X className="h-4 w-4" />
-        </button>
+
+        {agents.length > 1 ? (
+          <div
+            className="relative flex gap-1 overflow-x-auto px-4 pb-2.5 [scrollbar-width:none]"
+            role="tablist"
+            aria-label="Bot"
+          >
+            {agents.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                role="tab"
+                aria-selected={item.id === bot.id}
+                onClick={() => onAgentChange(item.id)}
+                className={cn(
+                  "flex shrink-0 items-center gap-1.5 rounded-full py-1 pl-1 pr-3 text-[12.5px] transition-colors",
+                  item.id === bot.id
+                    ? "bg-raised text-text ring-1 ring-inset ring-line-strong"
+                    : "text-muted hover:bg-panel",
+                )}
+              >
+                <Mascot
+                  {...(item.id === bot.id ? faceProps(bot.displayName, look) : mascotFace(item))}
+                  crown={parseCapabilities(item.capabilities).orchestrator === true}
+                  className="h-5 w-5"
+                />
+                {item.id === bot.id ? name.trim() || item.displayName : item.displayName}
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
 
-      {agents.length > 1 ? (
-        <div
-          className="flex gap-1 overflow-x-auto px-3 pb-2 [scrollbar-width:none]"
-          role="tablist"
-          aria-label="Bot"
-        >
-          {agents.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              role="tab"
-              aria-selected={item.id === bot.id}
-              onClick={() => onAgentChange(item.id)}
-              className={cn(
-                "flex shrink-0 items-center gap-1.5 rounded-full py-1 pl-1 pr-3 text-[12.5px]",
-                item.id === bot.id ? "bg-raised text-text" : "text-muted hover:bg-panel",
-              )}
-            >
-              <Mascot
-                {...(item.id === bot.id ? faceProps(bot.displayName, look) : mascotFace(item))}
-                className="h-5 w-5"
-              />
-              {item.id === bot.id ? name.trim() || item.displayName : item.displayName}
-            </button>
-          ))}
-        </div>
-      ) : null}
-
-      <div className="px-3 pb-2">
+      <div className="shrink-0 px-4 pb-1 pt-3">
         <label className="relative block">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-faint" />
           <input
             ref={searchRef}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search"
+            placeholder="Search settings"
             aria-label="Search bot settings"
-            className="h-10 w-full rounded-xl border border-line bg-panel pl-9 pr-3 text-[14px] text-text outline-none placeholder:text-faint focus:border-line-strong"
+            className="h-9 w-full rounded-xl border border-line bg-panel pl-9 pr-3 text-[13.5px] text-text outline-none placeholder:text-faint focus:border-accent/40"
           />
         </label>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto pb-8">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-8">
         {visible.length === 0 ? (
-          <p className="px-4 py-10 text-center text-[13px] text-faint">
-            Nothing in these settings matches.
-          </p>
+          <div className="flex flex-col items-center gap-2 py-10 text-center">
+            <Mascot seed="Hoot" mood="thinking" className="h-10 w-10" />
+            <p className="text-[13px] text-faint">Nothing in these settings matches.</p>
+          </div>
         ) : (
-          visible.map((section) => {
-            const Icon = section.icon
-            const expanded = needle ? true : open === section.id
+          GROUPS.map((group) => {
+            const items = visible.filter((section) => section.group === group.id)
+            if (!items.length) return null
             return (
-              <section
-                key={section.id}
-                ref={(node) => {
-                  refs.current[section.id] = node
-                }}
-                className={expanded ? "border-t-2 border-accent" : "border-t border-line"}
-              >
-                <button
-                  type="button"
-                  aria-expanded={expanded}
-                  onClick={() => {
-                    const opening = needle || !expanded
-                    if (needle) {
-                      setQuery("")
-                      setOpen(section.id)
-                    } else {
-                      setOpen(expanded ? null : section.id)
-                    }
-                    if (opening) {
-                      requestAnimationFrame(() => {
-                        refs.current[section.id]?.scrollIntoView({
-                          block: "nearest",
-                          behavior: "smooth",
-                        })
-                      })
-                    }
-                  }}
-                  className="flex w-full items-center gap-2.5 px-3 py-3 text-left hover:bg-panel/60"
-                >
-                  <Icon className="h-4 w-4 text-muted" />
-                  <span className="min-w-0 flex-1 text-[14px] font-medium text-text">
-                    {section.label}
-                  </span>
-                  <ChevronDown
-                    className={cn(
-                      "h-4 w-4 text-faint transition-transform",
-                      expanded && "rotate-180",
-                    )}
-                  />
-                </button>
-                {expanded ? <div className="px-3 pb-4">{sectionBody(section.id)}</div> : null}
-              </section>
+              <div key={group.id} className="mt-4 first:mt-2">
+                <p className="mb-1.5 px-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-faint">
+                  {group.label}
+                </p>
+                <div className="overflow-hidden rounded-2xl border border-line/80 bg-panel/40">
+                  {items.map((section, index) => {
+                    const Icon = section.icon
+                    const expanded = needle ? true : open === section.id
+                    const hint = summary[section.id]
+                    return (
+                      <section
+                        key={section.id}
+                        ref={(node) => {
+                          refs.current[section.id] = node
+                        }}
+                        className={cn(index > 0 && "border-t border-line/60")}
+                      >
+                        <button
+                          type="button"
+                          aria-expanded={expanded}
+                          onClick={() => toggleSection(section.id, expanded)}
+                          className={cn(
+                            "flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors",
+                            expanded ? "bg-raised/50" : "hover:bg-raised/30",
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "grid h-7 w-7 shrink-0 place-items-center rounded-lg transition-colors",
+                              expanded ? "bg-accent/15 text-accent" : "bg-raised text-muted",
+                            )}
+                          >
+                            <Icon className="h-3.5 w-3.5" />
+                          </span>
+                          <span className="min-w-0 flex-1 text-[13.5px] font-medium text-text">
+                            {section.label}
+                          </span>
+                          {hint && !expanded ? (
+                            <span className="max-w-[45%] truncate text-[12px] text-faint">
+                              {hint}
+                            </span>
+                          ) : null}
+                          <ChevronRight
+                            className={cn(
+                              "h-4 w-4 shrink-0 text-faint transition-transform duration-200",
+                              expanded && "rotate-90",
+                            )}
+                          />
+                        </button>
+                        {expanded ? (
+                          <div className="fade-in border-t border-line/60 bg-ink/40 px-3 pb-4 pt-3">
+                            {sectionBody(section.id)}
+                          </div>
+                        ) : null}
+                      </section>
+                    )
+                  })}
+                </div>
+              </div>
             )
           })
         )}
-        <div className="px-3 pt-4">
+        <div className="mt-5 flex items-center justify-between gap-3 px-1">
           <Link
             href={`/${orgSlug}/agents/${bot.id}`}
-            className="text-[13px] text-accent hover:underline"
+            className="text-[12.5px] font-medium text-accent hover:underline"
           >
-            Secrets, connectors, and the full bot page
+            Secrets, connectors & full bot page →
           </Link>
-          {busy ? <p className="mt-2 text-[12px] text-faint">Saving…</p> : null}
+          {busy ? (
+            <span className="flex items-center gap-1.5 text-[12px] text-faint">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Saving
+            </span>
+          ) : null}
         </div>
       </div>
     </div>

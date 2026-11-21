@@ -177,14 +177,19 @@ export function Flow() {
             <div className="flow-node flow-badge" style={pct(250, 118)}>
               approve?
             </div>
-          </div>
-        </div>
 
-        <div className="flow-captions">
-          <span>You, anywhere</span>
-          <span>Sayabot</span>
-          <span>Agent computers</span>
-          <span>Your tools</span>
+            {/* Same x as each column's nodes, so the labels can never drift off them. */}
+            {[
+              { x: 96, label: "You, anywhere" },
+              { x: 450, label: "Sayabot" },
+              { x: 715, label: "Agent computers" },
+              { x: 915, label: "Your tools" },
+            ].map((caption) => (
+              <span key={caption.label} className="flow-caption" style={{ left: `${caption.x / 10}%` }}>
+                {caption.label}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
     </section>
