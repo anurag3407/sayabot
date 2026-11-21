@@ -224,6 +224,7 @@ describe("subagent lifecycle", () => {
       role: "researcher",
       tools: "read_only",
       maxSteps: 10,
+      model: "same",
     })
     const response = await execute({}, [spec("fs_read"), spec("computer_shell")])
     expect(response).toMatchObject({
@@ -425,7 +426,7 @@ describe("subagent lifecycle", () => {
   })
 
   it("finalizes setup/model resolution errors instead of leaving running children", async () => {
-    mocks.cheap.mockRejectedValue(new Error("model failed PRIVATE_TOKEN"))
+    mocks.same.mockRejectedValue(new Error("model failed PRIVATE_TOKEN"))
     const response = await execute()
     expect(response).toMatchObject({
       runId: "child-1",
@@ -483,7 +484,7 @@ describe("subagent lifecycle", () => {
 
   it("keeps heartbeats active while model resolution is pending and propagates cancellation", async () => {
     vi.useFakeTimers()
-    mocks.cheap.mockReturnValue(new Promise(() => {}))
+    mocks.same.mockReturnValue(new Promise(() => {}))
     const controller = new AbortController()
     const pending = execute({}, [], controller.signal)
     await vi.advanceTimersByTimeAsync(0)
@@ -555,7 +556,7 @@ describe("subagent lifecycle", () => {
 
   it("fails closed on heartbeat failure and clears the timer", async () => {
     vi.useFakeTimers()
-    mocks.cheap.mockReturnValue(new Promise(() => {}))
+    mocks.same.mockReturnValue(new Promise(() => {}))
     failHeartbeat = true
     const pending = execute()
     await vi.advanceTimersByTimeAsync(SUBAGENT_HEARTBEAT_MS)
@@ -613,7 +614,7 @@ describe("subagent lifecycle", () => {
         ]),
       ),
     )
-    mocks.cheap.mockResolvedValue({ model })
+    mocks.same.mockResolvedValue({ model })
     mocks.generate.mockImplementation(actual.generateText)
     const response = await execute({}, [read])
     expect(response).toMatchObject({ status: "complete", stepsTaken: 2, summary: "SDK evidence" })

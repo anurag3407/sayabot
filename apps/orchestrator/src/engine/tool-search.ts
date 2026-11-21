@@ -19,6 +19,7 @@ export const ALWAYS_CORE_TOOLS = new Set([
   "remember",
   "recall",
   "forget",
+  "canvas_create",
   "canvas_read",
   "canvas_write",
   "canvas_patch",

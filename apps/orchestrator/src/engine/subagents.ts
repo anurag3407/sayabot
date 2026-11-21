@@ -24,7 +24,12 @@ export const spawnSubagentSchema = z
       .enum(["read_only", "same"])
       .default("read_only")
       .describe("Only a worker may request 'same'; all other roles are always read-only"),
-    model: z.enum(["cheap", "same"]).default("cheap"),
+    model: z
+      .enum(["cheap", "same"])
+      .default("same")
+      .describe(
+        "same uses the model that just worked. cheap falls back to the last model this bot used, never a guessed id.",
+      ),
     maxSteps: z.number().int().min(1).max(30).default(10),
     workspace: workspaceScopeSchema
       .optional()

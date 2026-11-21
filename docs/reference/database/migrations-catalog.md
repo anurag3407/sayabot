@@ -267,7 +267,7 @@ Creates `agent_reads` (PK `(agent_id, room_id)`, `last_read_at`, `updated_at`) w
 
 ### `0037_execution_mode_mac.sql` — four permission modes
 
-- `rooms.execution_mode_set_by uuid` (FK `profiles`, `on delete set null`) and `rooms_execution_mode_check` widened to `'review_all', 'ask_risky', 'auto', 'turbo'`. `auto`/`turbo` loosen only the Mac of the person who set them (the job claim checks `execution_mode_set_by` against the host owner); server tools marked dangerous keep asking in every mode.
+- `rooms.execution_mode_set_by uuid` (FK `profiles`, `on delete set null`) and `rooms_execution_mode_check` widened to `'review_all', 'ask_risky', 'auto', 'turbo'`. `auto`/`turbo` loosen the Mac only when `execution_mode_set_by` is that host's owner. `auto` still asks before dangerous server tools. `turbo` runs every server tool without a review.
 
 ### `0038_agent_last_seen.sql` — when an invited app last called in
 

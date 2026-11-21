@@ -222,7 +222,7 @@ const MODES: { id: RoomExecutionMode; label: string; detail: string }[] = [
   { id: "review_all", label: "Request review", detail: "Every step waits for your OK" },
   { id: "ask_risky", label: "Default", detail: "Asks before sensitive steps" },
   { id: "auto", label: "Auto", detail: "Read-only commands on your Mac run alone" },
-  { id: "turbo", label: "Turbo", detail: "On your Mac, commands run without asking" },
+  { id: "turbo", label: "Turbo", detail: "Every command and tool runs without asking" },
 ]
 
 const field =

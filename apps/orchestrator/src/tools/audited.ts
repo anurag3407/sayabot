@@ -71,22 +71,33 @@ function isDangerous(spec: ToolSpec, args: Record<string, unknown>): boolean {
   return typeof spec.dangerous === "function" ? spec.dangerous(args) : spec.dangerous
 }
 
+const EXECUTION_MODES = new Set(["review_all", "ask_risky", "auto", "turbo"])
+
 /**
- * "Review every step" (rooms.execution_mode = 'review_all') sends every tool through the
- * approval gate, not just dangerous ones. Read per call so a switch mid-run applies at once.
- * A failed lookup keeps the default (risky tools still ask), never anything looser.
+ * The room's execution mode, read per call so a composer switch applies mid-run.
+ * A failed lookup returns null: risky tools still ask, and turbo cannot skip the gate
+ * unless the mode was actually read.
  */
-export async function roomReviewsEveryStep(roomId: string): Promise<boolean> {
+export async function roomExecutionMode(roomId: string): Promise<string | null> {
   try {
     const [row] = await getDb()
       .select({ mode: rooms.executionMode })
       .from(rooms)
       .where(eq(rooms.id, roomId))
       .limit(1)
-    return row?.mode === "review_all"
+    const mode = row?.mode
+    return mode && EXECUTION_MODES.has(mode) ? mode : null
   } catch {
-    return false
+    return null
   }
+}
+
+/**
+ * "Review every step" (rooms.execution_mode = 'review_all') sends every tool through the
+ * approval gate, not just dangerous ones.
+ */
+export async function roomReviewsEveryStep(roomId: string): Promise<boolean> {
+  return (await roomExecutionMode(roomId)) === "review_all"
 }
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -112,7 +123,11 @@ export function toAuditedTools(specs: ToolSpec[], runtime: ToolRuntime): ToolSet
         const input = (args ?? {}) as Record<string, unknown>
         if (options.abortSignal?.aborted)
           return { ok: false, error: "Run stopped before tool execution" }
-        const dangerous = isDangerous(spec, input) || (await roomReviewsEveryStep(runtime.roomId))
+        const mode = await roomExecutionMode(runtime.roomId)
+        // Turbo is an explicit room setting: every tool runs, including dangerous ones.
+        // review_all still asks for every tool. A missing mode never removes a gate.
+        const dangerous =
+          mode === "turbo" ? false : isDangerous(spec, input) || mode === "review_all"
         const storedArgs = forStorage(input, runtime.scrub)
         const [row] = await getDb()
           .insert(toolCalls)

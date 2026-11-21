@@ -62,7 +62,7 @@ export async function loadChatList(access: OrgAccess): Promise<{
       .in("room_id", roomIds),
     supabase
       .from("room_agents")
-      .select("room_id, agents!inner(handle, display_name)")
+      .select("room_id, agents!inner(id, handle, display_name, capabilities)")
       .in("room_id", roomIds),
     supabase
       .from("messages")
@@ -95,13 +95,22 @@ export async function loadChatList(access: OrgAccess): Promise<{
     ).map((row) => [row.room_id, row]),
   )
   const agentNames = new Map<string, string[]>()
+  const orchestratorAgents = new Set<string>()
   for (const row of (roomAgentsRes.data ?? []) as unknown as {
     room_id: string
-    agents: { handle: string; display_name: string }
+    agents: {
+      id: string
+      handle: string
+      display_name: string
+      capabilities: { orchestrator?: boolean } | null
+    }
   }[]) {
     const list = agentNames.get(row.room_id) ?? []
     list.push(row.agents.display_name)
     agentNames.set(row.room_id, list)
+    if (row.agents.capabilities?.orchestrator === true || row.agents.handle === "saya") {
+      orchestratorAgents.add(row.agents.id)
+    }
   }
 
   const messages = (messagesRes.data ?? []) as {
@@ -175,6 +184,9 @@ export async function loadChatList(access: OrgAccess): Promise<{
       kind: room.kind,
       turnMode: room.turn_mode,
       isBotDm: Boolean(room.agent_dm_agent_id),
+      orchestrator: Boolean(
+        room.agent_dm_agent_id && orchestratorAgents.has(room.agent_dm_agent_id),
+      ),
       agentId: room.agent_dm_agent_id,
       agentNames: agentNames.get(room.id) ?? [],
       lastMessage: last ? last.content.replace(/\s+/g, " ").trim().slice(0, 120) : null,
@@ -188,6 +200,7 @@ export async function loadChatList(access: OrgAccess): Promise<{
     }
   })
   items.sort((a, b) => {
+    if (Boolean(a.orchestrator) !== Boolean(b.orchestrator)) return a.orchestrator ? -1 : 1
     if (a.pinned !== b.pinned) return a.pinned ? -1 : 1
     return (b.lastAt ?? "").localeCompare(a.lastAt ?? "")
   })

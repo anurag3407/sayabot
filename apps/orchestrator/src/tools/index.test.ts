@@ -86,6 +86,7 @@ describe("buildTools capability filtering", () => {
 
     const toolNames = Object.keys(result.tools)
     // Default capabilities has canvas, tasks, sandbox, webSearch, github, postgres
+    expect(toolNames).toContain("canvas_create")
     expect(toolNames).toContain("canvas_write")
     expect(toolNames).toContain("canvas_patch")
     expect(toolNames).toContain("code_sandbox")

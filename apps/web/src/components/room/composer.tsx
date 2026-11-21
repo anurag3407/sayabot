@@ -68,17 +68,18 @@ const MODES: {
   {
     id: "turbo",
     label: "Turbo",
-    detail: "On your Mac, every command runs without asking. Only for bots you trust.",
+    detail:
+      "Every command and tool runs without asking, including ones that send or change the workspace. Only for bots you trust.",
     icon: ShieldAlert,
     tone: "text-warn",
   },
 ]
 
 /**
- * Execution mode, right in the composer, like a local coding agent's permissions. Auto and Turbo
- * loosen what bots may do on the Mac of whoever picks them (another member's pick never loosens
- * your Mac); server tools that reach other people or services (sending, posting, spending) ask
- * in every mode.
+ * Execution mode, right in the composer, like a local coding agent's permissions. Auto loosens
+ * read-only commands on the Mac of whoever picks it (another member's pick never loosens your
+ * Mac); risky server tools still ask. Turbo runs every command and tool in this room without
+ * a review.
  */
 function ExecutionModeMenu({
   orgSlug,

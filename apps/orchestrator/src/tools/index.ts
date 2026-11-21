@@ -20,7 +20,7 @@ import {
 import type { ToolSet } from "ai"
 import { and, eq, isNull, or } from "drizzle-orm"
 import { z } from "zod"
-import { canvasPatchTool, canvasReadTool, canvasWriteTool } from "../canvas/tools"
+import { canvasCreateTool, canvasPatchTool, canvasReadTool, canvasWriteTool } from "../canvas/tools"
 import { openSelectedE2b } from "../computers/e2b"
 import { openSelectedBoat } from "../computers/open-boat"
 import { vpsTargetFromSettings } from "../computers/open-vps"
@@ -401,6 +401,7 @@ export async function buildTools(args: BuildToolsArgs): Promise<BuiltTools> {
     ...storageSpecs,
     ...(caps.canvas
       ? [
+          canvasCreateTool({ roomId: args.roomId, agentId: args.agent.id }),
           canvasReadTool({ roomId: args.roomId, agentId: args.agent.id }),
           canvasWriteTool({ roomId: args.roomId, agentId: args.agent.id }),
           canvasPatchTool({ roomId: args.roomId, agentId: args.agent.id }),
@@ -476,7 +477,7 @@ export async function buildTools(args: BuildToolsArgs): Promise<BuiltTools> {
         ]
       : []),
     // Workspace admin (Saya only): bot roster, rooms, usage and config. Mutations carry
-    // `dangerous: true`, so they still pass through the human approval gate.
+    // `dangerous: true`. Turbo runs them without a review; other modes still ask.
     ...(caps.orchestrator
       ? orchestratorTools({ orgId: args.orgId, agentId: args.agent.id, roomId: args.roomId })
       : []),

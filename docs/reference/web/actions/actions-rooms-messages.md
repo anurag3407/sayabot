@@ -68,7 +68,7 @@ Revalidates the workspace layout; audit-free (per-user state is not audited).
 
 ### `setRoomExecutionModeAction(input: { orgSlug, roomId, mode })`
 
-Sets `rooms.execution_mode` to `"review_all"`, `"ask_risky"`, `"auto"` or `"turbo"` (anything else fails with "Unknown mode") and `rooms.execution_mode_set_by` to the caller, since a Mac honours auto/turbo only when its owner picked them. Allowed for room members and workspace admins (`roomRole !== null || canAdmin`); writes with the admin client scoped to the org, audits `room.execution_mode_set` with `{ mode }`, and returns a per-mode message (`MODE_MESSAGES`). It does not revalidate: the composer holds the value optimistically. See [tool system](../../orchestrator/tools/tool-system.md) for how the orchestrator applies it.
+Sets `rooms.execution_mode` to `"review_all"`, `"ask_risky"`, `"auto"` or `"turbo"` (anything else fails with "Unknown mode") and `rooms.execution_mode_set_by` to the caller, since a Mac honours auto/turbo only when its owner picked them. Turbo also skips the server approval gate for dangerous tools. Allowed for room members and workspace admins (`roomRole !== null || canAdmin`); writes with the admin client scoped to the org, audits `room.execution_mode_set` with `{ mode }`, and returns a per-mode message (`MODE_MESSAGES`). It does not revalidate: the composer holds the value optimistically. See [tool system](../../orchestrator/tools/tool-system.md) for how the orchestrator applies it.
 
 ### `openBotDmAction(orgSlug, agentId)`
 

@@ -80,6 +80,48 @@ describe("toAuditedTools", () => {
     expect(broadcastEvents.some((e) => e.event.type === "tool.approval_requested")).toBe(true)
   })
 
+  it("asks before a dangerous tool in the default mode", async () => {
+    const execute = vi.fn(async () => ({ ok: true }))
+    const toolSet = toAuditedTools(
+      [
+        {
+          name: "add_bot",
+          description: "",
+          schema: z.object({}),
+          dangerous: true,
+          execute,
+        },
+      ],
+      runtime,
+    )
+    await (toolSet.add_bot as any).execute({}, {})
+    expect(execute).toHaveBeenCalled()
+    expect(lastInsertedValues[0]?.status).toBe("pending_approval")
+    expect(broadcastEvents.some((e) => e.event.type === "tool.approval_requested")).toBe(true)
+  })
+
+  it("runs a dangerous tool without asking when the room is turbo", async () => {
+    roomState.mode = "turbo"
+    const execute = vi.fn(async () => ({ ok: true }))
+    const toolSet = toAuditedTools(
+      [
+        {
+          name: "add_bot",
+          description: "",
+          schema: z.object({}),
+          dangerous: true,
+          execute,
+        },
+      ],
+      runtime,
+    )
+    const result = await (toolSet.add_bot as any).execute({}, {})
+    expect(result).toEqual({ ok: true })
+    expect(execute).toHaveBeenCalled()
+    expect(lastInsertedValues[0]?.status).toBe("running")
+    expect(broadcastEvents.some((e) => e.event.type === "tool.approval_requested")).toBe(false)
+  })
+
   it("threads toolCallId into ctx and broadcasts tool.started and tool.finished", async () => {
     let receivedToolCallId = ""
 

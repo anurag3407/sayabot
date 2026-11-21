@@ -67,10 +67,10 @@ export const SEED_SKILLS: SkillSeed[] = [
     description:
       "Design and construct an interactive, high-converting landing page layout on the room canvas.",
     body: `### Procedure: Build a Landing Page on the Canvas
-1. Read current canvas state using \`canvas_read\`.
+1. Read current canvas state using \`canvas_read\`. If the room has no canvas, \`canvas_create\` or \`canvas_write\` makes one.
 2. Plan the visual layout: Hero, Value Proposition, Feature Grid, Social Proof, and Call to Action.
 3. Write clean, responsive markdown or canvas blocks with clear visual hierarchy.
-4. Use \`canvas_patch\` or \`canvas_write\` to apply the changes atomically.
+4. Use \`canvas_patch\` or \`canvas_write\` to apply the changes atomically. \`canvas_write\` creates the canvas when the id is new.
 5. Review the rendered layout to verify readability, contrast, and layout flow.`,
   },
 ]

@@ -239,7 +239,9 @@ async function executeE2bSandbox(
   const started = Date.now()
   const key = apiKey || getEnv().E2B_API_KEY
   if (!key) {
-    throw new Error("E2B_API_KEY is not configured for Serverless MicroVM sandbox.")
+    throw new Error(
+      "E2B_API_KEY is not configured. Stay on the local backend. Do not try another cloud sandbox.",
+    )
   }
 
   // Dynamic import of E2B so environments without it don't crash
@@ -284,7 +286,10 @@ async function executeModalCloud(
   _signal?: AbortSignal,
 ): Promise<ExecutionResult> {
   const started = Date.now()
-  if (!apiKey) throw new Error("Modal token is required to execute in Modal Labs cloud sandbox.")
+  if (!apiKey)
+    throw new Error(
+      "Modal token is required. Stay on the local backend. Do not try another cloud sandbox.",
+    )
   // Simulated or webhook dispatch to Modal runner
   return {
     stdout: `[Modal Labs Sandbox] Job executed in ephemeral container:\n${cmdOrCode}`,
@@ -302,7 +307,10 @@ async function executeDaytonaCloud(
   _signal?: AbortSignal,
 ): Promise<ExecutionResult> {
   const started = Date.now()
-  if (!apiKey) throw new Error("Daytona API token is required for Daytona workspace execution.")
+  if (!apiKey)
+    throw new Error(
+      "Daytona API token is required. Stay on the local backend. Do not try another cloud sandbox.",
+    )
   return {
     stdout: `[Daytona Workspace: ${baseUrl || "default"}] Executed command: ${cmd}`,
     stderr: "",
@@ -377,14 +385,14 @@ export function sandboxTool(
   return {
     name: "code_sandbox",
     description:
-      "Execute Python, JavaScript, or Bash across 6 interchangeable execution environments: Local (Host OS), Docker, Modal Labs (Serverless Cloud), Daytona (Cloud Workspaces), SSH (Remote VPS), or MicroVM (E2B).",
+      "Run Python, JavaScript, or Bash on the local backend. Do not pass modal, daytona, ssh, or serverless_vm unless a person named that backend. A missing token means stop, not the next cloud.",
     schema: z.object({
       language: z.enum(["python", "javascript", "bash"]).default("bash"),
       code: z.string().min(1).max(20_000),
       backend: z
         .enum(["local", "docker", "modal", "daytona", "ssh", "serverless_vm"])
         .optional()
-        .describe("Target execution environment. Defaults to organization configured backend."),
+        .describe("Leave unset for local. Do not switch clouds after a missing-token error."),
       timeoutSeconds: z.number().int().min(1).max(60).optional(),
     }),
     dangerous: (input) => {
@@ -437,7 +445,7 @@ export function terminalExecTool(
   return {
     name: "terminal_exec",
     description:
-      "Run shell commands in the configured terminal backend (Local Host, Docker, Modal, Daytona, Remote SSH, or MicroVM).",
+      "Run a shell command on the local backend. Do not pass modal, daytona, ssh, or serverless_vm unless a person named that backend.",
     schema: z.object({
       cmd: z.string().min(1).describe("The shell command string to execute"),
       cwd: z.string().optional().describe("Working directory path"),

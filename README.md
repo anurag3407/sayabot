@@ -109,7 +109,7 @@ The same card on the phone, under **Needs you**. Earlier decisions stay in the l
 </tr>
 </table>
 
-How much an agent may do alone is a room setting: ask before every step, ask before the sensitive ones, allow reads on your Mac, or let the Mac run commands without asking. Steps that send, post, or spend still ask in every mode. On a Mac, Auto and Turbo apply only to the person who picked them.
+How much an agent may do alone is a room setting: ask before every step, ask before the sensitive ones, allow reads on your Mac, or Turbo, where every command and tool runs without asking. On a Mac, Auto and Turbo apply only to the person who picked them.
 
 ## One canvas
 

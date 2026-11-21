@@ -282,6 +282,8 @@ export interface ChatListItem {
   kind: RoomKind
   turnMode: TurnMode
   isBotDm: boolean
+  /** The workspace orchestrator's own chat. Always sorted above pins. */
+  orchestrator?: boolean
   agentId: string | null
   agentNames: string[]
   lastMessage: string | null

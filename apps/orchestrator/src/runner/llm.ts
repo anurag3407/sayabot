@@ -1,5 +1,5 @@
 import { createRunScrubber, isSayaModel, redactSecrets, type TurnRole } from "@sayabot/core"
-import { agentRuns, messages, providerKeys, tasks } from "@sayabot/db"
+import { agentRuns, agents, messages, providerKeys, tasks } from "@sayabot/db"
 import { recordUsageEvent, tokensFrom } from "../usage"
 import {
   createLanguageModel,
@@ -63,8 +63,30 @@ export interface ResolvedModel {
   apiKey?: string
 }
 
-export function getCheapModelName(provider: string, customCheap?: string): string {
-  if (customCheap) return customCheap
+/** The model this bot last answered with, else the model configured on the bot. */
+export function lastUsedModelName(agent: {
+  model: string | null
+  params: unknown
+}): string | undefined {
+  const params = (agent.params as Record<string, unknown> | null) ?? {}
+  const last = typeof params.lastModel === "string" ? params.lastModel.trim() : ""
+  if (last && !isSayaModel(last)) return last
+  const configured = agent.model?.trim() ?? ""
+  if (configured && !isSayaModel(configured)) return configured
+  return undefined
+}
+
+/**
+ * A background or subagent model. A saved cheap override wins, then the last model this bot
+ * actually used. The provider table is only for a bot that has never run.
+ */
+export function getCheapModelName(
+  provider: string,
+  customCheap?: string,
+  lastUsed?: string,
+): string {
+  if (customCheap?.trim()) return customCheap.trim()
+  if (lastUsed?.trim()) return lastUsed.trim()
   switch (provider) {
     case "anthropic":
       return "claude-haiku-5-5"
@@ -83,9 +105,23 @@ export function getCheapModelName(provider: string, customCheap?: string): strin
   }
 }
 
+/** Remember a model that answered, so the next fallback does not invent a different id. */
+export async function rememberLastModel(agent: AgentRow, modelName: string): Promise<void> {
+  const name = modelName.trim()
+  if (!name || isSayaModel(name)) return
+  const params = (agent.params as Record<string, unknown> | null) ?? {}
+  if (params.lastModel === name) return
+  await getDb()
+    .update(agents)
+    .set({ params: { ...params, lastModel: name }, updatedAt: new Date() })
+    .where(eq(agents.id, agent.id))
+  agent.params = { ...params, lastModel: name }
+}
+
 export async function resolveAgentCheapModel(agent: AgentRow): Promise<ResolvedModel> {
   const customCheap = (agent.params as Record<string, unknown> | null)?.cheapModel as
     string | undefined
+  const lastUsed = lastUsedModelName(agent)
   // Claude Code / Codex / Cursor on this computer: background jobs use its fast model, no key.
   const cli = await agentCliRunner(agent)
   if (cli) {
@@ -100,7 +136,7 @@ export async function resolveAgentCheapModel(agent: AgentRow): Promise<ResolvedM
   if (isSayaModel(agent.model) || !agent.providerKeyId) {
     const fast = sayaModelConfig(agent.model, process.env, "fast")
     if (fast) {
-      const modelName = customCheap?.trim() || fast.model
+      const modelName = customCheap?.trim() || lastUsed || fast.model
       return {
         model: createLanguageModel({ ...fast, model: modelName }),
         provider: fast.provider,
@@ -117,7 +153,7 @@ export async function resolveAgentCheapModel(agent: AgentRow): Promise<ResolvedM
       .limit(1)
     if (key) {
       const apiKey = providerKeyToApiKey(key, getEnv().MESH_KEK)
-      const cheapModelName = getCheapModelName(key.provider, customCheap)
+      const cheapModelName = getCheapModelName(key.provider, customCheap, lastUsed)
       return {
         model: createLanguageModel({
           provider: key.provider,
@@ -133,7 +169,7 @@ export async function resolveAgentCheapModel(agent: AgentRow): Promise<ResolvedM
   }
   const dev = devModelConfig()
   if (dev) {
-    const cheapModelName = getCheapModelName(dev.provider, customCheap)
+    const cheapModelName = getCheapModelName(dev.provider, customCheap, lastUsed)
     return {
       model: createLanguageModel({ ...dev, model: cheapModelName }),
       provider: dev.provider,
@@ -472,6 +508,9 @@ export async function runLlmTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
   }
 
   const content = await finalize()
+  if (!error && !aborted) {
+    await rememberLastModel(agent, resolved.modelName).catch(() => {})
+  }
   return {
     messageId: message.id,
     runId: run.id,

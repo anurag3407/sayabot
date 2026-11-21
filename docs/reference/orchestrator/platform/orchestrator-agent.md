@@ -24,7 +24,7 @@ Source files: `packages/core/src/saya.ts`, `packages/core/src/saya-policy.ts`,
 | `visibility`    | `org`                                                            |
 | `system_prompt` | `SAYA_SYSTEM_PROMPT` — orchestrator identity and operating rules |
 | `capabilities`  | `DEFAULT_CAPABILITIES` + `orchestrator: true` + `secrets: true`  |
-| `model`         | `null` — the workspace's default model applies                   |
+| `model`         | `null` until an admin picks one. `sayabot_create_bot` refuses to create another bot without a model the admin chose. |
 | `params.mascot` | `{ shape: "ghost", tone: "lilac" }` — the wordmark icon          |
 
 `computer` stays `false`: `terminal_exec` and `code_sandbox` already run commands and edit files,
@@ -57,7 +57,7 @@ include `orchestrator: true` gets them (`buildTools`, `apps/orchestrator/src/too
 | Tool                           | Danger | What it does                                                                                         |
 | :----------------------------- | :----: | :--------------------------------------------------------------------------------------------------- |
 | `sayabot_bots`                 |  safe  | Bot roster: handle, display name, model, enabled capabilities                                        |
-| `sayabot_create_bot`           |   ⚠️   | Create a bot with instructions, model and capability toggles. Handle `saya` is reserved             |
+| `sayabot_create_bot`           |   ⚠️   | Create a bot only after the admin picks a model from `sayabot_models`. Handle `saya` is reserved.   |
 | `sayabot_update_bot`           |   ⚠️   | Change name, instructions, model or capabilities. Cannot grant `orchestrator` or rewrite Saya       |
 | `sayabot_models`               |  safe  | Up to 25 models per saved provider, plus the model each bot already uses. No keys                   |
 | `sayabot_rooms`                |  safe  | Rooms with kind, timezone, turn mode and bot count                                                   |
@@ -78,7 +78,8 @@ A mutation is `dangerous: true`, or dangerous only for the write (`sayabot_decid
 decision is `approve`, `sayabot_routines` for anything other than `list`). The audited wrapper
 inserts a `pending_approval`
 `tool_calls` row, broadcasts `tool.approval_requested`, pushes a notification, and waits for a
-human — the same lifecycle every other destructive tool uses. Over MCP the `orchestrator` scope
+human — the same lifecycle every other destructive tool uses. A room set to `turbo` skips that
+gate and runs the call immediately. Over MCP the `orchestrator` scope
 is that grant, so the call runs without a second prompt. A rejection returns
 `{ ok: false, rejected: true }` and changes nothing.
 

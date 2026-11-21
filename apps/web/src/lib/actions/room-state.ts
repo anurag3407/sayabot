@@ -133,13 +133,13 @@ const MODE_MESSAGES = {
   review_all: "Bots will ask before every step here",
   ask_risky: "Bots will ask before risky steps",
   auto: "Bots on your Mac run read-only commands without asking",
-  turbo: "Bots on your Mac run every command without asking",
+  turbo: "Bots run every command and tool without asking",
 } as const
 
 /**
  * How bots in this chat ask before acting, picked from the composer. Anyone in the chat (or a
  * workspace admin) may change it; who did is recorded, because a Mac only honours "auto" and
- * "turbo" when its own owner picked them. Server tools marked dangerous ask in every mode.
+ * "turbo" when its own owner picked them. Turbo also skips the review gate for server tools.
  */
 export async function setRoomExecutionModeAction(input: {
   orgSlug: string

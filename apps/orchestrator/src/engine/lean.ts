@@ -17,6 +17,7 @@ const LEAN_TOOLS = new Set([
   "find_tools",
   "remember",
   "recall",
+  "canvas_create",
   "canvas_read",
   "canvas_write",
   "update_plan",

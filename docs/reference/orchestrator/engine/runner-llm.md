@@ -37,7 +37,7 @@ Same ladder with cheaper defaults (`src/runner/llm.ts:81-138`):
 
 1. CLI runner → `cheapCliModel(cli, customCheap)` (the app's fast model, no key).
 2. Saya AI or **no key at all** → `sayaModelConfig(agent.model, process.env, "fast")`; `customCheap` (`params.cheapModel`) wins over the fast model name.
-3. Provider key → `getCheapModelName(key.provider, customCheap)`:
+3. Provider key → `getCheapModelName(key.provider, customCheap, lastUsed)`. `params.cheapModel` wins, then `params.lastModel` or the bot's configured model (the last model that answered). The table below is only for a bot that has never run:
    | Provider     | Default cheap model  |
    | :----------- | :------------------- |
    | `anthropic`  | `claude-haiku-5-5`   |

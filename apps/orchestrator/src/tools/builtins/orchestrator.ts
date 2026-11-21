@@ -66,7 +66,7 @@ export function orchestratorTools(opts: OrchestratorToolOptions): ToolSpec[] {
     {
       name: "sayabot_create_bot",
       description:
-        "Create a bot in this workspace: a handle, a display name, optional standing instructions, and optional capability toggles. The bot runs on the workspace's default model unless you pass one.",
+        "Create a bot in this workspace. First call sayabot_models and ask the admin which model to use. Pass only an id they chose. Do not invent one, and do not create the bot until they answer.",
       schema: z.object({
         handle,
         display_name: z.string().min(1).max(60),
@@ -75,7 +75,13 @@ export function orchestratorTools(opts: OrchestratorToolOptions): ToolSpec[] {
           .max(20_000)
           .optional()
           .describe("The bot's system prompt: who it is and how it should work."),
-        model: z.string().max(120).optional().describe("Model id, e.g. anthropic/claude-sonnet-4."),
+        model: z
+          .string()
+          .max(120)
+          .optional()
+          .describe(
+            "Model id the admin chose. Omit this to be told to ask them. Never invent an id.",
+          ),
         capabilities: capabilityToggles,
       }),
       dangerous: true,

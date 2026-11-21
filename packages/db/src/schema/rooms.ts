@@ -33,9 +33,10 @@ export interface RoomModelOverride {
 
 /**
  * Execution mode, picked in the composer. "review_all": every step asks. "ask_risky" (default):
- * risky steps ask. "auto": on the person's own Mac, read-only commands run without asking.
- * "turbo": on the person's own Mac, every command runs without asking. Auto and turbo only apply
- * to a Mac whose owner set them, and never to server tools marked dangerous.
+ * risky steps ask. "auto": on the person's own Mac, read-only commands run without asking;
+ * server tools marked dangerous still ask. "turbo": every command and tool in this room runs
+ * without asking, including server tools marked dangerous. On a Mac, auto and turbo apply only
+ * when that Mac's owner set the mode.
  */
 export type RoomExecutionMode = "review_all" | "ask_risky" | "auto" | "turbo"
 

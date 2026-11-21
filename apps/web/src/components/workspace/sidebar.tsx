@@ -644,9 +644,10 @@ export function AppSidebar({
     () => chats.filter((item) => item.archived && matches(item)),
     [chats, matches],
   )
-  const pinned = live.filter((item) => item.pinned)
-  const botChats = live.filter((item) => item.isBotDm && !item.pinned)
-  const groupChats = live.filter((item) => !item.isBotDm && !item.pinned)
+  const orchestratorChats = live.filter((item) => item.orchestrator)
+  const pinned = live.filter((item) => item.pinned && !item.orchestrator)
+  const botChats = live.filter((item) => item.isBotDm && !item.pinned && !item.orchestrator)
+  const groupChats = live.filter((item) => !item.isBotDm && !item.pinned && !item.orchestrator)
 
   const dmAgentIds = new Set(
     chats.filter((item) => item.isBotDm && item.agentId).map((item) => item.agentId),
@@ -696,7 +697,12 @@ export function AppSidebar({
       <Plus className="h-3.5 w-3.5" />
     </Link>
   )
-  const nothing = !pinned.length && !botChats.length && !groupChats.length && !newBots.length
+  const nothing =
+    !orchestratorChats.length &&
+    !pinned.length &&
+    !botChats.length &&
+    !groupChats.length &&
+    !newBots.length
 
   return (
     <div className="relative flex h-full min-h-0 flex-col overflow-hidden [-webkit-app-region:no-drag]">
@@ -790,7 +796,9 @@ export function AppSidebar({
       </div>
 
       <div className="relative min-h-0 flex-1 overflow-y-auto px-2.5 pb-3 pt-1">
-        {pinned.length ? <ul className="mt-2 space-y-0.5">{pinned.map(row)}</ul> : null}
+        {orchestratorChats.length || pinned.length ? (
+          <ul className="mt-2 space-y-0.5">{[...orchestratorChats, ...pinned].map(row)}</ul>
+        ) : null}
 
         {botChats.length || newBots.length || !needle ? (
           <Section id="bots" label="Bots" action={sectionAction(`${base}/agents/new`, "New bot")}>

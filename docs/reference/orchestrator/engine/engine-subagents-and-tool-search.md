@@ -24,7 +24,7 @@ export const spawnSubagentSchema = z
     task: z.string().min(1).max(30_000), // self-contained task description
     role: z.enum(["researcher", "planner", "worker", "critic"]).default("researcher"),
     tools: z.enum(["read_only", "same"]).default("read_only"),
-    model: z.enum(["cheap", "same"]).default("cheap"),
+    model: z.enum(["cheap", "same"]).default("same"),
     maxSteps: z.number().int().min(1).max(30).default(10),
     workspace: workspaceScopeSchema.optional(), // worker-only worktree scope
     runInBackground: z.boolean().default(false),
@@ -148,7 +148,7 @@ The child's system prompt is assembled in this order (`src/engine/subagents.ts:2
 ### Constants
 
 - `TOOL_SEARCH_THRESHOLD = 40` — below this many specs every tool is always active.
-- `ALWAYS_CORE_TOOLS` — the 32 specs that never leave the active set when partitioning: `fs_read/fs_edit/fs_write/fs_glob/fs_grep`, `computer_shell`, `git_status/git_diff/git_commit/git_push`, `update_plan`, `spawn_subagent`, `remember/recall/forget`, `canvas_read/canvas_write/canvas_patch`, `find_tools`, `load_skill/propose_skill/search_skills`, `code_outline/code_definition/code_references/code_diagnostics`, `workspace_detect/workspace_fork/workspace_inspect`, `verify_workspace`, `subagent_status`, `report_findings`.
+- `ALWAYS_CORE_TOOLS` — the 33 specs that never leave the active set when partitioning: `fs_read/fs_edit/fs_write/fs_glob/fs_grep`, `computer_shell`, `git_status/git_diff/git_commit/git_push`, `update_plan`, `spawn_subagent`, `remember/recall/forget`, `canvas_create/canvas_read/canvas_write/canvas_patch`, `find_tools`, `load_skill/propose_skill/search_skills`, `code_outline/code_definition/code_references/code_diagnostics`, `workspace_detect/workspace_fork/workspace_inspect`, `verify_workspace`, `subagent_status`, `report_findings`.
 
 ### `ToolIndex` — pure BM25 over tool specs
 

@@ -402,9 +402,10 @@ export function ChatList({
     [items, filter, needle],
   )
 
-  const pinned = filtered.filter((item) => item.pinned)
-  const agents = filtered.filter((item) => item.isBotDm && !item.pinned)
-  const rooms = filtered.filter((item) => !item.isBotDm && !item.pinned)
+  const orchestratorChats = filtered.filter((item) => item.orchestrator)
+  const pinned = filtered.filter((item) => item.pinned && !item.orchestrator)
+  const agents = filtered.filter((item) => item.isBotDm && !item.pinned && !item.orchestrator)
+  const rooms = filtered.filter((item) => !item.isBotDm && !item.pinned && !item.orchestrator)
 
   const dmAgentIds = new Set(
     items.filter((item) => item.isBotDm && item.agentId).map((item) => item.agentId),
@@ -452,7 +453,12 @@ export function ChatList({
       : FILTERS.filter(
           (option) => option.key === "all" || option.key === filter || counts[option.key] > 0,
         )
-  const empty = !pinned.length && !agents.length && !rooms.length && !newBots.length
+  const empty =
+    !orchestratorChats.length &&
+    !pinned.length &&
+    !agents.length &&
+    !rooms.length &&
+    !newBots.length
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -523,14 +529,17 @@ export function ChatList({
       <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
         {flat && !empty ? (
           <ul className="space-y-0.5">
+            {orchestratorChats.map(row)}
             {pinned.map(row)}
-            {filtered.filter((item) => !item.pinned).map(row)}
+            {filtered.filter((item) => !item.pinned && !item.orchestrator).map(row)}
             {newBots.map((bot) => (
               <BotRow key={bot.id} bot={bot} orgSlug={orgSlug} onNavigate={onNavigate} />
             ))}
           </ul>
         ) : null}
-        {!flat && pinned.length ? <Group label="Pinned">{pinned.map(row)}</Group> : null}
+        {!flat && (orchestratorChats.length || pinned.length) ? (
+          <Group label="Pinned">{[...orchestratorChats, ...pinned].map(row)}</Group>
+        ) : null}
         {!flat && (agents.length || newBots.length) ? (
           <Group
             label="Your agents"

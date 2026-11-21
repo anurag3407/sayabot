@@ -35,6 +35,7 @@ import {
   type ContextMessage,
 } from "../runner/context"
 import {
+  rememberLastModel,
   resolveAgentModel,
   resolveEffortLevel,
   type RunLlmTurnArgs,
@@ -527,7 +528,9 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
         recalledMemories,
         activeTaskBrief: taskBrief || undefined,
         contextBlocks: [
-          canvasContext ? `Room Canvases:\n${canvasContext}` : "",
+          canvasContext
+            ? `Room Canvases:\n${canvasContext}\nUse these canvas ids only. A room id is not a canvas id.`
+            : "Room Canvases: none yet. Call canvas_create, or canvas_write with the content. Do not pass a room id or an all-zero id, and do not ask a person to create the canvas in the UI.",
           !taskBrief && taskContext ? `Open Tasks in Room:\n${taskContext}` : "",
           ownerFactsSummary,
           activeOpenLoopsSummary,
@@ -1042,6 +1045,10 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
   }
 
   const finalContent = await finalize()
+  const modelMissing = /not found|no model/i.test(error ?? "")
+  if (!aborted && !modelMissing) {
+    await rememberLastModel(agent, resolved.modelName).catch(() => {})
+  }
   return {
     runId: run.id,
     messageId: message.id,

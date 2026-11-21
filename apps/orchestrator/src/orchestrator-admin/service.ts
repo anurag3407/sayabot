@@ -155,7 +155,13 @@ export async function createBot(actor: OrchestratorActor, input: CreateBotInput)
     .limit(1)
   if (existing) throw new OrchestratorAdminError(`@${handle} already exists in this workspace`)
 
-  if (input.model !== undefined && !assignableModelId(input.model)) {
+  const model = input.model?.trim() ?? ""
+  if (!model) {
+    throw new OrchestratorAdminError(
+      "Ask the admin which model this bot should use. Call sayabot_models, quote the choices, and wait for their answer. Do not invent a model id, and do not create the bot until they pick one.",
+    )
+  }
+  if (!assignableModelId(model)) {
     throw new OrchestratorAdminError("model must be a model id, not a key or a URL")
   }
   if (isSayaHandle(handle)) {
@@ -175,7 +181,7 @@ export async function createBot(actor: OrchestratorActor, input: CreateBotInput)
       handle,
       displayName,
       kind: "llm",
-      model: input.model ?? null,
+      model,
       systemPrompt: (input.instructions ?? "").slice(0, 20_000),
       params: {},
       capabilities,
@@ -193,7 +199,7 @@ export async function createBot(actor: OrchestratorActor, input: CreateBotInput)
 
   await recordAudit(actor, "agent.created_by_orchestrator", handle, {
     displayName,
-    model: input.model ?? null,
+    model,
   })
 
   return {

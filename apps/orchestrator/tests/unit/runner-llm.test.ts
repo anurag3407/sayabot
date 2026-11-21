@@ -11,9 +11,16 @@ describe("getCheapModelName", () => {
     expect(getCheapModelName("groq")).toBe("openai/gpt-oss-20b")
   })
 
+  it("uses the last model that worked before a guessed cheap id", () => {
+    expect(getCheapModelName("openai", undefined, "openai/last-working")).toBe(
+      "openai/last-working",
+    )
+    expect(getCheapModelName("cerebras", undefined, "vendor/last")).toBe("vendor/last")
+  })
+
   it("falls back to gpt-4o-mini for unknown providers and honours an explicit override", () => {
     expect(getCheapModelName("cerebras")).toBe("gpt-4o-mini")
-    expect(getCheapModelName("anthropic", "custom-cheap")).toBe("custom-cheap")
+    expect(getCheapModelName("anthropic", "custom-cheap", "ignored-last")).toBe("custom-cheap")
   })
 })
 

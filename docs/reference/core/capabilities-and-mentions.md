@@ -75,7 +75,7 @@ const caps = parseCapabilities(agent.capabilities)
 | Capability                                                 | Gates                                                                                                                            |
 | :--------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------- |
 | `connectors`                                               | the connector tool bundle (`tools/index.ts:232`)                                                                                 |
-| `canvas`                                                   | `canvas_read` / `canvas_write` / `canvas_patch` (`:331`)                                                                         |
+| `canvas`                                                   | `canvas_create` / `canvas_read` / `canvas_write` / `canvas_patch`                                                                |
 | `sandbox && !computer`                                     | ephemeral sandbox tools (`:338`) — the sandbox tools are _replaced_ by the computer bundle when a persistent sandbox is granted  |
 | `webSearch`                                                | `web_search` / `web_fetch` (`:344`)                                                                                              |
 | `document`                                                 | document tools (`:350`)                                                                                                          |

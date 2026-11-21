@@ -33,6 +33,17 @@ function callSignature(call: StepToolCall): string {
 }
 
 export const REPEAT_THRESHOLD = 3
+const SHELL_TOOLS = new Set(["terminal_exec", "code_sandbox", "computer_shell"])
+export const SHELL_STREAK = 8
+
+/** True when the last N steps are only shell or sandbox calls. Different commands still count. */
+export function detectShellStreak(steps: StepLike[], threshold = SHELL_STREAK): boolean {
+  if (steps.length < threshold) return false
+  return steps.slice(-threshold).every((step) => {
+    const names = (step.toolCalls ?? []).map((call) => call.toolName)
+    return names.length > 0 && names.every((name) => SHELL_TOOLS.has(name))
+  })
+}
 
 /**
  * Detects a doom loop: the same tool called with identical input in each of the
@@ -123,6 +134,12 @@ export function decidePrepareStep(input: PrepareStepInput): PrepareStepDecision 
   }
 
   const repeated = detectRepeatedToolCalls(input.steps)
+  if (!repeated && detectShellStreak(input.steps) && !input.sentReminders.has("shell-streak")) {
+    input.sentReminders.add("shell-streak")
+    reminders.push(
+      "You have spent many steps on shell and sandbox commands. Stop. Write the deliverable with canvas_create or canvas_write, or reply with what is done and what is blocked. Do not try another cloud sandbox after a missing token.",
+    )
+  }
   if (repeated) {
     reminders.push(
       `You have called ${repeated} with identical input ${REPEAT_THRESHOLD} times in a row and got the same result. ` +
