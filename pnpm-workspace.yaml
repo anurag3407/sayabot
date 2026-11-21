@@ -28,3 +28,5 @@ packageExtensions:
     peerDependenciesMeta:
       "@types/react":
         optional: true
+patchedDependencies:
+  expo-camera@16.0.18: patches/expo-camera@16.0.18.patch

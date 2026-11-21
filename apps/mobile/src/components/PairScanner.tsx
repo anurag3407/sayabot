@@ -1,5 +1,13 @@
 import React, { useEffect, useRef, useState } from "react"
-import { ActivityIndicator, Linking, Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native"
+import {
+  ActivityIndicator,
+  Linking,
+  Modal,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native"
 import { CameraView, useCameraPermissions } from "expo-camera"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { X } from "lucide-react-native"
@@ -32,12 +40,15 @@ export function PairScanner({
   const locked = useRef(false)
   const asked = useRef(false)
   const [mountError, setMountError] = useState<string | null>(null)
+  // CameraX crashes if the preview is created before the modal window has a size.
+  const [surfaceReady, setSurfaceReady] = useState(false)
 
   useEffect(() => {
     if (!visible) {
       locked.current = false
       asked.current = false
       setMountError(null)
+      setSurfaceReady(false)
     }
   }, [visible])
 
@@ -55,7 +66,12 @@ export function PairScanner({
   const granted = permission?.granted === true
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      onRequestClose={onClose}
+      onShow={() => setSurfaceReady(true)}
+    >
       <View style={styles.root}>
         {mountError ? (
           <View style={styles.denied}>
@@ -81,44 +97,54 @@ export function PairScanner({
           <View style={styles.denied}>
             <ActivityIndicator color="#fff" />
           </View>
-        ) : granted ? (
+        ) : granted && surfaceReady ? (
           <CameraView
             style={[StyleSheet.absoluteFill, styles.camera]}
             facing="back"
+            mode="picture"
+            active={visible}
             barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
             onMountError={(e) => setMountError(e.message ?? "Camera could not be started")}
             onBarcodeScanned={
               busy
                 ? undefined
                 : (event) => {
-                    if (locked.current) return
-                    if (mode === "server") {
-                      const server = extractServerFromScan(event.data)
-                      if (!server) return
-                      locked.current = true
-                      if (onScanServer) {
-                        onScanServer(server)
-                      } else {
-                        onScan({ code: "", server })
+                    try {
+                      if (locked.current) return
+                      if (mode === "server") {
+                        const server = extractServerFromScan(event.data)
+                        if (!server) return
+                        locked.current = true
+                        if (onScanServer) {
+                          onScanServer(server)
+                        } else {
+                          onScan({ code: "", server })
+                        }
+                        return
                       }
-                      return
-                    }
 
-                    const link = codeFromScan(event.data)
-                    if (link) {
-                      locked.current = true
-                      onScan(link)
-                      return
-                    }
+                      const link = codeFromScan(event.data)
+                      if (link) {
+                        locked.current = true
+                        onScan(link)
+                        return
+                      }
 
-                    const server = extractServerFromScan(event.data)
-                    if (server && onScanServer) {
-                      locked.current = true
-                      onScanServer(server)
+                      const server = extractServerFromScan(event.data)
+                      if (server && onScanServer) {
+                        locked.current = true
+                        onScanServer(server)
+                      }
+                    } catch {
+                      locked.current = false
                     }
                   }
             }
           />
+        ) : granted ? (
+          <View style={styles.denied}>
+            <ActivityIndicator color="#fff" />
+          </View>
         ) : (
           <View style={styles.denied}>
             <Text style={styles.deniedTitle}>The camera is needed to scan the QR</Text>

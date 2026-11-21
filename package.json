@@ -49,5 +49,10 @@
   },
   "dependencies": {
     "getenv": "^2.0.0"
+  },
+  "pnpm": {
+    "patchedDependencies": {
+      "expo-camera@16.0.18": "patches/expo-camera@16.0.18.patch"
+    }
   }
 }

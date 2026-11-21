@@ -1,0 +1,139 @@
+diff --git a/android/src/main/java/expo/modules/camera/ExpoCameraView.kt b/android/src/main/java/expo/modules/camera/ExpoCameraView.kt
+index 91d396ee207b3d7e1599cd4f592ff514136cf389..1eae80b78c473aebe60368e6c2d9a3437b673281 100644
+--- a/android/src/main/java/expo/modules/camera/ExpoCameraView.kt
++++ b/android/src/main/java/expo/modules/camera/ExpoCameraView.kt
+@@ -378,60 +378,64 @@ class ExpoCameraView(
+     shouldCreateCamera = false
+     providerFuture.addListener(
+       {
+-        val cameraProvider: ProcessCameraProvider = providerFuture.get()
++        // Picture mode (QR scan, stills) used to build a video pipeline first, and that
++        // builder throws on some phones. The throw sat outside the catch, so opening the
++        // camera killed the process instead of reporting a mount error.
++        try {
++          val cameraProvider: ProcessCameraProvider = providerFuture.get()
+ 
+-        previewView.scaleType =
+-          if (ratio == CameraRatio.FOUR_THREE || ratio == CameraRatio.SIXTEEN_NINE) {
+-            PreviewView.ScaleType.FIT_CENTER
+-          } else {
+-            PreviewView.ScaleType.FILL_CENTER
+-          }
++          previewView.scaleType =
++            if (ratio == CameraRatio.FOUR_THREE || ratio == CameraRatio.SIXTEEN_NINE) {
++              PreviewView.ScaleType.FIT_CENTER
++            } else {
++              PreviewView.ScaleType.FILL_CENTER
++            }
+ 
+-        val resolutionSelector = buildResolutionSelector()
+-        val preview = Preview.Builder()
+-          .setResolutionSelector(resolutionSelector)
+-          .build()
+-          .also {
+-            it.surfaceProvider = previewView.surfaceProvider
+-          }
++          val resolutionSelector = buildResolutionSelector()
++          val preview = Preview.Builder()
++            .setResolutionSelector(resolutionSelector)
++            .build()
++            .also {
++              it.surfaceProvider = previewView.surfaceProvider
++            }
+ 
+-        glSurfaceTexture?.let {
+-          it.setDefaultBufferSize(previewView.width, previewView.height)
+-          preview.setSurfaceProvider { request ->
+-            val surface = Surface(it)
+-            request.provideSurface(surface, ContextCompat.getMainExecutor(context)) {
+-              surface.release()
++          glSurfaceTexture?.let {
++            val bufferWidth = previewView.width.coerceAtLeast(1)
++            val bufferHeight = previewView.height.coerceAtLeast(1)
++            it.setDefaultBufferSize(bufferWidth, bufferHeight)
++            preview.setSurfaceProvider { request ->
++              val surface = Surface(it)
++              request.provideSurface(surface, ContextCompat.getMainExecutor(context)) {
++                surface.release()
++              }
+             }
+           }
+-        }
+ 
+-        val cameraSelector = CameraSelector.Builder()
+-          .requireLensFacing(lensFacing.mapToCharacteristic())
+-          .build()
++          val cameraSelector = CameraSelector.Builder()
++            .requireLensFacing(lensFacing.mapToCharacteristic())
++            .build()
+ 
+-        imageCaptureUseCase = ImageCapture.Builder()
+-          .setResolutionSelector(resolutionSelector)
+-          .setFlashMode(flashMode.mapToLens())
+-          .build()
++          imageCaptureUseCase = ImageCapture.Builder()
++            .setResolutionSelector(resolutionSelector)
++            .setFlashMode(flashMode.mapToLens())
++            .build()
+ 
+-        val videoCapture = createVideoCapture()
+-        imageAnalysisUseCase = createImageAnalyzer()
++          imageAnalysisUseCase = if (cameraMode == CameraMode.PICTURE) createImageAnalyzer() else null
+ 
+-        val useCases = UseCaseGroup.Builder().apply {
+-          addUseCase(preview)
+-          if (cameraMode == CameraMode.PICTURE) {
+-            imageCaptureUseCase?.let {
+-              addUseCase(it)
+-            }
+-            imageAnalysisUseCase?.let {
+-              addUseCase(it)
++          val useCases = UseCaseGroup.Builder().apply {
++            addUseCase(preview)
++            if (cameraMode == CameraMode.PICTURE) {
++              imageCaptureUseCase?.let {
++                addUseCase(it)
++              }
++              imageAnalysisUseCase?.let {
++                addUseCase(it)
++              }
++            } else {
++              addUseCase(createVideoCapture())
+             }
+-          } else {
+-            addUseCase(videoCapture)
+-          }
+-        }.build()
++          }.build()
+ 
+-        try {
+           cameraProvider.unbindAll()
+           camera = cameraProvider.bindToLifecycle(currentActivity, cameraSelector, useCases)
+           camera?.let {
+@@ -440,9 +444,11 @@ class ExpoCameraView(
+           // Set the previous zoom level after recreating the camera
+           setCameraZoom(zoom)
+           this.cameraProvider = cameraProvider
+-        } catch (e: Exception) {
++        } catch (e: Throwable) {
+           onMountError(
+-            CameraMountErrorEvent("Camera component could not be rendered - is there any other instance running?")
++            CameraMountErrorEvent(
++              e.message ?: "Camera component could not be rendered - is there any other instance running?"
++            )
+           )
+         }
+       },
+@@ -530,7 +536,11 @@ class ExpoCameraView(
+       if (mirror) {
+         setMirrorMode(MirrorMode.MIRROR_MODE_ON_FRONT_ONLY)
+       }
+-      setVideoStabilizationEnabled(true)
++      // Some devices throw from stabilization during build and take the process down.
++      try {
++        setVideoStabilizationEnabled(true)
++      } catch (_: Throwable) {
++      }
+     }.build()
+   }
+ 

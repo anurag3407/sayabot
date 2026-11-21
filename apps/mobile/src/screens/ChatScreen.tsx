@@ -4,6 +4,7 @@ import {
   Animated,
   FlatList,
   Image,
+  InteractionManager,
   PanResponder,
   ScrollView,
   KeyboardAvoidingView,
@@ -387,36 +388,47 @@ export function ChatScreen({ route, navigation }: any) {
 
   async function pickPhotos(camera: boolean) {
     setAttachOpen(false)
-    const perm = camera
-      ? await ImagePicker.requestCameraPermissionsAsync()
-      : await ImagePicker.requestMediaLibraryPermissionsAsync()
-    if (!perm.granted)
-      return setSendError(
-        camera
-          ? "Camera access is off for Sayabot in Settings."
-          : "Photo access is off for Sayabot in Settings.",
+    // The attach sheet is a Modal. Starting the camera activity before it finishes
+    // closing crashes Android (the window token is already gone).
+    if (camera) {
+      await new Promise<void>((resolve) => {
+        InteractionManager.runAfterInteractions(() => setTimeout(resolve, 350))
+      })
+    }
+    try {
+      const perm = camera
+        ? await ImagePicker.requestCameraPermissionsAsync()
+        : await ImagePicker.requestMediaLibraryPermissionsAsync()
+      if (!perm.granted)
+        return setSendError(
+          camera
+            ? "Camera access is off for Sayabot in Settings."
+            : "Photo access is off for Sayabot in Settings.",
+        )
+      const res = camera
+        ? await ImagePicker.launchCameraAsync({ quality: 0.8 })
+        : await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ["images"],
+            allowsMultipleSelection: true,
+            selectionLimit: 4,
+            quality: 0.8,
+          })
+      if (res.canceled) return
+      setAttachments((a) =>
+        [
+          ...a,
+          ...res.assets.map((x) => ({
+            uri: x.uri,
+            name: x.fileName ?? `photo-${Date.now()}.jpg`,
+            type: x.mimeType ?? "image/jpeg",
+            size: x.fileSize,
+            isImage: true,
+          })),
+        ].slice(0, 6),
       )
-    const res = camera
-      ? await ImagePicker.launchCameraAsync({ quality: 0.8 })
-      : await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ["images"],
-          allowsMultipleSelection: true,
-          selectionLimit: 4,
-          quality: 0.8,
-        })
-    if (res.canceled) return
-    setAttachments((a) =>
-      [
-        ...a,
-        ...res.assets.map((x) => ({
-          uri: x.uri,
-          name: x.fileName ?? `photo-${Date.now()}.jpg`,
-          type: x.mimeType ?? "image/jpeg",
-          size: x.fileSize,
-          isImage: true,
-        })),
-      ].slice(0, 6),
-    )
+    } catch (err) {
+      setSendError(err instanceof Error ? err.message : "Couldn't open the camera")
+    }
   }
 
   async function pickFile() {
