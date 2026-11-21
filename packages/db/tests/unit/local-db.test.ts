@@ -22,9 +22,13 @@ describe("Local Zero-Config PGlite Database", () => {
 
     // Advisory lock check
     const client = await pool.connect()
-    const lockRes = await client.query("SELECT pg_advisory_lock(hashtext($1)::bigint)", ["test-key"])
+    const lockRes = await client.query("SELECT pg_advisory_lock(hashtext($1)::bigint)", [
+      "test-key",
+    ])
     expect(lockRes.rows).toBeDefined()
-    const unlockRes = await client.query("SELECT pg_advisory_unlock(hashtext($1)::bigint)", ["test-key"])
+    const unlockRes = await client.query("SELECT pg_advisory_unlock(hashtext($1)::bigint)", [
+      "test-key",
+    ])
     expect(unlockRes.rows[0].pg_advisory_unlock).toBe(true)
     client.release()
 
@@ -49,8 +53,13 @@ describe("Local Zero-Config PGlite Database", () => {
     const orgCheck = await pool.query("SELECT name FROM orgs WHERE id = $1", [workspace.orgId])
     expect(orgCheck.rows[0].name).toBe("Local Workspace")
 
-    const agentCheck = await pool.query("SELECT display_name FROM agents WHERE id = $1", [workspace.agentId])
-    expect(agentCheck.rows[0].display_name).toBe("Sayabot")
+    const agentCheck = await pool.query(
+      "SELECT display_name, handle, capabilities FROM agents WHERE id = $1",
+      [workspace.agentId],
+    )
+    expect(agentCheck.rows[0].display_name).toBe("Saya")
+    expect(agentCheck.rows[0].handle).toBe("saya")
+    expect(agentCheck.rows[0].capabilities.orchestrator).toBe(true)
 
     const roomCheck = await pool.query("SELECT name FROM rooms WHERE id = $1", [workspace.roomId])
     expect(roomCheck.rows[0].name).toBe("general")

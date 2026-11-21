@@ -4,7 +4,13 @@ import { fileURLToPath } from "node:url"
 import dotenv from "dotenv"
 import { sql } from "drizzle-orm"
 import type { AgentCapabilities } from "@sayabot/core"
-import { DEFAULT_CAPABILITIES } from "@sayabot/core"
+import {
+  DEFAULT_CAPABILITIES,
+  SAYA_CAPABILITIES,
+  SAYA_DISPLAY_NAME,
+  SAYA_HANDLE,
+  SAYA_SYSTEM_PROMPT,
+} from "@sayabot/core"
 import { createDb, requireDatabaseUrl, type Db, type DbPool } from "./client"
 import { modelPricing } from "./schema/ops"
 import { type SecretSlot, agentTemplates } from "./schema/templates"
@@ -269,12 +275,29 @@ export async function seedLocalWorkspace(
   // 5. Seed curated templates & pricing
   await seedDatabase(db, pool)
 
-  // 6. Default Local Sayabot Agent
+  // 6. Default orchestrator. Older local databases stored a plain "Sayabot" row at this id;
+  // upgrade that row once so the workspace opens with Saya and the admin tools.
   await pool.query(
-    `INSERT INTO agents (id, org_id, handle, display_name, bio, model, system_prompt, capabilities)
-     VALUES ($1, $2, 'sayabot', 'Sayabot', 'Local autonomous assistant', 'gemini-2.5-flash', 'You are Sayabot, an autonomous agent working in a local workspace.', '{"sandbox":true,"canvas":true,"tasks":true,"memory":true,"computer":true}')
-     ON CONFLICT (id) DO NOTHING`,
-    [agentId, orgId],
+    `INSERT INTO agents (id, org_id, handle, display_name, bio, model, system_prompt, capabilities, params, visibility)
+     VALUES ($1, $2, $3, $4, 'Workspace orchestrator', NULL, $5, $6::jsonb, '{"mascot":{"shape":"ghost","tone":"lilac"}}'::jsonb, 'org')
+     ON CONFLICT (id) DO UPDATE SET
+       handle = EXCLUDED.handle,
+       display_name = EXCLUDED.display_name,
+       bio = EXCLUDED.bio,
+       model = EXCLUDED.model,
+       system_prompt = EXCLUDED.system_prompt,
+       capabilities = EXCLUDED.capabilities,
+       params = EXCLUDED.params
+     WHERE agents.handle IN ('sayabot', 'saya')
+       AND COALESCE(agents.capabilities->>'orchestrator', 'false') <> 'true'`,
+    [
+      agentId,
+      orgId,
+      SAYA_HANDLE,
+      SAYA_DISPLAY_NAME,
+      SAYA_SYSTEM_PROMPT,
+      JSON.stringify(SAYA_CAPABILITIES),
+    ],
   )
 
   // 7. Default Room

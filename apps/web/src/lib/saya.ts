@@ -66,10 +66,23 @@ export async function ensureSayaAgent(
       .select("id")
       .single()
     if (error || !data) {
-      throw new Error(error?.message ?? "Could not create the workspace orchestrator")
+      // Two opens can insert at once. The unique (org, handle) index keeps a single Saya.
+      if (error?.code === "23505") {
+        const { data: raced } = await admin
+          .from("agents")
+          .select("id")
+          .eq("org_id", input.orgId)
+          .eq("handle", SAYA_HANDLE)
+          .maybeSingle()
+        if (raced?.id) agentId = raced.id as string
+      }
+      if (!agentId) {
+        throw new Error(error?.message ?? "Could not create the workspace orchestrator")
+      }
+    } else {
+      agentId = data.id as string
+      created = true
     }
-    agentId = data.id as string
-    created = true
   } else {
     const look =
       existing?.params &&
@@ -94,4 +107,35 @@ export async function ensureSayaAgent(
   }
 
   return { id: agentId, created }
+}
+
+/**
+ * Workspaces created before Saya existed never call the onboarding insert. Opening the workspace
+ * creates her once, and puts her in the oldest group room when she is not in any room yet.
+ * A failure must not take the workspace down; the next open tries again.
+ */
+export async function ensureWorkspaceOrchestrator(input: {
+  orgId: string
+  userId?: string | null
+}): Promise<void> {
+  const admin = createAdminClient()
+  const { id } = await ensureSayaAgent({ orgId: input.orgId, userId: input.userId }, admin)
+  const { data: membership } = await admin
+    .from("room_agents")
+    .select("room_id")
+    .eq("agent_id", id)
+    .limit(1)
+  if (membership?.length) return
+  const { data: room } = await admin
+    .from("rooms")
+    .select("id")
+    .eq("org_id", input.orgId)
+    .neq("kind", "dm")
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle()
+  if (!room?.id) return
+  await admin
+    .from("room_agents")
+    .upsert({ room_id: room.id, agent_id: id, position: 0 }, { onConflict: "room_id,agent_id" })
 }

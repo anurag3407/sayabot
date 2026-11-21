@@ -6,6 +6,7 @@ import { PLANS } from "@sayabot/core"
 import { isOrgAdmin } from "@/lib/auth"
 import { edition } from "@/lib/env"
 import { workspacePlan, workspaceUsage } from "@/lib/plan-limits"
+import { ensureWorkspaceOrchestrator } from "@/lib/saya"
 
 /** Sayabot Cloud admins: how much of the month's server replies are used, once it's 80% or more. */
 async function planUsageNotice(orgId: string, admin: boolean) {
@@ -25,6 +26,13 @@ export default async function OrgLayout({
 }) {
   const { org: orgSlug } = await params
   const access = await requireOrgAccess(orgSlug)
+  // Existing workspaces were created before Saya. Do this before the agent list is read,
+  // otherwise the sidebar stays empty for this request.
+  try {
+    await ensureWorkspaceOrchestrator({ orgId: access.org.id, userId: access.user.id })
+  } catch (error) {
+    console.warn("[saya] could not ensure the workspace orchestrator", error)
+  }
   const [chatData, orgAgents, orgs, planUsage] = await Promise.all([
     loadChatList(access),
     listOrgAgents(access.org.id),
