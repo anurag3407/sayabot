@@ -191,6 +191,10 @@ export async function deliverItemAnswers(input: {
         requestAnswer: true,
         answeredKeys: input.answeredKeys,
         ...(!inGroup && input.agentId ? { dmToAgentId: input.agentId } : {}),
+        // A question asked mid-goal carries the goal: the answer resumes it.
+        ...(typeof input.metadata.goal === "string" && input.metadata.goal.trim()
+          ? { command: "goal" as const, goal: input.metadata.goal.trim() }
+          : {}),
       },
     })
     .select("id")

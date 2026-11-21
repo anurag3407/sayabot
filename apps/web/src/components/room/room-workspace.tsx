@@ -255,6 +255,7 @@ export function RoomWorkspace({
       user={{ id: data.user.id, displayName: data.user.displayName }}
       messages={realtime.messages}
       toolCalls={realtime.toolCalls}
+      questions={data.questions}
       turnState={realtime.turnState}
       runActivity={realtime.runActivity}
       roomAgents={data.roomAgents}

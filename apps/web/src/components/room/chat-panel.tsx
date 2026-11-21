@@ -7,6 +7,7 @@ import { Composer } from "@/components/room/composer"
 import { SetupChecklist, type SetupState } from "@/components/room/setup-checklist"
 import { StarterCard } from "@/components/room/starter-card"
 import { Mascot } from "@/components/ui/mascot"
+import { RoomQuestions } from "@/components/room/question-card"
 import { TurnStrip } from "@/components/room/turn-strip"
 import { ToolCallsList } from "@/components/room/tool-call-card"
 import { Button } from "@/components/ui/button"
@@ -20,6 +21,7 @@ import type {
   MessageView,
   RoomAgentView,
   RoomExecutionMode,
+  RoomQuestionView,
   ToolCallView,
   TurnStateView,
 } from "@/lib/types"
@@ -56,6 +58,7 @@ export function ChatPanel({
   user,
   messages,
   toolCalls,
+  questions = [],
   turnState,
   runActivity,
   roomAgents,
@@ -82,6 +85,8 @@ export function ChatPanel({
   user: { id: string; displayName: string }
   messages: MessageView[]
   toolCalls: ToolCallView[]
+  /** Open bot questions, shown above the composer. */
+  questions?: RoomQuestionView[]
   turnState: TurnStateView | null
   runActivity?: import("./use-room-realtime").RunActivityState | null
   roomAgents: RoomAgentView[]
@@ -414,6 +419,8 @@ export function ChatPanel({
         roomId={roomId}
         runActivity={runActivity}
       />
+
+      <RoomQuestions questions={questions} orgSlug={orgSlug} />
 
       <div className="mx-auto w-full max-w-[780px] shrink-0 pb-[env(safe-area-inset-bottom)] md:px-2">
         <Composer

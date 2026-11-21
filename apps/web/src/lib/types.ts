@@ -276,6 +276,32 @@ export interface MeetingView {
   metadata: Record<string, unknown>
 }
 
+/** A bot's open question in this room, phrased for the room's question card. */
+export interface RoomQuestionView {
+  id: string
+  number: number
+  title: string
+  description: string
+  /** Quick answers on a free-form question. */
+  options: string[]
+  /** Keyed items, each with its own options and answer. */
+  items: Array<{
+    key: string
+    question: string
+    hint?: string
+    options?: string[]
+    answer?: string | null
+    source?: string | null
+  }>
+  askedCount: number
+  createdAt: string
+  expiresAt: string | null
+  agentHandle: string | null
+  agentName: string | null
+  /** Set when a `/goal` is paused on this question; answering continues it. */
+  goal: string | null
+}
+
 export interface ChatListItem {
   id: string
   name: string
@@ -451,6 +477,8 @@ export interface RoomPageData {
   orgRole: OrgRole
   messages: MessageView[]
   toolCalls: ToolCallView[]
+  /** Open questions from bots in this room, newest first. */
+  questions: RoomQuestionView[]
   roomAgents: RoomAgentView[]
   canvases: CanvasView[]
   members: MemberView[]

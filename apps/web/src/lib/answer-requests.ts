@@ -9,6 +9,13 @@ import { mutateTaskInOrchestrator, queueRoomMessage } from "@/lib/orchestrator"
 import { createAdminClient } from "@/lib/supabase/admin"
 import type { ActionResult } from "@/lib/types"
 
+/** `{ command: "goal", goal }` when the question was asked during a paused goal. */
+function goalContinuation(metadata: unknown): { command: "goal"; goal: string } | null {
+  if (!metadata || typeof metadata !== "object") return null
+  const goal = (metadata as { goal?: unknown }).goal
+  return typeof goal === "string" && goal.trim() ? { command: "goal", goal: goal.trim() } : null
+}
+
 /**
  * Answers agent questions as a person: keyed items become facts, other open questions waiting
  * on the same key are filled, and the bot gets the answer in the room or privately. Shared by
@@ -171,6 +178,8 @@ export async function answerRequestsAs(
           requestAnswer: true,
           alsoPost: item.alsoPost,
           ...(!inGroup && agent ? { dmToAgentId: agent.id } : {}),
+          // A question asked mid-goal carries the goal: the answer resumes it.
+          ...goalContinuation(task.metadata),
         },
       })
       .select("id")

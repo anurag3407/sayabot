@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { goalDirective, goalOf, goalOutcome, isSideNote } from "./goal"
+import { goalDirective, goalOf, goalOutcome, goalQuestionOf, isSideNote } from "./goal"
 
 describe("goalOutcome", () => {
   it("keeps going until the reply says it's done", () => {
@@ -29,6 +29,29 @@ describe("goalOf / isSideNote", () => {
     expect(isSideNote({ senderType: "human", metadata: { command: "btw" } })).toBe(true)
     expect(isSideNote({ senderType: "human", metadata: null })).toBe(false)
   })
+
+  it("carries the goal across an answer to a bot's question", () => {
+    expect(
+      goalOf({
+        senderType: "human",
+        content: "@bot use the blue palette",
+        metadata: { command: "goal", goal: "redesign the settings page" },
+      }),
+    ).toBe("redesign the settings page")
+  })
+})
+
+describe("goalQuestionOf", () => {
+  it("reads what a blocked goal is waiting on", () => {
+    expect(goalQuestionOf("Need one thing.\n\nGOAL BLOCKED: which palette should I use?")).toBe(
+      "which palette should I use?",
+    )
+  })
+
+  it("is null when the reply blocked without a question", () => {
+    expect(goalQuestionOf("Cannot reach the API.\nGOAL BLOCKED")).toBeNull()
+    expect(goalQuestionOf("all done\nGOAL COMPLETE")).toBeNull()
+  })
 })
 
 describe("goalDirective", () => {
@@ -38,5 +61,12 @@ describe("goalDirective", () => {
     expect(text).toContain("make the build green")
     expect(text).toContain("GOAL COMPLETE")
     expect(text).toContain("GOAL BLOCKED")
+  })
+
+  it("tells the bot to ask with options instead of guessing", () => {
+    const text = goalDirective("pick a plan", 1, 20)
+    expect(text).toContain("request_human_decision")
+    expect(text).toContain("2–6 short options")
+    expect(text).toContain("held, not thrown away")
   })
 })

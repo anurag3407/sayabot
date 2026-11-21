@@ -41,11 +41,68 @@ import {
 import { startAgentTurn } from "../engine"
 import { resolveAgentModel } from "../runner/llm"
 import { deliverSideNote, interruptRoom } from "./interrupt"
-import { GOAL_MAX_ROUNDS, goalDirective, goalOf, goalOutcome, isSideNote } from "./goal"
+import {
+  GOAL_MAX_ROUNDS,
+  GOAL_WAITING_REASON,
+  goalDirective,
+  goalOf,
+  goalOutcome,
+  goalQuestionOf,
+  isSideNote,
+} from "./goal"
 import { attachReplyVoiceNoteIfNeeded } from "../tts/reply-note"
 
 export interface CoordinatorDeps {
   enqueueWebhook: (data: WebhookJobData) => Promise<void>
+}
+
+/**
+ * Ties a goal to the question that interrupted it. The web answer flow copies `metadata.goal`
+ * onto the human's answer message, which is what makes the next turn a goal round again.
+ */
+async function markAskJoinsGoal(args: {
+  roomId: string
+  agentId: string
+  triggerId: string
+  since: Date | string
+}): Promise<void> {
+  const goal = await currentGoalText(args.roomId, args.triggerId)
+  if (!goal) return
+  const since = new Date(args.since)
+  const [ask] = await getDb()
+    .select({ id: tasks.id, metadata: tasks.metadata })
+    .from(tasks)
+    .where(
+      and(
+        eq(tasks.roomId, args.roomId),
+        eq(tasks.kind, "request"),
+        eq(tasks.status, "open"),
+        eq(tasks.requestedByAgentId, args.agentId),
+        gte(tasks.createdAt, since),
+      ),
+    )
+    .orderBy(desc(tasks.createdAt))
+    .limit(1)
+  if (!ask) return
+  await getDb()
+    .update(tasks)
+    .set({ metadata: { ...(ask.metadata ?? {}), goal }, updatedAt: new Date() })
+    .where(eq(tasks.id, ask.id))
+}
+
+/** The goal text of the message that opened this session. */
+async function currentGoalText(roomId: string, messageId: string): Promise<string | null> {
+  const [row] = await getDb()
+    .select({ content: messages.content, metadata: messages.metadata })
+    .from(messages)
+    .where(and(eq(messages.id, messageId), eq(messages.roomId, roomId)))
+    .limit(1)
+  if (!row) return null
+  return goalOf({
+    senderType: "human",
+    content: row.content,
+    metadata: row.metadata,
+  })
 }
 
 async function setSession(
@@ -789,6 +846,24 @@ export async function processRoomMessage(
                 threadRootId: trigger.threadRootId,
                 content: `@${agentRow.handle} paused the goal after ${GOAL_MAX_ROUNDS} rounds. Send /goal again to keep going.`,
                 reason: "goal_paused",
+              })
+            } else if (outcome === "blocked") {
+              // The ask is the human's way back in: stamp it with the goal so answering the
+              // question resumes this goal instead of starting a plain turn.
+              await markAskJoinsGoal({
+                roomId,
+                agentId: agentRow.id,
+                triggerId: trigger.id,
+                since: trigger.createdAt,
+              })
+              const need = goalQuestionOf(result.content)
+              await postSystemMessage({
+                roomId,
+                threadRootId: trigger.threadRootId,
+                content: need
+                  ? `@${agentRow.handle} is waiting on you: ${need}\nAnswer it and the goal carries on from there.`
+                  : `@${agentRow.handle} is waiting on you before the goal can go further. Answer here or in your Inbox and it carries on.`,
+                reason: GOAL_WAITING_REASON,
               })
             }
           } else if (room.turnMode === "mentions" && result.content) {

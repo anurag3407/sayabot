@@ -523,6 +523,12 @@ export function useRoomRealtime(args: {
           { event: "*", schema: "public", table: "meetings", filter: `room_id=eq.${args.roomId}` },
           () => scheduleRefresh(),
         )
+        .on(
+          // A bot asking a question, or a person answering one, changes the card above the composer.
+          "postgres_changes",
+          { event: "*", schema: "public", table: "tasks", filter: `room_id=eq.${args.roomId}` },
+          () => scheduleRefresh(),
+        )
         .on("presence", { event: "sync" }, applyPresence)
         .on("presence", { event: "join" }, applyPresence)
         .on("presence", { event: "leave" }, applyPresence)

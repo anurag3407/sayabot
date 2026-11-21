@@ -3,6 +3,7 @@ import { cache } from "react"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { openSecret } from "@sayabot/llm"
+import { askItemsFromMetadata } from "@sayabot/core"
 import { getKek } from "@/lib/env"
 import type {
   AgentApiKeyView,
@@ -20,6 +21,7 @@ import type {
   AgentConnectorGrantView,
   RoomAgentView,
   RoomPageData,
+  RoomQuestionView,
   RoomRole,
   RoomView,
   SessionView,
@@ -69,6 +71,7 @@ export async function loadRoomPageData(access: RoomAccess): Promise<RoomPageData
     scheduleRes,
     readRes,
     roomMembersRes,
+    questionsRes,
   ] = await Promise.all([
     supabase
       .from("messages")
@@ -140,6 +143,17 @@ export async function loadRoomPageData(access: RoomAccess): Promise<RoomPageData
       .eq("user_id", access.user.id)
       .maybeSingle(),
     supabase.from("room_members").select("user_id").eq("room_id", roomId),
+    supabase
+      .from("tasks")
+      .select(
+        "id, number, title, description, metadata, asked_count, requested_by_agent_id, created_at, expires_at",
+      )
+      .eq("room_id", roomId)
+      .eq("kind", "request")
+      .eq("status", "open")
+      .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
+      .order("created_at", { ascending: false })
+      .limit(6),
   ])
 
   const rawMessages = (
@@ -399,6 +413,44 @@ export async function loadRoomPageData(access: RoomAccess): Promise<RoomPageData
       }
     : null
 
+  // Open questions a bot is waiting on, newest first: the room shows them above the composer.
+  const questions: RoomQuestionView[] = (
+    (questionsRes.data ?? []) as {
+      id: string
+      number: number
+      title: string
+      description: string | null
+      metadata: Record<string, unknown> | null
+      asked_count: number | null
+      requested_by_agent_id: string | null
+      created_at: string
+      expires_at: string | null
+    }[]
+  ).map((row) => {
+    const agent = row.requested_by_agent_id
+      ? roomAgents.find(({ agent: item }) => item.id === row.requested_by_agent_id)?.agent
+      : null
+    const metadata = row.metadata ?? {}
+    return {
+      id: row.id,
+      number: row.number,
+      title: row.title,
+      description: row.description ?? "",
+      options: Array.isArray(metadata.options)
+        ? (metadata.options as unknown[]).filter(
+            (option): option is string => typeof option === "string",
+          )
+        : [],
+      items: askItemsFromMetadata(metadata),
+      askedCount: row.asked_count ?? 1,
+      createdAt: row.created_at,
+      expiresAt: row.expires_at,
+      agentHandle: agent?.handle ?? null,
+      agentName: agent?.displayName ?? null,
+      goal: typeof metadata.goal === "string" && metadata.goal.trim() ? metadata.goal.trim() : null,
+    }
+  })
+
   const threadCounts: Record<string, number> = {}
   for (const row of (threadRowsRes.data ?? []) as { thread_root_id: string | null }[]) {
     if (!row.thread_root_id) continue
@@ -414,6 +466,7 @@ export async function loadRoomPageData(access: RoomAccess): Promise<RoomPageData
     orgRole: access.orgRole,
     messages,
     toolCalls,
+    questions,
     roomAgents,
     canvases,
     members: members.map((member) => ({ ...member, avatarUrl: null })),

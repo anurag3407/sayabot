@@ -146,6 +146,14 @@ A right-side native `<dialog>` (max 560px) for one thread root. On open it fetch
 - **`ToolCallRow`** — one step: tool name (or `describeMacStep` for Mac steps), `StatusBadge` in a rounded pill, clock time; opening it shows arguments, streaming `liveOutput` (with copy), error and result blocks. Keeps `data-testid="tool-call"` and `data-tool-call-id` for tests.
 - **`ToolCallsList`** — renders any `pending_approval` call as an `ApprovalCard` first (a waiting approval is never hidden inside a folded group) and folds everything else into one `WorkedGroup`. `grouped={false}` lists each step on its own — the room Activity tab uses it as a log.
 
+## 🙋 Questions in the room (`question-card.tsx`)
+
+A bot that needs a person does not have to send them to the Inbox: open requests (`tasks.kind = "request"`, status `open`, not expired) are loaded with the room page (`loadRoomPageData` → `RoomPageData.questions`) and drawn above the composer by `RoomQuestions`, newest three at a time with a "N more waiting in your Inbox" line.
+
+- **`QuestionCard`** shows the bot's name, the time, `asked N times`, the question, its details, and — when the question carries options — one-tap answer buttons (the first is primary). Keyed asks (`metadata.items`) render one small block per unanswered item, each with its own option chips and a text field; already answered items are counted, not repeated.
+- Every answer goes through `answerTaskRequestAction` with `alsoPost: true`, so it lands in the room as a human message mentioning the bot — which wakes it and, for a question asked during a `/goal`, resumes the goal. A `goal waiting` chip marks those questions with the goal text as its tooltip.
+- New and answered questions arrive live: `use-room-realtime` subscribes to `tasks` changes for the room and calls `scheduleRefresh()` (`router.refresh()`), the same path canvases and meetings use.
+
 ## 🧾 Message Rendering (`markdown.tsx` + `components/chat/*`)
 
 Messages render through **Streamdown** (streaming-safe markdown) with mode `streaming | static`, `parseIncompleteMarkdown`, and plugins:
