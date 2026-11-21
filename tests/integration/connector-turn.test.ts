@@ -68,6 +68,7 @@ vi.mock("../../apps/orchestrator/src/runner/llm", () => ({
     modelName: "connector-test-model",
   }),
   resolveEffortLevel: () => undefined,
+  rememberLastModel: async () => {},
 }))
 
 vi.mock("../../apps/orchestrator/src/runner/context", () => ({
