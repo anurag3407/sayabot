@@ -49,7 +49,7 @@ Caching is keyed by the **SHA-256 hash of the GitHub token** — "By a hash of t
 
 ### `copilotFetch(githubToken, baseFetch?)`
 
-(`copilot.ts:102-110`.) The fetch factory the registry injects into `createOpenAICompatible` for the `copilot` provider (and for `openai-compatible` rows whose base URL is Copilot's). For every API call it:
+(`copilot.ts:102-110`.) The fetch factory the registry injects into `createTrackedOpenAICompatible` for the `copilot` provider (and for `openai-compatible` rows whose base URL is Copilot's). Usage tracking wraps this fetch, so Copilot's token swap still runs and the usage chunk is still normalized. For every API call it:
 
 1. Obtains (or reuses) a Copilot session token via `copilotSessionToken`.
 2. Overwrites `authorization` with `Bearer <copilotToken>` — "whatever Authorization the SDK set from the saved key".

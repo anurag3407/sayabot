@@ -73,7 +73,7 @@ Called by `recordRoutineResult` when a scheduled run's turn ends (see [scheduler
 
 One place turns a model call into a `usage_events` row "so every path (replies, moderator turns, subagents, critic checks, memory consolidation) is counted and priced the same way" (`usage.ts:7-11`).
 
-- **`tokensFrom(usage: LanguageModelUsage)`** (`usage.ts:44-52`): normalizes the AI SDK's usage object — `inputTokens`, `outputTokens`, plus `cachedInputTokens`/`cacheWriteTokens` from `inputTokenDetails`, missing fields → 0. Returns `null` for a nullish input, which `recordUsageEvent` treats as "nothing to record".
+- **`tokensFrom(usage: LanguageModelUsage)`** (`usage.ts:44-52`): normalizes the AI SDK's usage object — `inputTokens`, `outputTokens`, plus `cachedInputTokens`/`cacheWriteTokens` from `inputTokenDetails`, missing fields → 0. Returns `null` for a nullish input, which `recordUsageEvent` treats as "nothing to record". OpenAI-compatible and other third-party providers only include that usage object on a stream when the client sends `stream_options.include_usage`. `createTrackedOpenAICompatible` (`packages/llm/src/compatible-usage.ts`) does that and rewrites alternate token fields into this same shape before the engine records the call. See [Provider Registry](../../llm/registry-and-models.md).
 
 ```typescript
 export interface UsageTokens {

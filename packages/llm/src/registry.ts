@@ -4,7 +4,6 @@ import { createCerebras } from "@ai-sdk/cerebras"
 import { createGoogle } from "@ai-sdk/google"
 import { createGroq } from "@ai-sdk/groq"
 import { createOpenAI } from "@ai-sdk/openai"
-import { createOpenAICompatible } from "@ai-sdk/openai-compatible"
 import type { LanguageModel } from "ai"
 import {
   readSayaAiConfig,
@@ -12,6 +11,7 @@ import {
   resolveSayaModel,
   type Provider,
 } from "@sayabot/core"
+import { createTrackedOpenAICompatible } from "./compatible-usage"
 import { COPILOT_API_BASE, copilotFetch, isCopilotBaseUrl } from "./copilot"
 import { decryptSecret } from "./crypto"
 
@@ -43,7 +43,7 @@ export function createLanguageModel(config: LanguageModelConfig): LanguageModel 
     case "cerebras":
       return createCerebras({ apiKey, ...(baseURL ? { baseURL } : {}) })(model)
     case "openrouter":
-      return createOpenAICompatible({
+      return createTrackedOpenAICompatible({
         name: "openrouter",
         baseURL: baseURL || "https://openrouter.ai/api/v1",
         apiKey,
@@ -54,56 +54,56 @@ export function createLanguageModel(config: LanguageModelConfig): LanguageModel 
       })(model)
     case "copilot":
       // The saved key is a GitHub sign-in; each call swaps it for a short-lived Copilot token.
-      return createOpenAICompatible({
+      return createTrackedOpenAICompatible({
         name: "copilot",
         baseURL: baseURL || COPILOT_API_BASE,
         apiKey,
         fetch: copilotFetch(apiKey),
       })(model)
     case "opencode":
-      return createOpenAICompatible({
+      return createTrackedOpenAICompatible({
         name: "opencode",
         baseURL: baseURL || "https://api.opencode.ai/v1",
         apiKey,
       })(model)
     case "command-code":
-      return createOpenAICompatible({
+      return createTrackedOpenAICompatible({
         name: "command-code",
         baseURL: baseURL || "https://api.cohere.com/v2",
         apiKey,
       })(model)
     case "deepseek":
-      return createOpenAICompatible({
+      return createTrackedOpenAICompatible({
         name: "deepseek",
         baseURL: baseURL || "https://api.deepseek.com/v1",
         apiKey,
       })(model)
     case "minimax":
-      return createOpenAICompatible({
+      return createTrackedOpenAICompatible({
         name: "minimax",
         baseURL: baseURL || "https://api.minimaxi.chat/v1",
         apiKey,
       })(model)
     case "grok":
-      return createOpenAICompatible({
+      return createTrackedOpenAICompatible({
         name: "grok",
         baseURL: baseURL || "https://api.x.ai/v1",
         apiKey,
       })(model)
     case "kimi":
-      return createOpenAICompatible({
+      return createTrackedOpenAICompatible({
         name: "kimi",
         baseURL: baseURL || "https://api.moonshot.cn/v1",
         apiKey,
       })(model)
     case "qwen":
-      return createOpenAICompatible({
+      return createTrackedOpenAICompatible({
         name: "qwen",
         baseURL: baseURL || "https://dashscope.aliyuncs.com/compatible-mode/v1",
         apiKey,
       })(model)
     case "cursor":
-      return createOpenAICompatible({
+      return createTrackedOpenAICompatible({
         name: "cursor",
         baseURL: baseURL || "https://api.cursor.com/v1",
         apiKey,
@@ -117,7 +117,7 @@ export function createLanguageModel(config: LanguageModelConfig): LanguageModel 
           : accountId
             ? `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/v1`
             : "https://api.cloudflare.com/client/v4/ai/v1"
-      return createOpenAICompatible({
+      return createTrackedOpenAICompatible({
         name: "cloudflare",
         baseURL: baseURL || defaultBaseUrl,
         apiKey,
@@ -129,14 +129,14 @@ export function createLanguageModel(config: LanguageModelConfig): LanguageModel 
       }
       // Copilot keys are stored as OpenAI-compatible rows pointing at its API.
       if (isCopilotBaseUrl(baseURL)) {
-        return createOpenAICompatible({
+        return createTrackedOpenAICompatible({
           name: "copilot",
           baseURL,
           apiKey,
           fetch: copilotFetch(apiKey),
         })(model)
       }
-      return createOpenAICompatible({ name: "sayabot-compatible", baseURL, apiKey })(model)
+      return createTrackedOpenAICompatible({ name: "sayabot-compatible", baseURL, apiKey })(model)
     default:
       throw new MissingModelConfigError(`unsupported provider: ${String(provider)}`)
   }
