@@ -136,4 +136,10 @@ vi.mock("./approvals", () => ({
 
 Which tools hit this gate is defined per spec — see the inventory table in [./tool-system.md](./tool-system.md) (`git_commit`, `git_push`, `use_secret`, all connector send tools, password-manager reads, `install_skill`, `publish_skill`, destructive `computer_shell` commands, destructive `verify_workspace` checks, and any MCP tool flagged destructive).
 
-Related docs: [./tool-system.md](./tool-system.md) · [./secrets-broker.md](./secrets-broker.md) · [../../architecture/realtime-and-events.md](../../architecture/realtime-and-events.md) · [../../database/schema-engine-tools-ops.md](../../database/schema-engine-tools-ops.md) · [../engine/service-overview.md](../engine/service-overview.md)
+## 🎟 Standing grants
+
+A person who has allowed one exact call can have the bot remember it: `POST /v1/tools/:toolCallId/approve` with `{ approved: true, remember: true }` saves a grant for that tool plus those arguments, for 24 hours, on that bot — see [standing-grants](./standing-grants.md). A later identical call skips the card entirely: the `tool_calls` row is inserted already approved, `tool.approval_resolved` is broadcast, and no `tool.approval_requested` or push is sent.
+
+Grants never cover credential reads, outbound sends, installs, deletions, or money tools, and `review_all` rooms still ask for every step. A grant is a recorded human approval, not a way around the gate.
+
+Related docs: [./tool-system.md](./tool-system.md) · [./secrets-broker.md](./secrets-broker.md) · [./standing-grants.md](./standing-grants.md) · [../../architecture/realtime-and-events.md](../../architecture/realtime-and-events.md) · [../../database/schema-engine-tools-ops.md](../../database/schema-engine-tools-ops.md) · [../engine/service-overview.md](../engine/service-overview.md)

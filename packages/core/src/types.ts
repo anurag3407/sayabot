@@ -139,7 +139,16 @@ export const roomEventSchema = z.discriminatedUnion("type", [
     type: z.literal("run.step"),
     runId: z.string(),
     step: z.number().int(),
-    kind: z.enum(["model", "tool", "compaction", "recall", "plan", "subagent", "verify"]),
+    kind: z.enum([
+      "model",
+      "tool",
+      "compaction",
+      "recall",
+      "plan",
+      "subagent",
+      "verify",
+      "watchdog",
+    ]),
     label: z.string(),
   }),
   z.object({

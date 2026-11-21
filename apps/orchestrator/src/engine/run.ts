@@ -18,7 +18,7 @@ import {
   type ToolSet,
 } from "ai"
 import { eq, sql } from "drizzle-orm"
-import { consumeRunInterrupts, registerRun, unregisterRun } from "../active-runs"
+import { consumeRunInterrupts, registerRun, touchRun, unregisterRun } from "../active-runs"
 import { ComputerClient } from "../computer/client"
 import { getDb } from "../db"
 import { recordUsageEvent } from "../usage"
@@ -202,6 +202,8 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
   let fullRaw = ""
   let chain = Promise.resolve()
   const send = (event: Parameters<typeof broadcast>[1]) => {
+    // Anything the room can see counts as progress for the stall watchdog.
+    touchRun(run.id)
     chain = chain.then(() => broadcast(room.id, event)).catch(() => {})
   }
   const flush = () => {

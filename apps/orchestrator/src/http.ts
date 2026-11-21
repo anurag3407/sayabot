@@ -8,6 +8,7 @@ import { z } from "zod"
 import { abortRun, activeRunIds } from "./active-runs"
 import { canUserReadRoom } from "./authz"
 import { resolveApprovalWaiter } from "./tools/approvals"
+import { rememberStandingGrant } from "./tools/grants"
 import { interruptRoom } from "./coordinator/interrupt"
 import { ttsRoutes } from "./tts/routes"
 import { botRoutes } from "./bot/routes"
@@ -768,7 +769,21 @@ How can I assist your team today?</div>
     await notify("tool_call_resolved", { toolCallId, status })
     resolveApprovalWaiter(toolCallId, status)
 
-    return c.json({ ok: true, status })
+    // "Always allow this one": remember the exact call the person just approved, for a day.
+    let remembered = null
+    if (approved && body.remember === true) {
+      remembered = await rememberStandingGrant({
+        runId: toolCall.runId,
+        toolName: toolCall.toolName,
+        args: toolCall.args,
+        grantedBy: typeof body.approvedBy === "string" ? body.approvedBy : null,
+      }).catch((error: unknown) => {
+        console.warn("[approvals] could not remember this call", error)
+        return null
+      })
+    }
+
+    return c.json({ ok: true, status, ...(remembered ? { remembered } : {}) })
   })
 
   app.get("/internal/runs/:runId/trace", async (c) => {

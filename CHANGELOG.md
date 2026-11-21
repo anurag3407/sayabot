@@ -10,6 +10,12 @@ Version numbers follow the desktop app and the tag names in the repository (`v1.
 
 **Agents stop repeating themselves.** A redirect loop breaker ends a run that keeps bouncing between the same steps instead of spending the room's budget on it.
 
+**A room keeps answering when one account runs dry.** A bot can name a second model on its own provider key; when the first reports an exhausted balance, the same turn is answered on the fallback and the dry model is skipped for 15 minutes instead of being retried on every message. See [quota takeover](docs/reference/orchestrator/engine/engine-takeover.md).
+
+**Approvals can be remembered for one exact call.** Allowing a call with "always allow this one" saves it for that tool and those exact arguments for 24 hours, so the same test command or commit stops asking. Credential reads, sends, installs, deletions and money tools never qualify. See [standing grants](docs/reference/orchestrator/tools/standing-grants.md).
+
+**A wedged turn is stopped and explained.** A turn that shows no activity for 20 minutes — or two hours while one of its tools is running — is stopped with a note in the chat, instead of holding its room. See [stall watchdog](docs/reference/orchestrator/engine/engine-watchdog.md).
+
 **Managed Supabase schemas bootstrap cleanly.** Creating the schema on a hosted Supabase project no longer fails on permission differences between managed and local Postgres.
 
 **The container agent starts as the low-privilege user.** Privilege dropping now happens in the standalone `agentd` entrypoint, so a computer that is started outside the normal launcher still runs as `bot`.

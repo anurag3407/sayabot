@@ -307,6 +307,8 @@ export interface VerificationEvidence {
 ## Related docs
 
 - [Coordinator (who calls startAgentTurn)](./coordinator.md)
+- [Quota takeover (runWithQuotaTakeover, quota holds)](./engine-takeover.md)
+- [Stall watchdog (assessStall, startRunWatchdog)](./engine-watchdog.md)
 - [Budget & compaction (resolveContextBudget, summarizeForBudget, elideOldToolResults)](./engine-budget-and-compaction.md)
 - [Loop control & interrupts (decidePrepareStep, steeringMessage)](./engine-interrupts-and-recovery.md)
 - [Planning (runFittingTheModel, skills)](./engine-planning.md)

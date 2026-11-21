@@ -113,7 +113,7 @@ The orchestrator's other realtime needs — room events it must _receive_ rather
 | `agent.connected`         | `{ agentId, handle, client? }`                                                                                    | presence for local/MCP agents                                                            |
 | `computer.state`          | `{ agentId, status }`                                                                                             | computerd lifecycle via `/internal/computer/state`                                       |
 | `room.notice`             | `{ level: "info" \| "warn" \| "error", message }`                                                                 | system notices (e.g. egress violations)                                                  |
-| `run.step`                | `{ runId, step, kind: "model" \| "tool" \| "compaction" \| "recall" \| "plan" \| "subagent" \| "verify", label }` | engine loop progress                                                                     |
+| `run.step`                | `{ runId, step, kind: "model" \| "tool" \| "compaction" \| "recall" \| "plan" \| "subagent" \| "verify" \| "watchdog", label }` | engine loop progress                                                                     |
 | `run.status`              | `{ runId, status: "thinking" \| "tool" \| "waiting:approval" \| "waiting:answer" \| "compacting" }`               | engine loop state                                                                        |
 | `run.plan`                | `{ runId, items: [{ id, title, status: "pending" \| "in_progress" \| "done" \| "blocked", note? }] }`             | `update_plan` tool                                                                       |
 

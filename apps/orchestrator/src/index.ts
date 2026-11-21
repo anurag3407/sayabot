@@ -11,6 +11,7 @@ import { startMemoryScheduler } from "./memory/scheduler"
 import { startDiscordGateway } from "./connectors/discord-gateway"
 import { startRoutineScheduler } from "./scheduler/routines"
 import { startApprovalListener } from "./tools/approvals"
+import { startRunWatchdog } from "./engine/watchdog"
 import { startBotReplyListener } from "./bot-reply"
 import { abortRoomRuns, abortRun } from "./active-runs"
 import { serve } from "@hono/node-server"
@@ -78,6 +79,8 @@ startDiscordGateway()
 startMeetingScheduler()
 startRoutineScheduler()
 startMemoryScheduler()
+// A turn with nothing to show for itself is stopped instead of holding its room forever.
+const stopRunWatchdog = startRunWatchdog()
 
 const app = createApp()
 const server = serve({ fetch: app.fetch, port: env.PORT }, (info) => {
@@ -125,6 +128,7 @@ async function shutdown(signal: string) {
   shuttingDown = true
   console.log(`[mesh] shutting down (${signal})…`)
   try {
+    stopRunWatchdog()
     stopMeetingScheduler()
     await stopJobs()
     await destroyHocuspocus()

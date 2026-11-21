@@ -127,7 +127,9 @@ Task-oriented guides live at the top level of `docs/`. The **reference library**
 | [engine-subagents-and-tool-search](reference/orchestrator/engine/engine-subagents-and-tool-search.md) | Subagent spawning, BM25 tool index, `find_tools`                        |
 | [engine-verify](reference/orchestrator/engine/engine-verify.md)                                       | Verify modes (self/critic), verification gate                           |
 | [runner-llm](reference/orchestrator/engine/runner-llm.md)                                             | Model resolution ladders, streaming runner, Mac approval pipeline       |
-| [runner-external-and-local](reference/orchestrator/engine/runner-external-and-local.md)               | External bots, CLI runners (Claude Code/Codex), local Mac runner        |
+| [runner-external-and-local](reference/orchestrator/engine/runner-external-and-local.md)               | External bots, CLI runners (Claude Code/Codex), local Mac runner                        |
+| [engine-takeover](reference/orchestrator/engine/engine-takeover.md)                                   | Quota takeover: fallback model, holds, failed-attempt cleanup                            |
+| [engine-watchdog](reference/orchestrator/engine/engine-watchdog.md)                                   | Stall watchdog: activity tracking, turn vs tool limits, in-process abort                 |
 
 **Tools — `tools/`**
 
@@ -135,6 +137,7 @@ Task-oriented guides live at the top level of `docs/`. The **reference library**
 | :--------------------------------------------------------------------- | :----------------------------------------------------------------------- |
 | [tool-system](reference/orchestrator/tools/tool-system.md)             | `buildTools` registry, `ToolSpec`, audit pipeline, 60+ tool inventory    |
 | [approvals](reference/orchestrator/tools/approvals.md)                 | `pending_approval` lifecycle, 5-min timeout, push fan-out                |
+| [standing-grants](reference/orchestrator/tools/standing-grants.md)     | Exact-call grants: digest, exclusions, 24h TTL, create/revoke             |
 | [secrets-broker](reference/orchestrator/tools/secrets-broker.md)       | `use_secret`, placeholder swap, grant tiers, egress resolve gateway      |
 | [tool-computer](reference/orchestrator/tools/tool-computer.md)         | `select_computer` + 17 computer tools + 10 browser tools                 |
 | [tool-sandbox](reference/orchestrator/tools/tool-sandbox.md)           | `code_sandbox`/`terminal_exec`, 6-backend catalog                        |

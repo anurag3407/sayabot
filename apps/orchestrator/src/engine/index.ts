@@ -6,6 +6,7 @@ import { applyRoomModel } from "../runner/room-model"
 import { admitServerTurn, planLimitTurn } from "../plans"
 import { runFittingTheModel } from "./fit-model"
 import { runEngineTurn } from "./run"
+import { runWithQuotaTakeover } from "./takeover"
 
 export * from "./context"
 export * from "./run"
@@ -34,6 +35,7 @@ export async function startAgentTurn(input: RunLlmTurnArgs): Promise<TurnResult>
   if (cli) return runCliTurn(args, cli)
   const engine = params?.engine ?? "v2"
   if (engine === "v1") return runLlmTurn(args)
-  if (engine === "v2") return runFittingTheModel(args, runEngineTurn)
+  if (engine === "v2")
+    return runWithQuotaTakeover(args, (next) => runFittingTheModel(next, runEngineTurn))
   throw new Error(`Unsupported agent engine: ${String(engine)}`)
 }

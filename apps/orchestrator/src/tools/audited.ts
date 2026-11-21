@@ -3,11 +3,13 @@ import { rooms, toolCalls } from "@sayabot/db"
 import { tool, type ToolSet } from "ai"
 import { eq } from "drizzle-orm"
 import { z } from "zod"
+import { beginRunTool, endRunTool, touchRun } from "../active-runs"
 import { getDb } from "../db"
 import { capToolOutputForModel } from "../engine/loop-control"
 import { notifyHumansNeeded } from "../push"
 import { broadcast } from "../realtime"
 import { resolveApprovalWaiter, waitForApproval } from "./approvals"
+import { standingGrantFor } from "./grants"
 
 export interface ToolRuntime {
   orgId: string
@@ -129,6 +131,11 @@ export function toAuditedTools(specs: ToolSpec[], runtime: ToolRuntime): ToolSet
         const dangerous =
           mode === "turbo" ? false : isDangerous(spec, input) || mode === "review_all"
         const storedArgs = forStorage(input, runtime.scrub)
+        // A standing grant covers one exact call a person already allowed; everything else asks.
+        const grant = dangerous
+          ? await standingGrantFor(runtime.agentId, spec.name, storedArgs).catch(() => null)
+          : null
+        const needsApproval = dangerous && !grant
         const [row] = await getDb()
           .insert(toolCalls)
           .values({
@@ -137,7 +144,13 @@ export function toAuditedTools(specs: ToolSpec[], runtime: ToolRuntime): ToolSet
             messageId: toSafeUuid(runtime.messageId),
             toolName: spec.name,
             args: storedArgs as Record<string, unknown>,
-            status: dangerous ? "pending_approval" : "running",
+            status: needsApproval ? "pending_approval" : "running",
+            ...(grant
+              ? {
+                  approvedBy: toSafeUuid(grant.grantedBy),
+                  resolvedAt: new Date(),
+                }
+              : {}),
           })
           .returning({ id: toolCalls.id })
         if (!row) throw new Error("failed to record tool call")
@@ -151,7 +164,16 @@ export function toAuditedTools(specs: ToolSpec[], runtime: ToolRuntime): ToolSet
           args: storedArgs,
         })
 
-        if (dangerous) {
+        if (grant) {
+          // Recorded as approved on the strength of the grant, so every surface agrees it ran.
+          await broadcast(runtime.roomId, {
+            type: "tool.approval_resolved",
+            toolCallId: row.id,
+            status: "approved",
+          })
+        }
+
+        if (needsApproval) {
           await broadcast(runtime.roomId, {
             type: "tool.approval_requested",
             toolCallId: row.id,
@@ -197,6 +219,8 @@ export function toAuditedTools(specs: ToolSpec[], runtime: ToolRuntime): ToolSet
             }
           }
           resolveApprovalWaiter(row.id, "rejected")
+          // Waiting on a person is not a wedged turn.
+          if (runtime.runId) touchRun(runtime.runId)
           await broadcast(runtime.roomId, {
             type: "tool.approval_resolved",
             toolCallId: row.id,
@@ -229,6 +253,7 @@ export function toAuditedTools(specs: ToolSpec[], runtime: ToolRuntime): ToolSet
           }
         }
 
+        if (runtime.runId) beginRunTool(runtime.runId)
         try {
           options.abortSignal?.throwIfAborted()
           const ctx: ToolContext = {
@@ -269,6 +294,8 @@ export function toAuditedTools(specs: ToolSpec[], runtime: ToolRuntime): ToolSet
             durationMs: Date.now() - startedAt,
           })
           return { ok: false, error: redactSecrets(scrubbedError).text }
+        } finally {
+          if (runtime.runId) endRunTool(runtime.runId)
         }
       },
     })
