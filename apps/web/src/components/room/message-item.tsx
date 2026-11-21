@@ -3,7 +3,6 @@
 import { Avatar } from "@/components/ui/avatar"
 import { CopyButton } from "@/components/copy-button"
 import { Markdown } from "@/components/markdown"
-import { ThinkingLine } from "@/components/chat/thinking-line"
 import { splitThinking } from "@sayabot/core"
 import { InlineAlert } from "@/components/ui/empty"
 import { ReplyIcon } from "@/components/ui/icons"
@@ -106,7 +105,8 @@ export function MessageItem({
     "text-[11px] text-faint md:opacity-0 md:transition-opacity md:group-hover:opacity-100"
   const folded = isAgent ? splitThinking(message.content) : null
   const answer = folded ? folded.answer : message.content
-  const showThinking = Boolean(folded && (folded.thinking || folded.open))
+  const thinking = folded?.thinking ?? null
+  const thinkingStreaming = Boolean(streaming && folded?.open)
 
   return (
     <article
@@ -199,9 +199,17 @@ export function MessageItem({
           </span>
         </header>
 
-        {showThinking && folded ? (
-          <ThinkingLine text={folded.thinking} streaming={streaming && folded.open} />
-        ) : null}
+        {/* Everything the bot did sits folded above the answer, so the answer is what reads. */}
+        <ToolCallsList
+          calls={relatedCalls}
+          orgSlug={orgSlug}
+          canApprove={canAdmin}
+          agentName={isAgent ? message.senderName : null}
+          viewerId={selfId}
+          thinking={thinking}
+          thinkingStreaming={thinkingStreaming}
+        />
+
         {answer ? (
           <div
             className={cn(
@@ -222,7 +230,7 @@ export function MessageItem({
         ) : null}
         {isAgent && !streaming && answer && replySourceLabel(message.metadata) ? (
           <p className="mt-1 pl-1 text-[11px] text-faint">{replySourceLabel(message.metadata)}</p>
-        ) : streaming && !answer && !showThinking ? (
+        ) : streaming && !answer && !thinking && !thinkingStreaming ? (
           <p
             className="mt-1 inline-flex items-center gap-1.5 rounded-[22px] rounded-tl-md bg-panel px-4 py-3 text-[14px] text-faint"
             aria-label="Thinking"
@@ -295,14 +303,6 @@ export function MessageItem({
             </ul>
           </details>
         ) : null}
-
-        <ToolCallsList
-          calls={relatedCalls}
-          orgSlug={orgSlug}
-          canApprove={canAdmin}
-          agentName={isAgent ? message.senderName : null}
-          viewerId={selfId}
-        />
 
         {!inThread && onOpenThread && threadReplyCount !== undefined && threadReplyCount > 0 ? (
           <button

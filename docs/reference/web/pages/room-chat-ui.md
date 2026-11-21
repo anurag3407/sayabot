@@ -121,11 +121,11 @@ Retry eligibility: system `halted` messages retry only when `metadata.reason` is
 
 - **System messages** — a grey card ("Sayabot" + timestamp) with a "Halted" state, optional `PokeBotButton` when `metadata.reason === "agent_quiet"` (sends "@<handle> are you still there? Pick up where you left off…" via `sendMessage`), and `FailureActions` for halted turns.
 - **Human messages** — right-aligned bubbles (`mine` when `senderId === selfId`), no avatar column.
-- **Agent messages** — avatar + name, panel-tinted bubble, `InspectTraceButton` (opens the run inspector drawer), `CopyButton`, per-message `ToolCallsList`, reply-in-thread button, live vote tally (`VoteTally` reads `metadata.vote { question, options, ballots }`, animating bars and showing per-agent reasons), collapsible tool warnings, error banner + `FailureActions`, and the `replySourceLabel` footnote (e.g. "answered from your Mac" via `src/lib/runs-on.ts`).
+- **Agent messages** — avatar + name, panel-tinted bubble, `InspectTraceButton` (opens the run inspector drawer), `CopyButton`, one folded step group per reply (`ToolCallsList` → `WorkedGroup`), reply-in-thread button, live vote tally (`VoteTally` reads `metadata.vote { question, options, ballots }`, animating bars and showing per-agent reasons), collapsible tool warnings, error banner + `FailureActions`, and the `replySourceLabel` footnote (e.g. "answered from your Mac" via `src/lib/runs-on.ts`).
 
 Streaming shows a "Live" tag, a `streaming-caret`, or a three-dot bubble when no content has arrived yet.
 
-Agent replies run through `splitThinking` (`@sayabot/core`) before they render. Text inside `<think>`, `<thinking>`, `<reasoning>`, `<thought>`, `<antthinking>`, or `<|think|>` is not part of the bubble. It sits on one quiet line above the answer — **Thinking** while the block is still open, **Thought** once it has closed. Clicking the line expands the reasoning (`ThinkingLine` in `components/chat/thinking-line.tsx`). Copy uses the answer, and the reasoning only when the reply has no answer yet. Human messages are left untouched, so a person can paste those tags.
+Agent replies run through `splitThinking` (`@sayabot/core`) before they render. Text inside `<think>`, `<thinking>`, `<reasoning>`, `<thought>`, `<antthinking>`, or `<|think|>` is not part of the bubble. It rides with the reply's tool steps — the folded line reads **Thinking** while the block is still open and **Thought** once it has closed. Opening that line reveals the reasoning along with every step the bot took. Copy uses the answer, and the reasoning only when the reply has no answer yet. Human messages are left untouched, so a person can paste those tags.
 
 The bubble is `inline-block min-w-0 max-w-full` and scrolls sideways rather than painting over the next message.
 
@@ -139,11 +139,12 @@ A right-side native `<dialog>` (max 560px) for one thread root. On open it fetch
 
 `TurnStrip` (`turn-strip.tsx`) appears only when a turn is active: the working agent's busy mascot, "… is working on it", the current step label from `runActivity` (`run.step` broadcast), "N of M done" for plan mode, "then <names>" for queued agents, and a Stop button that calls `stopGeneration({ orgSlug, roomId, runId })` from `src/lib/actions/messages.ts`.
 
-`tool-call-card.tsx` exports the approval system:
+`tool-call-card.tsx` exports the step and approval UI:
 
 - **`ApprovalCard`** — "approval needed" header with a live countdown (`approvalMsLeft` from `src/lib/tool-summary.ts`; <60 s turns warn, ≤0 shows "expired — rejected automatically"). The human-readable request comes from `describeToolCall` (or `describeMacStep` for Mac-hosted steps, where approval belongs to the host owner via `readMacMarker`; non-owners see "Waiting for the owner of <host> to decide"). Body shows the exact JSON args. Buttons: Approve, Reject, and a conditional "always allow" (`decide("approved", true)` → `resolveToolCall({ decision, remember })` from `src/lib/actions/messages.ts`).
-- **`ToolCallCard`** — a `<details>` card with status badge, arguments, streaming `liveOutput` (with copy), error and result blocks.
-- **`ToolCallsList`** — routes each call to the right card; `pending_approval` → `ApprovalCard`.
+- **`WorkedGroup`** — one folded line above the answer instead of a stack of boxes: "Worked for 2 min · 6 steps", or "Working for 40 sec · 2 steps" with a pulsing dot while the turn runs, plus "· N failed" in danger when a step errored. A reply with reasoning shows "Thinking"/"Thought" when it has no steps. It opens itself while work is in progress and folds when the turn stops, unless the reader has toggled it. The body holds the reasoning, then one `ToolCallRow` per step. Durations under 5 s are left off (`workedDuration`), and a running duration ticks once a second.
+- **`ToolCallRow`** — one step: tool name (or `describeMacStep` for Mac steps), `StatusBadge` in a rounded pill, clock time; opening it shows arguments, streaming `liveOutput` (with copy), error and result blocks. Keeps `data-testid="tool-call"` and `data-tool-call-id` for tests.
+- **`ToolCallsList`** — renders any `pending_approval` call as an `ApprovalCard` first (a waiting approval is never hidden inside a folded group) and folds everything else into one `WorkedGroup`. `grouped={false}` lists each step on its own — the room Activity tab uses it as a log.
 
 ## 🧾 Message Rendering (`markdown.tsx` + `components/chat/*`)
 

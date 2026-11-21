@@ -8,6 +8,8 @@ Version numbers follow the desktop app and the tag names in the repository (`v1.
 
 **Run Sayabot with no database and no Docker.** A new zero-config mode keeps everything on one machine: an embedded Postgres (PGlite), a host sandbox under `~/.sayabot`, and a local workspace page the desktop app opens on launch. Nothing needs a Supabase project to try the product. Use `COMPUTER_BACKEND=host` only on a machine you trust — it is not a container (see [G4](docs/reference/architecture/threat-model.md#7-known-gaps)).
 
+**A reply's work folds into one line.** Tool steps no longer stack up as a column of separate boxes in a room: they sit behind one "Worked for 2 min · 6 steps" line above the answer, opening to a compact row per step with its output one click further. While a bot is working the line reads "Working for 40 sec" with a live dot, and a step that failed says so without opening anything. Reasoning now opens from the same line. Anything waiting for your approval stays outside it, visible.
+
 **Agents stop repeating themselves.** A redirect loop breaker ends a run that keeps bouncing between the same steps instead of spending the room's budget on it.
 
 **A room keeps answering when one account runs dry.** A bot can name a second model on its own provider key; when the first reports an exhausted balance, the same turn is answered on the fallback and the dry model is skipped for 15 minutes instead of being retried on every message. See [quota takeover](docs/reference/orchestrator/engine/engine-takeover.md).

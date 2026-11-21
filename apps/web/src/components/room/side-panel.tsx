@@ -257,6 +257,7 @@ function ActivityTab({
         canApprove={canAdmin}
         agentName={agentName}
         viewerId={viewerId}
+        grouped={false}
       />
     </div>
   )
