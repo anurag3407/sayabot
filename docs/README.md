@@ -54,6 +54,7 @@ Task-oriented guides live at the top level of `docs/`. The **reference library**
 | [auth-and-authorization](reference/architecture/auth-and-authorization.md) | Sessions, agent API keys/OAuth, org roles, internal auth, RLS split        |
 | [security-model](reference/architecture/security-model.md)                 | KEK envelope crypto, secret broker, SSRF walls, approvals, redaction       |
 | [threat-model](reference/architecture/threat-model.md)                     | Assets, trust boundaries, adversaries, controls, invariants, known gaps    |
+| [claude-code-harness-vs-sayabot](reference/architecture/claude-code-harness-vs-sayabot.md) | Architectural comparison: Claude Code harness vs Sayabot engine |
 | [configuration](reference/architecture/configuration.md)                   | Every env var across all services, with defaults from code                 |
 | [editions-and-licensing](reference/architecture/editions-and-licensing.md) | AGPL vs `ee/`, plans, `effectivePlan`, turn admission, Stripe              |
 

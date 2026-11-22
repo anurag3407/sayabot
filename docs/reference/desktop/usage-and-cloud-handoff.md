@@ -1,6 +1,6 @@
 # Sayabot Desktop — Usage Scanning & Cloud Handoff
 
-Two features live at the edges of the desktop app. **Usage** (`src/usage/`) reads plan limits and token history for the coding CLIs signed in on this Mac — Claude Code, Codex, Antigravity — turning provider responses and on-disk logs into dashboard-ready numbers without tokens ever leaving the process. **Cloud handoff** (`src/cloud-handoff.ts`) carries this Mac's workspace snapshot (bots, chats, routines, sealed keys) up to Sayabot Cloud while a plan is active and back down to any non-Cloud server afterwards.
+Two features live at the edges of the desktop app. **Usage** (`src/usage/`) reads plan limits and token history for the coding CLIs signed in on this Mac — Claude Code, Codex, Antigravity, OpenCode, Pi, Cursor, GitHub Copilot, ZCode — turning provider responses and on-disk logs into dashboard-ready numbers without tokens ever leaving the process. **Cloud handoff** (`src/cloud-handoff.ts`) carries this Mac's workspace snapshot (bots, chats, routines, sealed keys) up to Sayabot Cloud while a plan is active and back down to any non-Cloud server afterwards.
 
 Source files: `apps/desktop/src/usage/index.ts`, `src/cloud-handoff.ts`, parsers from `@sayabot/core/scanner` (see [Scanner](../core/scanner.md))
 
@@ -12,26 +12,46 @@ Source files: `apps/desktop/src/usage/index.ts`, `src/cloud-handoff.ts`, parsers
 
 Sign-in tokens are read, used for one request to the provider that issued them, and dropped; only percentages, reset times and token counts are handed back. All outbound provider calls identify themselves with `User-Agent: sayabot-desktop` and run under `AbortSignal.timeout(8_000)` (`TIMEOUT_MS`).
 
-## 📈 Plan Limits (`readPlanLimits`, `src/usage/index.ts:256`)
+## 📈 Plan Limits (`readPlanLimits`, `src/usage/index.ts`)
 
-Returns all three providers under `Promise.all`, each failing independently into an `unavailable(...)` `PlanLimits` with a plain-language `error`. Cached for **60 seconds** (`CACHE_MS`) so the top-bar rings can poll cheaply; `force` bypasses the cache. Every reading goes through `withLastGood`: a provider that comes back without windows (rate limit, sign-in refresh, network) returns its last reading with numbers instead, as long as that reading is under 12 hours old, so a passing failure never makes a ring vanish.
+Returns all eight providers (Claude, Codex, Antigravity, OpenCode, Pi/OMP, Cursor, Copilot, ZCode) under `Promise.all`, each failing independently into an `unavailable(...)` `PlanLimits` with a plain-language `error`. Cached for **60 seconds** (`CACHE_MS`) so the top-bar rings can poll cheaply; `force` bypasses the cache. Every reading goes through `withLastGood`: a provider that comes back without windows (rate limit, sign-in refresh, network) returns its last reading with numbers instead, as long as that reading is under 12 hours old, so a passing failure never makes a ring vanish.
 
-Each `PlanLimits` (type from `@sayabot/core/scanner`) is `{ provider, label, plan, windows, observedAt, error }` — `plan` is the plan name when the provider reports one (Claude's OAuth `subscriptionType`, Codex's parsed plan), `windows` the list of usage gauge rows (used percent + reset time) produced by the core parsers, and `error` a user-facing string when the provider could not be read (`null` on success). Timing constants: every outbound request runs under an 8-second `AbortSignal.timeout`, and the CLI/keychain helpers get 5-second timeouts with 1 MB output caps.
+Each `PlanLimits` (type from `@sayabot/core/scanner`) is `{ provider, label, plan, windows, observedAt, error }` — `plan` is the plan name when the provider reports one (Claude's OAuth `subscriptionType`, Codex's parsed plan, OpenRouter credit plan), `windows` the list of usage gauge rows (used percent + reset time) produced by the core parsers, and `error` a user-facing string when the provider could not be read (`null` on success). Timing constants: every outbound request runs under an 8-second `AbortSignal.timeout`, and the CLI/keychain helpers get 5-second timeouts with 1 MB output caps.
 
-### Claude (`readClaudeLimits`, `src/usage/index.ts:89`)
+### Claude (`readClaudeLimits`)
 
 1. **Credentials** (`claudeCredentials`): on macOS, `/usr/bin/security find-generic-password -s "Claude Code-credentials" -w` (the Keychain may prompt); fallback to `.credentials.json` under `$CLAUDE_CONFIG_DIR` or `~/.claude`. Only `claudeAiOauth.accessToken`, `expiresAt`, `subscriptionType` are extracted.
 2. **Freshness** — tokens expiring within 60 s (or 401/403 from the API) produce "sign-in needs a refresh. Run Claude Code once, then check again."
 3. **Usage** — `GET https://api.anthropic.com/api/oauth/usage` with the bearer token, `anthropic-beta: oauth-2025-04-20`, `User-Agent: sayabot-desktop`, 8 s timeout. A **429** sets a quiet period from `Retry-After` (default `CLAUDE_BACKOFF_MS = 5 min`) during which Claude is not called and "Claude is busy. Showing the last reading." is returned (so `withLastGood` shows the previous numbers). The JSON goes through `parseClaudeUsage` from `@sayabot/core` into limit windows; empty windows mean "no plan limits (an API key or a team plan without them)". The plan label is the OAuth `subscriptionType`, and connection failures degrade to "Couldn't reach Claude. Check your connection." rather than throwing.
 
-### Codex (`readCodexLimits`, `src/usage/index.ts:173`)
+### Codex (`readCodexLimits`)
 
-No sign-in is needed: Codex writes its own rate-limit readings into every session log. `newestCodexLogs` (`src/usage/index.ts:129`) walks `$CODEX_HOME` (default `~/.codex`) `sessions/<year>/<month>/<day>/*.jsonl` newest-first (directories sorted descending, files by mtime) up to 8 files; `tail` reads the **last 512 KB** of each; `lastCodexRateLimits` finds the newest recorded limits and `parseCodexRateLimits` converts them to windows plus a plan name. The first log with a usable reading wins; logs without one are skipped. No logs → "No Codex sessions on this computer yet."
+No sign-in is needed: Codex writes its own rate-limit readings into every session log. `newestCodexLogs` walks `$CODEX_HOME` (default `~/.codex`) `sessions/<year>/<month>/<day>/*.jsonl` newest-first (directories sorted descending, files by mtime) up to 8 files; `tail` reads the **last 512 KB** of each; `lastCodexRateLimits` finds the newest recorded limits and `parseCodexRateLimits` converts them to windows plus a plan name. The first log with a usable reading wins; logs without one are skipped. No logs → "No Codex sessions on this computer yet."
 
-### Antigravity (`readAntigravityLimits`, `src/usage/index.ts:228`)
+### Antigravity (`readAntigravityLimits`)
 
 1. **Token** (`antigravityToken`): reads `~/.gemini/antigravity-cli/antigravity-oauth-token` (`$GEMINI_HOME` honoured) and returns the `token.access_token`, `"expired"` when its `expiry` has passed, or `null`.
 2. **Quota** — Google Code Assist internal API: `POST https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist` to resolve `cloudaicompanionProject`, then `POST https://daily-cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary { project }`, both bearer-authenticated with 8 s timeouts. `parseAntigravityQuota` turns the summary into windows. A missing project ("no Antigravity plan limits") or empty windows surface as unavailable states, not errors.
+
+### OpenCode (`readOpenCodeLimits`)
+
+Reads credentials and provider configurations from `~/.config/opencode/opencode.json` (`$XDG_CONFIG_HOME`), or `OPENCODE_API_KEY`. If configured with OpenRouter (`tokenrouter`/`openrouter`), queries OpenRouter key and credits endpoints. If configured with OpenCode API key, queries `https://api.opencode.ai/v1/user/quota`. When quota cannot be read or endpoints are unmetered, surfaces an `unavailable` state rather than fabricating a 0% active session window.
+
+### Pi (`readPiLimits`)
+
+Reads `~/.pi/agent/auth.json` (isolated from OMP credentials) or `OPENROUTER_API_KEY`. Detects OpenRouter OAuth tokens or API keys, querying OpenRouter's `auth/key` and `credits` APIs to report live credit balance and spending percentages. For direct Anthropic/OpenAI BYOK keys, surfaces an `unavailable` state explaining that rate limits are not reported by the API rather than inventing placeholder windows.
+
+### Cursor (`readCursorLimits`)
+
+Reads `CURSOR_API_KEY` from the environment or detects local Cursor installation (`~/.cursor`, `Library/Application Support/Cursor`). Queries Cursor's team usage endpoints (`https://api.cursor.com/teams/spend`) when `CURSOR_API_KEY` is provided, reporting fast request allowances and monthly spend caps. If only directory presence is detected without API access, surfaces an `unavailable` state prompting for `CURSOR_API_KEY` rather than fabricating zero-percent usage.
+
+### GitHub Copilot (`readCopilotLimits`)
+
+Reads tokens from environment variables (`COPILOT_GITHUB_TOKEN`, `GH_TOKEN`, `GITHUB_TOKEN`), `~/.config/github-copilot/apps.json`, `~/.config/gh/hosts.yml`, or `gh auth token`. Queries `https://api.github.com/copilot_internal/v2/token`, extracting plan SKU and HTTP rate-limit headers into hourly and subscription limit windows. If no rate-limit headers are present, returns an `unavailable` state with the plan name rather than inventing a fake active plan window.
+
+### ZCode (`readZCodeLimits`)
+
+Reads credentials from `ZCODE_API_KEY`, `ZAI_API_KEY`, `GLM_API_KEY`, or local configs (`~/.zcode/cli/config.json`, `~/.zcode/cli/setting.json`, `~/.zcode/v2/provider_config.json`). Queries Z.ai quota endpoint `https://api.z.ai/api/monitor/usage/quota/limit`, converting 5-hour rolling refresh cycles and 7-day weekly caps into plan limit windows, supporting both `data.windows` and `data.limits` (e.g. `TOKENS_LIMIT`).
 
 ### Token history (`readLocalUsage`, `src/usage/index.ts:264`)
 

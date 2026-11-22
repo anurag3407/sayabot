@@ -5,6 +5,12 @@ import type { PickerGroup } from "@/lib/model-catalog"
 const PLAN_FOR_APP: Record<string, PlanLimits["provider"]> = {
   "claude-code": "claude",
   codex: "codex",
+  opencode: "opencode",
+  pi: "pi",
+  omp: "pi",
+  cursor: "cursor",
+  copilot: "copilot",
+  zcode: "zcode",
 }
 
 /**

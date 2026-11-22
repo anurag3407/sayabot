@@ -14,6 +14,11 @@ import {
   parseAntigravityQuota,
   parseClaudeUsage,
   parseCodexRateLimits,
+  parseCopilotLimits,
+  parseCursorUsage,
+  parseOpenCodeQuota,
+  parseOpenRouterQuota,
+  parseZCodeQuota,
   scanLocalUsage,
   type PlanLimits,
 } from "@sayabot/core/scanner"
@@ -319,6 +324,372 @@ export async function readAntigravityLimits(): Promise<PlanLimits> {
   }
 }
 
+// ---------- OpenCode ----------
+
+export async function readOpenCodeLimits(): Promise<PlanLimits> {
+  const label = "OpenCode"
+  const home = os.homedir()
+
+  let apiKey = process.env.OPENCODE_API_KEY?.trim() || null
+  let openRouterKey: string | null = null
+
+  const authPath = process.env.XDG_DATA_HOME
+    ? path.join(process.env.XDG_DATA_HOME, "opencode", "auth.json")
+    : path.join(home, ".local", "share", "opencode", "auth.json")
+  try {
+    const raw = await fs.readFile(authPath, "utf8")
+    const parsed = JSON.parse(raw)
+    if (typeof parsed?.access_token === "string") apiKey = parsed.access_token
+    else if (typeof parsed?.apiKey === "string") apiKey = parsed.apiKey
+  } catch {}
+
+  const configPath = process.env.XDG_CONFIG_HOME
+    ? path.join(process.env.XDG_CONFIG_HOME, "opencode", "opencode.json")
+    : path.join(home, ".config", "opencode", "opencode.json")
+  try {
+    const raw = await fs.readFile(configPath, "utf8")
+    const parsed = JSON.parse(raw)
+    const prov = parsed?.provider
+    if (prov) {
+      if (typeof prov["opencode-zen"]?.options?.apiKey === "string") {
+        apiKey = apiKey || prov["opencode-zen"].options.apiKey
+      }
+      if (typeof prov.tokenrouter?.options?.apiKey === "string") {
+        openRouterKey = prov.tokenrouter.options.apiKey
+      } else if (typeof prov.openrouter?.options?.apiKey === "string") {
+        openRouterKey = prov.openrouter.options.apiKey
+      }
+    }
+  } catch {}
+
+  if (openRouterKey) {
+    try {
+      const resp = await fetch("https://openrouter.ai/api/v1/auth/key", {
+        headers: { Authorization: `Bearer ${openRouterKey}`, "User-Agent": USER_AGENT },
+        signal: withTimeout(),
+      })
+      if (resp.ok) {
+        const keyJson = await resp.json()
+        const creditsResp = await fetch("https://openrouter.ai/api/v1/credits", {
+          headers: { Authorization: `Bearer ${openRouterKey}`, "User-Agent": USER_AGENT },
+          signal: withTimeout(),
+        }).catch(() => null)
+        const creditsJson = creditsResp?.ok ? await creditsResp.json() : null
+        const { windows, plan } = parseOpenRouterQuota(keyJson, creditsJson)
+        if (windows.length) {
+          return {
+            provider: "opencode",
+            label,
+            plan: plan ?? "OpenRouter",
+            windows,
+            observedAt: new Date().toISOString(),
+            error: null,
+          }
+        }
+      }
+    } catch {}
+  }
+
+  if (apiKey) {
+    try {
+      const resp = await fetch("https://api.opencode.ai/v1/user/quota", {
+        headers: { Authorization: `Bearer ${apiKey}`, "User-Agent": USER_AGENT },
+        signal: withTimeout(),
+      })
+      if (resp.ok) {
+        const { windows, plan } = parseOpenCodeQuota(await resp.json())
+        if (windows.length) {
+          return {
+            provider: "opencode",
+            label,
+            plan,
+            windows,
+            observedAt: new Date().toISOString(),
+            error: null,
+          }
+        }
+      }
+    } catch {}
+  }
+
+  const dbPath = process.env.XDG_DATA_HOME
+    ? path.join(process.env.XDG_DATA_HOME, "opencode", "opencode.db")
+    : path.join(home, ".local", "share", "opencode", "opencode.db")
+  const hasDb = await fs.stat(dbPath).then(
+    () => true,
+    () => false,
+  )
+  const hasConfig = await fs.stat(configPath).then(
+    () => true,
+    () => false,
+  )
+
+  if (hasDb || hasConfig || apiKey || openRouterKey) {
+    return unavailable(
+      "opencode",
+      label,
+      "OpenCode account detected, but quota endpoints were unreachable or unmetered.",
+    )
+  }
+
+  return unavailable("opencode", label, "Sign in to OpenCode or add a provider in opencode.json.")
+}
+
+// ---------- Pi / OMP ----------
+
+export async function readPiLimits(): Promise<PlanLimits> {
+  const label = "pi"
+  const home = os.homedir()
+
+  const piAuthPath = path.join(home, ".pi", "agent", "auth.json")
+  let openRouterToken = process.env.OPENROUTER_API_KEY?.trim() || null
+  let hasAnthropic = Boolean(process.env.ANTHROPIC_API_KEY?.trim())
+  let hasOpenAI = Boolean(process.env.OPENAI_API_KEY?.trim())
+
+  try {
+    const raw = await fs.readFile(piAuthPath, "utf8")
+    const parsed = JSON.parse(raw)
+    if (!openRouterToken && parsed?.openrouter) {
+      const or = parsed.openrouter
+      if (typeof or.access === "string") openRouterToken = or.access
+      else if (typeof or.apiKey === "string") openRouterToken = or.apiKey
+    }
+    if (!hasAnthropic && parsed?.anthropic?.apiKey) hasAnthropic = true
+    if (!hasOpenAI && parsed?.openai?.apiKey) hasOpenAI = true
+  } catch {}
+
+  if (openRouterToken) {
+    try {
+      const resp = await fetch("https://openrouter.ai/api/v1/auth/key", {
+        headers: { Authorization: `Bearer ${openRouterToken}`, "User-Agent": USER_AGENT },
+        signal: withTimeout(),
+      })
+      if (resp.ok) {
+        const keyJson = await resp.json()
+        const creditsResp = await fetch("https://openrouter.ai/api/v1/credits", {
+          headers: { Authorization: `Bearer ${openRouterToken}`, "User-Agent": USER_AGENT },
+          signal: withTimeout(),
+        }).catch(() => null)
+        const creditsJson = creditsResp?.ok ? await creditsResp.json() : null
+        const { windows, plan } = parseOpenRouterQuota(keyJson, creditsJson)
+        if (windows.length) {
+          return {
+            provider: "pi",
+            label,
+            plan: plan ?? "OpenRouter",
+            windows,
+            observedAt: new Date().toISOString(),
+            error: null,
+          }
+        }
+      }
+    } catch {}
+
+    return unavailable("pi", label, "Couldn't reach OpenRouter quota service.")
+  }
+
+  if (hasAnthropic || hasOpenAI) {
+    return unavailable("pi", label, "Pi uses direct BYOK API keys; rate limits are not reported.")
+  }
+
+  return unavailable("pi", label, "Sign in to pi or set OPENROUTER_API_KEY to see limits.")
+}
+
+// ---------- Cursor ----------
+
+export async function readCursorLimits(): Promise<PlanLimits> {
+  const label = "Cursor"
+  const home = os.homedir()
+
+  const apiKey = process.env.CURSOR_API_KEY?.trim() || null
+
+  if (apiKey) {
+    try {
+      const authHeader = `Basic ${Buffer.from(`${apiKey}:`).toString("base64")}`
+      const resp = await fetch("https://api.cursor.com/teams/spend", {
+        headers: { Authorization: authHeader, "User-Agent": USER_AGENT },
+        signal: withTimeout(),
+      })
+      if (resp.ok) {
+        const { windows, plan } = parseCursorUsage(await resp.json())
+        if (windows.length) {
+          return {
+            provider: "cursor",
+            label,
+            plan: plan ?? "Team",
+            windows,
+            observedAt: new Date().toISOString(),
+            error: null,
+          }
+        }
+      }
+    } catch {}
+  }
+
+  const cursorDirs = [
+    path.join(home, ".cursor"),
+    path.join(home, "Library", "Application Support", "Cursor"),
+  ]
+  let hasCursor = false
+  for (const dir of cursorDirs) {
+    try {
+      await fs.access(dir)
+      hasCursor = true
+      break
+    } catch {}
+  }
+
+  if (hasCursor) {
+    return unavailable("cursor", label, "Set CURSOR_API_KEY to fetch Cursor usage and plan limits.")
+  }
+
+  return unavailable("cursor", label, "Install and sign in to Cursor on this computer.")
+}
+
+// ---------- GitHub Copilot ----------
+
+export async function readCopilotLimits(): Promise<PlanLimits> {
+  const label = "Copilot"
+  const home = os.homedir()
+
+  let token =
+    process.env.COPILOT_GITHUB_TOKEN?.trim() ||
+    process.env.GH_TOKEN?.trim() ||
+    process.env.GITHUB_TOKEN?.trim() ||
+    null
+
+  if (!token) {
+    try {
+      const raw = await fs.readFile(
+        path.join(home, ".config", "github-copilot", "apps.json"),
+        "utf8",
+      )
+      const parsed = JSON.parse(raw)
+      for (const val of Object.values(parsed)) {
+        if (typeof (val as Record<string, unknown>)?.oauth_token === "string") {
+          token = (val as Record<string, unknown>).oauth_token as string
+          break
+        }
+      }
+    } catch {}
+  }
+
+  if (!token) {
+    try {
+      const raw = await fs.readFile(path.join(home, ".config", "gh", "hosts.yml"), "utf8")
+      const match = raw.match(/oauth_token:\s*(\S+)/)
+      if (match) token = match[1]
+    } catch {}
+  }
+
+  if (!token) {
+    try {
+      token = (await run("gh", ["auth", "token"])).trim() || null
+    } catch {}
+  }
+
+  if (token) {
+    try {
+      const resp = await fetch("https://api.github.com/copilot_internal/v2/token", {
+        headers: {
+          Authorization: `token ${token}`,
+          Accept: "application/json",
+          "User-Agent": USER_AGENT,
+        },
+        signal: withTimeout(),
+      })
+      const headers: Record<string, string> = {}
+      resp.headers.forEach((v, k) => {
+        headers[k.toLowerCase()] = v
+      })
+      if (resp.ok) {
+        const { windows, plan } = parseCopilotLimits(await resp.json(), headers)
+        if (windows.length) {
+          return {
+            provider: "copilot",
+            label,
+            plan: plan ?? "Active",
+            windows,
+            observedAt: new Date().toISOString(),
+            error: null,
+          }
+        }
+        return unavailable(
+          "copilot",
+          label,
+          plan
+            ? `GitHub Copilot plan active (${plan}), but rate limits are not reported by API.`
+            : "GitHub Copilot active, but rate limits are not reported.",
+        )
+      }
+    } catch {}
+
+    return unavailable("copilot", label, "Copilot sign-in rejected or unreachable. Check connection.")
+  }
+
+  return unavailable("copilot", label, "Sign in to GitHub Copilot or GitHub CLI on this computer.")
+}
+
+// ---------- ZCode (Z.ai / GLM Coding Plan) ----------
+
+export async function readZCodeLimits(): Promise<PlanLimits> {
+  const label = "ZCode"
+  const home = os.homedir()
+
+  let apiKey =
+    process.env.ZCODE_API_KEY?.trim() ||
+    process.env.ZAI_API_KEY?.trim() ||
+    process.env.GLM_API_KEY?.trim() ||
+    null
+
+  const configPaths = [
+    path.join(home, ".zcode", "cli", "config.json"),
+    path.join(home, ".zcode", "cli", "setting.json"),
+    path.join(home, ".zcode", "v2", "provider_config.json"),
+  ]
+
+  for (const p of configPaths) {
+    if (apiKey) break
+    try {
+      const raw = await fs.readFile(p, "utf8")
+      const parsed = JSON.parse(raw) as Record<string, unknown>
+      if (typeof parsed?.apiKey === "string") apiKey = parsed.apiKey
+      else if (typeof parsed?.token === "string") apiKey = parsed.token
+      else if (typeof (parsed?.zai as Record<string, unknown>)?.apiKey === "string")
+        apiKey = (parsed.zai as Record<string, unknown>).apiKey as string
+    } catch {}
+  }
+
+  if (apiKey) {
+    try {
+      const resp = await fetch("https://api.z.ai/api/monitor/usage/quota/limit", {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "User-Agent": USER_AGENT,
+        },
+        signal: withTimeout(),
+      })
+      if (resp.ok) {
+        const { windows, plan } = parseZCodeQuota(await resp.json())
+        if (windows.length) {
+          return {
+            provider: "zcode",
+            label,
+            plan: plan ?? "GLM Plan",
+            windows,
+            observedAt: new Date().toISOString(),
+            error: null,
+          }
+        }
+      }
+    } catch {}
+
+    return unavailable("zcode", label, "Couldn't reach Z.ai quota service.")
+  }
+
+  return unavailable("zcode", label, "Sign in to ZCode (`zcode login zai`) or set ZCODE_API_KEY.")
+}
+
 // ---------- Entry points the app exposes ----------
 
 let limitsCache: { at: number; value: PlanLimits[] } | null = null
@@ -337,10 +708,19 @@ export function withLastGood(reading: PlanLimits, now = Date.now()): PlanLimits 
   return reading
 }
 
-/** All three, each failing on its own. Cached for a minute so the top bar can poll cheaply. */
+/** All providers, each failing on its own. Cached for a minute so the top bar can poll cheaply. */
 export async function readPlanLimits(force = false): Promise<PlanLimits[]> {
   if (!force && limitsCache && Date.now() - limitsCache.at < CACHE_MS) return limitsCache.value
-  const read = await Promise.all([readClaudeLimits(), readCodexLimits(), readAntigravityLimits()])
+  const read = await Promise.all([
+    readClaudeLimits(),
+    readCodexLimits(),
+    readAntigravityLimits(),
+    readOpenCodeLimits(),
+    readPiLimits(),
+    readCursorLimits(),
+    readCopilotLimits(),
+    readZCodeLimits(),
+  ])
   const value = read.map((reading) => withLastGood(reading))
   limitsCache = { at: Date.now(), value }
   return value

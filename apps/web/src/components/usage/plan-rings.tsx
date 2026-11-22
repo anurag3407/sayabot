@@ -112,8 +112,7 @@ export function describeLimits(limits: PlanLimits): string {
     .join("; ")}`
 }
 
-const providerIconId = (provider: PlanLimits["provider"]) =>
-  provider === "claude" ? "claude" : provider === "codex" ? "codex" : "antigravity"
+const providerIconId = (provider: PlanLimits["provider"]) => provider
 
 /**
  * One ring per window, nested: the outer ring is the first window (usually 5-hour), the inner
@@ -221,8 +220,8 @@ export function PlanLimitsSection() {
         <div>
           <h2 className="text-[15px] font-semibold text-text">Plan limits</h2>
           <p className="mt-0.5 text-[12.5px] text-faint">
-            How much of your Claude, Codex and Antigravity plans is left, read with this Mac&apos;s
-            sign-ins.
+            How much of your coding agent plans (Claude, Codex, Antigravity, OpenCode, Pi, Cursor,
+            Copilot, ZCode) is left, read with this Mac&apos;s sign-ins.
           </p>
         </div>
         <button
@@ -237,7 +236,7 @@ export function PlanLimitsSection() {
         </button>
       </div>
 
-      <div className="mt-4 grid gap-2.5 md:grid-cols-3">
+      <div className="mt-4 grid gap-2.5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
         {(limits ?? []).map((item) => (
           <div key={item.provider} className="flex gap-3.5 rounded-2xl bg-raised/60 p-4">
             <PlanRing limits={item} size={52} />
@@ -270,9 +269,15 @@ export function PlanLimitsSection() {
                   {item.error ?? "No reading yet."}
                 </p>
               )}
-              {item.windows.length && item.provider === "codex" ? (
+              {item.windows.length &&
+              (item.provider === "codex" ||
+                item.provider === "opencode" ||
+                item.provider === "pi" ||
+                item.provider === "cursor" ||
+                item.provider === "copilot" ||
+                item.provider === "zcode") ? (
                 <p className="mt-1.5 text-[11.5px] text-faint">
-                  As Codex last saw it, {minutesAgo(item.observedAt)}.
+                  Last observed {minutesAgo(item.observedAt)}.
                 </p>
               ) : null}
             </div>

@@ -310,6 +310,19 @@ export const AGENT_SPECS: readonly AgentSpec[] = [
       ])
     },
   },
+  {
+    id: "zcode",
+    name: "ZCode",
+    bin: "zcode",
+    run: { kind: "acp", args: ["--acp"] },
+    keyEnv: ["ZCODE_API_KEY", "ZAI_API_KEY", "GLM_API_KEY"],
+    signedIn: (home) =>
+      someTrue([
+        () => exists(join(home, ".zcode/cli/config.json")),
+        () => exists(join(home, ".zcode/cli/setting.json")),
+        () => exists(join(home, ".zcode/v2/provider_config.json")),
+      ]),
+  },
 ]
 
 export function agentSpec(id: string): AgentSpec | undefined {

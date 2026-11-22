@@ -139,7 +139,15 @@ These are distinct from `scanner/limits.ts` (see [./scanner.md](./scanner.md)), 
 ### Shared shapes
 
 ```typescript
-export type PlanProvider = "claude" | "codex" | "antigravity"
+export type PlanProvider =
+  | "claude"
+  | "codex"
+  | "antigravity"
+  | "opencode"
+  | "pi"
+  | "cursor"
+  | "copilot"
+  | "zcode"
 
 export interface PlanWindow {
   label: string // "5-hour", "Weekly", "Weekly · Opus", "Gemini Pro · 5-hour"
@@ -178,6 +186,26 @@ Helpers: `clampPercent` (0–100), `isoOrNull` (accepts ISO strings or epoch num
 
 (`plan-limits.ts:140-165`) Google Code Assist's `retrieveUserQuotaSummary` answer: `{ groups: [{ displayName, buckets: [{ window, displayName, resetTime, remainingFraction }] }] }`. Each bucket becomes a window with `usedPercent = 100 − remainingFraction × 100`, label `"<Group> · <windowName>"`, and the window length inferred from the bucket text (`/week/i` → 10 080, `/5\s*-?\s*h|five/i` → 300, else `null` → falls back to the bucket's `displayName` or `"Limit"`).
 
+### `parseOpenRouterQuota(keyData, creditsData?)`
+
+Reads key rate limits and wallet credits for OpenRouter (used by Pi, OpenCode, and BYOK setups): extracts `usage` vs `limit` and `total_usage` vs `total_credits`, computing percentage used for credit caps.
+
+### `parseOpenCodeQuota(answer)`
+
+Parses OpenCode's free-tier token allowances, Zen rate limits, and credit balances into rolling session and weekly limit windows.
+
+### `parseCursorUsage(answer)`
+
+Parses Cursor's fast-request quota (`gpt4.numRequests` / `gpt4.maxRequestUsage`) and team spend thresholds into monthly progress rings.
+
+### `parseCopilotLimits(answer, headers?)`
+
+Parses GitHub Copilot session SKUs and rate-limit response headers (`x-ratelimit-remaining`, `x-ratelimit-limit`, `x-ratelimit-reset`) into hourly and subscription quota windows.
+
+### `parseZCodeQuota(answer)`
+
+Parses Z.ai / ZCode GLM Coding Plan quotas, mapping 5-hour rolling refresh cycles and 7-day weekly caps to structured plan limit windows.
+
 ## ✅ Test coverage summary
 
 `plan-limits.test.ts`:
@@ -186,6 +214,11 @@ Helpers: `clampPercent` (0–100), `isoOrNull` (accepts ISO strings or epoch num
 - `parseCodexRateLimits` maps `primary`/`secondary` to `"5-hour"`/`"Weekly"` and extracts `plan_type: "plus"`; an epoch-seconds `resets_at` in the past yields a fresh `{ usedPercent: 0, resetsAt: null }` window.
 - `lastCodexRateLimits` returns the newest valid reading (second of three lines, observed `2026-11-12T02:00:00.000Z`), tolerates a truncated final line, and returns `null` for logs without usable limits.
 - `parseAntigravityQuota` converts remaining fractions (`0.76` → 24% used) with labels `"Gemini Pro · 5-hour"` / `"Gemini Pro · Weekly"` and window minutes inferred from bucket text.
+- `parseOpenRouterQuota` calculates credit limit percentages and total credit usages.
+- `parseOpenCodeQuota` handles free tier quota and structured multi-window arrays.
+- `parseCursorUsage` parses fast request quotas and team spend limits.
+- `parseCopilotLimits` extracts rate-limit headers and active plan statuses.
+- `parseZCodeQuota` parses Z.ai 5-hour and 7-day credit quota refresh windows.
 - `windowLabel` names `300` → `"5-hour"`, `10080` → `"Weekly"`, `43200` → `"Monthly"`.
 
 `cost.test.ts` (above) covers per-million pricing, six-decimal rounding, cache slicing/clamping, savings, all formatters, and `pickModelPrice`'s three-step fallback plus `null` for unpriced models.
