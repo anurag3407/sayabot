@@ -91,7 +91,6 @@ vi.mock("../computers/sleep", () => ({
 import {
   guardedScan,
   runRoutineNow,
-  scanRoutinesOnce,
   startRoutineScheduler,
   stopRoutineScheduler,
 } from "./routines"
