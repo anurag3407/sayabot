@@ -187,6 +187,12 @@ export function commandFor(
         ],
         stdin: null,
       }
+    case "zcode":
+      return {
+        bin: "zcode",
+        args: ["run", ...(model ? ["--model", model] : []), prompt.slice(-100_000)],
+        stdin: null,
+      }
     case "claude-code":
     default:
       return {

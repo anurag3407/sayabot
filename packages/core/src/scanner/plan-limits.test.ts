@@ -4,6 +4,11 @@ import {
   parseAntigravityQuota,
   parseClaudeUsage,
   parseCodexRateLimits,
+  parseCopilotLimits,
+  parseCursorUsage,
+  parseOpenCodeQuota,
+  parseOpenRouterQuota,
+  parseZCodeQuota,
   windowLabel,
 } from "./plan-limits"
 
@@ -118,5 +123,197 @@ describe("windowLabel", () => {
     expect(windowLabel(300)).toBe("5-hour")
     expect(windowLabel(10080)).toBe("Weekly")
     expect(windowLabel(43200)).toBe("Monthly")
+  })
+})
+
+describe("parseOpenRouterQuota", () => {
+  it("reads key credit limit and usage", () => {
+    const res = parseOpenRouterQuota({
+      data: {
+        label: "My Key",
+        limit: 50,
+        usage: 12.5,
+        is_free_tier: false,
+      },
+    })
+    expect(res.plan).toBe("Capped")
+    expect(res.windows).toEqual([
+      {
+        label: "Credit Limit",
+        usedPercent: 25,
+        resetsAt: null,
+        windowMinutes: null,
+      },
+    ])
+  })
+
+  it("reads total credits from credits endpoint", () => {
+    const res = parseOpenRouterQuota(null, {
+      data: {
+        total_credits: 100,
+        total_usage: 40,
+      },
+    })
+    expect(res.plan).toBe("Credits")
+    expect(res.windows).toEqual([
+      {
+        label: "Credits",
+        usedPercent: 40,
+        resetsAt: null,
+        windowMinutes: null,
+      },
+    ])
+  })
+})
+
+describe("parseOpenCodeQuota", () => {
+  it("reads free tier quota", () => {
+    const res = parseOpenCodeQuota({
+      plan: "zen-free",
+      free_tier: {
+        usage: 250000,
+        limit: 1000000,
+        window_minutes: 300,
+      },
+    })
+    expect(res.plan).toBe("zen-free")
+    expect(res.windows).toEqual([
+      {
+        label: "5-hour",
+        usedPercent: 25,
+        resetsAt: null,
+        windowMinutes: 300,
+      },
+    ])
+  })
+
+  it("reads structured windows array", () => {
+    const res = parseOpenCodeQuota({
+      data: {
+        plan: "pro",
+        windows: [{ label: "Daily", used_percent: 15, resets_at: "2026-11-23T00:00:00Z" }],
+      },
+    })
+    expect(res.plan).toBe("pro")
+    expect(res.windows).toEqual([
+      {
+        label: "Daily",
+        usedPercent: 15,
+        resetsAt: "2026-11-23T00:00:00.000Z",
+        windowMinutes: null,
+      },
+    ])
+  })
+})
+
+describe("parseCursorUsage", () => {
+  it("reads fast requests from gpt4 quota", () => {
+    const res = parseCursorUsage({
+      plan: "pro",
+      gpt4: {
+        numRequests: 150,
+        maxRequestUsage: 500,
+        startOfMonth: "2026-11-01T00:00:00Z",
+      },
+    })
+    expect(res.plan).toBe("pro")
+    expect(res.windows).toEqual([
+      {
+        label: "Fast Requests",
+        usedPercent: 30,
+        resetsAt: "2026-11-01T00:00:00.000Z",
+        windowMinutes: 43200,
+      },
+    ])
+  })
+
+  it("reads spend limits", () => {
+    const res = parseCursorUsage({
+      spend: {
+        spendCents: 2000,
+        limitCents: 10000,
+      },
+    })
+    expect(res.windows).toEqual([
+      {
+        label: "Monthly Spend",
+        usedPercent: 20,
+        resetsAt: null,
+        windowMinutes: 43200,
+      },
+    ])
+  })
+})
+
+describe("parseCopilotLimits", () => {
+  it("reads rate limit headers", () => {
+    const res = parseCopilotLimits(
+      { sku: "individual_monthly" },
+      {
+        "x-ratelimit-limit": "100",
+        "x-ratelimit-remaining": "80",
+        "x-ratelimit-reset": "1794623000",
+      },
+    )
+    expect(res.plan).toBe("Individual Monthly")
+    expect(res.windows).toEqual([
+      {
+        label: "Hourly Quota",
+        usedPercent: 20,
+        resetsAt: "2026-11-14T02:23:20.000Z",
+        windowMinutes: 60,
+      },
+    ])
+  })
+
+  it("falls back to active plan indicator when no rate limit headers are present", () => {
+    const res = parseCopilotLimits({ plan_type: "copilot_for_business" })
+    expect(res.plan).toBe("Copilot For Business")
+    expect(res.windows).toEqual([
+      {
+        label: "Active Plan",
+        usedPercent: 0,
+        resetsAt: null,
+        windowMinutes: 43200,
+      },
+    ])
+  })
+})
+
+describe("parseZCodeQuota", () => {
+  it("reads Z.ai credit limit and refresh cycle", () => {
+    const res = parseZCodeQuota({
+      data: {
+        plan: "GLM Coding Plan Pro",
+        credit_limit: {
+          used: 250,
+          limit: 1000,
+          refresh_cycle_minutes: 300,
+          resets_at: "2026-11-22T16:00:00Z",
+        },
+      },
+    })
+    expect(res.plan).toBe("GLM Coding Plan Pro")
+    expect(res.windows).toEqual([
+      {
+        label: "5-hour",
+        usedPercent: 25,
+        resetsAt: "2026-11-22T16:00:00.000Z",
+        windowMinutes: 300,
+      },
+    ])
+  })
+
+  it("reads multi-window structure", () => {
+    const res = parseZCodeQuota({
+      windows: [
+        { label: "5-hour", used_percent: 10 },
+        { label: "Weekly", used_percent: 45 },
+      ],
+    })
+    expect(res.windows).toEqual([
+      { label: "5-hour", usedPercent: 10, resetsAt: null, windowMinutes: null },
+      { label: "Weekly", usedPercent: 45, resetsAt: null, windowMinutes: null },
+    ])
   })
 })

@@ -260,6 +260,27 @@ export function PiMark({ size = 16, className = "" }: { size?: number; className
   )
 }
 
+export function ZCodeMark({ size = 16, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M4 5h16L8 19h12" />
+      <circle cx="5" cy="19" r="1.5" fill="currentColor" stroke="none" />
+      <circle cx="19" cy="5" r="1.5" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
 export function CommandCodeMark({
   size = 16,
   className = "",
@@ -399,6 +420,11 @@ export function ProviderIcon({
       return <HermesMark size={size} className={className} />
     case "groq":
       return <OpenAIMark size={size} className={className} />
+    case "zcode":
+    case "zai":
+    case "z-ai":
+    case "glm":
+      return <ZCodeMark size={size} className={className} />
     default:
       return (
         <LetterMark

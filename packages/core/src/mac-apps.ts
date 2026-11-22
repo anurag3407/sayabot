@@ -241,6 +241,17 @@ export const MAC_CLI_APPS: readonly MacAppInfo[] = [
     keyEnv: ["DEEPSEEK_API_KEY"],
     install: "npm install -g @deepseek-ai/dsh",
   },
+  {
+    id: "zcode",
+    bin: "zcode",
+    name: "ZCode",
+    provider: "zcode",
+    label: "ZCode",
+    access: "account_or_key",
+    signIn: "zcode login zai",
+    keyEnv: ["ZCODE_API_KEY", "ZAI_API_KEY", "GLM_API_KEY"],
+    install: "curl -fsSL https://z.ai/install.sh | bash",
+  },
 ]
 
 export const MAC_CLI_APP_IDS: readonly string[] = MAC_CLI_APPS.map((app) => app.id)
