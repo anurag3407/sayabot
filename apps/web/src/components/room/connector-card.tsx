@@ -126,7 +126,10 @@ export function ConnectorSuggestionCard({
   const [resumed, setResumed] = useState(false)
 
   const { source, name, reason, app } = suggestion
-  const marketplaceApp = findMarketplaceApp(app || source) || findMarketplaceApp(source)
+  const isNative = Boolean(CONNECTOR_METAS[source])
+  const marketplaceApp = !isNative
+    ? findMarketplaceApp(app || source) || findMarketplaceApp(source)
+    : null
   const isMarketplace = Boolean(marketplaceApp)
   const auth = marketplaceApp?.auth
   const isOptional = Boolean(auth && auth.kind === "token" && auth.optional)
@@ -435,7 +438,10 @@ export function ConnectorSuggestionCard({
         <form onSubmit={handleConnect} className="border-t border-border/60 bg-panel/90 p-4 space-y-3">
           <div className="space-y-1">
             <div className="flex items-center justify-between text-xs">
-              <label htmlFor={`token-${source}`} className="font-medium text-text">
+              <label
+                htmlFor={auth?.kind === "personal-url" ? `url-${source}` : `token-${source}`}
+                className="font-medium text-text"
+              >
                 {meta.tokenLabel}
               </label>
               {meta.helpUrl ? (
