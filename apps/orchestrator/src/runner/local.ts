@@ -406,7 +406,9 @@ export async function runLocalTurn(
       })
     : null
   mcpTokenId = grant?.tokenId ?? null
-  const fullSystem = grant ? `${system}\n\n${ROOM_TOOLS_NOTE} ${MAC_NOTE}` : system
+  const fullSystem = grant
+    ? `${system}\n\n${ROOM_TOOLS_NOTE} ${MAC_NOTE}`
+    : `${system}\n\n${MAC_NOTE}`
   const splitSystem = macAppSplitsSystemPrompt(config.app, host.appVersion)
 
   const [job] = await db

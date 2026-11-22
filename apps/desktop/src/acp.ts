@@ -293,6 +293,9 @@ const ROOM_SINGLE = /^mcp_sayabot_([\w-]{1,64})$/
  */
 export function mcpToolName(update: Json): string | null {
   const call = record(update.toolCall) ?? update
+  const raw = record(call.rawInput) ?? record(update.rawInput)
+  if (raw && typeof raw.command === "string") return null
+
   const meta = record(call._meta) ?? record(update._meta)
   const claude = nonempty(record(meta?.claudeCode)?.toolName)
   if (claude && MCP_NAME.test(claude)) return claude
@@ -310,6 +313,10 @@ export function mcpToolName(update: Json): string | null {
 
 /** A step that calls Sayabot's own room tools (allowed up front; the server guards them). */
 export function isRoomToolStep(update: Json): boolean {
+  const call = record(update.toolCall) ?? update
+  const title = nonempty(call.title) ?? nonempty(update.title)
+  // Dotted titles alone without explicit MCP metadata must route through decide for safety
+  if (title && MCP_DOTTED.test(title)) return false
   return mcpToolName(update)?.startsWith(`mcp__${ROOM_MCP_NAME}__`) === true
 }
 

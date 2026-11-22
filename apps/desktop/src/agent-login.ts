@@ -21,10 +21,10 @@ export function canSignIn(appId: string): boolean {
   return appId in LOGIN_ARGS
 }
 
-/** The Google sign-in link in what the login printed, if it's there yet. */
+/** The Google sign-in link in what the login printed, once terminated by whitespace or newline. */
 export function loginUrl(output: string): string | null {
-  const match = /https:\/\/accounts\.google\.com\/[^\s"'<>]+/.exec(output)
-  return match ? match[0] : null
+  const match = /(https:\/\/accounts\.google\.com\/[^\s"'<>]+)[\r\n\s"'<>]/.exec(output)
+  return match ? match[1] : null
 }
 
 /** A pasted code or landing URL, made safe to hand to the login's stdin, or null. */
@@ -63,11 +63,18 @@ export class AgentLogin {
     child.stderr?.on("data", collect)
     child.stdin?.on("error", () => {})
     return new Promise((resolve) => {
+      let settled = false
       const done = (result: SignInStart) => {
+        if (settled) return
+        settled = true
         clearInterval(poll)
         clearTimeout(timer)
         resolve(result)
       }
+      child.once("error", (err) => {
+        if (this.child === child) this.child = null
+        done({ ok: false, error: err.message || `${spec.name} couldn't be started.` })
+      })
       const poll = setInterval(() => {
         const url = loginUrl(this.output)
         if (url) done({ ok: true, url })
@@ -90,14 +97,23 @@ export class AgentLogin {
     if (!child) return Promise.resolve({ ok: false, error: "Start the sign-in again." })
     if (!code) return Promise.resolve({ ok: false, error: "Paste the code from the Google page." })
     return new Promise((resolve) => {
-      const timer = setTimeout(() => {
-        this.cancel()
-        resolve({ ok: false, error: "The sign-in didn't finish in time. Try again." })
-      }, FINISH_TIMEOUT_MS)
-      child.once("close", (exitCode) => {
+      let settled = false
+      const done = (result: SignInFinish) => {
+        if (settled) return
+        settled = true
         clearTimeout(timer)
         if (this.child === child) this.child = null
-        resolve(
+        resolve(result)
+      }
+      const timer = setTimeout(() => {
+        this.cancel()
+        done({ ok: false, error: "The sign-in didn't finish in time. Try again." })
+      }, FINISH_TIMEOUT_MS)
+      child.once("error", (err) => {
+        done({ ok: false, error: err.message || "The sign-in process failed." })
+      })
+      child.once("close", (exitCode) => {
+        done(
           exitCode === 0
             ? { ok: true }
             : { ok: false, error: this.tail() || "That code didn't work. Try again." },

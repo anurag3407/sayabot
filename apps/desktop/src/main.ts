@@ -1553,6 +1553,7 @@ ipcMain.handle("host:get-status", () => ({
   registered: Boolean(host?.credentials),
   settings: host?.lastReply?.settings ?? null,
 }))
+ipcMain.handle("host:get-id", () => host?.credentials?.hostId ?? null)
 
 // The runner is turned on per computer in Sayabot (Settings → Computers), so every device
 // sees the same switch; here we only report what the server says.

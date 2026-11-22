@@ -49,6 +49,7 @@ export interface LocalAgentsResponse {
   agents: LocalAgentReport[]
   source?: "server" | "mac"
   /** For "mac": which computer, and when it last checked in. */
+  hostId?: string | null
   hostName?: string
   lastSeenAt?: string | null
   appVersion?: string | null

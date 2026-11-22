@@ -497,6 +497,7 @@ export class DesktopHost {
       }
       const reply = await this.post<HeartbeatReply>("/api/desktop/heartbeat", {
         permissions: permissionState(),
+        appVersion: app.getVersion(),
         ...(localAgents ? { localAgents } : {}),
         ...(storage ? { storage } : {}),
       })

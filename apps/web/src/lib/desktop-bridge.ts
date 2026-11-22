@@ -10,6 +10,7 @@ export type { PlanLimits, PlanWindow } from "@sayabot/core/scanner"
  * caller checks before using them; in a normal browser the bridge is absent.
  */
 interface DesktopUsageBridge {
+  getHostId?: () => Promise<string | null>
   getPlanLimits?: (force?: boolean) => Promise<unknown[]>
   getLocalUsage?: (days: number) => Promise<{ available: boolean; events: unknown[] }>
   signInAgentStart?: (
@@ -77,6 +78,17 @@ export function resetsIn(iso: string | null, now = Date.now()): string | null {
   if (hours < 24) return `in ${hours}h ${minutes % 60}m`
   const days = Math.round(hours / 24)
   return `in ${days} ${days === 1 ? "day" : "days"}`
+}
+
+/** The registered host id of the Mac running this desktop window, or null in a browser. */
+export async function getDesktopHostId(): Promise<string | null> {
+  const get = bridge()?.getHostId
+  if (!get) return null
+  try {
+    return (await get()) ?? null
+  } catch {
+    return null
+  }
 }
 
 /** Whether this window is the Mac app with the agent sign-in calls (1.0.32+). */

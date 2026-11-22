@@ -39,6 +39,7 @@ export interface DesktopBridge {
   getLocalRunnerStatus: () => Promise<{ running: boolean; port: number }>
   toggleLocalRunner: () => Promise<{ running: boolean; port: number }>
   restartApp: () => Promise<void>
+  getHostId?: () => Promise<string | null>
   getVersion: () => Promise<string>
   /** Manual checks answer in a dialog; either way the newest update state comes back. */
   checkForUpdates: (manual?: boolean) => Promise<UpdateState>
@@ -98,6 +99,7 @@ const bridge: DesktopBridge = {
   getLocalRunnerStatus: () => ipcRenderer.invoke("runner:get-status"),
   toggleLocalRunner: () => ipcRenderer.invoke("runner:toggle"),
   restartApp: () => ipcRenderer.invoke("app:restart"),
+  getHostId: () => ipcRenderer.invoke("host:get-id"),
   getVersion: () => ipcRenderer.invoke("app:get-version"),
   checkForUpdates: (manual) => ipcRenderer.invoke("app:check-for-updates", manual),
   getUpdateState: () => ipcRenderer.invoke("app:get-update-state"),

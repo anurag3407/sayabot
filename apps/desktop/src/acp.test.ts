@@ -262,13 +262,20 @@ describe("MCP steps", () => {
   })
 
   it("count as room tools only for Sayabot's own server", () => {
-    expect([claude, codex, antigravity].every(isRoomToolStep)).toBe(true)
+    expect([claude, antigravity].every(isRoomToolStep)).toBe(true)
+    expect(isRoomToolStep(codex)).toBe(false)
     expect(isRoomToolStep({ title: "mcp.github.create_pr", kind: "execute" })).toBe(false)
     expect(isRoomToolStep({ name: "mcp_github_create_pr", kind: "other" })).toBe(false)
   })
 
   it("never come from a shell command or file change that only looks like one", () => {
     expect(isRoomToolStep({ title: "mcp__sayabot__create_task", kind: "execute" })).toBe(false)
+    expect(
+      mcpToolName({
+        title: "mcp.sayabot.create_task",
+        rawInput: { command: "mcp.sayabot.create_task" },
+      }),
+    ).toBeNull()
     expect(isRoomToolStep({ name: "mcp_sayabot_x", kind: "edit" })).toBe(false)
     expect(isRoomToolStep({ title: "mcp__sayabot__x; rm -rf ~", kind: "other" })).toBe(false)
     expect(toolName({ title: "mcp__sayabot__x", kind: "execute" })).toBe("Bash")

@@ -97,7 +97,7 @@ The sidebar's live feed (see [UI shell & kit](./ui-shell-and-kit.md) for its con
 
 ### `desktop-bridge.ts` (client)
 
-Typed access to what the Sayabot Mac app adds to `window.sayabotDesktop` for usage data (older apps lack these calls — every caller checks first): `canReadPlanLimits()` / `readPlanLimits(force)` (validated `PlanLimits[]` from `@sayabot/core/scanner`), `canReadLocalUsage()` / `readDesktopLocalUsage(days)` (coding-tool `RawEvent[]`), and `resetsIn(iso)` ("in 2h 14m", "soon"). Null in a normal browser.
+Typed access to what the Sayabot Mac app adds to `window.sayabotDesktop` for usage data and agent sign-in (older apps lack these calls — every caller checks first): `canReadPlanLimits()` / `readPlanLimits(force)` (validated `PlanLimits[]` from `@sayabot/core/scanner`), `canReadLocalUsage()` / `readDesktopLocalUsage(days)` (coding-tool `RawEvent[]`), `resetsIn(iso)` ("in 2h 14m", "soon"), `canSignInAgents()` (whether this window is Sayabot for Mac with agent login support), `startAgentSignIn(appId)` (starts the CLI login flow and returns `{ ok, url }`), `finishAgentSignIn(code)` (submits pasted code to the child process), `cancelAgentSignIn()`, and `getDesktopHostId()` (returns this computer's registered hostId). Null/false in a normal browser.
 
 ### `desktop-hosts.ts` (server-only)
 

@@ -25,6 +25,7 @@ import {
   cancelAgentSignIn,
   canSignInAgents,
   finishAgentSignIn,
+  getDesktopHostId,
   startAgentSignIn,
 } from "@/lib/desktop-bridge"
 import type { ActionResult, ProviderKeyView } from "@/lib/types"
@@ -77,6 +78,7 @@ function LocalAgents({
   refreshKey: number
 }) {
   const [state, setState] = useState<LocalAgentsResponse | null>(null)
+  const [localDesktopHostId, setLocalDesktopHostId] = useState<string | null>(null)
   const [inviting, setInviting] = useState<LocalAgentReport | null>(null)
   const [roomId, setRoomId] = useState(rooms[0]?.id ?? "")
   const room = rooms.find((r) => r.id === roomId)
@@ -84,12 +86,19 @@ function LocalAgents({
   useEffect(() => {
     let cancelled = false
     setState(null)
-    fetch("/api/providers/local", { cache: "no-store" })
-      .then((res) =>
-        res.ok ? (res.json() as Promise<LocalAgentsResponse>) : { available: false, agents: [] },
-      )
-      .then((data) => !cancelled && setState(data))
-      .catch(() => !cancelled && setState({ available: false, agents: [] }))
+    void getDesktopHostId().then((desktopHostId) => {
+      if (cancelled) return
+      setLocalDesktopHostId(desktopHostId)
+      const url = desktopHostId
+        ? `/api/providers/local?hostId=${encodeURIComponent(desktopHostId)}`
+        : "/api/providers/local"
+      return fetch(url, { cache: "no-store" })
+        .then((res) =>
+          res.ok ? (res.json() as Promise<LocalAgentsResponse>) : { available: false, agents: [] },
+        )
+        .then((data) => !cancelled && setState(data))
+        .catch(() => !cancelled && setState({ available: false, agents: [] }))
+    })
     return () => {
       cancelled = true
     }
@@ -180,7 +189,10 @@ function LocalAgents({
               {agent.policyNote ? (
                 <p className="mt-0.5 text-[11.5px] leading-snug text-warn">{agent.policyNote}</p>
               ) : null}
-              {agent.macSignIn && agent.status === "signed_out" && state.source === "mac" ? (
+              {agent.macSignIn &&
+              agent.status === "signed_out" &&
+              state.source === "mac" &&
+              (!state.hostId || !localDesktopHostId || state.hostId === localDesktopHostId) ? (
                 <MacSignIn appName={agent.name} appId={agent.id} />
               ) : null}
             </div>
