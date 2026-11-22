@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
+import { ChevronDown } from "lucide-react"
 import { MessageItem } from "@/components/room/message-item"
 import { Composer } from "@/components/room/composer"
 import { SetupChecklist, type SetupState } from "@/components/room/setup-checklist"
@@ -376,6 +377,7 @@ export function ChatPanel({
                         300_000
                     }
                     showRetry={index === mainMessages.length - 1 && canRetry(message)}
+                    onShowCanvas={onShowCanvas}
                   />
                 </div>
               )
@@ -385,16 +387,20 @@ export function ChatPanel({
       </div>
 
       {showJump ? (
-        <div className="pointer-events-none relative z-10 h-0">
+        <div className="pointer-events-none relative z-20 h-0">
           <div className="absolute inset-x-0 bottom-3 flex justify-center">
             <button
               type="button"
+              data-scroll-to-end="true"
               onClick={scrollToBottom}
-              className="pointer-events-auto rounded-full border border-line-strong bg-raised px-3.5 py-2 text-[13px] text-text shadow-[0_8px_24px_rgba(0,0,0,0.45)] hover:bg-hover md:py-1.5"
+              className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-panel/85 px-3 py-1.5 text-xs font-medium text-text shadow-xl backdrop-blur-md transition-colors hover:bg-raised hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
-              {newCount > 0
-                ? `↓ ${newCount} new ${newCount === 1 ? "message" : "messages"}`
-                : "↓ Latest"}
+              <ChevronDown className="h-3 w-3" />
+              <span>
+                {newCount > 0
+                  ? `${newCount} new ${newCount === 1 ? "message" : "messages"}`
+                  : "Scroll to end"}
+              </span>
             </button>
           </div>
         </div>
