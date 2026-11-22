@@ -71,4 +71,31 @@ describe("cache metrics", () => {
     metrics.record({ inputTokens: 1000 } as any)
     expect(metrics.snapshot()).toMatchObject({ cacheReadRatio: null, completeReporting: false })
   })
+
+  it("detects cache breaks when read tokens drop sharply and tracks cached state flags", () => {
+    const metrics = new CacheMetrics()
+    metrics.setToolsCached(true)
+    metrics.setHistoryCached(true)
+
+    // Call 1: heavy cache read
+    metrics.record({
+      inputTokens: 5000,
+      outputTokens: 100,
+      inputTokenDetails: { cacheReadTokens: 4500, cacheWriteTokens: 500 },
+    } as any)
+
+    // Call 2: cache broken (read dropped from 4500 to 200)
+    metrics.record({
+      inputTokens: 5000,
+      outputTokens: 100,
+      inputTokenDetails: { cacheReadTokens: 200, cacheWriteTokens: 4800 },
+    } as any)
+
+    const snap = metrics.snapshot()
+    expect(snap.toolsCached).toBe(true)
+    expect(snap.historyCached).toBe(true)
+    expect(snap.cacheBreaks).toBe(1)
+    expect(snap.cacheReadTokens).toBe(4700)
+    expect(snap.cacheWriteTokens).toBe(5300)
+  })
 })

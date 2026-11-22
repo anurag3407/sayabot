@@ -27,6 +27,22 @@ export interface CompactTranscriptResult {
 }
 
 export const ELIDED_PREFIX = "[result elided:"
+export const MICRO_COMPACT_PREFIX = "[Old tool result content cleared:"
+
+export interface MicroCompactOptions {
+  /** Number of most recent tool results to keep verbatim. Default: 4 */
+  keepRecent?: number
+  /** Minimum character length of output for an old tool result to be elided. Default: 250 characters */
+  minCharsToCompact?: number
+}
+
+export interface MicroCompactResult {
+  messages: ModelMessage[]
+  toolsCleared: number
+  toolsKept: number
+  estimatedTokensSaved: number
+  isCompacted: boolean
+}
 
 function summarizeToolOutcome(output: unknown): string {
   if (!output || typeof output !== "object") return "output omitted, success not inferred"
@@ -70,17 +86,131 @@ export function compactionBoundary(
 }
 
 function isElided(output: unknown): boolean {
+  if (typeof output !== "object" || output === null) return false
+  const val = String((output as { value?: unknown }).value ?? "")
   return (
-    typeof output === "object" &&
-    output !== null &&
     (output as { type?: unknown }).type === "text" &&
-    String((output as { value?: unknown }).value ?? "").startsWith(ELIDED_PREFIX)
+    (val.startsWith(ELIDED_PREFIX) || val.startsWith(MICRO_COMPACT_PREFIX))
   )
 }
 
 /**
+ * Strategy 1 (Claude Code Keep-Recent MC pattern): Micro-compact older tool results.
+ * Keeps the most recent K tool results verbatim and clears older bulky outputs to a stable,
+ * concise placeholder (`[Old tool result content cleared: exit 0 / ...; call id]`).
+ * Short outputs below minCharsToCompact (e.g. { ok: true }) are kept intact to avoid bloat.
+ */
+export function microCompactToolResults(
+  messages: ModelMessage[],
+  options?: MicroCompactOptions,
+): MicroCompactResult {
+  const keepRecent = Math.max(1, options?.keepRecent ?? 4)
+  const minChars = options?.minCharsToCompact ?? 250
+
+  interface ToolResultRef {
+    msgIdx: number
+    partIdx: number
+    toolCallId: string
+    charLen: number
+    alreadyCleared: boolean
+  }
+
+  const results: ToolResultRef[] = []
+
+  messages.forEach((msg, msgIdx) => {
+    if (msg.role === "tool" && Array.isArray(msg.content)) {
+      msg.content.forEach((part, partIdx) => {
+        if (part.type === "tool-result") {
+          const already = isElided(part.output)
+          let charLen = 0
+          try {
+            charLen = JSON.stringify(part.output ?? null).length
+          } catch {
+            charLen = String(part.output ?? "").length
+          }
+          results.push({
+            msgIdx,
+            partIdx,
+            toolCallId: part.toolCallId,
+            charLen,
+            alreadyCleared: already,
+          })
+        }
+      })
+    }
+  })
+
+  const total = results.length
+  if (total <= keepRecent) {
+    return {
+      messages,
+      toolsCleared: 0,
+      toolsKept: total,
+      estimatedTokensSaved: 0,
+      isCompacted: false,
+    }
+  }
+
+  const toClearCandidates = results.slice(0, total - keepRecent)
+  const toClearKeys = new Set<string>()
+  let estimatedTokensSaved = 0
+
+  for (const ref of toClearCandidates) {
+    if (ref.alreadyCleared) continue
+    if (ref.charLen > minChars) {
+      toClearKeys.add(`${ref.msgIdx}:${ref.partIdx}`)
+      estimatedTokensSaved += Math.max(0, Math.ceil((ref.charLen - 90) / 3))
+    }
+  }
+
+  if (toClearKeys.size === 0) {
+    return {
+      messages,
+      toolsCleared: 0,
+      toolsKept: total,
+      estimatedTokensSaved: 0,
+      isCompacted: false,
+    }
+  }
+
+  let toolsCleared = 0
+
+  const updatedMessages = messages.map((msg, msgIdx) => {
+    if (msg.role !== "tool" || !Array.isArray(msg.content)) return msg
+
+    const updatedContent = msg.content.map((part, partIdx) => {
+      if (part.type === "tool-result" && toClearKeys.has(`${msgIdx}:${partIdx}`)) {
+        toolsCleared++
+        const outcome = summarizeToolOutcome(part.output)
+        return {
+          ...part,
+          output: {
+            type: "text" as const,
+            value: `${MICRO_COMPACT_PREFIX} ${outcome}; call ${part.toolCallId}. Re-read or rerun if needed.]`,
+          },
+        }
+      }
+      return part
+    })
+
+    return {
+      ...msg,
+      content: updatedContent,
+    } as ToolModelMessage
+  })
+
+  return {
+    messages: updatedMessages,
+    toolsCleared,
+    toolsKept: total - toolsCleared,
+    estimatedTokensSaved,
+    isCompacted: toolsCleared > 0,
+  }
+}
+
+/**
  * Strategy 1: Clear old tool results.
- * Keeps the most recent K=6 tool results verbatim and elides older ones.
+ * Keeps the most recent K tool results verbatim and elides older ones.
  */
 export function elideOldToolResults(
   messages: ModelMessage[],

@@ -65,6 +65,8 @@ In the engine, `resolveContextBudget(provider, params)` (no tool tokens) compute
 ```typescript
 export class CacheMetrics {
   record(usage: LanguageModelUsage): void
+  setToolsCached(cached: boolean): void
+  setHistoryCached(cached: boolean): void
   snapshot(): {
     calls: number
     inputTokens: number
@@ -74,23 +76,34 @@ export class CacheMetrics {
     reportedCalls: number
     cacheReadRatio: number | null
     completeReporting: boolean
+    toolsCached: boolean
+    historyCached: boolean
+    cacheBreaks: number
   }
 }
 ```
 
-`record` accumulates per-model-call usage. `cacheReadTokens` is only credited when the provider reports a valid number (`0 <= read <= input`), so `reportedCalls` can be lower than `calls`. `cacheReadRatio` = cache-read over reported input; `completeReporting` is true only when every call reported cache details. The snapshot lands in the message `metadata.harness.cache` block at finalize time and feeds the run harness diagnostics.
+`record` accumulates per-model-call usage. `cacheReadTokens` is only credited when the provider reports a valid number (`0 <= read <= input`), so `reportedCalls` can be lower than `calls`. `cacheReadRatio` = cache-read over reported input; `completeReporting` is true only when every call reported cache details.
+
+Additionally, `CacheMetrics` tracks hierarchical cache boundaries and cache stability:
+- `toolsCached`: Indicates whether tool definitions were marked for prompt caching (`applyToolCacheBreakpoint`).
+- `historyCached`: Indicates whether prior chat history was marked with a boundary cache breakpoint (`cacheHistoryBoundary`).
+- `cacheBreaks`: Counter incremented whenever prompt cache read tokens drop significantly (>50% drop of at least 1,000 tokens) compared to the previous step despite sustained high input token counts, signaling a cache break event (comparable to Claude Code's classifier cache break alerts).
+
+The snapshot lands in the message `metadata.harness.cache` block at finalize time and feeds the run harness diagnostics.
 
 ---
 
 ## ✂️ Compaction Primitives (`src/engine/compaction.ts`)
 
-### Elision marker
+### Markers
 
 ```typescript
 export const ELIDED_PREFIX = "[result elided:"
+export const MICRO_COMPACT_PREFIX = "[Old tool result content cleared:"
 ```
 
-`isElided(output)` detects a tool-result output already replaced by an elision marker (type `"text"` whose value starts with `ELIDED_PREFIX`), so compaction is idempotent.
+`isElided(output)` detects a tool-result output already replaced by an elision marker or micro-compact placeholder (type `"text"` whose value starts with `ELIDED_PREFIX` or `MICRO_COMPACT_PREFIX`), ensuring compaction operations remain strictly idempotent.
 
 ### `summarizeToolOutcome(output)` (internal)
 
@@ -101,6 +114,24 @@ Reduces a tool result to a one-line status used inside elision markers:
 - Object values with `ok: false`, an `error`, or non-zero `exit_code`/`exitCode` → `failed: <error or exit N>`.
 - `exit 0` → `"exit 0"`.
 - Otherwise → `"output omitted, success not inferred"` (success is never inferred).
+
+### `microCompactToolResults(messages, options)` — Claude Code style micro-compaction
+
+```typescript
+export function microCompactToolResults(
+  messages: ModelMessage[],
+  options: {
+    keepRecent?: number // default 4
+    minSizeChars?: number // default 250
+  } = {},
+): { messages: ModelMessage[]; compactedCount: number }
+```
+
+Modeled after Claude Code's tool output micro-compaction (`tengu_time_based_microcompact`):
+- Preserves the last `keepRecent` (default 4) tool results verbatim so active reasoning retains full context.
+- Targets older results that exceed `minSizeChars` (default 250 chars), clearing bulky payloads while preserving brief diagnostic summaries:
+  `[Old tool result content cleared: <summarizeToolOutcome>; call <toolCallId>. Size: <bytes> bytes. Re-read if needed.]`
+- Intentionally skips small outputs (`<= 250` chars, e.g. `{ ok: true }` or short exit codes), preventing the placeholder from ironically expanding token footprint.
 
 ### `elideOldToolResults(messages, keepLastK = 6)`
 
@@ -193,11 +224,22 @@ Flow (`src/engine/summarize.ts:36-67`):
 
 ## 🔗 How the engine uses these
 
-Inside `runEngineTurn`'s `prepareStep` (see [engine-loop.md](./engine-loop.md)), the compaction ladder is applied in escalating order, each stage only when the previous one left the estimate above `messageBudget`:
+Inside `runEngineTurn`'s `prepareStep` (see [engine-loop.md](./engine-loop.md)), proactive context management and the compaction ladder are applied in escalating order:
+
+1. **Proactive Micro-Compaction in `decidePrepareStep`**:
+   - When context reaches **40% of budget**, `decidePrepareStep` triggers `microCompactToolResults(messages, { keepRecent: 4 })`, cleaning bulky past outputs without breaking recent reasoning.
+   - When context exceeds **70% of budget**, it upgrades to aggressive tool result elision (`elideOldToolResults(messages, 6)`).
+2. **Ladder Escalation inside `prepareStep`**:
+   - If message tokens exceed 85% of budget, `summarizeForBudget` collapses earlier turns into a structured summary.
+   - If still over budget, aggressive elision (`keepLastK = 2`) runs.
+   - If still overflowing, structural boundary dropping (`compactionBoundary` keeping last 2 messages) executes.
+   - If all compaction stages fail to fit the budget, the engine throws `"Context budget exhausted"`.
+3. **Cache Breakpoint Preservation**:
+   - `applyRollingCacheBreakpoint` reapplies the tail ephemeral cache breakpoint while strictly preserving the `historyBoundaryIndex` breakpoint established on the prior room history.
 
 ```mermaid
 flowchart TD
-    A[prepareStep messages] --> B{decidePrepareStep elision?}
+    A[prepareStep messages] --> B{decidePrepareStep: 40% micro-compact / 70% elide}
     B --> C[summarizeForBudget at 85% threshold]
     C --> D{fits?}
     D -- no --> E[elideOldToolResults keepLastK=2 aggressive]
@@ -205,9 +247,9 @@ flowchart TD
     F -- no --> G[compactionBoundary drop keepLast=2]
     G --> H{fits?}
     H -- no --> I[throw: Context budget exhausted...]
-    D -- yes --> J[applyRollingCacheBreakpoint → return to streamText]
+    D -- yes --> J[applyRollingCacheBreakpoint preserving history boundary → streamText]
     F -- yes --> J
-    H -- yes --> J
+    G -- yes --> J
 ```
 
 Every successful stage increments the run's `compactions` counter (reported in `metadata.harness.compactions`) and emits a `run.step` compaction label. `resolveContextBudget` also feeds `maxOutputTokens` for the `streamText` call and the Anthropic thinking-budget clamp (`min(thinking.budgetTokens, modelBudget.outputTokens - 1024)`).

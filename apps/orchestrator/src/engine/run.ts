@@ -43,7 +43,11 @@ import {
 } from "../runner/llm"
 import { buildTools } from "../tools"
 import { redactValue, type ToolSpec } from "../tools/audited"
-import { applyRollingCacheBreakpoint, buildEngineContext } from "./context"
+import {
+  applyRollingCacheBreakpoint,
+  applyToolCacheBreakpoint,
+  buildEngineContext,
+} from "./context"
 import {
   CacheMetrics,
   estimateMessageTokens,
@@ -525,6 +529,7 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
       skillsIndex,
       pinnedMemories,
       roomHistory: conversation,
+      cacheHistoryBoundary: conversation.length > 0,
       volatileTail: {
         now: new Date(),
         recalledMemories,
@@ -609,11 +614,16 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
       let passText = ""
 
       const activeTools = activeToolNames()
+      const cachedTools = applyToolCacheBreakpoint(tools, resolved.provider)
+      cacheMetrics.setToolsCached(
+        resolved.provider === "anthropic" && Object.keys(cachedTools).length > 0,
+      )
+      cacheMetrics.setHistoryCached(initialContext.historyBoundaryIndex !== undefined)
       const streamResult = streamText({
         model: resolved.model,
         instructions,
         messages: passInput,
-        tools,
+        tools: cachedTools,
         ...(activeTools ? { activeTools } : {}),
         abortSignal: controller.signal,
         maxRetries: 4,
@@ -727,7 +737,11 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
             throw new Error(
               "Context budget exhausted without safely discardable history. Narrow the task or configure this model's contextWindowTokens.",
             )
-          const prepared = applyRollingCacheBreakpoint(finalMessages, resolved.provider)
+          const prepared = applyRollingCacheBreakpoint(
+            finalMessages,
+            resolved.provider,
+            initialContext.historyBoundaryIndex,
+          )
           lastPrepared = prepared
           return {
             messages: prepared,

@@ -87,6 +87,18 @@ export class CacheMetrics {
   private cacheWriteTokens = 0
   private calls = 0
   private reportedCalls = 0
+  private previousCacheReadTokens = 0
+  private cacheBreaks = 0
+  private toolsCached = false
+  private historyCached = false
+
+  setToolsCached(cached: boolean): void {
+    this.toolsCached = cached
+  }
+
+  setHistoryCached(cached: boolean): void {
+    this.historyCached = cached
+  }
 
   record(usage: LanguageModelUsage): void {
     const input = usage.inputTokens ?? 0
@@ -97,6 +109,16 @@ export class CacheMetrics {
     if (typeof read === "number" && Number.isFinite(read) && read >= 0 && read <= input) {
       this.reportedCalls++
       this.reportedInputTokens += input
+      // Detect cache break (inspired by Claude Code classifier cache break):
+      // If previous call read substantial cached tokens (>1024) but this call dropped sharply
+      if (
+        this.calls > 1 &&
+        this.previousCacheReadTokens > 1024 &&
+        read < this.previousCacheReadTokens * 0.5
+      ) {
+        this.cacheBreaks++
+      }
+      this.previousCacheReadTokens = read
       this.cacheReadTokens += read
     }
     this.cacheWriteTokens += usage.inputTokenDetails?.cacheWriteTokens ?? 0
@@ -112,6 +134,9 @@ export class CacheMetrics {
       reportedCalls: this.reportedCalls,
       cacheReadRatio:
         this.reportedInputTokens > 0 ? this.cacheReadTokens / this.reportedInputTokens : null,
+      cacheBreaks: this.cacheBreaks,
+      toolsCached: this.toolsCached,
+      historyCached: this.historyCached,
       completeReporting: this.calls > 0 && this.reportedCalls === this.calls,
     }
   }

@@ -29,6 +29,7 @@ import { streamAgentText } from "./stream-agent"
 import { agentCliRunner } from "./cli"
 import { cheapCliModel } from "./cli-agent"
 import { createCliLanguageModel } from "./cli-model"
+import { applyToolCacheBreakpoint } from "../engine/context"
 
 export interface RunLlmTurnArgs {
   room: RoomRow
@@ -459,11 +460,12 @@ export async function runLlmTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
 
     const params = agent.params ?? {}
     const defaultMaxSteps = args.taskId ? 30 : 20
+    const cachedTools = applyToolCacheBreakpoint(tools, resolved.provider)
     const result = await streamAgentText({
       model: resolved.model,
       system,
       prompt,
-      tools,
+      tools: cachedTools,
       abortSignal: controller.signal,
       maxSteps: numericParam(params, "maxSteps", defaultMaxSteps),
       temperature: numericParam(params, "temperature"),

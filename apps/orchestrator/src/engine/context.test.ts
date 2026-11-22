@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest"
+import type { ModelMessage } from "ai"
 import type { AgentRow, ContextMessage, RoomRow } from "../runner/context"
-import { buildEngineContext, computeCanvasDiffSummary, sortToolSpecs } from "./context"
+import {
+  applyRollingCacheBreakpoint,
+  applyToolCacheBreakpoint,
+  buildEngineContext,
+  computeCanvasDiffSummary,
+  sortToolSpecs,
+} from "./context"
 
 const mockAgent: AgentRow = {
   id: "agent-123",
@@ -236,5 +243,75 @@ describe("Engine Context Builder (E3)", () => {
     expect(computeCanvasDiffSummary("a\nb\nc", "a\nb\nc")).toBe("unchanged (3 lines)")
     expect(computeCanvasDiffSummary("a\nb", "a\nb\nc\nd")).toBe("+2 -0 lines")
     expect(computeCanvasDiffSummary("a\nb\nc", "a")).toBe("+0 -2 lines")
+  })
+
+  it("applies tool cache breakpoint on the alphabetically last tool definition for Anthropic", () => {
+    const mockTools = {
+      zebra_tool: { description: "z tool" } as any,
+      alpha_tool: { description: "a tool" } as any,
+      middle_tool: { description: "m tool" } as any,
+    }
+
+    const cached = applyToolCacheBreakpoint(mockTools, "anthropic")
+    expect((cached.alpha_tool as any).providerOptions).toBeUndefined()
+    expect((cached.middle_tool as any).providerOptions).toBeUndefined()
+    expect((cached.zebra_tool as any).providerOptions?.anthropic).toEqual({
+      cacheControl: { type: "ephemeral" },
+    })
+
+    // Non-anthropic providers do not receive explicit cacheControl
+    const openaiTools = applyToolCacheBreakpoint(mockTools, "openai")
+    expect((openaiTools.zebra_tool as any).providerOptions).toBeUndefined()
+  })
+
+  it("supports chat history boundary caching with 4-breakpoint layout", () => {
+    const res = buildEngineContext({
+      agent: mockAgent,
+      room: mockRoom,
+      provider: "anthropic",
+      roomHistory: mockHistory,
+      cacheHistoryBoundary: true,
+      volatileTail: {
+        now: new Date("2026-11-07T10:00:00Z"),
+        currentTrigger: "Continue previous work",
+      },
+    })
+
+    // System prompt should be consolidated to 1 breakpoint on system2
+    const sys1 = res.prefix[0]!
+    expect((sys1.providerOptions as any)?.anthropic).toBeUndefined()
+
+    const sys2 = res.prefix[1]!
+    expect((sys2.providerOptions as any)?.anthropic).toEqual({
+      cacheControl: { type: "ephemeral" },
+    })
+
+    // Last message in roomHistory gets the history boundary breakpoint
+    expect(res.historyBoundaryIndex).toBe(1) // 2 messages in mockHistory -> index 1
+    const lastHistMsg = res.prefix[3]! // index 0=sys1, 1=sys2, 2=hist[0], 3=hist[1]
+    expect(lastHistMsg.role).toBe("assistant")
+    expect((lastHistMsg.providerOptions as any)?.anthropic).toEqual({
+      cacheControl: { type: "ephemeral" },
+    })
+
+    // Rolling breakpoint preserves history boundary while marking tail
+    const messages: ModelMessage[] = [
+      { role: "user", content: "hist1" },
+      { role: "assistant", content: "hist2" }, // history boundary at idx 1
+      { role: "user", content: "turn tail" },
+      { role: "assistant", content: "step1 call" },
+      { role: "tool", content: [{ type: "tool-result", toolCallId: "1", output: "ok" }] as any }, // tail at idx 4
+    ]
+
+    const rolling = applyRollingCacheBreakpoint(messages, "anthropic", 1)
+    expect((rolling[0] as any).providerOptions?.anthropic).toBeUndefined()
+    expect((rolling[1] as any).providerOptions?.anthropic).toEqual({
+      cacheControl: { type: "ephemeral" },
+    })
+    expect((rolling[2] as any).providerOptions?.anthropic).toBeUndefined()
+    expect((rolling[3] as any).providerOptions?.anthropic).toBeUndefined()
+    expect((rolling[4] as any).providerOptions?.anthropic).toEqual({
+      cacheControl: { type: "ephemeral" },
+    })
   })
 })

@@ -1,6 +1,6 @@
 import type { ModelMessage, UserModelMessage } from "ai"
 import type { RunInterrupt } from "../active-runs"
-import { elideOldToolResults } from "./compaction"
+import { elideOldToolResults, microCompactToolResults } from "./compaction"
 import { estimateMessageTokens } from "./budget"
 
 /**
@@ -124,11 +124,22 @@ export function decidePrepareStep(input: PrepareStepInput): PrepareStepDecision 
     changed = true
   }
 
-  if (estimateTokens(messages) > input.contextBudgetTokens * 0.7) {
+  const currentTokens = estimateTokens(messages)
+  if (currentTokens > input.contextBudgetTokens * 0.7) {
     const elided = elideOldToolResults(messages, 6)
     if (elided.elidedCount > 0) {
       messages = elided.messages
       elidedCount = elided.elidedCount
+      changed = true
+    }
+  } else if (currentTokens > input.contextBudgetTokens * 0.4) {
+    const mc = microCompactToolResults(messages, {
+      keepRecent: 4,
+      minCharsToCompact: 250,
+    })
+    if (mc.isCompacted) {
+      messages = mc.messages
+      elidedCount = mc.toolsCleared
       changed = true
     }
   }

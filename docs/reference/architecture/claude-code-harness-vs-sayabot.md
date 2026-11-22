@@ -194,21 +194,24 @@ The block is deliberately free of dates, ids and counts so the prefix stays cach
 
 ### The context layout
 
-`buildEngineContext()` (`apps/orchestrator/src/engine/context.ts`) builds five zones:
+`buildEngineContext()` (`apps/orchestrator/src/engine/context.ts`) builds five zones structured for high cache hit rates and prefix stability:
 
-| Zone | Contents | Cache |
+| Zone | Contents | Cache Breakpoint (Anthropic) |
 | :--- | :------- | :---- |
-| System 1 (frozen) | Harness + orchestrator guide + `# Persona` + reply style + computer block + cron block | Breakpoint 1 (Anthropic only) |
-| System 2 (slow-changing) | Room directive, sorted skills index, sorted pinned memories, debate-role line | Breakpoint 2 |
-| Room history | Each message labelled `System`, `Name (@handle) (agent)` or `Name (human)`; this agent's own messages become `assistant` | Prefix |
-| Run history | Append-only model messages from this run | Rolling breakpoint 3 |
-| Volatile tail | `Current Time`, `<recalled>` memories, canvas text/diffs, task brief or open tasks, operator notes, the trigger, closing checklist | Never cached |
+| System 1 (frozen) | Harness + orchestrator guide + `# Persona` + reply style + computer block + cron block | Breakpoint 1 (consolidated into System 2 when history boundary is cached) |
+| System 2 (slow-changing) | Room directive, sorted skills index, sorted pinned memories, debate-role line | Breakpoint 1 or 2 |
+| Tool Definitions | Sorted tool schemas via `applyToolCacheBreakpoint()` | Breakpoint 2 (ephemeral cache on last tool definition) |
+| Room History | Each message labelled `System`, `Name (@handle) (agent)` or `Name (human)`; this agent's own messages become `assistant` | Breakpoint 3 (boundary marker on final prior turn message) |
+| Run History (active turn) | Append-only model messages from this run | Rolling Breakpoint 4 (on final message of active step) |
+| Volatile tail | `Current Time`, `<recalled>` memories, canvas text/diffs, task brief or open tasks, operator notes, the trigger, closing checklist | Never cached (placed after history boundary to prevent prefix jitter) |
 
-`applyRollingCacheBreakpoint()` strips stale `cacheControl` markers from non-system messages and marks the last message, so a long tool loop never exceeds Anthropic's four-breakpoint limit (two system + one rolling). OpenAI-style providers cache prefixes automatically and ignore the marker.
+`applyRollingCacheBreakpoint()` preserves the `historyBoundaryIndex` cache breakpoint while stripping stale intra-run markers from earlier steps and advancing the rolling tail marker. This guarantees maximum cache reuse across both multi-turn chat history and intra-step tool calls, staying strictly within Anthropic's four-breakpoint limit (1 System + 1 Tools + 1 History Boundary + 1 Rolling Tail). OpenAI, Gemini, and DeepSeek cache prefixes automatically.
 
 ### Context pressure
 
-Sayabot does not rely on one compaction mechanism. In `prepareStep` it runs a ladder (`resolveContextBudget` → `summarizeForBudget` → `elideOldToolResults` → `compactionBoundary` → hard error), and it has a **lean mode** for providers that reject large requests: 8 history messages, a reduced tool set, budgets shrunk to 60% input / 25% output, and a retry driver that shrinks the limit until `1500` tokens or no progress.
+Sayabot combines proactive micro-compaction with an escalating compaction ladder:
+- **Proactive Micro-Compaction (`microCompactToolResults`)**: At 40% of context budget, older bulky tool outputs (>250 chars) are cleared into concise diagnostic placeholders while the latest 4 tool results and small status payloads (`<= 250` chars) are preserved verbatim, preventing context bloat without loss of immediate reasoning state.
+- **Ladder Escalation**: Above 70% budget, aggressive elision (`elideOldToolResults`) triggers; at 85% budget, `summarizeForBudget` collapses earlier history into a structured summary; followed by boundary dropping and emergency lean mode (8 history messages, reduced tools, shrunk budgets).
 
 ### Memory injection
 
