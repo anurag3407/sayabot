@@ -174,7 +174,7 @@ export async function runRoutineNow(
   }
 }
 
-async function scanRoutinesOnce(): Promise<void> {
+export async function scanRoutinesOnce(): Promise<void> {
   const db = getDb()
   const now = new Date()
 
@@ -238,7 +238,7 @@ async function scanRoutinesOnce(): Promise<void> {
   }
 }
 
-async function guardedScan(): Promise<void> {
+export async function guardedScan(): Promise<void> {
   const pool = getPool()
   const client = await pool.connect()
   try {

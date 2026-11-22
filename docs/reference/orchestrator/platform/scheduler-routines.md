@@ -15,7 +15,7 @@ Source files: `apps/orchestrator/src/scheduler/routines.ts`, `apps/orchestrator/
 
 ## 🖥️ Scheduler Loop (`src/scheduler/routines.ts`)
 
-`startRoutineScheduler()` (`routines.ts:253-262`) is called once at boot (`src/index.ts`); it runs one scan immediately, then every `SCAN_MS = 30_000` on an unref'ed interval. `stopRoutineScheduler()` clears it on shutdown.
+`startRoutineScheduler()` (`routines.ts:253-262`) is called once at boot (`src/index.ts`); it runs one scan immediately, then every `SCAN_MS = 30_000` on an unref'ed interval. `stopRoutineScheduler()` clears it on shutdown. `guardedScan()` and `scanRoutinesOnce()` are exported to permit direct deterministic unit/integration test coverage and external observability.
 
 ### Distributed election
 
