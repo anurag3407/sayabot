@@ -2,7 +2,7 @@
 
 The room screen at `/(workspace)/[org]/r/[roomId]` is the heart of Sayabot: a chat feed where humans and agents take turns, with live token streaming, tool-call approval cards, threads, a composer with mentions and offline outbox, and a resizable side panel. That pane is either the bot settings sidebar or the workspace tabs (canvas, screen, activity, routines). Everything live flows through one Supabase Realtime channel per room (`useRoomRealtime`), fed by initial server-rendered data.
 
-Source files: `apps/web/src/app/(workspace)/[org]/r/[roomId]/page.tsx`, `apps/web/src/components/room/room-workspace.tsx`, `agent-config-panel.tsx`, `side-panel.tsx`, `chat-panel.tsx`, `composer.tsx`, `message-item.tsx`, `message-actions.tsx`, `thread-sheet.tsx`, `turn-strip.tsx`, `tool-call-card.tsx`, `starter-card.tsx`, `setup-checklist.tsx`, `room-meeting-bar.tsx`, `use-room-realtime.ts`, `apps/web/src/components/markdown.tsx`, `apps/web/src/components/chat/*`, `apps/web/src/lib/message-map.ts`, `apps/web/src/lib/message-send.ts`, `apps/web/src/lib/agent-look.ts`
+Source files: `apps/web/src/app/(workspace)/[org]/r/[roomId]/page.tsx`, `apps/web/src/components/room/room-workspace.tsx`, `agent-config-panel.tsx`, `side-panel.tsx`, `chat-panel.tsx`, `composer.tsx`, `message-item.tsx`, `message-actions.tsx`, `thread-sheet.tsx`, `turn-strip.tsx`, `tool-call-card.tsx`, `changed-files-card.tsx`, `starter-card.tsx`, `setup-checklist.tsx`, `room-meeting-bar.tsx`, `use-room-realtime.ts`, `apps/web/src/components/markdown.tsx`, `apps/web/src/components/chat/*`, `apps/web/src/lib/chat-tool-presenter.ts`, `apps/web/src/lib/message-map.ts`, `apps/web/src/lib/message-send.ts`, `apps/web/src/lib/agent-look.ts`
 
 ---
 
@@ -82,7 +82,7 @@ Row→view mapping lives in `src/lib/message-map.ts` (`messageFromRow` resolves 
 
 Scroll behaviour is hand-rolled (`chat-panel.tsx:173`):
 
-- `stickToBottom` follows the viewport within `STICK_THRESHOLD_PX = 140`; scrolling up shows a "↓ Latest" / "↓ N new messages" pill.
+- `stickToBottom` follows the viewport within `STICK_THRESHOLD_PX = 140`; scrolling up shows a floating glassmorphic "Scroll to end" / "N new messages" pill.
 - First paint scrolls to `focusMessageId` (adding a `message-highlight` class) or the first unread message (computed once from `lastReadAt`), else bottom.
 - Prepending older messages restores scroll with a `prependAnchor` (saved `scrollHeight - scrollTop`).
 - A "New messages" separator renders before `firstUnreadId`; day dividers ("today", "yesterday", weekday) appear between differing days; a message is `continued` (avatar/name hidden) when the same sender wrote the previous message within 5 minutes.
@@ -139,12 +139,21 @@ A right-side native `<dialog>` (max 560px) for one thread root. On open it fetch
 
 `TurnStrip` (`turn-strip.tsx`) appears only when a turn is active: the working agent's busy mascot, "… is working on it", the current step label from `runActivity` (`run.step` broadcast), "N of M done" for plan mode, "then <names>" for queued agents, and a Stop button that calls `stopGeneration({ orgSlug, roomId, runId })` from `src/lib/actions/messages.ts`.
 
-`tool-call-card.tsx` exports the step and approval UI:
+`tool-call-card.tsx` and `changed-files-card.tsx` export the step, approval, and changed files UI:
 
 - **`ApprovalCard`** — "approval needed" header with a live countdown (`approvalMsLeft` from `src/lib/tool-summary.ts`; <60 s turns warn, ≤0 shows "expired — rejected automatically"). The human-readable request comes from `describeToolCall` (or `describeMacStep` for Mac-hosted steps, where approval belongs to the host owner via `readMacMarker`; non-owners see "Waiting for the owner of <host> to decide"). Body shows the exact JSON args. Buttons: Approve, Reject, and a conditional "always allow" (`decide("approved", true)` → `resolveToolCall({ decision, remember })` from `src/lib/actions/messages.ts`).
-- **`WorkedGroup`** — one folded line above the answer instead of a stack of boxes: "Worked for 2 min · 6 steps", or "Working for 40 sec · 2 steps" with a pulsing dot while the turn runs, plus "· N failed" in danger when a step errored. A reply with reasoning shows "Thinking"/"Thought" when it has no steps. It opens itself while work is in progress and folds when the turn stops, unless the reader has toggled it. The body holds the reasoning, then one `ToolCallRow` per step. Durations under 5 s are left off (`workedDuration`), and a running duration ticks once a second.
-- **`ToolCallRow`** — one step: tool name (or `describeMacStep` for Mac steps), `StatusBadge` in a rounded pill, clock time; opening it shows arguments, streaming `liveOutput` (with copy), error and result blocks. Keeps `data-testid="tool-call"` and `data-tool-call-id` for tests.
-- **`ToolCallsList`** — renders any `pending_approval` call as an `ApprovalCard` first (a waiting approval is never hidden inside a folded group) and folds everything else into one `WorkedGroup`. `grouped={false}` lists each step on its own — the room Activity tab uses it as a log.
+- **`WorkedGroup`** — a sleek action bar summarizing turn execution:
+  - Top status line: "Worked for 3.5s" or "Working for 47s" with live duration countdown and running indicators.
+  - Action summary bar: natural-language aggregation built by `chat-tool-presenter.ts` (e.g. "Ran 2 commands, searched code 1 time, and performed 2 other actions" + timestamp and chevron).
+  - Expandable steps:
+    - Thought block (Brain icon + "Thought" / "Thinking" with expandable formatted reasoning text).
+    - Terminal commands (`>_ <cmd>` with expandable output and live streaming).
+    - Code searches (`Q Searched ...` with expandable path results).
+    - Web searches (Globe icon + "Searched the web for ...").
+    - File reads and edits.
+- **`ToolCallRow`** — one step: tool action icon, descriptive label, `StatusBadge` in a rounded pill, clock time; opening it shows arguments, streaming `liveOutput` (with copy), error and result blocks. Keeps `data-testid="tool-call"` and `data-tool-call-id` for tests.
+- **`ChangedFilesCard`** — renders at the bottom of messages when file mutations occurred: file count, addition/deletion stats (`+2k -0`), an "Open diff" button, and an expandable folder/file tree with per-file additions/deletions.
+- **`ToolCallsList`** — renders any `pending_approval` call as an `ApprovalCard` first (a waiting approval is never hidden inside a folded group) and folds everything else into `WorkedGroup`. `grouped={false}` lists each step on its own — the room Activity tab uses it as a log.
 
 ## 🙋 Questions in the room (`question-card.tsx`)
 

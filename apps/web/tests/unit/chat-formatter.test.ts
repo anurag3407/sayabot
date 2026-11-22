@@ -103,3 +103,30 @@ describe("Formatter Components SSR Rendering", () => {
     expect(html).toContain("q4_results.pdf")
   })
 })
+
+describe("ChangedFilesCard SSR Rendering", () => {
+  it("renders changed file stats and diff counts", async () => {
+    const { ChangedFilesCard } = await import("../../src/components/room/changed-files-card")
+    const element = React.createElement(ChangedFilesCard, {
+      summary: {
+        files: [
+          {
+            path: "frontend/index.html",
+            name: "index.html",
+            dir: "frontend",
+            additions: 2046,
+            deletions: 0,
+            isNew: true,
+          },
+        ],
+        totalFiles: 1,
+        totalAdditions: 2046,
+        totalDeletions: 0,
+      },
+    })
+    const html = renderToStaticMarkup(element)
+    expect(html).toContain("1 changed file")
+    expect(html).toContain("+2k")
+    expect(html).toContain("data-testid=\"changed-files-card\"")
+  })
+})

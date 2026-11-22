@@ -802,3 +802,45 @@ html.light .streamdown pre {
     left: 33%;
   }
 }
+
+/* Sleek chat markdown typography and layout */
+.chat-markdown {
+  color: var(--color-text);
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.chat-markdown > :first-child {
+  margin-top: 0;
+}
+
+.chat-markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.chat-markdown p,
+.chat-markdown ul,
+.chat-markdown ol,
+.chat-markdown blockquote,
+.chat-markdown pre,
+.chat-markdown .chat-markdown-table-container {
+  margin: 0.65rem 0;
+}
+
+.chat-markdown pre {
+  background-color: var(--color-ink);
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  overflow-x: auto;
+}
+
+.chat-markdown :not(pre) > code {
+  background-color: var(--color-panel);
+  border: 1px solid var(--color-line);
+  border-radius: 4px;
+  padding: 0.15rem 0.35rem;
+  font-size: 12px;
+  font-family: var(--font-mono);
+}
+

@@ -1,7 +1,16 @@
 "use client"
 
 import { useEffect, useId, useRef, useState, useTransition } from "react"
-import { ChevronRight } from "lucide-react"
+import {
+  Brain,
+  ChevronRight,
+  FileCode,
+  FileText,
+  Globe,
+  Search,
+  Terminal,
+  Wrench,
+} from "lucide-react"
 import { resolveToolCall } from "@/lib/actions/messages"
 import { Button } from "@/components/ui/button"
 import { CopyButton } from "@/components/copy-button"
@@ -21,11 +30,17 @@ import {
   formatCountdown,
   MAC_APPROVAL_WINDOW_MS,
 } from "@/lib/tool-summary"
+import {
+  buildActionSummarySentence,
+  classifyToolKind,
+  extractSearchQuery,
+  extractToolCommand,
+  extractToolPath,
+  formatActionDuration,
+} from "@/lib/chat-tool-presenter"
 import type { ToolCallView } from "@/lib/types"
 
 const URGENT_MS = 60_000
-/** Below this, a duration is noise: half a second of work still reads as "Worked". */
-const MIN_REPORTED_MS = 5_000
 
 function useCountdown(createdAt: string, active: boolean, windowMs: number): number | null {
   const [now, setNow] = useState<number | null>(null)
@@ -38,7 +53,7 @@ function useCountdown(createdAt: string, active: boolean, windowMs: number): num
   return active && now !== null ? approvalMsLeft(createdAt, now, windowMs) : null
 }
 
-/** Ticks once a second while work is in progress, so "Working for 40 sec" stays true. */
+/** Ticks once a second while work is in progress. */
 function useNow(active: boolean): number | null {
   const [now, setNow] = useState<number | null>(null)
   useEffect(() => {
@@ -50,129 +65,299 @@ function useNow(active: boolean): number | null {
   return active ? now : null
 }
 
-/** 43_000 → "43 sec", 132_000 → "2 min", 3_900_000 → "1 hr 5 min". */
-function workedDuration(ms: number): string {
-  const seconds = Math.round(ms / 1000)
-  if (seconds < 60) return `${Math.max(seconds, 1)} sec`
-  const minutes = Math.round(seconds / 60)
-  if (minutes < 60) return `${minutes} min`
-  const hours = Math.floor(minutes / 60)
-  const rest = minutes % 60
-  return rest ? `${hours} hr ${rest} min` : `${hours} hr`
-}
-
 function timeOf(iso: string | null): number | null {
   if (!iso) return null
   const value = Date.parse(iso)
   return Number.isFinite(value) ? value : null
 }
 
-/** Every step of one reply, folded into a single quiet line the reader can open. */
-function WorkedGroup({
+/** Returns the icon corresponding to a tool action category. */
+function ActionIcon({ kind, className }: { kind: string; className?: string }) {
+  switch (kind) {
+    case "command":
+      return <Terminal className={className} />
+    case "code-search":
+      return <Search className={className} />
+    case "search":
+      return <Globe className={className} />
+    case "read":
+      return <FileText className={className} />
+    case "edit":
+      return <FileCode className={className} />
+    default:
+      return <Wrench className={className} />
+  }
+}
+
+/**
+ * A sleek collapsible action bar summarizing tool executions and reasoning.
+ */
+export function WorkedGroup({
   calls,
   thinking,
   thinkingStreaming = false,
+  timestamp,
 }: {
   calls: ToolCallView[]
   thinking?: string | null
   thinkingStreaming?: boolean
+  timestamp?: string
 }) {
   const panelId = useId()
-  const running = calls.some((call) => call.status === "running")
-  const [open, setOpen] = useState(running)
-  // Opening and closing follow the work itself until the reader takes over.
+  const hasRunning = calls.some((call) => call.status === "running")
+  const isWorking = hasRunning || Boolean(thinkingStreaming)
+  const [open, setOpen] = useState(isWorking)
+  const [thoughtOpen, setThoughtOpen] = useState(true)
   const readerTouched = useRef(false)
-  useEffect(() => {
-    if (!readerTouched.current) setOpen(running)
-  }, [running])
 
-  const now = useNow(running)
-  const starts = calls.map((call) => timeOf(call.createdAt)).filter((value) => value !== null)
+  useEffect(() => {
+    if (!readerTouched.current && isWorking) {
+      setOpen(true)
+    }
+  }, [isWorking])
+
+  const now = useNow(isWorking)
+  const starts = calls.map((call) => timeOf(call.createdAt)).filter((v): v is number => v !== null)
   const ends = calls
     .map((call) => timeOf(call.resolvedAt) ?? timeOf(call.createdAt))
-    .filter((value) => value !== null)
+    .filter((v): v is number => v !== null)
   const startedAt = starts.length ? Math.min(...starts) : null
   const finishedAt = ends.length ? Math.max(...ends) : null
   const elapsed =
     startedAt === null
       ? null
-      : running
+      : isWorking
         ? Math.max(0, (now ?? Date.now()) - startedAt)
         : finishedAt === null
           ? null
           : Math.max(0, finishedAt - startedAt)
 
-  const failed = calls.filter((call) => call.status === "error").length
-  const label = !calls.length
-    ? thinkingStreaming
-      ? "Thinking"
-      : "Thought"
-    : running
-      ? "Working"
-      : "Worked"
-  const duration = elapsed !== null && elapsed >= MIN_REPORTED_MS ? workedDuration(elapsed) : null
+  const hasThinking = Boolean(thinking || thinkingStreaming)
+  const { summary, hasFailure, failedCount } = buildActionSummarySentence(
+    calls,
+    hasThinking,
+    Boolean(thinkingStreaming || hasRunning),
+  )
+
+  const durationStr = elapsed !== null ? formatActionDuration(elapsed) : ""
+  const displayTime = timestamp ? clockTime(timestamp) : calls[0]?.createdAt ? clockTime(calls[0].createdAt) : null
 
   return (
-    <div className="min-w-0 max-w-full" data-testid="worked">
+    <div className="min-w-0 max-w-full my-2 space-y-1.5" data-testid="worked">
+      {/* Top Status Line: Working for 47s / Worked for 3.5s > */}
+      <div className="flex items-center gap-1.5 text-xs text-muted font-normal">
+        <button
+          type="button"
+          data-testid="worked-group"
+          aria-expanded={open}
+          aria-controls={panelId}
+          onClick={() => {
+            readerTouched.current = true
+            setOpen((v) => !v)
+          }}
+          className="inline-flex items-center gap-1.5 py-0.5 text-left text-faint transition-colors hover:text-text focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-400 dark:focus-visible:ring-zinc-500 rounded"
+        >
+          <span>
+            {isWorking ? "Working" : "Worked"}
+            {durationStr ? ` for ${durationStr}` : ""}
+          </span>
+          <ChevronRight
+            className={cn("h-3 w-3 shrink-0 text-faint transition-transform duration-200", open && "rotate-90")}
+          />
+          {isWorking ? (
+            <span className="inline-flex items-center gap-1 ml-1" aria-hidden="true">
+              <span className="thinking-dot" />
+              <span className="thinking-dot [animation-delay:150ms]" />
+              <span className="thinking-dot [animation-delay:300ms]" />
+            </span>
+          ) : null}
+        </button>
+      </div>
+
+      {/* Sleek Tool Summary Bar */}
+      <div
+        className={cn(
+          "overflow-hidden rounded-lg border transition-all duration-200",
+          hasFailure
+            ? "border-danger/40 bg-danger/[0.04]"
+            : "border-border/70 bg-panel/60 hover:border-line-strong",
+        )}
+      >
+        <button
+          type="button"
+          onClick={() => {
+            readerTouched.current = true
+            setOpen((v) => !v)
+          }}
+          aria-expanded={open}
+          className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-xs transition-colors hover:bg-raised/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-400 dark:focus-visible:ring-zinc-500 rounded"
+        >
+          <div className="flex min-w-0 items-center gap-2">
+            <ActionIcon
+              kind={calls[0] ? classifyToolKind(calls[0].toolName, calls[0].args) : "other"}
+              className="h-3.5 w-3.5 shrink-0 text-muted"
+            />
+            <span className="truncate font-normal text-text">{summary}</span>
+            {failedCount > 0 ? (
+              <span className="shrink-0 text-2xs font-medium text-danger">· {failedCount} failed</span>
+            ) : null}
+          </div>
+
+          <div className="flex shrink-0 items-center gap-2 text-faint">
+            {displayTime ? <span className="font-mono text-2xs">{displayTime}</span> : null}
+            <ChevronRight
+              className={cn("h-3.5 w-3.5 transition-transform duration-200", open && "rotate-90")}
+            />
+          </div>
+        </button>
+
+        {/* Expanded Steps List */}
+        {open ? (
+          <div id={panelId} className="border-t border-border/50 bg-ink/30 px-3 py-2.5 space-y-2">
+            {/* Thought / Reasoning Block */}
+            {hasThinking ? (
+              <div className="rounded-md border border-border/40 bg-panel/40 p-2.5 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setThoughtOpen(!thoughtOpen)}
+                  aria-expanded={thoughtOpen}
+                  className="flex w-full items-center justify-between gap-2 text-left text-muted hover:text-text focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-400 dark:focus-visible:ring-zinc-500 rounded"
+                >
+                  <div className="flex items-center gap-1.5 font-medium">
+                    <Brain className="h-3.5 w-3.5 text-accent" />
+                    <span>{thinkingStreaming ? "Thinking" : "Thought"}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-faint">
+                    {displayTime ? <span className="font-mono text-2xs">{displayTime}</span> : null}
+                    <ChevronRight
+                      className={cn("h-3 w-3 transition-transform duration-200", thoughtOpen && "rotate-90")}
+                    />
+                  </div>
+                </button>
+
+                {thoughtOpen && thinking ? (
+                  <div className="mt-2 max-h-80 overflow-y-auto whitespace-pre-wrap font-sans text-xs leading-relaxed text-muted pl-5 border-l border-border/50">
+                    {thinking}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
+            {/* Individual Tool Call Steps */}
+            {calls.map((call) => (
+              <ToolCallRow key={call.id} call={call} />
+            ))}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+/** A single tool step inside the expanded action group. */
+export function ToolCallRow({ call, boxed = false }: { call: ToolCallView; boxed?: boolean }) {
+  const [open, setOpen] = useState(false)
+  const kind = classifyToolKind(call.toolName, call.args)
+  const cmd = extractToolCommand(call.args)
+  const searchQuery = extractSearchQuery(call.args)
+  const filePath = extractToolPath(call.args)
+  const resultText = call.result === null || call.result === undefined ? "" : pretty(call.result)
+
+  let label = call.toolName
+  if (readMacMarker(call.args)) {
+    label = describeMacStep(call.toolName, call.args)
+  } else if (kind === "command" && cmd) {
+    label = `>_ ${cmd}`
+  } else if (kind === "code-search") {
+    label = searchQuery.target
+      ? `Searched ${searchQuery.query || "code"} in ${searchQuery.target}`
+      : `Searched ${searchQuery.query || "code"}`
+  } else if (kind === "search") {
+    label = searchQuery.query ? `Searched the web for "${searchQuery.query}"` : "Searched the web"
+  } else if (kind === "read" && filePath) {
+    label = `Read ${filePath}`
+  } else if (kind === "edit" && filePath) {
+    label = `Changed ${filePath}`
+  }
+
+  return (
+    <div
+      data-testid="tool-call"
+      data-tool-call-id={call.id}
+      data-status={call.status}
+      className={cn("group/step rounded-md transition-colors", boxed && "border border-border/60 bg-panel/50 p-2")}
+    >
       <button
         type="button"
+        onClick={() => setOpen(!open)}
         aria-expanded={open}
-        aria-controls={panelId}
-        data-testid="worked-group"
-        onClick={() => {
-          readerTouched.current = true
-          setOpen((value) => !value)
-        }}
-        className="inline-flex max-w-full items-center gap-1.5 rounded-md py-0.5 text-left text-[13px] text-faint transition-colors hover:text-text"
+        className="flex w-full items-center justify-between gap-2 py-1 text-left text-xs hover:text-text focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-400 dark:focus-visible:ring-zinc-500 rounded"
       >
-        <ChevronRight
-          aria-hidden="true"
-          className={cn("h-3 w-3 shrink-0 transition-transform", open && "rotate-90")}
-        />
-        <span className="shrink-0">
-          {label}
-          {duration ? ` for ${duration}` : ""}
-        </span>
-        {calls.length ? (
-          <span className="shrink-0 text-[11px] text-faint/80">
-            · {calls.length} {calls.length === 1 ? "step" : "steps"}
-          </span>
-        ) : null}
-        {failed ? (
-          <span className="shrink-0 text-[11px] text-danger">· {failed} failed</span>
-        ) : null}
-        {running ? (
-          <span className="inline-flex items-center gap-1" aria-hidden="true">
-            <span className="thinking-dot" />
-            <span className="thinking-dot [animation-delay:150ms]" />
-            <span className="thinking-dot [animation-delay:300ms]" />
-          </span>
-        ) : null}
+        <div className="flex min-w-0 items-center gap-2">
+          <ActionIcon kind={kind} className="h-3 w-3 shrink-0 text-muted" />
+          <span className="truncate font-mono text-2xs text-muted group-hover/step:text-text">{label}</span>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <StatusBadge status={call.status} className="rounded-full" />
+          <span className="font-mono text-2xs text-faint">{clockTime(call.createdAt)}</span>
+          <ChevronRight
+            className={cn("h-3 w-3 text-faint transition-transform duration-200", open && "rotate-90")}
+          />
+        </div>
       </button>
+
       {open ? (
-        <div
-          id={panelId}
-          role="region"
-          aria-label="Steps"
-          className="mt-1.5 min-w-0 space-y-0.5 border-l border-line pl-2"
-        >
-          {thinking ? (
-            <div className="pb-1.5">
-              <p className="font-mono text-[11px] text-faint">thinking</p>
-              <div className="mt-0.5 max-h-72 overflow-y-auto whitespace-pre-wrap break-words text-[13px] leading-relaxed text-muted">
-                {thinking}
-              </div>
+        <div className="mt-2 space-y-2 pl-5 text-2xs">
+          {call.args && Object.keys(call.args).length > 0 ? (
+            <div>
+              <p className="mb-0.5 font-mono text-faint">arguments</p>
+              <pre className="max-h-40 overflow-auto rounded border border-border/50 bg-ink p-2 font-mono leading-relaxed text-muted whitespace-pre-wrap">
+                {pretty(withoutMacMarker(call.args))}
+              </pre>
             </div>
           ) : null}
-          {calls.map((call) => (
-            <ToolCallRow key={call.id} call={call} />
-          ))}
+
+          {call.error ? (
+            <div className="rounded border border-danger/30 bg-danger/[0.06] p-2 text-danger">
+              {call.error}
+            </div>
+          ) : null}
+
+          {call.liveOutput ? (
+            <div>
+              <div className="flex items-center justify-between">
+                <p className="font-mono text-faint">
+                  live output {call.status === "running" ? "· streaming…" : ""}
+                </p>
+                <CopyButton text={call.liveOutput} />
+              </div>
+              <pre
+                data-testid="tool-live-output"
+                className="mt-1 max-h-60 overflow-auto rounded border border-border/50 bg-ink p-2 font-mono leading-relaxed text-muted whitespace-pre-wrap"
+              >
+                {call.liveOutput}
+              </pre>
+            </div>
+          ) : null}
+
+          {resultText ? (
+            <div>
+              <div className="flex items-center justify-between">
+                <p className="font-mono text-faint">result</p>
+                <CopyButton text={resultText} />
+              </div>
+              <pre className="mt-1 max-h-60 overflow-auto rounded border border-border/50 bg-ink p-2 font-mono leading-relaxed text-muted whitespace-pre-wrap">
+                {resultText}
+              </pre>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>
   )
 }
 
+/** Human-in-the-loop approval gate. */
 export function ApprovalCard({
   call,
   orgSlug,
@@ -186,7 +371,6 @@ export function ApprovalCard({
   canApprove: boolean
   onResolved?: () => void
   agentName?: string | null
-  /** The signed-in person; a step on someone's Mac is only theirs to answer. */
   viewerId?: string | null
 }) {
   const [pending, startTransition] = useTransition()
@@ -227,15 +411,15 @@ export function ApprovalCard({
       data-testid="approval-card"
       data-tool-call-id={call.id}
       data-status={call.status}
-      className="rounded-sm border border-line border-l-2 border-l-[var(--color-accent)] bg-panel"
+      className="rounded-lg border border-line border-l-2 border-l-[var(--color-accent)] bg-panel p-3"
     >
-      <div className="flex flex-wrap items-center gap-2 border-b border-line px-3 py-2">
-        <span className="font-mono text-[12px] text-accent">approval needed</span>
+      <div className="flex flex-wrap items-center gap-2 border-b border-line pb-2">
+        <span className="font-mono text-xs text-accent">approval needed</span>
         {isPending ? null : <StatusBadge status={call.status} />}
         {isPending && msLeft !== null ? (
           <span
             className={cn(
-              "ml-auto font-mono text-[12px]",
+              "ml-auto font-mono text-xs",
               expired ? "text-danger" : msLeft < URGENT_MS ? "text-warn" : "text-muted",
             )}
             title="An unanswered request is rejected automatically"
@@ -243,30 +427,28 @@ export function ApprovalCard({
             {expired ? "expired" : `${formatCountdown(msLeft)} left`}
           </span>
         ) : (
-          <span className="ml-auto font-mono text-[11px] text-faint">
-            {clockTime(call.createdAt)}
-          </span>
+          <span className="ml-auto font-mono text-2xs text-faint">{clockTime(call.createdAt)}</span>
         )}
       </div>
-      <div className="space-y-3 px-3 py-3">
-        <p className="text-[13px] leading-relaxed text-text">
+
+      <div className="space-y-3 pt-2">
+        <p className="text-xs leading-relaxed text-text">
           {mac
             ? `${agentName ?? "The agent"} wants to: ${describeMacStep(call.toolName, call.args)}`
             : describeToolCall({ toolName: call.toolName, input: call.args, agentName })}
         </p>
         <div>
-          <p className="mb-1 font-mono text-[11px] text-faint">
+          <p className="mb-1 font-mono text-2xs text-faint">
             exact request · <span className="text-muted">{call.toolName}</span>
           </p>
-          <pre className="max-h-44 overflow-auto rounded-sm border border-line bg-ink p-2 font-mono text-[12px] leading-relaxed text-muted">
+          <pre className="max-h-40 overflow-auto rounded border border-line bg-ink p-2 font-mono text-2xs leading-relaxed text-muted">
             {pretty(shownArgs)}
           </pre>
         </div>
+
         {isPending ? (
           expired ? (
-            <p className="font-mono text-[12px] text-muted">
-              This request timed out and was rejected.
-            </p>
+            <p className="font-mono text-xs text-muted">This request timed out and was rejected.</p>
           ) : mayDecide ? (
             <div className="flex flex-wrap items-center gap-2">
               <Button
@@ -302,20 +484,21 @@ export function ApprovalCard({
               </Button>
             </div>
           ) : (
-            <p className="font-mono text-[12px] text-warn">
+            <p className="font-mono text-xs text-warn">
               {mac
                 ? `Waiting for the owner of ${mac.hostName} to decide.`
                 : "Waiting for a room or workspace admin to decide."}
             </p>
           )
         ) : (
-          <p className="font-mono text-[12px] text-muted">
+          <p className="font-mono text-xs text-muted">
             decision: {call.status}
             {call.resolvedAt ? ` · ${clockTime(call.resolvedAt)}` : ""}
           </p>
         )}
+
         {error ? (
-          <p role="alert" className="text-[12px] text-danger">
+          <p role="alert" className="text-xs text-danger">
             {error}
           </p>
         ) : null}
@@ -324,81 +507,8 @@ export function ApprovalCard({
   )
 }
 
-/** One step inside a worked group: the name and outcome on the line, the detail on a click. */
-function ToolCallRow({ call, boxed = false }: { call: ToolCallView; boxed?: boolean }) {
-  const resultText = call.result === null || call.result === undefined ? "" : pretty(call.result)
-  return (
-    <details
-      className={cn("group/step min-w-0 rounded-md", boxed && "border border-line bg-panel/60")}
-      data-testid="tool-call"
-      data-tool-call-id={call.id}
-      data-status={call.status}
-    >
-      <summary
-        className={cn(
-          "flex min-w-0 cursor-pointer list-none items-center gap-2 rounded-md px-1.5 py-1 hover:bg-raised/70 md:py-0.5",
-          boxed && "px-3 py-2 md:py-1.5",
-        )}
-      >
-        {readMacMarker(call.args) ? (
-          <span className="min-w-0 flex-1 truncate text-[12.5px] text-text">
-            {describeMacStep(call.toolName, call.args)}
-          </span>
-        ) : (
-          <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-muted group-hover/step:text-text">
-            {call.toolName}
-          </span>
-        )}
-        <span className="flex shrink-0 items-center gap-2">
-          <StatusBadge status={call.status} className="rounded-full" />
-          <span className="font-mono text-[11px] text-faint">{clockTime(call.createdAt)}</span>
-        </span>
-      </summary>
-      <div className={cn("pb-2 pt-1", boxed ? "px-3" : "pl-1.5")}>
-        <p className="mb-1 font-mono text-[11px] text-faint">arguments</p>
-        <pre className="max-h-40 overflow-auto rounded-sm border border-line bg-ink p-2 font-mono text-[12px] leading-relaxed text-muted">
-          {pretty(withoutMacMarker(call.args))}
-        </pre>
-        {call.error ? (
-          <p role="alert" className="mt-2 text-[12px] text-danger">
-            {call.error}
-          </p>
-        ) : null}
-        {call.liveOutput ? (
-          <div className="mt-3">
-            <div className="flex items-center justify-between">
-              <p className="font-mono text-[11px] text-faint">
-                live output {call.status === "running" ? "· streaming…" : ""}
-              </p>
-              <CopyButton text={call.liveOutput} />
-            </div>
-            <pre
-              data-testid="tool-live-output"
-              className="mt-1 max-h-64 overflow-auto rounded-sm border border-line bg-ink p-2 font-mono text-[12px] leading-relaxed text-muted whitespace-pre-wrap"
-            >
-              {call.liveOutput}
-            </pre>
-          </div>
-        ) : null}
-        {resultText ? (
-          <>
-            <div className="mt-3 flex items-center justify-between">
-              <p className="font-mono text-[11px] text-faint">result</p>
-              <CopyButton text={resultText} />
-            </div>
-            <pre className="mt-1 max-h-64 overflow-auto rounded-sm border border-line bg-ink p-2 font-mono text-[12px] leading-relaxed text-muted">
-              {resultText}
-            </pre>
-          </>
-        ) : null}
-      </div>
-    </details>
-  )
-}
-
 /**
- * A reply's steps. Anything waiting on a person stays a card of its own; everything else folds
- * into one "Worked for 2 min" line so the answer is what a reader sees first.
+ * Renders tool calls: pending approvals on top, completed actions in a sleek folded bar.
  */
 export function ToolCallsList({
   calls,
@@ -409,24 +519,25 @@ export function ToolCallsList({
   thinking,
   thinkingStreaming = false,
   grouped = true,
+  timestamp,
 }: {
   calls: ToolCallView[]
   orgSlug: string
   canApprove: boolean
   agentName?: string | null
   viewerId?: string | null
-  /** Reasoning folded out of the reply; it opens with the steps. */
   thinking?: string | null
   thinkingStreaming?: boolean
-  /** One group per reply in the chat; `false` lists every step on its own (activity panel). */
   grouped?: boolean
+  timestamp?: string
 }) {
   const waiting = calls.filter((call) => call.status === "pending_approval")
   const rest = calls.filter((call) => call.status !== "pending_approval")
   const hasThinking = Boolean(thinking || thinkingStreaming)
   if (!waiting.length && !rest.length && !hasThinking) return null
+
   return (
-    <div className="mt-3 min-w-0 max-w-full space-y-2">
+    <div className="mt-2 min-w-0 max-w-full space-y-2">
       {waiting.map((call) => (
         <ApprovalCard
           key={call.id}
@@ -439,7 +550,12 @@ export function ToolCallsList({
       ))}
       {grouped ? (
         rest.length || hasThinking ? (
-          <WorkedGroup calls={rest} thinking={thinking} thinkingStreaming={thinkingStreaming} />
+          <WorkedGroup
+            calls={rest}
+            thinking={thinking}
+            thinkingStreaming={thinkingStreaming}
+            timestamp={timestamp}
+          />
         ) : null
       ) : (
         rest.map((call) => <ToolCallRow key={call.id} call={call} boxed />)

@@ -173,12 +173,12 @@ export function Markdown({ content, streaming = false }: { content: string; stre
             href={href}
             target={isExternal ? "_blank" : undefined}
             rel={isExternal ? "noopener noreferrer" : undefined}
-            className="break-words [overflow-wrap:anywhere] hover:underline"
+            className="font-medium text-accent hover:underline break-words [overflow-wrap:anywhere]"
             {...props}
           >
             {children}
             {isExternal ? (
-              <ExternalLink className="inline h-3 w-3 shrink-0 opacity-60" aria-hidden="true" />
+              <ExternalLink className="inline ml-1 h-3 w-3 shrink-0 opacity-60" aria-hidden="true" />
             ) : null}
           </a>
         )
@@ -201,15 +201,107 @@ export function Markdown({ content, streaming = false }: { content: string; stre
             </Callout>
           )
         }
-        return <blockquote {...props}>{children}</blockquote>
+        return (
+          <blockquote className="my-2.5 border-l-2 border-line-strong pl-3.5 text-muted italic" {...props}>
+            {children}
+          </blockquote>
+        )
+      },
+
+      code: ({ className, children, ...props }: any) => {
+        // Handle inline code badges vs block code
+        const isInline = !className && typeof children === "string" && !children.includes("\n")
+        if (isInline) {
+          const text = String(children)
+          // Sleek tag pill for "# file.ext"
+          if (text.startsWith("# ")) {
+            const fileName = text.slice(2)
+            return (
+              <span className="inline-flex items-center gap-1 rounded border border-border/70 bg-panel px-1.5 py-0.5 font-mono text-2xs font-medium text-text">
+                <span className="text-accent">#</span>
+                <span>{fileName}</span>
+              </span>
+            )
+          }
+          return (
+            <code
+              className="rounded border border-border/60 bg-panel/80 px-1.5 py-0.5 font-mono text-2xs text-text [overflow-wrap:anywhere]"
+              {...props}
+            >
+              {children}
+            </code>
+          )
+        }
+        return (
+          <code className={className} {...props}>
+            {children}
+          </code>
+        )
       },
 
       table: ({ children, ...props }) => (
-        <div className="my-3 max-w-full overflow-x-auto rounded-xl border border-line">
-          <table className="w-full border-collapse" {...props}>
+        <div className="my-3 max-w-full overflow-x-auto rounded-lg border border-border/70 bg-panel/40">
+          <table className="w-full border-collapse text-xs" {...props}>
             {children}
           </table>
         </div>
+      ),
+
+      th: ({ children, ...props }: any) => (
+        <th
+          className="border-b border-border/70 bg-ink/60 px-3 py-2 text-left font-medium text-text"
+          {...props}
+        >
+          {children}
+        </th>
+      ),
+
+      td: ({ children, ...props }: any) => (
+        <td className="border-b border-border/40 px-3 py-2 text-muted" {...props}>
+          {children}
+        </td>
+      ),
+
+      ul: ({ children, ...props }: any) => (
+        <ul className="my-2 ml-4 list-disc space-y-1 text-sm text-text/95 leading-relaxed" {...props}>
+          {children}
+        </ul>
+      ),
+
+      ol: ({ children, ...props }: any) => (
+        <ol className="my-2 ml-4 list-decimal space-y-1 text-sm text-text/95 leading-relaxed" {...props}>
+          {children}
+        </ol>
+      ),
+
+      li: ({ children, ...props }: any) => (
+        <li className="leading-relaxed" {...props}>
+          {children}
+        </li>
+      ),
+
+      h1: ({ children, ...props }: any) => (
+        <h1 className="mt-4 mb-2 text-lg font-semibold text-text tracking-tight" {...props}>
+          {children}
+        </h1>
+      ),
+
+      h2: ({ children, ...props }: any) => (
+        <h2 className="mt-3.5 mb-1.5 text-base font-semibold text-text tracking-tight" {...props}>
+          {children}
+        </h2>
+      ),
+
+      h3: ({ children, ...props }: any) => (
+        <h3 className="mt-3 mb-1 text-sm font-semibold text-text tracking-tight" {...props}>
+          {children}
+        </h3>
+      ),
+
+      p: ({ children, ...props }: any) => (
+        <p className="my-2 text-[14px] leading-relaxed text-text/95" {...props}>
+          {children}
+        </p>
       ),
     }),
     [],
@@ -219,7 +311,7 @@ export function Markdown({ content, streaming = false }: { content: string; stre
 
   return (
     <Streamdown
-      className="streamdown"
+      className="streamdown chat-markdown"
       plugins={plugins}
       mermaid={{
         errorComponent: (props) => <MermaidErrorFallback {...props} isStreaming={streaming} />,
