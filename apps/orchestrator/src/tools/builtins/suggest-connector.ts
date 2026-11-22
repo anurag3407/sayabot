@@ -28,12 +28,13 @@ export function suggestConnectorTool(_opts: SuggestConnectorOptions): ToolSpec {
           "protonpass",
           "supabase",
           "cloudflare_r2",
-          "notion",
-          "linear",
-          "gmail",
-          "googlecalendar",
+          "backblaze_b2",
+          "s3_storage",
+          "huggingface",
         ])
-        .describe("The connector source or platform identifier"),
+        .describe(
+          "The connector source identifier. For apps like Gmail, Calendar, Notion, Linear, HubSpot, etc., use source: 'composio' with the specific 'app' slug.",
+        ),
       name: z.string().describe("Human readable name, e.g. 'GitHub', 'Slack', 'Composio'"),
       reason: z
         .string()
@@ -43,7 +44,9 @@ export function suggestConnectorTool(_opts: SuggestConnectorOptions): ToolSpec {
       app: z
         .string()
         .optional()
-        .describe("Specific app toolkit slug for Composio, e.g. 'gmail', 'linear', 'notion'"),
+        .describe(
+          "Specific app toolkit slug when source is 'composio', e.g. 'gmail', 'linear', 'notion', 'googlecalendar'",
+        ),
     }),
     dangerous: false,
     execute: async (input: {
@@ -52,13 +55,31 @@ export function suggestConnectorTool(_opts: SuggestConnectorOptions): ToolSpec {
       reason: string
       app?: string
     }) => {
+      let source = input.source
+      let app = input.app
+      if (
+        [
+          "gmail",
+          "googlecalendar",
+          "calendar",
+          "notion",
+          "linear",
+          "hubspot",
+          "trello",
+          "airtable",
+          "zoom",
+        ].includes(source)
+      ) {
+        app = app || source
+        source = "composio"
+      }
       return {
         ok: true,
         suggested: true,
-        source: input.source,
+        source,
         name: input.name,
         reason: input.reason,
-        app: input.app,
+        app,
       }
     },
   }

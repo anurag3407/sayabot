@@ -112,6 +112,10 @@ export function ConnectorSuggestionCard({
 }) {
   const [expanded, setExpanded] = useState(false)
   const [token, setToken] = useState("")
+  const [phoneNumberId, setPhoneNumberId] = useState("")
+  const [projectUrl, setProjectUrl] = useState("")
+  const [connectUrl, setConnectUrl] = useState("")
+  const [onComputer, setOnComputer] = useState(false)
   const [status, setStatus] = useState<"idle" | "connected" | "error">("idle")
   const [detailMessage, setDetailMessage] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -131,7 +135,7 @@ export function ConnectorSuggestionCard({
 
   async function handleConnect(e: React.FormEvent) {
     e.preventDefault()
-    if (!token.trim()) return
+    if (!token.trim() && !onComputer) return
 
     setErrorMessage(null)
     startTransition(async () => {
@@ -139,9 +143,22 @@ export function ConnectorSuggestionCard({
       formData.set("orgSlug", orgSlug)
       formData.set("source", source)
       formData.set("name", displayName)
-      formData.set("token", token.trim())
+      formData.set("token", token.trim() || (onComputer ? "desktop" : ""))
       if (agentId) {
         formData.set("grantToAgentId", agentId)
+      }
+      if (source === "whatsapp" && phoneNumberId.trim()) {
+        formData.set("phoneNumberId", phoneNumberId.trim())
+      }
+      if (source === "supabase" && projectUrl.trim()) {
+        formData.set("projectUrl", projectUrl.trim())
+      }
+      if (source === "onepassword") {
+        if (onComputer) {
+          formData.set("onComputer", "on")
+        } else if (connectUrl.trim()) {
+          formData.set("connectUrl", connectUrl.trim())
+        }
       }
 
       const res = await saveWorkspaceConnector(null, formData)
@@ -169,8 +186,15 @@ export function ConnectorSuggestionCard({
           content: `I have connected ${displayName}. Please proceed with the task.`,
         })
         if (res.ok) {
-          setResumed(true)
-          showToast({ tone: "success", message: `Resumed task with ${displayName}!` })
+          const warning =
+            (res as { warning?: string }).warning ??
+            (res.data as { warning?: string } | undefined)?.warning
+          if (warning) {
+            showToast({ tone: "warning", message: `Message saved: ${warning}` })
+          } else {
+            setResumed(true)
+            showToast({ tone: "success", message: `Resumed task with ${displayName}!` })
+          }
         } else {
           showToast({ tone: "danger", message: res.error || "Failed to resume task" })
         }
@@ -307,11 +331,76 @@ export function ConnectorSuggestionCard({
               value={token}
               onChange={(e) => setToken(e.target.value)}
               placeholder={meta.placeholder}
-              required
-              className="w-full rounded-lg border border-border bg-ink px-3 py-2 text-xs font-mono text-text placeholder:text-faint focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+              required={!onComputer}
+              disabled={onComputer}
+              className="w-full rounded-lg border border-border bg-ink px-3 py-2 text-xs font-mono text-text placeholder:text-faint focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50"
             />
             <p className="text-[11px] text-faint">{meta.helpText}</p>
           </div>
+
+          {source === "whatsapp" ? (
+            <div className="space-y-1">
+              <label htmlFor={`phone-id-${source}`} className="font-medium text-text text-xs">
+                WhatsApp Phone Number ID
+              </label>
+              <input
+                id={`phone-id-${source}`}
+                type="text"
+                value={phoneNumberId}
+                onChange={(e) => setPhoneNumberId(e.target.value)}
+                placeholder="e.g. 106540352..."
+                required
+                className="w-full rounded-lg border border-border bg-ink px-3 py-2 text-xs font-mono text-text placeholder:text-faint focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+              />
+              <p className="text-[11px] text-faint">Found in Meta for Developers → WhatsApp → API Setup.</p>
+            </div>
+          ) : null}
+
+          {source === "supabase" ? (
+            <div className="space-y-1">
+              <label htmlFor={`project-url-${source}`} className="font-medium text-text text-xs">
+                Supabase Project URL
+              </label>
+              <input
+                id={`project-url-${source}`}
+                type="url"
+                value={projectUrl}
+                onChange={(e) => setProjectUrl(e.target.value)}
+                placeholder="https://xyzcompany.supabase.co"
+                required
+                className="w-full rounded-lg border border-border bg-ink px-3 py-2 text-xs font-mono text-text placeholder:text-faint focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+              />
+            </div>
+          ) : null}
+
+          {source === "onepassword" ? (
+            <div className="space-y-2 pt-1">
+              <label className="flex items-center gap-2 text-xs text-text cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={onComputer}
+                  onChange={(e) => setOnComputer(e.target.checked)}
+                  className="rounded border-border text-accent focus:ring-accent"
+                />
+                <span>Use 1Password app signed in on this computer</span>
+              </label>
+              {!onComputer ? (
+                <div className="space-y-1">
+                  <label htmlFor={`connect-url-${source}`} className="font-medium text-text text-xs">
+                    1Password Connect Server URL
+                  </label>
+                  <input
+                    id={`connect-url-${source}`}
+                    type="url"
+                    value={connectUrl}
+                    onChange={(e) => setConnectUrl(e.target.value)}
+                    placeholder="https://1password-connect.internal"
+                    className="w-full rounded-lg border border-border bg-ink px-3 py-2 text-xs font-mono text-text placeholder:text-faint focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                  />
+                </div>
+              ) : null}
+            </div>
+          ) : null}
 
           {errorMessage ? (
             <div className="flex items-center gap-2 rounded-lg border border-danger/30 bg-danger/[0.08] p-2 text-xs text-danger">
@@ -330,7 +419,12 @@ export function ConnectorSuggestionCard({
             </button>
             <button
               type="submit"
-              disabled={isPending || !token.trim()}
+              disabled={
+                isPending ||
+                (!onComputer && !token.trim()) ||
+                (source === "whatsapp" && !phoneNumberId.trim()) ||
+                (source === "supabase" && !projectUrl.trim())
+              }
               className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-1.5 text-xs font-medium text-white shadow-sm transition-all hover:bg-accent/90 disabled:opacity-50"
             >
               {isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Key className="h-3.5 w-3.5" />}
