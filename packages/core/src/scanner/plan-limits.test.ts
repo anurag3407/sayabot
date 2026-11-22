@@ -221,7 +221,7 @@ describe("parseCursorUsage", () => {
       {
         label: "Fast Requests",
         usedPercent: 30,
-        resetsAt: "2026-11-01T00:00:00.000Z",
+        resetsAt: "2026-12-01T00:00:00.000Z",
         windowMinutes: 43200,
       },
     ])
@@ -266,17 +266,10 @@ describe("parseCopilotLimits", () => {
     ])
   })
 
-  it("falls back to active plan indicator when no rate limit headers are present", () => {
+  it("returns plan name with empty windows when no rate limit headers are present", () => {
     const res = parseCopilotLimits({ plan_type: "copilot_for_business" })
     expect(res.plan).toBe("Copilot For Business")
-    expect(res.windows).toEqual([
-      {
-        label: "Active Plan",
-        usedPercent: 0,
-        resetsAt: null,
-        windowMinutes: 43200,
-      },
-    ])
+    expect(res.windows).toEqual([])
   })
 })
 

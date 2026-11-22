@@ -425,21 +425,11 @@ export async function readOpenCodeLimits(): Promise<PlanLimits> {
   )
 
   if (hasDb || hasConfig || apiKey || openRouterKey) {
-    return {
-      provider: "opencode",
+    return unavailable(
+      "opencode",
       label,
-      plan: apiKey ? "Account" : "Local / Free",
-      windows: [
-        {
-          label: "Active Session",
-          usedPercent: 0,
-          resetsAt: null,
-          windowMinutes: 300,
-        },
-      ],
-      observedAt: new Date().toISOString(),
-      error: null,
-    }
+      "OpenCode account detected, but quota endpoints were unreachable or unmetered.",
+    )
   }
 
   return unavailable("opencode", label, "Sign in to OpenCode or add a provider in opencode.json.")
@@ -451,27 +441,22 @@ export async function readPiLimits(): Promise<PlanLimits> {
   const label = "pi"
   const home = os.homedir()
 
-  const authPaths = [
-    path.join(home, ".pi", "agent", "auth.json"),
-    path.join(home, ".omp", "agent", "auth.json"),
-  ]
+  const piAuthPath = path.join(home, ".pi", "agent", "auth.json")
   let openRouterToken = process.env.OPENROUTER_API_KEY?.trim() || null
   let hasAnthropic = Boolean(process.env.ANTHROPIC_API_KEY?.trim())
   let hasOpenAI = Boolean(process.env.OPENAI_API_KEY?.trim())
 
-  for (const p of authPaths) {
-    try {
-      const raw = await fs.readFile(p, "utf8")
-      const parsed = JSON.parse(raw)
-      if (parsed?.openrouter) {
-        const or = parsed.openrouter
-        if (typeof or.access === "string") openRouterToken = or.access
-        else if (typeof or.apiKey === "string") openRouterToken = or.apiKey
-      }
-      if (parsed?.anthropic?.apiKey) hasAnthropic = true
-      if (parsed?.openai?.apiKey) hasOpenAI = true
-    } catch {}
-  }
+  try {
+    const raw = await fs.readFile(piAuthPath, "utf8")
+    const parsed = JSON.parse(raw)
+    if (!openRouterToken && parsed?.openrouter) {
+      const or = parsed.openrouter
+      if (typeof or.access === "string") openRouterToken = or.access
+      else if (typeof or.apiKey === "string") openRouterToken = or.apiKey
+    }
+    if (!hasAnthropic && parsed?.anthropic?.apiKey) hasAnthropic = true
+    if (!hasOpenAI && parsed?.openai?.apiKey) hasOpenAI = true
+  } catch {}
 
   if (openRouterToken) {
     try {
@@ -500,27 +485,11 @@ export async function readPiLimits(): Promise<PlanLimits> {
       }
     } catch {}
 
-    return {
-      provider: "pi",
-      label,
-      plan: "OpenRouter",
-      windows: [
-        { label: "OpenRouter Active", usedPercent: 0, resetsAt: null, windowMinutes: null },
-      ],
-      observedAt: new Date().toISOString(),
-      error: null,
-    }
+    return unavailable("pi", label, "Couldn't reach OpenRouter quota service.")
   }
 
   if (hasAnthropic || hasOpenAI) {
-    return {
-      provider: "pi",
-      label,
-      plan: hasAnthropic ? "Anthropic BYOK" : "OpenAI BYOK",
-      windows: [{ label: "API Key Active", usedPercent: 0, resetsAt: null, windowMinutes: null }],
-      observedAt: new Date().toISOString(),
-      error: null,
-    }
+    return unavailable("pi", label, "Pi uses direct BYOK API keys; rate limits are not reported.")
   }
 
   return unavailable("pi", label, "Sign in to pi or set OPENROUTER_API_KEY to see limits.")
@@ -571,21 +540,7 @@ export async function readCursorLimits(): Promise<PlanLimits> {
   }
 
   if (hasCursor) {
-    return {
-      provider: "cursor",
-      label,
-      plan: "Pro / Fast Reqs",
-      windows: [
-        {
-          label: "Fast Requests",
-          usedPercent: 0,
-          resetsAt: null,
-          windowMinutes: 43200,
-        },
-      ],
-      observedAt: new Date().toISOString(),
-      error: null,
-    }
+    return unavailable("cursor", label, "Set CURSOR_API_KEY to fetch Cursor usage and plan limits.")
   }
 
   return unavailable("cursor", label, "Install and sign in to Cursor on this computer.")
@@ -649,27 +604,27 @@ export async function readCopilotLimits(): Promise<PlanLimits> {
       })
       if (resp.ok) {
         const { windows, plan } = parseCopilotLimits(await resp.json(), headers)
-        return {
-          provider: "copilot",
-          label,
-          plan: plan ?? "Active",
-          windows,
-          observedAt: new Date().toISOString(),
-          error: null,
+        if (windows.length) {
+          return {
+            provider: "copilot",
+            label,
+            plan: plan ?? "Active",
+            windows,
+            observedAt: new Date().toISOString(),
+            error: null,
+          }
         }
+        return unavailable(
+          "copilot",
+          label,
+          plan
+            ? `GitHub Copilot plan active (${plan}), but rate limits are not reported by API.`
+            : "GitHub Copilot active, but rate limits are not reported.",
+        )
       }
     } catch {}
 
-    return {
-      provider: "copilot",
-      label,
-      plan: "GitHub Copilot",
-      windows: [
-        { label: "Copilot Subscription", usedPercent: 0, resetsAt: null, windowMinutes: 43200 },
-      ],
-      observedAt: new Date().toISOString(),
-      error: null,
-    }
+    return unavailable("copilot", label, "Copilot sign-in rejected or unreachable. Check connection.")
   }
 
   return unavailable("copilot", label, "Sign in to GitHub Copilot or GitHub CLI on this computer.")
@@ -729,21 +684,7 @@ export async function readZCodeLimits(): Promise<PlanLimits> {
       }
     } catch {}
 
-    return {
-      provider: "zcode",
-      label,
-      plan: "Coding Plan",
-      windows: [
-        {
-          label: "5-hour Window",
-          usedPercent: 0,
-          resetsAt: null,
-          windowMinutes: 300,
-        },
-      ],
-      observedAt: new Date().toISOString(),
-      error: null,
-    }
+    return unavailable("zcode", label, "Couldn't reach Z.ai quota service.")
   }
 
   return unavailable("zcode", label, "Sign in to ZCode (`zcode login zai`) or set ZCODE_API_KEY.")

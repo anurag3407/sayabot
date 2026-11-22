@@ -319,10 +319,24 @@ export function parseCursorUsage(answer: unknown): { windows: PlanWindow[]; plan
           ? gpt4.limit
           : null
     if (used !== null && limit !== null && limit > 0) {
+      let resetsAt: string | null = null
+      if (gpt4.resets_at) {
+        resetsAt = isoOrNull(gpt4.resets_at)
+      } else if (gpt4.startOfMonth) {
+        const d = new Date(
+          typeof gpt4.startOfMonth === "number"
+            ? (gpt4.startOfMonth < 1e12 ? gpt4.startOfMonth * 1000 : gpt4.startOfMonth)
+            : String(gpt4.startOfMonth),
+        )
+        if (!Number.isNaN(d.getTime())) {
+          d.setUTCMonth(d.getUTCMonth() + 1)
+          resetsAt = d.toISOString()
+        }
+      }
       windows.push({
         label: "Fast Requests",
         usedPercent: clampPercent((used / limit) * 100),
-        resetsAt: isoOrNull(gpt4.resets_at || gpt4.startOfMonth),
+        resetsAt,
         windowMinutes: 43200,
       })
     }
@@ -383,15 +397,6 @@ export function parseCopilotLimits(
         windowMinutes: 60,
       })
     }
-  }
-
-  if (!windows.length && plan) {
-    windows.push({
-      label: "Active Plan",
-      usedPercent: 0,
-      resetsAt: null,
-      windowMinutes: 43200,
-    })
   }
 
   return { windows, plan }
