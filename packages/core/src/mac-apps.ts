@@ -36,14 +36,26 @@ export interface MacAppInfo {
   keyEnv: readonly string[]
   install: string
   transport: MacAppTransport
-  /**
-   * The app's own sign-in may only be used by its owner, interactively (Google's terms for
-   * Antigravity's personal login): Sayabot runs it only for the Mac owner's own messages, and
-   * never picks it on its own.
-   */
-  personalUseOnly?: true
+  /** What the provider's terms allow its sign-in to be used for (see MacAppUsePolicy). */
+  usePolicy?: MacAppUsePolicy
   /** Shown next to the app in the picker and on the Providers page. */
   policyNote?: string
+}
+
+/**
+ * A provider rule on who and what may use the app's sign-in, which Sayabot enforces before a run:
+ * - `interactive`: personal, interactive use only (Antigravity, Kimi Code). Only the Mac owner's
+ *   own messages; no routines, meetings, webhooks, connected chats, other people or other bots.
+ * - `owner`: the account is for its owner alone (Qoder, Command Code, Devin). The owner's messages
+ *   and routines; no other people's messages or connected chats from outside.
+ * Apps with a policy are never picked as a Mac's default app.
+ */
+export interface MacAppUsePolicy {
+  kind: "interactive" | "owner"
+  /** The rule, in a few words, for the refusal ("Google allows its sign-in for…"). */
+  rule: string
+  /** What to use instead for runs the rule refuses. */
+  instead: string
 }
 
 export const MAC_CLI_APPS: readonly MacAppInfo[] = [
@@ -83,7 +95,11 @@ export const MAC_CLI_APPS: readonly MacAppInfo[] = [
     keyEnv: [],
     install: "Install Antigravity from antigravity.google, then run `agy install`",
     transport: "acp",
-    personalUseOnly: true,
+    usePolicy: {
+      kind: "interactive",
+      rule: "Google allows its personal sign-in for single-user, interactive use",
+      instead: "Use Gemini CLI with a GEMINI_API_KEY for routines, webhooks and shared chats.",
+    },
     policyNote:
       "Google allows Antigravity's own sign-in for you only, interactively. Sayabot runs it for your own messages, not routines, webhooks, other people or other bots. For those, use Gemini CLI with a GEMINI_API_KEY.",
   },
@@ -110,6 +126,33 @@ export const MAC_CLI_APPS: readonly MacAppInfo[] = [
     keyEnv: ["COMMAND_CODE_API_KEY"],
     install: "npm install -g command-code",
     transport: "acp",
+    usePolicy: {
+      kind: "owner",
+      rule: "its licence is personal and may not be used for the benefit of third parties",
+      instead:
+        "Each person can run their own Command Code, or pick another model for shared chats.",
+    },
+    policyNote:
+      "Command Code's licence is personal: Sayabot runs it for you and your own routines, not for other people's messages or connected chats.",
+  },
+  {
+    id: "qoder",
+    bin: "qodercli",
+    name: "Qoder",
+    provider: "qoder",
+    label: "Qoder",
+    access: "account_or_key",
+    signIn: "qodercli",
+    keyEnv: ["QODER_PERSONAL_ACCESS_TOKEN"],
+    install: "npm install -g @qoder-ai/qodercli",
+    transport: "acp",
+    usePolicy: {
+      kind: "owner",
+      rule: "a Qoder account is for its owner's own use and others may not use it",
+      instead: "Each person can run their own Qoder, or pick another model for shared chats.",
+    },
+    policyNote:
+      "Qoder accounts are for your own use: Sayabot runs it for you and your own routines, not for other people's messages or connected chats.",
   },
   {
     id: "cursor",
@@ -183,6 +226,13 @@ export const MAC_CLI_APPS: readonly MacAppInfo[] = [
     keyEnv: [],
     install: "curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash",
     transport: "acp",
+    usePolicy: {
+      kind: "interactive",
+      rule: "Kimi Code subscriptions are for personal, interactive use only",
+      instead: "Use an app with a Moonshot API key (OpenCode, pi) for routines and shared chats.",
+    },
+    policyNote:
+      "Kimi's rules: a Kimi Code subscription is for your own interactive use, with no automation or account sharing. Sayabot runs it for your own messages only, not routines, webhooks, other people or bots.",
   },
   {
     id: "kiro",
@@ -219,6 +269,13 @@ export const MAC_CLI_APPS: readonly MacAppInfo[] = [
     keyEnv: ["WINDSURF_API_KEY"],
     install: "curl -fsSL https://cli.devin.ai/install.sh | bash",
     transport: "acp",
+    usePolicy: {
+      kind: "owner",
+      rule: "Devin's terms limit its use to you and your authorized users",
+      instead: "Each person can run their own Devin, or pick another model for shared chats.",
+    },
+    policyNote:
+      "Devin's terms limit use to you and your authorized users: Sayabot runs it for you and your own routines, not for other people's messages or connected chats.",
   },
   {
     id: "cline",
@@ -337,10 +394,11 @@ export interface MacRunTrigger {
 }
 
 /**
- * Why `app` may not answer `trigger` on a Mac owned by `ownerUserId`, or null when it may. Apps
- * whose sign-in is for personal, interactive use (Antigravity) answer only a person's own message:
- * not routines or meetings (system or `automated`), connector and chat-gateway messages (no
- * sender), other members, or other bots.
+ * Why `app` may not answer `trigger` on a Mac owned by `ownerUserId`, or null when it may, from
+ * the app's `usePolicy`. `interactive`: only a person's own message (not routines or meetings —
+ * system or `automated` — connector and chat-gateway messages with no sender, other members, or
+ * other bots). `owner`: anything but a message from another person (another member, or someone
+ * outside writing in through a connector or chat gateway).
  */
 export function macRunRefusal(
   app: string | null | undefined,
@@ -348,14 +406,16 @@ export function macRunRefusal(
   ownerUserId: string | null | undefined,
 ): string | null {
   const info = macAppInfo(app)
-  if (!info?.personalUseOnly) return null
-  const own =
-    trigger.senderType === "human" &&
-    Boolean(trigger.senderId) &&
-    trigger.senderId === ownerUserId &&
-    trigger.metadata?.automated !== true
-  if (own) return null
-  return `${info.name} only answers its owner's own messages: Google allows its sign-in for personal, interactive use. Pick another model for this bot, or use Gemini CLI with a GEMINI_API_KEY for routines, webhooks and shared chats.`
+  const policy = info?.usePolicy
+  if (!info || !policy) return null
+  const fromOwner =
+    trigger.senderType === "human" && Boolean(trigger.senderId) && trigger.senderId === ownerUserId
+  if (policy.kind === "interactive") {
+    if (fromOwner && trigger.metadata?.automated !== true) return null
+    return `${info.name} only answers its owner's own messages: ${policy.rule}. ${policy.instead}`
+  }
+  if (trigger.senderType !== "human" || fromOwner) return null
+  return `${info.name} only answers its owner and the owner's routines: ${policy.rule}. ${policy.instead}`
 }
 
 /**

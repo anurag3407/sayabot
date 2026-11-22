@@ -37,6 +37,7 @@ their install command. The model picker shows each ready app with the models it 
 | Antigravity      | `agy`          | your Google account (run `agy` once); the CLI ships with Antigravity (`agy install`) | none (account only)                    |
 | GitHub Copilot   | `copilot`      | `copilot login`                                                                      | `COPILOT_GITHUB_TOKEN` / `GH_TOKEN`    |
 | Command Code     | `command-code` | `command-code login`                                                                 | `COMMAND_CODE_API_KEY`                 |
+| Qoder            | `qodercli`     | run `qodercli` once and sign in; install `npm install -g @qoder-ai/qodercli`         | `QODER_PERSONAL_ACCESS_TOKEN`          |
 | Cursor           | `cursor-agent` | `cursor-agent login`                                                                 | `CURSOR_API_KEY`                       |
 | Gemini CLI       | `gemini`       | **needs a key**: Google ended personal Gemini CLI logins (use Antigravity for those) | `GEMINI_API_KEY` / `GOOGLE_API_KEY`    |
 | OpenCode         | `opencode`     | `opencode auth login`, or its free models                                            | `OPENCODE_API_KEY`                     |
@@ -54,12 +55,19 @@ their install command. The model picker shows each ready app with the models it 
 | DeepSeek Harness | `dsh`          | **needs a key**                                                                      | `DEEPSEEK_API_KEY`                     |
 | ZCode            | `zcode`        | `zcode login zai`                                                                    | `ZCODE_API_KEY` / `ZAI_API_KEY`        |
 
-**Antigravity is for your own messages only.** Google allows Antigravity's personal sign-in
-through its official ACP server (`agy acp`, which is what Sayabot runs) for single-user,
-interactive use. So a bot on Antigravity answers **only messages you send yourself**. Routines,
-meetings, webhooks, connected chats (WhatsApp, Slack…), other people in the room and other bots
-get an error instead, and Antigravity is never picked as a Mac's default app. Sayabot never reads
-or forwards its tokens. For automated or shared use, run Gemini CLI with a `GEMINI_API_KEY`.
+**Some apps' providers limit who may use your sign-in.** Sayabot follows those rules:
+
+| App                        | Rule from the provider                                           | What a bot on it answers                                     |
+| -------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------ |
+| Antigravity                | Google: its personal sign-in is for single-user, interactive use | Only messages you send yourself                              |
+| Kimi Code                  | Kimi: subscriptions are for personal, interactive use only       | Only messages you send yourself                              |
+| Qoder, Command Code, Devin | The account or licence is for you alone, not for other people    | You and your own routines, not other people or outside chats |
+
+Runs the rule refuses (routines, meetings, webhooks, connected chats such as WhatsApp or Slack,
+other people in the room, other bots, depending on the row) get an error that says what to use
+instead. These apps are never picked as a Mac's default app. Sayabot names itself honestly to
+every app and never reads or forwards their tokens. Kimi's rules also forbid disguising which app
+is connecting. For Grok, Cursor and Qwen Code we found no such rule, so they run like the others.
 
 **Why there's no "Claude Code (ACP)" or "Codex (ACP)".** Anthropic doesn't allow third-party apps
 built on its Agent SDK (which the Claude ACP adapter is) to use a Claude subscription sign-in.

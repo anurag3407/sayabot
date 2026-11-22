@@ -155,6 +155,14 @@ const LOCAL_MODEL_APPS: Record<string, { provider: string; label: string }> = {
   lmstudio: { provider: "lmstudio", label: "LM Studio" },
 }
 
+/** The picker's short version of an app's usage rule (see MacAppUsePolicy in @sayabot/core). */
+function policyDetail(app: string): string {
+  const kind = macAppInfo(app)?.usePolicy?.kind
+  if (kind === "interactive") return " · answers only your own messages (its provider's rule)"
+  if (kind === "owner") return " · answers only you and your routines (its provider's rule)"
+  return ""
+}
+
 /** Picker key for an app on a Mac: `host:<hostId>:<app>`. */
 export function macKeyId(hostId: string, app: string): string {
   return `host:${hostId}:${app}`
@@ -501,11 +509,7 @@ export async function buildModelCatalog(
         label: spec.label,
         detail:
           agent.status === "ready"
-            ? `${RUNNER_APPS[agent.id] ?? spec.label} on ${host.name} · your subscription${off}${
-                macAppInfo(agent.id)?.personalUseOnly
-                  ? " · answers only your own messages (Google's rule for its sign-in)"
-                  : ""
-              }`
+            ? `${RUNNER_APPS[agent.id] ?? spec.label} on ${host.name} · your subscription${off}${policyDetail(agent.id)}`
             : `${RUNNER_APPS[agent.id] ?? spec.label} isn't signed in on ${host.name} right now. Open it once and sign in.`,
         section: "mac",
         models,
