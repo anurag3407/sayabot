@@ -33,8 +33,9 @@ export interface LocalAgent {
 }
 
 /**
- * How the runner starts each app: Claude Code and Codex with Sayabot's room tools, a few in their
- * plain print mode, and the rest over the Agent Client Protocol (see acp.ts).
+ * How the runner starts each app: Claude Code and Codex in their own stream modes, pi in its plain
+ * print mode, and the rest over the Agent Client Protocol (see acp.ts). Every mode but plain gets
+ * Sayabot's room tools.
  */
 export type RunMode =
   { kind: "tools" } | { kind: "plain" } | { kind: "acp"; args: readonly string[] }
@@ -46,6 +47,8 @@ export interface AgentSpec {
   run: RunMode
   /** API keys the app takes instead of a sign-in (read from this app's environment only). */
   keyEnv: readonly string[]
+  /** The terminal command that signs it in, when that isn't just `bin` (ACP adapters). */
+  login?: string
   signedIn: (home: string) => Promise<boolean>
 }
 
@@ -74,6 +77,15 @@ const someTrue = async (checks: Array<() => Promise<boolean>>) => {
   return false
 }
 
+const claudeSignedIn = (home: string) =>
+  someTrue([
+    () => exists(join(home, ".claude/.credentials.json")),
+    () => fileHas(join(home, ".claude.json"), /"oauthAccount"/),
+    () => keychainHas("Claude Code-credentials"),
+  ])
+const codexSignedIn = (home: string) =>
+  exists(join(process.env.CODEX_HOME?.trim() || join(home, ".codex"), "auth.json"))
+
 export const AGENT_SPECS: readonly AgentSpec[] = [
   {
     id: "claude-code",
@@ -81,12 +93,7 @@ export const AGENT_SPECS: readonly AgentSpec[] = [
     bin: "claude",
     run: { kind: "tools" },
     keyEnv: ["ANTHROPIC_API_KEY"],
-    signedIn: (home) =>
-      someTrue([
-        () => exists(join(home, ".claude/.credentials.json")),
-        () => fileHas(join(home, ".claude.json"), /"oauthAccount"/),
-        () => keychainHas("Claude Code-credentials"),
-      ]),
+    signedIn: (home) => claudeSignedIn(home),
   },
   {
     id: "codex",
@@ -94,8 +101,17 @@ export const AGENT_SPECS: readonly AgentSpec[] = [
     bin: "codex",
     run: { kind: "tools" },
     keyEnv: ["OPENAI_API_KEY"],
-    signedIn: (home) =>
-      exists(join(process.env.CODEX_HOME?.trim() || join(home, ".codex"), "auth.json")),
+    signedIn: (home) => codexSignedIn(home),
+  },
+  {
+    id: "antigravity",
+    name: "Antigravity",
+    bin: "agy",
+    run: { kind: "acp", args: ["acp"] },
+    keyEnv: [],
+    login: "agy",
+    // The CLI keeps its Google sign-in under ~/.gemini/antigravity-cli (`--gemini-dir` moves it).
+    signedIn: (home) => exists(join(home, ".gemini/antigravity-cli/antigravity-oauth-token")),
   },
   {
     id: "copilot",

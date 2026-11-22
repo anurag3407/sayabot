@@ -91,6 +91,10 @@ export async function POST(request: Request) {
 
   // Agents run on this Mac by default once an app (Claude Code, Codex…) is signed in here.
   const settings = withLocalDefault(host.settings ?? {}, localAgents)
+  const appVersion =
+    typeof body.appVersion === "string" && /^[0-9a-zA-Z.-]{1,40}$/.test(body.appVersion.trim())
+      ? body.appVersion.trim()
+      : undefined
 
   const admin = createAdminClient()
   await admin
@@ -99,6 +103,7 @@ export async function POST(request: Request) {
       last_seen_at: new Date().toISOString(),
       permissions,
       local_agents: localAgents,
+      ...(appVersion ? { app_version: appVersion } : {}),
       ...(storage ? { storage } : {}),
       ...(settings ? { settings } : {}),
     })

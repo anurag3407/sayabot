@@ -13,6 +13,13 @@
 
 export type MacAppAccess = "account" | "account_or_key" | "key" | "own_config"
 
+/**
+ * How the Mac app runs it: `tools` (Claude Code / Codex stream modes), `acp` (Agent Client
+ * Protocol over stdio) or `plain` (print mode, text only). Every transport but `plain` takes
+ * Sayabot's room tools; the desktop's run modes must match (a test there checks).
+ */
+export type MacAppTransport = "tools" | "acp" | "plain"
+
 export interface MacAppInfo {
   id: string
   /** Its command-line tool. */
@@ -28,6 +35,15 @@ export interface MacAppInfo {
   /** Environment variables the app accepts instead of a sign-in. */
   keyEnv: readonly string[]
   install: string
+  transport: MacAppTransport
+  /**
+   * The app's own sign-in may only be used by its owner, interactively (Google's terms for
+   * Antigravity's personal login): Sayabot runs it only for the Mac owner's own messages, and
+   * never picks it on its own.
+   */
+  personalUseOnly?: true
+  /** Shown next to the app in the picker and on the Providers page. */
+  policyNote?: string
 }
 
 export const MAC_CLI_APPS: readonly MacAppInfo[] = [
@@ -41,6 +57,7 @@ export const MAC_CLI_APPS: readonly MacAppInfo[] = [
     signIn: "claude",
     keyEnv: ["ANTHROPIC_API_KEY"],
     install: "npm install -g @anthropic-ai/claude-code",
+    transport: "tools",
   },
   {
     id: "codex",
@@ -52,6 +69,23 @@ export const MAC_CLI_APPS: readonly MacAppInfo[] = [
     signIn: "codex login",
     keyEnv: ["OPENAI_API_KEY"],
     install: "npm install -g @openai/codex",
+    transport: "tools",
+  },
+  {
+    id: "antigravity",
+    bin: "agy",
+    name: "Antigravity",
+    provider: "antigravity",
+    label: "Antigravity",
+    // Google's personal sign-in lives here now (Gemini CLI takes keys only).
+    access: "account",
+    signIn: "agy",
+    keyEnv: [],
+    install: "Install Antigravity from antigravity.google, then run `agy install`",
+    transport: "acp",
+    personalUseOnly: true,
+    policyNote:
+      "Google allows Antigravity's own sign-in for you only, interactively. Sayabot runs it for your own messages, not routines, webhooks, other people or other bots. For those, use Gemini CLI with a GEMINI_API_KEY.",
   },
   {
     id: "copilot",
@@ -63,6 +97,7 @@ export const MAC_CLI_APPS: readonly MacAppInfo[] = [
     signIn: "copilot login",
     keyEnv: ["COPILOT_GITHUB_TOKEN", "GH_TOKEN", "GITHUB_TOKEN"],
     install: "npm install -g @github/copilot",
+    transport: "acp",
   },
   {
     id: "command-code",
@@ -74,6 +109,7 @@ export const MAC_CLI_APPS: readonly MacAppInfo[] = [
     signIn: "command-code login",
     keyEnv: ["COMMAND_CODE_API_KEY"],
     install: "npm install -g command-code",
+    transport: "acp",
   },
   {
     id: "cursor",
@@ -85,6 +121,7 @@ export const MAC_CLI_APPS: readonly MacAppInfo[] = [
     signIn: "cursor-agent login",
     keyEnv: ["CURSOR_API_KEY"],
     install: "curl https://cursor.com/install -fsS | bash",
+    transport: "acp",
   },
   {
     id: "gemini",
@@ -97,6 +134,7 @@ export const MAC_CLI_APPS: readonly MacAppInfo[] = [
     signIn: "gemini",
     keyEnv: ["GEMINI_API_KEY", "GOOGLE_API_KEY"],
     install: "npm install -g @google/gemini-cli",
+    transport: "acp",
   },
   {
     id: "opencode",
@@ -108,6 +146,7 @@ export const MAC_CLI_APPS: readonly MacAppInfo[] = [
     signIn: "opencode auth login",
     keyEnv: ["OPENCODE_API_KEY"],
     install: "npm install -g opencode-ai",
+    transport: "acp",
   },
   {
     id: "mistral-vibe",
@@ -119,6 +158,7 @@ export const MAC_CLI_APPS: readonly MacAppInfo[] = [
     signIn: "vibe",
     keyEnv: ["MISTRAL_API_KEY"],
     install: "curl -LsSf https://mistral.ai/vibe/install.sh | bash",
+    transport: "acp",
   },
   {
     id: "grok",
@@ -130,6 +170,7 @@ export const MAC_CLI_APPS: readonly MacAppInfo[] = [
     signIn: "grok login",
     keyEnv: [],
     install: "curl -fsSL https://x.ai/cli/install.sh | bash",
+    transport: "acp",
   },
   {
     id: "kimi",
@@ -141,6 +182,7 @@ export const MAC_CLI_APPS: readonly MacAppInfo[] = [
     signIn: "kimi login",
     keyEnv: [],
     install: "curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash",
+    transport: "acp",
   },
   {
     id: "kiro",
@@ -152,6 +194,7 @@ export const MAC_CLI_APPS: readonly MacAppInfo[] = [
     signIn: "kiro-cli login",
     keyEnv: ["KIRO_API_KEY"],
     install: "curl -fsSL https://cli.kiro.dev/install | bash",
+    transport: "acp",
   },
   {
     id: "droid",
@@ -163,6 +206,7 @@ export const MAC_CLI_APPS: readonly MacAppInfo[] = [
     signIn: "droid",
     keyEnv: ["FACTORY_API_KEY"],
     install: "curl -fsSL https://app.factory.ai/cli | sh",
+    transport: "acp",
   },
   {
     id: "devin",
@@ -174,6 +218,7 @@ export const MAC_CLI_APPS: readonly MacAppInfo[] = [
     signIn: "devin auth login",
     keyEnv: ["WINDSURF_API_KEY"],
     install: "curl -fsSL https://cli.devin.ai/install.sh | bash",
+    transport: "acp",
   },
   {
     id: "cline",
@@ -185,6 +230,7 @@ export const MAC_CLI_APPS: readonly MacAppInfo[] = [
     signIn: "cline auth",
     keyEnv: ["CLINE_API_KEY"],
     install: "npm install -g cline",
+    transport: "acp",
   },
   {
     id: "qwen",
@@ -196,6 +242,7 @@ export const MAC_CLI_APPS: readonly MacAppInfo[] = [
     signIn: "qwen",
     keyEnv: [],
     install: "npm install -g @qwen-code/qwen-code",
+    transport: "acp",
   },
   {
     id: "hermes",
@@ -207,6 +254,7 @@ export const MAC_CLI_APPS: readonly MacAppInfo[] = [
     signIn: "hermes setup",
     keyEnv: [],
     install: "curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash",
+    transport: "acp",
   },
   {
     id: "omp",
@@ -218,6 +266,7 @@ export const MAC_CLI_APPS: readonly MacAppInfo[] = [
     signIn: "omp",
     keyEnv: [],
     install: "npm install -g @oh-my-pi/pi-coding-agent",
+    transport: "acp",
   },
   {
     id: "pi",
@@ -229,6 +278,7 @@ export const MAC_CLI_APPS: readonly MacAppInfo[] = [
     signIn: "pi",
     keyEnv: ["ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"],
     install: "npm install -g @earendil-works/pi-coding-agent",
+    transport: "plain",
   },
   {
     id: "deepseek",
@@ -240,6 +290,7 @@ export const MAC_CLI_APPS: readonly MacAppInfo[] = [
     signIn: null,
     keyEnv: ["DEEPSEEK_API_KEY"],
     install: "npm install -g @deepseek-ai/dsh",
+    transport: "acp",
   },
   {
     id: "zcode",
@@ -251,6 +302,7 @@ export const MAC_CLI_APPS: readonly MacAppInfo[] = [
     signIn: "zcode login zai",
     keyEnv: ["ZCODE_API_KEY", "ZAI_API_KEY", "GLM_API_KEY"],
     install: "curl -fsSL https://z.ai/install.sh | bash",
+    transport: "acp",
   },
 ]
 
@@ -262,6 +314,76 @@ export function macAppInfo(id: string | null | undefined): MacAppInfo | undefine
 
 export function isMacCliApp(id: string | null | undefined): boolean {
   return Boolean(macAppInfo(id))
+}
+
+/** The first Mac app version that hands room tools and a separate system prompt to ACP apps. */
+export const MAC_ACP_ROOM_TOOLS_SINCE = "1.0.32"
+
+function versionAtLeast(version: string, min: string): boolean {
+  const parts = (v: string) => (v.match(/\d+/g) ?? []).slice(0, 3).map(Number)
+  const [a, b] = [parts(version), parts(min)]
+  for (let i = 0; i < 3; i++) {
+    const diff = (a[i] ?? 0) - (b[i] ?? 0)
+    if (diff) return diff > 0
+  }
+  return true
+}
+
+/** The message that starts a Mac run, as far as the personal-use rule cares. */
+export interface MacRunTrigger {
+  senderType: "human" | "agent" | "system"
+  senderId: string | null
+  metadata?: Record<string, unknown> | null
+}
+
+/**
+ * Why `app` may not answer `trigger` on a Mac owned by `ownerUserId`, or null when it may. Apps
+ * whose sign-in is for personal, interactive use (Antigravity) answer only a person's own message:
+ * not routines or meetings (system or `automated`), connector and chat-gateway messages (no
+ * sender), other members, or other bots.
+ */
+export function macRunRefusal(
+  app: string | null | undefined,
+  trigger: MacRunTrigger,
+  ownerUserId: string | null | undefined,
+): string | null {
+  const info = macAppInfo(app)
+  if (!info?.personalUseOnly) return null
+  const own =
+    trigger.senderType === "human" &&
+    Boolean(trigger.senderId) &&
+    trigger.senderId === ownerUserId &&
+    trigger.metadata?.automated !== true
+  if (own) return null
+  return `${info.name} only answers its owner's own messages: Google allows its sign-in for personal, interactive use. Pick another model for this bot, or use Gemini CLI with a GEMINI_API_KEY for routines, webhooks and shared chats.`
+}
+
+/**
+ * Whether a Mac app at `appVersion` takes the run's system prompt apart from the prompt and hands
+ * it to the ACP session (ACP `systemPrompt`, or Antigravity's `_meta` extension).
+ */
+export function macAppSplitsSystemPrompt(
+  app: string | null | undefined,
+  appVersion: string | null | undefined,
+): boolean {
+  return (
+    macAppInfo(app)?.transport === "acp" &&
+    Boolean(appVersion && versionAtLeast(appVersion, MAC_ACP_ROOM_TOOLS_SINCE))
+  )
+}
+
+/**
+ * Whether a run of `app` on a Mac running `appVersion` can use Sayabot's room tools: Claude Code
+ * and Codex always; ACP apps once that Mac app passes them on; plain print-mode apps never.
+ */
+export function macAppTakesRoomTools(
+  app: string | null | undefined,
+  appVersion: string | null | undefined,
+): boolean {
+  const info = macAppInfo(app)
+  if (!info || info.transport === "plain") return false
+  if (info.transport === "tools") return true
+  return Boolean(appVersion && versionAtLeast(appVersion, MAC_ACP_ROOM_TOOLS_SINCE))
 }
 
 /** "Do I need an API key?" in a few words, for the Providers page and the picker. */

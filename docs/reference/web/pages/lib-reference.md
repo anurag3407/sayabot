@@ -97,7 +97,7 @@ The sidebar's live feed (see [UI shell & kit](./ui-shell-and-kit.md) for its con
 
 ### `desktop-bridge.ts` (client)
 
-Typed access to what the Sayabot Mac app adds to `window.sayabotDesktop` for usage data (older apps lack these calls — every caller checks first): `canReadPlanLimits()` / `readPlanLimits(force)` (validated `PlanLimits[]` from `@sayabot/core/scanner`), `canReadLocalUsage()` / `readDesktopLocalUsage(days)` (coding-tool `RawEvent[]`), and `resetsIn(iso)` ("in 2h 14m", "soon"). Null in a normal browser.
+Typed access to what the Sayabot Mac app adds to `window.sayabotDesktop` for usage data and agent sign-in (older apps lack these calls — every caller checks first): `canReadPlanLimits()` / `readPlanLimits(force)` (validated `PlanLimits[]` from `@sayabot/core/scanner`), `canReadLocalUsage()` / `readDesktopLocalUsage(days)` (coding-tool `RawEvent[]`), `resetsIn(iso)` ("in 2h 14m", "soon"), `canSignInAgents()` (whether this window is Sayabot for Mac with agent login support), `startAgentSignIn(appId)` (starts the CLI login flow and returns `{ ok, url }`), `finishAgentSignIn(code)` (submits pasted code to the child process), `cancelAgentSignIn()`, and `getDesktopHostId()` (returns this computer's registered hostId). Null/false in a normal browser.
 
 ### `desktop-hosts.ts` (server-only)
 
@@ -105,7 +105,7 @@ Mac-host registry helpers shared with the desktop API: the `HostRow` shape (with
 
 ### `local-agents-shared.ts` (client-safe)
 
-The app list and status logic, importable from the browser: `LOCAL_AGENT_APPS` (claude-code, codex, gemini, opencode, cursor — binary `cursor-agent`, mac app `/Applications/Cursor.app`, hermes, antigravity) each with provider icon key and `inviteApp`; `localAgentStatus({ installed, signedIn })` → `ready | signed_out | installed | not_installed` (signedIn `null` means "can't tell"); `LOCAL_STATUS_LABEL`; `reportedAgentsToReports(raw)` converts what the Mac app reported in its heartbeat into the same rows (dropping uninstalled apps, adding Ollama/LM Studio as local model servers); types `LocalAgentReport` / `LocalAgentsResponse` (with `source: "server" | "mac"`).
+The app list and status logic, importable from the browser: `LOCAL_AGENT_APPS` (one row per `MAC_CLI_APPS` entry in `@sayabot/core`, binary = the app's `bin`; Cursor and Antigravity also count their mac app bundles `/Applications/Cursor.app` / `/Applications/Antigravity.app`), each with provider icon key and `inviteApp`. The web's own detector (`local-agents.ts`) checks `antigravity`'s sign-in via `~/.gemini/antigravity-cli/antigravity-oauth-token`. Rows from `reportedAgentsToReports` also carry `policyNote` (from `MacAppInfo`) and `macSignIn: true` for apps whose own sign-in Sayabot for Mac can start (`antigravity`); `localAgentStatus({ installed, signedIn })` → `ready | signed_out | installed | not_installed` (signedIn `null` means "can't tell"); `LOCAL_STATUS_LABEL`; `reportedAgentsToReports(raw)` converts what the Mac app reported in its heartbeat into the same rows (dropping uninstalled apps, adding Ollama/LM Studio as local model servers); types `LocalAgentReport` / `LocalAgentsResponse` (with `source: "server" | "mac"`).
 
 ### `local-agents.ts` (server-only)
 

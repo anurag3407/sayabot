@@ -1,12 +1,16 @@
 import { describe, expect, it } from "vitest"
-import { MAC_CLI_APPS } from "../../../packages/core/src/mac-apps"
+import { MAC_CLI_APPS, macAppTakesRoomTools } from "../../../packages/core/src/mac-apps"
 import {
   acpModels,
   acpUpdate,
   effortRequest,
+  isRoomToolStep,
+  mcpToolName,
   modelLabel,
   modelRequest,
   permissionOutcome,
+  roomMcpServers,
+  systemPromptSetup,
   toolName,
 } from "./acp"
 import { AGENT_SPECS } from "./local-agents"
@@ -185,7 +189,96 @@ describe("agent apps", () => {
       expect(
         spec.keyEnv.every((name) => shared?.keyEnv.includes(name) || name === "CURSOR_AUTH_TOKEN"),
       ).toBe(true)
+      // The server decides who gets room tools from the shared transport, so it must match.
+      expect([spec.id, shared?.transport]).toEqual([spec.id, spec.run.kind])
     }
+  })
+
+  it("run Antigravity over its own ACP server, and no Claude/Codex adapters", () => {
+    const acp = (id: string) => AGENT_SPECS.find((spec) => spec.id === id)
+    expect(acp("antigravity")).toMatchObject({ bin: "agy", run: { kind: "acp", args: ["acp"] } })
+    // Anthropic doesn't allow subscription logins in third-party Agent SDK apps, and OpenAI hasn't
+    // sanctioned it: Claude Code and Codex run as their own unmodified binaries instead.
+    expect(acp("claude-acp")).toBeUndefined()
+    expect(acp("codex-acp")).toBeUndefined()
+  })
+})
+
+describe("room tools for Mac runs", () => {
+  it("go to stream-mode apps always, ACP apps on new Mac apps, print-mode apps never", () => {
+    expect(macAppTakesRoomTools("claude-code", null)).toBe(true)
+    expect(macAppTakesRoomTools("codex", "1.0.1")).toBe(true)
+    expect(macAppTakesRoomTools("antigravity", "1.0.31")).toBe(false)
+    expect(macAppTakesRoomTools("antigravity", null)).toBe(false)
+    expect(macAppTakesRoomTools("antigravity", "1.0.32")).toBe(true)
+    expect(macAppTakesRoomTools("copilot", "2.0.0")).toBe(true)
+    expect(macAppTakesRoomTools("pi", "9.9.9")).toBe(false)
+    expect(macAppTakesRoomTools("ollama", "9.9.9")).toBe(false)
+  })
+
+  it("ride in session/new as a stdio server only when the run has a token", () => {
+    const bridge = { command: "/Applications/Sayabot.app/Sayabot", script: "/x/room-mcp.js" }
+    expect(roomMcpServers(null, bridge)).toEqual([])
+    expect(roomMcpServers({ url: "https://s.example/api/v1/mcp", token: "" }, bridge)).toEqual([])
+    expect(roomMcpServers({ url: "https://s.example/api/v1/mcp", token: "t1" }, bridge)).toEqual([
+      {
+        name: "sayabot",
+        command: "/Applications/Sayabot.app/Sayabot",
+        args: ["/x/room-mcp.js"],
+        env: [
+          { name: "ELECTRON_RUN_AS_NODE", value: "1" },
+          { name: "SAYABOT_MCP_URL", value: "https://s.example/api/v1/mcp" },
+          { name: "SAYABOT_MCP_TOKEN", value: "t1" },
+        ],
+      },
+    ])
+  })
+})
+
+describe("MCP steps", () => {
+  // Shapes the harnesses sent in a real run (trimmed).
+  const claude = {
+    toolCallId: "toolu_1",
+    title: "mcp__sayabot__create_task",
+    kind: "other",
+    _meta: { claudeCode: { toolName: "mcp__sayabot__create_task" } },
+  }
+  const codex = { toolCallId: "exec-1", title: "mcp.sayabot.create_task", kind: "execute" }
+  const antigravity = {
+    toolCallId: "call_1",
+    name: "mcp_sayabot_create_task",
+    title: "Run mcp_sayabot_create_task",
+    kind: "other",
+  }
+
+  it("are named like Claude Code names them, whatever the harness", () => {
+    expect(toolName(claude)).toBe("mcp__sayabot__create_task")
+    expect(toolName(codex)).toBe("mcp__sayabot__create_task")
+    expect(toolName(antigravity)).toBe("mcp__sayabot__create_task")
+    expect(toolName({ toolCall: codex })).toBe("mcp__sayabot__create_task")
+    expect(mcpToolName({ title: "mcp.github.create_pr", kind: "execute" })).toBe(
+      "mcp__github__create_pr",
+    )
+  })
+
+  it("count as room tools only for Sayabot's own server", () => {
+    expect([claude, antigravity].every(isRoomToolStep)).toBe(true)
+    expect(isRoomToolStep(codex)).toBe(false)
+    expect(isRoomToolStep({ title: "mcp.github.create_pr", kind: "execute" })).toBe(false)
+    expect(isRoomToolStep({ name: "mcp_github_create_pr", kind: "other" })).toBe(false)
+  })
+
+  it("never come from a shell command or file change that only looks like one", () => {
+    expect(isRoomToolStep({ title: "mcp__sayabot__create_task", kind: "execute" })).toBe(false)
+    expect(
+      mcpToolName({
+        title: "mcp.sayabot.create_task",
+        rawInput: { command: "mcp.sayabot.create_task" },
+      }),
+    ).toBeNull()
+    expect(isRoomToolStep({ name: "mcp_sayabot_x", kind: "edit" })).toBe(false)
+    expect(isRoomToolStep({ title: "mcp__sayabot__x; rm -rf ~", kind: "other" })).toBe(false)
+    expect(toolName({ title: "mcp__sayabot__x", kind: "execute" })).toBe("Bash")
   })
 })
 
@@ -276,5 +369,38 @@ describe("cursorRowsToModels", () => {
       { id: "gpt-5.5", label: "GPT-5.5" },
       { id: "sonnet-5-5-thinking", label: "Claude Sonnet 5.5 Thinking" },
     ])
+  })
+})
+
+describe("systemPromptSetup", () => {
+  // initialize results the harnesses sent (trimmed).
+  const acpField = { agentCapabilities: { sessionCapabilities: { systemPrompt: {} } } }
+  const antigravity = {
+    agentCapabilities: { _meta: { antigravity: { tier: true, systemPrompt: { append: true } } } },
+  }
+
+  it("uses ACP's systemPrompt when the agent advertises it", () => {
+    expect(systemPromptSetup(acpField, " Room rules ")).toEqual({
+      session: {
+        systemPrompt: { mode: "append", content: [{ type: "text", text: "Room rules" }] },
+      },
+      prefix: "",
+    })
+  })
+
+  it("uses Antigravity's extension when that's what it advertises", () => {
+    expect(systemPromptSetup(antigravity, "Room rules")).toEqual({
+      session: { _meta: { antigravity: { systemPrompt: { append: "Room rules" } } } },
+      prefix: "",
+    })
+  })
+
+  it("puts it in front of the prompt otherwise, and does nothing without one", () => {
+    expect(systemPromptSetup({ agentCapabilities: {} }, "Room rules")).toEqual({
+      session: {},
+      prefix: "Room rules\n\n",
+    })
+    expect(systemPromptSetup(antigravity, null)).toEqual({ session: {}, prefix: "" })
+    expect(systemPromptSetup(undefined, "  ")).toEqual({ session: {}, prefix: "" })
   })
 })

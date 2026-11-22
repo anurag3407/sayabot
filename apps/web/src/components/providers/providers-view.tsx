@@ -21,6 +21,13 @@ import { Button } from "@/components/ui/button"
 import { InlineAlert } from "@/components/ui/empty"
 import { showToast } from "@/components/ui/toast"
 import { cn, effectiveProvider } from "@/lib/format"
+import {
+  cancelAgentSignIn,
+  canSignInAgents,
+  finishAgentSignIn,
+  getDesktopHostId,
+  startAgentSignIn,
+} from "@/lib/desktop-bridge"
 import type { ActionResult, ProviderKeyView } from "@/lib/types"
 import { ProviderCard, ProviderList, ProviderSection, StatusPill } from "./provider-card"
 
@@ -71,6 +78,7 @@ function LocalAgents({
   refreshKey: number
 }) {
   const [state, setState] = useState<LocalAgentsResponse | null>(null)
+  const [localDesktopHostId, setLocalDesktopHostId] = useState<string | null>(null)
   const [inviting, setInviting] = useState<LocalAgentReport | null>(null)
   const [roomId, setRoomId] = useState(rooms[0]?.id ?? "")
   const room = rooms.find((r) => r.id === roomId)
@@ -78,12 +86,19 @@ function LocalAgents({
   useEffect(() => {
     let cancelled = false
     setState(null)
-    fetch("/api/providers/local", { cache: "no-store" })
-      .then((res) =>
-        res.ok ? (res.json() as Promise<LocalAgentsResponse>) : { available: false, agents: [] },
-      )
-      .then((data) => !cancelled && setState(data))
-      .catch(() => !cancelled && setState({ available: false, agents: [] }))
+    void getDesktopHostId().then((desktopHostId) => {
+      if (cancelled) return
+      setLocalDesktopHostId(desktopHostId)
+      const url = desktopHostId
+        ? `/api/providers/local?hostId=${encodeURIComponent(desktopHostId)}`
+        : "/api/providers/local"
+      return fetch(url, { cache: "no-store" })
+        .then((res) =>
+          res.ok ? (res.json() as Promise<LocalAgentsResponse>) : { available: false, agents: [] },
+        )
+        .then((data) => !cancelled && setState(data))
+        .catch(() => !cancelled && setState({ available: false, agents: [] }))
+    })
     return () => {
       cancelled = true
     }
@@ -171,6 +186,15 @@ function LocalAgents({
               {agent.access ? (
                 <p className="text-[11.5px] text-faint/80">{MAC_ACCESS_LABEL[agent.access]}</p>
               ) : null}
+              {agent.policyNote ? (
+                <p className="mt-0.5 text-[11.5px] leading-snug text-warn">{agent.policyNote}</p>
+              ) : null}
+              {agent.macSignIn &&
+              agent.status === "signed_out" &&
+              state.source === "mac" &&
+              (!state.hostId || !localDesktopHostId || state.hostId === localDesktopHostId) ? (
+                <MacSignIn appName={agent.name} appId={agent.id} />
+              ) : null}
             </div>
             <span
               className={cn(
@@ -240,6 +264,103 @@ function seenAgo(iso: string): string {
 function isStale(iso: string | null | undefined): boolean {
   if (!iso) return true
   return Date.now() - Date.parse(iso) > 10 * 60_000
+}
+
+/**
+ * Signs an app in on this Mac through its own login (Antigravity: Google). The Mac app opens the
+ * Google page; the person pastes the code it shows back here. Only inside Sayabot for Mac.
+ */
+function MacSignIn({ appId, appName }: { appId: string; appName: string }) {
+  const [available, setAvailable] = useState(false)
+  const [phase, setPhase] = useState<"idle" | "starting" | "code" | "finishing" | "done">("idle")
+  const [url, setUrl] = useState<string | null>(null)
+  const [code, setCode] = useState("")
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    setAvailable(canSignInAgents())
+    return () => cancelAgentSignIn()
+  }, [])
+
+  if (!available) return null
+  if (phase === "done") {
+    return (
+      <p className="mt-1 text-[12px] text-ok">
+        Signed in. {appName} shows as ready within a minute.
+      </p>
+    )
+  }
+
+  const start = async () => {
+    setError(null)
+    setPhase("starting")
+    const started = await startAgentSignIn(appId)
+    if (!started.ok) {
+      setError(started.error)
+      setPhase("idle")
+      return
+    }
+    setUrl(started.url)
+    setPhase("code")
+  }
+
+  const finish = async () => {
+    setError(null)
+    setPhase("finishing")
+    const finished = await finishAgentSignIn(code)
+    if (finished.ok) {
+      setPhase("done")
+      return
+    }
+    setError(finished.error)
+    // A failed code ends the login; start again for a new link.
+    setPhase("idle")
+    setCode("")
+    setUrl(null)
+  }
+
+  return (
+    <div className="mt-2 space-y-1.5">
+      {phase === "idle" || phase === "starting" ? (
+        <Button size="sm" variant="secondary" disabled={phase === "starting"} onClick={start}>
+          {phase === "starting" ? <Loader2 className="size-3.5 animate-spin" /> : null}
+          Sign in with Google
+        </Button>
+      ) : (
+        <form
+          className="flex flex-wrap items-center gap-2"
+          onSubmit={(event) => {
+            event.preventDefault()
+            void finish()
+          }}
+        >
+          <Input
+            value={code}
+            onChange={(event) => setCode(event.target.value)}
+            placeholder="Paste the code from the Google page"
+            aria-label={`${appName} sign-in code`}
+            className="h-8 min-w-0 flex-1 text-[12.5px]"
+            autoFocus
+          />
+          <Button size="sm" type="submit" disabled={!code.trim() || phase === "finishing"}>
+            {phase === "finishing" ? <Loader2 className="size-3.5 animate-spin" /> : null}
+            Finish
+          </Button>
+          {url ? (
+            <a
+              href={url}
+              target="_blank"
+              rel="noreferrer"
+              className="text-[12px] text-muted underline underline-offset-2"
+            >
+              Open the Google page again
+            </a>
+          ) : null}
+        </form>
+      )}
+      {error ? <p className="text-[12px] text-danger">{error}</p> : null}
+    </div>
+  )
 }
 
 /** Apps Sayabot can run that aren't on this computer yet: what each needs, and how to install it. */

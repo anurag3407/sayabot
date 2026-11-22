@@ -2,11 +2,11 @@
 
 The **local runner** (`LocalRunner`) lets a Sayabot bot execute on this Mac through an agent CLI the owner is already signed in to — Claude Code, Codex, GitHub Copilot, and a long list of Agent Client Protocol (ACP) and plain-text apps (see [agents-on-your-mac.md](../../agents-on-your-mac.md)). After each heartbeat it claims one queued job from the server, spawns the app in the bot's own folder (`~/Sayabot/agents/<handle>`), streams the reply and every tool step back to the room as events, and routes every permission ask through an approval card the owner can answer from any device. `mac-stream.ts` is the pure parser that turns Claude Code's `stream-json` and Codex's `exec --json` NDJSON into reply deltas and `Activity` steps. `tokenUsage` reads token counts off a Claude `result`, a Codex `turn.completed`, or an ACP `session/prompt` result. `completionBody` posts those counts, plus the model, when the job is marked done so Usage can record the app that actually ran.
 
-Source files: `apps/desktop/src/runner.ts`, `src/mac-stream.ts`, `src/acp.ts` (ACP client used by `runner.ts`), `src/approve-mcp.ts` (approval side-channel — see [local-mcp-and-models.md](./local-mcp-and-models.md))
+Source files: `apps/desktop/src/runner.ts`, `src/mac-stream.ts`, `src/acp.ts` (ACP client used by `runner.ts`), `src/room-mcp.ts` (room tools for ACP apps), `src/approve-mcp.ts` (approval side-channel — see [local-mcp-and-models.md](./local-mcp-and-models.md))
 
 ---
 
-## 📥 Job Claiming & Dispatch (`maybeRun`, `src/runner.ts:252`)
+## 📥 Job Claiming & Dispatch (`maybeRun`, `src/runner.ts:309`)
 
 After every heartbeat, `main.ts` calls `runner.maybeRun(queuedJobs, settings.runnerEnabled)`. When not busy, enabled, and `queuedJobs > 0`, it claims with `POST /api/desktop/jobs/claim` (empty body) and receives `{ job }`:
 
@@ -32,13 +32,13 @@ Dispatch (`src/runner.ts:258-263`):
 | `app === "claude-code"` or `"codex"`                | `runWithTools` — room tools, live steps, approvals   |
 | `localServerUrl(app)` is set (`ollama`, `lmstudio`) | `runLocalModel` — OpenAI-style local chat completion |
 | `spec.run.kind === "acp"`                           | `runAcp` — Agent Client Protocol client              |
-| anything else                                       | `runPlain` — plain text CLIs                         |
+| anything else                                       | `runPlain` — plain text CLIs (today only `pi`)       |
 
 Model/effort pass validation before reaching a command line: `jobModel` (`src/runner.ts:88`) accepts ids matching `/^[\w.:/@+[\]-]{1,160}$/` (and maps `"default"` → null); `jobEffort` accepts only `/^[a-z]{1,10}$/`.
 
 ---
 
-## 🛠️ Claude Code & Codex With Room Tools (`runWithTools`, `src/runner.ts:280`)
+## 🛠️ Claude Code & Codex With Room Tools (`runWithTools`, `src/runner.ts:337`)
 
 Both apps run with Sayabot's room tools (tasks, canvas, decisions, facts) via a one-run MCP token, live step streaming, and owner approvals.
 
@@ -111,11 +111,57 @@ ACP `agent_thought_chunk` updates are `thinking` on `acpUpdate` (`src/acp.ts`). 
 
 ---
 
-## 🤖 ACP Apps (`runAcp`, `src/runner.ts:540`)
+## 🤖 ACP Apps (`runAcp`, `src/runner.ts:621`)
 
-`AcpConnection` (`src/acp.ts`) is a minimal JSON-RPC-over-stdio client for the Agent Client Protocol. The flow: `initialize` (60 s) → `session/new` with `{ cwd, mcpServers: [] }` (120 s) → optional model switch via `modelRequest`/`acpModels` (30 s, failure logged and ignored) → `session/prompt` with the job prompt (no timeout). `session/update` notifications append reply deltas (capped at 200,000) and push activity; `session/request_permission` requests go through the approval flow. Cancels send `session/cancel` then `SIGTERM` after 3 s; the 14-minute deadline applies. Failures map `isAuthError` to a "run `<bin>` once and sign in" message (mentioning `spec.keyEnv[0]` when the app accepts a key).
+`AcpConnection` (`src/acp.ts`) is a minimal JSON-RPC-over-stdio client for the Agent Client Protocol. It runs every `acp` spec — Antigravity (`agy acp`), Copilot, Cursor, Gemini CLI, OpenCode, Kiro and the rest. The flow: `initialize` (60 s) → `session/new` with `{ cwd, mcpServers, …systemPromptSetup(initialize, job.system).session }` (120 s) → optional model switch via `modelRequest`/`acpModels` (30 s, failure logged and ignored) → optional effort via `effortRequest` → `session/prompt` with `prefix + job.prompt` (no timeout). `session/update` notifications append reply deltas (capped at 200,000) and push activity; text that follows a tool step starts a new paragraph (`\n\n`), like Claude Code's `message_start`. `session/request_permission` requests go through the approval flow. Cancels send `session/cancel` then `SIGTERM` after 3 s. Failures map `isAuthError` to "run `<login ?? bin>` once and sign in" (mentioning `spec.keyEnv[0]` when the app accepts a key) — so the adapters point at `claude` / `codex login`, not the adapter binary.
 
-## 📝 Plain-Text Apps (`runPlain`, `src/runner.ts:669`)
+### System prompt (`systemPromptSetup`)
+
+The claim may carry `job.system` (server 1.0.32+ splits it out for ACP apps; see [runner-external-and-local](../orchestrator/engine/runner-external-and-local.md)). `systemPromptSetup(initializeResult, system)` picks how it reaches the session:
+
+1. `agentCapabilities.sessionCapabilities.systemPrompt` advertised → ACP's `systemPrompt: { mode: "append", content: [{ type: "text", text }] }` on `session/new`.
+2. `agentCapabilities._meta.antigravity.systemPrompt.append === true` (Antigravity 1.5) → `_meta: { antigravity: { systemPrompt: { append: text } } }`.
+3. Otherwise `prefix = text + "\n\n"` in front of the prompt.
+
+`maybeRun` folds `job.system` back into `job.prompt` for any non-ACP path, so only ACP sessions see it separately.
+
+### Room tools over ACP (`roomMcpServers`, `src/room-mcp.ts`)
+
+When the claim carries `job.mcp`, `roomMcpServers(job.mcp, { command: process.execPath, script: <dist>/room-mcp.js })` lists one **stdio** MCP server in `session/new`:
+
+```json
+{
+  "name": "sayabot",
+  "command": "<Sayabot executable>",
+  "args": ["<dist>/room-mcp.js"],
+  "env": [
+    { "name": "ELECTRON_RUN_AS_NODE", "value": "1" },
+    { "name": "SAYABOT_MCP_URL", "value": "<origin>/api/v1/mcp" },
+    { "name": "SAYABOT_MCP_TOKEN", "value": "<one-run token>" }
+  ]
+}
+```
+
+Stdio is used because every ACP agent must support it, while HTTP MCP and MCP-over-ACP are optional (Antigravity 1.5 advertises no `mcpCapabilities`). `room-mcp.js` is a dependency-free bridge: each JSON-RPC line is POSTed to `SAYABOT_MCP_URL` with `Authorization: Bearer <token>` (it keeps any `mcp-session-id` header and reads JSON or `text/event-stream` bodies via `responseMessages`). The forwarding lives in `RoomMcpClient` (`send(message)` → frames to write back; none for a notification). It drops `HIDDEN_ROOM_TOOLS` (`post_message`, `wait_for_activity`, `use_secret` — the same list as `BLOCKED_ROOM_TOOLS`) from `tools/list` (`withoutHiddenTools`) and refuses calls to them locally (`hiddenToolRefusal`), because ACP apps have no `--disallowedTools`. A 401 answers "This run's room tools have expired."; network failures come back as JSON-RPC errors. With no `job.mcp` the list is empty.
+
+### Naming MCP steps (`mcpToolName`, `isRoomToolStep`)
+
+Each harness reports an MCP call differently, so `toolName()` checks `mcpToolName()` first and names every one `mcp__<server>__<tool>` (shapes observed in real runs; the Claude and Codex adapters aren't shipped, but other ACP apps use the same forms):
+
+| Harness          | What it sends                                             |
+| :--------------- | :-------------------------------------------------------- |
+| Claude Agent ACP | `_meta.claudeCode.toolName: "mcp__sayabot__create_task"`  |
+| Codex ACP        | `title: "mcp.sayabot.create_task"` with `kind: "execute"` |
+| Antigravity      | `name: "mcp_sayabot_create_task"`, `kind: "other"`        |
+| others           | an `mcp__…` name/title on a step whose kind isn't local   |
+
+An `mcp__…` name or title on a step of kind `execute`/`edit`/`delete`/`move` doesn't count, so a shell command can't pass as a room tool. Antigravity's single-underscore form is only split for the `sayabot` server. `isRoomToolStep` is true for `mcp__sayabot__*`; when the run has `job.mcp`, such permission requests are answered allow-once at once, like Claude Code's `--allowedTools mcp__sayabot` (the server still applies its own approval gate to dangerous room tools). Every other permission goes through `decide`.
+
+Verified against real `agy` 1.5 runs (Antigravity ACP Server 1.5.14): the session listed the room tools through `room-mcp.js`, called `create_task`, and followed a system prompt passed through its `_meta` extension.
+
+## 📝 Plain-Text Apps (`runPlain`, `src/runner.ts:796`)
+
+Only specs with `run.kind === "plain"` (today `pi`) reach this path; Gemini CLI, OpenCode and Cursor now run over ACP, so their rows below apply only if a spec is switched back to `plain`.
 
 `commandFor` (`src/runner.ts:97`) builds argv per app (all with the validated model flag where supported):
 
@@ -130,7 +176,7 @@ ACP `agent_thought_chunk` updates are `thinking` on `acpUpdate` (`src/acp.ts`). 
 
 stdout accumulates (capped 200,000) and is posted as progress every 1.5 s with cancel polling. For Codex the `--output-last-message` file (if written) replaces the accumulated text as the final answer, then is unlinked. Exit 0 with non-empty text → `done`; otherwise `failed` with `failureHint`.
 
-## 🏠 Local Models (`runLocalModel`, `src/runner.ts:753`)
+## 🏠 Local Models (`runLocalModel`, `src/runner.ts:878`)
 
 Ollama (`http://127.0.0.1:11434`) and LM Studio (`http://127.0.0.1:1234`) jobs stream one chat completion from the server's OpenAI-style `POST /v1/chat/completions` with `{ model, stream: true, messages: [user prompt] }` — text only, no tools. SSE `data:` lines are parsed by `localDelta` (`src/runner.ts:819`), which extracts `choices[0].delta.content` and stops at `[DONE]`. Progress/cancel/deadline match the other paths; `ECONNREFUSED` becomes "Ollama/LM Studio isn't running on this computer." A missing model id fails with "Pick a `<name>` model for this bot first."
 

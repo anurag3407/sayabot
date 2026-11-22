@@ -1,5 +1,5 @@
 import "server-only"
-import { MAC_CLI_APPS } from "@sayabot/core"
+import { MAC_CLI_APPS, macAppInfo } from "@sayabot/core"
 import { providerKeyToApiKey } from "@sayabot/llm"
 import {
   ENGINE_EFFORT_LEVELS,
@@ -501,7 +501,11 @@ export async function buildModelCatalog(
         label: spec.label,
         detail:
           agent.status === "ready"
-            ? `${RUNNER_APPS[agent.id] ?? spec.label} on ${host.name} · your subscription${off}`
+            ? `${RUNNER_APPS[agent.id] ?? spec.label} on ${host.name} · your subscription${off}${
+                macAppInfo(agent.id)?.personalUseOnly
+                  ? " · answers only your own messages (Google's rule for its sign-in)"
+                  : ""
+              }`
             : `${RUNNER_APPS[agent.id] ?? spec.label} isn't signed in on ${host.name} right now. Open it once and sign in.`,
         section: "mac",
         models,

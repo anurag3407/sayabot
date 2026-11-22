@@ -144,6 +144,9 @@ export async function detectLocalAgents(): Promise<LocalAgentReport[]> {
         case "codex":
           signedIn = await exists(join(home, ".codex/auth.json"))
           break
+        case "antigravity":
+          signedIn = await exists(join(home, ".gemini/antigravity-cli/antigravity-oauth-token"))
+          break
         case "gemini":
           signedIn =
             (await exists(join(home, ".gemini/oauth_creds.json"))) ||

@@ -5,9 +5,10 @@ import type { Activity } from "./mac-stream"
 
 /**
  * A small Agent Client Protocol client (agentclientprotocol.com): JSON-RPC 2.0, one message per
- * line over the app's stdin/stdout. Copilot, Command Code, Mistral Vibe, Kimi, Kiro, Droid, Devin,
- * Grok, Cline, Qwen, Hermes, OMP and DeepSeek Harness all speak it, so one client runs them all:
- * initialize → session/new → (pick the model) → session/prompt, with the reply streamed as
+ * line over the app's stdin/stdout. Antigravity, Copilot, Cursor, Gemini, OpenCode, Command Code,
+ * Mistral Vibe, Kimi, Kiro, Droid, Devin, Grok, Cline, Qwen, Hermes, OMP, DeepSeek Harness and
+ * ZCode all speak it, so one client runs them all: initialize → session/new (with the room tools
+ * as an MCP server and the system prompt) → (pick the model) → session/prompt, with the reply streamed as
  * session/update notifications and every permission the app asks for sent to the owner.
  *
  * The parsers below are pure; AcpConnection is the only part that touches a process.
@@ -268,11 +269,55 @@ const KIND_NAMES: Record<string, string> = {
  * only a fallback, made name-safe.
  */
 export function toolName(update: Json): string {
+  const mcp = mcpToolName(update)
+  if (mcp) return mcp
   const kind = nonempty(update.kind) ?? nonempty(record(update.toolCall)?.kind)
   if (kind && KIND_NAMES[kind]) return KIND_NAMES[kind]
   const title = nonempty(update.title) ?? nonempty(record(update.toolCall)?.title)
   const safe = (title ?? kind ?? "tool").replace(/[^\w.:-]+/g, "_").replace(/^_+|_+$/g, "")
   return (safe || "tool").slice(0, 80)
+}
+
+const MCP_NAME = /^mcp__[\w-]{1,64}__[\w-]{1,64}$/
+const MCP_DOTTED = /^mcp\.([\w-]{1,64})\.([\w-]{1,64})$/
+/** Kinds whose title is the app's own command or path, so it can't vouch for an MCP name. */
+const LOCAL_KINDS = new Set(["execute", "edit", "delete", "move"])
+const ROOM_SINGLE = /^mcp_sayabot_([\w-]{1,64})$/
+
+/**
+ * The step's MCP tool, as Claude Code names it (`mcp__<server>__<tool>`), when the app says it is
+ * one. Only what the harness itself sets counts: Claude Agent ACP's `_meta.claudeCode.toolName`,
+ * Codex ACP's `mcp.<server>.<tool>` title (which it sends as kind `execute`), Antigravity's
+ * `mcp_sayabot_<tool>` name, or an `mcp__…` name or title on a step that isn't a shell command or
+ * file change.
+ */
+export function mcpToolName(update: Json): string | null {
+  const call = record(update.toolCall) ?? update
+  const raw = record(call.rawInput) ?? record(update.rawInput)
+  if (raw && typeof raw.command === "string") return null
+
+  const meta = record(call._meta) ?? record(update._meta)
+  const claude = nonempty(record(meta?.claudeCode)?.toolName)
+  if (claude && MCP_NAME.test(claude)) return claude
+  const title = nonempty(call.title) ?? nonempty(update.title)
+  const dotted = title ? MCP_DOTTED.exec(title) : null
+  if (dotted) return `mcp__${dotted[1]}__${dotted[2]}`
+  const kind = nonempty(call.kind) ?? nonempty(update.kind)
+  if (kind && LOCAL_KINDS.has(kind)) return null
+  const named = nonempty(call.name) ?? nonempty(update.name) ?? title
+  if (named && MCP_NAME.test(named)) return named
+  // Antigravity: `mcp_<server>_<tool>` (single underscores, so only our own server splits safely).
+  const single = named ? ROOM_SINGLE.exec(named) : null
+  return single ? `mcp__${ROOM_MCP_NAME}__${single[1]}` : null
+}
+
+/** A step that calls Sayabot's own room tools (allowed up front; the server guards them). */
+export function isRoomToolStep(update: Json): boolean {
+  const call = record(update.toolCall) ?? update
+  const title = nonempty(call.title) ?? nonempty(update.title)
+  // Dotted titles alone without explicit MCP metadata must route through decide for safety
+  if (title && MCP_DOTTED.test(title)) return false
+  return mcpToolName(update)?.startsWith(`mcp__${ROOM_MCP_NAME}__`) === true
 }
 
 // ---------- permissions ----------
@@ -385,7 +430,7 @@ export class AcpConnection {
             jsonrpc: "2.0",
             id,
             error: {
-              code: -32601,
+              code: error instanceof AcpError && error.code !== null ? error.code : -32601,
               message: error instanceof Error ? error.message : "Not supported",
             },
           }),
@@ -461,6 +506,65 @@ export class AcpConnection {
 }
 
 export const ACP_CLIENT_INFO = { name: "sayabot", title: "Sayabot", version: "1" }
+
+/** The name room tools go by in an ACP session (so they show up as `mcp__sayabot__<tool>`). */
+export const ROOM_MCP_NAME = "sayabot"
+
+/** What `initialize` says the agent supports, as far as the runner cares. */
+function agentCapabilities(initialize: unknown): Json {
+  return record(record(initialize)?.agentCapabilities) ?? {}
+}
+
+/**
+ * session/new's `mcpServers`: Sayabot's room tools as a stdio server (room-mcp.js under Electron
+ * as plain Node), which every ACP agent must support (HTTP and MCP-over-ACP are optional). The
+ * token is scoped to this agent and room and revoked when the job ends. No room tools for the run
+ * → none listed.
+ */
+export function roomMcpServers(
+  mcp: { url: string; token: string } | null | undefined,
+  bridge: { command: string; script: string },
+): Json[] {
+  if (!mcp?.url || !mcp.token) return []
+  return [
+    {
+      name: ROOM_MCP_NAME,
+      command: bridge.command,
+      args: [bridge.script],
+      env: [
+        { name: "ELECTRON_RUN_AS_NODE", value: "1" },
+        { name: "SAYABOT_MCP_URL", value: mcp.url },
+        { name: "SAYABOT_MCP_TOKEN", value: mcp.token },
+      ],
+    },
+  ]
+}
+
+/**
+ * How the run's system prompt reaches the session: ACP's `systemPrompt` (append) when the agent
+ * advertises `sessionCapabilities.systemPrompt` (the ACP field), Antigravity's
+ * `_meta.antigravity.systemPrompt.append` extension when it advertises that, otherwise in front of
+ * the prompt (`prefix`).
+ */
+export function systemPromptSetup(
+  initialize: unknown,
+  system: string | null | undefined,
+): { session: Json; prefix: string } {
+  const text = system?.trim()
+  if (!text) return { session: {}, prefix: "" }
+  const caps = agentCapabilities(initialize)
+  if (record(caps.sessionCapabilities)?.systemPrompt !== undefined) {
+    return {
+      session: { systemPrompt: { mode: "append", content: [{ type: "text", text }] } },
+      prefix: "",
+    }
+  }
+  const antigravity = record(record(caps._meta)?.antigravity)
+  if (record(antigravity?.systemPrompt)?.append === true) {
+    return { session: { _meta: { antigravity: { systemPrompt: { append: text } } } }, prefix: "" }
+  }
+  return { session: {}, prefix: `${text}\n\n` }
+}
 
 /** initialize with no file or terminal access: the app works with its own tools in its own folder. */
 export function initializeParams(): Json {

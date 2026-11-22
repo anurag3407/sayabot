@@ -8,17 +8,18 @@ Source files: `apps/desktop/src/local-agents.ts`, `src/injector.ts`
 
 ## 🕵️ Agent Specs (`AGENT_SPECS`, `src/local-agents.ts:69`)
 
-Each of the 19 CLI apps is an `AgentSpec`: `{ id, name, bin, run, keyEnv, signedIn }`. `run` is how the [local runner](./runner-and-stream.md) starts it — `{ kind: "tools" }` (Claude Code, Codex), `{ kind: "plain" }` (print-mode CLIs), or `{ kind: "acp", args }` (Agent Client Protocol, handled by `acp.ts`).
+Each of the 21 CLI apps is an `AgentSpec`: `{ id, name, bin, run, keyEnv, login?, signedIn }`. `run` is how the [local runner](./runner-and-stream.md) starts it — `{ kind: "tools" }` (Claude Code, Codex stream modes), `{ kind: "plain" }` (pi's print mode), or `{ kind: "acp", args }` (Agent Client Protocol, handled by `acp.ts`). Every mode but `plain` gets Sayabot's room tools. `login` is the sign-in command shown in auth errors when it isn't `bin` itself (Antigravity: `agy`). Claude Code and Codex run only as their own unmodified binaries (`tools`): Anthropic does not allow third-party apps built on the Agent SDK to use a Claude subscription sign-in, and OpenAI has not sanctioned third-party use of ChatGPT sign-in, so the `claude-agent-acp` / `codex-acp` adapters are deliberately not listed.
 
 | id             | Name             | bin            | Run mode                                      | Sign-in checked via (paths relative to `$HOME`; `XDG_*`/app-specific env overrides honoured)                               |
 | :------------- | :--------------- | :------------- | :-------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------- |
 | `claude-code`  | Claude Code      | `claude`       | tools                                         | `~/.claude/.credentials.json`, `~/.claude.json` containing `"oauthAccount"`, or Keychain service `Claude Code-credentials` |
 | `codex`        | Codex            | `codex`        | tools                                         | `auth.json` under `$CODEX_HOME` (default `~/.codex`)                                                                       |
+| `antigravity`  | Antigravity      | `agy`          | acp `acp`                                     | `~/.gemini/antigravity-cli/antigravity-oauth-token` (Google sign-in); `login: "agy"`                                       |
 | `copilot`      | GitHub Copilot   | `copilot`      | acp `--acp --stdio`                           | `config.json` under `$COPILOT_HOME` with `loggedInUsers`/`lastLoggedInUser`, or Keychain `copilot-cli`                     |
 | `command-code` | Command Code     | `command-code` | acp `acp`                                     | `~/.commandcode/auth.json` with an `apiKey`                                                                                |
-| `cursor`       | Cursor           | `cursor-agent` | plain                                         | Keychain `cursor-access-token` or `~/.cursor/cli-config.json` with `authInfo`                                              |
-| `gemini`       | Gemini CLI       | `gemini`       | plain                                         | `~/.gemini/oauth_creds.json`                                                                                               |
-| `opencode`     | OpenCode         | `opencode`     | plain                                         | `auth.json`, `opencode.json` (config) or `opencode.db` under XDG data/config                                               |
+| `cursor`       | Cursor           | `cursor-agent` | acp `acp`                                     | Keychain `cursor-access-token` or `~/.cursor/cli-config.json` with `authInfo`                                              |
+| `gemini`       | Gemini CLI       | `gemini`       | acp `--acp`                                   | `GEMINI_API_KEY`/`GOOGLE_API_KEY` in env or `~/.gemini/.env`, or `~/.gemini/settings.json` with `selectedType` `gemini-api-key` / `vertex-ai` |
+| `opencode`     | OpenCode         | `opencode`     | acp `acp`                                     | `auth.json`, `opencode.json` (config) or `opencode.db` under XDG data/config                                               |
 | `mistral-vibe` | Mistral (Vibe)   | `vibe-acp`     | acp                                           | `$VIBE_HOME` (default `~/.vibe`) `whoami_cache.json`, `.env` with `MISTRAL_API_KEY`, or Keychain `ai.mistral.vibe`         |
 | `grok`         | Grok             | `grok`         | acp `agent stdio`                             | `auth.json` under `$GROK_HOME` (default `~/.grok`)                                                                         |
 | `kimi`         | Kimi Code        | `kimi`         | acp `acp`                                     | credentials dir under `$KIMI_CODE_HOME` (default `~/.kimi-code`) matching `/^kimi-code.*\.json$/`                          |
@@ -31,6 +32,7 @@ Each of the 19 CLI apps is an `AgentSpec`: `{ id, name, bin, run, keyEnv, signed
 | `omp`          | OMP (Oh My Pi)   | `omp`          | acp `acp`                                     | `~/.omp/agent`                                                                                                             |
 | `pi`           | pi               | `pi`           | plain                                         | `~/.pi/agent/auth.json` containing a JSON object                                                                           |
 | `deepseek`     | DeepSeek Harness | `dsh`          | acp `--profile acp`                           | `.credentials.yaml` or `.env` with `DEEPSEEK_API_KEY` under `$DSH_HOME` (default `~/.dsh`)                                 |
+| `zcode`        | ZCode            | `zcode`        | acp `--acp`                                   | `~/.zcode/cli/config.json`, `~/.zcode/cli/setting.json` or `~/.zcode/v2/provider_config.json`                              |
 
 `keyEnv` lists API keys each app accepts **instead of** a sign-in; `hasEnv` only checks that a variable is non-empty in the app's own environment — the values are never opened. Keychain probes run `/usr/bin/security find-generic-password -s <service>` on macOS only (`keychainHas` returns false on Windows) and check only the exit code. Sign-in files under the home directory still count on Windows.
 
@@ -38,9 +40,19 @@ The detection primitives are small async helpers reused across specs: `fileHas(f
 
 `findBinary` (`src/bin-path.ts`) searches `PATH` plus Homebrew/`/usr/local` on macOS, or npm, pnpm, Scoop, WinGet, Chocolatey, Volta, and nvm-windows on Windows. On Windows it tries `PATHEXT` (`.exe` before `.cmd`). `spawnTool` runs `.exe` directly and `.cmd`/`.bat` shims through `cmd.exe /d /s /c` with `quoteForCmd`, because Node refuses `spawn` of a `.cmd` file. The runner, ACP client, model probes, vault CLI, and local MCP host all start tools through `spawnTool`.
 
+### Signing Antigravity in from Sayabot (`src/agent-login.ts`)
+
+`AgentLogin` runs an app's **own** login so a person can sign in without a terminal. Only `antigravity` is supported (`LOGIN_ARGS`): it spawns `agy acp --login`, which prints a Google link (`https://accounts.google.com/o/oauth2/auth?…redirect_uri=https://antigravity.google/oauth-callback…`) and then reads one line from stdin, the code or the full URL of the page the browser lands on.
+
+- `start(appId)` → `{ ok: true, url }` once `loginUrl()` finds the link in the output (30 s), or `{ ok: false, error }`. One sign-in at a time; a new start cancels the last.
+- `submit(code)` → writes the cleaned line (`cleanCode`: trimmed, one line, ≤ 4,096 chars) to stdin and waits up to 90 s for exit; exit 0 = signed in. Error text is the output's last lines with URLs stripped.
+- `cancel()` kills the login process.
+
+IPC (`src/main.ts`): `agents:sign-in-start` (opens the link with `shell.openExternal`), `agents:sign-in-submit` (on success `DesktopHost.rescanAgents()` forces a scan on the next heartbeat) and `agents:sign-in-cancel`. Preload exposes them as `signInAgentStart`, `signInAgentSubmit`, `signInAgentCancel`. Sayabot never reads, stores or forwards the tokens: `agy` writes its own sign-in, and Google's terms forbid extracting or reusing it. The Providers page uses this for a signed-out Antigravity (see [lib reference](../web/pages/lib-reference.md)).
+
 ### Coordination with `@sayabot/core`
 
-This list mirrors `MAC_CLI_APPS` in `packages/core/src/mac-apps.ts` — the shared catalogue the web (model picker, Providers page) and orchestrator use. `apps/desktop/src/acp.test.ts:166` imports `MAC_CLI_APPS` and asserts every desktop spec's `id`/`bin` matches the shared entry, so the two lists cannot drift. The core side classifies each app's `access` level (`account`, `account_or_key`, `key`, `own_config`) and carries the `install`/`signIn` command strings shown in the UI; the desktop side owns the detection probes and the launch arguments, which is why the two files exist at all. See [Scanner (core)](../core/scanner.md) and [Agents on your Mac](../../agents-on-your-mac.md).
+This list mirrors `MAC_CLI_APPS` in `packages/core/src/mac-apps.ts` — the shared catalogue the web (model picker, Providers page) and orchestrator use. `apps/desktop/src/acp.test.ts` ("agent apps") imports `MAC_CLI_APPS` and asserts every desktop spec's `id`/`bin` matches the shared entry and that its `run.kind` equals the shared `transport` (`tools` | `acp` | `plain`), so the two lists cannot drift. The server uses `transport` to decide which runs get room tools (`macAppTakesRoomTools`). The core side classifies each app's `access` level (`account`, `account_or_key`, `key`, `own_config`) and carries the `install`/`signIn` command strings shown in the UI; the desktop side owns the detection probes and the launch arguments, which is why the two files exist at all. See [Scanner (core)](../core/scanner.md) and [Agents on your Mac](../../agents-on-your-mac.md).
 
 The TypeScript shapes the rest of the app consumes:
 
@@ -57,7 +69,7 @@ export interface LocalAgent {
 
 export type RunMode =
   | { kind: "tools" } // Claude Code, Codex
-  | { kind: "plain" } // print-mode CLIs
+  | { kind: "plain" } // pi
   | { kind: "acp"; args: readonly string[] } // Agent Client Protocol apps
 ```
 
