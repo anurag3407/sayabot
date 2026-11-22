@@ -123,6 +123,12 @@ export function createLanguageModel(config: LanguageModelConfig): LanguageModel 
         apiKey,
       })(model)
     }
+    case "river":
+      return createTrackedOpenAICompatible({
+        name: "river",
+        baseURL: baseURL || "https://api.river.ai/v1",
+        apiKey,
+      })(model)
     case "openai-compatible":
       if (!baseURL) {
         throw new MissingModelConfigError("openai-compatible providers require a base URL")
@@ -352,6 +358,16 @@ const PROVIDER_CAPABILITIES: Record<Provider, ProviderCapabilities> = {
   },
   cloudflare: {
     supportsPromptCache: false,
+    supportsServerCompaction: false,
+    supportsContextEditing: false,
+    supportsEffort: false,
+    supportsMidConversationSystem: true,
+    supportsParallelTools: true,
+    supportsComputerUse: false,
+    defaultContextWindow: 128_000,
+  },
+  river: {
+    supportsPromptCache: true,
     supportsServerCompaction: false,
     supportsContextEditing: false,
     supportsEffort: false,

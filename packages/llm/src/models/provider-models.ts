@@ -51,6 +51,7 @@ export const PROVIDER_BASE_URL: Record<string, string> = {
   grok: "https://api.x.ai/v1",
   kimi: "https://api.moonshot.cn/v1",
   qwen: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+  river: "https://api.river.ai/v1",
 }
 
 /** Free models that call tools well, best first; otherwise the first free tool-capable model wins. */

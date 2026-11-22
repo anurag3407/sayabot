@@ -44,6 +44,15 @@ describe("createLanguageModel", () => {
     })
     expect(modelIdOf(model)).toBe("@cf/meta/llama-3.3-70b-instruct")
   })
+
+  it("creates a river ai model", () => {
+    const model = createLanguageModel({
+      provider: "river",
+      apiKey: "test-river-key",
+      model: "deepseek-ai/DeepSeek-V4.1-Flash-1017",
+    })
+    expect(modelIdOf(model)).toBe("deepseek-ai/DeepSeek-V4.1-Flash-1017")
+  })
 })
 
 describe("devModelConfig", () => {
