@@ -25,7 +25,7 @@ Source files: `packages/core/src/mac-apps.ts`, `packages/core/src/cloud-handoff.
 
   No rule was found for Grok, Cursor or Qwen Code, so they have no `usePolicy`.
 
-- `macRunRefusal(app, trigger, ownerUserId)` — null, or the reason the app may not answer. `interactive`: only a `human` trigger from the owner whose metadata isn't `automated`. `owner`: anything except a `human` trigger from someone else (another member, or a connector/gateway message with no sender); routines (`system`) and other bots pass.
+- `macRunRefusal(app, trigger, ownerUserId)` — null, or the reason the app may not answer. `interactive`: only a `human` trigger from the owner whose metadata isn't `automated`. `owner`: the owner's own messages, their routines (`system`), and their own bots (`senderOwnerUserId` or `metadata.botOwnerUserId`); other members, connector/gateway messages from outside, and other users' bots are refused.
 - `macAppSplitsSystemPrompt(app, appVersion)` — true for `acp` apps on Mac app ≥ `MAC_ACP_ROOM_TOOLS_SINCE`: the server then keeps the system prompt in `local_runner_jobs.system_prompt`.
 - `macAppTakesRoomTools(app, appVersion)` — true for `tools` apps; for `acp` apps only when `appVersion ≥ MAC_ACP_ROOM_TOOLS_SINCE` (`"1.0.32"`, numeric compare of the first three parts); false for `plain` apps and unknown ids (Ollama, LM Studio).
 - Lookups: `MAC_CLI_APP_IDS`, `macAppInfo(id)`, `isMacCliApp(id)`.

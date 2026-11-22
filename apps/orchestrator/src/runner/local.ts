@@ -1,6 +1,7 @@
 import {
   hostOnline,
   MAC_CLI_APP_IDS,
+  macAppInfo,
   macAppSplitsSystemPrompt,
   macAppTakesRoomTools,
   macRunRefusal,
@@ -10,6 +11,7 @@ import { clampEffort, ENGINE_EFFORT_LEVELS } from "@sayabot/llm/models/effort"
 import { sealSecret } from "@sayabot/llm"
 import {
   agentRuns,
+  agents,
   desktopHosts,
   localRunnerJobs,
   messages,
@@ -122,6 +124,7 @@ export async function defaultMacRunner(agent: {
       host.settings?.runnerEnabled &&
       app &&
       RUNNER_APPS.has(app) &&
+      !macAppInfo(app)?.usePolicy &&
       hostOnline(host.lastSeenAt)
     ) {
       return { hostId: host.id, app: app as LocalRunnerConfig["app"] }
@@ -361,14 +364,32 @@ export async function runLocalTurn(
     )
   }
   const waiting = options.wait === true && !hostOnline(host.lastSeenAt)
-  // Apps whose sign-in is for its owner's interactive use (Antigravity) answer only the owner's
-  // own messages: no routines, webhooks, other members or bots on that account.
+  let senderOwnerUserId: string | null =
+    typeof args.trigger.metadata?.botOwnerUserId === "string"
+      ? (args.trigger.metadata.botOwnerUserId as string)
+      : null
+  if (!senderOwnerUserId && args.trigger.senderType === "agent" && args.trigger.senderId) {
+    if (args.trigger.senderId === agent.id) {
+      senderOwnerUserId = agent.ownerUserId ?? null
+    } else {
+      const [senderAgent] = await db
+        .select({ ownerUserId: agents.ownerUserId })
+        .from(agents)
+        .where(eq(agents.id, args.trigger.senderId))
+        .limit(1)
+        .catch(() => [])
+      senderOwnerUserId = senderAgent?.ownerUserId ?? null
+    }
+  }
+
+  // Apps whose provider policy limits who or what may use the sign-in refuse disallowed runs.
   const refusal = macRunRefusal(
     config.app,
     {
       senderType: args.trigger.senderType,
       senderId: args.trigger.senderId,
       metadata: args.trigger.metadata,
+      senderOwnerUserId,
     },
     host.userId,
   )

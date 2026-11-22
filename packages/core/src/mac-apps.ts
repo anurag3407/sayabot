@@ -391,14 +391,16 @@ export interface MacRunTrigger {
   senderType: "human" | "agent" | "system"
   senderId: string | null
   metadata?: Record<string, unknown> | null
+  /** When senderType is "agent", the user id of the bot's owner. */
+  senderOwnerUserId?: string | null
 }
 
 /**
  * Why `app` may not answer `trigger` on a Mac owned by `ownerUserId`, or null when it may, from
  * the app's `usePolicy`. `interactive`: only a person's own message (not routines or meetings —
  * system or `automated` — connector and chat-gateway messages with no sender, other members, or
- * other bots). `owner`: anything but a message from another person (another member, or someone
- * outside writing in through a connector or chat gateway).
+ * other bots). `owner`: the owner's own messages, their routines, and their own bots; refuses other
+ * people, unauthenticated outside messages, and other users' bots.
  */
 export function macRunRefusal(
   app: string | null | undefined,
@@ -414,7 +416,13 @@ export function macRunRefusal(
     if (fromOwner && trigger.metadata?.automated !== true) return null
     return `${info.name} only answers its owner's own messages: ${policy.rule}. ${policy.instead}`
   }
-  if (trigger.senderType !== "human" || fromOwner) return null
+  if (fromOwner || trigger.senderType === "system") return null
+  const botOwner =
+    trigger.senderOwnerUserId ??
+    (typeof trigger.metadata?.botOwnerUserId === "string" ? trigger.metadata.botOwnerUserId : null)
+  if (trigger.senderType === "agent" && Boolean(botOwner) && botOwner === ownerUserId) {
+    return null
+  }
   return `${info.name} only answers its owner and the owner's routines: ${policy.rule}. ${policy.instead}`
 }
 

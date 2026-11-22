@@ -94,13 +94,20 @@ export function withLocalDefault(
   localAgents: Array<Record<string, unknown>>,
 ): HostRow["settings"] | null {
   const best = pickDefaultApp(localAgents)
-  if (!best || settings.localDefault === false) return null
+  if (settings.localDefault === false) return null
   if (settings.localDefault === undefined) {
+    if (!best) return null
     return { ...settings, runnerEnabled: true, localDefault: { app: best } }
   }
   const current = settings.localDefault.app
-  const stillReady = localAgents.some((a) => a.id === current && a.status === "ready")
-  return stillReady || current === best ? null : { ...settings, localDefault: { app: best } }
+  const restricted = PERSONAL_ONLY.has(current)
+  const stillReady =
+    !restricted && localAgents.some((a) => a.id === current && a.status === "ready")
+  if (stillReady) return null
+  if (best) {
+    return current === best ? null : { ...settings, localDefault: { app: best } }
+  }
+  return restricted ? { ...settings, localDefault: false } : null
 }
 
 const APP_NAMES: Record<string, string> = Object.fromEntries(

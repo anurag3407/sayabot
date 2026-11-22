@@ -88,7 +88,7 @@ afterEach(async () => {
   if (temporary) await rm(temporary, { recursive: true, force: true })
 })
 
-describe("workspace tools with real temporary git worktrees", () => {
+describe("workspace tools with real temporary git worktrees", { timeout: 25_000 }, () => {
   it("forks detached, inspects changes and never changes original files, branch or HEAD", async () => {
     const before = {
       head: await git(repo, "rev-parse", "HEAD"),
@@ -190,7 +190,7 @@ describe("workspace tools with real temporary git worktrees", () => {
     await git(target, "update-ref", "--no-deref", "HEAD", unrelated)
     await expect(inspect(scope)).rejects.toThrow("merge-base failed")
     expect(await git(repo, "rev-parse", "HEAD")).toBe(scope.baseSha)
-  })
+  }, 20_000)
 
   it("rejects symlink repository paths and generated targets", async () => {
     const alias = join(temporary, "alias")

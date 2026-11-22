@@ -58,4 +58,20 @@ describe("withLocalDefault (Mac runs agents by default)", () => {
       localDefault: { app: "gemini" },
     })
   })
+
+  it("replaces a saved default that is now restricted (e.g. kimi, antigravity)", () => {
+    const settings = { runnerEnabled: true, localDefault: { app: "kimi" } }
+    expect(withLocalDefault(settings, [ready("kimi"), ready("gemini")])).toEqual({
+      runnerEnabled: true,
+      localDefault: { app: "gemini" },
+    })
+  })
+
+  it("disables the default if the saved app is restricted and no unrestricted replacement is ready", () => {
+    const settings = { runnerEnabled: true, localDefault: { app: "kimi" } }
+    expect(withLocalDefault(settings, [ready("kimi")])).toEqual({
+      runnerEnabled: true,
+      localDefault: false,
+    })
+  })
 })

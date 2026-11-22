@@ -14,13 +14,33 @@ describe("macRunRefusal (provider usage rules)", () => {
   const other = { senderType: "human" as const, senderId: "someone-else" } // another member
   const outside = { senderType: "human" as const, senderId: null } // connector / chat gateway
   const routine = { senderType: "system" as const, senderId: null } // routine, task wake
-  const bot = { senderType: "agent" as const, senderId: "agent-1" } // another bot
+  const ownBot = { senderType: "agent" as const, senderId: "agent-1", senderOwnerUserId: OWNER }
+  const otherBot = {
+    senderType: "agent" as const,
+    senderId: "agent-2",
+    senderOwnerUserId: "someone-else",
+  }
+  const unknownBot = { senderType: "agent" as const, senderId: "agent-3" }
+  const metaBot = {
+    senderType: "agent" as const,
+    senderId: "agent-4",
+    metadata: { botOwnerUserId: OWNER },
+  }
   const meeting = { ...own, metadata: { automated: true } } // meeting, scheduled
 
   it("interactive apps (Antigravity, Kimi Code) answer only the owner's own messages", () => {
     for (const app of ["antigravity", "kimi"]) {
       expect(macRunRefusal(app, own, OWNER)).toBeNull()
-      for (const trigger of [other, outside, routine, bot, meeting]) {
+      for (const trigger of [
+        other,
+        outside,
+        routine,
+        ownBot,
+        otherBot,
+        unknownBot,
+        metaBot,
+        meeting,
+      ]) {
         expect(macRunRefusal(app, trigger, OWNER)).toMatch(/only answers its owner's own messages/)
       }
       expect(macRunRefusal(app, own, null)).not.toBeNull()
@@ -28,12 +48,12 @@ describe("macRunRefusal (provider usage rules)", () => {
     expect(macRunRefusal("antigravity", other, OWNER)).toMatch(/GEMINI_API_KEY/)
   })
 
-  it("owner-only apps (Qoder, Command Code, Devin) refuse other people, allow routines", () => {
+  it("owner-only apps (Qoder, Command Code, Devin) refuse other people and other bots, allow routines and own bots", () => {
     for (const app of ["qoder", "command-code", "devin"]) {
-      for (const trigger of [own, routine, bot, meeting]) {
+      for (const trigger of [own, routine, ownBot, metaBot, meeting]) {
         expect(macRunRefusal(app, trigger, OWNER)).toBeNull()
       }
-      for (const trigger of [other, outside]) {
+      for (const trigger of [other, outside, otherBot, unknownBot]) {
         expect(macRunRefusal(app, trigger, OWNER)).toMatch(/only answers its owner and/)
       }
     }
