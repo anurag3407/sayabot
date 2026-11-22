@@ -12,7 +12,7 @@ Source files: `apps/web/src/app/api/desktop/register/route.ts`, `apps/web/src/ap
 
 `HostRow` (`desktop-hosts.ts:5`) carries `user_id`, optional `org_id`, name/platform/app_version, `token_hash`, `permissions`, `local_agents`, `settings` (`whoCanControl: "only_me" | "admins" | "members"`, `askOnComputer`, `runnerEnabled`, `localDefault`), liveness and revocation timestamps.
 
-Two helpers drive the "run agents on my Mac" defaults: `pickDefaultApp` picks the most capable signed-in app (order `claude-code`, `codex`, `copilot`, `cursor`, `gemini`, `opencode`, then the rest of `MAC_CLI_APPS`, never a `personalUseOnly` app such as Antigravity, which must be picked per bot), and `withLocalDefault` turns `runnerEnabled: true` + `localDefault: { app }` on the first time a ready app appears, keeps the choice current, and never touches it again once the owner set it to `false` (`desktop-hosts.ts:71`).
+Two helpers drive the "run agents on my Mac" defaults: `pickDefaultApp` picks the most capable signed-in app (order `claude-code`, `codex`, `copilot`, `cursor`, `gemini`, `opencode`, then the rest of `MAC_CLI_APPS`, never an app with a `usePolicy` (Antigravity, Kimi Code, Qoder, Command Code, Devin), which must be picked per bot), and `withLocalDefault` turns `runnerEnabled: true` + `localDefault: { app }` on the first time a ready app appears, keeps the choice current (replacing any stale restricted apps with an eligible choice or disabling the default if none is ready), and never touches it again once the owner set it to `false` (`desktop-hosts.ts:71`).
 
 ---
 

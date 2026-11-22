@@ -138,6 +138,20 @@ export const AGENT_SPECS: readonly AgentSpec[] = [
     signedIn: (home) => fileHas(join(home, ".commandcode/auth.json"), /"apiKey"\s*:\s*"[^"]+"/),
   },
   {
+    id: "qoder",
+    name: "Qoder",
+    bin: "qodercli",
+    run: { kind: "acp", args: ["--acp"] },
+    keyEnv: ["QODER_PERSONAL_ACCESS_TOKEN"],
+    // Qoder keeps its sign-in in the keychain ("qoder-cli…") or under ~/.qoder; only presence is
+    // checked (the names are internal), and a run that isn't signed in says so.
+    signedIn: (home) =>
+      someTrue([
+        () => keychainHas("qoder-cli"),
+        () => dirHas(join(home, ".qoder"), /auth|credential|token|session/i),
+      ]),
+  },
+  {
     id: "cursor",
     name: "Cursor",
     bin: "cursor-agent",

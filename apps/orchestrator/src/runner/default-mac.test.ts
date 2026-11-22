@@ -85,6 +85,14 @@ describe("defaultMacRunner", () => {
       await defaultMacRunner({ ...agent, params: { runner: { where: "server", app: "codex" } } }),
     ).toBeNull()
   })
+
+  it("never picks an app with a usePolicy as a default runner", async () => {
+    results.push(
+      [{ userId: "u1" }],
+      [host({ runnerEnabled: true, localDefault: { app: "kimi" } })],
+    )
+    expect(await defaultMacRunner(agent)).toBeNull()
+  })
 })
 
 describe("localRunnerConfig", () => {

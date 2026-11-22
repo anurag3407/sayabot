@@ -8,12 +8,24 @@ Source files: `packages/core/src/mac-apps.ts`, `packages/core/src/cloud-handoff.
 
 ## 💻 Mac Agent Apps (`mac-apps.ts`)
 
-`MAC_CLI_APPS` is the shared catalogue of agent apps a Mac (or Windows PC) can run bots with: 21 entries of `MacAppInfo { id, bin, name, provider, label, access, signIn, keyEnv, install, transport, personalUseOnly?, policyNote? }`. The web (model picker, Providers page, local detection in `apps/web/src/lib/local-agents-shared.ts`) and the orchestrator (`MAC_RUNNER_APPS`, room-tool grants) read it; the desktop keeps its own copy with detection probes and launch args (`apps/desktop/src/local-agents.ts`), and a desktop test asserts `id`, `bin`, `keyEnv` and `transport` ↔ `run.kind` match.
+`MAC_CLI_APPS` is the shared catalogue of agent apps a Mac (or Windows PC) can run bots with: 22 entries of `MacAppInfo { id, bin, name, provider, label, access, signIn, keyEnv, install, transport, usePolicy?, policyNote? }`. The web (model picker, Providers page, local detection in `apps/web/src/lib/local-agents-shared.ts`) and the orchestrator (`MAC_RUNNER_APPS`, room-tool grants) read it; the desktop keeps its own copy with detection probes and launch args (`apps/desktop/src/local-agents.ts`), and a desktop test asserts `id`, `bin`, `keyEnv` and `transport` ↔ `run.kind` match.
 
 - `access` — `account` | `account_or_key` | `key` | `own_config`; `macAppSetupHint(app)` turns it into the "how to set it up" line (`MAC_ACCESS_LABEL` for short labels).
 - `transport` — `tools` (Claude Code, Codex stream modes), `acp` (Agent Client Protocol over stdio) or `plain` (pi, text only).
-- `antigravity` runs Google's own ACP server (`agy acp`, provider `antigravity`, sign-in `agy`), with `personalUseOnly: true` and a `policyNote` (Google allows its personal sign-in for single-user interactive use only). There are no Claude/Codex ACP adapter entries: Anthropic doesn't allow subscription sign-in in third-party Agent SDK apps and OpenAI hasn't sanctioned it, so Claude Code and Codex run only as their own binaries (`tools`).
-- `macRunRefusal(app, trigger, ownerUserId)` — null, or the reason a `personalUseOnly` app may not answer: allowed only for a `human` trigger from the owner whose metadata isn't `automated`.
+- `antigravity` runs Google's own ACP server (`agy acp`, provider `antigravity`, sign-in `agy`). `qoder` runs Qoder's (`qodercli --acp`, key `QODER_PERSONAL_ACCESS_TOKEN`). There are no Claude/Codex ACP adapter entries: Anthropic doesn't allow subscription sign-in in third-party Agent SDK apps and OpenAI hasn't sanctioned it, so Claude Code and Codex run only as their own binaries (`tools`).
+- `usePolicy?: { kind, rule, instead }` (`MacAppUsePolicy`) records a provider's rule on its sign-in, each with a `policyNote` for the UI:
+
+  | App            | `kind`        | Source of the rule                                                                                                    |
+  | :------------- | :------------ | :-------------------------------------------------------------------------------------------------------------------- |
+  | `antigravity`  | `interactive` | Google: the unmodified `agy acp` with personal sign-in is allowed for single-user, interactive development (AI forum) |
+  | `kimi`         | `interactive` | Kimi Code community guidelines: "subscriptions are for interactive use only", no non-interactive automation           |
+  | `qoder`        | `owner`       | Qoder ToS 2.3: "Your account is intended solely for your own individual use"; no third party may use it               |
+  | `command-code` | `owner`       | Command Code terms: personal licence; not "for the benefit of a third party", no time sharing                         |
+  | `devin`        | `owner`       | Cognition platform terms 2.1/2.3: use by you and your Authorized Users only                                           |
+
+  No rule was found for Grok, Cursor or Qwen Code, so they have no `usePolicy`.
+
+- `macRunRefusal(app, trigger, ownerUserId)` — null, or the reason the app may not answer. `interactive`: only a `human` trigger from the owner whose metadata isn't `automated`. `owner`: the owner's own messages, their routines (`system`), and their own bots (`senderOwnerUserId` or `metadata.botOwnerUserId`); other members, connector/gateway messages from outside, and other users' bots are refused.
 - `macAppSplitsSystemPrompt(app, appVersion)` — true for `acp` apps on Mac app ≥ `MAC_ACP_ROOM_TOOLS_SINCE`: the server then keeps the system prompt in `local_runner_jobs.system_prompt`.
 - `macAppTakesRoomTools(app, appVersion)` — true for `tools` apps; for `acp` apps only when `appVersion ≥ MAC_ACP_ROOM_TOOLS_SINCE` (`"1.0.32"`, numeric compare of the first three parts); false for `plain` apps and unknown ids (Ollama, LM Studio).
 - Lookups: `MAC_CLI_APP_IDS`, `macAppInfo(id)`, `isMacCliApp(id)`.

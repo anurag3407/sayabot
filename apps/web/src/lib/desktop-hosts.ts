@@ -65,14 +65,13 @@ export async function orgRoleOf(
 
 /**
  * Best app to run agents with on a Mac, from what it reported as signed in: the subscription apps
- * people most often have first, then the rest in MAC_CLI_APPS order (never a personal-use-only app).
+ * people most often have first, then the rest in MAC_CLI_APPS order (never an app with a usePolicy).
  */
 const PREFERRED = ["claude-code", "codex", "copilot", "cursor", "gemini", "opencode"]
-// Apps whose sign-in is for the owner's own interactive use (Antigravity) are never the default:
-// the default also answers routines and shared chats. They have to be picked per bot.
-const PERSONAL_ONLY = new Set(
-  MAC_CLI_APPS.filter((app) => app.personalUseOnly).map((app) => app.id),
-)
+// Apps whose provider limits who or what may use the sign-in (Antigravity, Kimi Code, Qoder,
+// Command Code, Devin) are never the default: the default also answers routines and shared chats.
+// They have to be picked per bot.
+const PERSONAL_ONLY = new Set(MAC_CLI_APPS.filter((app) => app.usePolicy).map((app) => app.id))
 const DEFAULT_APP_ORDER = [
   ...PREFERRED,
   ...MAC_CLI_APP_IDS.filter((id) => !PREFERRED.includes(id) && !PERSONAL_ONLY.has(id)),
@@ -95,13 +94,20 @@ export function withLocalDefault(
   localAgents: Array<Record<string, unknown>>,
 ): HostRow["settings"] | null {
   const best = pickDefaultApp(localAgents)
-  if (!best || settings.localDefault === false) return null
+  if (settings.localDefault === false) return null
   if (settings.localDefault === undefined) {
+    if (!best) return null
     return { ...settings, runnerEnabled: true, localDefault: { app: best } }
   }
   const current = settings.localDefault.app
-  const stillReady = localAgents.some((a) => a.id === current && a.status === "ready")
-  return stillReady || current === best ? null : { ...settings, localDefault: { app: best } }
+  const restricted = PERSONAL_ONLY.has(current)
+  const stillReady =
+    !restricted && localAgents.some((a) => a.id === current && a.status === "ready")
+  if (stillReady) return null
+  if (best) {
+    return current === best ? null : { ...settings, localDefault: { app: best } }
+  }
+  return restricted ? { ...settings, localDefault: false } : null
 }
 
 const APP_NAMES: Record<string, string> = Object.fromEntries(

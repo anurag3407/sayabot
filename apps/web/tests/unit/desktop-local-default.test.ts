@@ -16,9 +16,11 @@ describe("pickDefaultApp", () => {
     expect(pickDefaultApp([ready("gemini"), ready("codex")])).toBe("codex")
   })
 
-  it("never defaults to Antigravity, whose sign-in is for the owner's own messages", () => {
-    expect(pickDefaultApp([ready("antigravity")])).toBeNull()
-    expect(pickDefaultApp([ready("antigravity"), ready("kimi")])).toBe("kimi")
+  it("never defaults to an app whose provider limits its sign-in", () => {
+    for (const app of ["antigravity", "kimi", "qoder", "command-code", "devin"]) {
+      expect(pickDefaultApp([ready(app)])).toBeNull()
+    }
+    expect(pickDefaultApp([ready("antigravity"), ready("grok")])).toBe("grok")
   })
 
   it("ignores apps that are installed but not signed in", () => {
@@ -54,6 +56,22 @@ describe("withLocalDefault (Mac runs agents by default)", () => {
     expect(withLocalDefault(settings, [signedOut("claude-code"), ready("gemini")])).toEqual({
       runnerEnabled: true,
       localDefault: { app: "gemini" },
+    })
+  })
+
+  it("replaces a saved default that is now restricted (e.g. kimi, antigravity)", () => {
+    const settings = { runnerEnabled: true, localDefault: { app: "kimi" } }
+    expect(withLocalDefault(settings, [ready("kimi"), ready("gemini")])).toEqual({
+      runnerEnabled: true,
+      localDefault: { app: "gemini" },
+    })
+  })
+
+  it("disables the default if the saved app is restricted and no unrestricted replacement is ready", () => {
+    const settings = { runnerEnabled: true, localDefault: { app: "kimi" } }
+    expect(withLocalDefault(settings, [ready("kimi")])).toEqual({
+      runnerEnabled: true,
+      localDefault: false,
     })
   })
 })

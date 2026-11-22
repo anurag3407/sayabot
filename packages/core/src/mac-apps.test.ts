@@ -10,33 +10,73 @@ import {
 const OWNER = "user-owner"
 const own = { senderType: "human" as const, senderId: OWNER, metadata: {} }
 
-describe("macRunRefusal (personal-use sign-ins)", () => {
-  it("lets Antigravity answer only its owner's own messages", () => {
-    expect(macRunRefusal("antigravity", own, OWNER)).toBeNull()
-    for (const trigger of [
-      { senderType: "human" as const, senderId: "someone-else" }, // another member
-      { senderType: "human" as const, senderId: null }, // connector / chat gateway
-      { senderType: "system" as const, senderId: null }, // routine, task wake
-      { senderType: "agent" as const, senderId: "agent-1" }, // another bot
-      { ...own, metadata: { automated: true } }, // meeting, scheduled
-    ]) {
-      expect(macRunRefusal("antigravity", trigger, OWNER)).toMatch(/only answers its owner/)
+describe("macRunRefusal (provider usage rules)", () => {
+  const other = { senderType: "human" as const, senderId: "someone-else" } // another member
+  const outside = { senderType: "human" as const, senderId: null } // connector / chat gateway
+  const routine = { senderType: "system" as const, senderId: null } // routine, task wake
+  const ownBot = { senderType: "agent" as const, senderId: "agent-1", senderOwnerUserId: OWNER }
+  const otherBot = {
+    senderType: "agent" as const,
+    senderId: "agent-2",
+    senderOwnerUserId: "someone-else",
+  }
+  const unknownBot = { senderType: "agent" as const, senderId: "agent-3" }
+  const metaBot = {
+    senderType: "agent" as const,
+    senderId: "agent-4",
+    metadata: { botOwnerUserId: OWNER },
+  }
+  const meeting = { ...own, metadata: { automated: true } } // meeting, scheduled
+
+  it("interactive apps (Antigravity, Kimi Code) answer only the owner's own messages", () => {
+    for (const app of ["antigravity", "kimi"]) {
+      expect(macRunRefusal(app, own, OWNER)).toBeNull()
+      for (const trigger of [
+        other,
+        outside,
+        routine,
+        ownBot,
+        otherBot,
+        unknownBot,
+        metaBot,
+        meeting,
+      ]) {
+        expect(macRunRefusal(app, trigger, OWNER)).toMatch(/only answers its owner's own messages/)
+      }
+      expect(macRunRefusal(app, own, null)).not.toBeNull()
     }
-    expect(macRunRefusal("antigravity", own, null)).not.toBeNull()
+    expect(macRunRefusal("antigravity", other, OWNER)).toMatch(/GEMINI_API_KEY/)
   })
 
-  it("leaves every other app alone", () => {
-    const routine = { senderType: "system" as const, senderId: null }
-    expect(macRunRefusal("claude-code", routine, OWNER)).toBeNull()
-    expect(macRunRefusal("gemini", routine, OWNER)).toBeNull()
-    expect(macRunRefusal("ollama", routine, OWNER)).toBeNull()
+  it("owner-only apps (Qoder, Command Code, Devin) refuse other people and other bots, allow routines and own bots", () => {
+    for (const app of ["qoder", "command-code", "devin"]) {
+      for (const trigger of [own, routine, ownBot, metaBot, meeting]) {
+        expect(macRunRefusal(app, trigger, OWNER)).toBeNull()
+      }
+      for (const trigger of [other, outside, otherBot, unknownBot]) {
+        expect(macRunRefusal(app, trigger, OWNER)).toMatch(/only answers its owner and/)
+      }
+    }
   })
 
-  it("is set only on Antigravity, which also carries the note", () => {
-    expect(MAC_CLI_APPS.filter((app) => app.personalUseOnly).map((app) => app.id)).toEqual([
-      "antigravity",
+  it("leaves apps with no rule found alone (Grok, Cursor, Qwen Code, Claude Code…)", () => {
+    for (const app of ["grok", "cursor", "qwen", "claude-code", "gemini", "ollama"]) {
+      expect(macRunRefusal(app, other, OWNER)).toBeNull()
+      expect(macRunRefusal(app, routine, OWNER)).toBeNull()
+    }
+  })
+
+  it("is set on exactly these apps, each with a note", () => {
+    const withPolicy = MAC_CLI_APPS.filter((app) => app.usePolicy)
+    expect(withPolicy.map((app) => [app.id, app.usePolicy?.kind]).sort()).toEqual([
+      ["antigravity", "interactive"],
+      ["command-code", "owner"],
+      ["devin", "owner"],
+      ["kimi", "interactive"],
+      ["qoder", "owner"],
     ])
-    expect(macAppInfo("antigravity")?.policyNote).toMatch(/GEMINI_API_KEY/)
+    for (const app of withPolicy) expect(app.policyNote).toBeTruthy()
+    expect(macAppInfo("qoder")).toMatchObject({ bin: "qodercli", transport: "acp" })
   })
 })
 
