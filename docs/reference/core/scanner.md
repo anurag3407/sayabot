@@ -154,6 +154,11 @@ Shared types: `PlanWindow { label, usedPercent, resetsAt, windowMinutes }` and `
 - **`parseCodexRateLimits(rateLimits, now?)`** — the `rate_limits` object Codex writes into session logs (`{ primary: { used_percent, window_minutes, resets_at }, secondary, plan_type }`) → windows from `primary`/`secondary` plus the `plan_type` string. A window whose reset time has already passed is reported **fresh** (`usedPercent: 0`, no `resetsAt`) rather than stale.
 - **`lastCodexRateLimits(logText)`** — scans a chunk of session log lines **backwards** for the newest line containing `"rate_limits"` under `payload.rate_limits`, returning it with its `observedAt` timestamp; broken/truncated lines are skipped, and `null` is returned when nothing qualifies.
 - **`parseAntigravityQuota(answer)`** — Google Code Assist's `retrieveUserQuotaSummary` answer (`{ groups: [{ displayName, buckets: [{ window, displayName, resetTime, remainingFraction }] }] }`) → windows with `usedPercent = 100 − remainingFraction × 100`, labels like `"<Group> · 5-hour"`, window minutes inferred from the bucket text (`/week/i` → 10 080, `/5\s*-?\s*h|five/i` → 300, else `null`).
+- **`parseOpenRouterQuota(keyData, creditsData?)`** — OpenRouter token and credits usage reader for OpenCode and Pi BYOK setups.
+- **`parseOpenCodeQuota(answer)`** — OpenCode free-tier token balances and rolling window limits.
+- **`parseCursorUsage(answer)`** — Cursor fast-request allowances (`gpt4.numRequests` / `gpt4.maxRequestUsage`) and monthly spend limits with future billing boundary reset calculation.
+- **`parseCopilotLimits(answer, headers?)`** — GitHub Copilot internal session SKU and HTTP rate-limit response headers (`x-ratelimit-remaining`, `x-ratelimit-limit`).
+- **`parseZCodeQuota(answer)`** — Z.ai / ZCode GLM Coding Plan quota windows (`data.windows` and `data.limits` e.g. `TOKENS_LIMIT`), mapping 5-hour rolling refresh cycles and weekly caps.
 
 `plan-limits.test.ts` covers each parser's happy path and rejection path, including the "reset since logged → fresh" rule and `windowLabel` naming.
 

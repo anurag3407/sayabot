@@ -1,6 +1,6 @@
 # Sayabot Desktop — Usage Scanning & Cloud Handoff
 
-Two features live at the edges of the desktop app. **Usage** (`src/usage/`) reads plan limits and token history for the coding CLIs signed in on this Mac — Claude Code, Codex, Antigravity — turning provider responses and on-disk logs into dashboard-ready numbers without tokens ever leaving the process. **Cloud handoff** (`src/cloud-handoff.ts`) carries this Mac's workspace snapshot (bots, chats, routines, sealed keys) up to Sayabot Cloud while a plan is active and back down to any non-Cloud server afterwards.
+Two features live at the edges of the desktop app. **Usage** (`src/usage/`) reads plan limits and token history for the coding CLIs signed in on this Mac — Claude Code, Codex, Antigravity, OpenCode, Pi, Cursor, GitHub Copilot, ZCode — turning provider responses and on-disk logs into dashboard-ready numbers without tokens ever leaving the process. **Cloud handoff** (`src/cloud-handoff.ts`) carries this Mac's workspace snapshot (bots, chats, routines, sealed keys) up to Sayabot Cloud while a plan is active and back down to any non-Cloud server afterwards.
 
 Source files: `apps/desktop/src/usage/index.ts`, `src/cloud-handoff.ts`, parsers from `@sayabot/core/scanner` (see [Scanner](../core/scanner.md))
 
@@ -35,23 +35,23 @@ No sign-in is needed: Codex writes its own rate-limit readings into every sessio
 
 ### OpenCode (`readOpenCodeLimits`)
 
-Reads credentials and provider configurations from `~/.local/share/opencode/auth.json`, `~/.config/opencode/opencode.json` (`$XDG_CONFIG_HOME`), or `OPENCODE_API_KEY`. If configured with OpenRouter (`tokenrouter`/`openrouter`), queries OpenRouter key and credits endpoints. If configured with OpenCode API key, queries `https://api.opencode.ai/v1/user/quota`. Falls back to active session window if local SQLite store (`opencode.db`) is present.
+Reads credentials and provider configurations from `~/.config/opencode/opencode.json` (`$XDG_CONFIG_HOME`), or `OPENCODE_API_KEY`. If configured with OpenRouter (`tokenrouter`/`openrouter`), queries OpenRouter key and credits endpoints. If configured with OpenCode API key, queries `https://api.opencode.ai/v1/user/quota`. When quota cannot be read or endpoints are unmetered, surfaces an `unavailable` state rather than fabricating a 0% active session window.
 
-### Pi & OMP (`readPiLimits`)
+### Pi (`readPiLimits`)
 
-Reads `~/.pi/agent/auth.json` and `~/.omp/agent/auth.json`. Detects OpenRouter OAuth tokens or API keys, querying OpenRouter's `auth/key` and `credits` APIs to report live credit balance and spending percentages. For direct Anthropic/OpenAI keys, surfaces active BYOK state.
+Reads `~/.pi/agent/auth.json` (isolated from OMP credentials) or `OPENROUTER_API_KEY`. Detects OpenRouter OAuth tokens or API keys, querying OpenRouter's `auth/key` and `credits` APIs to report live credit balance and spending percentages. For direct Anthropic/OpenAI BYOK keys, surfaces an `unavailable` state explaining that rate limits are not reported by the API rather than inventing placeholder windows.
 
 ### Cursor (`readCursorLimits`)
 
-Reads `CURSOR_API_KEY` from the environment or detects local Cursor installation (`~/.cursor`, `Library/Application Support/Cursor`). Queries Cursor's team usage endpoints (`https://api.cursor.com/teams/spend`) when keys are provided, reporting fast request allowances and monthly spend caps.
+Reads `CURSOR_API_KEY` from the environment or detects local Cursor installation (`~/.cursor`, `Library/Application Support/Cursor`). Queries Cursor's team usage endpoints (`https://api.cursor.com/teams/spend`) when `CURSOR_API_KEY` is provided, reporting fast request allowances and monthly spend caps. If only directory presence is detected without API access, surfaces an `unavailable` state prompting for `CURSOR_API_KEY` rather than fabricating zero-percent usage.
 
 ### GitHub Copilot (`readCopilotLimits`)
 
-Reads tokens from environment variables (`COPILOT_GITHUB_TOKEN`, `GH_TOKEN`, `GITHUB_TOKEN`), `~/.config/github-copilot/apps.json`, `~/.config/gh/hosts.yml`, or `gh auth token`. Queries `https://api.github.com/copilot_internal/v2/token`, extracting plan SKU and HTTP rate-limit headers into hourly and subscription limit windows.
+Reads tokens from environment variables (`COPILOT_GITHUB_TOKEN`, `GH_TOKEN`, `GITHUB_TOKEN`), `~/.config/github-copilot/apps.json`, `~/.config/gh/hosts.yml`, or `gh auth token`. Queries `https://api.github.com/copilot_internal/v2/token`, extracting plan SKU and HTTP rate-limit headers into hourly and subscription limit windows. If no rate-limit headers are present, returns an `unavailable` state with the plan name rather than inventing a fake active plan window.
 
 ### ZCode (`readZCodeLimits`)
 
-Reads credentials from `ZCODE_API_KEY`, `ZAI_API_KEY`, `GLM_API_KEY`, or local configs (`~/.zcode/cli/config.json`, `~/.zcode/cli/setting.json`, `~/.zcode/v2/provider_config.json`). Queries Z.ai quota endpoint `https://api.z.ai/api/monitor/usage/quota/limit`, converting 5-hour rolling refresh cycles and 7-day weekly caps into plan limit windows.
+Reads credentials from `ZCODE_API_KEY`, `ZAI_API_KEY`, `GLM_API_KEY`, or local configs (`~/.zcode/cli/config.json`, `~/.zcode/cli/setting.json`, `~/.zcode/v2/provider_config.json`). Queries Z.ai quota endpoint `https://api.z.ai/api/monitor/usage/quota/limit`, converting 5-hour rolling refresh cycles and 7-day weekly caps into plan limit windows, supporting both `data.windows` and `data.limits` (e.g. `TOKENS_LIMIT`).
 
 ### Token history (`readLocalUsage`, `src/usage/index.ts:264`)
 

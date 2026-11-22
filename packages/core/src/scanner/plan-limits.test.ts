@@ -309,4 +309,18 @@ describe("parseZCodeQuota", () => {
       { label: "Weekly", usedPercent: 45, resetsAt: null, windowMinutes: null },
     ])
   })
+
+  it("reads limits array with TOKENS_LIMIT percentage", () => {
+    const res = parseZCodeQuota({
+      limits: [{ type: "TOKENS_LIMIT", percentage: 25, reset_at: "2026-11-22T18:00:00Z" }],
+    })
+    expect(res.windows).toEqual([
+      {
+        label: "Tokens Limit",
+        usedPercent: 25,
+        resetsAt: "2026-11-22T18:00:00.000Z",
+        windowMinutes: null,
+      },
+    ])
+  })
 })

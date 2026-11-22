@@ -240,14 +240,37 @@ export function parseOpenCodeQuota(answer: unknown): { windows: PlanWindow[]; pl
   const plan =
     typeof data.plan === "string" ? data.plan : typeof data.tier === "string" ? data.tier : null
 
-  if (Array.isArray(data.windows)) {
-    for (const win of data.windows) {
-      if (!isRecord(win) || typeof win.used_percent !== "number") continue
+  const list = Array.isArray(data.windows)
+    ? data.windows
+    : Array.isArray(data.limits)
+      ? data.limits
+      : null
+
+  if (list) {
+    for (const win of list) {
+      if (!isRecord(win)) continue
+      const pct =
+        typeof win.used_percent === "number"
+          ? win.used_percent
+          : typeof win.percentage === "number"
+            ? win.percentage
+            : typeof win.usedPercent === "number"
+              ? win.usedPercent
+              : typeof win.used === "number" && typeof win.limit === "number" && win.limit > 0
+                ? (win.used / win.limit) * 100
+                : null
+      if (pct === null) continue
       const minutes = typeof win.window_minutes === "number" ? win.window_minutes : null
+      const label =
+        typeof win.label === "string"
+          ? win.label
+          : typeof win.type === "string"
+            ? win.type.toLowerCase().replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+            : windowLabel(minutes)
       windows.push({
-        label: typeof win.label === "string" ? win.label : windowLabel(minutes),
-        usedPercent: clampPercent(win.used_percent),
-        resetsAt: isoOrNull(win.resets_at),
+        label,
+        usedPercent: clampPercent(pct),
+        resetsAt: isoOrNull(win.resets_at || win.reset_at),
         windowMinutes: minutes,
       })
     }
@@ -412,14 +435,37 @@ export function parseZCodeQuota(answer: unknown): { windows: PlanWindow[]; plan:
   const plan =
     typeof data.plan === "string" ? data.plan : typeof data.package === "string" ? data.package : null
 
-  if (Array.isArray(data.windows)) {
-    for (const win of data.windows) {
-      if (!isRecord(win) || typeof win.used_percent !== "number") continue
+  const list = Array.isArray(data.windows)
+    ? data.windows
+    : Array.isArray(data.limits)
+      ? data.limits
+      : null
+
+  if (list) {
+    for (const win of list) {
+      if (!isRecord(win)) continue
+      const pct =
+        typeof win.used_percent === "number"
+          ? win.used_percent
+          : typeof win.percentage === "number"
+            ? win.percentage
+            : typeof win.usedPercent === "number"
+              ? win.usedPercent
+              : typeof win.used === "number" && typeof win.limit === "number" && win.limit > 0
+                ? (win.used / win.limit) * 100
+                : null
+      if (pct === null) continue
       const minutes = typeof win.window_minutes === "number" ? win.window_minutes : null
+      const label =
+        typeof win.label === "string"
+          ? win.label
+          : typeof win.type === "string"
+            ? win.type.toLowerCase().replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+            : windowLabel(minutes)
       windows.push({
-        label: typeof win.label === "string" ? win.label : windowLabel(minutes),
-        usedPercent: clampPercent(win.used_percent),
-        resetsAt: isoOrNull(win.resets_at),
+        label,
+        usedPercent: clampPercent(pct),
+        resetsAt: isoOrNull(win.resets_at || win.reset_at),
         windowMinutes: minutes,
       })
     }
