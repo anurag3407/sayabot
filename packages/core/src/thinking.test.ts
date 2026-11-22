@@ -52,6 +52,15 @@ describe("splitThinking", () => {
       open: false,
     })
   })
+
+  it("strips leaked internal DSML tool tags without swallowing text after the closing tag", () => {
+    const raw = "Before call.\n\n<｜DSML｜ calls>\n<｜DSML｜ invoke name=\"terminal_exec\">\n<｜DSML｜ parameter name=\"command\">curl localhost:6379</｜DSML｜ invoke>\n</｜DSML｜ calls>\n\nAfter call."
+    expect(splitThinking(raw)).toEqual({
+      thinking: "",
+      answer: "Before call.\n\nAfter call.",
+      open: false,
+    })
+  })
 })
 
 describe("appendThinking", () => {

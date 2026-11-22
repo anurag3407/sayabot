@@ -60,7 +60,11 @@ function tidy(text: string): string {
 /** Strips unparsed model protocol tags (such as DeepSeek DSML tool markers) from visible answer text. */
 export function stripModelInternalTokens(text: string): string {
   return text
-    .replace(/<[|｜\uFF5C]\s*(?:DSML|tool calls?|tool_calls)[|｜\uFF5C][\s\S]*?(?:<[|｜\uFF5C]\s*\/(?:DSML|tool calls?|tool_calls)[|｜\uFF5C]>|$)/gi, "")
+    .replace(
+      /<[|｜\uFF5C]\s*(?:DSML|tool calls?|tool_calls)[|｜\uFF5C][^>]*>[\s\S]*?(?:(?:<\/\s*[|｜\uFF5C]|<[|｜\uFF5C]\s*\/)\s*(?:DSML|tool calls?|tool_calls)[|｜\uFF5C][^>]*>|$)/gi,
+      "",
+    )
+    .replace(/<\/?\s*[|｜\uFF5C]\s*(?:DSML|invoke|parameter|tool calls?|tool_calls)[^>]*>/gi, "")
     .trim()
 }
 

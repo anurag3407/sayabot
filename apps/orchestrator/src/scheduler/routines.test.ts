@@ -16,7 +16,7 @@ vi.mock("../db", () => {
       from: () => q,
       where: () => q,
       limit: async () => state.selectQueue.shift() ?? [],
-      returning: (fields?: any) => {
+      returning: (_fields?: any) => {
         const item = state.inserts[state.inserts.length - 1] || state.updates[state.updates.length - 1] || { id: "ret-1" }
         return Promise.resolve([item])
       },
@@ -30,7 +30,7 @@ vi.mock("../db", () => {
 
   const mockDb = {
     select: chain,
-    insert: (table: any) => ({
+    insert: (_table: any) => ({
       values: (val: any) => {
         const row = { ...val, id: `ins-${state.inserts.length + 1}` }
         state.inserts.push(row)
@@ -39,7 +39,7 @@ vi.mock("../db", () => {
         }
       },
     }),
-    update: (table: any) => ({
+    update: (_table: any) => ({
       set: (val: any) => {
         state.updates.push(val)
         return {
@@ -52,7 +52,7 @@ vi.mock("../db", () => {
   }
 
   const mockClient = {
-    query: async (sql: string, params?: any[]) => {
+    query: async (sql: string, _params?: any[]) => {
       state.queryLog.push(sql)
       if (sql.includes("pg_try_advisory_lock")) {
         return { rows: [{ locked: state.advisoryLocked }] }
