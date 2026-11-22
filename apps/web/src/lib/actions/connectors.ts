@@ -246,6 +246,30 @@ export async function saveWorkspaceConnector(
       metadata: { source, connectorId },
     })
 
+    const grantToAgentId = optionalField(formData, "grantToAgentId")
+    if (grantToAgentId) {
+      const { data: existingGrant } = await admin
+        .from("agent_connector_grants")
+        .select("id")
+        .eq("org_id", check.access.org.id)
+        .eq("agent_id", grantToAgentId)
+        .eq("connector_id", connectorId)
+        .maybeSingle()
+
+      if (!existingGrant) {
+        const { error: grantError } = await admin.from("agent_connector_grants").insert({
+          org_id: check.access.org.id,
+          agent_id: grantToAgentId,
+          connector_id: connectorId,
+          scope_config: {},
+        })
+        if (grantError) {
+          revalidateOrg(orgSlug)
+          return fail(`Connector updated, but failed to grant access to agent: ${grantError.message}`)
+        }
+      }
+    }
+
     revalidateOrg(orgSlug)
     return ok(`${name} connector updated successfully`, { connectorId })
   }
@@ -278,6 +302,30 @@ export async function saveWorkspaceConnector(
     target: name,
     metadata: { source, connectorId: saved.id },
   })
+
+  const grantToAgentId = optionalField(formData, "grantToAgentId")
+  if (grantToAgentId) {
+    const { data: existingGrant } = await admin
+      .from("agent_connector_grants")
+      .select("id")
+      .eq("org_id", check.access.org.id)
+      .eq("agent_id", grantToAgentId)
+      .eq("connector_id", saved.id)
+      .maybeSingle()
+
+    if (!existingGrant) {
+      const { error: grantError } = await admin.from("agent_connector_grants").insert({
+        org_id: check.access.org.id,
+        agent_id: grantToAgentId,
+        connector_id: saved.id,
+        scope_config: {},
+      })
+      if (grantError) {
+        revalidateOrg(orgSlug)
+        return fail(`Connector connected, but failed to grant access to agent: ${grantError.message}`)
+      }
+    }
+  }
 
   revalidateOrg(orgSlug)
   return ok(`${name} connector connected successfully`, { connectorId: saved.id })

@@ -28,6 +28,13 @@ const CONNECTOR_SOURCES = [
     help: "Requires 'repo' scope. Agents can search codebase symbols, read source files, and inspect issues and review comments.",
   },
   {
+    value: "jira",
+    label: "Jira / Atlassian (Issues, Projects, Sprints)",
+    tokenLabel: "Atlassian API token or Cloud token",
+    placeholder: "ATATT3xF...",
+    help: "id.atlassian.com → Security → API tokens. Allows agents to search issues, track sprints, and inspect Jira tickets.",
+  },
+  {
     value: "discord",
     label: "Discord (Read and post in server channels)",
     tokenLabel: "Discord bot token",

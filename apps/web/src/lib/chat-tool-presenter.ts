@@ -142,6 +142,19 @@ export function buildActionSummarySentence(
     }
   }
 
+  const firstCall = calls[0]
+  if (calls.length === 1 && firstCall && firstCall.toolName === "suggest_connector") {
+    const sugName =
+      (typeof firstCall.args?.name === "string"
+        ? firstCall.args.name
+        : (firstCall.args?.source as string)) || "connector"
+    return {
+      summary: `Suggested connecting ${sugName}`,
+      hasFailure,
+      failedCount,
+    }
+  }
+
   // Count by category
   const counts: Record<ActionToolKind, number> = {
     command: 0,

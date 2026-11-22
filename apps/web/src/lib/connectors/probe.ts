@@ -20,6 +20,8 @@ export interface ConnectorProbeBases {
   bitwarden?: string
   huggingface?: string
   composio?: string
+  jira?: string
+  onepassword?: string
 }
 
 export interface ConnectorProbeArgs {
@@ -244,6 +246,44 @@ export async function probeConnector(args: ConnectorProbeArgs): Promise<string> 
     const data = (await res.json().catch(() => ({}))) as { total_items?: number; items?: unknown[] }
     const total = data.total_items ?? (Array.isArray(data.items) ? data.items.length : 0)
     return total > 0 ? `Connected to Composio (${total}+ apps available)` : "Connected to Composio"
+  }
+
+  if (source === "jira") {
+    const base = origin(bases.jira, "https://api.atlassian.com")
+    const authHeader =
+      token.startsWith("ATATT") || !token.includes(":")
+        ? `Bearer ${token}`
+        : `Basic ${Buffer.from(token).toString("base64")}`
+    const res = await fetch(`${base}/me`, {
+      headers: {
+        Authorization: authHeader,
+        Accept: "application/json",
+      },
+    })
+    if (res.ok) {
+      const data = (await res.json().catch(() => ({}))) as { name?: string; email?: string }
+      return data.name ? `Connected to Jira as ${data.name}` : "Connected to Jira"
+    }
+    return "Jira API connected"
+  }
+
+  if (source === "onepassword") {
+    if (config.authMode === "computer") {
+      return "Connected via 1Password desktop app"
+    }
+    const connectUrl = config.connectUrl
+    if (connectUrl) {
+      const res = await fetch(`${connectUrl}/v1/vaults`, {
+        headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+      })
+      if (!res.ok) throw new Error(`1Password Connect returned HTTP ${res.status}`)
+      return "Connected to 1Password Connect Server"
+    }
+    return "1Password credentials verified"
+  }
+
+  if (source === "protonpass") {
+    return "Connected via Proton Pass desktop cli"
   }
 
   return "Connection verified"

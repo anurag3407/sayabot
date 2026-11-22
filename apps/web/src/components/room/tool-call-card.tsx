@@ -11,6 +11,7 @@ import {
   Terminal,
   Wrench,
 } from "lucide-react"
+import { BrandLogo } from "@/components/connectors/brand-logo"
 import { resolveToolCall } from "@/lib/actions/messages"
 import { Button } from "@/components/ui/button"
 import { CopyButton } from "@/components/copy-button"
@@ -69,6 +70,32 @@ function timeOf(iso: string | null): number | null {
   if (!iso) return null
   const value = Date.parse(iso)
   return Number.isFinite(value) ? value : null
+}
+
+/** Returns the brand logo ID if the tool is an external service/connector tool. */
+export function getToolBrand(toolName: string, args?: Record<string, unknown> | null): string | null {
+  if (toolName === "suggest_connector" && typeof args?.source === "string") {
+    return args.source
+  }
+  if (toolName.startsWith("github_")) return "github"
+  if (toolName.startsWith("gdrive_") || toolName.startsWith("google_drive_")) return "google_drive"
+  if (toolName.startsWith("slack_")) return "slack"
+  if (toolName.startsWith("composio_")) {
+    if (typeof args?.app === "string" && args.app.trim()) return args.app.toLowerCase().trim()
+    return "composio"
+  }
+  if (toolName.startsWith("jira_") || toolName.startsWith("atlassian_")) return "jira"
+  if (toolName.startsWith("discord_")) return "discord"
+  if (toolName.startsWith("telegram_")) return "telegram"
+  if (toolName.startsWith("whatsapp_")) return "whatsapp"
+  if (toolName.startsWith("onepassword_") || toolName.startsWith("1password_")) return "onepassword"
+  if (toolName.startsWith("bitwarden_")) return "bitwarden"
+  if (toolName.startsWith("protonpass_")) return "protonpass"
+  if (toolName.startsWith("supabase_")) return "supabase"
+  if (toolName.startsWith("r2_") || toolName.startsWith("cloudflare_r2_")) return "cloudflare_r2"
+  if (toolName.startsWith("b2_") || toolName.startsWith("backblaze_b2_")) return "backblaze_b2"
+  if (toolName.startsWith("s3_")) return "s3_storage"
+  return null
 }
 
 /** Returns the icon corresponding to a tool action category. */
@@ -193,10 +220,16 @@ export function WorkedGroup({
           className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-xs transition-colors hover:bg-raised/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-400 dark:focus-visible:ring-zinc-500 rounded"
         >
           <div className="flex min-w-0 items-center gap-2">
-            <ActionIcon
-              kind={calls[0] ? classifyToolKind(calls[0].toolName, calls[0].args) : "other"}
-              className="h-3.5 w-3.5 shrink-0 text-muted"
-            />
+            {calls[0] && getToolBrand(calls[0].toolName, calls[0].args) ? (
+              <div className="grid h-4 w-4 shrink-0 place-items-center rounded bg-white p-0.5 shadow-2xs ring-1 ring-black/10">
+                <BrandLogo id={getToolBrand(calls[0].toolName, calls[0].args)!} size={11} />
+              </div>
+            ) : (
+              <ActionIcon
+                kind={calls[0] ? classifyToolKind(calls[0].toolName, calls[0].args) : "other"}
+                className="h-3.5 w-3.5 shrink-0 text-muted"
+              />
+            )}
             <span className="truncate font-normal text-text">{summary}</span>
             {failedCount > 0 ? (
               <span className="shrink-0 text-2xs font-medium text-danger">· {failedCount} failed</span>
@@ -258,6 +291,7 @@ export function WorkedGroup({
 export function ToolCallRow({ call, boxed = false }: { call: ToolCallView; boxed?: boolean }) {
   const [open, setOpen] = useState(false)
   const kind = classifyToolKind(call.toolName, call.args)
+  const brandId = getToolBrand(call.toolName, call.args)
   const cmd = extractToolCommand(call.args)
   const searchQuery = extractSearchQuery(call.args)
   const filePath = extractToolPath(call.args)
@@ -266,6 +300,22 @@ export function ToolCallRow({ call, boxed = false }: { call: ToolCallView; boxed
   let label = call.toolName
   if (readMacMarker(call.args)) {
     label = describeMacStep(call.toolName, call.args)
+  } else if (call.toolName === "suggest_connector") {
+    const sugName =
+      typeof call.args?.name === "string"
+        ? call.args.name
+        : (call.args?.source as string) || "connector"
+    const sugReason =
+      typeof call.args?.reason === "string" ? call.args.reason : "Connection required"
+    label = `Suggest ${sugName}: ${sugReason}`
+  } else if (call.toolName === "composio_execute_tool" && typeof call.args?.tool === "string") {
+    label = `Execute ${call.args.tool}`
+  } else if (call.toolName === "composio_search_tools" && typeof call.args?.app === "string") {
+    label = `Search ${call.args.app} tools`
+  } else if (call.toolName === "composio_connect_app" && typeof call.args?.app === "string") {
+    label = `Connect ${call.args.app}`
+  } else if (call.toolName === "composio_list_apps") {
+    label = "List connected apps"
   } else if (kind === "command" && cmd) {
     label = `>_ ${cmd}`
   } else if (kind === "code-search") {
@@ -294,7 +344,13 @@ export function ToolCallRow({ call, boxed = false }: { call: ToolCallView; boxed
         className="flex w-full items-center justify-between gap-2 py-1 text-left text-xs hover:text-text focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-400 dark:focus-visible:ring-zinc-500 rounded"
       >
         <div className="flex min-w-0 items-center gap-2">
-          <ActionIcon kind={kind} className="h-3 w-3 shrink-0 text-muted" />
+          {brandId ? (
+            <div className="grid h-4 w-4 shrink-0 place-items-center rounded bg-white p-0.5 shadow-2xs ring-1 ring-black/10">
+              <BrandLogo id={brandId} size={11} />
+            </div>
+          ) : (
+            <ActionIcon kind={kind} className="h-3 w-3 shrink-0 text-muted" />
+          )}
           <span className="truncate font-mono text-2xs text-muted group-hover/step:text-text">{label}</span>
         </div>
         <div className="flex shrink-0 items-center gap-2">

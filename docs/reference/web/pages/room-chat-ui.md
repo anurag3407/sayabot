@@ -178,6 +178,14 @@ Messages render through **Streamdown** (streaming-safe markdown) with mode `stre
 - **`SetupChecklist`** (`setup-checklist.tsx`) — for admins: four steps (Connect an AI model → `/settings/keys`, Create an agent → `/agents?room=<id>#create-agent`, Add the agent to this room → `/r/<id>/settings#room-agents`, Send your first message) with the next undone step highlighted and CTA'd; non-admins get a one-line notice. Dismissal persists in `mesh:setup-dismissed:<roomId>`.
 - **`StarterCard`** (`starter-card.tsx`) — for empty DMs: the agent's mascot greets the user by first name and offers five starters (research, monitoring, email/calendar, errands, data) plus "Something else". Clicking sends the prompt with a "set yourself up for that" hint via `sendMessage`; keyboard shortcuts `a`–`f` select options when no input is focused; dismissible.
 
+## 🔌 In-Chat Connector Suggestion Cards (`connector-card.tsx`)
+
+When an agent suggests connecting an external workspace connector (via the `suggest_connector` tool or when a tool fails due to a missing connector), `MessageItem` renders an interactive `ConnectorSuggestionCard`:
+- **Visual identity**: displays the service's official brand logo (`<BrandLogo />`) from Simple Icons (GitHub, Google Drive, Slack, Composio, Jira, Discord, Telegram, WhatsApp, 1Password, Bitwarden, Proton Pass). Also displayed in `WorkedGroup` and `ToolCallRow` in place of generic icons.
+- **Inline connection**: includes an expandable quick-connect form where the user can paste an API key or access token without navigating away from the chat.
+- **Auto-granting**: when connected from chat, the token is encrypted with AES-256-GCM via `saveWorkspaceConnector`, and automatically granted to the room's agent in `agent_connector_grants`.
+- **Resume Task trigger**: after saving, the card shows a success badge and a "Resume Task" button that automatically posts a message to resume the bot's task seamlessly.
+
 ## 🗓️ Meeting Bar (`room-meeting-bar.tsx`)
 
 A slim strip under the header fed by `data.meeting` / `data.roomSchedule`:

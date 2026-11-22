@@ -191,6 +191,13 @@ export function buildEngineContext(args: BuildEngineContextArgs): EngineContextR
     )
   }
 
+  system1Parts.push(
+    "Workspace Connectors & Integrations:\n" +
+      "- You have access to suggest_connector to proactively suggest connecting external workspace services (GitHub, Google Drive, Slack, Composio apps like Gmail or Calendar, Jira, Notion, Linear, Discord, Telegram, WhatsApp, etc.).\n" +
+      "- When the user requests a task involving an external platform (e.g. 'check my github PRs', 'search google drive', 'send a slack message', 'list my unread emails on gmail') and that connector is not active or you lack the corresponding tool, DO NOT claim you cannot access it or refuse blindly. Instead, call suggest_connector({ source: '<source>', name: '<Name>', reason: '<Why it is needed for this task>' }).\n" +
+      "- This displays an interactive card with a direct 'Connect' button directly in the room chat, enabling the user to link their account with a single click.",
+  )
+
   // If cacheHistoryBoundary is enabled, consolidate system cache so system only consumes 1 breakpoint,
   // leaving room for tools, history boundary, and the active tail within Anthropic's 4-breakpoint limit.
   const consolidateSystem = args.consolidateSystemCache ?? Boolean(args.cacheHistoryBoundary)
