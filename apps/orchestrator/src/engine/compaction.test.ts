@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest"
 import type { ModelMessage, ToolModelMessage } from "ai"
-import { compactTranscript, compactionBoundary, elideOldToolResults } from "./compaction"
+import {
+  compactTranscript,
+  compactionBoundary,
+  elideOldToolResults,
+  microCompactToolResults,
+  MICRO_COMPACT_PREFIX,
+} from "./compaction"
 
 describe("Compaction (E7)", () => {
   it("keeps tool calls paired with retained results and preserves system rules", () => {
@@ -132,5 +138,108 @@ describe("Compaction (E7)", () => {
     expect(summaryText).toContain("Use JWT cookies")
     expect(summaryText).toContain("Staging uses Redis for sessions")
     expect(result.extractedFacts).toEqual(["Staging uses Redis for sessions"])
+  })
+
+  it("micro-compacts older bulky tool outputs while preserving recent tool results and small statuses", () => {
+    const messages: ModelMessage[] = [
+      // Older bulky tool result (should be micro-compacted)
+      {
+        role: "tool",
+        content: [
+          {
+            type: "tool-result",
+            toolCallId: "call-1",
+            toolName: "fs_read",
+            output: { type: "text", value: "export const config = " + "x".repeat(3_000) },
+          },
+        ],
+      },
+      // Older small tool result (should remain intact to avoid bloating with placeholder)
+      {
+        role: "tool",
+        content: [
+          {
+            type: "tool-result",
+            toolCallId: "call-2",
+            toolName: "fs_edit",
+            output: { type: "json", value: { ok: true, patchApplied: true } },
+          },
+        ],
+      },
+      // Recent tool result 1 (retained verbatim)
+      {
+        role: "tool",
+        content: [
+          {
+            type: "tool-result",
+            toolCallId: "call-3",
+            toolName: "verify_workspace",
+            output: { type: "json", value: { exit_code: 0, stdout: "all tests passed" } },
+          },
+        ],
+      },
+      // Recent tool result 2 (retained verbatim)
+      {
+        role: "tool",
+        content: [
+          {
+            type: "tool-result",
+            toolCallId: "call-4",
+            toolName: "update_task",
+            output: { type: "json", value: { id: "MESH-10", status: "done" } },
+          },
+        ],
+      },
+    ]
+
+    const result = microCompactToolResults(messages, { keepRecent: 2, minCharsToCompact: 100 })
+    expect(result.isCompacted).toBe(true)
+    expect(result.toolsCleared).toBe(1) // Only call-1 was bulky and older than keepRecent
+    expect(result.toolsKept).toBe(3)
+    expect(result.estimatedTokensSaved).toBeGreaterThan(500)
+
+    // Call-1 should be micro-compacted
+    const msg1 = result.messages[0] as ToolModelMessage
+    expect((msg1.content[0] as any).output.type).toBe("text")
+    expect((msg1.content[0] as any).output.value).toContain(MICRO_COMPACT_PREFIX)
+    expect((msg1.content[0] as any).output.value).toContain("call-1")
+
+    // Call-2 should be untouched
+    const msg2 = result.messages[1] as ToolModelMessage
+    expect((msg2.content[0] as any).output).toEqual({ type: "json", value: { ok: true, patchApplied: true } })
+
+    // Call-3 and call-4 should be untouched
+    const msg3 = result.messages[2] as ToolModelMessage
+    expect((msg3.content[0] as any).output).toEqual({ type: "json", value: { exit_code: 0, stdout: "all tests passed" } })
+
+    // Running again is idempotent (does not double-compact)
+    const idempotent = microCompactToolResults(result.messages, { keepRecent: 2 })
+    expect(idempotent.isCompacted).toBe(false)
+    expect(idempotent.toolsCleared).toBe(0)
+  })
+
+  it("never micro-compacts when replacement placeholder is longer than the original content", () => {
+    const errorPayload = { error: "x".repeat(230) }
+    const messages: ModelMessage[] = [
+      {
+        role: "tool",
+        content: [
+          {
+            type: "tool-result",
+            toolCallId: "call-err",
+            toolName: "bash",
+            output: { type: "json", value: errorPayload },
+          },
+        ],
+      },
+    ]
+
+    const result = microCompactToolResults(messages, { keepRecent: 0, minCharsToCompact: 200 })
+    expect(result.isCompacted).toBe(false)
+    expect(result.toolsCleared).toBe(0)
+    expect(((result.messages[0] as ToolModelMessage).content[0] as any).output).toEqual({
+      type: "json",
+      value: errorPayload,
+    })
   })
 })

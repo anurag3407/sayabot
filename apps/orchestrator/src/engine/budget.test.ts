@@ -71,4 +71,67 @@ describe("cache metrics", () => {
     metrics.record({ inputTokens: 1000 } as any)
     expect(metrics.snapshot()).toMatchObject({ cacheReadRatio: null, completeReporting: false })
   })
+
+  it("detects cache breaks when read tokens drop sharply and tracks cached state flags", () => {
+    const metrics = new CacheMetrics()
+    metrics.setToolsCached(true)
+    metrics.setHistoryCached(true)
+
+    // Call 1: heavy cache read
+    metrics.record({
+      inputTokens: 5000,
+      outputTokens: 100,
+      inputTokenDetails: { cacheReadTokens: 4500, cacheWriteTokens: 500 },
+    } as any)
+
+    // Call 2: cache broken (read dropped from 4500 to 200)
+    metrics.record({
+      inputTokens: 5000,
+      outputTokens: 100,
+      inputTokenDetails: { cacheReadTokens: 200, cacheWriteTokens: 4800 },
+    } as any)
+
+    const snap = metrics.snapshot()
+    expect(snap.toolsCached).toBe(true)
+    expect(snap.historyCached).toBe(true)
+    expect(snap.cacheBreaks).toBe(1)
+    expect(snap.cacheReadTokens).toBe(4700)
+    expect(snap.cacheWriteTokens).toBe(5300)
+
+    // Call 3: auxiliary summarization call (uncached prompt, isMainLoop: false)
+    metrics.record(
+      {
+        inputTokens: 3000,
+        outputTokens: 200,
+        inputTokenDetails: { cacheReadTokens: 0, cacheWriteTokens: 3000 },
+      } as any,
+      { isMainLoop: false },
+    )
+    // cacheBreaks must not increment from auxiliary calls
+    expect(metrics.snapshot().cacheBreaks).toBe(1)
+
+    // Call 4: main loop resumes using cache normally
+    metrics.record(
+      {
+        inputTokens: 5200,
+        outputTokens: 100,
+        inputTokenDetails: { cacheReadTokens: 4800, cacheWriteTokens: 400 },
+      } as any,
+      { isMainLoop: true },
+    )
+    expect(metrics.snapshot().cacheBreaks).toBe(1)
+
+    // Call 5: missing/absent cache reporting resets baseline
+    metrics.record({ inputTokens: 5000, outputTokens: 100 } as any, { isMainLoop: true })
+    // Call 6: subsequent read of 200 should NOT count as a break since preceding report was absent
+    metrics.record(
+      {
+        inputTokens: 5000,
+        outputTokens: 100,
+        inputTokenDetails: { cacheReadTokens: 200 },
+      } as any,
+      { isMainLoop: true },
+    )
+    expect(metrics.snapshot().cacheBreaks).toBe(1)
+  })
 })

@@ -12,7 +12,7 @@ import {
   type TurnRole,
 } from "@sayabot/core"
 import { getProviderCapabilities } from "@sayabot/llm"
-import type { ModelMessage, SystemModelMessage, UserModelMessage } from "ai"
+import type { ModelMessage, SystemModelMessage, UserModelMessage, ToolSet } from "ai"
 import type { AgentRow, ContextMessage, RoomRow } from "../runner/context"
 import type { ToolSpec } from "../tools/audited"
 
@@ -54,6 +54,17 @@ export interface BuildEngineContextArgs {
   roomHistory: ContextMessage[]
   runHistory?: ModelMessage[]
   volatileTail: VolatileTailArgs
+  /**
+   * When true, places a cache breakpoint at the end of roomHistory (prior chat turns),
+   * and consolidates system prompt breakpoints into a single breakpoint at system2.
+   * This gives multi-turn chats a near 100% cache hit rate on the conversation history
+   * while staying within Anthropic's 4-breakpoint limit (system, tools, history, rolling tail).
+   */
+  cacheHistoryBoundary?: boolean
+  /**
+   * Explicit override for consolidating system prompt breakpoints.
+   */
+  consolidateSystemCache?: boolean
 }
 
 export interface EngineContextResult {
@@ -65,6 +76,11 @@ export interface EngineContextResult {
   tail: UserModelMessage
   /** JSON-stringified prefix for byte-stability assertions. */
   prefixString: string
+  /**
+   * Index of the history boundary message in non-system messages, if marked.
+   * Preserved by applyRollingCacheBreakpoint across intra-run steps.
+   */
+  historyBoundaryIndex?: number
 }
 
 function label(message: ContextMessage): string {
@@ -175,10 +191,14 @@ export function buildEngineContext(args: BuildEngineContextArgs): EngineContextR
     )
   }
 
+  // If cacheHistoryBoundary is enabled, consolidate system cache so system only consumes 1 breakpoint,
+  // leaving room for tools, history boundary, and the active tail within Anthropic's 4-breakpoint limit.
+  const consolidateSystem = args.consolidateSystemCache ?? Boolean(args.cacheHistoryBoundary)
+
   const system1Message: SystemModelMessage = {
     role: "system",
     content: system1Parts.join("\n\n"),
-    ...(cacheOption ? { providerOptions: cacheOption } : {}),
+    ...(cacheOption && !consolidateSystem ? { providerOptions: cacheOption } : {}),
   }
 
   // 2. System 2 (Slow-changing): Room directive, skills index, pinned memories
@@ -231,10 +251,26 @@ export function buildEngineContext(args: BuildEngineContextArgs): EngineContextR
     }
   })
 
+  // When cacheHistoryBoundary is active, mark the end of room history as a breakpoint.
+  // In multi-turn chat, this guarantees all prior turns are read from cache at a 90% discount.
+  let historyBoundaryIndex: number | undefined
+  if (args.cacheHistoryBoundary && cacheOption && roomHistoryMessages.length > 0) {
+    historyBoundaryIndex = roomHistoryMessages.length - 1
+    const lastHistMsg = roomHistoryMessages[historyBoundaryIndex]!
+    roomHistoryMessages[historyBoundaryIndex] = {
+      ...lastHistMsg,
+      providerOptions: {
+        ...(((lastHistMsg as Record<string, unknown>).providerOptions as Record<string, unknown>) ??
+          {}),
+        ...cacheOption,
+      },
+    } as ModelMessage
+  }
+
   // 4. This Run History (append-only)
   const runHistory = args.runHistory ? [...args.runHistory] : []
 
-  // If prompt cache is supported and runHistory has steps, apply rolling breakpoint 3
+  // If prompt cache is supported and runHistory has steps, apply rolling breakpoint
   if (cacheOption && runHistory.length > 0) {
     const lastIdx = runHistory.length - 1
     const lastMsg = runHistory[lastIdx]
@@ -333,20 +369,99 @@ export function buildEngineContext(args: BuildEngineContextArgs): EngineContextR
     prefix,
     tail: tailMessage,
     prefixString,
+    historyBoundaryIndex,
   }
 }
 
 const EXPLICIT_CACHE_PROVIDERS = new Set(["anthropic"])
 
 /**
+ * Caches tool definitions by placing an ephemeral cache breakpoint on the LAST tool definition.
+ * If activeToolNames is provided (e.g. in lean mode or tool search), the breakpoint is placed
+ * on the last active tool among those candidates so the marker is never excluded when tools are filtered.
+ *
+ * All tools are sorted deterministically so their schema order is stable across calls.
+ * This guarantees the model reuses cached tool definitions without re-tokenizing them every turn.
+ */
+export function applyToolCacheBreakpoint<T extends ToolSet>(
+  tools: T,
+  provider: string,
+  activeToolNames?: string[],
+): T {
+  if (!EXPLICIT_CACHE_PROVIDERS.has(provider)) return tools
+  const caps = getProviderCapabilities(provider as any)
+  if (!caps.supportsPromptCache) return tools
+
+  const allNames = Object.keys(tools)
+  if (allNames.length === 0) return tools
+
+  const activeCandidates = activeToolNames
+    ? activeToolNames.filter((name) => name in tools).sort()
+    : allNames.sort()
+
+  const targetLastTool =
+    activeCandidates.length > 0
+      ? activeCandidates[activeCandidates.length - 1]!
+      : allNames.sort()[allNames.length - 1]!
+
+  const result: Record<string, unknown> = {}
+
+  for (const name of allNames) {
+    const originalTool = tools[name]!
+    const existingOpts = (originalTool as Record<string, unknown>).providerOptions as
+      | Record<string, unknown>
+      | undefined
+    const providerData = ((existingOpts?.[provider] ?? {}) as Record<string, unknown>)
+
+    if (name === targetLastTool) {
+      result[name] = {
+        ...originalTool,
+        providerOptions: {
+          ...(existingOpts ?? {}),
+          [provider]: {
+            ...providerData,
+            cacheControl: { type: "ephemeral" },
+          },
+        },
+      }
+    } else {
+      if ("cacheControl" in providerData) {
+        const { cacheControl: _c, ...restProviderData } = providerData
+        const restOpts = { ...existingOpts }
+        if (Object.keys(restProviderData).length > 0) {
+          restOpts[provider] = restProviderData
+        } else {
+          delete restOpts[provider]
+        }
+        result[name] = {
+          ...originalTool,
+          providerOptions: restOpts,
+        }
+      } else {
+        result[name] = originalTool
+      }
+    }
+  }
+
+  return result as T
+}
+
+/**
  * Moves the rolling prompt-cache breakpoint to the last message before each
- * step. Earlier rolling markers on non-system messages are stripped so a long
- * tool loop never exceeds the provider's breakpoint limit (Anthropic allows 4:
- * two system blocks + this one).
+ * step. Earlier rolling markers on non-system messages are stripped, EXCEPT for
+ * an optional established history boundary breakpoint (e.g. at the end of roomHistory),
+ * so a multi-turn chat retains its history cache hit while the active loop steps forward.
+ *
+ * Anthropic allows 4 breakpoints:
+ * 1. System block (last system message)
+ * 2. Tool definitions (last tool)
+ * 3. History boundary (end of prior chat turns)
+ * 4. Active tail / current step (rolling breakpoint)
  */
 export function applyRollingCacheBreakpoint(
   messages: ModelMessage[],
   provider: string,
+  historyBoundaryIndex?: number,
 ): ModelMessage[] {
   // Only Anthropic needs explicit breakpoints; OpenAI-style providers cache
   // prefixes automatically and ignore the marker.
@@ -362,6 +477,18 @@ export function applyRollingCacheBreakpoint(
     const rest = { ...existing }
     if (Object.keys(otherProviderOptions).length) rest[provider] = otherProviderOptions
     else delete rest[provider]
+
+    // Preserve history boundary breakpoint if valid and not the tail
+    if (historyBoundaryIndex !== undefined && idx === historyBoundaryIndex && idx < lastIdx) {
+      return {
+        ...msg,
+        providerOptions: {
+          ...rest,
+          [provider]: { ...otherProviderOptions, cacheControl: { type: "ephemeral" } },
+        },
+      } as ModelMessage
+    }
+
     if (idx === lastIdx) {
       return {
         ...msg,

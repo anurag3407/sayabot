@@ -87,8 +87,20 @@ export class CacheMetrics {
   private cacheWriteTokens = 0
   private calls = 0
   private reportedCalls = 0
+  private previousMainLoopCacheReadTokens = 0
+  private cacheBreaks = 0
+  private toolsCached = false
+  private historyCached = false
 
-  record(usage: LanguageModelUsage): void {
+  setToolsCached(cached: boolean): void {
+    this.toolsCached = cached
+  }
+
+  setHistoryCached(cached: boolean): void {
+    this.historyCached = cached
+  }
+
+  record(usage: LanguageModelUsage, options?: { isMainLoop?: boolean }): void {
     const input = usage.inputTokens ?? 0
     const read = usage.inputTokenDetails?.cacheReadTokens
     this.calls++
@@ -97,7 +109,28 @@ export class CacheMetrics {
     if (typeof read === "number" && Number.isFinite(read) && read >= 0 && read <= input) {
       this.reportedCalls++
       this.reportedInputTokens += input
+
+      // Detect cache break (inspired by Claude Code classifier cache break):
+      // Only main-loop conversation steps are tracked for cache break regressions,
+      // preventing auxiliary summarizer calls from triggering false positive break counts.
+      const isMainLoop = options?.isMainLoop !== false
+      if (isMainLoop) {
+        if (
+          this.previousMainLoopCacheReadTokens > 1024 &&
+          read < this.previousMainLoopCacheReadTokens * 0.5
+        ) {
+          this.cacheBreaks++
+        }
+        this.previousMainLoopCacheReadTokens = read
+      }
+
       this.cacheReadTokens += read
+    } else {
+      // Invalidate baseline when cache reporting is missing/unreported so gaps don't cause false drops
+      const isMainLoop = options?.isMainLoop !== false
+      if (isMainLoop) {
+        this.previousMainLoopCacheReadTokens = 0
+      }
     }
     this.cacheWriteTokens += usage.inputTokenDetails?.cacheWriteTokens ?? 0
   }
@@ -112,6 +145,9 @@ export class CacheMetrics {
       reportedCalls: this.reportedCalls,
       cacheReadRatio:
         this.reportedInputTokens > 0 ? this.cacheReadTokens / this.reportedInputTokens : null,
+      cacheBreaks: this.cacheBreaks,
+      toolsCached: this.toolsCached,
+      historyCached: this.historyCached,
       completeReporting: this.calls > 0 && this.reportedCalls === this.calls,
     }
   }

@@ -43,7 +43,11 @@ import {
 } from "../runner/llm"
 import { buildTools } from "../tools"
 import { redactValue, type ToolSpec } from "../tools/audited"
-import { applyRollingCacheBreakpoint, buildEngineContext } from "./context"
+import {
+  applyRollingCacheBreakpoint,
+  applyToolCacheBreakpoint,
+  buildEngineContext,
+} from "./context"
 import {
   CacheMetrics,
   estimateMessageTokens,
@@ -220,8 +224,8 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
     cacheReadTokens: 0,
     cacheWriteTokens: 0,
   }
-  const recordUsage = (usage: LanguageModelUsage) => {
-    cacheMetrics.record(usage)
+  const recordUsage = (usage: LanguageModelUsage, options?: { isMainLoop?: boolean }) => {
+    cacheMetrics.record(usage, options)
     usageTotals.inputTokens += usage.inputTokens ?? 0
     usageTotals.outputTokens += usage.outputTokens ?? 0
     usageTotals.cacheReadTokens += usage.inputTokenDetails?.cacheReadTokens ?? 0
@@ -525,6 +529,7 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
       skillsIndex,
       pinnedMemories,
       roomHistory: conversation,
+      cacheHistoryBoundary: conversation.length > 0,
       volatileTail: {
         now: new Date(),
         recalledMemories,
@@ -609,11 +614,16 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
       let passText = ""
 
       const activeTools = activeToolNames()
+      const cachedTools = applyToolCacheBreakpoint(tools, resolved.provider, activeTools)
+      cacheMetrics.setToolsCached(
+        resolved.provider === "anthropic" && Object.keys(cachedTools).length > 0,
+      )
+      cacheMetrics.setHistoryCached(initialContext.historyBoundaryIndex !== undefined)
       const streamResult = streamText({
         model: resolved.model,
         instructions,
         messages: passInput,
-        tools,
+        tools: cachedTools,
         ...(activeTools ? { activeTools } : {}),
         abortSignal: controller.signal,
         maxRetries: 4,
@@ -633,6 +643,9 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
         },
         prepareStep: async ({ messages: stepMessages, steps, stepNumber }) => {
           const nextActive = activeToolNames()
+          if (nextActive) {
+            applyToolCacheBreakpoint(cachedTools, resolved.provider, nextActive)
+          }
           const activeSpecs = nextActive
             ? toolSpecs.filter((spec) => nextActive.includes(spec.name))
             : toolSpecs
@@ -679,7 +692,7 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
             outputTokens: modelBudget.outputTokens,
             model: resolved.model,
             signal: controller.signal,
-            onUsage: recordUsage,
+            onUsage: (u) => recordUsage(u, { isMainLoop: false }),
           })
           if (compacted.compacted > 0) {
             compactions++
@@ -727,7 +740,11 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
             throw new Error(
               "Context budget exhausted without safely discardable history. Narrow the task or configure this model's contextWindowTokens.",
             )
-          const prepared = applyRollingCacheBreakpoint(finalMessages, resolved.provider)
+          const prepared = applyRollingCacheBreakpoint(
+            finalMessages,
+            resolved.provider,
+            initialContext.historyBoundaryIndex,
+          )
           lastPrepared = prepared
           return {
             messages: prepared,
@@ -736,7 +753,7 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
         },
         onStepEnd: async (step) => {
           stepsCompleted += 1
-          recordUsage(step.usage)
+          recordUsage(step.usage, { isMainLoop: true })
           const stepIdx = stepsCompleted
           const isToolStep = Boolean(step.toolCalls && step.toolCalls.length > 0)
           const hasPlan = step.toolCalls?.some(
