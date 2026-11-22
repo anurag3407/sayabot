@@ -152,18 +152,30 @@ export function microCompactToolResults(
   }
 
   const toClearCandidates = results.slice(0, total - keepRecent)
-  const toClearKeys = new Set<string>()
+  const toClearMap = new Map<string, string>() // key -> replacement
   let estimatedTokensSaved = 0
 
   for (const ref of toClearCandidates) {
     if (ref.alreadyCleared) continue
-    if (ref.charLen > minChars) {
-      toClearKeys.add(`${ref.msgIdx}:${ref.partIdx}`)
-      estimatedTokensSaved += Math.max(0, Math.ceil((ref.charLen - 90) / 3))
+    const msg = messages[ref.msgIdx]
+    const part =
+      msg?.role === "tool" && Array.isArray(msg.content)
+        ? msg.content[ref.partIdx]
+        : undefined
+    if (!part || part.type !== "tool-result") continue
+
+    const outcome = summarizeToolOutcome(part.output)
+    const replacement = `${MICRO_COMPACT_PREFIX} ${outcome}; call ${part.toolCallId}. Re-read or rerun if needed.]`
+
+    // Only compact if the original output exceeds minChars AND the replacement is strictly shorter,
+    // ensuring micro-compaction never inadvertently enlarges error results or concise status payloads.
+    if (ref.charLen > minChars && replacement.length < ref.charLen) {
+      toClearMap.set(`${ref.msgIdx}:${ref.partIdx}`, replacement)
+      estimatedTokensSaved += Math.max(0, Math.ceil((ref.charLen - replacement.length) / 3))
     }
   }
 
-  if (toClearKeys.size === 0) {
+  if (toClearMap.size === 0) {
     return {
       messages,
       toolsCleared: 0,
@@ -179,14 +191,14 @@ export function microCompactToolResults(
     if (msg.role !== "tool" || !Array.isArray(msg.content)) return msg
 
     const updatedContent = msg.content.map((part, partIdx) => {
-      if (part.type === "tool-result" && toClearKeys.has(`${msgIdx}:${partIdx}`)) {
+      const key = `${msgIdx}:${partIdx}`
+      if (part.type === "tool-result" && toClearMap.has(key)) {
         toolsCleared++
-        const outcome = summarizeToolOutcome(part.output)
         return {
           ...part,
           output: {
             type: "text" as const,
-            value: `${MICRO_COMPACT_PREFIX} ${outcome}; call ${part.toolCallId}. Re-read or rerun if needed.]`,
+            value: toClearMap.get(key)!,
           },
         }
       }

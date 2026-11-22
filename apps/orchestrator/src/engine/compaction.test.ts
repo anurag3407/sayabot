@@ -217,4 +217,29 @@ describe("Compaction (E7)", () => {
     expect(idempotent.isCompacted).toBe(false)
     expect(idempotent.toolsCleared).toBe(0)
   })
+
+  it("never micro-compacts when replacement placeholder is longer than the original content", () => {
+    const errorPayload = { error: "x".repeat(230) }
+    const messages: ModelMessage[] = [
+      {
+        role: "tool",
+        content: [
+          {
+            type: "tool-result",
+            toolCallId: "call-err",
+            toolName: "bash",
+            output: { type: "json", value: errorPayload },
+          },
+        ],
+      },
+    ]
+
+    const result = microCompactToolResults(messages, { keepRecent: 0, minCharsToCompact: 200 })
+    expect(result.isCompacted).toBe(false)
+    expect(result.toolsCleared).toBe(0)
+    expect(((result.messages[0] as ToolModelMessage).content[0] as any).output).toEqual({
+      type: "json",
+      value: errorPayload,
+    })
+  })
 })

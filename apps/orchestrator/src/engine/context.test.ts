@@ -264,6 +264,22 @@ describe("Engine Context Builder (E3)", () => {
     expect((openaiTools.zebra_tool as any).providerOptions).toBeUndefined()
   })
 
+  it("applies tool cache breakpoint on the alphabetically last active tool when activeToolNames is provided", () => {
+    const mockTools = {
+      zebra_tool: { description: "z tool" } as any,
+      alpha_tool: { description: "a tool" } as any,
+      middle_tool: { description: "m tool" } as any,
+    }
+
+    // When zebra_tool is inactive, middle_tool should get the breakpoint and others should have it stripped
+    const cached = applyToolCacheBreakpoint(mockTools, "anthropic", ["alpha_tool", "middle_tool"])
+    expect((cached.alpha_tool as any).providerOptions?.anthropic).toBeUndefined()
+    expect((cached.zebra_tool as any).providerOptions?.anthropic).toBeUndefined()
+    expect((cached.middle_tool as any).providerOptions?.anthropic).toEqual({
+      cacheControl: { type: "ephemeral" },
+    })
+  })
+
   it("supports chat history boundary caching with 4-breakpoint layout", () => {
     const res = buildEngineContext({
       agent: mockAgent,

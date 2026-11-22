@@ -118,19 +118,31 @@ Reduces a tool result to a one-line status used inside elision markers:
 ### `microCompactToolResults(messages, options)` — Claude Code style micro-compaction
 
 ```typescript
+export interface MicroCompactOptions {
+  /** Number of most recent tool results to keep verbatim. Default: 4 */
+  keepRecent?: number
+  /** Minimum character length of output for an old tool result to be elided. Default: 250 characters */
+  minCharsToCompact?: number
+}
+
+export interface MicroCompactResult {
+  messages: ModelMessage[]
+  toolsCleared: number
+  toolsKept: number
+  estimatedTokensSaved: number
+  isCompacted: boolean
+}
+
 export function microCompactToolResults(
   messages: ModelMessage[],
-  options: {
-    keepRecent?: number // default 4
-    minSizeChars?: number // default 250
-  } = {},
-): { messages: ModelMessage[]; compactedCount: number }
+  options?: MicroCompactOptions,
+): MicroCompactResult
 ```
 
 Modeled after Claude Code's tool output micro-compaction (`tengu_time_based_microcompact`):
 - Preserves the last `keepRecent` (default 4) tool results verbatim so active reasoning retains full context.
-- Targets older results that exceed `minSizeChars` (default 250 chars), clearing bulky payloads while preserving brief diagnostic summaries:
-  `[Old tool result content cleared: <summarizeToolOutcome>; call <toolCallId>. Size: <bytes> bytes. Re-read if needed.]`
+- Targets older results that exceed `minCharsToCompact` (default 250 chars), clearing bulky payloads while preserving brief diagnostic summaries:
+  `[Old tool result content cleared: <summarizeToolOutcome>; call <toolCallId>. Re-read or rerun if needed.]`
 - Intentionally skips small outputs (`<= 250` chars, e.g. `{ ok: true }` or short exit codes), preventing the placeholder from ironically expanding token footprint.
 
 ### `elideOldToolResults(messages, keepLastK = 6)`

@@ -87,7 +87,7 @@ export class CacheMetrics {
   private cacheWriteTokens = 0
   private calls = 0
   private reportedCalls = 0
-  private previousCacheReadTokens = 0
+  private previousMainLoopCacheReadTokens = 0
   private cacheBreaks = 0
   private toolsCached = false
   private historyCached = false
@@ -100,7 +100,7 @@ export class CacheMetrics {
     this.historyCached = cached
   }
 
-  record(usage: LanguageModelUsage): void {
+  record(usage: LanguageModelUsage, options?: { isMainLoop?: boolean }): void {
     const input = usage.inputTokens ?? 0
     const read = usage.inputTokenDetails?.cacheReadTokens
     this.calls++
@@ -109,17 +109,28 @@ export class CacheMetrics {
     if (typeof read === "number" && Number.isFinite(read) && read >= 0 && read <= input) {
       this.reportedCalls++
       this.reportedInputTokens += input
+
       // Detect cache break (inspired by Claude Code classifier cache break):
-      // If previous call read substantial cached tokens (>1024) but this call dropped sharply
-      if (
-        this.calls > 1 &&
-        this.previousCacheReadTokens > 1024 &&
-        read < this.previousCacheReadTokens * 0.5
-      ) {
-        this.cacheBreaks++
+      // Only main-loop conversation steps are tracked for cache break regressions,
+      // preventing auxiliary summarizer calls from triggering false positive break counts.
+      const isMainLoop = options?.isMainLoop !== false
+      if (isMainLoop) {
+        if (
+          this.previousMainLoopCacheReadTokens > 1024 &&
+          read < this.previousMainLoopCacheReadTokens * 0.5
+        ) {
+          this.cacheBreaks++
+        }
+        this.previousMainLoopCacheReadTokens = read
       }
-      this.previousCacheReadTokens = read
+
       this.cacheReadTokens += read
+    } else {
+      // Invalidate baseline when cache reporting is missing/unreported so gaps don't cause false drops
+      const isMainLoop = options?.isMainLoop !== false
+      if (isMainLoop) {
+        this.previousMainLoopCacheReadTokens = 0
+      }
     }
     this.cacheWriteTokens += usage.inputTokenDetails?.cacheWriteTokens ?? 0
   }

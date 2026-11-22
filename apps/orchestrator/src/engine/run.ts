@@ -224,8 +224,8 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
     cacheReadTokens: 0,
     cacheWriteTokens: 0,
   }
-  const recordUsage = (usage: LanguageModelUsage) => {
-    cacheMetrics.record(usage)
+  const recordUsage = (usage: LanguageModelUsage, options?: { isMainLoop?: boolean }) => {
+    cacheMetrics.record(usage, options)
     usageTotals.inputTokens += usage.inputTokens ?? 0
     usageTotals.outputTokens += usage.outputTokens ?? 0
     usageTotals.cacheReadTokens += usage.inputTokenDetails?.cacheReadTokens ?? 0
@@ -614,7 +614,7 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
       let passText = ""
 
       const activeTools = activeToolNames()
-      const cachedTools = applyToolCacheBreakpoint(tools, resolved.provider)
+      const cachedTools = applyToolCacheBreakpoint(tools, resolved.provider, activeTools)
       cacheMetrics.setToolsCached(
         resolved.provider === "anthropic" && Object.keys(cachedTools).length > 0,
       )
@@ -643,6 +643,9 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
         },
         prepareStep: async ({ messages: stepMessages, steps, stepNumber }) => {
           const nextActive = activeToolNames()
+          if (nextActive) {
+            applyToolCacheBreakpoint(cachedTools, resolved.provider, nextActive)
+          }
           const activeSpecs = nextActive
             ? toolSpecs.filter((spec) => nextActive.includes(spec.name))
             : toolSpecs
@@ -689,7 +692,7 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
             outputTokens: modelBudget.outputTokens,
             model: resolved.model,
             signal: controller.signal,
-            onUsage: recordUsage,
+            onUsage: (u) => recordUsage(u, { isMainLoop: false }),
           })
           if (compacted.compacted > 0) {
             compactions++
@@ -750,7 +753,7 @@ export async function runEngineTurn(args: RunLlmTurnArgs): Promise<TurnResult> {
         },
         onStepEnd: async (step) => {
           stepsCompleted += 1
-          recordUsage(step.usage)
+          recordUsage(step.usage, { isMainLoop: true })
           const stepIdx = stepsCompleted
           const isToolStep = Boolean(step.toolCalls && step.toolCalls.length > 0)
           const hasPlan = step.toolCalls?.some(

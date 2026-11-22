@@ -239,17 +239,15 @@ export function buildEngineContext(args: BuildEngineContextArgs): EngineContextR
 
   // 3. Room History: map prior turns
   const roomHistoryMessages: ModelMessage[] = args.roomHistory.map((m) => {
-    const safeContent =
-      m.content.length > 8000 ? `${m.content.slice(0, 8000)}… [truncated]` : m.content
     if (m.senderType === "agent" && m.senderId === args.agent.id) {
       return {
         role: "assistant" as const,
-        content: safeContent,
+        content: m.content,
       }
     }
     return {
       role: "user" as const,
-      content: `[${label(m)}]: ${safeContent}`,
+      content: `[${label(m)}]: ${m.content}`,
     }
   })
 
@@ -379,38 +377,69 @@ const EXPLICIT_CACHE_PROVIDERS = new Set(["anthropic"])
 
 /**
  * Caches tool definitions by placing an ephemeral cache breakpoint on the LAST tool definition.
+ * If activeToolNames is provided (e.g. in lean mode or tool search), the breakpoint is placed
+ * on the last active tool among those candidates so the marker is never excluded when tools are filtered.
+ *
  * All tools are sorted deterministically so their schema order is stable across calls.
  * This guarantees the model reuses cached tool definitions without re-tokenizing them every turn.
  */
-export function applyToolCacheBreakpoint<T extends ToolSet>(tools: T, provider: string): T {
+export function applyToolCacheBreakpoint<T extends ToolSet>(
+  tools: T,
+  provider: string,
+  activeToolNames?: string[],
+): T {
   if (!EXPLICIT_CACHE_PROVIDERS.has(provider)) return tools
   const caps = getProviderCapabilities(provider as any)
   if (!caps.supportsPromptCache) return tools
 
-  const toolNames = Object.keys(tools).sort()
-  if (toolNames.length === 0) return tools
+  const allNames = Object.keys(tools)
+  if (allNames.length === 0) return tools
 
-  const lastToolName = toolNames[toolNames.length - 1]!
+  const activeCandidates = activeToolNames
+    ? activeToolNames.filter((name) => name in tools).sort()
+    : allNames.sort()
+
+  const targetLastTool =
+    activeCandidates.length > 0
+      ? activeCandidates[activeCandidates.length - 1]!
+      : allNames.sort()[allNames.length - 1]!
+
   const result: Record<string, unknown> = {}
 
-  for (const name of toolNames) {
+  for (const name of allNames) {
     const originalTool = tools[name]!
-    if (name === lastToolName) {
-      const existingOpts = (originalTool as Record<string, unknown>).providerOptions as
-        | Record<string, unknown>
-        | undefined
+    const existingOpts = (originalTool as Record<string, unknown>).providerOptions as
+      | Record<string, unknown>
+      | undefined
+    const providerData = ((existingOpts?.[provider] ?? {}) as Record<string, unknown>)
+
+    if (name === targetLastTool) {
       result[name] = {
         ...originalTool,
         providerOptions: {
           ...(existingOpts ?? {}),
           [provider]: {
-            ...((existingOpts?.[provider] as Record<string, unknown>) ?? {}),
+            ...providerData,
             cacheControl: { type: "ephemeral" },
           },
         },
       }
     } else {
-      result[name] = originalTool
+      if ("cacheControl" in providerData) {
+        const { cacheControl: _c, ...restProviderData } = providerData
+        const restOpts = { ...existingOpts }
+        if (Object.keys(restProviderData).length > 0) {
+          restOpts[provider] = restProviderData
+        } else {
+          delete restOpts[provider]
+        }
+        result[name] = {
+          ...originalTool,
+          providerOptions: restOpts,
+        }
+      } else {
+        result[name] = originalTool
+      }
     }
   }
 
