@@ -57,6 +57,7 @@ import { dataAnalysisTools } from "./builtins/data-analysis"
 import { meetingTools } from "./builtins/meeting"
 import { phoneTools } from "./builtins/phone"
 import { orchestratorTools } from "./builtins/orchestrator"
+import { suggestConnectorTool } from "./builtins/suggest-connector"
 
 export interface BuildToolsArgs {
   roomId: string
@@ -398,6 +399,11 @@ export async function buildTools(args: BuildToolsArgs): Promise<BuiltTools> {
       },
     }),
     ...connectorSpecs,
+    suggestConnectorTool({
+      orgId: args.orgId,
+      agentId: args.agent.id,
+      roomId: args.roomId,
+    }),
     ...storageSpecs,
     ...(caps.canvas
       ? [

@@ -7,8 +7,9 @@ import { splitThinking } from "@sayabot/core"
 import { InlineAlert } from "@/components/ui/empty"
 import { ReplyIcon } from "@/components/ui/icons"
 import { FailureActions, PokeBotButton } from "@/components/room/message-actions"
-import { ToolCallsList } from "@/components/room/tool-call-card"
+import { ToolCallsList, getToolBrand } from "@/components/room/tool-call-card"
 import { ChangedFilesCard } from "@/components/room/changed-files-card"
+import { ConnectorSuggestionCard, type ConnectorSuggestion } from "@/components/room/connector-card"
 import { InspectTraceButton } from "@/components/trace/inspect-trace-button"
 import { SpeakButton, VoiceNoteBubble } from "@/components/voice"
 import { clockTime, cn, fullTime } from "@/lib/format"
@@ -53,6 +54,53 @@ export function MessageItem({
     [toolCalls, message.id, message.runId],
   )
   const changedFilesSummary = useMemo(() => extractChangedFiles(relatedCalls), [relatedCalls])
+
+  const isAgent = message.senderType === "agent"
+  const connectorSuggestions = useMemo(() => {
+    if (!isAgent) return []
+    const suggestions: ConnectorSuggestion[] = []
+    const seen = new Set<string>()
+
+    for (const call of relatedCalls) {
+      if (call.toolName === "suggest_connector" && call.args) {
+        const source = typeof call.args.source === "string" ? call.args.source : ""
+        const name = typeof call.args.name === "string" ? call.args.name : source
+        const reason = typeof call.args.reason === "string" ? call.args.reason : ""
+        const app = typeof call.args.app === "string" ? call.args.app : undefined
+        if (source && !seen.has(source)) {
+          seen.add(source)
+          suggestions.push({ source, name, reason, app })
+        }
+      } else if (
+        call.status === "error" ||
+        (typeof call.error === "string" &&
+          /no connector configured|connector not configured|missing connector/i.test(call.error))
+      ) {
+        const brand = getToolBrand(call.toolName, call.args)
+        if (brand && !seen.has(brand)) {
+          seen.add(brand)
+          suggestions.push({
+            source: brand,
+            name: brand.charAt(0).toUpperCase() + brand.slice(1).replace(/_/g, " "),
+            reason: `The \`${call.toolName}\` tool requires the ${brand} connector to be configured.`,
+          })
+        }
+      }
+    }
+
+    if (
+      message.metadata?.connectorSuggestion &&
+      typeof message.metadata.connectorSuggestion === "object"
+    ) {
+      const meta = message.metadata.connectorSuggestion as ConnectorSuggestion
+      if (meta.source && !seen.has(meta.source)) {
+        seen.add(meta.source)
+        suggestions.push(meta)
+      }
+    }
+
+    return suggestions
+  }, [isAgent, relatedCalls, message.metadata])
 
   if (message.senderType === "system") {
     const halted = message.status === "halted"
@@ -116,7 +164,6 @@ export function MessageItem({
     )
   }
 
-  const isAgent = message.senderType === "agent"
   const error = typeof message.metadata.error === "string" ? message.metadata.error : null
   const warnings = Array.isArray(message.metadata.warnings)
     ? (message.metadata.warnings as string[])
@@ -280,6 +327,17 @@ export function MessageItem({
               onOpenDiff={onShowCanvas ? () => onShowCanvas() : undefined}
             />
           ) : null}
+
+          {/* Interactive In-Chat Connector Cards */}
+          {connectorSuggestions.map((suggestion, idx) => (
+            <ConnectorSuggestionCard
+              key={`${suggestion.source}-${idx}`}
+              suggestion={suggestion}
+              orgSlug={orgSlug}
+              roomId={message.roomId}
+              agentId={message.senderId ?? undefined}
+            />
+          ))}
 
           {/* Voice note bubble */}
           {message.metadata.voiceNote && typeof message.metadata.voiceNote === "object" ? (

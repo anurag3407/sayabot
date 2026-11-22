@@ -22,6 +22,7 @@ Org-admin form action that creates or updates (`connectorId` present → update,
 - `composio` takes an API key plus two optional fields: `composioBaseUrl` (https, for a self-hosted Composio project) → `config.baseUrl`, and `composioUserId` (≤ 120 chars) → `config.userId`, which defaults to `org:<orgId>`. Changing the user id disconnects the apps connected under the old one.
 - Updates keep the previous inbound webhook secret: if the stored envelope wraps an `inboundSecret`, the new token is re-wrapped with it via `wrapConnectorSecret` / `unwrapConnectorSecret` (`connectors.ts:130`); an unreadable old envelope is simply replaced.
 - Update sets `status: "active"`, clears `error_message`; insert sets `auth_type: "token"`, `status: "active"`, `owner_user_id`. Audits `workspace_connector.updated` / `workspace_connector.created`.
+- `grantToAgentId` (optional): when supplied (e.g. from the in-chat `ConnectorSuggestionCard`), automatically creates a grant in `agent_connector_grants` with `{}` scope for that agent if one does not already exist.
 
 ### `deleteWorkspaceConnector(input)`
 
@@ -44,6 +45,7 @@ Org-admin probe that decrypts the token (`unwrapConnectorSecret(decryptSecret(..
 | `cloudflare_r2`, `backblaze_b2`, `s3_storage` | `HeadBucket` (falling back to `ListObjectsV2` with `MaxKeys: 1`) through the AWS SDK; `s3_storage` — and any loopback endpoint — uses path-style addressing |
 | `huggingface`     | `GET huggingface.co/api/whoami-v2` → `Connected to Hugging Face as @<name> (<repoId>)`                                                                     |
 | `composio`        | `GET <base>/toolkits?limit=1` with `x-api-key` → `Connected to Composio (<total_items>+ apps available)`                                                   |
+| `jira`            | `GET <base>/me` with `Authorization: Basic <email:token>` → "Connected as Jira user @<displayName>"                                                        |
 
 On success the row is set `active` with `last_synced_at` and the result reports latency; on failure the error message is scrubbed of the raw token (`split(token).join("[token]")` — `connectors.ts:397`) and the row is set `status: "error"` with `error_message`. A decryption failure marks the connector errored with "Decryption failed; check workspace master key" (`connectors.ts:281`).
 
