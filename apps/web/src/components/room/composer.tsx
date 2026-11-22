@@ -1007,6 +1007,15 @@ export function Composer({
         <div className="flex items-center gap-1 px-1.5 pb-1.5">
           {showQuickActions ? (
             <>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                aria-label="Attach a file"
+                title="Attach a file"
+                className="grid h-8 w-8 cursor-pointer list-none place-items-center rounded-full text-muted transition-colors hover:bg-white/[0.06] hover:text-text"
+              >
+                <Paperclip className="h-[17px] w-[17px]" aria-hidden="true" />
+              </button>
               <DetailsMenu
                 className="relative"
                 summaryLabel="Add to your message"
@@ -1087,17 +1096,30 @@ export function Composer({
             }}
             disabled={pending}
           />
-          <button
-            type="button"
-            data-testid="send-message"
-            aria-label={pending ? "Sending" : "Send message"}
-            title="Send (Enter)"
-            onClick={() => void send()}
-            disabled={pending || !value.trim()}
-            className="ml-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-text text-void transition-[transform,background-color,color] duration-150 hover:bg-white active:scale-95 disabled:cursor-not-allowed disabled:bg-white/[0.08] disabled:text-faint"
-          >
-            <ArrowUp className="h-[17px] w-[17px]" strokeWidth={2.4} aria-hidden="true" />
-          </button>
+          {onStop && !value.trim() ? (
+            <button
+              type="button"
+              data-testid="stop-generation"
+              aria-label="Stop generation"
+              title="Stop generation"
+              onClick={onStop}
+              className="ml-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-red-600 text-white transition-transform duration-150 hover:bg-red-500 active:scale-95 shadow-sm"
+            >
+              <span className="h-2.5 w-2.5 rounded-xs bg-white" aria-hidden="true" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              data-testid="send-message"
+              aria-label={pending ? "Sending" : "Send message"}
+              title="Send (Enter)"
+              onClick={() => void send()}
+              disabled={pending || !value.trim()}
+              className="ml-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-text text-void transition-[transform,background-color,color] duration-150 hover:bg-white active:scale-95 disabled:cursor-not-allowed disabled:bg-white/[0.08] disabled:text-faint"
+            >
+              <ArrowUp className="h-[17px] w-[17px]" strokeWidth={2.4} aria-hidden="true" />
+            </button>
+          )}
         </div>
       </div>
 

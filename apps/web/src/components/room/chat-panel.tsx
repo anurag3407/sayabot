@@ -438,7 +438,7 @@ export function ChatPanel({
           canAdmin={canAdmin}
           roomKind={roomKind}
           executionMode={executionMode}
-          placeholder={`${roomKind === "public" ? `Message #${roomName}` : `Message ${roomName}`}, / for commands`}
+          placeholder="Ask anything. @ files, $ skills, / commands"
           onStop={
             streamingMessage?.runId
               ? () => {

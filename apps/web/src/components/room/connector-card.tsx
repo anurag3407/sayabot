@@ -1,10 +1,12 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { ExternalLink, Key, CheckCircle2, AlertCircle, Loader2, Play } from "lucide-react"
+import { ExternalLink, Key, CheckCircle2, AlertCircle, Loader2, Play, LogIn } from "lucide-react"
 import { BrandLogo } from "@/components/connectors/brand-logo"
 import { saveWorkspaceConnector } from "@/lib/actions/connectors"
+import { connectMarketplaceAppAction, startMarketplaceSignInAction } from "@/lib/actions/marketplace"
 import { sendMessage } from "@/lib/actions/messages"
+import { findMarketplaceApp } from "@/lib/marketplace"
 import { cn } from "@/lib/format"
 import { showToast } from "@/components/ui/toast"
 
@@ -124,17 +126,110 @@ export function ConnectorSuggestionCard({
   const [resumed, setResumed] = useState(false)
 
   const { source, name, reason, app } = suggestion
-  const meta = CONNECTOR_METAS[source] ?? {
-    tokenLabel: `${name} Access Token / API Key`,
-    placeholder: "Enter token or API key...",
-    helpText: `Paste your ${name} API key or access token.`,
-    features: ["Native agent tools", "Secure AES-256-GCM envelope", "Audited executions"],
+  const marketplaceApp = findMarketplaceApp(app || source) || findMarketplaceApp(source)
+  const isMarketplace = Boolean(marketplaceApp)
+  const auth = marketplaceApp?.auth
+  const isOptional = Boolean(auth && auth.kind === "token" && auth.optional)
+
+  const meta =
+    isMarketplace && auth
+      ? {
+          tokenLabel:
+            auth.kind === "token" || auth.kind === "url-key"
+              ? auth.label
+              : auth.kind === "personal-url"
+                ? `${marketplaceApp.name} Instance URL`
+                : `${marketplaceApp.name} Credentials`,
+          placeholder:
+            auth.kind === "token"
+              ? `Enter ${auth.label.toLowerCase()}...`
+              : auth.kind === "url-key"
+                ? "Paste key to insert in URL"
+                : auth.kind === "personal-url"
+                  ? auth.placeholder || `https://${auth.host}/...`
+                  : "Enter credentials...",
+          helpUrl: undefined,
+          helpText:
+            auth.kind === "token" || auth.kind === "url-key" || auth.kind === "personal-url"
+              ? auth.help
+              : marketplaceApp.tagline,
+          features: marketplaceApp.dangerousTools?.length
+            ? marketplaceApp.dangerousTools.map((t) => `Tool: ${t}`)
+            : [
+                `${marketplaceApp.category} integration`,
+                "Realtime agent tools",
+                "Secure AES-256-GCM envelope",
+              ],
+        }
+      : (CONNECTOR_METAS[source] ?? {
+          tokenLabel: `${name} Access Token / API Key`,
+          placeholder: "Enter token or API key...",
+          helpText: `Paste your ${name} API key or access token.`,
+          features: ["Native agent tools", "Secure AES-256-GCM envelope", "Audited executions"],
+        })
+
+  const displayName = marketplaceApp
+    ? marketplaceApp.name
+    : app
+      ? `${name} (${app.charAt(0).toUpperCase() + app.slice(1)})`
+      : name
+
+  async function handleMarketplaceConnect(secretValue?: string, urlValue?: string) {
+    if (!marketplaceApp) return
+    setErrorMessage(null)
+    startTransition(async () => {
+      const res = await connectMarketplaceAppAction({
+        orgSlug,
+        appId: marketplaceApp.id,
+        secret: secretValue,
+        personalUrl: urlValue,
+      })
+      if (res.ok) {
+        setStatus("connected")
+        setDetailMessage(res.message || `${marketplaceApp.name} connected successfully`)
+        showToast({ tone: "success", message: `Connected to ${marketplaceApp.name}!` })
+      } else {
+        setStatus("error")
+        setErrorMessage(res.error || "Connection failed")
+      }
+    })
   }
 
-  const displayName = app ? `${name} (${app.charAt(0).toUpperCase() + app.slice(1)})` : name
+  async function handleMarketplaceOAuth() {
+    if (!marketplaceApp) return
+    setErrorMessage(null)
+    startTransition(async () => {
+      const res = await startMarketplaceSignInAction({ orgSlug, appId: marketplaceApp.id })
+      if (!res.ok) {
+        setStatus("error")
+        setErrorMessage(res.error || `Could not start ${marketplaceApp.name} sign-in`)
+        return
+      }
+      const target = (res.data as { authorizationUrl?: string | null } | undefined)?.authorizationUrl
+      if (target) {
+        window.location.assign(target)
+      } else {
+        setStatus("connected")
+        setDetailMessage(res.message || `${marketplaceApp.name} connected`)
+        showToast({ tone: "success", message: `Connected to ${marketplaceApp.name}!` })
+      }
+    })
+  }
 
   async function handleConnect(e: React.FormEvent) {
     e.preventDefault()
+
+    if (marketplaceApp) {
+      if (auth?.kind === "personal-url") {
+        if (!projectUrl.trim() && !token.trim()) return
+        await handleMarketplaceConnect(undefined, projectUrl.trim() || token.trim())
+        return
+      }
+      if (!token.trim() && auth?.kind !== "none" && !isOptional) return
+      await handleMarketplaceConnect(token.trim())
+      return
+    }
+
     if (!token.trim() && !onComputer) return
 
     setErrorMessage(null)
@@ -216,7 +311,7 @@ export function ConnectorSuggestionCard({
       {/* Top Banner & Vendor Identity */}
       <div className="flex flex-wrap items-center justify-between gap-3 p-3.5">
         <div className="flex items-center gap-3">
-          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white shadow-sm ring-1 ring-black/10">
+          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white shadow-sm ring-1 ring-black/10 select-none">
             <BrandLogo id={source} size={22} />
           </div>
           <div>
@@ -241,21 +336,51 @@ export function ConnectorSuggestionCard({
         {/* Primary Action Button */}
         {status !== "connected" ? (
           <div className="flex items-center gap-2 ml-auto">
-            <button
-              type="button"
-              onClick={() => setExpanded(!expanded)}
-              aria-expanded={expanded}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-all hover:bg-accent/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
-            >
-              <Key className="h-3.5 w-3.5" />
-              <span>{expanded ? "Cancel" : `Connect ${displayName}`}</span>
-            </button>
+            {marketplaceApp && auth?.kind === "none" ? (
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={() => void handleMarketplaceConnect()}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-all hover:bg-accent/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent disabled:opacity-50"
+              >
+                {isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Key className="h-3.5 w-3.5" />
+                )}
+                <span>{isPending ? "Connecting…" : `Connect ${displayName}`}</span>
+              </button>
+            ) : marketplaceApp && auth?.kind === "oauth" ? (
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={() => void handleMarketplaceOAuth()}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-all hover:bg-accent/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent disabled:opacity-50"
+              >
+                {isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <LogIn className="h-3.5 w-3.5" />
+                )}
+                <span>{isPending ? "Signing in…" : `Sign in with ${displayName}`}</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setExpanded(!expanded)}
+                aria-expanded={expanded}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-all hover:bg-accent/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+              >
+                <Key className="h-3.5 w-3.5" />
+                <span>{expanded ? "Cancel" : `Connect ${displayName}`}</span>
+              </button>
+            )}
             <a
-              href={`/${orgSlug}/settings/connectors`}
+              href={`/${orgSlug}/connectors`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs text-faint transition-colors hover:bg-raised hover:text-text"
-              title="Open full connectors settings"
+              title="Open full connectors catalog"
             >
               <ExternalLink className="h-3 w-3" />
             </a>
@@ -282,7 +407,7 @@ export function ConnectorSuggestionCard({
               </span>
             ) : null}
             <a
-              href={`/${orgSlug}/settings/connectors`}
+              href={`/${orgSlug}/connectors`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs text-faint transition-colors hover:bg-raised hover:text-text"
@@ -325,16 +450,28 @@ export function ConnectorSuggestionCard({
                 </a>
               ) : null}
             </div>
-            <input
-              id={`token-${source}`}
-              type="password"
-              value={token}
-              onChange={(e) => setToken(e.target.value)}
-              placeholder={meta.placeholder}
-              required={!onComputer}
-              disabled={onComputer}
-              className="w-full rounded-lg border border-border bg-ink px-3 py-2 text-xs font-mono text-text placeholder:text-faint focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50"
-            />
+            {auth?.kind === "personal-url" ? (
+              <input
+                id={`url-${source}`}
+                type="url"
+                value={projectUrl}
+                onChange={(e) => setProjectUrl(e.target.value)}
+                placeholder={meta.placeholder}
+                required
+                className="w-full rounded-lg border border-border bg-ink px-3 py-2 text-xs font-mono text-text placeholder:text-faint focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+              />
+            ) : (
+              <input
+                id={`token-${source}`}
+                type="password"
+                value={token}
+                onChange={(e) => setToken(e.target.value)}
+                placeholder={meta.placeholder}
+                required={!onComputer && !isOptional}
+                disabled={onComputer}
+                className="w-full rounded-lg border border-border bg-ink px-3 py-2 text-xs font-mono text-text placeholder:text-faint focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50"
+              />
+            )}
             <p className="text-[11px] text-faint">{meta.helpText}</p>
           </div>
 
@@ -421,7 +558,9 @@ export function ConnectorSuggestionCard({
               type="submit"
               disabled={
                 isPending ||
-                (!onComputer && !token.trim()) ||
+                (auth?.kind === "personal-url"
+                  ? !projectUrl.trim()
+                  : !onComputer && !token.trim() && !isOptional) ||
                 (source === "whatsapp" && !phoneNumberId.trim()) ||
                 (source === "supabase" && !projectUrl.trim())
               }

@@ -14,28 +14,12 @@ export function suggestConnectorTool(_opts: SuggestConnectorOptions): ToolSpec {
       "Proactively suggest connecting a workspace service (GitHub, Google Drive, Slack, Composio, Jira, Notion, Linear, Discord, Telegram, WhatsApp, 1Password, Bitwarden, etc.) directly in the chat with an interactive button when the user requests an external integration task that is not yet connected or granted.",
     schema: z.object({
       source: z
-        .enum([
-          "github",
-          "google_drive",
-          "slack",
-          "composio",
-          "jira",
-          "discord",
-          "telegram",
-          "whatsapp",
-          "onepassword",
-          "bitwarden",
-          "protonpass",
-          "supabase",
-          "cloudflare_r2",
-          "backblaze_b2",
-          "s3_storage",
-          "huggingface",
-        ])
+        .string()
+        .min(1)
         .describe(
-          "The connector source identifier. For apps like Gmail, Calendar, Notion, Linear, HubSpot, etc., use source: 'composio' with the specific 'app' slug.",
+          "The connector source or catalog app identifier (e.g. 'github', 'google_drive', 'slack', 'composio', 'clickup', 'linear', 'notion', 'sentry', 'stripe', 'jira', etc.). For apps like Gmail, Calendar, Notion, Linear, HubSpot via Composio, you can pass source: 'composio' with 'app' or pass the app name directly.",
         ),
-      name: z.string().describe("Human readable name, e.g. 'GitHub', 'Slack', 'Composio'"),
+      name: z.string().describe("Human readable name, e.g. 'GitHub', 'Slack', 'Composio', 'ClickUp'"),
       reason: z
         .string()
         .describe(

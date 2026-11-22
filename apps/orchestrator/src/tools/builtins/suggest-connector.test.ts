@@ -38,4 +38,16 @@ describe("suggestConnectorTool", () => {
     expect(res.ok).toBe(true)
     expect(res.app).toBe("gmail")
   })
+
+  it("supports catalog marketplace apps", async () => {
+    const res = (await tool.execute({
+      source: "clickup",
+      name: "ClickUp",
+      reason: "Connect ClickUp to manage and sync tasks in your workspace.",
+    })) as any
+
+    expect(res.ok).toBe(true)
+    expect(res.source).toBe("clickup")
+    expect(res.name).toBe("ClickUp")
+  })
 })

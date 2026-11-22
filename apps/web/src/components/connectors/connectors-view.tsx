@@ -55,7 +55,7 @@ function AppTile({ app, size = 44 }: { app: MarketplaceApp; size?: number }) {
     return (
       <span
         aria-hidden
-        className="grid shrink-0 place-items-center rounded-[12px] bg-white shadow-sm ring-1 ring-black/10"
+        className="grid shrink-0 place-items-center rounded-[12px] bg-white shadow-sm ring-1 ring-black/10 select-none"
         style={{ width: size, height: size }}
       >
         <BrandLogo id={app.id} size={Math.round(size * 0.58)} />
@@ -65,7 +65,7 @@ function AppTile({ app, size = 44 }: { app: MarketplaceApp; size?: number }) {
   return (
     <span
       aria-hidden
-      className="grid shrink-0 place-items-center rounded-[12px] font-semibold text-white shadow-sm"
+      className="grid shrink-0 place-items-center rounded-[12px] font-semibold text-white shadow-sm select-none"
       style={{ width: size, height: size, background: app.color, fontSize: size * 0.4 }}
     >
       {app.name
