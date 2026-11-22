@@ -96,7 +96,6 @@ export function extractToolPath(args?: Record<string, unknown> | null): string {
   if (typeof args.Path === "string") return args.Path
   if (typeof args.path === "string") return args.path
   if (typeof args.filePath === "string") return args.filePath
-  if (typeof args.target === "string") return args.target
   if (typeof args.file === "string") return args.file
   return ""
 }
@@ -248,15 +247,67 @@ export function formatDiffNumber(num: number): string {
 
 /**
  * Extracts changed files and diff stats from tool calls and tool outputs.
+ * Only confirmed successful tool executions are counted.
  */
 export function extractChangedFiles(calls: ToolCallView[]): ChangedFilesSummary {
   const fileMap = new Map<string, ChangedFileStat>()
 
   for (const call of calls) {
+    // Only count completed, successful tool calls
+    if (call.status !== "done" || call.error) continue
+    if (call.result && typeof call.result === "object") {
+      const res = call.result as Record<string, unknown>
+      if (res.ok === false || res.success === false || res.error) continue
+    }
+
     const name = call.toolName.toLowerCase()
     const args = call.args || {}
 
-    if (name.includes("write") || name.includes("create_file")) {
+    if (name.includes("patch") && typeof args.patchText === "string") {
+      // Parse structured patch (e.g. fs_patch)
+      const patchLines = args.patchText.split("\n")
+      let currentPath: string | null = null
+      let isNew = false
+
+      for (const line of patchLines) {
+        if (line.startsWith("*** Add File: ")) {
+          currentPath = line.slice("*** Add File: ".length).trim()
+          isNew = true
+        } else if (line.startsWith("*** Update File: ")) {
+          currentPath = line.slice("*** Update File: ".length).trim()
+          isNew = false
+        } else if (line.startsWith("*** Delete File: ")) {
+          currentPath = line.slice("*** Delete File: ".length).trim()
+          isNew = false
+        }
+
+        if (currentPath) {
+          const cleanPath = currentPath.replace(/^\/Users\/[^/]+\/[^/]+\//, "")
+          const parts = cleanPath.split("/")
+          const fileName = parts.pop() || cleanPath
+          const dir = parts.join("/") || "."
+
+          let stat = fileMap.get(cleanPath)
+          if (!stat) {
+            stat = {
+              path: cleanPath,
+              name: fileName,
+              dir,
+              additions: 0,
+              deletions: 0,
+              isNew,
+            }
+            fileMap.set(cleanPath, stat)
+          }
+
+          if (line.startsWith("+") && !line.startsWith("+++")) {
+            stat.additions++
+          } else if (line.startsWith("-") && !line.startsWith("---")) {
+            stat.deletions++
+          }
+        }
+      }
+    } else if (name.includes("write") || name.includes("create_file")) {
       const rawPath = extractToolPath(args)
       if (rawPath) {
         const cleanPath = rawPath.replace(/^\/Users\/[^/]+\/[^/]+\//, "")
@@ -269,7 +320,8 @@ export function extractChangedFiles(calls: ToolCallView[]): ChangedFilesSummary 
 
         const existing = fileMap.get(cleanPath)
         if (existing) {
-          existing.additions += lines
+          // Prevent multiple writes from inflating additions indefinitely
+          existing.additions = existing.isNew ? lines : Math.max(existing.additions, lines)
         } else {
           fileMap.set(cleanPath, {
             path: cleanPath,
@@ -286,13 +338,21 @@ export function extractChangedFiles(calls: ToolCallView[]): ChangedFilesSummary 
       if (rawPath) {
         const cleanPath = rawPath.replace(/^\/Users\/[^/]+\/[^/]+\//, "")
         const target =
-          typeof args.Target === "string" ? args.Target : typeof args.target === "string" ? args.target : ""
+          typeof args.oldString === "string"
+            ? args.oldString
+            : typeof args.Target === "string"
+              ? args.Target
+              : typeof args.target === "string"
+                ? args.target
+                : ""
         const replacement =
-          typeof args.Replacement === "string"
-            ? args.Replacement
-            : typeof args.replacement === "string"
-              ? args.replacement
-              : ""
+          typeof args.newString === "string"
+            ? args.newString
+            : typeof args.Replacement === "string"
+              ? args.Replacement
+              : typeof args.replacement === "string"
+                ? args.replacement
+                : ""
         const added = replacement ? replacement.split("\n").length : 0
         const deleted = target ? target.split("\n").length : 0
         const parts = cleanPath.split("/")

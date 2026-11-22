@@ -104,18 +104,19 @@ export function WorkedGroup({
   timestamp?: string
 }) {
   const panelId = useId()
-  const running = calls.some((call) => call.status === "running")
-  const [open, setOpen] = useState(running)
+  const hasRunning = calls.some((call) => call.status === "running")
+  const isWorking = hasRunning || Boolean(thinkingStreaming)
+  const [open, setOpen] = useState(isWorking)
   const [thoughtOpen, setThoughtOpen] = useState(true)
   const readerTouched = useRef(false)
 
   useEffect(() => {
-    if (!readerTouched.current && running) {
+    if (!readerTouched.current && isWorking) {
       setOpen(true)
     }
-  }, [running])
+  }, [isWorking])
 
-  const now = useNow(running)
+  const now = useNow(isWorking)
   const starts = calls.map((call) => timeOf(call.createdAt)).filter((v): v is number => v !== null)
   const ends = calls
     .map((call) => timeOf(call.resolvedAt) ?? timeOf(call.createdAt))
@@ -125,7 +126,7 @@ export function WorkedGroup({
   const elapsed =
     startedAt === null
       ? null
-      : running
+      : isWorking
         ? Math.max(0, (now ?? Date.now()) - startedAt)
         : finishedAt === null
           ? null
@@ -135,7 +136,7 @@ export function WorkedGroup({
   const { summary, hasFailure, failedCount } = buildActionSummarySentence(
     calls,
     hasThinking,
-    Boolean(thinkingStreaming || running),
+    Boolean(thinkingStreaming || hasRunning),
   )
 
   const durationStr = elapsed !== null ? formatActionDuration(elapsed) : ""
@@ -154,16 +155,16 @@ export function WorkedGroup({
             readerTouched.current = true
             setOpen((v) => !v)
           }}
-          className="inline-flex items-center gap-1.5 py-0.5 text-left text-faint transition-colors hover:text-text focus-visible:outline-none"
+          className="inline-flex items-center gap-1.5 py-0.5 text-left text-faint transition-colors hover:text-text focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-400 dark:focus-visible:ring-zinc-500 rounded"
         >
           <span>
-            {running ? "Working" : "Worked"}
+            {isWorking ? "Working" : "Worked"}
             {durationStr ? ` for ${durationStr}` : ""}
           </span>
           <ChevronRight
             className={cn("h-3 w-3 shrink-0 text-faint transition-transform duration-200", open && "rotate-90")}
           />
-          {running ? (
+          {isWorking ? (
             <span className="inline-flex items-center gap-1 ml-1" aria-hidden="true">
               <span className="thinking-dot" />
               <span className="thinking-dot [animation-delay:150ms]" />
@@ -189,7 +190,7 @@ export function WorkedGroup({
             setOpen((v) => !v)
           }}
           aria-expanded={open}
-          className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-xs transition-colors hover:bg-raised/40 focus-visible:outline-none"
+          className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-xs transition-colors hover:bg-raised/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-400 dark:focus-visible:ring-zinc-500 rounded"
         >
           <div className="flex min-w-0 items-center gap-2">
             <ActionIcon
@@ -219,7 +220,8 @@ export function WorkedGroup({
                 <button
                   type="button"
                   onClick={() => setThoughtOpen(!thoughtOpen)}
-                  className="flex w-full items-center justify-between gap-2 text-left text-muted hover:text-text focus-visible:outline-none"
+                  aria-expanded={thoughtOpen}
+                  className="flex w-full items-center justify-between gap-2 text-left text-muted hover:text-text focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-400 dark:focus-visible:ring-zinc-500 rounded"
                 >
                   <div className="flex items-center gap-1.5 font-medium">
                     <Brain className="h-3.5 w-3.5 text-accent" />
@@ -288,7 +290,8 @@ export function ToolCallRow({ call, boxed = false }: { call: ToolCallView; boxed
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="flex w-full items-center justify-between gap-2 py-1 text-left text-xs hover:text-text focus-visible:outline-none"
+        aria-expanded={open}
+        className="flex w-full items-center justify-between gap-2 py-1 text-left text-xs hover:text-text focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-400 dark:focus-visible:ring-zinc-500 rounded"
       >
         <div className="flex min-w-0 items-center gap-2">
           <ActionIcon kind={kind} className="h-3 w-3 shrink-0 text-muted" />

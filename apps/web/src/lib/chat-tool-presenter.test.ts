@@ -101,4 +101,39 @@ describe("chat-tool-presenter", () => {
     expect(summary.totalAdditions).toBe(5) // 3 from write + 2 from edit
     expect(summary.totalDeletions).toBe(1) // 1 from edit
   })
+
+  it("supports fs_edit with oldString and newString and fs_patch with patchText", () => {
+    const calls = [
+      makeCall("fs_edit", { path: "src/app.ts", oldString: "const x = 1", newString: "const x = 2\nconst y = 3" }),
+      makeCall("fs_patch", {
+        patchText: "*** Add File: src/new.ts\n+line 1\n+line 2\n*** Update File: src/app.ts\n+line 3\n-line 0",
+      }),
+    ]
+    const summary = extractChangedFiles(calls)
+    expect(summary.totalFiles).toBe(2)
+    const appFile = summary.files.find((f) => f.path === "src/app.ts")
+    expect(appFile?.additions).toBe(3) // 2 from fs_edit + 1 from patch
+    expect(appFile?.deletions).toBe(2) // 1 from fs_edit + 1 from patch
+    const newFile = summary.files.find((f) => f.path === "src/new.ts")
+    expect(newFile?.additions).toBe(2)
+    expect(newFile?.isNew).toBe(true)
+  })
+
+  it("ignores failed, rejected, or incomplete tool calls in changed files", () => {
+    const calls = [
+      {
+        ...makeCall("fs_edit", { path: "src/fail.ts", oldString: "a", newString: "b" }),
+        status: "error" as const,
+        error: "disk full",
+      },
+      {
+        ...makeCall("fs_write", { path: "src/fail2.ts", content: "hello" }),
+        result: { ok: false, error: "permission denied" },
+      },
+      makeCall("fs_edit", { path: "src/ok.ts", oldString: "a", newString: "b" }),
+    ]
+    const summary = extractChangedFiles(calls)
+    expect(summary.totalFiles).toBe(1)
+    expect(summary.files[0]?.path).toBe("src/ok.ts")
+  })
 })

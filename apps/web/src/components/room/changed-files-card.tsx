@@ -63,7 +63,7 @@ export function ChangedFilesCard({
             <button
               type="button"
               onClick={() => onOpenDiff(files[0]?.path || "")}
-              className="inline-flex items-center gap-1 rounded px-2 py-1 text-2xs font-medium text-muted hover:bg-raised hover:text-text focus-visible:outline-none"
+              className="inline-flex items-center gap-1 rounded px-2 py-1 text-2xs font-medium text-muted hover:bg-raised hover:text-text focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-400 dark:focus-visible:ring-zinc-500"
             >
               <GitCompare className="h-3 w-3" />
               <span>Open diff</span>
@@ -73,7 +73,7 @@ export function ChangedFilesCard({
             type="button"
             onClick={() => setExpanded(!expanded)}
             aria-expanded={expanded}
-            className="inline-flex items-center gap-1 rounded p-1 text-muted hover:bg-raised hover:text-text focus-visible:outline-none"
+            className="inline-flex items-center gap-1 rounded p-1 text-muted hover:bg-raised hover:text-text focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-400 dark:focus-visible:ring-zinc-500"
             title={expanded ? "Collapse files" : "Expand files"}
           >
             <ChevronRight

@@ -144,8 +144,8 @@ export function MessageItem({
     >
       {/* Human user message: right-aligned sleek bubble */}
       {mine ? (
-        <div className="flex w-full justify-end">
-          <div className="max-w-[85%] rounded-2xl bg-[#1e1e24] px-4 py-2.5 text-sm text-[#ededf0] border border-white/5 shadow-sm [overflow-wrap:anywhere]">
+        <div className="flex w-full flex-col items-end">
+          <div className="max-w-[85%] rounded-2xl bg-zinc-200 text-zinc-900 dark:bg-[#1e1e24] dark:text-[#ededf0] px-4 py-2.5 text-sm border border-zinc-300/70 dark:border-white/5 shadow-sm [overflow-wrap:anywhere]">
             {!isAgent &&
             (message.metadata.command === "goal" || message.metadata.command === "btw") ? (
               <span className="mb-1 block text-[11px] font-medium uppercase tracking-[0.06em] text-accent">
@@ -160,11 +160,34 @@ export function MessageItem({
               </time>
             </div>
           </div>
+          {/* Subtle actions & thread reply for self message */}
+          <div className="mt-1 flex items-center gap-2 text-2xs text-faint">
+            <CopyButton text={answer || message.content} />
+            {!inThread && onOpenThread ? (
+              <button
+                type="button"
+                onClick={() => onOpenThread(message)}
+                className="inline-flex items-center gap-1 hover:text-text"
+              >
+                <ReplyIcon width={12} height={12} /> Reply
+              </button>
+            ) : null}
+          </div>
+          {!inThread && onOpenThread && threadReplyCount !== undefined && threadReplyCount > 0 ? (
+            <button
+              type="button"
+              onClick={() => onOpenThread(message)}
+              className="mt-1 inline-flex items-center gap-1.5 rounded-lg bg-panel px-2.5 py-1 text-xs text-muted hover:text-text"
+            >
+              <ReplyIcon width={12} height={12} />
+              {threadReplyCount} {threadReplyCount === 1 ? "reply" : "replies"}
+            </button>
+          ) : null}
         </div>
       ) : !isAgent ? (
         /* Non-self human message */
-        <div className="flex w-full justify-start">
-          <div className="max-w-[85%] rounded-2xl bg-panel px-4 py-2.5 text-sm text-[#ededf0] border border-line [overflow-wrap:anywhere]">
+        <div className="flex w-full flex-col items-start">
+          <div className="max-w-[85%] rounded-2xl bg-panel px-4 py-2.5 text-sm text-text border border-line [overflow-wrap:anywhere]">
             <div className="mb-1 flex items-baseline gap-2 text-xs">
               <span className="font-semibold text-text">{message.senderName}</span>
               <time
@@ -177,10 +200,50 @@ export function MessageItem({
             </div>
             <Markdown content={answer} streaming={streaming} />
           </div>
+          {/* Subtle actions & thread reply for other human message */}
+          <div className="mt-1 flex items-center gap-2 text-2xs text-faint">
+            <CopyButton text={answer || message.content} />
+            {!inThread && onOpenThread ? (
+              <button
+                type="button"
+                onClick={() => onOpenThread(message)}
+                className="inline-flex items-center gap-1 hover:text-text"
+              >
+                <ReplyIcon width={12} height={12} /> Reply
+              </button>
+            ) : null}
+          </div>
+          {!inThread && onOpenThread && threadReplyCount !== undefined && threadReplyCount > 0 ? (
+            <button
+              type="button"
+              onClick={() => onOpenThread(message)}
+              className="mt-1 inline-flex items-center gap-1.5 rounded-lg bg-panel px-2.5 py-1 text-xs text-muted hover:text-text"
+            >
+              <ReplyIcon width={12} height={12} />
+              {threadReplyCount} {threadReplyCount === 1 ? "reply" : "replies"}
+            </button>
+          ) : null}
         </div>
       ) : (
         /* Agent message: sleek, modern presentation with action bar, thinking disclosure & clean markdown */
         <div className="min-w-0 max-w-full space-y-1">
+          {/* Agent Header (Avatar + Name + Timestamp) shown when sender changes or block starts */}
+          {!continued ? (
+            <div className="flex items-center gap-2 mb-1.5 text-xs">
+              <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent text-2xs font-semibold">
+                {message.senderName ? message.senderName.charAt(0).toUpperCase() : "A"}
+              </div>
+              <span className="font-semibold text-text">{message.senderName}</span>
+              <time
+                dateTime={message.createdAt}
+                title={fullTime(message.createdAt)}
+                className="font-mono text-[10px] text-faint"
+              >
+                {clockTime(message.createdAt)}
+              </time>
+            </div>
+          ) : null}
+
           {/* Collapsible Action Bar (Working/Worked + Tools + Reasoning) */}
           <ToolCallsList
             calls={relatedCalls}
@@ -214,7 +277,7 @@ export function MessageItem({
           {changedFilesSummary.totalFiles > 0 ? (
             <ChangedFilesCard
               summary={changedFilesSummary}
-              onOpenDiff={() => onShowCanvas?.()}
+              onOpenDiff={onShowCanvas ? () => onShowCanvas() : undefined}
             />
           ) : null}
 
