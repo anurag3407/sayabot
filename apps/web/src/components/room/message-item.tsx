@@ -43,6 +43,17 @@ export function MessageItem({
   continued?: boolean
   onShowCanvas?: () => void
 }) {
+  const relatedCalls = useMemo(
+    () =>
+      toolCalls.filter(
+        (call) =>
+          call.messageId === message.id ||
+          (message.runId !== null && call.runId === message.runId && call.messageId === null),
+      ),
+    [toolCalls, message.id, message.runId],
+  )
+  const changedFilesSummary = useMemo(() => extractChangedFiles(relatedCalls), [relatedCalls])
+
   if (message.senderType === "system") {
     const halted = message.status === "halted"
     return (
@@ -110,11 +121,6 @@ export function MessageItem({
   const warnings = Array.isArray(message.metadata.warnings)
     ? (message.metadata.warnings as string[])
     : []
-  const relatedCalls = toolCalls.filter(
-    (call) =>
-      call.messageId === message.id ||
-      (message.runId !== null && call.runId === message.runId && call.messageId === null),
-  )
   const streaming = message.status === "streaming"
 
   const mine = !isAgent && selfId !== null && message.senderId === selfId
@@ -122,9 +128,6 @@ export function MessageItem({
   const answer = folded ? folded.answer : message.content
   const thinking = folded?.thinking ?? null
   const thinkingStreaming = Boolean(streaming && folded?.open)
-
-  // Extract changed files from the tool executions
-  const changedFilesSummary = useMemo(() => extractChangedFiles(relatedCalls), [relatedCalls])
 
   return (
     <article
