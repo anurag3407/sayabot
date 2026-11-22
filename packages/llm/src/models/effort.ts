@@ -48,6 +48,7 @@ export const ENGINE_EFFORT_LEVELS: Record<string, readonly EffortLevel[]> = {
   cerebras: [],
   minimax: [],
   cloudflare: [],
+  river: [],
   "command-code": [],
   "openai-compatible": [],
 }

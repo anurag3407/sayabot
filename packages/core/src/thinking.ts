@@ -57,6 +57,17 @@ function tidy(text: string): string {
   return collapsed.replace(/^\n+/, "").replace(/\n+$/, "")
 }
 
+/** Strips unparsed model protocol tags (such as DeepSeek DSML tool markers) from visible answer text. */
+export function stripModelInternalTokens(text: string): string {
+  return text
+    .replace(
+      /<[|｜\uFF5C]\s*(?:DSML|tool calls?|tool_calls)[|｜\uFF5C][^>]*>[\s\S]*?(?:(?:<\/\s*[|｜\uFF5C]|<[|｜\uFF5C]\s*\/)\s*(?:DSML|tool calls?|tool_calls)[|｜\uFF5C][^>]*>|$)/gi,
+      "",
+    )
+    .replace(/<\/?\s*[|｜\uFF5C]\s*(?:DSML|invoke|parameter|tool calls?|tool_calls)[^>]*>/gi, "")
+    .trim()
+}
+
 /** Pull reasoning blocks out of a reply, including one that is still streaming. */
 export function splitThinking(content: string): SplitThinking {
   const blocks: string[] = []
@@ -91,7 +102,7 @@ export function splitThinking(content: string): SplitThinking {
         .filter(Boolean)
         .join("\n\n"),
     ),
-    answer: tidy(dangling.text),
+    answer: tidy(stripModelInternalTokens(dangling.text)),
     open,
   }
 }

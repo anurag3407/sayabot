@@ -184,6 +184,15 @@ export const ACCOUNT_PROVIDERS: readonly AccountProvider[] = [
     blurb: "Workers AI and AI Gateway, with your account's address.",
   },
   {
+    id: "river",
+    name: "River AI",
+    kind: "key",
+    baseUrl: "https://api.river.ai/v1",
+    keyHint: "rv_…",
+    keyUrl: "https://river.ai",
+    blurb: "Fast inference on DeepSeek and open models.",
+  },
+  {
     id: "openai-compatible",
     name: "Custom server",
     kind: "custom",

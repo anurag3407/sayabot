@@ -29,6 +29,7 @@ export const PROVIDERS = [
   "qwen",
   "cursor",
   "cloudflare",
+  "river",
   "openai-compatible",
 ] as const
 export type Provider = (typeof PROVIDERS)[number]

@@ -477,6 +477,7 @@ const PROVIDER_LABELS: Record<string, string> = {
   groq: "Groq",
   cerebras: "Cerebras",
   deepseek: "DeepSeek",
+  river: "River AI",
   openrouter: "OpenRouter",
   ollama: "Ollama",
   xai: "xAI",

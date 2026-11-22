@@ -109,7 +109,7 @@ A full dialog ("Manage AI accounts") with a left nav of all `ACCOUNT_PROVIDERS` 
 
 ### Account registry (`lib/ai-accounts.ts`)
 
-`ACCOUNT_PROVIDERS` defines 17 connectable accounts with `kind` (`key` | `openrouter` | `copilot` | `custom` | `app`), base URLs, key hints/URLs and blurbs (OpenRouter, Copilot, Codex/Claude/Cursor plans, Anthropic, OpenAI, Google, DeepSeek, Grok, Kimi, Qwen, MiniMax, Groq, Cerebras, Cloudflare, custom). Because the DB `provider` column accepts only six values (`DB_PROVIDERS`), `storedProvider()` maps everything else to `openai-compatible` rows carrying the provider's address, and `providerForBaseUrl()` maps an address hostname back to the logical provider (used by `effectiveProvider` in `lib/format.ts`).
+`ACCOUNT_PROVIDERS` defines 18 connectable accounts with `kind` (`key` | `openrouter` | `copilot` | `custom` | `app`), base URLs, key hints/URLs and blurbs (OpenRouter, Copilot, Codex/Claude/Cursor plans, Anthropic, OpenAI, Google, DeepSeek, Grok, Kimi, Qwen, MiniMax, Groq, Cerebras, Cloudflare, River AI, custom). Because the DB `provider` column accepts only six values (`DB_PROVIDERS`), `storedProvider()` maps everything else to `openai-compatible` rows carrying the provider's address, and `providerForBaseUrl()` maps an address hostname back to the logical provider (used by `effectiveProvider` in `lib/format.ts`).
 
 ### Key persistence (`lib/provider-key-store.ts`)
 

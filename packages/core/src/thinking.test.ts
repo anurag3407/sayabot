@@ -43,6 +43,24 @@ describe("splitThinking", () => {
     })
     expect(splitThinking("<think>\nAlmost </thi").thinking).toBe("Almost")
   })
+
+  it("strips leaked internal DSML tool tags from the answer", () => {
+    const raw = "I'll check what's actually at that endpoint first.\n\n<｜DSML｜ calls>\n<｜DSML｜ invoke name=\"terminal_exec\">\n<｜DSML｜ parameter name=\"command\">curl localhost:6379</｜DSML｜ invoke>\n</｜DSML｜ calls>"
+    expect(splitThinking(raw)).toEqual({
+      thinking: "",
+      answer: "I'll check what's actually at that endpoint first.",
+      open: false,
+    })
+  })
+
+  it("strips leaked internal DSML tool tags without swallowing text after the closing tag", () => {
+    const raw = "Before call.\n\n<｜DSML｜ calls>\n<｜DSML｜ invoke name=\"terminal_exec\">\n<｜DSML｜ parameter name=\"command\">curl localhost:6379</｜DSML｜ invoke>\n</｜DSML｜ calls>\n\nAfter call."
+    expect(splitThinking(raw)).toEqual({
+      thinking: "",
+      answer: "Before call.\n\nAfter call.",
+      open: false,
+    })
+  })
 })
 
 describe("appendThinking", () => {
