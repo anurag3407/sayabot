@@ -10,10 +10,14 @@ import {
   effortRequest,
   initializeParams,
   isAuthError,
+  isRoomToolStep,
   modelRequest,
   permissionOutcome,
+  roomMcpServers,
+  systemPromptSetup,
   toolName,
 } from "./acp"
+import { HIDDEN_ROOM_TOOLS } from "./room-mcp"
 import type { DesktopHost } from "./host"
 import { spawnTool, toolPath } from "./bin-path"
 import { agentSpec, findBinary, type AgentSpec } from "./local-agents"
@@ -52,6 +56,8 @@ import {
 interface Job {
   id: string
   prompt: string
+  /** The system prompt kept apart for ACP apps (server 1.0.32+); null/absent: it's in `prompt`. */
+  system?: string | null
   app: string
   /** The model inside the app; null/absent keeps the app's own default. */
   model?: string | null
@@ -116,7 +122,7 @@ const APPROVAL_POLL_MS = 1_500
 const APPROVAL_WAIT_MS = 30 * 60_000 + 30_000
 
 /** Sayabot room tools an app must not call in its own turn (its reply is posted for it). */
-const BLOCKED_ROOM_TOOLS = ["post_message", "wait_for_activity", "use_secret"]
+const BLOCKED_ROOM_TOOLS = HIDDEN_ROOM_TOOLS
 const TOKEN_ENV = "SAYABOT_MCP_TOKEN"
 
 /** Model ids and effort levels reach a command line, so only plain ones pass. */
@@ -310,6 +316,11 @@ export class LocalRunner {
       const claimed = await this.host.post<{ job: Job | null }>("/api/desktop/jobs/claim", {})
       if (!claimed?.job) return
       const spec = agentSpec(claimed.job.app)
+      // Only ACP sessions take a separate system prompt; every other path reads one prompt.
+      if (claimed.job.system && spec?.run.kind !== "acp") {
+        claimed.job.prompt = `${claimed.job.system}\n\n${claimed.job.prompt}`
+        claimed.job.system = null
+      }
       if (claimed.job.app === "claude-code" || claimed.job.app === "codex")
         await this.runWithTools(claimed.job)
       else if (localServerUrl(claimed.job.app)) await this.runLocalModel(claimed.job)
@@ -613,7 +624,7 @@ export class LocalRunner {
     return { behavior: "deny", message: "Nobody answered in time, so this wasn't allowed." }
   }
 
-  // ---------- Agent Client Protocol apps: Copilot, Command Code, Vibe, Kimi, Kiro… ----------
+  // ---------- Agent Client Protocol apps: Antigravity, Copilot, Cursor, Gemini, Kiro… ----------
 
   private async runAcp(job: Job, spec: AgentSpec, args: readonly string[]): Promise<void> {
     const bin = await findBinary(spec.bin)
@@ -632,6 +643,7 @@ export class LocalRunner {
     }
     let output = ""
     let fold: ThinkingFold = { open: false }
+    let afterStep = false
     let cancelled = false
     let sessionId: string | null = null
     const sessionRules = [...(job.allow ?? [])]
@@ -654,16 +666,25 @@ export class LocalRunner {
           output = (output + next.delta).slice(-200_000)
         }
         if (update.delta) {
-          const next = appendThinking(fold, "answer", update.delta)
+          // Text after a tool step starts a new paragraph, like Claude Code's message_start.
+          const text = afterStep && output.trim() ? `\n\n${update.delta.trimStart()}` : update.delta
+          afterStep = false
+          const next = appendThinking(fold, "answer", text)
           fold = next.fold
           output = (output + next.delta).slice(-200_000)
         }
-        if (update.activity.length) pending.push(...update.activity)
+        if (update.activity.length) {
+          pending.push(...update.activity)
+          afterStep = true
+        }
       },
       onRequest: async (method, params) => {
         if (method !== "session/request_permission") throw new Error("Not supported")
         const request = (params ?? {}) as { toolCall?: Record<string, unknown>; options?: unknown }
         const call = request.toolCall ?? {}
+        // Room tools are allowed up front, like Claude Code's `--allowedTools mcp__sayabot`: the
+        // server keeps its own approvals for the risky ones.
+        if (job.mcp && isRoomToolStep(call)) return permissionOutcome(request.options, true)
         const input =
           call.rawInput && typeof call.rawInput === "object"
             ? (call.rawInput as Record<string, unknown>)
@@ -702,8 +723,19 @@ export class LocalRunner {
       }
     }, PROGRESS_MS)
     try {
-      await connection.request("initialize", initializeParams(), 60_000)
-      const session = await connection.request("session/new", { cwd, mcpServers: [] }, 120_000)
+      const initialized = await connection.request("initialize", initializeParams(), 60_000)
+      // Room tools ride along as a stdio MCP server (room-mcp.js), which every ACP app supports.
+      const mcpServers = roomMcpServers(job.mcp, {
+        command: process.execPath,
+        script: path.join(__dirname, "room-mcp.js"),
+      })
+      // The room context goes in as the session's system prompt where the agent takes one.
+      const system = systemPromptSetup(initialized, job.system)
+      const session = await connection.request(
+        "session/new",
+        { cwd, mcpServers, ...system.session },
+        120_000,
+      )
       sessionId =
         typeof (session as { sessionId?: unknown })?.sessionId === "string"
           ? (session as { sessionId: string }).sessionId
@@ -734,7 +766,7 @@ export class LocalRunner {
       }
       const result = (await connection.request(
         "session/prompt",
-        { sessionId, prompt: [{ type: "text", text: job.prompt }] },
+        { sessionId, prompt: [{ type: "text", text: `${system.prefix}${job.prompt}` }] },
         null,
       )) as { stopReason?: unknown } | null
       await flush()
@@ -762,7 +794,7 @@ export class LocalRunner {
         output: output.trim(),
         status: "failed",
         error: isAuthError(error)
-          ? `${spec.name} isn't signed in on this computer. Run \`${spec.bin}\` once in a terminal and sign in${keys}. (${message.slice(0, 200)})`
+          ? `${spec.name} isn't signed in on this computer. Run \`${spec.login ?? spec.bin}\` once in a terminal and sign in${keys}. (${message.slice(0, 200)})`
           : message.slice(0, 500),
       })
     } finally {

@@ -86,7 +86,7 @@ Local plan-limit UI driven entirely by the Mac app bridge (`lib/desktop-bridge.t
 - [App overview](./app-overview.md) — workspace shell and the `planUsageNotice` banner fed from the same usage data
 - [Agents UI](./agents-ui.md) — agents/models that appear as buckets here
 - [Room chat UI](./room-chat-ui.md) — the rooms the Chats card links into
-- [lib-reference](./lib-reference.md) — `desktop-bridge.ts` plan-limit bridge functions
+- [lib-reference](./lib-reference.md) — `desktop-bridge.ts` plan-limit bridge functions (the same file also has the agent sign-in calls: `canSignInAgents`, `startAgentSignIn`, `finishAgentSignIn`, `cancelAgentSignIn`)
 - ../../architecture/system-overview.md — where `usage_events` are written during turns
 - ../../database/schema.md — `usage_events`, `model_pricing`, and the `usage_rollup` routine
 - ../../../models-and-pricing.md — pricing concepts behind the cost estimates

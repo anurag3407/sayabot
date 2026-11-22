@@ -34,6 +34,7 @@ import {
   type LocalWorkspaceSnapshot,
 } from "./cloud-handoff"
 import { DesktopHost, loadHostAuth } from "./host"
+import { AgentLogin } from "./agent-login"
 import { detectLocalAgents } from "./local-agents"
 import { LocalMcpHost } from "./local-mcp"
 import { LocalRunner, type ApprovalNotice } from "./runner"
@@ -1529,6 +1530,23 @@ ipcMain.handle("workspace:return-to-controller", () => {
 
 ipcMain.handle("runner:get-status", () => {
   return { running: localRunnerRunning, busy: runner?.running ?? false, port: 4100 }
+})
+
+// Signing an agent app in through its own login (Antigravity's `agy acp --login`): the link
+// opens in the browser and the person pastes the code back; Sayabot never touches the tokens.
+const agentLogin = new AgentLogin()
+ipcMain.handle("agents:sign-in-start", async (_event, appId: unknown) => {
+  const started = await agentLogin.start(typeof appId === "string" ? appId : "")
+  if (started.ok) void shell.openExternal(started.url)
+  return started
+})
+ipcMain.handle("agents:sign-in-submit", async (_event, code: unknown) => {
+  const finished = await agentLogin.submit(code)
+  if (finished.ok) host?.rescanAgents()
+  return finished
+})
+ipcMain.handle("agents:sign-in-cancel", () => {
+  agentLogin.cancel()
 })
 
 ipcMain.handle("host:get-status", () => ({

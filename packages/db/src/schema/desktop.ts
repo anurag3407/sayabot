@@ -97,6 +97,11 @@ export const localRunnerJobs = pgTable(
     effort: text("effort"),
     status: text("status").notNull().default("queued"),
     prompt: text("prompt").notNull(),
+    /**
+     * The run's system prompt, kept apart from `prompt` for ACP apps on Mac app 1.0.32+, which
+     * hand it to the session (ACP `systemPrompt` or Antigravity's extension). Null: it's in `prompt`.
+     */
+    systemPrompt: text("system_prompt"),
     /** One-run MCP token for Sayabot's room tools, sealed with MESH_KEK; cleared once claimed. */
     mcpTokenEnc: text("mcp_token_enc"),
     /** The oauth_tokens row behind it, revoked when the job ends. */

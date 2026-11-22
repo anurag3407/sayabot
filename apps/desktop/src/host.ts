@@ -280,6 +280,11 @@ export class DesktopHost {
     void this.heartbeat()
   }
 
+  /** Read the agent apps again on the next heartbeat (after a sign-in finished here). */
+  rescanAgents(): void {
+    this.forceScan = true
+  }
+
   stop(): void {
     if (this.timer) clearInterval(this.timer)
     this.timer = null

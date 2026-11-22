@@ -1,4 +1,11 @@
-import { hostOnline, MAC_CLI_APP_IDS, redactSecrets } from "@sayabot/core"
+import {
+  hostOnline,
+  MAC_CLI_APP_IDS,
+  macAppSplitsSystemPrompt,
+  macAppTakesRoomTools,
+  macRunRefusal,
+  redactSecrets,
+} from "@sayabot/core"
 import { clampEffort, ENGINE_EFFORT_LEVELS } from "@sayabot/llm/models/effort"
 import { sealSecret } from "@sayabot/llm"
 import {
@@ -168,9 +175,6 @@ export async function macPlan(
 /** Where a Mac run is, for the app: its own folder, and asking before anything risky. */
 const MAC_NOTE =
   "You are running on your owner's Mac, in your own folder. Steps that change things outside it, run commands or open the network ask your owner first; if they say no, don't retry the same step, explain what you needed instead."
-
-/** Apps that take Sayabot's room tools over MCP when they run on a Mac. */
-const MAC_MCP_APPS = new Set<string>(["claude-code", "codex"])
 
 /** Approval cards still waiting when a Mac job ends can't be answered any more. */
 async function expireMacApprovals(roomId: string, jobId: string): Promise<void> {
@@ -357,6 +361,18 @@ export async function runLocalTurn(
     )
   }
   const waiting = options.wait === true && !hostOnline(host.lastSeenAt)
+  // Apps whose sign-in is for its owner's interactive use (Antigravity) answer only the owner's
+  // own messages: no routines, webhooks, other members or bots on that account.
+  const refusal = macRunRefusal(
+    config.app,
+    {
+      senderType: args.trigger.senderType,
+      senderId: args.trigger.senderId,
+      metadata: args.trigger.metadata,
+    },
+    host.userId,
+  )
+  if (refusal) return finish("", "error", refusal)
   if (!hostOnline(host.lastSeenAt) && !waiting) {
     return finish(
       "",
@@ -379,15 +395,19 @@ export async function runLocalTurn(
     }).catch(() => {})
   }
 
-  // Claude Code and Codex get Sayabot's room tools (tasks, canvas, decisions, facts) through a
-  // token for this agent and room only, revoked when the job ends. The others answer in text.
-  const grant = MAC_MCP_APPS.has(config.app)
+  // Claude Code, Codex and the ACP apps (Antigravity, Claude/Codex ACP, Copilot…) get Sayabot's
+  // room tools (tasks, canvas, decisions, facts) through a token for this agent and room only,
+  // revoked when the job ends. ACP apps need a Mac app that passes them on; older ones and
+  // print-mode apps answer in text, so their prompt doesn't promise tools they can't see.
+  const grant = macAppTakesRoomTools(config.app, host.appVersion)
     ? await mintMacMcpToken({ agentId: agent.id, roomId: room.id }).catch((error: unknown) => {
         console.warn("[local-runner] no room tools for this run", error)
         return null
       })
     : null
   mcpTokenId = grant?.tokenId ?? null
+  const fullSystem = grant ? `${system}\n\n${ROOM_TOOLS_NOTE} ${MAC_NOTE}` : system
+  const splitSystem = macAppSplitsSystemPrompt(config.app, host.appVersion)
 
   const [job] = await db
     .insert(localRunnerJobs)
@@ -401,11 +421,10 @@ export async function runLocalTurn(
       app: config.app,
       model: config.model ?? null,
       effort: config.effort ?? null,
-      prompt:
-        `${grant ? `${system}\n\n${ROOM_TOOLS_NOTE} ${MAC_NOTE}` : system}\n\n${prompt}`.slice(
-          0,
-          200_000,
-        ),
+      // ACP apps on a new Mac app take the system prompt as one; the rest get it in the prompt.
+      ...(splitSystem
+        ? { systemPrompt: fullSystem.slice(0, 100_000), prompt: prompt.slice(0, 200_000) }
+        : { prompt: `${fullSystem}\n\n${prompt}`.slice(0, 200_000) }),
       status: "queued",
       mcpTokenEnc: grant ? sealSecret(grant.token, getEnv().MESH_KEK) : null,
       mcpTokenId,

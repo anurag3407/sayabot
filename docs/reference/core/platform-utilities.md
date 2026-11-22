@@ -2,7 +2,21 @@
 
 This reference covers the platform-level plumbing in `@sayabot/core`: the one-time desktop→Cloud workspace handoff (`cloud-handoff.ts`, `workspace-copy.ts`), the operator-provided shared model provider (`saya-ai.ts`), the edition and plan machinery (`edition.ts`), and the server-only crypto/guard helpers under `server/` (agent keys, webhook signatures, SSRF guard). Everything here either runs on the trusted side of the boundary (server, desktop app) or produces data that is safe to cross it.
 
-Source files: `packages/core/src/cloud-handoff.ts`, `packages/core/src/workspace-copy.ts`, `packages/core/src/saya-ai.ts`, `packages/core/src/edition.ts`, `packages/core/src/server/index.ts`, `packages/core/src/server/agent-key.ts`, `packages/core/src/server/webhook.ts`, `packages/core/src/server/ssrf.ts` (tests: `cloud-handoff.test.ts`, `workspace-copy.test.ts`, `saya-ai.test.ts`, `edition.test.ts`, `server/agent-key.test.ts`, `server/webhook.test.ts`, `server/ssrf.test.ts`)
+Source files: `packages/core/src/mac-apps.ts`, `packages/core/src/cloud-handoff.ts`, `packages/core/src/workspace-copy.ts`, `packages/core/src/saya-ai.ts`, `packages/core/src/edition.ts`, `packages/core/src/server/index.ts`, `packages/core/src/server/agent-key.ts`, `packages/core/src/server/webhook.ts`, `packages/core/src/server/ssrf.ts` (tests: `cloud-handoff.test.ts`, `workspace-copy.test.ts`, `saya-ai.test.ts`, `edition.test.ts`, `server/agent-key.test.ts`, `server/webhook.test.ts`, `server/ssrf.test.ts`)
+
+---
+
+## 💻 Mac Agent Apps (`mac-apps.ts`)
+
+`MAC_CLI_APPS` is the shared catalogue of agent apps a Mac (or Windows PC) can run bots with: 21 entries of `MacAppInfo { id, bin, name, provider, label, access, signIn, keyEnv, install, transport, personalUseOnly?, policyNote? }`. The web (model picker, Providers page, local detection in `apps/web/src/lib/local-agents-shared.ts`) and the orchestrator (`MAC_RUNNER_APPS`, room-tool grants) read it; the desktop keeps its own copy with detection probes and launch args (`apps/desktop/src/local-agents.ts`), and a desktop test asserts `id`, `bin`, `keyEnv` and `transport` ↔ `run.kind` match.
+
+- `access` — `account` | `account_or_key` | `key` | `own_config`; `macAppSetupHint(app)` turns it into the "how to set it up" line (`MAC_ACCESS_LABEL` for short labels).
+- `transport` — `tools` (Claude Code, Codex stream modes), `acp` (Agent Client Protocol over stdio) or `plain` (pi, text only).
+- `antigravity` runs Google's own ACP server (`agy acp`, provider `antigravity`, sign-in `agy`), with `personalUseOnly: true` and a `policyNote` (Google allows its personal sign-in for single-user interactive use only). There are no Claude/Codex ACP adapter entries: Anthropic doesn't allow subscription sign-in in third-party Agent SDK apps and OpenAI hasn't sanctioned it, so Claude Code and Codex run only as their own binaries (`tools`).
+- `macRunRefusal(app, trigger, ownerUserId)` — null, or the reason a `personalUseOnly` app may not answer: allowed only for a `human` trigger from the owner whose metadata isn't `automated`.
+- `macAppSplitsSystemPrompt(app, appVersion)` — true for `acp` apps on Mac app ≥ `MAC_ACP_ROOM_TOOLS_SINCE`: the server then keeps the system prompt in `local_runner_jobs.system_prompt`.
+- `macAppTakesRoomTools(app, appVersion)` — true for `tools` apps; for `acp` apps only when `appVersion ≥ MAC_ACP_ROOM_TOOLS_SINCE` (`"1.0.32"`, numeric compare of the first three parts); false for `plain` apps and unknown ids (Ollama, LM Studio).
+- Lookups: `MAC_CLI_APP_IDS`, `macAppInfo(id)`, `isMacCliApp(id)`.
 
 ---
 

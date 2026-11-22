@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     .update({ status: "running", claimed_at: new Date().toISOString(), mcp_token_enc: null })
     .eq("id", next.id)
     .eq("status", "queued")
-    .select("id, agent_id, room_id, prompt, app, model, effort")
+    .select("id, agent_id, room_id, prompt, system_prompt, app, model, effort")
     .maybeSingle()
   if (!job) return NextResponse.json({ job: null })
 
@@ -76,6 +76,8 @@ export async function POST(request: Request) {
     job: {
       id: job.id,
       prompt: job.prompt,
+      // ACP apps on Mac app 1.0.32+: the system prompt, passed to the session; null = in `prompt`.
+      system: typeof job.system_prompt === "string" && job.system_prompt ? job.system_prompt : null,
       app,
       // The model inside the app and its effort; null keeps the app's own default.
       model: job.model ?? null,

@@ -34,6 +34,7 @@ their install command. The model picker shows each ready app with the models it 
 | ---------------- | -------------- | ------------------------------------------------------------------------------------ | -------------------------------------- |
 | Claude Code      | `claude`       | its own login                                                                        | `ANTHROPIC_API_KEY`                    |
 | Codex            | `codex`        | `codex login`                                                                        | `OPENAI_API_KEY`                       |
+| Antigravity      | `agy`          | your Google account (run `agy` once); the CLI ships with Antigravity (`agy install`) | none (account only)                    |
 | GitHub Copilot   | `copilot`      | `copilot login`                                                                      | `COPILOT_GITHUB_TOKEN` / `GH_TOKEN`    |
 | Command Code     | `command-code` | `command-code login`                                                                 | `COMMAND_CODE_API_KEY`                 |
 | Cursor           | `cursor-agent` | `cursor-agent login`                                                                 | `CURSOR_API_KEY`                       |
@@ -51,10 +52,23 @@ their install command. The model picker shows each ready app with the models it 
 | OMP (Oh My Pi)   | `omp`          | providers set up in OMP                                                              | —                                      |
 | pi               | `pi`           | **needs a provider key** saved in pi                                                 | `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`… |
 | DeepSeek Harness | `dsh`          | **needs a key**                                                                      | `DEEPSEEK_API_KEY`                     |
+| ZCode            | `zcode`        | `zcode login zai`                                                                    | `ZCODE_API_KEY` / `ZAI_API_KEY`        |
+
+**Antigravity is for your own messages only.** Google allows Antigravity's personal sign-in
+through its official ACP server (`agy acp`, which is what Sayabot runs) for single-user,
+interactive use. So a bot on Antigravity answers **only messages you send yourself**. Routines,
+meetings, webhooks, connected chats (WhatsApp, Slack…), other people in the room and other bots
+get an error instead, and Antigravity is never picked as a Mac's default app. Sayabot never reads
+or forwards its tokens. For automated or shared use, run Gemini CLI with a `GEMINI_API_KEY`.
+
+**Why there's no "Claude Code (ACP)" or "Codex (ACP)".** Anthropic doesn't allow third-party apps
+built on its Agent SDK (which the Claude ACP adapter is) to use a Claude subscription sign-in.
+Only the unmodified Claude Code app may use it. OpenAI hasn't approved third-party use of ChatGPT
+sign-in either. So Sayabot runs `claude` and `codex` themselves, as the apps you installed.
 
 **Model lists are live.** Each app reports the models it offers you: Claude Code and Codex from
 their own lists, pi from `pi --list-models`, Cursor from its session or `cursor-agent models`, and
-every ACP app (OpenCode, Copilot, Command Code, Hermes, OMP…) from a session that is opened and
+every ACP app (Antigravity, OpenCode, Copilot, Hermes, OMP…) from a session that is opened and
 closed without a prompt. Lists are kept six hours (or until the app updates) and read in the
 background, so a slow app never makes the Mac look offline. The **refresh** button in the model
 picker asks your Macs to read them again now; the picker reloads by itself when they answer
@@ -82,16 +96,25 @@ profile). Keys you add to Sayabot's own Providers page are used by the server, n
 |                                                             | Claude Code   | Codex                            | ACP apps¹     | pi           |
 | ----------------------------------------------------------- | ------------- | -------------------------------- | ------------- | ------------ |
 | Reply in the room                                           | ✓             | ✓                                | ✓             | ✓            |
-| Sayabot tools: tasks, canvas, decisions, votes, owner facts | ✓             | ✓                                | —             | —            |
+| Sayabot tools: tasks, canvas, decisions, votes, owner facts | ✓             | ✓                                | ✓²            | —            |
 | Live tool cards in the room                                 | ✓             | ✓                                | ✓             | —            |
 | Pick a model (and effort) in the picker                     | ✓             | ✓                                | ✓             | ✓            |
 | Commands, edits, web pages                                  | ask you first | inside its folder only (sandbox) | ask you first | app defaults |
 
-¹ OpenCode, Copilot, Command Code, Cursor, Gemini CLI, Mistral Vibe, Grok, Kimi, Kiro, Droid,
-Devin, Cline, Qwen, Hermes, OMP and DeepSeek Harness speak the [Agent Client Protocol](https://agentclientprotocol.com). Sayabot for Mac
+¹ Antigravity, OpenCode, Copilot, Command Code, Cursor, Gemini CLI, Mistral Vibe, Grok, Kimi, Kiro, Droid, Devin, Cline, Qwen, Hermes, OMP, DeepSeek Harness and
+ZCode speak the [Agent Client Protocol](https://agentclientprotocol.com). Sayabot for Mac
 starts them with no file or terminal access of its own (`apps/desktop/src/acp.ts`), streams their
 reply, and turns every permission they ask for into an approval card; a yes allows that one step.
-The model and effort you pick are set on the session before the prompt.
+The model and effort you pick are set on the session before the prompt. With Sayabot for Mac
+1.0.32+, the room's instructions go in as the session's system prompt where the app takes one
+(ACP's `systemPrompt`, or Antigravity's own extension), not in front of your message.
+
+² Needs Sayabot for Mac 1.0.32 or later. The room tools are handed to the session as a small
+stdio MCP server (`apps/desktop/src/room-mcp.ts`) that uses a token for this one run, which is
+revoked when the run ends. Calls to these tools don't ask you on the Mac, just as with Claude Code;
+the server still asks before the risky ones. The runner posts the reply itself, so it hides
+`post_message`, `wait_for_activity` and `use_secret`. Older Mac apps run ACP agents without room
+tools, and the server doesn't tell them they have any.
 
 Each agent works in its own folder: `~/Sayabot/agents/<handle>`.
 
@@ -129,6 +152,8 @@ the agent's settings (`params.localAllow`).
 
 - [`apps/desktop/src/runner.ts`](../apps/desktop/src/runner.ts): runs the apps, reports steps, answers approvals
 - [`apps/desktop/src/acp.ts`](../apps/desktop/src/acp.ts): the Agent Client Protocol client (sessions, models, steps, permissions)
+- [`apps/desktop/src/room-mcp.ts`](../apps/desktop/src/room-mcp.ts): room tools for ACP apps (stdio → `/api/v1/mcp` bridge)
+- [`apps/desktop/src/agent-login.ts`](../apps/desktop/src/agent-login.ts): Antigravity's Google sign-in from the Providers page (`agy acp --login`)
 - [`apps/desktop/src/local-agents.ts`](../apps/desktop/src/local-agents.ts): finds each app and its sign-in, and how to start it
 - [`apps/desktop/src/local-models.ts`](../apps/desktop/src/local-models.ts): each app's live model list (cached six hours)
 - [`apps/desktop/src/bin-path.ts`](../apps/desktop/src/bin-path.ts): finds the apps and the `node` they need, even when opened from the Dock

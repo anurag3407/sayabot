@@ -34,7 +34,14 @@ export interface LocalAgentReport {
   setupHint?: string
   /** How to install it, for apps not on this computer yet. */
   install?: string
+  /** A usage rule from the app's provider (Antigravity: personal, interactive use only). */
+  policyNote?: string
+  /** Sayabot for Mac can run the app's own sign-in for it (Antigravity's Google login). */
+  macSignIn?: boolean
 }
+
+/** Apps whose own sign-in Sayabot for Mac can start (apps/desktop/src/agent-login.ts). */
+const MAC_SIGN_IN_APPS = new Set(["antigravity"])
 
 /** Where the list came from: this server's own machine, or what a Mac app reported. */
 export interface LocalAgentsResponse {
@@ -101,6 +108,8 @@ export function reportedAgentsToReports(raw: unknown): LocalAgentReport[] {
       ...(info
         ? { access: info.access, setupHint: macAppSetupHint(info), install: info.install }
         : {}),
+      ...(info?.policyNote ? { policyNote: info.policyNote } : {}),
+      ...(MAC_SIGN_IN_APPS.has(id) ? { macSignIn: true } : {}),
     })
   }
   return out
@@ -111,13 +120,17 @@ const INVITE_APP: Record<string, string> = {
   "claude-code": "claude-code",
   codex: "codex",
   gemini: "antigravity",
+  antigravity: "antigravity",
   cursor: "cursor",
   hermes: "hermes",
 }
 
-const MAC_BUNDLES: Record<string, string> = { cursor: "/Applications/Cursor.app" }
+const MAC_BUNDLES: Record<string, string> = {
+  cursor: "/Applications/Cursor.app",
+  antigravity: "/Applications/Antigravity.app",
+}
 
-/** Every agent app Sayabot can run on a computer (MAC_CLI_APPS in @sayabot/core), plus Antigravity. */
+/** Every agent app Sayabot can run on a computer (MAC_CLI_APPS in @sayabot/core). */
 export const LOCAL_AGENT_APPS: readonly LocalAgentApp[] = [
   ...MAC_CLI_APPS.map((app) => ({
     id: app.id,
@@ -128,14 +141,6 @@ export const LOCAL_AGENT_APPS: readonly LocalAgentApp[] = [
     ...(MAC_BUNDLES[app.id] ? { macApp: MAC_BUNDLES[app.id] } : {}),
     inviteApp: INVITE_APP[app.id] ?? "generic",
   })),
-  {
-    id: "antigravity",
-    name: "Antigravity",
-    icon: "antigravity",
-    binaries: ["antigravity"],
-    macApp: "/Applications/Antigravity.app",
-    inviteApp: "antigravity",
-  },
 ]
 
 /** signedIn null = we can't tell for this app (installed is the best we know). */

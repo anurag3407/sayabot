@@ -12,6 +12,11 @@ export type { PlanLimits, PlanWindow } from "@sayabot/core/scanner"
 interface DesktopUsageBridge {
   getPlanLimits?: (force?: boolean) => Promise<unknown[]>
   getLocalUsage?: (days: number) => Promise<{ available: boolean; events: unknown[] }>
+  signInAgentStart?: (
+    appId: string,
+  ) => Promise<{ ok: true; url: string } | { ok: false; error: string }>
+  signInAgentSubmit?: (code: string) => Promise<{ ok: true } | { ok: false; error: string }>
+  signInAgentCancel?: () => Promise<void>
 }
 
 function bridge(): DesktopUsageBridge | null {
@@ -72,4 +77,41 @@ export function resetsIn(iso: string | null, now = Date.now()): string | null {
   if (hours < 24) return `in ${hours}h ${minutes % 60}m`
   const days = Math.round(hours / 24)
   return `in ${days} ${days === 1 ? "day" : "days"}`
+}
+
+/** Whether this window is the Mac app with the agent sign-in calls (1.0.32+). */
+export function canSignInAgents(): boolean {
+  return typeof bridge()?.signInAgentStart === "function"
+}
+
+/**
+ * Starts an agent app's own sign-in on this Mac (Antigravity's Google login); the Mac app opens
+ * the Google page. Finish with `finishAgentSignIn(code)`.
+ */
+export async function startAgentSignIn(
+  appId: string,
+): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
+  const start = bridge()?.signInAgentStart
+  if (!start) return { ok: false, error: "Open this page in Sayabot for Mac to sign in." }
+  return start(appId).catch((error: unknown) => ({
+    ok: false as const,
+    error: error instanceof Error ? error.message : "The sign-in couldn't start.",
+  }))
+}
+
+export async function finishAgentSignIn(
+  code: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const submit = bridge()?.signInAgentSubmit
+  if (!submit) return { ok: false, error: "Open this page in Sayabot for Mac to sign in." }
+  return submit(code).catch((error: unknown) => ({
+    ok: false as const,
+    error: error instanceof Error ? error.message : "The sign-in didn't finish.",
+  }))
+}
+
+export function cancelAgentSignIn(): void {
+  void bridge()
+    ?.signInAgentCancel?.()
+    .catch(() => undefined)
 }

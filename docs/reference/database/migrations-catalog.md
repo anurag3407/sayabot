@@ -2,7 +2,7 @@
 
 This catalog documents every database migration in `packages/db`: the four Drizzle-generated migrations in `packages/db/migrations/` (the declarative schema snapshot pipeline) and the 41 hand-written SQL scripts in `packages/db/sql/` (functions, triggers, RLS, realtime, and RPCs that Drizzle cannot express). `src/migrate.ts` runs both phases in order — Drizzle first, then every `sql/*.sql` file in sorted filename order — and the SQL phase re-applies on every run, so each script is written to be idempotent.
 
-Source files: `packages/db/migrations/0000_conscious_natasha_romanoff.sql` through `0003_gigantic_the_call.sql`, `packages/db/sql/0001_functions.sql` through `0042_gateway_one_channel.sql`, `packages/db/src/migrate.ts`
+Source files: `packages/db/migrations/0000_conscious_natasha_romanoff.sql` through `0003_gigantic_the_call.sql`, `packages/db/sql/0001_functions.sql` through `0043_mac_job_system_prompt.sql`, `packages/db/src/migrate.ts`
 
 ---
 
@@ -294,6 +294,10 @@ Creates `agent_reads` (PK `(agent_id, room_id)`, `last_read_at`, `updated_at`) w
 
 - `agent_gateways.bound_chat_id` is the single outside chat the bot answers. `agent_gateways.room_id` references `rooms(id)` `on delete set null`, with unique index `agent_gateways_room_idx` where `room_id` is not null.
 - Existing rows are backfilled from the most recent `external_chats` row (`last_message_at`, then `created_at`). Older rooms are left in place. New messages from any other chat are refused and do not open another room.
+
+### `0043_mac_job_system_prompt.sql` — system prompt apart for ACP Mac runs
+
+- `alter table public.local_runner_jobs add column if not exists system_prompt text`. The orchestrator fills it (and leaves the system prompt out of `prompt`) when `macAppSplitsSystemPrompt(app, host.app_version)` is true: an ACP app on Sayabot for Mac 1.0.32+. `/api/desktop/jobs/claim` returns it as `job.system`. Idempotent; no backfill (null = in `prompt`).
 
 ---
 

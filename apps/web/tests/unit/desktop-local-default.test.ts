@@ -16,6 +16,11 @@ describe("pickDefaultApp", () => {
     expect(pickDefaultApp([ready("gemini"), ready("codex")])).toBe("codex")
   })
 
+  it("never defaults to Antigravity, whose sign-in is for the owner's own messages", () => {
+    expect(pickDefaultApp([ready("antigravity")])).toBeNull()
+    expect(pickDefaultApp([ready("antigravity"), ready("kimi")])).toBe("kimi")
+  })
+
   it("ignores apps that are installed but not signed in", () => {
     expect(pickDefaultApp([signedOut("claude-code"), ready("gemini")])).toBe("gemini")
     expect(pickDefaultApp([signedOut("claude-code")])).toBeNull()

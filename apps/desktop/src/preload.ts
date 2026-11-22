@@ -46,12 +46,26 @@ export interface DesktopBridge {
   /** Downloads, checks and installs the newest version; Sayabot reopens by itself. */
   installUpdate: () => Promise<UpdateState>
   onUpdateState: (callback: (state: UpdateState) => void) => () => void
+  /**
+   * Starts an agent app's own sign-in (Antigravity): the Google page opens in the browser and the
+   * link comes back too, in case it didn't. Finish with signInAgentSubmit(code).
+   */
+  signInAgentStart?: (
+    appId: string,
+  ) => Promise<{ ok: true; url: string } | { ok: false; error: string }>
+  /** The code (or landing URL) from the Google page; on success the app is scanned again. */
+  signInAgentSubmit?: (code: string) => Promise<{ ok: true } | { ok: false; error: string }>
+  signInAgentCancel?: () => Promise<void>
   /** Claude / Codex / Antigravity plan limits, read with this Mac's own sign-ins. */
   getPlanLimits: (force?: boolean) => Promise<unknown[]>
   /** Token history from coding-tool logs on this Mac. */
   getLocalUsage: (days: number) => Promise<{ available: boolean; events: unknown[] }>
   startLocalEngine: () => Promise<{ ok: boolean; serverUrl: string | null; error?: string }>
-  getLocalEngineStatus: () => Promise<{ running: boolean; serverUrl: string | null; port: number | null }>
+  getLocalEngineStatus: () => Promise<{
+    running: boolean
+    serverUrl: string | null
+    port: number | null
+  }>
   onSessionUpdate: (callback: (session: AuthSession | null) => void) => () => void
   /**
    * The workspace page refreshed the login. Store that copy so the file and the cookies match.
@@ -95,6 +109,9 @@ const bridge: DesktopBridge = {
       ipcRenderer.removeListener("app:update-state", listener)
     }
   },
+  signInAgentStart: (appId) => ipcRenderer.invoke("agents:sign-in-start", appId),
+  signInAgentSubmit: (code) => ipcRenderer.invoke("agents:sign-in-submit", code),
+  signInAgentCancel: () => ipcRenderer.invoke("agents:sign-in-cancel"),
   getPlanLimits: (force) => ipcRenderer.invoke("usage:plan-limits", force),
   getLocalUsage: (days) => ipcRenderer.invoke("usage:local", days),
   startLocalEngine: () => ipcRenderer.invoke("embedded:start"),

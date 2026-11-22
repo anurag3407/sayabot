@@ -12,7 +12,7 @@ Source files: `apps/web/src/app/api/desktop/register/route.ts`, `apps/web/src/ap
 
 `HostRow` (`desktop-hosts.ts:5`) carries `user_id`, optional `org_id`, name/platform/app_version, `token_hash`, `permissions`, `local_agents`, `settings` (`whoCanControl: "only_me" | "admins" | "members"`, `askOnComputer`, `runnerEnabled`, `localDefault`), liveness and revocation timestamps.
 
-Two helpers drive the "run agents on my Mac" defaults: `pickDefaultApp` picks the most capable signed-in app (order `claude-code`, `codex`, `gemini`, `opencode`, `cursor` — `desktop-hosts.ts:57`), and `withLocalDefault` turns `runnerEnabled: true` + `localDefault: { app }` on the first time a ready app appears, keeps the choice current, and never touches it again once the owner set it to `false` (`desktop-hosts.ts:71`).
+Two helpers drive the "run agents on my Mac" defaults: `pickDefaultApp` picks the most capable signed-in app (order `claude-code`, `codex`, `copilot`, `cursor`, `gemini`, `opencode`, then the rest of `MAC_CLI_APPS`, never a `personalUseOnly` app such as Antigravity, which must be picked per bot), and `withLocalDefault` turns `runnerEnabled: true` + `localDefault: { app }` on the first time a ready app appears, keeps the choice current, and never touches it again once the owner set it to `false` (`desktop-hosts.ts:71`).
 
 ---
 
@@ -93,6 +93,7 @@ Response job payload (`jobs/claim/route.ts:63`):
 {
   "id": "…",
   "prompt": "…",
+  "system": "…" | null,
   "app": "claude-code",
   "model": null,
   "effort": null,
@@ -105,7 +106,7 @@ Response job payload (`jobs/claim/route.ts:63`):
 }
 ```
 
-`app` comes from the job row or the agent's `params.runner.app` (default `claude-code`); `model`/`effort` are null to keep the app's own defaults; `mcp` is present only when the sealed token could be opened with `getKek()`, and `allow` carries the agent's pre-approved step rules (empty under `review`). `permissions` is the room's execution mode as this Mac applies it, from `macPermissions(mode, setBy, host.user_id)` in `lib/mac-runner.ts`: `review_all` → `review`; `auto`/`turbo` only when `rooms.execution_mode_set_by` is this host's owner, otherwise `ask`; anything else `ask`. The mode is read in its own query so a server ahead of its migration still hands out jobs.
+`system` is `local_runner_jobs.system_prompt` (set only for ACP apps on Mac app 1.0.32+; null means the system prompt is already in `prompt`). `app` comes from the job row or the agent's `params.runner.app` (default `claude-code`); `model`/`effort` are null to keep the app's own defaults; `mcp` is present only when the sealed token could be opened with `getKek()`, and `allow` carries the agent's pre-approved step rules (empty under `review`). `permissions` is the room's execution mode as this Mac applies it, from `macPermissions(mode, setBy, host.user_id)` in `lib/mac-runner.ts`: `review_all` → `review`; `auto`/`turbo` only when `rooms.execution_mode_set_by` is this host's owner, otherwise `ask`; anything else `ask`. The mode is read in its own query so a server ahead of its migration still hands out jobs.
 
 ### Progress and completion — `POST /api/desktop/jobs/[id]` (`jobs/[id]/route.ts:11`)
 
