@@ -48,6 +48,8 @@ export async function POST(request: Request) {
     content?: unknown
     threadRootId?: unknown
     clientId?: unknown
+    messageId?: unknown
+    id?: unknown
   }
   if (
     typeof input.orgSlug !== "string" ||
@@ -58,6 +60,14 @@ export async function POST(request: Request) {
   }
   const access = await getRoomAccess(input.orgSlug, input.roomId, { client, user })
   if (!access) return NextResponse.json({ error: "room not found" }, { status: 404 })
+  const explicitId =
+    typeof input.messageId === "string"
+      ? input.messageId
+      : typeof input.id === "string"
+        ? input.id
+        : typeof input.clientId === "string"
+          ? input.clientId
+          : null
   const inserted = await insertHumanMessage({
     supabase: client,
     userId: user.id,
@@ -65,6 +75,7 @@ export async function POST(request: Request) {
     content: input.content,
     threadRootId: typeof input.threadRootId === "string" ? input.threadRootId : null,
     clientId: typeof input.clientId === "string" ? input.clientId : null,
+    id: explicitId,
   })
   if (!inserted.ok) return NextResponse.json({ error: inserted.error }, { status: 400 })
   const queued = await queueRoomMessage(input.roomId, inserted.id)

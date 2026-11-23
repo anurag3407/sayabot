@@ -21,10 +21,10 @@ function fakeSupabase(opts: { existing?: unknown; insertError?: string; root?: u
     from: () => ({
       select: () => ({
         eq: () => ({
+          maybeSingle: async () => ({ data: opts.existing ?? opts.root ?? null }),
           eq: () => ({
             filter: () => ({ maybeSingle: async () => ({ data: opts.existing ?? null }) }),
           }),
-          maybeSingle: async () => ({ data: opts.root ?? null }),
         }),
       }),
       insert: (row: unknown) => {
@@ -101,6 +101,37 @@ describe("insertHumanMessage validation (no DB needed for these paths)", () => {
       }),
     ).resolves.toEqual({ ok: true, id: "existing-1" })
     expect(sb.inserted).toHaveLength(0)
+  })
+
+  it("is idempotent on id: returns existing message without inserting", async () => {
+    const sb = fakeSupabase({ existing: { id: "33333333-3333-4333-8333-333333333333" } })
+    await expect(
+      insertHumanMessage({
+        supabase: sb,
+        userId: USER,
+        roomId: ROOM,
+        content: "hi",
+        id: "33333333-3333-4333-8333-333333333333",
+      }),
+    ).resolves.toEqual({ ok: true, id: "33333333-3333-4333-8333-333333333333" })
+    expect(sb.inserted).toHaveLength(0)
+  })
+
+  it("preserves explicit UUID id for optimistic message reconciliation", async () => {
+    const sb = fakeSupabase()
+    const customId = "44444444-4444-4444-8444-444444444444"
+    const out = await insertHumanMessage({
+      supabase: sb,
+      userId: USER,
+      roomId: ROOM,
+      content: "instant message",
+      id: customId,
+    })
+    expect(out).toEqual({ ok: true, id: "msg-1" })
+    expect(sb.inserted).toHaveLength(1)
+    const row = sb.inserted[0] as any
+    expect(row.id).toBe(customId)
+    expect(row.content).toBe("instant message")
   })
 
   it("inserts a trimmed human message with extracted mentions", async () => {

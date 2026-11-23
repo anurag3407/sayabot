@@ -5,6 +5,8 @@ import { CloseIcon } from "@/components/ui/icons"
 import { Mascot } from "@/components/ui/mascot"
 import { sendMessage } from "@/lib/actions/messages"
 import { cn } from "@/lib/format"
+import { extractHandles } from "@sayabot/core"
+import type { MessageView } from "@/lib/types"
 
 const STARTERS: { label: string; prompt: string }[] = [
   {
@@ -45,15 +47,19 @@ export function StarterCard({
   roomId,
   agentName,
   userName,
+  userId,
   onSent,
   onSomethingElse,
+  onOptimisticMessage,
 }: {
   orgSlug: string
   roomId: string
   agentName: string
   userName: string
+  userId?: string
   onSent: () => void
   onSomethingElse: () => void
+  onOptimisticMessage?: (message: MessageView) => void
 }) {
   const [dismissed, setDismissed] = useState(false)
   const [chosen, setChosen] = useState<number | null>(null)
@@ -70,18 +76,43 @@ export function StarterCard({
     if (!starter) return
     setChosen(index)
     setError(null)
+    const content = starter.prompt + SET_UP_HINT
+    const messageId = crypto.randomUUID()
+    if (onOptimisticMessage) {
+      onOptimisticMessage({
+        id: messageId,
+        roomId,
+        threadRootId: null,
+        senderType: "human",
+        senderId: userId ?? null,
+        senderName: userName || "You",
+        senderHandle: null,
+        content,
+        status: "complete",
+        mentions: extractHandles(content),
+        runId: null,
+        metadata: {
+          clientId: messageId,
+          optimistic: true,
+        },
+        createdAt: new Date().toISOString(),
+      })
+    }
+    onSent()
+    setDismissed(true)
     startTransition(async () => {
       const result = await sendMessage({
         orgSlug,
         roomId,
-        content: starter.prompt + SET_UP_HINT,
+        content,
+        clientId: messageId,
+        messageId,
       })
       if (!result.ok) {
         setChosen(null)
+        setDismissed(false)
         setError(result.error ?? "That did not send. Try again in a moment.")
-        return
       }
-      onSent()
     })
   }
 

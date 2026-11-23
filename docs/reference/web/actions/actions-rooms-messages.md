@@ -78,15 +78,15 @@ Authenticated action that resolves the agent in the org, ensures the 1:1 room vi
 
 ## ✉️ Sending messages (`messages.ts` + `message-send.ts`)
 
-### `sendMessage(input: { orgSlug, roomId, content, threadRootId?, clientId?, command? })`
+### `sendMessage(input: { orgSlug, roomId, content, threadRootId?, clientId?, messageId?, command? })`
 
 `command` (`"goal" | "btw"`, from the composer's `/goal` and `/btw`) is stored as `metadata.command`; the orchestrator turns a goal into a round-by-round loop and lets a side note through without interrupting.
 
-Member-level action (`getRoomAccess`). The write itself lives in `insertHumanMessage` (`message-send.ts:8`), so web, mobile and offline flush share one code path:
+Member-level action (`getRoomAccess`, using request-cached `getCurrentUser()`). The write itself lives in `insertHumanMessage` (`message-send.ts:8`), so web, mobile and offline flush share one code path:
 
 - Content must be 1–100,000 characters after trimming; `roomId` and `threadRootId` must be UUIDs (`message-send.ts:5`).
 - Threads resolve the root message, require it to be in the same room, and normalize to the thread's actual root (`thread_root_id ?? id`) so nested replies stay flat (`message-send.ts:23`).
-- **Idempotency**: with a `clientId` (capped at 80 chars, stored in `metadata.clientId`), a duplicate send returns the existing message id instead of inserting again — this is what makes optimistic UI and offline flushes safe (`message-send.ts:38`).
+- **Idempotency & Optimistic ID Preservation**: With an explicit `id` (e.g. client-generated UUID for optimistic message rendering), the primary key `id` is respected and checked; with a `clientId` (capped at 80 chars, stored in `metadata.clientId`), a duplicate send returns the existing message id instead of inserting again — this is what makes optimistic UI and offline flushes safe and instantaneous (`message-send.ts:38`).
 - The insert sets `sender_type: "human"`, `status: "complete"`, and `mentions` from `extractHandles(content)` (`message-send.ts:59`).
 
 Back in the action, `queueRoomMessage(roomId, messageId)` pokes the orchestrator's `/internal/room-message` endpoint. If the orchestrator is unreachable the message is still saved and the result carries the warning "Message saved, but agents could not be reached…" (`messages.ts:39`); `data.messageId` is always returned on success.

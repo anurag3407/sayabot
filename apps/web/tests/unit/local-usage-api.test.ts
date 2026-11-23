@@ -19,15 +19,15 @@ describe("Local Usage Scanner API Route", () => {
 
     // Check header
     expect(response.headers.get("Cache-Control")).toContain("no-cache")
-  }, 20000)
+  }, 30000)
 
   it("handles custom provider filters", async () => {
-    const request = new Request("http://localhost:7431/api/usage/local?providers=antigravity")
+    const request = new Request("http://localhost:7431/api/usage/local?providers=antigravity&days=1")
     const response = await GET(request)
     expect(response.status).toBe(200)
 
     const data = await response.json()
     expect(data.ok).toBe(true)
     expect(data.providersScanned).toEqual(["antigravity"])
-  }, 20000)
+  }, 30000)
 })

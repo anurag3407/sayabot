@@ -35,7 +35,8 @@ import {
   Video,
 } from "lucide-react"
 import { cn } from "@/lib/format"
-import type { MemberView, RoomAgentView, RoomExecutionMode } from "@/lib/types"
+import { extractHandles } from "@sayabot/core"
+import type { MemberView, MessageView, RoomAgentView, RoomExecutionMode } from "@/lib/types"
 
 const MODES: {
   id: RoomExecutionMode
@@ -475,6 +476,8 @@ export function Composer({
   onTyping,
   onSent,
   onShowCanvas,
+  onOptimisticMessage,
+  onOptimisticMessageError,
   onStop,
 }: {
   orgSlug: string
@@ -492,6 +495,8 @@ export function Composer({
   onTyping?: () => void
   onSent?: () => void
   onShowCanvas?: () => void
+  onOptimisticMessage?: (message: MessageView) => void
+  onOptimisticMessageError?: (id: string, error: string) => void
   /** Stops the run in progress (/stop); absent when nothing can be stopped from here. */
   onStop?: () => void
 }) {
@@ -685,7 +690,7 @@ export function Composer({
 
   async function send() {
     const content = value.trim()
-    if (!content || pending) return
+    if (!content) return
     setError(null)
     setNotice(null)
 
@@ -761,24 +766,72 @@ export function Composer({
 
   /** Sends a message (or a /goal or /btw), queuing it offline when there is no connection. */
   async function deliver(content: string, command: "goal" | "btw" | null = null, typed = content) {
-    setPending(true)
+    // 1. Immediately reset input and adjust textarea height
+    clearIfUnchanged(typed)
+    requestAnimationFrame(() => {
+      const textarea = textareaRef.current
+      if (textarea) {
+        textarea.style.height = "40px"
+        textarea.focus()
+      }
+    })
+
+    // 2. Generate optimistic message for instant UI render
+    const messageId = crypto.randomUUID()
+    const senderName =
+      (selfId && people?.find((person) => person.userId === selfId)?.displayName) ||
+      (selfId && agents?.find((a) => a.agent.id === selfId)?.agent.displayName) ||
+      "You"
+
+    const optimisticMessage: MessageView = {
+      id: messageId,
+      roomId,
+      threadRootId: threadRootId ?? null,
+      senderType: "human",
+      senderId: selfId ?? null,
+      senderName,
+      senderHandle: null,
+      content,
+      status: "complete",
+      mentions: extractHandles(content),
+      runId: null,
+      metadata: {
+        clientId: messageId,
+        command: command ?? undefined,
+        optimistic: true,
+      },
+      createdAt: new Date().toISOString(),
+    }
+
+    onOptimisticMessage?.(optimisticMessage)
+    onSent?.()
+
+    // 3. Offline handling
     if (!navigator.onLine) {
       try {
         await queueOffline(content)
-        clearIfUnchanged(typed)
       } catch {
         setError("Could not save this message for later in this browser.")
-      } finally {
-        setPending(false)
+        onOptimisticMessageError?.(messageId, "Could not save offline")
       }
       return
     }
+
+    // 4. Background network transmission
     try {
-      const result = await sendMessage({ orgSlug, roomId, content, threadRootId, command })
+      const result = await sendMessage({
+        orgSlug,
+        roomId,
+        content,
+        threadRootId,
+        command,
+        clientId: messageId,
+        messageId,
+      })
       if (!result.ok) {
         setError(result.error ?? "Message could not be sent")
+        onOptimisticMessageError?.(messageId, result.error ?? "Failed to send")
       } else {
-        clearIfUnchanged(typed)
         if (result.warning) setNotice(result.warning)
         else if (command === "goal")
           setNotice(
@@ -786,17 +839,15 @@ export function Composer({
           )
         else if (command === "btw")
           setNotice("Noted. The bots will see it without being interrupted.")
-        onSent?.()
       }
     } catch {
       try {
         await queueOffline(content)
-        clearIfUnchanged(typed)
+        onOptimisticMessageError?.(messageId, "Offline queue")
       } catch {
         setError("Connection lost, and this message could not be saved for later.")
+        onOptimisticMessageError?.(messageId, "Connection lost")
       }
-    } finally {
-      setPending(false)
     }
   }
 
@@ -1094,7 +1145,6 @@ export function Composer({
               updateValue(next)
               textareaRef.current?.focus()
             }}
-            disabled={pending}
           />
           {onStop && !value.trim() ? (
             <button
@@ -1111,10 +1161,10 @@ export function Composer({
             <button
               type="button"
               data-testid="send-message"
-              aria-label={pending ? "Sending" : "Send message"}
+              aria-label="Send message"
               title="Send (Enter)"
               onClick={() => void send()}
-              disabled={pending || !value.trim()}
+              disabled={!value.trim()}
               className="ml-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-text text-void transition-[transform,background-color,color] duration-150 hover:bg-white active:scale-95 disabled:cursor-not-allowed disabled:bg-white/[0.08] disabled:text-faint"
             >
               <ArrowUp className="h-[17px] w-[17px]" strokeWidth={2.4} aria-hidden="true" />
