@@ -102,7 +102,6 @@ function ChatRow({
     <li className="group relative">
       <Link
         href={`/${orgSlug}/r/${item.id}`}
-        prefetch={true}
         onClick={onNavigate}
         aria-current={active ? "page" : undefined}
         data-testid="room-link"

@@ -216,7 +216,6 @@ function ThreadRow({
     <li className="group relative">
       <Link
         href={href}
-        prefetch={true}
         onClick={onNavigate}
         aria-current={active ? "page" : undefined}
         data-testid="room-link"
@@ -606,7 +605,6 @@ function OrchestratorCard({
   return (
     <Link
       href={`/${orgSlug}/r/${item.id}`}
-      prefetch={true}
       onClick={onNavigate}
       aria-current={active ? "page" : undefined}
       data-testid="room-link"

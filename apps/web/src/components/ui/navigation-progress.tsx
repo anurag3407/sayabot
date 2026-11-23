@@ -4,9 +4,14 @@ import { useEffect, useState } from "react"
 import { usePathname, useSearchParams } from "next/navigation"
 
 let activeNavTimer: NodeJS.Timeout | null = null
+let completeNavTimer: NodeJS.Timeout | null = null
 const navListeners: Set<(active: boolean) => void> = new Set()
 
 export function startNavigationProgress() {
+  if (completeNavTimer) {
+    clearTimeout(completeNavTimer)
+    completeNavTimer = null
+  }
   navListeners.forEach((fn) => fn(true))
 }
 
@@ -23,6 +28,10 @@ export function NavigationProgress() {
   useEffect(() => {
     const listener = (active: boolean) => {
       if (active) {
+        if (completeNavTimer) {
+          clearTimeout(completeNavTimer)
+          completeNavTimer = null
+        }
         setNavigating(true)
         setProgress(30)
         if (activeNavTimer) clearTimeout(activeNavTimer)
@@ -31,9 +40,11 @@ export function NavigationProgress() {
         }, 120)
       } else {
         setProgress(100)
-        setTimeout(() => {
+        if (completeNavTimer) clearTimeout(completeNavTimer)
+        completeNavTimer = setTimeout(() => {
           setNavigating(false)
           setProgress(0)
+          completeNavTimer = null
         }, 200)
       }
     }
@@ -46,11 +57,18 @@ export function NavigationProgress() {
   // When pathname or searchParams changes, navigation completed!
   useEffect(() => {
     setProgress(100)
-    const timer = setTimeout(() => {
+    if (completeNavTimer) clearTimeout(completeNavTimer)
+    completeNavTimer = setTimeout(() => {
       setNavigating(false)
       setProgress(0)
+      completeNavTimer = null
     }, 180)
-    return () => clearTimeout(timer)
+    return () => {
+      if (completeNavTimer) {
+        clearTimeout(completeNavTimer)
+        completeNavTimer = null
+      }
+    }
   }, [pathname, searchParams])
 
   // Intercept click on links to give 0ms instant feedback
