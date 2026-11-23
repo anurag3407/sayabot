@@ -259,7 +259,6 @@ function BotRow({
       if (path) {
         onNavigate?.()
         router.push(path)
-        router.refresh()
       }
     })
   }

@@ -179,10 +179,7 @@ function RowFace({ item }: { item: ChatListItem }) {
     <span className="relative grid h-8 w-8 shrink-0 place-items-center rounded-[10px] bg-text/[0.06] text-[13px] font-semibold text-muted ring-1 ring-inset ring-text/[0.04]">
       {item.kind === "public" ? "#" : item.name.slice(0, 1).toUpperCase()}
       {item.agentNames[0] ? (
-        <Mascot
-          seed={item.agentNames[0]}
-          className="absolute -bottom-1 -right-1 h-4 w-4"
-        />
+        <Mascot seed={item.agentNames[0]} className="absolute -bottom-1 -right-1 h-4 w-4" />
       ) : null}
     </span>
   )
@@ -399,7 +396,6 @@ function NewBotRow({
       if (path) {
         onNavigate?.()
         router.push(path)
-        router.refresh()
       }
     })
   }
@@ -629,7 +625,12 @@ function OrchestratorCard({
       </span>
       <span className="relative min-w-0 flex-1">
         <span className="flex items-center gap-1.5">
-          <span className={cn("truncate text-[14px] text-text", unread ? "font-semibold" : "font-medium")}>
+          <span
+            className={cn(
+              "truncate text-[14px] text-text",
+              unread ? "font-semibold" : "font-medium",
+            )}
+          >
             {item.name}
           </span>
           <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-warn/15 px-1.5 py-px text-[10px] font-semibold uppercase tracking-[0.06em] text-warn">
@@ -666,7 +667,9 @@ function UsageRow({
 }) {
   const { supported, limits } = usePlanLimits()
   const rings = supported ? (limits ?? []).filter((item) => item.windows.length > 0) : []
-  const planShare = usage?.plan ? Math.min(1, usage.plan.used / Math.max(1, usage.plan.limit)) : null
+  const planShare = usage?.plan
+    ? Math.min(1, usage.plan.used / Math.max(1, usage.plan.limit))
+    : null
   const title = [
     ...rings.map(describeLimits),
     usage
@@ -679,6 +682,7 @@ function UsageRow({
   return (
     <Link
       href={href}
+      prefetch={true}
       onClick={onNavigate}
       aria-current={active ? "page" : undefined}
       title={title || "Usage"}
@@ -744,7 +748,9 @@ function ToolsGrid({
             aria-current={active ? "page" : undefined}
             className={cn(
               "group/tool flex flex-col items-center gap-1 rounded-xl px-1 py-2 text-[11px] font-medium transition-colors",
-              active ? "bg-text/[0.08] text-text" : "text-muted hover:bg-text/[0.04] hover:text-text",
+              active
+                ? "bg-text/[0.08] text-text"
+                : "text-muted hover:bg-text/[0.04] hover:text-text",
             )}
           >
             <tool.icon
@@ -895,6 +901,7 @@ export function AppSidebar({
   const sectionAction = (href: string, label: string) => (
     <Link
       href={href}
+      prefetch={true}
       onClick={onNavigate}
       aria-label={label}
       title={label}
@@ -1125,7 +1132,10 @@ export function AppSidebar({
             onClick={onNavigate}
             className="flex items-center gap-2.5 rounded-xl bg-accent/10 px-3 py-2 text-[12px] leading-snug text-muted ring-1 ring-inset ring-accent/20 transition-colors hover:bg-accent/15 hover:text-text"
           >
-            <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-accent" aria-hidden="true" />
+            <span
+              className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-accent"
+              aria-hidden="true"
+            />
             <span className="min-w-0 flex-1">
               <span className="block font-medium text-text">Save your account</span>
               <span className="block truncate">Keep your bots on phone and web</span>
@@ -1138,6 +1148,7 @@ export function AppSidebar({
         <AccountRow base={base} user={user} role={role} />
         <Link
           href={`${base}/settings`}
+          prefetch={true}
           onClick={onNavigate}
           aria-label="Settings"
           title="Settings"

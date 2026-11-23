@@ -528,6 +528,11 @@ if (process.env.SAYABOT_MENU_CHECK === "1") {
   app.setName("SayabotMenuCheck")
 }
 
+// Performance tuning: prevent Chromium from throttling timers, animations, and renderer processes.
+app.commandLine?.appendSwitch?.("disable-renderer-backgrounding")
+app.commandLine?.appendSwitch?.("disable-background-timer-throttling")
+app.commandLine?.appendSwitch?.("disable-backgrounding-occluded-windows")
+
 // Register protocol handler for macOS. Skip during a menu check so this
 // process does not become the handler for sayabot://.
 if (process.env.SAYABOT_MENU_CHECK !== "1") {
@@ -899,12 +904,23 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
+      backgroundThrottling: false,
+      spellcheck: false,
     },
   })
 
   buildAppMenu()
 
   let recentNavigations: { url: string; time: number }[] = []
+  let menuUpdateTimer: NodeJS.Timeout | null = null
+
+  const debouncedBuildAppMenu = () => {
+    if (menuUpdateTimer) clearTimeout(menuUpdateTimer)
+    menuUpdateTimer = setTimeout(() => {
+      menuUpdateTimer = null
+      buildAppMenu()
+    }, 150)
+  }
 
   mainWindow.webContents.on("did-navigate", (_event, url) => {
     buildAppMenu()
@@ -950,7 +966,7 @@ function createWindow() {
     }
   })
   mainWindow.webContents.on("did-navigate-in-page", () => {
-    buildAppMenu()
+    debouncedBuildAppMenu()
   })
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -1082,6 +1098,7 @@ async function refreshSessionOnce(force = false): Promise<AuthSession | null> {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ refreshToken: saved.refreshToken }),
+      signal: AbortSignal.timeout(3000),
     })
     if (res.status === 401) {
       // The page often already rotated this token. Deleting the file made the next launch
