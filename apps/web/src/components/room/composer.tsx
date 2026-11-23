@@ -503,7 +503,6 @@ export function Composer({
   const router = useRouter()
   const storageKey = draftKey(roomId, threadRootId)
   const [value, setValue] = useState("")
-  const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [mention, setMention] = useState<MentionState | null>(null)
@@ -745,7 +744,6 @@ export function Composer({
           setError("Add the fact: /remember <fact or decision>")
           return
         }
-        setPending(true)
         try {
           const result = await rememberAction({ orgSlug, roomId, body: rest })
           if (!result.ok) {
@@ -756,8 +754,6 @@ export function Composer({
           }
         } catch {
           setError("Failed to save memory")
-        } finally {
-          setPending(false)
         }
         return
       }
