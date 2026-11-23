@@ -122,7 +122,7 @@ export async function openBotDmAction(orgSlug: string, agentId: string): Promise
       target: roomId,
       metadata: { agent: agent.handle },
     })
-    revalidatePath(`/${orgSlug}`, "layout")
+    revalidatePath(`/${orgSlug}`)
     return ok("Bot chat ready", { path: `/${orgSlug}/r/${roomId}` })
   } catch (error) {
     return fail(errorMessage(error))

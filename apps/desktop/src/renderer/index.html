@@ -573,16 +573,20 @@
 
         <h1 id="unauth-title">Welcome to Sayabot</h1>
         <p id="unauth-subtitle" class="subtitle">
-          Get started with your room workspace. No account needed — you can save your profile in Settings later.
+          Get started with your room workspace. No account needed — you can save your profile in
+          Settings later.
         </p>
 
-        <button id="local-engine-btn" class="btn" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); margin-bottom: 8px;" type="button">
+        <button
+          id="local-engine-btn"
+          class="btn"
+          style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); margin-bottom: 8px"
+          type="button"
+        >
           ⚡ Run Locally (Zero-Config)
         </button>
 
-        <button id="guest-btn" class="btn" type="button">
-          Start Workspace Onboarding
-        </button>
+        <button id="guest-btn" class="btn" type="button">Start Workspace Onboarding</button>
 
         <button id="sign-in-btn" class="btn btn-secondary" type="button">
           Sign in to Existing Account
@@ -817,7 +821,8 @@
         if (result && result.ok) return // the main process opens the workspace
         showGuestStarting(false)
         guestBtn.classList.remove("hidden")
-        guestError.textContent = "Could not connect to workspace server. Click Retry or Change server."
+        guestError.textContent =
+          "Could not connect to workspace server. Click Retry or Change server."
         guestError.title = (result && result.error) || ""
         guestError.classList.remove("hidden")
       }
@@ -898,7 +903,10 @@
       })
 
       openWorkspaceBtn.addEventListener("click", () => {
-        bridge.openWorkspaceInWindow()
+        setBusy(openWorkspaceBtn, true, "Opening workspace…")
+        bridge.openWorkspaceInWindow().finally(() => {
+          setTimeout(() => setBusy(openWorkspaceBtn, false, "Open workspace"), 1000)
+        })
       })
 
       changeServerLink.addEventListener("click", () => {

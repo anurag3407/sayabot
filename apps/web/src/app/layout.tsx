@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next"
+import { Suspense } from "react"
 import "@fontsource-variable/geist"
 import "@fontsource-variable/geist-mono"
 import "./globals.css"
@@ -7,6 +8,7 @@ import { Toaster } from "@/components/ui/toast"
 import { SummaryFocusGuard } from "@/components/summary-focus-guard"
 import { PwaUpdatePrompt } from "@/components/pwa-update-prompt"
 import { ThemeProvider, ThemeScript } from "@/components/theme-provider"
+import { NavigationProgress } from "@/components/ui/navigation-progress"
 
 export const metadata: Metadata = {
   title: {
@@ -46,6 +48,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="min-h-dvh bg-void text-text antialiased">
         <ThemeProvider>
+          <Suspense fallback={null}>
+            <NavigationProgress />
+          </Suspense>
           <a
             href="#main-content"
             className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[110] focus:rounded-sm focus:bg-accent focus:px-3 focus:py-2 focus:text-[13px] focus:text-void"

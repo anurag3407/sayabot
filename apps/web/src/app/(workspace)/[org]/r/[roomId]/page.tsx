@@ -124,6 +124,7 @@ async function loadAgentUsage(
   orgId: string,
   agentIds: string[],
 ): Promise<Record<string, AgentUsageView>> {
+  if (agentIds.length === 0) return {}
   const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
   const rows = await loadUsageRollup(orgId, since)
   if (!rows) return {}

@@ -158,7 +158,18 @@ function readExecutionMode(value: string | undefined): RoomExecutionMode {
   return EXECUTION_MODES.find((mode) => mode === value) ?? "ask_risky"
 }
 
+/** Request-scoped cache so generateMetadata, layout and page share the room lookup. */
+const roomAccessForRequest = cache((slug: string, roomId: string) => loadRoomAccess(slug, roomId))
+
 export async function getRoomAccess(
+  slug: string,
+  roomId: string,
+  options?: { client?: SupabaseClient<any>; user?: User },
+): Promise<RoomAccess | null> {
+  return options ? loadRoomAccess(slug, roomId, options) : roomAccessForRequest(slug, roomId)
+}
+
+async function loadRoomAccess(
   slug: string,
   roomId: string,
   options?: { client?: SupabaseClient<any>; user?: User },

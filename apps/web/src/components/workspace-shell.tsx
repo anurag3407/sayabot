@@ -24,6 +24,7 @@ import { useWorkspaceActivity } from "@/components/use-workspace-activity"
 import { cn } from "@/lib/format"
 import { CloseIcon, MenuIcon } from "@/components/ui/icons"
 import { PlanUsageBanner } from "@/components/plan-usage-banner"
+import { startNavigationProgress } from "@/components/ui/navigation-progress"
 import type { ChatListItem, OrgRole, OrgSummary } from "@/lib/types"
 import type { SidebarUsage } from "@/lib/sidebar-usage"
 
@@ -80,6 +81,7 @@ function BackButton({ home, className }: { home: string; className?: string }) {
     <button
       type="button"
       onClick={() => {
+        startNavigationProgress()
         if (steps.current > 0) {
           steps.current -= 2
           router.back()
@@ -189,6 +191,7 @@ export function WorkspaceShell({
       )
       if (event.metaKey && event.key === "[" && !typing) {
         event.preventDefault()
+        startNavigationProgress()
         router.back()
       }
     }

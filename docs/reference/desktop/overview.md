@@ -46,11 +46,13 @@ Sayabot Desktop provides a **1-click zero-config local install** delivering a fr
 
 ## 🪟 Window Management
 
-`createWindow` (`src/main.ts:640`) builds a single `BrowserWindow`:
+`createWindow` (`src/main.ts`) builds a single `BrowserWindow`:
 
 - 1240×840 (min 900×600), background `#070907`. On macOS the title bar is `hiddenInset` with traffic lights at `{x:16, y:16}`. On Windows the native title bar is kept so the window can move, minimize, and close.
-- `webPreferences`: `preload.js`, `contextIsolation: true`, `nodeIntegration: false`, `sandbox: false` (the preload needs full `ipcRenderer`).
-- `setWindowOpenHandler` denies every `window.open` and forwards the URL to `shell.openExternal` (`src/main.ts:659-662`) — no popups inside the app.
+- `webPreferences`: `preload.js`, `contextIsolation: true`, `nodeIntegration: false`, `sandbox: false` (the preload needs full `ipcRenderer`), `backgroundThrottling: false` (prevents timer/animation slowdowns during interactions and navigation), `spellcheck: false` (eliminates synchronous DOM mutation delays).
+- Chromium performance switches: `disable-renderer-backgrounding`, `disable-background-timer-throttling`, `disable-backgrounding-occluded-windows`.
+- Menu bar updates: `buildAppMenu()` is debounced (150 ms) on `did-navigate-in-page` to prevent synchronous AppKit menu rebuilding from freezing client route transitions.
+- `setWindowOpenHandler` denies every `window.open` and forwards the URL to `shell.openExternal` (`src/main.ts`) — no popups inside the app.
 
 Two content modes share this window:
 

@@ -33,7 +33,6 @@ function BotStartButton({ orgSlug, agentId }: { orgSlug: string; agentId: string
             const path = typeof result.data?.path === "string" ? result.data.path : null
             if (path) {
               router.push(path)
-              router.refresh()
             }
           })
         }
