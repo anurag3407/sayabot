@@ -192,7 +192,13 @@ export function MessageItem({
       {/* Human user message: right-aligned sleek bubble */}
       {mine ? (
         <div className="flex w-full flex-col items-end">
-          <div className="max-w-[85%] rounded-2xl bg-zinc-200 text-zinc-900 dark:bg-[#1e1e24] dark:text-[#ededf0] px-4 py-2.5 text-sm border border-zinc-300/70 dark:border-white/5 shadow-sm [overflow-wrap:anywhere]">
+          <div
+            className={cn(
+              "max-w-[85%] rounded-2xl bg-zinc-200 text-zinc-900 dark:bg-[#1e1e24] dark:text-[#ededf0] px-4 py-2.5 text-sm border border-zinc-300/70 dark:border-white/5 shadow-sm [overflow-wrap:anywhere] transition-opacity duration-150",
+              Boolean(message.metadata.optimistic) && "opacity-85",
+              Boolean(message.metadata.failed) && "border-danger/40 bg-danger/[0.04]",
+            )}
+          >
             {!isAgent &&
             (message.metadata.command === "goal" || message.metadata.command === "btw") ? (
               <span className="mb-1 block text-[11px] font-medium uppercase tracking-[0.06em] text-accent">
@@ -201,7 +207,13 @@ export function MessageItem({
             ) : null}
             <Markdown content={answer} streaming={streaming} />
             {streaming ? <span className="streaming-caret" aria-hidden="true" /> : null}
-            <div className="mt-1 flex justify-end text-right font-mono text-[10px] text-faint opacity-60">
+            <div className="mt-1 flex items-center justify-end gap-1.5 text-right font-mono text-[10px] text-faint opacity-70">
+              {message.metadata.optimistic ? (
+                <span className="text-[10px] text-muted font-sans">Sending…</span>
+              ) : null}
+              {message.metadata.failed ? (
+                <span className="text-[10px] text-danger font-sans">Failed to send</span>
+              ) : null}
               <time dateTime={message.createdAt} title={fullTime(message.createdAt)}>
                 {clockTime(message.createdAt)}
               </time>

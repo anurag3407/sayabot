@@ -1,6 +1,6 @@
 "use server"
 
-import { getRoomAccess } from "@/lib/auth"
+import { getCurrentUser, getRoomAccess } from "@/lib/auth"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { macApprovalBlock, readMacMarker, rememberMacAllow } from "@/lib/mac-runner"
@@ -15,15 +15,14 @@ export async function sendMessage(input: {
   content: string
   threadRootId?: string | null
   clientId?: string | null
+  messageId?: string | null
   command?: "goal" | "btw" | null
 }): Promise<ActionResult> {
-  const supabase = await createSupabaseServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getCurrentUser()
   if (!user) return fail("Your session expired. Sign in again.")
   const access = await getRoomAccess(input.orgSlug, input.roomId)
   if (!access) return fail("Room not found")
+  const supabase = await createSupabaseServerClient()
   const inserted = await insertHumanMessage({
     supabase,
     userId: user.id,
@@ -31,6 +30,7 @@ export async function sendMessage(input: {
     content: input.content,
     threadRootId: input.threadRootId ?? null,
     clientId: input.clientId ?? null,
+    id: input.messageId ?? input.clientId ?? null,
     command: input.command ?? null,
   })
   if (!inserted.ok) return fail(inserted.error)

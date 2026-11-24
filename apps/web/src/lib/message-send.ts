@@ -12,6 +12,7 @@ export async function insertHumanMessage(args: {
   content: string
   threadRootId?: string | null
   clientId?: string | null
+  id?: string | null
   /** "/goal": the bots loop until it's done. "/btw": a side note that doesn't interrupt them. */
   command?: "goal" | "btw" | null
 }): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
@@ -37,7 +38,16 @@ export async function insertHumanMessage(args: {
     }
     threadRootId = root.thread_root_id ?? root.id
   }
-  if (args.clientId) {
+  if (args.id && uuidSchema.safeParse(args.id).success) {
+    const { data: existing } = await args.supabase
+      .from("messages")
+      .select("id")
+      .eq("id", args.id)
+      .eq("room_id", args.roomId)
+      .eq("sender_id", args.userId)
+      .maybeSingle()
+    if (existing) return { ok: true, id: existing.id }
+  } else if (args.clientId) {
     const { data: existing } = await args.supabase
       .from("messages")
       .select("id")
@@ -50,18 +60,24 @@ export async function insertHumanMessage(args: {
   const metadata: Record<string, unknown> = {}
   if (args.clientId) metadata.clientId = args.clientId.slice(0, 80)
   if (args.command === "goal" || args.command === "btw") metadata.command = args.command
+
+  const insertPayload: Record<string, unknown> = {
+    room_id: args.roomId,
+    thread_root_id: threadRootId,
+    sender_type: "human",
+    sender_id: args.userId,
+    content,
+    status: "complete",
+    mentions: extractHandles(content),
+    metadata,
+  }
+  if (args.id && uuidSchema.safeParse(args.id).success) {
+    insertPayload.id = args.id
+  }
+
   const { data, error } = await args.supabase
     .from("messages")
-    .insert({
-      room_id: args.roomId,
-      thread_root_id: threadRootId,
-      sender_type: "human",
-      sender_id: args.userId,
-      content,
-      status: "complete",
-      mentions: extractHandles(content),
-      metadata,
-    })
+    .insert(insertPayload)
     .select("id")
     .single()
   if (error || !data) {

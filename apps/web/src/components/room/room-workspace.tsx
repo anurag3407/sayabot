@@ -275,6 +275,10 @@ export function RoomWorkspace({
       onOpenThread={(message) => setThreadRootId(message.id)}
       onTyping={realtime.trackTyping}
       onShowCanvas={showCanvas}
+      onOptimisticMessage={realtime.addOptimisticMessage}
+      onOptimisticMessageError={(id, error) =>
+        realtime.updateOptimisticMessage(id, { metadata: { failed: true, error } })
+      }
     />
   )
 
@@ -685,6 +689,10 @@ export function RoomWorkspace({
         memberAvatars={data.memberAvatars}
         mergeHistory={realtime.mergeHistory}
         onTyping={realtime.trackTyping}
+        onOptimisticMessage={realtime.addOptimisticMessage}
+        onOptimisticMessageError={(id, error) =>
+          realtime.updateOptimisticMessage(id, { metadata: { failed: true, error } })
+        }
         onClose={() => setThreadRootId(null)}
       />
 

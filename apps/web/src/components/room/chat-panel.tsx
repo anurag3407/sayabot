@@ -77,6 +77,8 @@ export function ChatPanel({
   onOpenThread,
   onTyping,
   onShowCanvas,
+  onOptimisticMessage,
+  onOptimisticMessageError,
 }: {
   orgSlug: string
   roomId: string
@@ -105,6 +107,8 @@ export function ChatPanel({
   onOpenThread: (message: MessageView) => void
   onTyping: () => void
   onShowCanvas: () => void
+  onOptimisticMessage?: (message: MessageView) => void
+  onOptimisticMessageError?: (id: string, error: string) => void
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const stickToBottom = useRef(true)
@@ -279,6 +283,8 @@ export function ChatPanel({
             roomId={roomId}
             agentName={roomAgents[0].agent.displayName}
             userName={user.displayName}
+            userId={user.id}
+            onOptimisticMessage={onOptimisticMessage}
             onSent={scrollToBottom}
             onSomethingElse={() =>
               document.querySelector<HTMLTextAreaElement>('[data-testid="composer"]')?.focus()
@@ -456,6 +462,8 @@ export function ChatPanel({
           onTyping={onTyping}
           onSent={scrollToBottom}
           onShowCanvas={onShowCanvas}
+          onOptimisticMessage={onOptimisticMessage}
+          onOptimisticMessageError={onOptimisticMessageError}
         />
       </div>
       <p className="sr-only" aria-live="polite">

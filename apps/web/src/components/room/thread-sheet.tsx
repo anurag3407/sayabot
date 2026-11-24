@@ -27,6 +27,8 @@ export function ThreadSheet({
   mergeHistory,
   onTyping,
   onClose,
+  onOptimisticMessage,
+  onOptimisticMessageError,
 }: {
   root: MessageView | null
   messages: MessageView[]
@@ -42,6 +44,8 @@ export function ThreadSheet({
   mergeHistory: (rows: RawMessageRow[]) => void
   onTyping: () => void
   onClose: () => void
+  onOptimisticMessage?: (message: MessageView) => void
+  onOptimisticMessageError?: (id: string, error: string) => void
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -169,6 +173,8 @@ export function ThreadSheet({
             compact
             autoFocus
             onTyping={onTyping}
+            onOptimisticMessage={onOptimisticMessage}
+            onOptimisticMessageError={onOptimisticMessageError}
           />
         </div>
       </div>

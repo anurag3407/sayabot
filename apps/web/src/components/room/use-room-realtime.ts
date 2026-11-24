@@ -115,7 +115,12 @@ export function useRoomRealtime(args: {
 
   const mergeMessage = useCallback((incoming: MessageView, authoritative = false) => {
     setMessages((prev) => {
-      const index = prev.findIndex((message) => message.id === incoming.id)
+      const index = prev.findIndex(
+        (message) =>
+          message.id === incoming.id ||
+          (Boolean(incoming.metadata?.clientId) &&
+            message.metadata?.clientId === incoming.metadata.clientId),
+      )
       if (index === -1) return sortMessages([...prev, incoming])
       const current = prev[index]!
       let content = incoming.content
@@ -127,13 +132,56 @@ export function useRoomRealtime(args: {
       const next = {
         ...current,
         ...incoming,
+        id: incoming.id,
         content,
-        metadata: { ...current.metadata, ...incoming.metadata },
+        metadata: { ...current.metadata, ...incoming.metadata, optimistic: false },
       }
       const copy = [...prev]
       copy[index] = next
       return copy
     })
+  }, [])
+
+  const addOptimisticMessage = useCallback((message: MessageView) => {
+    setMessages((prev) => {
+      const index = prev.findIndex(
+        (m) =>
+          m.id === message.id ||
+          (Boolean(message.metadata?.clientId) &&
+            m.metadata?.clientId === message.metadata.clientId),
+      )
+      if (index !== -1) {
+        const copy = [...prev]
+        copy[index] = message
+        return copy
+      }
+      return sortMessages([...prev, message])
+    })
+  }, [])
+
+  const updateOptimisticMessage = useCallback(
+    (idOrClientId: string, patch: Partial<MessageView>) => {
+      setMessages((prev) => {
+        const index = prev.findIndex(
+          (m) => m.id === idOrClientId || m.metadata?.clientId === idOrClientId,
+        )
+        if (index === -1) return prev
+        const copy = [...prev]
+        copy[index] = {
+          ...copy[index]!,
+          ...patch,
+          metadata: { ...copy[index]!.metadata, ...(patch.metadata ?? {}) },
+        }
+        return copy
+      })
+    },
+    [],
+  )
+
+  const removeOptimisticMessage = useCallback((idOrClientId: string) => {
+    setMessages((prev) =>
+      prev.filter((m) => m.id !== idOrClientId && m.metadata?.clientId !== idOrClientId),
+    )
   }, [])
 
   const refreshMessage = useCallback(
@@ -635,5 +683,8 @@ export function useRoomRealtime(args: {
     hasOlder,
     loadingOlder,
     loadOlder,
+    addOptimisticMessage,
+    updateOptimisticMessage,
+    removeOptimisticMessage,
   }
 }
