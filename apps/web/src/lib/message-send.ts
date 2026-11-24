@@ -43,6 +43,8 @@ export async function insertHumanMessage(args: {
       .from("messages")
       .select("id")
       .eq("id", args.id)
+      .eq("room_id", args.roomId)
+      .eq("sender_id", args.userId)
       .maybeSingle()
     if (existing) return { ok: true, id: existing.id }
   } else if (args.clientId) {

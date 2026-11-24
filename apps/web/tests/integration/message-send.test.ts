@@ -8,35 +8,25 @@ const USER = "22222222-2222-4222-8222-222222222222"
 
 function fakeSupabase(opts: { existing?: unknown; insertError?: string; root?: unknown } = {}) {
   const inserted: unknown[] = []
-  const chain: any = new Proxy(function () {}, {
-    get(_t, prop) {
-      if (prop === "then") return undefined
-      return (..._a: unknown[]) => chain
-    },
-    apply() {
-      return chain
-    },
-  })
+  const createQueryChain = (): any => {
+    const chain: any = {
+      select: () => createQueryChain(),
+      eq: () => createQueryChain(),
+      filter: () => createQueryChain(),
+      maybeSingle: async () => ({ data: opts.existing ?? opts.root ?? null }),
+      single: async () =>
+        opts.insertError
+          ? { data: null, error: { message: opts.insertError } }
+          : { data: { id: "msg-1" }, error: null },
+    }
+    return chain
+  }
   const client: any = {
     from: () => ({
-      select: () => ({
-        eq: () => ({
-          maybeSingle: async () => ({ data: opts.existing ?? opts.root ?? null }),
-          eq: () => ({
-            filter: () => ({ maybeSingle: async () => ({ data: opts.existing ?? null }) }),
-          }),
-        }),
-      }),
+      select: () => createQueryChain(),
       insert: (row: unknown) => {
         inserted.push(row)
-        return {
-          select: () => ({
-            single: async () =>
-              opts.insertError
-                ? { data: null, error: { message: opts.insertError } }
-                : { data: { id: "msg-1" }, error: null },
-          }),
-        }
+        return createQueryChain()
       },
     }),
     inserted,

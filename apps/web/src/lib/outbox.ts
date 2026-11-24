@@ -1,6 +1,6 @@
 "use client"
 
-import { get, set } from "idb-keyval"
+import { get, update } from "idb-keyval"
 
 const KEY = "mesh:outbox:v1"
 
@@ -18,17 +18,18 @@ export async function readOutbox(): Promise<OutboxItem[]> {
 }
 
 export async function enqueueOutbox(item: OutboxItem): Promise<void> {
-  const items = await readOutbox()
-  if (items.some((existing) => existing.id === item.id)) return
-  await set(KEY, [...items, item])
+  await update<OutboxItem[]>(KEY, (current) => {
+    const items = current ?? []
+    if (items.some((existing) => existing.id === item.id)) return items
+    return [...items, item]
+  })
 }
 
 async function removeOutbox(id: string): Promise<void> {
-  const items = await readOutbox()
-  await set(
-    KEY,
-    items.filter((item) => item.id !== id),
-  )
+  await update<OutboxItem[]>(KEY, (current) => {
+    const items = current ?? []
+    return items.filter((item) => item.id !== id)
+  })
 }
 
 export async function flushOutbox(): Promise<{ sent: number; failed: number }> {
